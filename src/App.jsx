@@ -1,7 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import {
   Bell,
-  Blocks,
   ChevronFirst,
   ChevronLast,
   CheckCircle2,
@@ -18,7 +17,6 @@ import {
   LogOut,
   Search,
   Sun,
-  Table2,
   Trash2,
   UserPen,
   X,
@@ -39,8 +37,6 @@ const menu = [
     section: 'Main',
     items: [
       { label: 'Dashboard', icon: LayoutDashboard },
-      { label: 'Widgets', icon: Blocks },
-      { label: 'Tables', icon: Table2 },
       { label: 'Skill Management', icon: FileText },
       { label: 'Skill Assessment', icon: FileText },
       { label: 'Faculty Management', icon: UserPen },
@@ -2670,7 +2666,7 @@ function App() {
 
       <nav className="vx-mobile-nav">
         <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
-        <button type="button" className="active">Tables</button>
+        <button type="button" className={activePage === 'Skill Management' ? 'active' : ''} onClick={() => setActivePage('Skill Management')}>Skill Management</button>
         <button type="button">Profile</button>
       </nav>
     </div>
