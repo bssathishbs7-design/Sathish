@@ -74,7 +74,7 @@ input {
   justify-content: center;
   gap: 8px;
   position: relative;
-  min-height: 58px;
+  min-height: 73px;
   border-bottom: 1px solid var(--vx-divider);
   margin: -14px -12px 15px;
   padding: 8px 12px;
@@ -89,7 +89,7 @@ input {
 
 .vx-logo-image {
   max-width: 170px;
-  height: 38px;
+  height: 53px;
   width: auto;
   object-fit: contain;
   display: block;
@@ -209,6 +209,17 @@ html {
   overflow: hidden;
 }
 
+.vx-link,
+.vx-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  color: #0f8364;
+  text-decoration: none;
+}
+
 .vx-menu-section li svg,
 .vx-sidebar-footer button svg,
 .vx-sidebar-toggle svg,
@@ -224,7 +235,21 @@ html {
 }
 
 .vx-menu-section li:hover {
-  background: #f8faff;
+  background: #e5fff5;
+}
+
+.vx-menu-section li.is-active {
+  background: #eef4ff;
+  color: #0162e8;
+}
+
+.vx-menu-section li.is-active .vx-link,
+.vx-menu-section li.is-active .vx-nav-link {
+  color: #0162e8;
+}
+
+.vx-menu-section li.is-active svg {
+  color: #0162e8;
 }
 
 .vx-sidebar-footer {
@@ -261,6 +286,7 @@ html {
   padding: 14px 18px;
   background: rgba(238, 241, 247, 0.92);
   backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--vx-divider);
 }
 
 .vx-header-actions {
@@ -418,6 +444,11 @@ html {
   gap: 0;
   padding-left: 0;
   padding-right: 0;
+}
+
+.is-collapsed .vx-link,
+.is-collapsed .vx-nav-link {
+  justify-content: center;
 }
 
 .is-collapsed .vx-sidebar-footer button {

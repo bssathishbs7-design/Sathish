@@ -1,5 +1,4 @@
-import { Bell, Blocks, CalendarDays, ChevronFirst, ChevronLast, FileText, FolderKanban, LayoutDashboard, Mail, Maximize, Menu, MessageCircle, Minimize, Moon, Search, Sun, Table2, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+'use client'
 
 const baseRows = [
   ['1', 'Mark', 'Otto', '@mdo'],
