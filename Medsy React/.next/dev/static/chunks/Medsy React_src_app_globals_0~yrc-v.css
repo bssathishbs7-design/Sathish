@@ -1,0 +1,423 @@
+@import "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap";
+/* [project]/Medsy React/src/app/globals.css [app-client] (css) */
+:root {
+  color: #1f2937;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  min-height: 100%;
+  margin: 0;
+}
+
+button, input {
+  font: inherit;
+}
+
+.vx-shell {
+  color: #1f2a44;
+  --vx-divider: #e2e8f3;
+  background: #eef1f7;
+  grid-template-columns: 1fr;
+  min-height: 100svh;
+  display: grid;
+}
+
+.vx-overlay {
+  opacity: 0;
+  pointer-events: none;
+  z-index: 40;
+  background: #0f172a59;
+  transition: opacity .2s;
+  position: fixed;
+  inset: 0;
+}
+
+.vx-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.vx-sidebar {
+  z-index: 50;
+  border-right: 1px solid var(--vx-divider);
+  scrollbar-width: thin;
+  background: #fff;
+  width: 270px;
+  height: 100svh;
+  padding: 14px 12px;
+  transition: transform .25s;
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow: hidden auto;
+  transform: translateX(-100%);
+}
+
+.vx-sidebar.open {
+  transform: translateX(0);
+}
+
+.vx-logo-row {
+  border-bottom: 1px solid var(--vx-divider);
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-height: 58px;
+  margin: -14px -12px 15px;
+  padding: 8px 12px;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.vx-logo {
+  color: #0162e8;
+  font-size: 1.65rem;
+  font-weight: 800;
+}
+
+.vx-logo-image {
+  object-fit: contain;
+  width: auto;
+  max-width: 170px;
+  height: 38px;
+  display: block;
+}
+
+.vx-logo-full {
+  display: block;
+}
+
+.vx-logo-mark {
+  object-fit: cover;
+  object-position: left center;
+  border-radius: 999px;
+  width: 44px;
+  max-width: 44px;
+  height: 44px;
+  display: none;
+}
+
+.vx-logo-image.hide-logo {
+  display: none;
+}
+
+.vx-logo-image.show-mark {
+  display: block;
+}
+
+.vx-logo-image.is-white {
+  filter: brightness(0) invert();
+}
+
+.vx-search-mini {
+  border: 1px solid var(--vx-divider);
+  color: #9aa7bd;
+  border-radius: 10px;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  margin: 14px 0 18px;
+  padding: 0 10px;
+  font-size: .86rem;
+  display: flex;
+  overflow: hidden;
+}
+
+.vx-search-mini input {
+  width: 100%;
+  min-width: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  outline: 0;
+}
+
+.vx-shell, body, html {
+  overflow-x: hidden;
+}
+
+.vx-sidebar-toggle, .vx-menu-btn, .vx-action-btn, .vx-dots, .vx-btn {
+  border: 1px solid var(--vx-divider);
+  color: #475569;
+  background: #fff;
+  border-radius: 10px;
+}
+
+.vx-sidebar-toggle, .vx-menu-btn, .vx-action-btn, .vx-dots {
+  cursor: pointer;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+}
+
+.vx-menu {
+  gap: 18px;
+  display: grid;
+}
+
+.vx-menu-section h3 {
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin: 0 0 10px;
+  padding: 0 8px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.vx-menu-section ul {
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+.vx-menu-section li {
+  color: #475569;
+  border-radius: 12px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  display: flex;
+  overflow: hidden;
+}
+
+.vx-menu-section li svg, .vx-sidebar-footer button svg, .vx-sidebar-toggle svg, .vx-menu-btn svg, .vx-action-btn svg {
+  flex: none;
+}
+
+.vx-menu-section li span {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.vx-menu-section li:hover {
+  background: #f8faff;
+}
+
+.vx-sidebar-footer {
+  border-top: 1px solid var(--vx-divider);
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
+.vx-sidebar-footer button {
+  border: 1px solid var(--vx-divider);
+  color: #475569;
+  background: #fff;
+  border-radius: 12px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  display: flex;
+}
+
+.vx-main {
+  min-width: 0;
+}
+
+.vx-header {
+  z-index: 30;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  background: #eef1f7eb;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  display: flex;
+  position: sticky;
+  top: 0;
+}
+
+.vx-header-actions {
+  align-items: center;
+  gap: 10px;
+  display: flex;
+}
+
+.vx-user-menu {
+  align-items: center;
+  display: flex;
+}
+
+.vx-user-avatar {
+  border-radius: 999px;
+  width: 36px;
+  height: 36px;
+  display: block;
+}
+
+.vx-content {
+  padding: 0 18px 24px;
+}
+
+.vx-card {
+  border: 1px solid var(--vx-divider);
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.vx-card-head {
+  border-bottom: 1px solid var(--vx-divider);
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  display: flex;
+}
+
+.vx-card-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.vx-card-head p {
+  color: #64748b;
+  margin: 4px 0 0;
+  font-size: .9rem;
+}
+
+.vx-table-wrap {
+  overflow-x: auto;
+}
+
+.vx-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 720px;
+}
+
+.vx-table th, .vx-table td {
+  text-align: left;
+  border-bottom: 1px solid #edf2f8;
+  padding: 14px 18px;
+  font-size: .92rem;
+}
+
+.vx-table th {
+  color: #475569;
+  background: #f8faff;
+  font-weight: 700;
+}
+
+.vx-tag {
+  border-radius: 999px;
+  align-items: center;
+  padding: 6px 10px;
+  font-size: .78rem;
+  font-weight: 700;
+  display: inline-flex;
+}
+
+.vx-tag-teal {
+  color: #0f8b7c;
+  background: #def7f4;
+}
+
+.vx-tag-purple {
+  color: #6e44b8;
+  background: #f0e7fb;
+}
+
+.vx-tag-light {
+  color: #1677b8;
+  background: #e5f4ff;
+}
+
+.vx-btn {
+  cursor: pointer;
+  min-height: 36px;
+  padding: 0 12px;
+  font-weight: 600;
+}
+
+.vx-btn-primary {
+  color: #fff;
+  background: #0162e8;
+  border-color: #0162e8;
+}
+
+.is-collapsed.vx-shell {
+  grid-template-columns: 84px minmax(0, 1fr);
+}
+
+.is-collapsed .vx-sidebar {
+  width: 84px;
+  padding: 14px 8px;
+}
+
+.is-collapsed .vx-logo-row {
+  justify-content: center;
+  margin-left: -8px;
+  margin-right: -8px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.is-collapsed .vx-sidebar-toggle {
+  width: 28px;
+  height: 28px;
+  position: absolute;
+  top: 10px;
+  right: 8px;
+}
+
+.is-collapsed .vx-search-mini, .is-collapsed .vx-menu-section h3, .is-collapsed .vx-link-text {
+  display: none;
+}
+
+.is-collapsed .vx-menu, .is-collapsed .vx-menu-section ul {
+  gap: 10px;
+}
+
+.is-collapsed .vx-menu-section li, .is-collapsed .vx-sidebar-footer button {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.is-collapsed .vx-sidebar-footer button {
+  width: 100%;
+  min-height: 42px;
+}
+
+@media (min-width: 1180px) {
+  .vx-shell {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+
+  .vx-sidebar {
+    position: sticky;
+    transform: none;
+  }
+
+  .vx-overlay, .vx-menu-btn {
+    display: none;
+  }
+
+  .is-collapsed.vx-shell {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+}
+
+/*# sourceMappingURL=Medsy%20React_src_app_globals_0~yrc-v.css.map*/
