@@ -1,47 +1,22 @@
 ﻿import { useEffect, useState } from 'react'
 import {
-  Bell,
-  ChevronFirst,
-  ChevronLast,
   CheckCircle2,
   ChevronRight,
   Eye,
-  FileText,
-  LayoutDashboard,
-  Maximize,
-  Menu,
-  Minimize,
-  Moon,
   Info,
   MoreHorizontal,
-  LogOut,
   Search,
-  Sun,
   Trash2,
   UserPen,
-  X,
 } from 'lucide-react'
 import './App.css'
-import brandLogo from './assets/brand-logo.svg'
-import brandMark from './assets/brand-mark.svg'
+import Navbar from './components/Navbar'
+import Sidebar from './components/Sidebar'
 import FacultyManagementPageV2 from './FacultyManagementPageV2'
-
 const baseRows = [
   ['1', 'Mark', 'Otto', '@mdo'],
   ['2', 'Jacob', 'Thornton', '@fat'],
   ['3', 'Larry', 'Bird', '@twitter'],
-]
-
-const menu = [
-  {
-    section: 'Main',
-    items: [
-      { label: 'Dashboard', icon: LayoutDashboard },
-      { label: 'Skill Management', icon: FileText },
-      { label: 'Skill Assessment', icon: FileText },
-      { label: 'Faculty Management', icon: UserPen },
-    ],
-  },
 ]
 
 const assessmentYearOptions = ['First Year', 'Second Year', 'Third Year']
@@ -2461,144 +2436,34 @@ function App() {
         aria-hidden="true"
       />
 
-      <aside className={`vx-sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
-        <div className="vx-logo-row">
-          <img
-            src={brandLogo}
-            alt="Brand logo"
-            className={`vx-logo-image vx-logo-full ${theme === 'dark' ? 'is-white' : ''} ${useCompactLogo ? 'hide-logo' : ''}`}
-          />
-          <img
-            src={brandMark}
-            alt="Brand mark"
-            className={`vx-logo-image vx-logo-mark ${theme === 'dark' ? 'is-white' : ''} ${useCompactLogo ? 'show-mark' : ''}`}
-          />
-          <button
-            type="button"
-            className="vx-icon-btn hide-desktop"
-            onClick={() => setMobileSidebarOpen(false)}
-            aria-label="Close sidebar"
-          >
-            <X size={18} strokeWidth={2} />
-          </button>
-        </div>
-
-        {menu.map((group) => (
-          <div key={group.section} className="vx-menu-group">
-            {group.items.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                className={`vx-link ${item.label === activePage ? 'active' : ''}`}
-                onClick={() => {
-                  setActivePage(item.label)
-                  setMobileSidebarOpen(false)
-                }}
-              >
-                <span className="vx-link-icon" aria-hidden="true">
-                  <item.icon size={16} strokeWidth={2} />
-                </span>
-                <span className="vx-link-text">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      </aside>
+      <Sidebar
+        mobileSidebarOpen={mobileSidebarOpen}
+        theme={theme}
+        useCompactLogo={useCompactLogo}
+        activePage={activePage}
+        onSelectPage={(page) => {
+          setActivePage(page)
+          setMobileSidebarOpen(false)
+        }}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
+      />
 
       <main className="vx-main">
-        <header className="vx-topbar">
-          <button
-            type="button"
-            className="vx-icon-btn vx-menu-btn"
-            onClick={() => setMobileSidebarOpen(true)}
-            aria-label="Open sidebar"
-          >
-            <Menu size={18} strokeWidth={2} />
-          </button>
-
-          <button
-            type="button"
-            className="vx-icon-btn vx-collapse-btn desktop-only"
-            onClick={() => setSidebarCollapsed((v) => !v)}
-            aria-label="Collapse sidebar"
-          >
-            {sidebarCollapsed ? <ChevronLast size={18} strokeWidth={2} /> : <ChevronFirst size={18} strokeWidth={2} />}
-          </button>
-
-          <div className="vx-global-search">
-            <span className="vx-search-icon" aria-hidden="true">
-              <Search size={16} strokeWidth={2} />
-            </span>
-            <span className="vx-search-placeholder">Search for anything...</span>
-          </div>
-
-          <div className="vx-actions">
-            <button type="button" className="vx-icon-btn" aria-label="Notifications">
-              <Bell size={18} strokeWidth={2} />
-            </button>
-            <button type="button" className="vx-icon-btn" aria-label="Fullscreen" onClick={toggleFullscreen}>
-              {isFullscreen ? <Minimize size={18} strokeWidth={2} /> : <Maximize size={18} strokeWidth={2} />}
-            </button>
-            <button
-              type="button"
-              className="vx-icon-btn"
-              aria-label="Theme"
-              onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
-            >
-              {theme === 'dark' ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
-            </button>
-            <div className="vx-profile-menu">
-              <button
-                type="button"
-                className="vx-user vx-profile-trigger"
-                aria-expanded={isProfileMenuOpen}
-                aria-haspopup="menu"
-                onClick={() => setIsProfileMenuOpen((open) => !open)}
-              >
-                <span className="avatar" aria-hidden="true">KS</span>
-                <div>
-                  <strong>{profileUser.name}</strong>
-                  <p>{profileUser.registerId}</p>
-                </div>
-                <span className="vx-profile-caret" aria-hidden="true">
-                  <ChevronRight size={14} strokeWidth={2} />
-                </span>
-              </button>
-
-              {isProfileMenuOpen ? (
-                <div className="vx-profile-tooltip" role="menu" aria-label="Profile menu">
-                  <div className="vx-profile-tooltip-head">
-                    <span className="avatar vx-profile-avatar" aria-hidden="true">KS</span>
-                    <div>
-                      <strong>{profileUser.name}</strong>
-                      <p>{profileUser.registerId}</p>
-                    </div>
-                  </div>
-                  <div className="vx-profile-divider" />
-                  <button type="button" className="vx-profile-action" onClick={handleEditProfile}>
-                    <span className="vx-profile-action-icon" aria-hidden="true">
-                      <UserPen size={16} strokeWidth={2} />
-                    </span>
-                    <span>
-                      <strong>Edit Profile</strong>
-                      <small>Open profile settings</small>
-                    </span>
-                  </button>
-                  <button type="button" className="vx-profile-action is-danger" onClick={handleSignOut}>
-                    <span className="vx-profile-action-icon" aria-hidden="true">
-                      <LogOut size={16} strokeWidth={2} />
-                    </span>
-                    <span>
-                      <strong>Sign Out</strong>
-                      <small>Leave the dashboard</small>
-                    </span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-          {profileToast ? <div className="vx-profile-toast" role="status">{profileToast}</div> : null}
-        </header>
+        <Navbar
+          sidebarCollapsed={sidebarCollapsed}
+          onOpenSidebar={() => setMobileSidebarOpen(true)}
+          onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          theme={theme}
+          onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+          isProfileMenuOpen={isProfileMenuOpen}
+          onToggleProfileMenu={() => setIsProfileMenuOpen((open) => !open)}
+          profileUser={profileUser}
+          onEditProfile={handleEditProfile}
+          onSignOut={handleSignOut}
+          profileToast={profileToast}
+        />
 
         {activePage === 'Skill Management' ? (
           <SkillManagementPage />
@@ -2674,4 +2539,3 @@ function App() {
 }
 
 export default App
-
