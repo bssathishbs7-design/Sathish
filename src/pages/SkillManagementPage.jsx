@@ -1,0 +1,736 @@
+﻿import { useEffect, useState } from 'react'
+import {
+  CheckCircle2,
+  ChevronRight,
+  Eye,
+  Info,
+  MoreHorizontal,
+  Search,
+  Trash2,
+} from 'lucide-react'
+
+const workflowSteps = [
+  {
+    step: '1. Discovery & Selection',
+    title: 'Find the right competency',
+    detail: 'Search by year, subject, or topic, then select the matching competency row.',
+  },
+  {
+    step: '2. Activity Management',
+    title: 'Add and define activities',
+    detail: 'Create OSPE, OSCE, Interpretation, or Image tasks and mark them certifiable.',
+  },
+  {
+    step: '3. Content Creation',
+    title: 'Generate or create content',
+    detail: 'Use Generate with AI for auto-built content or Create Manual for human-authored tasks.',
+  },
+  {
+    step: '4. Review & Deployment',
+    title: 'Preview, review, and assign',
+    detail: 'Preview content, edit settings, and complete the flow by assigning it to students.',
+  },
+]
+
+const competencyRecords = [
+  {
+    id: 'an1-2',
+    year: 'First Year',
+    subject: 'Human Anatomy',
+    topic: 'Topic 1: Anatomical terminology',
+    competency: 'AN1.2 Describe composition of bone and bone marrow',
+    activities: [
+      {
+        id: 'act-1',
+        name: 'Checklist for diluting the given sample of blood for WBC count.',
+        certifiable: true,
+        type: 'OSPE',
+        marks: 'Nil',
+        status: 'Not Generated',
+        assignInfo: 'First Yr MBBS',
+        batch: 'Batch A • 28 students',
+      },
+      {
+        id: 'act-2',
+        name: 'Determine Blood group & RBC indices',
+        certifiable: true,
+        type: 'OSCE',
+        marks: 'Nil',
+        status: 'Generated',
+        assignInfo: 'First Yr MBBS',
+        batch: 'Batch A • 28 students',
+      },
+    ],
+  },
+  {
+    id: 'an1-5',
+    year: 'First Year',
+    subject: 'Human Anatomy',
+    topic: 'Topic 2: Upper limb',
+    competency: 'AN1.5 Describe muscles, movements, and applied anatomy of upper limb',
+    activities: [
+      {
+        id: 'act-3',
+        name: 'Perform Spirometry and interpret the findings (Digital / Manual)',
+        certifiable: true,
+        type: 'Interpretation',
+        marks: 'Nil',
+        status: 'Not Created',
+        assignInfo: 'First Yr MBBS',
+        batch: 'Batch B • 24 students',
+      },
+    ],
+  },
+  {
+    id: 'py2-7',
+    year: 'Second Year',
+    subject: 'Pathology',
+    topic: 'Topic 4: Hematology',
+    competency: 'PY2.7 Interpret complete blood count and peripheral smear basics',
+    activities: [
+      {
+        id: 'act-4',
+        name: 'Describe principles and methods of artificial respiration',
+        certifiable: true,
+        type: 'Image',
+        marks: 'Nil',
+        status: 'Assigned',
+        assignInfo: 'Second Yr MBBS',
+        batch: 'Batch C • 30 students',
+      },
+    ],
+  },
+]
+
+function SkillManagementPage() {
+  const [records, setRecords] = useState(competencyRecords)
+  const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [previewActivity, setPreviewActivity] = useState(null)
+  const [builderActivity, setBuilderActivity] = useState(null)
+  const [assignmentActivity, setAssignmentActivity] = useState(null)
+  const [builderNotes, setBuilderNotes] = useState('Assessment instructions and checklist content')
+  const [assignmentTarget, setAssignmentTarget] = useState('Batch A • 28 students')
+  const [processingTask, setProcessingTask] = useState(null)
+  const [yearFilter, setYearFilter] = useState('All Years')
+  const [subjectFilter, setSubjectFilter] = useState('All Subjects')
+  const [newRecord, setNewRecord] = useState({
+    year: 'First Year',
+    subject: 'Human Anatomy',
+    topic: '',
+    competency: '',
+  })
+
+  const years = ['All Years', ...new Set(records.map((record) => record.year))]
+  const subjects = ['All Subjects', ...new Set(records.map((record) => record.subject))]
+
+  const filteredRecords = records.filter((record) => {
+    const query = searchQuery.trim().toLowerCase()
+    const matchesSearch = !query
+      || record.competency.toLowerCase().includes(query)
+      || record.topic.toLowerCase().includes(query)
+    const matchesYear = yearFilter === 'All Years' || record.year === yearFilter
+    const matchesSubject = subjectFilter === 'All Subjects' || record.subject === subjectFilter
+
+    return matchesSearch && matchesYear && matchesSubject
+  })
+
+  const selectedRecord = filteredRecords.find((record) => record.id === selectedRecordId) ?? filteredRecords[0] ?? null
+
+  const getDefaultSubject = (list) => list[0]?.subject ?? 'Human Anatomy'
+  const getDefaultYear = (list) => list[0]?.year ?? 'First Year'
+
+  const handleAddRecord = () => {
+    if (!newRecord.topic.trim() || !newRecord.competency.trim()) {
+      return
+    }
+
+    const recordId = `record-${Date.now()}`
+
+    setRecords((current) => [
+      {
+        id: recordId,
+        year: newRecord.year,
+        subject: newRecord.subject,
+        topic: newRecord.topic.trim(),
+        competency: newRecord.competency.trim(),
+        activities: [],
+      },
+      ...current,
+    ])
+    setSearchQuery('')
+    setYearFilter('All Years')
+    setSubjectFilter('All Subjects')
+    setIsAddOpen(false)
+    setSelectedRecordId(recordId)
+    setNewRecord({
+      year: getDefaultYear(records),
+      subject: getDefaultSubject(records),
+      topic: '',
+      competency: '',
+    })
+  }
+
+  const handleAddActivity = (recordId) => {
+    setRecords((current) => current.map((record) => (
+      record.id === recordId
+        ? {
+            ...record,
+            activities: [
+              ...record.activities,
+              {
+                id: `activity-${Date.now()}`,
+                name: 'New skill assessment activity',
+                certifiable: true,
+                type: 'OSPE',
+                marks: 'Nil',
+                status: 'Not Created',
+                assignInfo: 'Unassigned',
+                batch: 'No batch selected',
+              },
+            ],
+          }
+        : record
+    )))
+  }
+
+  useEffect(() => {
+    if (!processingTask) return undefined
+
+    const timer = window.setInterval(() => {
+      setProcessingTask((current) => {
+        if (!current) return null
+        const nextProgress = Math.min(current.progress + 20, 100)
+
+        if (nextProgress >= 100) {
+          setRecords((recordsState) => recordsState.map((record) => (
+            record.id === current.recordId
+              ? {
+                  ...record,
+                  activities: record.activities.map((activity) => (
+                    activity.id === current.activityId
+                      ? { ...activity, status: 'Generated', marks: '10' }
+                      : activity
+                  )),
+                }
+              : record
+          )))
+          return null
+        }
+
+        return { ...current, progress: nextProgress }
+      })
+    }, 250)
+
+    return () => window.clearInterval(timer)
+  }, [processingTask])
+
+  const handleDeleteActivity = (recordId, activityId) => {
+    setRecords((current) => current.map((record) => (
+      record.id === recordId
+        ? { ...record, activities: record.activities.filter((activity) => activity.id !== activityId) }
+        : record
+    )))
+  }
+
+  const findActivity = (recordId, activityId) => records
+    .find((record) => record.id === recordId)
+    ?.activities.find((activity) => activity.id === activityId) ?? null
+
+  const handlePrimaryAction = (recordId, activityId) => {
+    const activity = findActivity(recordId, activityId)
+    if (!activity) return
+
+    if (activity.status === 'Not Generated') {
+      setProcessingTask({ recordId, activityId, progress: 0 })
+      return
+    }
+
+    if (activity.status === 'Not Created') {
+      setBuilderActivity({ recordId, activityId })
+      setBuilderNotes('Assessment instructions and checklist content')
+      return
+    }
+
+    if (activity.status === 'Generated' || activity.status === 'Created' || activity.status === 'Assigned') {
+      setAssignmentActivity({ recordId, activityId })
+      setAssignmentTarget(activity.batch)
+    }
+  }
+
+  const handleSaveBuilder = () => {
+    if (!builderActivity) return
+
+    setRecords((current) => current.map((record) => (
+      record.id === builderActivity.recordId
+        ? {
+            ...record,
+            activities: record.activities.map((activity) => (
+              activity.id === builderActivity.activityId
+                ? { ...activity, status: 'Created' }
+                : activity
+            )),
+          }
+        : record
+    )))
+    setBuilderActivity(null)
+  }
+
+  const handleSubmitAssignment = () => {
+    if (!assignmentActivity) return
+
+    setRecords((current) => current.map((record) => (
+      record.id === assignmentActivity.recordId
+        ? {
+            ...record,
+            activities: record.activities.map((activity) => (
+              activity.id === assignmentActivity.activityId
+                ? { ...activity, status: 'Assigned', batch: assignmentTarget }
+                : activity
+            )),
+          }
+        : record
+    )))
+    setAssignmentActivity(null)
+  }
+
+  const getStateConfig = (activity) => {
+    if (activity.status === 'Not Generated') {
+      return {
+        primaryLabel: 'Generate with AI',
+        primaryTone: 'teal',
+        showPreview: false,
+        showDelete: true,
+        showOptions: false,
+        isDisabled: false,
+      }
+    }
+
+    if (activity.status === 'Not Created') {
+      return {
+        primaryLabel: 'Create Manual',
+        primaryTone: 'purple',
+        showPreview: false,
+        showDelete: true,
+        showOptions: false,
+        isDisabled: false,
+      }
+    }
+
+    if (activity.status === 'Generated' || activity.status === 'Created') {
+      return {
+        primaryLabel: 'Review / Assign',
+        primaryTone: 'orange',
+        showPreview: true,
+        showDelete: true,
+        showOptions: false,
+        isDisabled: false,
+      }
+    }
+
+    return {
+      primaryLabel: 'Review / Assign',
+      primaryTone: 'secondary',
+      showPreview: true,
+      showDelete: false,
+      showOptions: true,
+      isDisabled: true,
+    }
+  }
+
+  const getActivityPreviewText = (activity, recordId) => `Child activity under parent competency ID ${recordId}`
+
+  const getCompetencyParts = (text) => {
+    const match = text.match(/^([A-Z]+[0-9]+(?:\.[0-9]+)?)(?:\s+(.*))?$/)
+
+    if (!match) {
+      return {
+        code: '',
+        summary: text,
+        tooltipText: text,
+      }
+    }
+
+    return {
+      code: match[1],
+      summary: match[2] ?? '',
+      tooltipText: match[2] ? `${match[1]} ${match[2]}` : match[1],
+    }
+  }
+
+  const getTruncatedCompetencyText = (text, maxLength = 40) => {
+    const parts = getCompetencyParts(text)
+
+    if (!parts.code) {
+      return {
+        code: '',
+        summary: text.length > maxLength ? `${text.slice(0, Math.max(maxLength - 3, 0))}...` : text,
+        tooltipText: text,
+      }
+    }
+
+    const visibleSummaryLength = Math.max(maxLength - parts.code.length - 1, 0)
+    const summary = parts.summary.length > visibleSummaryLength
+      ? `${parts.summary.slice(0, Math.max(visibleSummaryLength - 3, 0)).trimEnd()}...`
+      : parts.summary
+
+    return {
+      ...parts,
+      summary,
+    }
+  }
+
+  const getTruncatedActivityName = (name) => (
+    name.length > 35 ? `${name.slice(0, 32)}...` : name
+  )
+
+  return (
+    <section className="vx-content forms-page">
+      <div className="forms-flow-shell">
+        <div className="forms-flow-head">
+          <div>
+            <h1>Skill Management</h1>
+            <p>Move from competency discovery to activity creation, review, and assignment in one clear screen.</p>
+          </div>
+          <button type="button" className="tool-btn green" onClick={() => setIsAddOpen(true)}>+ Add Skill Assessment</button>
+        </div>
+
+        <div className="forms-flow-steps">
+          {workflowSteps.map((item) => (
+            <article key={item.step} className="forms-flow-step">
+              <span>{item.step}</span>
+              <h3>{item.title}</h3>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
+
+        <div className="forms-flow-panel">
+          <div className="forms-flow-panel-head">
+            <div>
+              <h2>Competency hierarchy</h2>
+              <p>Select a competency row, then manage its nested child activities and state transitions.</p>
+            </div>
+          </div>
+
+          <div className="forms-flow-search forms-flow-panel-search">
+            <label className="tool-input forms-flow-searchbar" htmlFor="forms-competency-search">
+              <Search size={16} strokeWidth={2} />
+              <input
+                id="forms-competency-search"
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search competency name or topic name"
+                aria-label="Search competencies"
+              />
+            </label>
+            <button type="button" className="tool-btn" onClick={() => setIsFilterOpen(true)}>Search Filter</button>
+          </div>
+
+          <div className="forms-hierarchy-list">
+            {filteredRecords.map((record) => {
+              const isSelected = selectedRecord?.id === record.id
+              const competency = getTruncatedCompetencyText(record.competency)
+
+              return (
+                <article key={record.id} className={`forms-parent-card ${isSelected ? 'is-selected' : ''}`}>
+                  <button
+                    type="button"
+                    className="forms-parent-row"
+                    aria-label={`Select competency ${record.competency}`}
+                    onClick={() => setSelectedRecordId(record.id)}
+                  >
+                    <span>{record.year}</span>
+                    <span>{record.subject}</span>
+                    <span>{record.topic}</span>
+                    <span className="forms-competency-cell">
+                      <span className="forms-competency-display">
+                        {competency.code ? <strong className="forms-competency-code">{competency.code}</strong> : null}
+                        <span className="forms-competency-summary">{competency.summary}</span>
+                      </span>
+                      <span className="forms-competency-tooltip" aria-hidden="true">
+                        {competency.code ? <strong className="forms-competency-code">{competency.code}</strong> : null}
+                        <span className="forms-competency-tooltip-text">{competency.tooltipText}</span>
+                        </span>
+                      </span>
+                    <span className="forms-parent-action" aria-hidden="true">
+                      <ChevronRight size={18} strokeWidth={2.6} />
+                    </span>
+                  </button>
+
+                  {isSelected ? (
+                    <div className="forms-child-panel">
+                      <div className="forms-child-head">
+                        <div>
+                          <strong>Activities</strong>
+                          <span>Parent-child relationship: activities belong to this competency record.</span>
+                        </div>
+                        <button type="button" className="activity-btn" onClick={() => handleAddActivity(record.id)}>Add Activity</button>
+                      </div>
+
+                      <div className="forms-flow-columns" aria-hidden="true">
+                        <span>Activity Name</span>
+                        <span>Certifiable</span>
+                        <span>Activity</span>
+                        <span>Marks</span>
+                        <span>Actions</span>
+                        <span>Status</span>
+                        <span className="forms-flow-info-head has-tooltip" data-tooltip="Assign info">
+                          <Info size={14} strokeWidth={2.2} />
+                        </span>
+                      </div>
+
+                      <div className="forms-flow-rows">
+                        {record.activities.map((activity) => {
+                          const state = getStateConfig(activity)
+                          const isProcessing = processingTask?.recordId === record.id && processingTask?.activityId === activity.id
+
+                          return (
+                            <article key={activity.id} className={`forms-flow-row state-${activity.status.toLowerCase().replaceAll(' ', '-')}`}>
+                              <div className="forms-flow-activity">
+                                <div
+                                  className="has-tooltip forms-activity-tooltip"
+                                  data-tooltip={`${activity.name}\n${getActivityPreviewText(activity, record.id)}`}
+                                  tabIndex={0}
+                                >
+                                  <strong className="forms-activity-text">
+                                    {getTruncatedActivityName(activity.name)}
+                                  </strong>
+                                </div>
+                              </div>
+                              <div className="forms-flow-cell is-center">
+                                <span className="forms-certifiable">
+                                  <CheckCircle2 size={16} strokeWidth={2} />
+                                  {activity.certifiable ? 'Yes' : 'No'}
+                                </span>
+                              </div>
+                              <div className="forms-flow-cell is-center">
+                                <span className={`t-type ${activity.type.toLowerCase()}`}>{activity.type}</span>
+                              </div>
+                              <div className="forms-flow-cell is-center">
+                                <span className="forms-badge forms-badge-neutral">{activity.marks}</span>
+                              </div>
+                              <div className="forms-flow-actions">
+                                <div className="forms-flow-action-main">
+                                  <button
+                                    type="button"
+                                    className={`forms-flow-primary is-${state.primaryTone}`}
+                                    onClick={() => handlePrimaryAction(record.id, activity.id)}
+                                    disabled={state.isDisabled || isProcessing}
+                                  >
+                                    {isProcessing ? `Generating ${processingTask.progress}%` : state.primaryLabel}
+                                  </button>
+                                  {isProcessing ? (
+                                    <span className="forms-progress">
+                                      <span style={{ width: `${processingTask.progress}%` }} />
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="forms-flow-action-icons">
+                                  {state.showPreview ? (
+                                    <button type="button" className="forms-icon-btn" aria-label="Preview" onClick={() => setPreviewActivity({ recordId: record.id, activityId: activity.id })}>
+                                      <Eye size={16} strokeWidth={2} />
+                                    </button>
+                                  ) : null}
+                                  {state.showDelete ? (
+                                    <button type="button" className="forms-icon-btn is-danger" aria-label="Delete" onClick={() => handleDeleteActivity(record.id, activity.id)}>
+                                      <Trash2 size={16} strokeWidth={2} />
+                                    </button>
+                                  ) : null}
+                                  {state.showOptions ? (
+                                    <button type="button" className="forms-icon-btn" aria-label="More options">
+                                      <MoreHorizontal size={16} strokeWidth={2} />
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <div className="forms-flow-cell is-center">
+                                <span className={`forms-badge ${activity.status === 'Assigned' ? 'forms-badge-success' : activity.status === 'Generated' || activity.status === 'Created' ? 'forms-badge-info' : 'forms-badge-danger'}`}>
+                                  {activity.status}
+                                </span>
+                              </div>
+                              <div className="forms-flow-assign is-center">
+                                <button
+                                  type="button"
+                                  className="forms-icon-btn forms-assign-info-btn has-tooltip"
+                                  aria-label={`Assign info for ${activity.name}`}
+                                  data-tooltip={`Assign info: ${activity.assignInfo}\nBatch: ${activity.batch}`}
+                                >
+                                  <MoreHorizontal size={16} strokeWidth={2.2} />
+                                </button>
+                              </div>
+                            </article>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {isFilterOpen ? (
+        <div className="forms-modal-backdrop" onClick={() => setIsFilterOpen(false)} aria-hidden="true">
+          <div className="forms-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="forms-modal-head">
+              <div>
+                <h3>Advanced Filter</h3>
+                <p>Sort the competency list by year and subject.</p>
+              </div>
+              <button type="button" className="ghost" onClick={() => setIsFilterOpen(false)}>Close</button>
+            </div>
+            <div className="forms-modal-grid">
+              <label className="forms-field">
+                <span>Year</span>
+                <div className="forms-select-wrap">
+                  <select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)}>
+                    {years.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+              <label className="forms-field">
+                <span>Subject</span>
+                <div className="forms-select-wrap">
+                  <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
+                    {subjects.map((subject) => (
+                      <option key={subject} value={subject}>{subject}</option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isAddOpen ? (
+        <div className="forms-modal-backdrop" onClick={() => setIsAddOpen(false)} aria-hidden="true">
+          <div className="forms-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="forms-modal-head">
+              <div>
+                <h3>Add Skill Assessment</h3>
+                <p>Create a new competency record from the global forms action.</p>
+              </div>
+              <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Close</button>
+            </div>
+            <div className="forms-modal-grid">
+              <label className="forms-field">
+                <span>Year</span>
+                <div className="forms-select-wrap">
+                  <select value={newRecord.year} onChange={(event) => setNewRecord((current) => ({ ...current, year: event.target.value }))}>
+                    {years.filter((year) => year !== 'All Years').map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+              <label className="forms-field">
+                <span>Subject</span>
+                <div className="forms-select-wrap">
+                  <select value={newRecord.subject} onChange={(event) => setNewRecord((current) => ({ ...current, subject: event.target.value }))}>
+                    {subjects.filter((subject) => subject !== 'All Subjects').map((subject) => (
+                      <option key={subject} value={subject}>{subject}</option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+              <label className="forms-field forms-field-full">
+                <span>Topic</span>
+                <input value={newRecord.topic} onChange={(event) => setNewRecord((current) => ({ ...current, topic: event.target.value }))} placeholder="Enter topic name" />
+              </label>
+              <label className="forms-field forms-field-full">
+                <span>Competency</span>
+                <input value={newRecord.competency} onChange={(event) => setNewRecord((current) => ({ ...current, competency: event.target.value }))} placeholder="Enter competency name" />
+              </label>
+            </div>
+            <div className="forms-modal-actions">
+              <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Cancel</button>
+              <button type="button" className="tool-btn green" onClick={handleAddRecord}>Create Record</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {builderActivity ? (
+        <div className="forms-modal-backdrop" onClick={() => setBuilderActivity(null)} aria-hidden="true">
+          <div className="forms-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="forms-modal-head">
+              <div>
+                <h3>Assessment Builder</h3>
+                <p>Manual creation path for activities in the `Not Created` state.</p>
+              </div>
+              <button type="button" className="ghost" onClick={() => setBuilderActivity(null)}>Close</button>
+            </div>
+            <label className="forms-field forms-field-full">
+              <span>Assessment Content</span>
+              <textarea value={builderNotes} onChange={(event) => setBuilderNotes(event.target.value)} rows={6} />
+            </label>
+            <div className="forms-modal-actions">
+              <button type="button" className="ghost" onClick={() => setBuilderActivity(null)}>Cancel</button>
+              <button type="button" className="tool-btn green" onClick={handleSaveBuilder}>Save Assessment</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {assignmentActivity ? (
+        <div className="forms-modal-backdrop" onClick={() => setAssignmentActivity(null)} aria-hidden="true">
+          <div className="forms-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="forms-modal-head">
+              <div>
+                <h3>Student Selection</h3>
+                <p>Assignment path for ready or finalized activities.</p>
+              </div>
+              <button type="button" className="ghost" onClick={() => setAssignmentActivity(null)}>Close</button>
+            </div>
+            <label className="forms-field forms-field-full">
+              <span>Class / Batch Assignment</span>
+              <div className="forms-select-wrap">
+                <select value={assignmentTarget} onChange={(event) => setAssignmentTarget(event.target.value)}>
+                  <option>Batch A • 28 students</option>
+                  <option>Batch B • 24 students</option>
+                  <option>Batch C • 30 students</option>
+                </select>
+              </div>
+            </label>
+            <div className="forms-modal-actions">
+              <button type="button" className="ghost" onClick={() => setAssignmentActivity(null)}>Cancel</button>
+              <button type="button" className="tool-btn green" onClick={handleSubmitAssignment}>Submit</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {previewActivity ? (
+        <div className="forms-modal-backdrop" onClick={() => setPreviewActivity(null)} aria-hidden="true">
+          <div className="forms-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="forms-modal-head">
+              <div>
+                <h3>Preview Assessment</h3>
+                <p>Preview the checklist, rubric, or image task before assigning.</p>
+              </div>
+              <button type="button" className="ghost" onClick={() => setPreviewActivity(null)}>Close</button>
+            </div>
+            <div className="forms-preview-card">
+              <strong>{findActivity(previewActivity.recordId, previewActivity.activityId)?.name}</strong>
+              <span>Status: {findActivity(previewActivity.recordId, previewActivity.activityId)?.status}</span>
+              <p>This is a lightweight preview placeholder for the generated or manually created assessment content.</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+
+export default SkillManagementPage
+
