@@ -146,70 +146,72 @@ function App() {
           profileToast={profileToast}
         />
 
-        {activePage === 'Dashboard' ? (
-          <DashboardSummaryPage onBackToAssessment={() => setActivePage('Evaluation')} />
-        ) : activePage === 'Configuration' ? (
-          <SkillManagementPage />
-        ) : activePage === 'Evaluation' ? (
-          <SkillAssessmentPage onOpenDashboardSummary={() => setActivePage('Dashboard Summary')} />
-        ) : activePage === 'Faculty Management' ? (
-          <FacultyManagementPageV2 />
-        ) : activePage === 'Dashboard Summary' ? (
-          <DashboardSummaryPage onBackToAssessment={() => setActivePage('Evaluation')} />
-        ) : activePage === 'Profile Settings' ? (
-          <section className="vx-content profile-settings-page">
-            <div className="profile-settings-card">
-              <span className="profile-settings-kicker">Profile settings</span>
-              <h1>{profileUser.name}</h1>
-              <p>{profileUser.registerId} • {profileUser.role}</p>
-              <div className="profile-settings-actions">
-                <button type="button" className="tool-btn green" onClick={() => setActivePage('Dashboard Summary')}>Back to Dashboard</button>
-                <button type="button" className="ghost" onClick={() => setActivePage('Configuration')}>Close</button>
+        <div key={activePage} className="vx-page-surface vx-page-dissolve">
+          {activePage === 'Dashboard' ? (
+            <DashboardSummaryPage onBackToAssessment={() => setActivePage('Evaluation')} />
+          ) : activePage === 'Configuration' ? (
+            <SkillManagementPage onGenerateComplete={(page) => setActivePage(page)} />
+          ) : activePage === 'Evaluation' ? (
+            <SkillAssessmentPage onOpenDashboardSummary={() => setActivePage('Dashboard Summary')} />
+          ) : activePage === 'Faculty Management' ? (
+            <FacultyManagementPageV2 />
+          ) : activePage === 'Dashboard Summary' ? (
+            <DashboardSummaryPage onBackToAssessment={() => setActivePage('Evaluation')} />
+          ) : activePage === 'Profile Settings' ? (
+            <section className="vx-content profile-settings-page">
+              <div className="profile-settings-card">
+                <span className="profile-settings-kicker">Profile settings</span>
+                <h1>{profileUser.name}</h1>
+                <p>{profileUser.registerId} • {profileUser.role}</p>
+                <div className="profile-settings-actions">
+                  <button type="button" className="tool-btn green" onClick={() => setActivePage('Dashboard Summary')}>Back to Dashboard</button>
+                  <button type="button" className="ghost" onClick={() => setActivePage('Configuration')}>Close</button>
+                </div>
               </div>
-            </div>
-          </section>
-        ) : activePage === 'Login' ? (
-          <section className="vx-content profile-settings-page">
-            <div className="profile-settings-card">
-              <span className="profile-settings-kicker">Signed out</span>
-              <h1>Logging out...</h1>
-              <p>You have been redirected to the login experience.</p>
-              <button type="button" className="tool-btn green" onClick={() => setActivePage('Configuration')}>Return to app</button>
-            </div>
-          </section>
-        ) : (
-          <section className="vx-content">
-          <div className="vx-breadcrumb">Apps / Tables / Default Tables</div>
-          <div className="vx-title-row">
-            <div>
-              <h1>Tables</h1>
-              <p>A collection of table styles similar to Valex bootstrap template.</p>
-            </div>
-            <div className="vx-title-actions">
-              <button type="button">Export</button>
-              <button type="button">Add New</button>
-            </div>
-          </div>
+            </section>
+          ) : activePage === 'Login' ? (
+            <section className="vx-content profile-settings-page">
+              <div className="profile-settings-card">
+                <span className="profile-settings-kicker">Signed out</span>
+                <h1>Logging out...</h1>
+                <p>You have been redirected to the login experience.</p>
+                <button type="button" className="tool-btn green" onClick={() => setActivePage('Configuration')}>Return to app</button>
+              </div>
+            </section>
+          ) : (
+            <section className="vx-content">
+              <div className="vx-breadcrumb">Apps / Tables / Default Tables</div>
+              <div className="vx-title-row">
+                <div>
+                  <h1>Tables</h1>
+                  <p>A collection of table styles similar to Valex bootstrap template.</p>
+                </div>
+                <div className="vx-title-actions">
+                  <button type="button">Export</button>
+                  <button type="button">Add New</button>
+                </div>
+              </div>
 
-          <div className="vx-grid">
-            <TableCard title="Basic Table" helper="Using simple default table styles." />
-            <TableCard title="Bordered Table" helper="Use borders around rows and columns." className="is-bordered" />
-            <TableCard title="Borderless Table" helper="Remove borders to create cleaner table." className="is-borderless" />
-            <TableCard title="Striped Rows" helper="Alternating row backgrounds for readability." className="is-striped" />
-            <TableCard title="Hoverable Rows" helper="Rows are highlighted on hover." className="is-hover" />
-            <TableCard
-              title="Contextual Table"
-              helper="Context colors for different row types."
-              className="is-context"
-              rows={[
-                ['1', 'Primary', 'Row', '@primary'],
-                ['2', 'Success', 'Row', '@success'],
-                ['3', 'Warning', 'Row', '@warning'],
-              ]}
-            />
-          </div>
-          </section>
-        )}
+              <div className="vx-grid">
+                <TableCard title="Basic Table" helper="Using simple default table styles." />
+                <TableCard title="Bordered Table" helper="Use borders around rows and columns." className="is-bordered" />
+                <TableCard title="Borderless Table" helper="Remove borders to create cleaner table." className="is-borderless" />
+                <TableCard title="Striped Rows" helper="Alternating row backgrounds for readability." className="is-striped" />
+                <TableCard title="Hoverable Rows" helper="Rows are highlighted on hover." className="is-hover" />
+                <TableCard
+                  title="Contextual Table"
+                  helper="Context colors for different row types."
+                  className="is-context"
+                  rows={[
+                    ['1', 'Primary', 'Row', '@primary'],
+                    ['2', 'Success', 'Row', '@success'],
+                    ['3', 'Warning', 'Row', '@warning'],
+                  ]}
+                />
+              </div>
+            </section>
+          )}
+        </div>
       </main>
 
       <nav className="vx-mobile-nav">

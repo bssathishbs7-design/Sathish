@@ -16,24 +16,24 @@ import {
 
 const workflowSteps = [
   {
-    step: '1. Discovery & Selection',
-    title: 'Find the right competency',
-    detail: 'Search by year, subject, or topic, then select the matching competency row.',
+    step: '1. Pick',
+    title: 'Choose a competency',
+    detail: 'Search by year, subject, or topic, then select the row you need.',
   },
   {
-    step: '2. Activity Management',
-    title: 'Add and define activities',
-    detail: 'Create OSPE, OSCE, Interpretation, or Image tasks and mark them certifiable.',
+    step: '2. Add',
+    title: 'Create activities',
+    detail: 'Add OSPE, OSCE, Interpretation, or Image tasks as needed.',
   },
   {
-    step: '3. Content Creation',
-    title: 'Generate or create content',
-    detail: 'Use Generate with AI for auto-built content or Create Manual for human-authored tasks.',
+    step: '3. Generate',
+    title: 'Build the content',
+    detail: 'Use Generate for AI output or create the content manually.',
   },
   {
-    step: '4. Review & Deployment',
-    title: 'Preview, review, and assign',
-    detail: 'Preview content, edit settings, and complete the flow by assigning it to students.',
+    step: '4. Review',
+    title: 'Check and assign',
+    detail: 'Preview, adjust, and assign the activity to students.',
   },
 ]
 
@@ -129,9 +129,24 @@ const assessmentTypeGroups = [
 const defaultActivityDraft = {
   manualName: '',
   assessmentType: 'OSPE',
+  includeCertifiable: false,
+  includeMarks: false,
 }
 
-function SkillManagementPage() {
+const generationModes = [
+  { value: 'Generate All', label: 'Generate All', detail: 'Build the complete page and activity bundle.' },
+  { value: 'Checklist', label: 'Checklist', detail: 'Focus on checklist-led assessment content.' },
+  { value: 'Form', label: 'Form', detail: 'Draft a form-first experience for the activity.' },
+  { value: 'Scaffolding', label: 'Scaffolding', detail: 'Create guided steps and supporting structure.' },
+]
+
+const generationStatusSteps = [
+  { threshold: 0, label: 'Analyzing requirements...' },
+  { threshold: 36, label: 'Structuring components...' },
+  { threshold: 72, label: 'Finalizing layout...' },
+]
+
+function SkillManagementPage({ onGenerateComplete }) {
   const [records, setRecords] = useState(competencyRecords)
   const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
   const [searchQuery, setSearchQuery] = useState('')
@@ -142,11 +157,12 @@ function SkillManagementPage() {
   const [assignmentActivity, setAssignmentActivity] = useState(null)
   const [builderNotes, setBuilderNotes] = useState('Assessment instructions and checklist content')
   const [assignmentTarget, setAssignmentTarget] = useState('Batch A • 28 students')
-  const [processingTask, setProcessingTask] = useState(null)
+  const [generationFlow, setGenerationFlow] = useState(null)
   const [activityFormRecordId, setActivityFormRecordId] = useState(null)
   const [activityDraft, setActivityDraft] = useState(defaultActivityDraft)
   const [yearFilter, setYearFilter] = useState('All Years')
   const [subjectFilter, setSubjectFilter] = useState('All Subjects')
+  const [activeSearchField, setActiveSearchField] = useState(null)
   const [newRecord, setNewRecord] = useState({
     year: 'First Year',
     subject: 'Human Anatomy',
@@ -156,6 +172,8 @@ function SkillManagementPage() {
 
   const years = ['All Years', ...new Set(records.map((record) => record.year))]
   const subjects = ['All Subjects', ...new Set(records.map((record) => record.subject))]
+  const topicSuggestions = [...new Set(records.map((record) => record.topic).filter(Boolean))]
+  const competencySuggestions = [...new Set(records.map((record) => record.competency).filter(Boolean))]
 
   const filteredRecords = records.filter((record) => {
     const query = searchQuery.trim().toLowerCase()
@@ -171,6 +189,21 @@ function SkillManagementPage() {
   const selectedRecord = filteredRecords.find((record) => record.id === selectedRecordId) ?? filteredRecords[0] ?? null
   const getDefaultSubject = (list) => list[0]?.subject ?? 'Human Anatomy'
   const getDefaultYear = (list) => list[0]?.year ?? 'First Year'
+  const generationActivity = generationFlow
+    ? records.find((record) => record.id === generationFlow.recordId)
+      ?.activities.find((activity) => activity.id === generationFlow.activityId) ?? null
+    : null
+  const generationStatusLabel = generationStatusSteps
+    .slice()
+    .reverse()
+    .find((step) => (generationFlow?.progress ?? 0) >= step.threshold)?.label
+    ?? generationStatusSteps[0].label
+  const searchFieldQuery = activeSearchField ? newRecord[activeSearchField].trim().toLowerCase() : ''
+  const activeSearchSuggestions = activeSearchField === 'topic'
+    ? topicSuggestions.filter((item) => item.toLowerCase().includes(searchFieldQuery)).slice(0, 5)
+    : activeSearchField === 'competency'
+      ? competencySuggestions.filter((item) => item.toLowerCase().includes(searchFieldQuery)).slice(0, 5)
+      : []
 
   const handleAddRecord = () => {
     if (!newRecord.topic.trim() || !newRecord.competency.trim()) {
@@ -220,6 +253,14 @@ function SkillManagementPage() {
     }))
   }
 
+  const handleSearchSuggestionPick = (field, value) => {
+    setNewRecord((current) => ({
+      ...current,
+      [field]: value,
+    }))
+    setActiveSearchField(null)
+  }
+
   const handleCreateActivity = () => {
     if (!activityFormRecordId) return
 
@@ -240,9 +281,11 @@ function SkillManagementPage() {
               {
                 id: `activity-${Date.now()}`,
                 name: activityName,
-                certifiable: true,
+                certifiable: activityDraft.includeCertifiable,
                 type: activityDraft.assessmentType,
-                marks: 'Nil',
+                marks: activityDraft.includeMarks ? 'Yes' : 'Nil',
+                showCertifiable: activityDraft.includeCertifiable,
+                showMarks: activityDraft.includeMarks,
                 status: isAiActivity ? 'Not Generated' : 'Not Created',
                 assignInfo: 'Faculty configured',
                 batch: 'No batch selected',
@@ -256,35 +299,62 @@ function SkillManagementPage() {
   }
 
   useEffect(() => {
-    if (!processingTask) return undefined
+    if (generationFlow?.phase !== 'processing') return undefined
 
     const timer = window.setInterval(() => {
-      setProcessingTask((current) => {
-        if (!current) return null
-        const nextProgress = Math.min(current.progress + 20, 100)
+      setGenerationFlow((current) => {
+        if (!current || current.phase !== 'processing') return current
 
-        if (nextProgress >= 100) {
-          setRecords((recordsState) => recordsState.map((record) => (
-            record.id === current.recordId
-              ? {
-                  ...record,
-                  activities: record.activities.map((activity) => (
-                    activity.id === current.activityId
-                      ? { ...activity, status: 'Generated', marks: '10' }
-                      : activity
-                  )),
-                }
-              : record
-          )))
-          return null
+        const pace = current.selectedMode === 'Generate All'
+          ? 14
+          : current.selectedMode === 'Scaffolding'
+            ? 18
+            : 16
+
+        return {
+          ...current,
+          progress: Math.min(current.progress + pace, 100),
         }
-
-        return { ...current, progress: nextProgress }
       })
-    }, 250)
+    }, 240)
 
     return () => window.clearInterval(timer)
-  }, [processingTask])
+  }, [generationFlow?.activityId, generationFlow?.phase, generationFlow?.recordId, generationFlow?.selectedMode])
+
+  useEffect(() => {
+    if (!generationFlow || generationFlow.phase !== 'processing' || generationFlow.progress < 100) {
+      return undefined
+    }
+
+    setRecords((current) => current.map((record) => (
+      record.id === generationFlow.recordId
+        ? {
+            ...record,
+            activities: record.activities.map((activity) => (
+              activity.id === generationFlow.activityId
+                ? { ...activity, status: 'Generated', marks: '10' }
+                : activity
+            )),
+          }
+        : record
+    )))
+
+    setGenerationFlow((current) => {
+      if (!current || current.phase !== 'processing') return current
+      return { ...current, phase: 'success' }
+    })
+  }, [generationFlow])
+
+  useEffect(() => {
+    if (!generationFlow || generationFlow.phase !== 'success') return undefined
+
+    const timer = window.setTimeout(() => {
+      onGenerateComplete?.('Evaluation')
+      setGenerationFlow(null)
+    }, 1100)
+
+    return () => window.clearTimeout(timer)
+  }, [generationFlow, onGenerateComplete])
 
   const handleDeleteActivity = (recordId, activityId) => {
     setRecords((current) => current.map((record) => (
@@ -303,7 +373,13 @@ function SkillManagementPage() {
     if (!activity) return
 
     if (activity.status === 'Not Generated') {
-      setProcessingTask({ recordId, activityId, progress: 0 })
+      setGenerationFlow({
+        recordId,
+        activityId,
+        selectedMode: '',
+        phase: 'selection',
+        progress: 0,
+      })
       return
     }
 
@@ -355,10 +431,28 @@ function SkillManagementPage() {
     setAssignmentActivity(null)
   }
 
+  const handleSelectGenerationMode = (mode) => {
+    setGenerationFlow((current) => {
+      if (!current || current.phase !== 'selection') return current
+      return { ...current, selectedMode: mode }
+    })
+  }
+
+  const handleStartGeneration = () => {
+    setGenerationFlow((current) => {
+      if (!current || current.phase !== 'selection' || !current.selectedMode) return current
+      return { ...current, phase: 'processing', progress: 0 }
+    })
+  }
+
+  const handleCloseGenerationFlow = () => {
+    setGenerationFlow(null)
+  }
+
   const getStateConfig = (activity) => {
     if (activity.status === 'Not Generated') {
       return {
-        primaryLabel: 'Generate with AI',
+        primaryLabel: 'Generate',
         primaryTone: 'teal',
         showPreview: false,
         showDelete: true,
@@ -530,6 +624,98 @@ function SkillManagementPage() {
                         <button type="button" className="activity-btn" onClick={() => handleOpenActivityForm(record.id)}>Add Activity</button>
                       </div>
 
+                      {activityFormRecordId === record.id ? (
+                        <div className="activity-inline-builder">
+                          <div className="activity-inline-builder-head">
+                            <div>
+                              <span className="activity-inline-builder-kicker">Add Activity</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="generation-inline-close"
+                              onClick={handleCloseActivityForm}
+                              aria-label="Close activity builder"
+                            >
+                              <X size={16} strokeWidth={2.2} />
+                            </button>
+                          </div>
+
+                          <div className="activity-inline-builder-grid">
+                            <label className="activity-inline-field activity-inline-field-full">
+                              <span>Activity Name</span>
+                              <input
+                                value={activityDraft.manualName}
+                                onChange={(event) => handleActivityDraftChange('manualName', event.target.value)}
+                                placeholder="e.g. Clinical Assessment 2024"
+                              />
+                            </label>
+
+                            <div className="activity-inline-field activity-inline-field-full">
+                              <span>Show in Row</span>
+                              <div className="activity-inline-types">
+                                <button
+                                  type="button"
+                                  className={`activity-inline-type ${activityDraft.includeCertifiable ? 'active' : ''}`}
+                                  onClick={() => handleActivityDraftChange('includeCertifiable', !activityDraft.includeCertifiable)}
+                                >
+                                  <span className="activity-inline-type-icon" aria-hidden="true">
+                                    <CheckCircle2 size={14} strokeWidth={2} />
+                                  </span>
+                                  <span>Certifiable</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`activity-inline-type ${activityDraft.includeMarks ? 'active' : ''}`}
+                                  onClick={() => handleActivityDraftChange('includeMarks', !activityDraft.includeMarks)}
+                                >
+                                  <span className="activity-inline-type-icon" aria-hidden="true">
+                                    <FileText size={14} strokeWidth={2} />
+                                  </span>
+                                  <span>Marks</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="activity-inline-field activity-inline-field-full">
+                              <span>Assessment Type</span>
+                              <div className="activity-inline-types">
+                                {assessmentTypeGroups.flatMap((group) => group.options).map((option) => {
+                                  const icon = option.value === 'Image'
+                                    ? ImageIcon
+                                    : option.value === 'Interpretation'
+                                      ? FileText
+                                      : option.value === 'OSCE'
+                                        ? Stethoscope
+                                        : Sparkles
+
+                                  const Icon = icon
+                                  const isActive = activityDraft.assessmentType === option.value
+
+                                  return (
+                                    <button
+                                      key={option.value}
+                                      type="button"
+                                      className={`activity-inline-type ${isActive ? 'active' : ''}`}
+                                      onClick={() => handleActivityDraftChange('assessmentType', option.value)}
+                                    >
+                                      <span className="activity-inline-type-icon" aria-hidden="true">
+                                        <Icon size={14} strokeWidth={2} />
+                                      </span>
+                                      <span>{option.label}</span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="activity-inline-actions">
+                            <button type="button" className="ghost" onClick={handleCloseActivityForm}>Cancel</button>
+                            <button type="button" className="tool-btn green" onClick={handleCreateActivity}>Create Activity</button>
+                          </div>
+                        </div>
+                      ) : null}
+
                       <div className="forms-flow-columns" aria-hidden="true">
                         <span>Activity Name</span>
                         <span>Certifiable</span>
@@ -545,10 +731,21 @@ function SkillManagementPage() {
                       <div className="forms-flow-rows">
                         {record.activities.map((activity) => {
                           const state = getStateConfig(activity)
-                          const isProcessing = processingTask?.recordId === record.id && processingTask?.activityId === activity.id
+                          const isProcessing = generationFlow?.recordId === record.id
+                            && generationFlow?.activityId === activity.id
+                            && generationFlow.phase === 'processing'
 
                           return (
-                            <article key={activity.id} className={`forms-flow-row state-${activity.status.toLowerCase().replaceAll(' ', '-')}`}>
+                            <article
+                              key={activity.id}
+                              className={`forms-flow-row state-${activity.status.toLowerCase().replaceAll(' ', '-')} ${
+                                generationFlow?.recordId === record.id
+                                  && generationFlow?.activityId === activity.id
+                                  && generationFlow.phase === 'selection'
+                                  ? 'generation-tooltip-open'
+                                  : ''
+                              }`}
+                            >
                               <div className="forms-flow-activity">
                                 <div
                                   className="has-tooltip forms-activity-tooltip"
@@ -561,10 +758,14 @@ function SkillManagementPage() {
                                 </div>
                               </div>
                               <div className="forms-flow-cell is-center">
-                                <span className="forms-certifiable">
-                                  <CheckCircle2 size={16} strokeWidth={2} />
-                                  {activity.certifiable ? 'Yes' : 'No'}
-                                </span>
+                                {activity.showCertifiable ? (
+                                  <span className="forms-certifiable">
+                                    <CheckCircle2 size={16} strokeWidth={2} />
+                                    Yes
+                                  </span>
+                                ) : (
+                                  <span className="forms-badge forms-badge-neutral">Nil</span>
+                                )}
                               </div>
                               <div className="forms-flow-cell is-center">
                                 <span className={`t-type ${activity.type.toLowerCase()}`}>{activity.type}</span>
@@ -580,12 +781,82 @@ function SkillManagementPage() {
                                     onClick={() => handlePrimaryAction(record.id, activity.id)}
                                     disabled={state.isDisabled || isProcessing}
                                   >
-                                    {isProcessing ? `Generating ${processingTask.progress}%` : state.primaryLabel}
+                                    {state.primaryLabel === 'Generate' && !isProcessing ? (
+                                      <Sparkles size={14} strokeWidth={2.2} aria-hidden="true" />
+                                    ) : null}
+                                    {isProcessing && generationFlow?.phase === 'processing'
+                                      ? `Generating ${generationFlow.progress}%`
+                                      : state.primaryLabel}
                                   </button>
-                                  {isProcessing ? (
-                                    <span className="forms-progress">
-                                      <span style={{ width: `${processingTask.progress}%` }} />
-                                    </span>
+                                  {generationFlow?.recordId === record.id && generationFlow?.activityId === activity.id ? (
+                                    <div className={`generation-tooltip ${generationFlow.phase}`}>
+                                      <div className="generation-tooltip-head">
+                                        <span className="generation-tooltip-kicker">
+                                          {generationFlow.phase === 'selection'
+                                            ? 'Choose generation'
+                                            : generationFlow.phase === 'processing'
+                                              ? 'Generating'
+                                              : 'Success'}
+                                        </span>
+                                        <button type="button" className="generation-tooltip-close" onClick={handleCloseGenerationFlow} aria-label="Close generation tooltip">
+                                          <X size={12} strokeWidth={2.4} />
+                                        </button>
+                                      </div>
+
+                                      {generationFlow.phase === 'selection' ? (
+                                        <>
+                                          <div className="generation-tooltip-list" role="listbox" aria-label="Generation mode">
+                                            {generationModes.map((mode) => {
+                                              const isActive = generationFlow.selectedMode === mode.value
+                                              return (
+                                                <button
+                                                  key={mode.value}
+                                                  type="button"
+                                                  className={`generation-tooltip-item ${isActive ? 'active' : ''}`}
+                                                  onClick={() => handleSelectGenerationMode(mode.value)}
+                                                >
+                                                  <span className="generation-tooltip-icon" aria-hidden="true">
+                                                    <Sparkles size={12} strokeWidth={2.2} />
+                                                  </span>
+                                                  <span className="generation-tooltip-copy">
+                                                    <strong>{mode.label}</strong>
+                                                    <small>{mode.detail}</small>
+                                                  </span>
+                                                </button>
+                                              )
+                                            })}
+                                          </div>
+                                          <button
+                                            type="button"
+                                            className="generation-tooltip-action"
+                                            onClick={handleStartGeneration}
+                                            disabled={!generationFlow.selectedMode}
+                                          >
+                                            Generate
+                                          </button>
+                                        </>
+                                      ) : generationFlow.phase === 'processing' ? (
+                                        <div className="generation-tooltip-progress">
+                                          <div className="generation-tooltip-status">
+                                            <strong>{generationStatusLabel}</strong>
+                                            <span>{generationFlow.progress}%</span>
+                                          </div>
+                                          <div className="generation-tooltip-bar" aria-hidden="true">
+                                            <span style={{ width: `${generationFlow.progress}%` }} />
+                                          </div>
+                                          <p>
+                                            {generationFlow.selectedMode}
+                                            {' '}
+                                            in progress.
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <div className="generation-tooltip-success">
+                                          <CheckCircle2 size={14} strokeWidth={2.4} />
+                                          <span>Success. Redirecting now.</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   ) : null}
                                 </div>
                                 <div className="forms-flow-action-icons">
@@ -671,30 +942,23 @@ function SkillManagementPage() {
       ) : null}
 
       {isAddOpen ? (
-        <div className="forms-modal-backdrop" onClick={() => setIsAddOpen(false)} aria-hidden="true">
+        <div className="forms-modal-backdrop forms-modal-skill-assessment-backdrop" onClick={() => setIsAddOpen(false)} aria-hidden="true">
           <div className="forms-modal forms-modal-activity forms-modal-skill-assessment" onClick={(event) => event.stopPropagation()}>
             <div className="forms-modal-head">
               <div className="activity-modal-head-copy">
-                <span className="activity-modal-kicker">Assessment Setup</span>
-                <h3>Add Skill Assessment</h3>
-                <p>Create a new competency record using the same guided builder pattern as activity creation.</p>
+                <span className="activity-modal-kicker">Add Skill Assessment</span>
+                <p>Add the year, subject, topic, and competency to create a new record.</p>
               </div>
               <button type="button" className="activity-modal-close" onClick={() => setIsAddOpen(false)} aria-label="Close skill assessment builder">
                 <X size={16} strokeWidth={2.2} />
               </button>
             </div>
             <div className="activity-config-card skill-assessment-config-card">
-              <div className="activity-inline-context skill-assessment-inline-context">
-                <span>Record Preview</span>
-                <strong>{newRecord.competency.trim() || 'New competency record'}</strong>
-                <p>{newRecord.topic.trim() || 'Add the topic and competency to create a new skill assessment record.'}</p>
-              </div>
-
               <div className="activity-config-section">
                 <div className="activity-config-copy">
                   <span className="activity-section-step">01</span>
                   <h4>Academic Context</h4>
-                  <p>Select the academic year and subject before adding the topic and competency details.</p>
+                  <p>Pick the year and subject.</p>
                 </div>
 
                 <div className="forms-modal-grid skill-assessment-inline-grid">
@@ -725,117 +989,78 @@ function SkillManagementPage() {
                 <div className="activity-config-copy">
                   <span className="activity-section-step">02</span>
                   <h4>Competency Details</h4>
-                  <p>Capture the topic and competency statement exactly as it should appear in the hierarchy.</p>
+                  <p>Add the topic and competency statement.</p>
                 </div>
 
-                <label className="forms-field forms-field-full">
-                  <span>Topic</span>
-                  <input value={newRecord.topic} onChange={(event) => setNewRecord((current) => ({ ...current, topic: event.target.value }))} placeholder="Enter topic name" />
-                </label>
-                <label className="forms-field forms-field-full">
-                  <span>Competency</span>
-                  <input value={newRecord.competency} onChange={(event) => setNewRecord((current) => ({ ...current, competency: event.target.value }))} placeholder="Enter competency name" />
-                </label>
+                <div className="skill-assessment-search-stack">
+                  <label className="forms-field forms-field-full skill-assessment-search-field">
+                    <span>Search Topic</span>
+                    <input
+                      value={newRecord.topic}
+                      onFocus={() => setActiveSearchField('topic')}
+                      onBlur={() => window.setTimeout(() => setActiveSearchField((current) => (current === 'topic' ? null : current)), 120)}
+                      onChange={(event) => {
+                        setNewRecord((current) => ({ ...current, topic: event.target.value }))
+                        setActiveSearchField('topic')
+                      }}
+                      placeholder="Topic name"
+                    />
+                    {activeSearchField === 'topic' && activeSearchSuggestions.length ? (
+                      <div className="skill-assessment-suggest-list" role="listbox" aria-label="Topic suggestions">
+                        {activeSearchSuggestions.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            className="skill-assessment-suggest-item"
+                            onMouseDown={(event) => {
+                              event.preventDefault()
+                              handleSearchSuggestionPick('topic', item)
+                            }}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </label>
+
+                  <label className="forms-field forms-field-full skill-assessment-search-field">
+                    <span>Search Competency</span>
+                    <input
+                      value={newRecord.competency}
+                      onFocus={() => setActiveSearchField('competency')}
+                      onBlur={() => window.setTimeout(() => setActiveSearchField((current) => (current === 'competency' ? null : current)), 120)}
+                      onChange={(event) => {
+                        setNewRecord((current) => ({ ...current, competency: event.target.value }))
+                        setActiveSearchField('competency')
+                      }}
+                      placeholder="Competency name"
+                    />
+                    {activeSearchField === 'competency' && activeSearchSuggestions.length ? (
+                      <div className="skill-assessment-suggest-list" role="listbox" aria-label="Competency suggestions">
+                        {activeSearchSuggestions.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            className="skill-assessment-suggest-item"
+                            onMouseDown={(event) => {
+                              event.preventDefault()
+                              handleSearchSuggestionPick('competency', item)
+                            }}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </label>
+                </div>
               </div>
             </div>
             <div className="forms-modal-actions">
               <div className="activity-footer-actions">
                 <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Cancel</button>
                 <button type="button" className="tool-btn green" onClick={handleAddRecord}>Create Record</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {activityFormRecordId ? (
-        <div className="forms-modal-backdrop" onClick={handleCloseActivityForm} aria-hidden="true">
-          <div className="forms-modal forms-modal-activity" onClick={(event) => event.stopPropagation()}>
-            <div className="forms-modal-head">
-              <div className="activity-modal-head-copy">
-                <span className="activity-modal-kicker">Activity Builder</span>
-                <h3>Add Activity</h3>
-                <p>Configure a new activity in one compact setup.</p>
-              </div>
-              <button type="button" className="activity-modal-close" onClick={handleCloseActivityForm} aria-label="Close activity builder">
-                <X size={16} strokeWidth={2.2} />
-              </button>
-            </div>
-
-            <div className="activity-config-card">
-              <div className="activity-inline-context">
-                <span>Competency</span>
-                <strong>{records.find((record) => record.id === activityFormRecordId)?.competency ?? 'No competency selected'}</strong>
-              </div>
-
-              <div className="activity-config-section">
-                <div className="activity-config-copy">
-                  <span className="activity-section-step">01</span>
-                  <h4>Activity Name</h4>
-                  <p>Enter a clear manual activity name for this assessment.</p>
-                </div>
-
-                <label className="forms-field forms-field-full">
-                  <span>Activity Name</span>
-                  <input
-                    value={activityDraft.manualName}
-                    onChange={(event) => handleActivityDraftChange('manualName', event.target.value)}
-                    placeholder="e.g. Clinical Assessment 2024"
-                  />
-                </label>
-              </div>
-
-              <div className="activity-config-section activity-type-section">
-                <div className="activity-config-copy">
-                  <span className="activity-section-step">02</span>
-                  <h4>Assessment Type</h4>
-                  <p>Select the assessment format that matches how this activity should be created.</p>
-                </div>
-
-                <div className="activity-type-options activity-type-options-flat">
-                  {assessmentTypeGroups.flatMap((group) => group.options).map((option) => {
-                    const icon = option.value === 'Image'
-                      ? ImageIcon
-                      : option.value === 'Interpretation'
-                        ? FileText
-                        : option.value === 'OSCE'
-                          ? Stethoscope
-                          : Sparkles
-
-                    const Icon = icon
-
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        className={`activity-type-option ${activityDraft.assessmentType === option.value ? 'active' : ''}`}
-                        onClick={() => handleActivityDraftChange('assessmentType', option.value)}
-                      >
-                        <span className="activity-type-card-icon" aria-hidden="true">
-                          <Icon size={18} strokeWidth={2} />
-                        </span>
-                        <span className="activity-type-card-text">
-                          <strong>{option.label}</strong>
-                          <small>{option.isAi ? 'AI-generated' : 'Manual entry'}</small>
-                        </span>
-                        {option.isAi ? (
-                          <span className="activity-ai-badge">
-                            <Sparkles size={12} strokeWidth={2.2} />
-                            AI
-                          </span>
-                        ) : null}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-            </div>
-
-            <div className="forms-modal-actions">
-              <div className="activity-footer-actions">
-                <button type="button" className="ghost" onClick={handleCloseActivityForm}>Cancel</button>
-                <button type="button" className="tool-btn green" onClick={handleCreateActivity}>Create Activity</button>
               </div>
             </div>
           </div>
