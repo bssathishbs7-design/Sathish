@@ -55,7 +55,7 @@ function App() {
   const [theme, setTheme] = useState('light')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const useCompactLogo = theme === 'light' && sidebarCollapsed
-  const [activePage, setActivePage] = useState('Skill Management')
+  const [activePage, setActivePage] = useState('Dashboard')
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const profileUser = {
@@ -118,6 +118,7 @@ function App() {
 
       <Sidebar
         mobileSidebarOpen={mobileSidebarOpen}
+        sidebarCollapsed={sidebarCollapsed}
         theme={theme}
         useCompactLogo={useCompactLogo}
         activePage={activePage}
@@ -145,14 +146,16 @@ function App() {
           profileToast={profileToast}
         />
 
-        {activePage === 'Skill Management' ? (
+        {activePage === 'Dashboard' ? (
+          <DashboardSummaryPage onBackToAssessment={() => setActivePage('Evaluation')} />
+        ) : activePage === 'Configuration' ? (
           <SkillManagementPage />
-        ) : activePage === 'Skill Assessment' ? (
+        ) : activePage === 'Evaluation' ? (
           <SkillAssessmentPage onOpenDashboardSummary={() => setActivePage('Dashboard Summary')} />
         ) : activePage === 'Faculty Management' ? (
           <FacultyManagementPageV2 />
         ) : activePage === 'Dashboard Summary' ? (
-          <DashboardSummaryPage onBackToAssessment={() => setActivePage('Skill Assessment')} />
+          <DashboardSummaryPage onBackToAssessment={() => setActivePage('Evaluation')} />
         ) : activePage === 'Profile Settings' ? (
           <section className="vx-content profile-settings-page">
             <div className="profile-settings-card">
@@ -161,7 +164,7 @@ function App() {
               <p>{profileUser.registerId} • {profileUser.role}</p>
               <div className="profile-settings-actions">
                 <button type="button" className="tool-btn green" onClick={() => setActivePage('Dashboard Summary')}>Back to Dashboard</button>
-                <button type="button" className="ghost" onClick={() => setActivePage('Skill Management')}>Close</button>
+                <button type="button" className="ghost" onClick={() => setActivePage('Configuration')}>Close</button>
               </div>
             </div>
           </section>
@@ -171,7 +174,7 @@ function App() {
               <span className="profile-settings-kicker">Signed out</span>
               <h1>Logging out...</h1>
               <p>You have been redirected to the login experience.</p>
-              <button type="button" className="tool-btn green" onClick={() => setActivePage('Skill Management')}>Return to app</button>
+              <button type="button" className="tool-btn green" onClick={() => setActivePage('Configuration')}>Return to app</button>
             </div>
           </section>
         ) : (
@@ -211,7 +214,13 @@ function App() {
 
       <nav className="vx-mobile-nav">
         <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
-        <button type="button" className={activePage === 'Skill Management' ? 'active' : ''} onClick={() => setActivePage('Skill Management')}>Skill Management</button>
+        <button
+          type="button"
+          className={activePage === 'Dashboard' ? 'active' : ''}
+          onClick={() => setActivePage('Dashboard')}
+        >
+          Dashboard
+        </button>
         <button type="button">Profile</button>
       </nav>
     </div>

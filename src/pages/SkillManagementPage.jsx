@@ -3,10 +3,15 @@ import {
   CheckCircle2,
   ChevronRight,
   Eye,
+  FileText,
   Info,
+  Image as ImageIcon,
   MoreHorizontal,
   Search,
+  Sparkles,
+  Stethoscope,
   Trash2,
+  X,
 } from 'lucide-react'
 
 const workflowSteps = [
@@ -102,6 +107,30 @@ const competencyRecords = [
   },
 ]
 
+const assessmentTypeGroups = [
+  {
+    title: 'Manual Entry',
+    hint: 'Human-authored activities for image or interpretation flows.',
+    options: [
+      { value: 'Image', label: 'Image', tone: 'image', isAi: false },
+      { value: 'Interpretation', label: 'Interpretation', tone: 'interpretation', isAi: false },
+    ],
+  },
+  {
+    title: 'AI-Generated',
+    hint: 'AI-assisted setup for objective structured activity formats.',
+    options: [
+      { value: 'OSCE', label: 'OSCE', tone: 'osce', isAi: true },
+      { value: 'OSPE', label: 'OSPE', tone: 'ospe', isAi: true },
+    ],
+  },
+]
+
+const defaultActivityDraft = {
+  manualName: '',
+  assessmentType: 'OSPE',
+}
+
 function SkillManagementPage() {
   const [records, setRecords] = useState(competencyRecords)
   const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
@@ -114,6 +143,8 @@ function SkillManagementPage() {
   const [builderNotes, setBuilderNotes] = useState('Assessment instructions and checklist content')
   const [assignmentTarget, setAssignmentTarget] = useState('Batch A • 28 students')
   const [processingTask, setProcessingTask] = useState(null)
+  const [activityFormRecordId, setActivityFormRecordId] = useState(null)
+  const [activityDraft, setActivityDraft] = useState(defaultActivityDraft)
   const [yearFilter, setYearFilter] = useState('All Years')
   const [subjectFilter, setSubjectFilter] = useState('All Subjects')
   const [newRecord, setNewRecord] = useState({
@@ -138,7 +169,6 @@ function SkillManagementPage() {
   })
 
   const selectedRecord = filteredRecords.find((record) => record.id === selectedRecordId) ?? filteredRecords[0] ?? null
-
   const getDefaultSubject = (list) => list[0]?.subject ?? 'Human Anatomy'
   const getDefaultYear = (list) => list[0]?.year ?? 'First Year'
 
@@ -173,27 +203,56 @@ function SkillManagementPage() {
     })
   }
 
-  const handleAddActivity = (recordId) => {
+  const handleOpenActivityForm = (recordId) => {
+    setActivityFormRecordId(recordId)
+    setActivityDraft(defaultActivityDraft)
+  }
+
+  const handleCloseActivityForm = () => {
+    setActivityFormRecordId(null)
+    setActivityDraft(defaultActivityDraft)
+  }
+
+  const handleActivityDraftChange = (field, value) => {
+    setActivityDraft((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  const handleCreateActivity = () => {
+    if (!activityFormRecordId) return
+
+    const activityName = activityDraft.manualName.trim()
+
+    if (!activityName) {
+      return
+    }
+
+    const isAiActivity = ['OSCE', 'OSPE'].includes(activityDraft.assessmentType)
+
     setRecords((current) => current.map((record) => (
-      record.id === recordId
+      record.id === activityFormRecordId
         ? {
             ...record,
             activities: [
               ...record.activities,
               {
                 id: `activity-${Date.now()}`,
-                name: 'New skill assessment activity',
+                name: activityName,
                 certifiable: true,
-                type: 'OSPE',
+                type: activityDraft.assessmentType,
                 marks: 'Nil',
-                status: 'Not Created',
-                assignInfo: 'Unassigned',
+                status: isAiActivity ? 'Not Generated' : 'Not Created',
+                assignInfo: 'Faculty configured',
                 batch: 'No batch selected',
               },
             ],
           }
         : record
     )))
+
+    handleCloseActivityForm()
   }
 
   useEffect(() => {
@@ -391,7 +450,7 @@ function SkillManagementPage() {
       <div className="forms-flow-shell">
         <div className="forms-flow-head">
           <div>
-            <h1>Skill Management</h1>
+            <h1>Configuration</h1>
             <p>Move from competency discovery to activity creation, review, and assignment in one clear screen.</p>
           </div>
           <button type="button" className="tool-btn green" onClick={() => setIsAddOpen(true)}>+ Add Skill Assessment</button>
@@ -468,7 +527,7 @@ function SkillManagementPage() {
                           <strong>Activities</strong>
                           <span>Parent-child relationship: activities belong to this competency record.</span>
                         </div>
-                        <button type="button" className="activity-btn" onClick={() => handleAddActivity(record.id)}>Add Activity</button>
+                        <button type="button" className="activity-btn" onClick={() => handleOpenActivityForm(record.id)}>Add Activity</button>
                       </div>
 
                       <div className="forms-flow-columns" aria-hidden="true">
@@ -613,47 +672,171 @@ function SkillManagementPage() {
 
       {isAddOpen ? (
         <div className="forms-modal-backdrop" onClick={() => setIsAddOpen(false)} aria-hidden="true">
-          <div className="forms-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="forms-modal forms-modal-activity forms-modal-skill-assessment" onClick={(event) => event.stopPropagation()}>
             <div className="forms-modal-head">
-              <div>
+              <div className="activity-modal-head-copy">
+                <span className="activity-modal-kicker">Assessment Setup</span>
                 <h3>Add Skill Assessment</h3>
-                <p>Create a new competency record from the global forms action.</p>
+                <p>Create a new competency record using the same guided builder pattern as activity creation.</p>
               </div>
-              <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Close</button>
+              <button type="button" className="activity-modal-close" onClick={() => setIsAddOpen(false)} aria-label="Close skill assessment builder">
+                <X size={16} strokeWidth={2.2} />
+              </button>
             </div>
-            <div className="forms-modal-grid">
-              <label className="forms-field">
-                <span>Year</span>
-                <div className="forms-select-wrap">
-                  <select value={newRecord.year} onChange={(event) => setNewRecord((current) => ({ ...current, year: event.target.value }))}>
-                    {years.filter((year) => year !== 'All Years').map((year) => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
+            <div className="activity-config-card skill-assessment-config-card">
+              <div className="activity-inline-context skill-assessment-inline-context">
+                <span>Record Preview</span>
+                <strong>{newRecord.competency.trim() || 'New competency record'}</strong>
+                <p>{newRecord.topic.trim() || 'Add the topic and competency to create a new skill assessment record.'}</p>
+              </div>
+
+              <div className="activity-config-section">
+                <div className="activity-config-copy">
+                  <span className="activity-section-step">01</span>
+                  <h4>Academic Context</h4>
+                  <p>Select the academic year and subject before adding the topic and competency details.</p>
                 </div>
-              </label>
-              <label className="forms-field">
-                <span>Subject</span>
-                <div className="forms-select-wrap">
-                  <select value={newRecord.subject} onChange={(event) => setNewRecord((current) => ({ ...current, subject: event.target.value }))}>
-                    {subjects.filter((subject) => subject !== 'All Subjects').map((subject) => (
-                      <option key={subject} value={subject}>{subject}</option>
-                    ))}
-                  </select>
+
+                <div className="forms-modal-grid skill-assessment-inline-grid">
+                  <label className="forms-field">
+                    <span>Year</span>
+                    <div className="forms-select-wrap">
+                      <select value={newRecord.year} onChange={(event) => setNewRecord((current) => ({ ...current, year: event.target.value }))}>
+                        {years.filter((year) => year !== 'All Years').map((year) => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </label>
+                  <label className="forms-field">
+                    <span>Subject</span>
+                    <div className="forms-select-wrap">
+                      <select value={newRecord.subject} onChange={(event) => setNewRecord((current) => ({ ...current, subject: event.target.value }))}>
+                        {subjects.filter((subject) => subject !== 'All Subjects').map((subject) => (
+                          <option key={subject} value={subject}>{subject}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </label>
                 </div>
-              </label>
-              <label className="forms-field forms-field-full">
-                <span>Topic</span>
-                <input value={newRecord.topic} onChange={(event) => setNewRecord((current) => ({ ...current, topic: event.target.value }))} placeholder="Enter topic name" />
-              </label>
-              <label className="forms-field forms-field-full">
-                <span>Competency</span>
-                <input value={newRecord.competency} onChange={(event) => setNewRecord((current) => ({ ...current, competency: event.target.value }))} placeholder="Enter competency name" />
-              </label>
+              </div>
+
+              <div className="activity-config-section skill-assessment-details-section">
+                <div className="activity-config-copy">
+                  <span className="activity-section-step">02</span>
+                  <h4>Competency Details</h4>
+                  <p>Capture the topic and competency statement exactly as it should appear in the hierarchy.</p>
+                </div>
+
+                <label className="forms-field forms-field-full">
+                  <span>Topic</span>
+                  <input value={newRecord.topic} onChange={(event) => setNewRecord((current) => ({ ...current, topic: event.target.value }))} placeholder="Enter topic name" />
+                </label>
+                <label className="forms-field forms-field-full">
+                  <span>Competency</span>
+                  <input value={newRecord.competency} onChange={(event) => setNewRecord((current) => ({ ...current, competency: event.target.value }))} placeholder="Enter competency name" />
+                </label>
+              </div>
             </div>
             <div className="forms-modal-actions">
-              <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Cancel</button>
-              <button type="button" className="tool-btn green" onClick={handleAddRecord}>Create Record</button>
+              <div className="activity-footer-actions">
+                <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Cancel</button>
+                <button type="button" className="tool-btn green" onClick={handleAddRecord}>Create Record</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {activityFormRecordId ? (
+        <div className="forms-modal-backdrop" onClick={handleCloseActivityForm} aria-hidden="true">
+          <div className="forms-modal forms-modal-activity" onClick={(event) => event.stopPropagation()}>
+            <div className="forms-modal-head">
+              <div className="activity-modal-head-copy">
+                <span className="activity-modal-kicker">Activity Builder</span>
+                <h3>Add Activity</h3>
+                <p>Configure a new activity in one compact setup.</p>
+              </div>
+              <button type="button" className="activity-modal-close" onClick={handleCloseActivityForm} aria-label="Close activity builder">
+                <X size={16} strokeWidth={2.2} />
+              </button>
+            </div>
+
+            <div className="activity-config-card">
+              <div className="activity-inline-context">
+                <span>Competency</span>
+                <strong>{records.find((record) => record.id === activityFormRecordId)?.competency ?? 'No competency selected'}</strong>
+              </div>
+
+              <div className="activity-config-section">
+                <div className="activity-config-copy">
+                  <span className="activity-section-step">01</span>
+                  <h4>Activity Name</h4>
+                  <p>Enter a clear manual activity name for this assessment.</p>
+                </div>
+
+                <label className="forms-field forms-field-full">
+                  <span>Activity Name</span>
+                  <input
+                    value={activityDraft.manualName}
+                    onChange={(event) => handleActivityDraftChange('manualName', event.target.value)}
+                    placeholder="e.g. Clinical Assessment 2024"
+                  />
+                </label>
+              </div>
+
+              <div className="activity-config-section activity-type-section">
+                <div className="activity-config-copy">
+                  <span className="activity-section-step">02</span>
+                  <h4>Assessment Type</h4>
+                  <p>Select the assessment format that matches how this activity should be created.</p>
+                </div>
+
+                <div className="activity-type-options activity-type-options-flat">
+                  {assessmentTypeGroups.flatMap((group) => group.options).map((option) => {
+                    const icon = option.value === 'Image'
+                      ? ImageIcon
+                      : option.value === 'Interpretation'
+                        ? FileText
+                        : option.value === 'OSCE'
+                          ? Stethoscope
+                          : Sparkles
+
+                    const Icon = icon
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`activity-type-option ${activityDraft.assessmentType === option.value ? 'active' : ''}`}
+                        onClick={() => handleActivityDraftChange('assessmentType', option.value)}
+                      >
+                        <span className="activity-type-card-icon" aria-hidden="true">
+                          <Icon size={18} strokeWidth={2} />
+                        </span>
+                        <span className="activity-type-card-text">
+                          <strong>{option.label}</strong>
+                          <small>{option.isAi ? 'AI-generated' : 'Manual entry'}</small>
+                        </span>
+                        {option.isAi ? (
+                          <span className="activity-ai-badge">
+                            <Sparkles size={12} strokeWidth={2.2} />
+                            AI
+                          </span>
+                        ) : null}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            <div className="forms-modal-actions">
+              <div className="activity-footer-actions">
+                <button type="button" className="ghost" onClick={handleCloseActivityForm}>Cancel</button>
+                <button type="button" className="tool-btn green" onClick={handleCreateActivity}>Create Activity</button>
+              </div>
             </div>
           </div>
         </div>

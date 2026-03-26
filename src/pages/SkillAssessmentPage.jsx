@@ -233,7 +233,7 @@ function SkillAssessmentPage({ onOpenDashboardSummary }) {
       <div className="skill-assessment-shell">
         <div className="skill-assessment-hero">
           <div className="skill-assessment-hero-copy">
-            <h1>Skill Assessment</h1>
+            <h1>Evaluation</h1>
             <p>Choose a Year or SGT, set the attempt count, then search and launch the evaluation workspace.</p>
           </div>
 
