@@ -91,7 +91,7 @@ export default function Navbar({
                   <strong>{profileUser.name}</strong>
                   <p>{profileUser.registerId}</p>
                 </div>
-              </div>
+              </div> 
               <div className="vx-profile-divider" />
               <button type="button" className="vx-profile-action" onClick={onEditProfile}>
                 <span className="vx-profile-action-icon" aria-hidden="true">
