@@ -30,7 +30,7 @@ import {
  * Placement:
  * - Page-level workflow in src/pages/
  */
-function SkillAssessmentPage({ onOpenDashboardSummary }) {
+function SkillAssessmentPage({ onOpenDashboardSummary, onAlert }) {
   const [selectedYear, setSelectedYear] = useState('')
   const [selectedSgt, setSelectedSgt] = useState('')
   const [attemptCount, setAttemptCount] = useState('')
@@ -135,21 +135,25 @@ function SkillAssessmentPage({ onOpenDashboardSummary }) {
   const handleSearchAssessment = () => {
     if (!selectedYear && !selectedSgt) {
       setSearchMessage('Select a Year or SGT to continue.')
+      onAlert?.({ tone: 'warning', message: 'Select a Year or SGT to continue.' })
       return
     }
 
     if (!attemptCount) {
       setSearchMessage('Enter an attempt count to continue.')
+      onAlert?.({ tone: 'warning', message: 'Enter an attempt count to continue.' })
       return
     }
 
     if (!selectedActivityId) {
       setSearchMessage('Choose a competency activity before searching.')
+      onAlert?.({ tone: 'warning', message: 'Choose a competency activity before searching.' })
       return
     }
 
     if (!selectedActivity) {
       setSearchMessage('The chosen activity is not available for this filter set.')
+      onAlert?.({ tone: 'danger', message: 'The chosen activity is not available for the current filter set.' })
       return
     }
 
@@ -159,13 +163,18 @@ function SkillAssessmentPage({ onOpenDashboardSummary }) {
       setIsSearching(false)
       setPreviewAssessment(selectedActivity)
       setIsEvaluationStarted(false)
+      onAlert?.({ tone: 'primary', message: 'Evaluation flow loaded successfully.' })
     }, 650)
   }
 
   const handleStartEvaluation = () => {
-    if (!previewAssessment) return
+    if (!previewAssessment) {
+      onAlert?.({ tone: 'warning', message: 'Search and preview an activity before starting evaluation.' })
+      return
+    }
     setIsEvaluationStarted(true)
     setSelectedStudentIndex(0)
+    onAlert?.({ tone: 'primary', message: 'Evaluation started for the selected activity.' })
   }
 
   const handleSelectStudent = (index) => {
@@ -225,20 +234,28 @@ function SkillAssessmentPage({ onOpenDashboardSummary }) {
   }
 
   const handleSaveEvaluation = () => {
-    if (!selectedStudent) return
+    if (!selectedStudent) {
+      onAlert?.({ tone: 'warning', message: 'Select a student before saving the evaluation.' })
+      return
+    }
     updateStudentAssessment(selectedStudent.id, (current) => ({
       ...current,
       lastSavedAt: Date.now(),
     }))
+    onAlert?.({ tone: 'secondary', message: 'Evaluation saved successfully.' })
   }
 
   const handleSubmitEvaluation = () => {
-    if (!selectedStudent) return
+    if (!selectedStudent) {
+      onAlert?.({ tone: 'warning', message: 'Select a student before submitting the evaluation.' })
+      return
+    }
     updateStudentAssessment(selectedStudent.id, (current) => ({
       ...current,
       submitted: true,
       activeTab: current.activeTab,
     }))
+    onAlert?.({ tone: 'secondary', message: 'Evaluation submitted successfully.' })
   }
 
   const handleStepStudent = (direction) => {
@@ -346,7 +363,6 @@ function SkillAssessmentPage({ onOpenDashboardSummary }) {
               <button type="button" className="ghost" onClick={handleResetSearch}>Reset Search</button>
             </div>
 
-            {searchMessage ? <p className="skill-assessment-feedback" role="alert">{searchMessage}</p> : null}
           </section>
 
           {previewAssessment ? (

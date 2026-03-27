@@ -18,7 +18,7 @@ import {
  * - React local state
  * - lucide-react icons
  * Props / Data:
- * - No incoming props; uses page-local seed data
+ * - onAlert is used for shared completion and warning alerts
  * State:
  * - Owns search, filters, dialog visibility, and faculty selection state
  * Hooks / Providers:
@@ -150,7 +150,7 @@ const facultyRows = [
 const roleOptions = ['Course Lead', 'Exam Coordinator', 'Module Coordinator', 'Assessment Reviewer', 'Practical Lead', 'Content Reviewer', 'Attendance Lead', 'Lab Coordinator']
 const designationOptions = ['Professor', 'Associate Professor', 'Assistant Professor', 'Tutor', 'Senior Resident']
 const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology', 'Community Medicine', 'Microbiology']
-  export default function FacultyManagementPageV2() {
+  export default function FacultyManagementPageV2({ onAlert }) {
   const [designationFilter, setDesignationFilter] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -214,6 +214,16 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
 
   const changePage = (nextPage) => {
     setCurrentPage(Math.min(Math.max(nextPage, 1), totalPages))
+  }
+
+  const handleSaveFaculty = () => {
+    if (!addForm.name.trim() || !addForm.email.trim()) {
+      onAlert?.({ tone: 'warning', message: 'Complete the faculty name and email before saving.' })
+      return
+    }
+
+    setIsAddOpen(false)
+    onAlert?.({ tone: 'secondary', message: 'Faculty profile saved successfully.' })
   }
 
   return (
@@ -565,7 +575,7 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
             </div>
 
             <div className="faculty-modal-actions">
-              <button type="button" className="tool-btn green">Save Faculty</button>
+              <button type="button" className="tool-btn green" onClick={handleSaveFaculty}>Save Faculty</button>
               <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Cancel</button>
             </div>
           </div>

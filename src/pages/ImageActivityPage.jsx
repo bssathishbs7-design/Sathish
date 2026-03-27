@@ -66,7 +66,7 @@ const initialSteps = [
  * Placement:
  * - Page-level workflow in src/pages/ because it owns substantial screen-specific state
  */
-export default function ImageActivityPage({ activityData }) {
+export default function ImageActivityPage({ activityData, onAlert }) {
   const activity = activityData?.activity ?? activityData ?? null
   const record = activityData?.record ?? null
   const defaultActivityName = activity?.name ?? 'Describe principles and methods of artificial respiration'
@@ -153,11 +153,18 @@ export default function ImageActivityPage({ activityData }) {
   }
 
   const handleSaveStep = (id) => {
+    const targetStep = steps.find((step) => step.id === id)
+    if (!targetStep?.instruction.trim()) {
+      onAlert?.({ tone: 'warning', message: 'Add an instruction before saving this step.' })
+      return
+    }
+
     setSteps((current) => current.map((step) => (
       step.id === id
         ? { ...step, saved: true }
         : step
     )))
+    onAlert?.({ tone: 'secondary', message: 'Rubric step saved successfully.' })
   }
 
   const handleClearStep = (id) => {
@@ -173,12 +180,14 @@ export default function ImageActivityPage({ activityData }) {
           }
         : step
     )))
+    onAlert?.({ tone: 'warning', message: 'Step content cleared.' })
   }
 
   const handleAddQuestion = () => {
     const nextStep = createRubricStep(`step-${Date.now()}`)
     setSteps((current) => [...current, nextStep])
     setActiveStepId(nextStep.id)
+    onAlert?.({ tone: 'primary', message: 'New question added to the rubric flow.' })
   }
 
   const handleImageUpload = (slotKey, event) => {
@@ -202,6 +211,7 @@ export default function ImageActivityPage({ activityData }) {
     }))
 
     event.target.value = ''
+    onAlert?.({ tone: 'secondary', message: `Image ${slotKey} uploaded successfully.` })
   }
 
   const handleRemoveImage = (slotKey) => {
@@ -230,6 +240,7 @@ export default function ImageActivityPage({ activityData }) {
 
       return next
     })
+    onAlert?.({ tone: 'danger', message: `Image ${slotKey} removed from the activity.` })
   }
 
   const activePreviewIndex = previewImage

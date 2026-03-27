@@ -179,7 +179,7 @@ const generationStatusSteps = [
  * Placement:
  * - Page-level workflow in src/pages/
  */
-function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
+function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert }) {
   const [records, setRecords] = useState(competencyRecords)
   const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
   const [searchQuery, setSearchQuery] = useState('')
@@ -241,6 +241,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
 
   const handleAddRecord = () => {
     if (!newRecord.topic.trim() || !newRecord.competency.trim()) {
+      onAlert?.({ tone: 'warning', message: 'Complete the topic and competency fields before creating a record.' })
       return
     }
 
@@ -268,6 +269,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
       topic: '',
       competency: '',
     })
+    onAlert?.({ tone: 'secondary', message: 'Configuration record created successfully.' })
   }
 
   const handleOpenActivityForm = (recordId) => {
@@ -301,6 +303,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
     const activityName = activityDraft.manualName.trim()
 
     if (!activityName) {
+      onAlert?.({ tone: 'warning', message: 'Enter an activity name before creating the activity.' })
       return
     }
 
@@ -330,6 +333,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
     )))
 
     handleCloseActivityForm()
+    onAlert?.({ tone: 'secondary', message: 'Activity created successfully.' })
   }
 
   useEffect(() => {
@@ -384,13 +388,14 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
   useEffect(() => {
     if (!generationFlow || generationFlow.phase !== 'success') return undefined
 
+    onAlert?.({ tone: 'secondary', message: 'Activity generation completed successfully.' })
     const timer = window.setTimeout(() => {
       onGenerateComplete?.(APP_PAGES.EVALUATION)
       setGenerationFlow(null)
     }, 1100)
 
     return () => window.clearTimeout(timer)
-  }, [generationFlow, onGenerateComplete])
+  }, [generationFlow, onAlert, onGenerateComplete])
 
   const handleDeleteActivity = (recordId, activityId) => {
     setRecords((current) => current.map((record) => (
@@ -398,6 +403,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
         ? { ...record, activities: record.activities.filter((activity) => activity.id !== activityId) }
         : record
     )))
+    onAlert?.({ tone: 'danger', message: 'Activity removed from the configuration list.' })
   }
 
   const findActivity = (recordId, activityId) => records
@@ -463,6 +469,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
         : record
     )))
     setBuilderActivity(null)
+    onAlert?.({ tone: 'secondary', message: 'Manual assessment saved successfully.' })
   }
 
   const handleSubmitAssignment = () => {
@@ -481,6 +488,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
         : record
     )))
     setAssignmentActivity(null)
+    onAlert?.({ tone: 'secondary', message: 'Assessment assigned successfully.' })
   }
 
   const handleSelectGenerationMode = (mode) => {
@@ -495,7 +503,11 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
 
   const handleStartGeneration = () => {
     setGenerationFlow((current) => {
-      if (!current || current.phase !== 'selection' || current.selectedModes.length === 0) return current
+      if (!current || current.phase !== 'selection') return current
+      if (current.selectedModes.length === 0) {
+        onAlert?.({ tone: 'warning', message: 'Select at least one generation mode before continuing.' })
+        return current
+      }
       return { ...current, phase: 'processing', progress: 0 }
     })
   }

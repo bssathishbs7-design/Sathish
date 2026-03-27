@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import './App.css'
+import { AlertTriangle, CheckCircle2, Info, OctagonAlert } from 'lucide-react'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
@@ -51,6 +52,26 @@ function TableCard({ title, helper, className = '', rows = baseRows }) {
   )
 }
 
+function AppAlert({ alert }) {
+  const config = {
+    primary: { icon: Info, className: 'vx-alert-primary' },
+    secondary: { icon: CheckCircle2, className: 'vx-alert-secondary' },
+    warning: { icon: AlertTriangle, className: 'vx-alert-warning' },
+    danger: { icon: OctagonAlert, className: 'vx-alert-danger' },
+  }[alert.tone] ?? { icon: Info, className: 'vx-alert-primary' }
+
+  const Icon = config.icon
+
+  return (
+    <article className={`vx-alert ${config.className}`} role="status" aria-live="polite">
+      <span className="vx-alert-icon" aria-hidden="true">
+        <Icon size={18} strokeWidth={2.4} />
+      </span>
+      <p>{alert.message}</p>
+    </article>
+  )
+}
+
 /**
  * App Shell Implementation Contract
  * Structure:
@@ -84,6 +105,7 @@ function App() {
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
+  const [alerts, setAlerts] = useState([])
   const profileUser = {
     name: 'Karthik Subramanian',
     registerId: 'MC2568',
@@ -113,6 +135,23 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [profileToast])
 
+  useEffect(() => {
+    if (!alerts.length) return undefined
+
+    const timers = alerts.map((alert) => window.setTimeout(() => {
+      setAlerts((current) => current.filter((item) => item.id !== alert.id))
+    }, alert.duration ?? 3200))
+
+    return () => timers.forEach((timer) => window.clearTimeout(timer))
+  }, [alerts])
+
+  const showAlert = ({ tone = 'primary', message, duration } = {}) => {
+    if (!message) return
+
+    const id = `alert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    setAlerts((current) => [...current.slice(-2), { id, tone, message, duration }])
+  }
+
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
       await document.documentElement.requestFullscreen()
@@ -124,6 +163,7 @@ function App() {
   const handleEditProfile = () => {
     setIsProfileMenuOpen(false)
     setActivePage(APP_PAGES.PROFILE_SETTINGS)
+    showAlert({ tone: 'primary', message: 'Profile settings opened.' })
     window.history.pushState({}, '', '/profile/settings')
   }
 
@@ -131,6 +171,7 @@ function App() {
     setIsProfileMenuOpen(false)
     setProfileToast('Logging out...')
     setActivePage(APP_PAGES.LOGIN)
+    showAlert({ tone: 'warning', message: 'You have been signed out of the current session.' })
     window.history.pushState({}, '', '/login')
   }
 
@@ -159,6 +200,14 @@ function App() {
       />
 
       <main className="vx-main">
+        {alerts.length ? (
+          <div className="vx-alert-stack">
+            {alerts.map((alert) => (
+              <AppAlert key={alert.id} alert={alert} />
+            ))}
+          </div>
+        ) : null}
+
         <Navbar
           sidebarCollapsed={sidebarCollapsed}
           onOpenSidebar={() => setMobileSidebarOpen(true)}
@@ -181,17 +230,22 @@ function App() {
           ) : activePage === APP_PAGES.CONFIGURATION ? (
             <SkillManagementPage
               onGenerateComplete={(page) => setActivePage(page)}
+              onAlert={showAlert}
               onOpenImageActivity={(activity) => {
                 setSelectedImageActivity(activity)
                 setActivePage(APP_PAGES.IMAGE_ACTIVITY)
+                showAlert({ tone: 'primary', message: 'Image activity workspace opened.' })
               }}
             />
           ) : activePage === APP_PAGES.EVALUATION ? (
-            <SkillAssessmentPage onOpenDashboardSummary={() => setActivePage(APP_PAGES.DASHBOARD_SUMMARY)} />
+            <SkillAssessmentPage
+              onOpenDashboardSummary={() => setActivePage(APP_PAGES.DASHBOARD_SUMMARY)}
+              onAlert={showAlert}
+            />
           ) : activePage === APP_PAGES.IMAGE_ACTIVITY ? (
-            <ImageActivityPage activityData={selectedImageActivity} />
+            <ImageActivityPage activityData={selectedImageActivity} onAlert={showAlert} />
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
-            <FacultyManagementPageV2 />
+            <FacultyManagementPageV2 onAlert={showAlert} />
           ) : activePage === APP_PAGES.DASHBOARD_SUMMARY ? (
             <DashboardSummaryPage onBackToAssessment={() => setActivePage(APP_PAGES.EVALUATION)} />
           ) : activePage === APP_PAGES.PROFILE_SETTINGS ? (
