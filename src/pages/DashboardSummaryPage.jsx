@@ -6,6 +6,26 @@ import {
   dashboardStudentProfiles,
 } from './skillAssessmentData'
 
+/**
+ * DashboardSummaryPage Implementation Contract
+ * Structure:
+ * - Read-only analytics and learner summary view with filters and student detail panels.
+ * Dependencies:
+ * - React local state
+ * - Shared dashboard data from skillAssessmentData.js
+ * Props / Data:
+ * - onBackToAssessment returns users to the evaluation workflow
+ * State:
+ * - Owns local filter selections and current learner focus
+ * Hooks / Providers:
+ * - No additional provider required; data is currently file-backed and page-local
+ * Required assets:
+ * - Uses shared dashboard activity and student data models
+ * Responsive behavior:
+ * - Toolbar controls and summary cards should wrap before content becomes cramped
+ * Placement:
+ * - Page-level reporting screen in src/pages/
+ */
 function DashboardSummaryPage({ onBackToAssessment }) {
   const [yearFilter, setYearFilter] = useState('')
   const [batchFilter, setBatchFilter] = useState('')

@@ -7,6 +7,7 @@ import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import ImageActivityPage from './pages/ImageActivityPage'
+import { APP_PAGES } from './config/appPages'
 const baseRows = [
   ['1', 'Mark', 'Otto', '@mdo'],
   ['2', 'Jacob', 'Thornton', '@fat'],
@@ -50,13 +51,36 @@ function TableCard({ title, helper, className = '', rows = baseRows }) {
   )
 }
 
+/**
+ * App Shell Implementation Contract
+ * Structure:
+ * - Owns global shell orchestration, active page selection, theme, and sidebar state.
+ * Dependencies:
+ * - React state/effect hooks
+ * - Shared page ids from src/config/appPages.js
+ * - Shared shell components: Navbar and Sidebar
+ * Props / Data:
+ * - No incoming props; this is the top-level application container.
+ * State:
+ * - Shell state: sidebarCollapsed, mobileSidebarOpen, theme, isFullscreen
+ * - Navigation state: activePage, selectedImageActivity
+ * - Profile UI state: isProfileMenuOpen, profileToast
+ * Hooks / Browser APIs:
+ * - fullscreenchange listener for fullscreen sync
+ * - pointerdown listener for profile menu dismissal
+ * Responsive behavior:
+ * - Desktop uses a collapsible sidebar
+ * - Mobile uses an overlay sidebar and bottom nav affordance
+ * Placement:
+ * - Must remain the app entry shell because all page-level routing-like behavior depends on it.
+ */
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [theme, setTheme] = useState('light')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const useCompactLogo = theme === 'light' && sidebarCollapsed
-  const [activePage, setActivePage] = useState('Dashboard')
+  const [activePage, setActivePage] = useState(APP_PAGES.DASHBOARD)
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
@@ -99,14 +123,14 @@ function App() {
 
   const handleEditProfile = () => {
     setIsProfileMenuOpen(false)
-    setActivePage('Profile Settings')
+    setActivePage(APP_PAGES.PROFILE_SETTINGS)
     window.history.pushState({}, '', '/profile/settings')
   }
 
   const handleSignOut = () => {
     setIsProfileMenuOpen(false)
     setProfileToast('Logging out...')
-    setActivePage('Login')
+    setActivePage(APP_PAGES.LOGIN)
     window.history.pushState({}, '', '/login')
   }
 
@@ -152,43 +176,43 @@ function App() {
         />
 
         <div key={activePage} className="vx-page-surface vx-page-dissolve">
-          {activePage === 'Dashboard' ? (
-            <DashboardSummaryPage onBackToAssessment={() => setActivePage('Evaluation')} />
-          ) : activePage === 'Configuration' ? (
+          {activePage === APP_PAGES.DASHBOARD ? (
+            <DashboardSummaryPage onBackToAssessment={() => setActivePage(APP_PAGES.EVALUATION)} />
+          ) : activePage === APP_PAGES.CONFIGURATION ? (
             <SkillManagementPage
               onGenerateComplete={(page) => setActivePage(page)}
               onOpenImageActivity={(activity) => {
                 setSelectedImageActivity(activity)
-                setActivePage('Image Activity')
+                setActivePage(APP_PAGES.IMAGE_ACTIVITY)
               }}
             />
-          ) : activePage === 'Evaluation' ? (
-            <SkillAssessmentPage onOpenDashboardSummary={() => setActivePage('Dashboard Summary')} />
-          ) : activePage === 'Image Activity' ? (
+          ) : activePage === APP_PAGES.EVALUATION ? (
+            <SkillAssessmentPage onOpenDashboardSummary={() => setActivePage(APP_PAGES.DASHBOARD_SUMMARY)} />
+          ) : activePage === APP_PAGES.IMAGE_ACTIVITY ? (
             <ImageActivityPage activityData={selectedImageActivity} />
-          ) : activePage === 'Faculty Management' ? (
+          ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
             <FacultyManagementPageV2 />
-          ) : activePage === 'Dashboard Summary' ? (
-            <DashboardSummaryPage onBackToAssessment={() => setActivePage('Evaluation')} />
-          ) : activePage === 'Profile Settings' ? (
+          ) : activePage === APP_PAGES.DASHBOARD_SUMMARY ? (
+            <DashboardSummaryPage onBackToAssessment={() => setActivePage(APP_PAGES.EVALUATION)} />
+          ) : activePage === APP_PAGES.PROFILE_SETTINGS ? (
             <section className="vx-content profile-settings-page">
               <div className="profile-settings-card">
                 <span className="profile-settings-kicker">Profile settings</span>
                 <h1>{profileUser.name}</h1>
                 <p>{profileUser.registerId} • {profileUser.role}</p>
                 <div className="profile-settings-actions">
-                  <button type="button" className="tool-btn green" onClick={() => setActivePage('Dashboard Summary')}>Back to Dashboard</button>
-                  <button type="button" className="ghost" onClick={() => setActivePage('Configuration')}>Close</button>
+                  <button type="button" className="tool-btn green" onClick={() => setActivePage(APP_PAGES.DASHBOARD_SUMMARY)}>Back to Dashboard</button>
+                  <button type="button" className="ghost" onClick={() => setActivePage(APP_PAGES.CONFIGURATION)}>Close</button>
                 </div>
               </div>
             </section>
-          ) : activePage === 'Login' ? (
+          ) : activePage === APP_PAGES.LOGIN ? (
             <section className="vx-content profile-settings-page">
               <div className="profile-settings-card">
                 <span className="profile-settings-kicker">Signed out</span>
                 <h1>Logging out...</h1>
                 <p>You have been redirected to the login experience.</p>
-                <button type="button" className="tool-btn green" onClick={() => setActivePage('Configuration')}>Return to app</button>
+                <button type="button" className="tool-btn green" onClick={() => setActivePage(APP_PAGES.CONFIGURATION)}>Return to app</button>
               </div>
             </section>
           ) : (
@@ -231,10 +255,10 @@ function App() {
         <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
         <button
           type="button"
-          className={activePage === 'Dashboard' ? 'active' : ''}
-          onClick={() => setActivePage('Dashboard')}
+          className={activePage === APP_PAGES.DASHBOARD ? 'active' : ''}
+          onClick={() => setActivePage(APP_PAGES.DASHBOARD)}
         >
-          Dashboard
+          {APP_PAGES.DASHBOARD}
         </button>
         <button type="button">Profile</button>
       </nav>

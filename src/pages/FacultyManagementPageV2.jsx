@@ -10,6 +10,26 @@ import {
   X,
 } from 'lucide-react'
 
+/**
+ * FacultyManagementPageV2 Implementation Contract
+ * Structure:
+ * - Faculty directory page with search, table actions, and assignment detail flows.
+ * Dependencies:
+ * - React local state
+ * - lucide-react icons
+ * Props / Data:
+ * - No incoming props; uses page-local seed data
+ * State:
+ * - Owns search, filters, dialog visibility, and faculty selection state
+ * Hooks / Providers:
+ * - No context provider required with the current page-local interaction model
+ * Required assets:
+ * - Uses in-file faculty dataset and iconography only
+ * Responsive behavior:
+ * - Directory controls and row actions must remain usable on smaller screens through wrapping and stacking
+ * Placement:
+ * - Page-level management screen in src/pages/
+ */
 const facultyRows = [
   {
     id: 'FAC-001',

@@ -1,27 +1,27 @@
 import { useState } from 'react'
-import { ChevronDown, ClipboardList, FileImage, FileText, FolderKanban, LayoutDashboard, UserPen, X } from 'lucide-react'
+import { ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandMark from '../assets/brand-mark.svg'
+import { SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
 
-const menu = [
-  {
-    section: 'Main',
-    items: [
-      {
-        label: 'Skills',
-        icon: FileText,
-        children: [
-          { label: 'Configuration', icon: FolderKanban },
-          { label: 'Evaluation', icon: ClipboardList },
-          { label: 'Dashboard', icon: LayoutDashboard },
-          { label: 'Image Activity', icon: FileImage },
-        ],
-      },
-      { label: 'Faculty Management', icon: UserPen },
-    ],
-  },
-]
-
+/**
+ * Sidebar Implementation Contract
+ * Structure:
+ * - Shared navigation rail with one nested "Skills" group and top-level destinations.
+ * Dependencies:
+ * - Brand assets, lucide-react icons, and shared page metadata from src/config/appPages.js
+ * Props / Data:
+ * - Receives active page and shell callbacks from App.jsx
+ * State:
+ * - Local UI state only for skills group expansion
+ * Hooks / Providers:
+ * - No context provider required; app-level navigation remains prop-driven
+ * Responsive behavior:
+ * - Desktop supports collapse/flyout behavior
+ * - Mobile supports slide-in drawer behavior with explicit close control
+ * Placement:
+ * - Shared shell component in src/components/
+ */
 export default function Sidebar({
   mobileSidebarOpen,
   sidebarCollapsed,
@@ -31,7 +31,7 @@ export default function Sidebar({
   onSelectPage,
   onCloseMobile,
 }) {
-  const isSkillsActive = ['Dashboard', 'Configuration', 'Evaluation', 'Image Activity'].includes(activePage)
+  const isSkillsActive = SKILL_PAGES.includes(activePage)
   const [skillsOpen, setSkillsOpen] = useState(true)
   const showSkillsChildren = sidebarCollapsed ? skillsOpen : (skillsOpen || isSkillsActive)
   const handleSelectSidebarPage = (page) => {
@@ -63,7 +63,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        {menu.map((group) => (
+        {SIDEBAR_MENU.map((group) => (
           <div key={group.section} className="vx-menu-group">
             {group.items.map((item) => (
               item.children ? (

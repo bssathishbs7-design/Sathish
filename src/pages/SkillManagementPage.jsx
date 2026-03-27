@@ -13,6 +13,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { APP_PAGES } from '../config/appPages'
 
 const workflowSteps = [
   {
@@ -156,6 +157,28 @@ const generationStatusSteps = [
   { threshold: 72, label: 'Finalizing layout...' },
 ]
 
+/**
+ * SkillManagementPage Implementation Contract
+ * Structure:
+ * - Configuration workflow for competency discovery, activity creation, generation, preview, and assignment.
+ * Dependencies:
+ * - React local state/effects
+ * - lucide-react icons
+ * - shared app page ids from src/config/appPages.js
+ * Props / Data:
+ * - onGenerateComplete controls cross-page navigation after generation
+ * - onOpenImageActivity opens the dedicated Image Activity workflow with selected record data
+ * State:
+ * - Owns record filtering, modal visibility, generation flow, activity creation draft, and local table interactions
+ * Hooks / Providers:
+ * - No extra provider is required; this page is self-contained and passes selected activity upward only when needed
+ * Required assets:
+ * - Uses in-file seed competency/activity data for the configuration flow
+ * Responsive behavior:
+ * - Search, filters, table actions, nested rows, and modal flows must remain accessible across breakpoints
+ * Placement:
+ * - Page-level workflow in src/pages/
+ */
 function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
   const [records, setRecords] = useState(competencyRecords)
   const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
@@ -362,7 +385,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
     if (!generationFlow || generationFlow.phase !== 'success') return undefined
 
     const timer = window.setTimeout(() => {
-      onGenerateComplete?.('Evaluation')
+      onGenerateComplete?.(APP_PAGES.EVALUATION)
       setGenerationFlow(null)
     }, 1100)
 

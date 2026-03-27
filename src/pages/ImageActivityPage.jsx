@@ -44,6 +44,28 @@ const initialSteps = [
   createRubricStep('step-2', 'Explain the procedure to the patient before inflating the cuff.'),
 ]
 
+/**
+ * ImageActivityPage Implementation Contract
+ * Structure:
+ * - Workflow page combining activity context, image upload, preview modal, and rubric editing.
+ * Dependencies:
+ * - React hooks for local workflow state
+ * - createPortal for image preview layering
+ * - lucide-react icons for actions and status affordances
+ * Props / Data:
+ * - activityData may contain { activity, record } from the Configuration page
+ * State:
+ * - Local state owns title editing, marks/certifiable toggles, uploaded images, preview dialog, and rubric steps
+ * Hooks / Browser APIs:
+ * - Uses object URLs for local image preview and cleans them up on removal/unmount
+ * - Locks body scroll while the preview dialog is open
+ * Required assets:
+ * - User-provided image files; no static image dependency required
+ * Responsive behavior:
+ * - Header, upload cards, rubric outline, and modal must remain usable from mobile through wide desktop
+ * Placement:
+ * - Page-level workflow in src/pages/ because it owns substantial screen-specific state
+ */
 export default function ImageActivityPage({ activityData }) {
   const activity = activityData?.activity ?? activityData ?? null
   const record = activityData?.record ?? null

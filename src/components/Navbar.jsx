@@ -13,6 +13,24 @@ import {
   UserPen,
 } from 'lucide-react'
 
+/**
+ * Navbar Implementation Contract
+ * Structure:
+ * - Shared shell header for search, theme, fullscreen, notifications, and profile actions.
+ * Dependencies:
+ * - lucide-react icons only
+ * Props / Data:
+ * - Receives shell actions and profile metadata from App.jsx
+ * State:
+ * - Stateless; all behavior is controlled through props
+ * Hooks / Providers:
+ * - None required here because state is intentionally lifted to the app shell
+ * Responsive behavior:
+ * - Mobile exposes the sidebar trigger
+ * - Desktop exposes the collapse control and full action cluster
+ * Placement:
+ * - Shared top-level shell component in src/components/
+ */
 export default function Navbar({
   sidebarCollapsed,
   onOpenSidebar,

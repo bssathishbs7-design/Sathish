@@ -10,6 +10,26 @@ import {
   skillAssessmentActivities,
 } from './skillAssessmentData'
 
+/**
+ * SkillAssessmentPage Implementation Contract
+ * Structure:
+ * - Evaluation workflow with search filters, activity selection, and learner-level assessment state.
+ * Dependencies:
+ * - React local state
+ * - Shared data from skillAssessmentData.js
+ * Props / Data:
+ * - onOpenDashboardSummary triggers the summary page from the evaluation flow
+ * State:
+ * - Owns filter selections, preview state, evaluation progress, and per-student assessment updates
+ * Hooks / Providers:
+ * - No global provider required because evaluation state is page-scoped
+ * Required assets:
+ * - Consumes shared mock data and grading structures from skillAssessmentData.js
+ * Responsive behavior:
+ * - Filter bar, student panels, and grading layouts should stack cleanly without losing context
+ * Placement:
+ * - Page-level workflow in src/pages/
+ */
 function SkillAssessmentPage({ onOpenDashboardSummary }) {
   const [selectedYear, setSelectedYear] = useState('')
   const [selectedSgt, setSelectedSgt] = useState('')
