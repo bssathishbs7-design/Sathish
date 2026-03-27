@@ -193,6 +193,7 @@ function SkillManagementPage({ onGenerateComplete }) {
     ? records.find((record) => record.id === generationFlow.recordId)
       ?.activities.find((activity) => activity.id === generationFlow.activityId) ?? null
     : null
+  const generationSelectionLabel = generationFlow?.selectedModes?.join(', ') ?? ''
   const generationStatusLabel = generationStatusSteps
     .slice()
     .reverse()
@@ -305,9 +306,11 @@ function SkillManagementPage({ onGenerateComplete }) {
       setGenerationFlow((current) => {
         if (!current || current.phase !== 'processing') return current
 
-        const pace = current.selectedMode === 'Generate All'
+        const hasGenerateAll = current.selectedModes.includes('Generate All')
+        const hasScaffolding = current.selectedModes.includes('Scaffolding')
+        const pace = hasGenerateAll
           ? 14
-          : current.selectedMode === 'Scaffolding'
+          : hasScaffolding
             ? 18
             : 16
 
@@ -319,7 +322,7 @@ function SkillManagementPage({ onGenerateComplete }) {
     }, 240)
 
     return () => window.clearInterval(timer)
-  }, [generationFlow?.activityId, generationFlow?.phase, generationFlow?.recordId, generationFlow?.selectedMode])
+  }, [generationFlow?.activityId, generationFlow?.phase, generationFlow?.recordId, generationFlow?.selectedModes])
 
   useEffect(() => {
     if (!generationFlow || generationFlow.phase !== 'processing' || generationFlow.progress < 100) {
@@ -376,7 +379,7 @@ function SkillManagementPage({ onGenerateComplete }) {
       setGenerationFlow({
         recordId,
         activityId,
-        selectedMode: '',
+        selectedModes: [],
         phase: 'selection',
         progress: 0,
       })
@@ -434,13 +437,16 @@ function SkillManagementPage({ onGenerateComplete }) {
   const handleSelectGenerationMode = (mode) => {
     setGenerationFlow((current) => {
       if (!current || current.phase !== 'selection') return current
-      return { ...current, selectedMode: mode }
+      const selectedModes = current.selectedModes.includes(mode)
+        ? current.selectedModes.filter((item) => item !== mode)
+        : [...current.selectedModes, mode]
+      return { ...current, selectedModes }
     })
   }
 
   const handleStartGeneration = () => {
     setGenerationFlow((current) => {
-      if (!current || current.phase !== 'selection' || !current.selectedMode) return current
+      if (!current || current.phase !== 'selection' || current.selectedModes.length === 0) return current
       return { ...current, phase: 'processing', progress: 0 }
     })
   }
@@ -805,15 +811,16 @@ function SkillManagementPage({ onGenerateComplete }) {
 
                                       {generationFlow.phase === 'selection' ? (
                                         <>
-                                          <div className="generation-tooltip-list" role="listbox" aria-label="Generation mode">
+                                          <div className="generation-tooltip-list" role="listbox" aria-label="Generation modes">
                                             {generationModes.map((mode) => {
-                                              const isActive = generationFlow.selectedMode === mode.value
+                                              const isActive = generationFlow.selectedModes.includes(mode.value)
                                               return (
                                                 <button
                                                   key={mode.value}
                                                   type="button"
                                                   className={`generation-tooltip-item ${isActive ? 'active' : ''}`}
                                                   onClick={() => handleSelectGenerationMode(mode.value)}
+                                                  aria-pressed={isActive}
                                                 >
                                                   <span className="generation-tooltip-icon" aria-hidden="true">
                                                     <Sparkles size={12} strokeWidth={2.2} />
@@ -830,7 +837,7 @@ function SkillManagementPage({ onGenerateComplete }) {
                                             type="button"
                                             className="generation-tooltip-action"
                                             onClick={handleStartGeneration}
-                                            disabled={!generationFlow.selectedMode}
+                                            disabled={generationFlow.selectedModes.length === 0}
                                           >
                                             Generate
                                           </button>
@@ -845,7 +852,7 @@ function SkillManagementPage({ onGenerateComplete }) {
                                             <span style={{ width: `${generationFlow.progress}%` }} />
                                           </div>
                                           <p>
-                                            {generationFlow.selectedMode}
+                                            {generationSelectionLabel}
                                             {' '}
                                             in progress.
                                           </p>
