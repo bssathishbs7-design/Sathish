@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ClipboardList, FileText, FolderKanban, LayoutDashboard, UserPen, X } from 'lucide-react'
+import { ChevronDown, ClipboardList, FileImage, FileText, FolderKanban, LayoutDashboard, UserPen, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandMark from '../assets/brand-mark.svg'
 
@@ -14,6 +14,7 @@ const menu = [
           { label: 'Configuration', icon: FolderKanban },
           { label: 'Evaluation', icon: ClipboardList },
           { label: 'Dashboard', icon: LayoutDashboard },
+          { label: 'Image Activity', icon: FileImage },
         ],
       },
       { label: 'Faculty Management', icon: UserPen },
@@ -30,7 +31,7 @@ export default function Sidebar({
   onSelectPage,
   onCloseMobile,
 }) {
-  const isSkillsActive = ['Dashboard', 'Configuration', 'Evaluation'].includes(activePage)
+  const isSkillsActive = ['Dashboard', 'Configuration', 'Evaluation', 'Image Activity'].includes(activePage)
   const [skillsOpen, setSkillsOpen] = useState(true)
   const showSkillsChildren = sidebarCollapsed ? skillsOpen : (skillsOpen || isSkillsActive)
 

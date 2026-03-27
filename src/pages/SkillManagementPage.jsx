@@ -84,6 +84,16 @@ const competencyRecords = [
         assignInfo: 'First Yr MBBS',
         batch: 'Batch B • 24 students',
       },
+      {
+        id: 'act-5',
+        name: 'Identify major upper limb landmarks from labeled specimen images',
+        certifiable: true,
+        type: 'Image',
+        marks: 'Nil',
+        status: 'Not Created',
+        assignInfo: 'First Yr MBBS',
+        batch: 'Batch B • 24 students',
+      },
     ],
   },
   {
@@ -146,7 +156,7 @@ const generationStatusSteps = [
   { threshold: 72, label: 'Finalizing layout...' },
 ]
 
-function SkillManagementPage({ onGenerateComplete }) {
+function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
   const [records, setRecords] = useState(competencyRecords)
   const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
   const [searchQuery, setSearchQuery] = useState('')
@@ -373,6 +383,7 @@ function SkillManagementPage({ onGenerateComplete }) {
 
   const handlePrimaryAction = (recordId, activityId) => {
     const activity = findActivity(recordId, activityId)
+    const record = records.find((item) => item.id === recordId)
     if (!activity) return
 
     if (activity.status === 'Not Generated') {
@@ -387,6 +398,21 @@ function SkillManagementPage({ onGenerateComplete }) {
     }
 
     if (activity.status === 'Not Created') {
+      if (activity.type === 'Image') {
+        onOpenImageActivity?.({
+          activity,
+          record: record
+            ? {
+                year: record.year,
+                subject: record.subject,
+                competency: record.competency,
+                topic: record.topic,
+              }
+            : null,
+        })
+        return
+      }
+
       setBuilderActivity({ recordId, activityId })
       setBuilderNotes('Assessment instructions and checklist content')
       return

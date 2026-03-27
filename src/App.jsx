@@ -6,6 +6,7 @@ import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
+import ImageActivityPage from './pages/ImageActivityPage'
 const baseRows = [
   ['1', 'Mark', 'Otto', '@mdo'],
   ['2', 'Jacob', 'Thornton', '@fat'],
@@ -56,6 +57,7 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const useCompactLogo = theme === 'light' && sidebarCollapsed
   const [activePage, setActivePage] = useState('Dashboard')
+  const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const profileUser = {
@@ -150,9 +152,17 @@ function App() {
           {activePage === 'Dashboard' ? (
             <DashboardSummaryPage onBackToAssessment={() => setActivePage('Evaluation')} />
           ) : activePage === 'Configuration' ? (
-            <SkillManagementPage onGenerateComplete={(page) => setActivePage(page)} />
+            <SkillManagementPage
+              onGenerateComplete={(page) => setActivePage(page)}
+              onOpenImageActivity={(activity) => {
+                setSelectedImageActivity(activity)
+                setActivePage('Image Activity')
+              }}
+            />
           ) : activePage === 'Evaluation' ? (
             <SkillAssessmentPage onOpenDashboardSummary={() => setActivePage('Dashboard Summary')} />
+          ) : activePage === 'Image Activity' ? (
+            <ImageActivityPage activityData={selectedImageActivity} />
           ) : activePage === 'Faculty Management' ? (
             <FacultyManagementPageV2 />
           ) : activePage === 'Dashboard Summary' ? (
