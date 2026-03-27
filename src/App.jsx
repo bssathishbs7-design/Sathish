@@ -127,6 +127,9 @@ function App() {
         onSelectPage={(page) => {
           setActivePage(page)
           setMobileSidebarOpen(false)
+          if (window.innerWidth >= 1024) {
+            setSidebarCollapsed(true)
+          }
         }}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />

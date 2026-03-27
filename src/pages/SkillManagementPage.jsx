@@ -624,7 +624,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
                 <article key={record.id} className={`forms-parent-card ${isSelected ? 'is-selected' : ''}`}>
                   <button
                     type="button"
-                    className="forms-parent-row"
+                    className={`forms-parent-row ${isSelected ? 'is-tooltip-active' : ''}`}
                     aria-label={`Select competency ${record.competency}`}
                     onClick={() => setSelectedRecordId(record.id)}
                   >
@@ -780,9 +780,9 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity }) {
                             >
                               <div className="forms-flow-activity">
                                 <div
-                                  className="has-tooltip forms-activity-tooltip"
-                                  data-tooltip={`${activity.name}\n${getActivityPreviewText(activity, record.id)}`}
-                                  tabIndex={0}
+                                  className={`forms-activity-tooltip ${isSelected ? 'has-tooltip' : ''}`}
+                                  data-tooltip={isSelected ? `${activity.name}\n${getActivityPreviewText(activity, record.id)}` : undefined}
+                                  tabIndex={isSelected ? 0 : undefined}
                                 >
                                   <strong className="forms-activity-text">
                                     {getTruncatedActivityName(activity.name)}

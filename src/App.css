@@ -9,6 +9,31 @@
   isolation: isolate;
 }
 
+.vx-shell,
+.theme-dark {
+  --app-radius-sm: var(--radius-sm);
+  --app-radius-md: var(--radius-md);
+  --app-radius-lg: var(--radius-lg);
+  --app-shadow-soft: var(--shadow-soft);
+  --app-motion: var(--motion-standard);
+}
+
+.vx-shell {
+  --app-surface: rgba(255, 255, 255, 0.72);
+  --app-surface-strong: rgba(255, 255, 255, 0.84);
+  --app-border: rgba(148, 163, 184, 0.18);
+  --app-text: #163229;
+  --app-text-muted: #64748b;
+}
+
+.theme-dark {
+  --app-surface: rgba(22, 38, 30, 0.72);
+  --app-surface-strong: rgba(22, 38, 30, 0.88);
+  --app-border: rgba(95, 232, 177, 0.12);
+  --app-text: #e0f2e9;
+  --app-text-muted: rgba(224, 242, 233, 0.7);
+}
+
 .vx-overlay {
   position: fixed;
   inset: 0;
@@ -818,13 +843,170 @@
 }
 
 .vx-page-dissolve {
-  animation: page-dissolve 220ms ease;
+  animation: page-dissolve 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vx-sidebar,
+.vx-topbar,
+.vx-card,
+.forms-flow-head,
+.forms-flow-step,
+.forms-flow-panel,
+.forms-parent-card,
+.forms-modal,
+.forms-preview-card,
+.forms-table-shell,
+.forms-field input,
+.forms-field select,
+.forms-field textarea,
+.tool-input,
+.tool-btn,
+.ghost,
+.activity-btn,
+.act-btn,
+.vx-icon-btn,
+.vx-chip,
+.vx-global-search {
+  backdrop-filter: blur(16px);
+  transition:
+    transform var(--app-motion),
+    background-color var(--app-motion),
+    border-color var(--app-motion),
+    box-shadow var(--app-motion),
+    color var(--app-motion),
+    opacity var(--app-motion);
+}
+
+.vx-sidebar,
+.vx-topbar,
+.vx-card,
+.forms-flow-head,
+.forms-flow-step,
+.forms-flow-panel,
+.forms-parent-card,
+.forms-modal,
+.forms-preview-card,
+.forms-table-shell {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  box-shadow: none;
+}
+
+.vx-card,
+.forms-flow-head,
+.forms-flow-step,
+.forms-flow-panel,
+.forms-parent-card,
+.forms-modal,
+.forms-preview-card,
+.forms-table-shell {
+  border-radius: var(--app-radius-lg);
+}
+
+.vx-card,
+.forms-flow-step,
+.forms-flow-panel,
+.forms-parent-card,
+.forms-modal,
+.forms-preview-card,
+.forms-table-shell {
+  box-shadow: var(--app-shadow-soft);
+}
+
+.vx-topbar,
+.forms-head,
+.forms-flow-head,
+.skills-hero,
+.skill-assessment-hero,
+.faculty-hero,
+.faculty-page-hero,
+.dashboard-summary-hero,
+.image-activity-banner--enhanced {
+  box-shadow: none;
+}
+
+.vx-topbar,
+.vx-sidebar,
+.vx-global-search,
+.vx-icon-btn,
+.vx-chip,
+.tool-btn,
+.ghost,
+.activity-btn,
+.act-btn,
+.tool-input,
+.forms-field input,
+.forms-field select,
+.forms-field textarea {
+  border-color: var(--app-border);
+}
+
+.vx-global-search,
+.vx-icon-btn,
+.vx-chip,
+.tool-btn,
+.ghost,
+.activity-btn,
+.act-btn,
+.tool-input,
+.forms-field input,
+.forms-field select,
+.forms-field textarea {
+  background: var(--app-surface-strong);
+  color: var(--app-text);
+}
+
+.vx-link:hover,
+.vx-sublink:hover,
+.vx-icon-btn:hover,
+.vx-chip:hover,
+.tool-btn:hover,
+.ghost:hover,
+.activity-btn:hover,
+.act-btn:hover,
+.forms-tabs button:hover,
+.forms-table-shell:hover,
+.forms-table tbody tr:hover {
+  transform: translate3d(0, -2px, 0);
+}
+
+.forms-field input:focus,
+.forms-field select:focus,
+.forms-field textarea:focus,
+.tool-input:focus-within,
+.vx-global-search:focus-within {
+  border-color: #5FE8B1;
+  box-shadow: 0 0 0 3px rgba(95, 232, 177, 0.16);
+}
+
+.tool-btn.green,
+.activity-btn,
+.act-btn {
+  border-color: rgba(95, 232, 177, 0.28);
+  background: linear-gradient(135deg, rgba(95, 232, 177, 0.92), rgba(15, 104, 68, 0.94));
+  color: #fff;
+}
+
+.forms-table tbody td {
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.forms-table tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.theme-dark .forms-table tbody td {
+  background: rgba(22, 38, 30, 0.88);
+}
+
+.theme-dark .forms-table tbody tr:nth-child(even) td {
+  background: rgba(22, 38, 30, 0.76);
 }
 
 @keyframes page-dissolve {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -3880,8 +4062,8 @@
   color: #7af0c1;
 }
 
-.forms-parent-row:hover .forms-competency-tooltip,
-.forms-parent-row:focus-visible .forms-competency-tooltip {
+.forms-parent-row.is-tooltip-active:hover .forms-competency-tooltip,
+.forms-parent-row.is-tooltip-active:focus-visible .forms-competency-tooltip {
   opacity: 1;
   transform: translateY(0);
 }

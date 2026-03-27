@@ -34,6 +34,10 @@ export default function Sidebar({
   const isSkillsActive = ['Dashboard', 'Configuration', 'Evaluation', 'Image Activity'].includes(activePage)
   const [skillsOpen, setSkillsOpen] = useState(true)
   const showSkillsChildren = sidebarCollapsed ? skillsOpen : (skillsOpen || isSkillsActive)
+  const handleSelectSidebarPage = (page) => {
+    setSkillsOpen(false)
+    onSelectPage(page)
+  }
 
   return (
     <aside className={`vx-sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
@@ -85,7 +89,7 @@ export default function Sidebar({
                         key={child.label}
                         type="button"
                         className={`vx-sublink ${child.label === activePage ? 'active' : ''}`}
-                        onClick={() => onSelectPage(child.label)}
+                        onClick={() => handleSelectSidebarPage(child.label)}
                       >
                         <span className="vx-sublink-icon" aria-hidden="true">
                           <child.icon size={14} strokeWidth={2} />
@@ -100,7 +104,7 @@ export default function Sidebar({
                   key={item.label}
                   type="button"
                   className={`vx-link ${item.label === activePage ? 'active' : ''}`}
-                  onClick={() => onSelectPage(item.label)}
+                  onClick={() => handleSelectSidebarPage(item.label)}
                 >
                   <span className="vx-link-icon" aria-hidden="true">
                     <item.icon size={16} strokeWidth={2} />
