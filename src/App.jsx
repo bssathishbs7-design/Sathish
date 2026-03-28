@@ -149,7 +149,7 @@ function App() {
     if (!message) return
 
     const id = `alert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    setAlerts((current) => [...current.slice(-2), { id, tone, message, duration }])
+    setAlerts([{ id, tone, message, duration }])
   }
 
   const toggleFullscreen = async () => {
