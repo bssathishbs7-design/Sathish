@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  BadgeCheck,
+  BookOpen,
+  CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   CheckCircle2,
   Eye,
   ImagePlus,
+  GripVertical,
   Pencil,
   Plus,
   Save,
+  Sparkles,
+  Tag,
+  Target,
   Trash2,
   Upload,
   X,
@@ -17,6 +26,18 @@ import {
 const cognitiveOptions = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create']
 const affectiveOptions = ['Receiving', 'Responding', 'Valuing', 'Organization', 'Characterization']
 const psychomotorOptions = ['Perception', 'Set', 'Guided Response', 'Mechanism', 'Adaptation', 'Origination']
+const cognitiveScaffoldingOptions = ['Not Applicable', 'Remember', 'Understand', 'Apply', 'Analyse', 'Evaluate', 'Create']
+const affectiveScaffoldingOptions = ['Not Applicable', 'Receive', 'Respond', 'Value', 'Organize', 'Characterize']
+const psychomotorScaffoldingOptions = ['Not Applicable', ...psychomotorOptions]
+const scaffoldingTypeOptions = [
+  { value: 'MCQ', label: 'MCQ', helper: 'Multi Choice Question' },
+  { value: 'Descriptive', label: 'Descriptive', helper: 'Long-form response' },
+  { value: 'True or False', label: 'True or False', helper: 'Binary answer format' },
+  { value: 'Fill in the blanks', label: 'Fill in the blanks', helper: 'Short completion prompt' },
+]
+const scaffoldingTypeMeta = Object.fromEntries(
+  scaffoldingTypeOptions.map((option) => [option.value, option]),
+)
 
 const imageSlots = [
   { key: 'A' },
@@ -43,6 +64,34 @@ const initialSteps = [
   createRubricStep('step-1', 'Place the blood pressure cuff snugly on the upper arm with the artery marker aligned correctly.'),
   createRubricStep('step-2', 'Explain the procedure to the patient before inflating the cuff.'),
 ]
+
+const createGeneratedQuestion = (type, index) => ({
+  id: `${type}-${index + 1}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  type,
+  questionText:
+    type === 'MCQ'
+      ? 'Select the most appropriate answer based on the image provided.'
+      : type === 'Descriptive'
+        ? 'Describe the most important clinical finding visible in the image.'
+        : type === 'True or False'
+          ? 'The labelled structure is functioning normally in this image.'
+          : 'The highlighted structure is the ________.',
+  options:
+    type === 'MCQ'
+      ? ['Option A', 'Option B', 'Option C', 'Option D']
+      : [],
+  cognitive: 'Not Applicable',
+  affective: 'Not Applicable',
+  psychomotor: 'Not Applicable',
+  marks: '1',
+  answerKey:
+    type === 'MCQ'
+      ? 'Option A'
+      : type === 'True or False'
+        ? 'True'
+        : 'Sample answer key',
+  explanation: 'Add a short explanation for the expected answer.',
+})
 
 /**
  * ImageActivityPage Implementation Contract
@@ -83,14 +132,28 @@ export default function ImageActivityPage({ activityData, onAlert }) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [hasMarks, setHasMarks] = useState(defaultMarksEnabled)
   const [isCertifiable, setIsCertifiable] = useState(defaultCertifiable)
+  const [isAssetsSectionOpen, setIsAssetsSectionOpen] = useState(false)
   const [images, setImages] = useState(createImageState)
   const [previewImage, setPreviewImage] = useState(null)
   const [steps, setSteps] = useState(initialSteps)
   const [activeStepId, setActiveStepId] = useState(initialSteps[0].id)
+  const [generatedQuestions, setGeneratedQuestions] = useState([])
+  const [questionActionsEnabled, setQuestionActionsEnabled] = useState(false)
+  const [draggedQuestionId, setDraggedQuestionId] = useState(null)
+  const [isScaffoldingTooltipOpen, setIsScaffoldingTooltipOpen] = useState(false)
+  const [scaffoldingSelection, setScaffoldingSelection] = useState({
+    MCQ: 1,
+    Descriptive: 0,
+    'True or False': 0,
+    'Fill in the blanks': 0,
+  })
   const imageUrlsRef = useRef([])
+  const scaffoldingTooltipRef = useRef(null)
 
-  const marksLabel = hasMarks ? 'Enabled' : 'Nil'
   const certifiableLabel = isCertifiable ? 'Yes' : 'No'
+  const totalGeneratedMarks = hasMarks
+    ? generatedQuestions.reduce((total, question) => total + (Number(question.marks) || 0), 0)
+    : 0
 
   useEffect(() => {
     setActivityName(defaultActivityName)
@@ -120,6 +183,19 @@ export default function ImageActivityPage({ activityData, onAlert }) {
       document.body.style.overflow = previousOverflow
     }
   }, [previewImage])
+
+  useEffect(() => {
+    if (!isScaffoldingTooltipOpen) return undefined
+
+    const onPointerDown = (event) => {
+      if (!scaffoldingTooltipRef.current?.contains(event.target)) {
+        setIsScaffoldingTooltipOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [isScaffoldingTooltipOpen])
 
   const activeStep = useMemo(
     () => steps.find((step) => step.id === activeStepId) ?? steps[0] ?? null,
@@ -188,6 +264,82 @@ export default function ImageActivityPage({ activityData, onAlert }) {
     setSteps((current) => [...current, nextStep])
     setActiveStepId(nextStep.id)
     onAlert?.({ tone: 'primary', message: 'New question added to the rubric flow.' })
+  }
+
+  const handleGenerateScaffolding = () => {
+    const selectedTypes = Object.entries(scaffoldingSelection).filter(([, range]) => range > 0)
+
+    if (!selectedTypes.length) {
+      onAlert?.({ tone: 'warning', message: 'Select at least one scaffolding question type before generating.' })
+      return
+    }
+
+    const hasInvalidRange = selectedTypes.some(([, range]) => range < 1 || range > 5)
+    if (hasInvalidRange) {
+      onAlert?.({ tone: 'warning', message: 'Each selected question type must have a range between 1 and 5.' })
+      return
+    }
+
+    const nextGeneratedQuestions = selectedTypes.flatMap(([type, range]) => (
+      Array.from({ length: range }, (_, index) => createGeneratedQuestion(type, index))
+    ))
+
+    setGeneratedQuestions(nextGeneratedQuestions)
+    setQuestionActionsEnabled(false)
+    setIsScaffoldingTooltipOpen(false)
+    onAlert?.({ tone: 'secondary', message: 'Scaffolding questions created successfully.' })
+  }
+
+  const handleToggleScaffoldingType = (type) => {
+    setScaffoldingSelection((current) => ({
+      ...current,
+      [type]: current[type] > 0 ? 0 : 1,
+    }))
+  }
+
+  const handleScaffoldingRangeChange = (type, value) => {
+    const nextValue = Number(value)
+    setScaffoldingSelection((current) => ({
+      ...current,
+      [type]: Number.isNaN(nextValue) ? 1 : Math.min(5, Math.max(1, nextValue)),
+    }))
+  }
+
+  const updateGeneratedQuestion = (id, field, value) => {
+    setGeneratedQuestions((current) => current.map((question) => (
+      question.id === id
+        ? { ...question, [field]: value }
+        : question
+    )))
+  }
+
+  const toggleQuestionActions = () => {
+    const nextValue = !questionActionsEnabled
+    setQuestionActionsEnabled(nextValue)
+    onAlert?.({
+      tone: 'primary',
+      message: nextValue ? 'Edit mode enabled for all generated questions.' : 'Edit mode turned off for generated questions.',
+    })
+  }
+
+  const deleteGeneratedQuestion = (id) => {
+    setGeneratedQuestions((current) => current.filter((question) => question.id !== id))
+    onAlert?.({ tone: 'warning', message: 'Generated question removed.' })
+  }
+
+  const moveGeneratedQuestion = (sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId) return
+
+    setGeneratedQuestions((current) => {
+      const sourceIndex = current.findIndex((question) => question.id === sourceId)
+      const targetIndex = current.findIndex((question) => question.id === targetId)
+      if (sourceIndex === -1 || targetIndex === -1) return current
+
+      const nextQuestions = [...current]
+      const [movedQuestion] = nextQuestions.splice(sourceIndex, 1)
+      nextQuestions.splice(targetIndex, 0, movedQuestion)
+      return nextQuestions
+    })
   }
 
   const handleImageUpload = (slotKey, event) => {
@@ -260,7 +412,7 @@ export default function ImageActivityPage({ activityData, onAlert }) {
         <section className="image-activity-banner image-activity-banner--enhanced">
           <div className="image-activity-banner-main">
             <div className="image-activity-banner-head">
-              <span className="image-activity-kicker">Phase 1: Contextual Setup</span>
+              <span className="image-activity-section-badge">Phase 1: Contextual Setup</span>
               <span className="image-activity-state-badge">{activityStatus}</span>
             </div>
             <div className="image-activity-title-row">
@@ -287,28 +439,46 @@ export default function ImageActivityPage({ activityData, onAlert }) {
             {activityTopic ? <span className="image-activity-topic-pill">{activityTopic}</span> : null}
             <div className="image-activity-meta-strip">
               <article className="image-activity-meta-card">
-                <span>Year</span>
+                <div className="image-activity-meta-head">
+                  <span className="image-activity-meta-icon" aria-hidden="true"><CalendarDays size={14} strokeWidth={2} /></span>
+                  <span>Year</span>
+                </div>
                 <strong>{activityYear}</strong>
               </article>
               <article className="image-activity-meta-card">
-                <span>Subject</span>
+                <div className="image-activity-meta-head">
+                  <span className="image-activity-meta-icon" aria-hidden="true"><BookOpen size={14} strokeWidth={2} /></span>
+                  <span>Subject</span>
+                </div>
                 <strong>{activitySubject}</strong>
               </article>
               <article className="image-activity-meta-card image-activity-meta-card-wide">
-                <span>Competency</span>
+                <div className="image-activity-meta-head">
+                  <span className="image-activity-meta-icon" aria-hidden="true"><Target size={14} strokeWidth={2} /></span>
+                  <span>Competency</span>
+                </div>
                 <strong>{activityCompetency}</strong>
               </article>
               <article className="image-activity-meta-card">
-                <span>Activity Tag</span>
+                <div className="image-activity-meta-head">
+                  <span className="image-activity-meta-icon" aria-hidden="true"><Tag size={14} strokeWidth={2} /></span>
+                  <span>Activity Tag</span>
+                </div>
                 <strong>{activityTag}</strong>
               </article>
               <article className="image-activity-meta-card">
-                <span>Certifiable</span>
+                <div className="image-activity-meta-head">
+                  <span className="image-activity-meta-icon" aria-hidden="true"><BadgeCheck size={14} strokeWidth={2} /></span>
+                  <span>Certifiable</span>
+                </div>
                 <strong>{certifiableLabel}</strong>
               </article>
               <article className="image-activity-meta-card">
-                <span>Marks</span>
-                <strong>{marksLabel}</strong>
+                <div className="image-activity-meta-head">
+                  <span className="image-activity-meta-icon" aria-hidden="true"><CheckCircle2 size={14} strokeWidth={2} /></span>
+                  <span>Total Marks</span>
+                </div>
+                <strong>{hasMarks ? totalGeneratedMarks : 'Disabled'}</strong>
               </article>
             </div>
 
@@ -354,90 +524,363 @@ export default function ImageActivityPage({ activityData, onAlert }) {
         <section className="vx-card image-activity-assets-card image-activity-assets-card--enhanced">
           <div className="image-activity-section-head">
             <div>
-              <span className="image-activity-section-badge">Asset Uploading</span>
-              <h2>Upload Clinical Reference Images</h2>
+              <span className="image-activity-section-badge">Upload Clinical Reference Images</span>
             </div>
-            <span className="image-activity-chip">
-              <ImagePlus size={14} strokeWidth={2} />
-              {uploadedImageCount}/{imageSlots.length} uploaded
-            </span>
+            <div className="image-activity-section-actions">
+              <span className="image-activity-chip">
+                <ImagePlus size={14} strokeWidth={2} />
+                {uploadedImageCount}/{imageSlots.length} uploaded
+              </span>
+              <button
+                type="button"
+                className="image-activity-section-toggle"
+                onClick={() => setIsAssetsSectionOpen((current) => !current)}
+                aria-expanded={isAssetsSectionOpen}
+                aria-label={isAssetsSectionOpen ? 'Collapse asset uploading section' : 'Expand asset uploading section'}
+              >
+                {isAssetsSectionOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
+              </button>
+            </div>
           </div>
 
-          <div className="image-activity-assets-grid">
-            {visibleImageSlots.map((image, index) => {
-              const slot = imageSlots[index]
-              const isFilled = Boolean(image.file)
+          {isAssetsSectionOpen ? (
+            <div className="image-activity-assets-grid">
+              {visibleImageSlots.map((image, index) => {
+                const slot = imageSlots[index]
+                const isFilled = Boolean(image.file)
 
-              return (
-                <article key={slot.key} className={`image-activity-asset image-activity-asset--enhanced ${isFilled ? 'is-filled' : 'is-empty'}`}>
-                  <div className="image-activity-asset-top">
-                    <div className="image-activity-asset-title">
-                      <span>{slot.key}</span>
-                      <small>{isFilled ? 'Uploaded' : 'Next slot'}</small>
+                return (
+                  <article key={slot.key} className={`image-activity-asset image-activity-asset--enhanced ${isFilled ? 'is-filled' : 'is-empty'}`}>
+                    <div className="image-activity-asset-top">
+                      <div className="image-activity-asset-title">
+                        <span>{slot.key}</span>
+                        <small>{isFilled ? 'Uploaded' : 'Next slot'}</small>
+                      </div>
+                      {isFilled ? (
+                        <div className="image-activity-asset-actions">
+                          <button
+                            type="button"
+                            className="image-activity-asset-btn"
+                            onClick={() => setPreviewImage({ slotKey: slot.key, title: `Image ${slot.key}`, url: image.previewUrl })}
+                            aria-label="Preview image"
+                          >
+                            <Eye size={15} strokeWidth={2} />
+                          </button>
+                          <button
+                            type="button"
+                            className="image-activity-asset-btn is-danger"
+                            onClick={() => handleRemoveImage(slot.key)}
+                            aria-label="Remove image"
+                          >
+                            <Trash2 size={15} strokeWidth={2} />
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                     {isFilled ? (
-                      <div className="image-activity-asset-actions">
-                        <button
-                          type="button"
-                          className="image-activity-asset-btn"
-                          onClick={() => setPreviewImage({ slotKey: slot.key, title: `Image ${slot.key}`, url: image.previewUrl })}
-                          aria-label="Preview image"
-                        >
-                          <Eye size={15} strokeWidth={2} />
-                        </button>
-                        <button
-                          type="button"
-                          className="image-activity-asset-btn is-danger"
-                          onClick={() => handleRemoveImage(slot.key)}
-                          aria-label="Remove image"
-                        >
-                          <Trash2 size={15} strokeWidth={2} />
-                        </button>
+                      <div className="image-activity-upload-preview">
+                        <img src={image.previewUrl} alt={`Image ${slot.key}`} />
                       </div>
-                    ) : null}
-                  </div>
-                  {isFilled ? (
-                    <div className="image-activity-upload-preview">
-                      <img src={image.previewUrl} alt={`Image ${slot.key}`} />
-                    </div>
-                  ) : (
-                    <label className="image-activity-upload-box" htmlFor={`image-upload-${slot.key}`}>
-                      <Upload size={20} strokeWidth={2} />
-                      <p>Upload image</p>
-                      <small>JPG or PNG, recommended 700 x 700 px or above</small>
-                      <span className="image-activity-upload-link">Click to browse</span>
-                    </label>
-                  )}
-                  <input
-                    id={`image-upload-${slot.key}`}
-                    className="image-activity-upload-input"
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg"
-                    onChange={(event) => handleImageUpload(slot.key, event)}
-                  />
-                  {image.error ? <p className="image-activity-upload-error">{image.error}</p> : null}
-                </article>
-              )
-            })}
-          </div>
+                    ) : (
+                      <label className="image-activity-upload-box" htmlFor={`image-upload-${slot.key}`}>
+                        <Upload size={20} strokeWidth={2} />
+                        <p>Upload image</p>
+                        <small>JPG or PNG, recommended 700 x 700 px or above</small>
+                        <span className="image-activity-upload-link">Click to browse</span>
+                      </label>
+                    )}
+                    <input
+                      id={`image-upload-${slot.key}`}
+                      className="image-activity-upload-input"
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg"
+                      onChange={(event) => handleImageUpload(slot.key, event)}
+                    />
+                    {image.error ? <p className="image-activity-upload-error">{image.error}</p> : null}
+                  </article>
+                )
+              })}
+            </div>
+          ) : null}
         </section>
 
         <section className="vx-card image-activity-builder-card image-activity-builder-card--enhanced">
           <div className="image-activity-section-head">
             <div>
-              <span className="image-activity-kicker">Phase 2: Building the Assessment Rubric</span>
-              <h2>Instruction + Taxonomy Mapping</h2>
-              <p className="image-activity-section-copy">
-                Use the step list to move through the procedure in order. Editing one step at a time keeps the rubric easier to review and save.
-              </p>
+              <span className="image-activity-section-badge">Phase 2: Building the Assessment Rubric</span>
             </div>
-            <div className="image-activity-inline-actions">
+            <div className="image-activity-inline-actions" ref={scaffoldingTooltipRef}>
+              <div className="image-activity-scaffolding-anchor">
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => setIsScaffoldingTooltipOpen((current) => !current)}
+                  disabled={generatedQuestions.length > 0}
+                >
+                  <Sparkles size={15} strokeWidth={2.2} />
+                  Generate Scaffolding
+                </button>
+                {isScaffoldingTooltipOpen ? (
+                  <div className="image-activity-scaffolding-tooltip">
+                    <div className="image-activity-scaffolding-tooltip-head">
+                      <span className="image-activity-scaffolding-tooltip-kicker">Choose Generation</span>
+                      <button
+                        type="button"
+                        className="image-activity-scaffolding-close"
+                        aria-label="Close scaffolding tooltip"
+                        onClick={() => setIsScaffoldingTooltipOpen(false)}
+                      >
+                        <X size={14} strokeWidth={2} />
+                      </button>
+                    </div>
+
+                    <p className="image-activity-scaffolding-tooltip-note">
+                      Select one or more question types, set the count from 1 to 5, then click Generate.
+                    </p>
+
+                    <div className="image-activity-scaffolding-option-list">
+                      {scaffoldingTypeOptions.map((option) => {
+                        const isSelected = scaffoldingSelection[option.value] > 0
+                        return (
+                          <div key={option.value} className={`image-activity-scaffolding-option ${isSelected ? 'is-selected' : ''}`}>
+                            <div className="image-activity-scaffolding-row">
+                              <button
+                                type="button"
+                                className="image-activity-scaffolding-choice"
+                                onClick={() => handleToggleScaffoldingType(option.value)}
+                              >
+                                <span className="image-activity-scaffolding-choice-icon" aria-hidden="true">
+                                  <Sparkles size={14} strokeWidth={2} />
+                                </span>
+                                <span className="image-activity-scaffolding-choice-copy">
+                                  <strong>{option.label}</strong>
+                                  <small>{option.helper}</small>
+                                </span>
+                              </button>
+                              {isSelected ? (
+                                <label className="forms-field image-activity-scaffolding-range">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="5"
+                                    value={scaffoldingSelection[option.value]}
+                                    onChange={(event) => handleScaffoldingRangeChange(option.value, event.target.value)}
+                                  />
+                                </label>
+                              ) : null}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className="image-activity-scaffolding-tooltip-actions">
+                      <button type="button" className="tool-btn green" onClick={handleGenerateScaffolding}>Generate</button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               <button type="button" className="tool-btn green" onClick={handleAddQuestion}>
                 <Plus size={15} strokeWidth={2.2} />
                 Add Question
               </button>
             </div>
           </div>
+
+          {generatedQuestions.length > 0 ? (
+            <div className="image-activity-question-entry image-activity-generated-questions">
+              <div className="image-activity-question-head">
+                <div>
+                  <span className="image-activity-section-badge">Generated Scaffolding Questions</span>
+                </div>
+                <div className="image-activity-question-count">
+                  <span>Total created</span>
+                  <strong>{generatedQuestions.length}</strong>
+                </div>
+              </div>
+
+              <div className="image-activity-generated-toolbar">
+                <div className="image-activity-generated-toggle">
+                  <span>Edit</span>
+                  <button
+                    type="button"
+                    className={`image-activity-toggle ${questionActionsEnabled ? 'is-active' : ''}`}
+                    onClick={toggleQuestionActions}
+                    aria-pressed={questionActionsEnabled}
+                    aria-label="Toggle edit mode for generated questions"
+                  >
+                    <span />
+                  </button>
+                </div>
+              </div>
+
+              <div className="image-activity-question-list">
+                {generatedQuestions.map((question, index) => {
+                  return (
+                    <article
+                      key={question.id}
+                      className={`image-activity-generated-card ${draggedQuestionId === question.id ? 'is-dragging' : ''}`}
+                      draggable
+                      onDragStart={() => setDraggedQuestionId(question.id)}
+                      onDragEnd={() => setDraggedQuestionId(null)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => {
+                        moveGeneratedQuestion(draggedQuestionId, question.id)
+                        setDraggedQuestionId(null)
+                      }}
+                    >
+                      <div className="image-activity-generated-card-head">
+                        <div className="image-activity-generated-card-copy">
+                          <div className="image-activity-generated-card-title-row">
+                            <div className="image-activity-generated-title-group">
+                              <button
+                                type="button"
+                                className="image-activity-generated-drag-handle"
+                                aria-label="Drag question to reorder"
+                              >
+                                <GripVertical size={16} strokeWidth={2} />
+                              </button>
+                              <strong>Question {index + 1}</strong>
+                            </div>
+                            {questionActionsEnabled ? (
+                              <button
+                                type="button"
+                                className="image-activity-asset-btn is-danger"
+                                onClick={() => deleteGeneratedQuestion(question.id)}
+                                aria-label={`Delete question ${index + 1}`}
+                              >
+                                <Trash2 size={15} strokeWidth={2} />
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="image-activity-generated-card-meta">
+                            <div className="image-activity-generated-tags">
+                              <span className="image-activity-generated-tag">{question.cognitive}</span>
+                              <span className="image-activity-generated-tag">{question.affective}</span>
+                              <span className="image-activity-generated-tag">{question.psychomotor}</span>
+                            </div>
+                            <div className="image-activity-generated-card-actions">
+                              <span className={`image-activity-generated-mark-pill ${!hasMarks ? 'is-disabled' : ''}`}>
+                                {hasMarks ? `${question.marks} mark` : 'Marks disabled'}
+                              </span>
+                              <span className="image-activity-generated-type-badge">{question.type}</span>
+                            </div>
+                          </div>
+                          <p className="image-activity-generated-summary-text">
+                            {question.questionText}
+                          </p>
+                        </div>
+
+                      </div>
+
+                      <div className="image-activity-generated-body">
+                          {questionActionsEnabled ? (
+                            <label className="forms-field forms-field-full">
+                              <span>Question Text</span>
+                              <textarea
+                                rows={3}
+                                value={question.questionText}
+                                onChange={(event) => updateGeneratedQuestion(question.id, 'questionText', event.target.value)}
+                              />
+                            </label>
+                          ) : null}
+
+                          {question.type === 'MCQ' ? (
+                            <>
+                              {questionActionsEnabled ? (
+                                <div className="image-activity-generated-section-label">Options</div>
+                              ) : null}
+                              <div className="image-activity-generated-options">
+                                {question.options.map((option, optionIndex) => (
+                                  <div key={`${question.id}-${option}`} className="image-activity-generated-option">
+                                    <span>{String.fromCharCode(65 + optionIndex)}</span>
+                                    {questionActionsEnabled ? (
+                                      <input
+                                        value={option}
+                                        onChange={(event) => {
+                                          const nextOptions = [...question.options]
+                                          nextOptions[optionIndex] = event.target.value
+                                          updateGeneratedQuestion(question.id, 'options', nextOptions)
+                                        }}
+                                      />
+                                    ) : (
+                                      <strong>{option}</strong>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          ) : null}
+
+                          {questionActionsEnabled ? (
+                            <>
+                              <div className="image-activity-generated-section-label">Assessment Tags</div>
+                              <div className="image-activity-generated-meta-grid">
+                                <label className="forms-field">
+                                  <span>Marks</span>
+                                  <input
+                                    disabled={!hasMarks}
+                                    value={question.marks}
+                                    onChange={(event) => updateGeneratedQuestion(question.id, 'marks', event.target.value)}
+                                  />
+                                </label>
+
+                                <label className="forms-field">
+                                  <span>Cognitive</span>
+                                  <div className="forms-select-wrap">
+                                    <select value={question.cognitive} onChange={(event) => updateGeneratedQuestion(question.id, 'cognitive', event.target.value)}>
+                                      {cognitiveScaffoldingOptions.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </label>
+
+                                <label className="forms-field">
+                                  <span>Affective</span>
+                                  <div className="forms-select-wrap">
+                                    <select value={question.affective} onChange={(event) => updateGeneratedQuestion(question.id, 'affective', event.target.value)}>
+                                      {affectiveScaffoldingOptions.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </label>
+
+                                <label className="forms-field">
+                                  <span>Psychomotor</span>
+                                  <div className="forms-select-wrap">
+                                    <select value={question.psychomotor} onChange={(event) => updateGeneratedQuestion(question.id, 'psychomotor', event.target.value)}>
+                                      {psychomotorScaffoldingOptions.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </label>
+                              </div>
+                            </>
+                          ) : null}
+
+                          <div className="image-activity-generated-support-grid">
+                            <label className="forms-field">
+                              {questionActionsEnabled ? <span>Answer & Explanation</span> : null}
+                              {questionActionsEnabled ? (
+                                <input
+                                  value={question.answerKey}
+                                  onChange={(event) => updateGeneratedQuestion(question.id, 'answerKey', event.target.value)}
+                                />
+                              ) : (
+                                <div className="image-activity-generated-readonly">{question.answerKey}</div>
+                              )}
+                            </label>
+                          </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <div className="image-activity-builder-layout">
             <aside className="image-activity-outline">
@@ -541,6 +984,7 @@ export default function ImageActivityPage({ activityData, onAlert }) {
             ) : null}
           </div>
         </section>
+
       </div>
       {previewImage ? createPortal(
         <div className="image-activity-preview-modal" onClick={() => setPreviewImage(null)} aria-hidden="true">
