@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react'
 import {
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Eye,
   FileText,
@@ -14,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
+import PageBreadcrumbs from '../components/PageBreadcrumbs'
 
 const workflowSteps = [
   {
@@ -179,13 +181,12 @@ const generationStatusSteps = [
  * Placement:
  * - Page-level workflow in src/pages/
  */
-function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert }) {
+function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenInterpretationActivity, onAlert, savedImageActivities = {} }) {
   const [records, setRecords] = useState(competencyRecords)
   const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [previewActivity, setPreviewActivity] = useState(null)
   const [builderActivity, setBuilderActivity] = useState(null)
   const [assignmentActivity, setAssignmentActivity] = useState(null)
   const [builderNotes, setBuilderNotes] = useState('Assessment instructions and checklist content')
@@ -413,6 +414,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
   const handlePrimaryAction = (recordId, activityId) => {
     const activity = findActivity(recordId, activityId)
     const record = records.find((item) => item.id === recordId)
+    const savedImageActivity = activity?.type === 'Image' ? savedImageActivities[activity.id] : null
     if (!activity) return
 
     if (activity.status === 'Not Generated') {
@@ -427,8 +429,29 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
     }
 
     if (activity.status === 'Not Created') {
+      if (savedImageActivity) {
+        setAssignmentActivity({ recordId, activityId })
+        setAssignmentTarget(activity.batch)
+        return
+      }
+
       if (activity.type === 'Image') {
         onOpenImageActivity?.({
+          activity,
+          record: record
+            ? {
+                year: record.year,
+                subject: record.subject,
+                competency: record.competency,
+                topic: record.topic,
+              }
+            : null,
+        })
+        return
+      }
+
+      if (activity.type === 'Interpretation') {
+        onOpenInterpretationActivity?.({
           activity,
           record: record
             ? {
@@ -517,6 +540,19 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
   }
 
   const getStateConfig = (activity) => {
+    const savedImageActivity = activity.type === 'Image' ? savedImageActivities[activity.id] : null
+
+    if (savedImageActivity) {
+      return {
+        primaryLabel: 'Review / Assign',
+        primaryTone: 'orange',
+        showPreview: true,
+        showDelete: true,
+        showOptions: false,
+        isDisabled: false,
+      }
+    }
+
     if (activity.status === 'Not Generated') {
       return {
         primaryLabel: 'Generate',
@@ -609,6 +645,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
   return (
     <section className="vx-content forms-page">
       <div className="forms-flow-shell">
+        <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Configuration' }]} />
         <div className="forms-flow-head">
           <div>
             <h1>Configuration</h1>
@@ -677,7 +714,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
                         </span>
                       </span>
                     <span className="forms-parent-action" aria-hidden="true">
-                      <ChevronRight size={18} strokeWidth={2.6} />
+                      {isSelected ? <ChevronDown size={18} strokeWidth={2.6} /> : <ChevronRight size={18} strokeWidth={2.6} />}
                     </span>
                   </button>
 
@@ -813,7 +850,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
                                   : ''
                               }`}
                             >
-                              <div className="forms-flow-activity">
+                              <div className="forms-flow-activity" data-label="Activity Name">
                                 <div
                                   className={`forms-activity-tooltip ${isSelected ? 'has-tooltip' : ''}`}
                                   data-tooltip={isSelected ? `${activity.name}\n${getActivityPreviewText(activity, record.id)}` : undefined}
@@ -824,7 +861,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
                                   </strong>
                                 </div>
                               </div>
-                              <div className="forms-flow-cell is-center">
+                              <div className="forms-flow-cell is-center" data-label="Certifiable">
                                 {activity.showCertifiable ? (
                                   <span className="forms-certifiable">
                                     <CheckCircle2 size={16} strokeWidth={2} />
@@ -834,13 +871,13 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
                                   <span className="forms-badge forms-badge-neutral">Nil</span>
                                 )}
                               </div>
-                              <div className="forms-flow-cell is-center">
+                              <div className="forms-flow-cell is-center" data-label="Activity Type">
                                 <span className={`t-type ${activity.type.toLowerCase()}`}>{activity.type}</span>
                               </div>
-                              <div className="forms-flow-cell is-center">
+                              <div className="forms-flow-cell is-center" data-label="Marks">
                                 <span className="forms-badge forms-badge-neutral">{activity.marks}</span>
                               </div>
-                              <div className="forms-flow-actions">
+                              <div className="forms-flow-actions" data-label="Actions">
                                 <div className="forms-flow-action-main">
                                   <button
                                     type="button"
@@ -929,7 +966,31 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
                                 </div>
                                 <div className="forms-flow-action-icons">
                                   {state.showPreview ? (
-                                    <button type="button" className="forms-icon-btn" aria-label="Preview" onClick={() => setPreviewActivity({ recordId: record.id, activityId: activity.id })}>
+                                    <button
+                                      type="button"
+                                      className="forms-icon-btn"
+                                      aria-label="Preview"
+                                      onClick={() => {
+                                        const savedImageActivity = activity.type === 'Image' ? savedImageActivities[activity.id] : null
+
+                                        if (activity.type === 'Image') {
+                                          onOpenImageActivity?.(
+                                            savedImageActivity ?? {
+                                              activity,
+                                              record: {
+                                                year: record.year,
+                                                subject: record.subject,
+                                                competency: record.competency,
+                                                topic: record.topic,
+                                              },
+                                            },
+                                          )
+                                          return
+                                        }
+
+                                        onAlert?.({ tone: 'primary', message: 'Preview is available from the saved activity page.' })
+                                      }}
+                                    >
                                       <Eye size={16} strokeWidth={2} />
                                     </button>
                                   ) : null}
@@ -945,12 +1006,12 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
                                   ) : null}
                                 </div>
                               </div>
-                              <div className="forms-flow-cell is-center">
+                              <div className="forms-flow-cell is-center" data-label="Status">
                                 <span className={`forms-badge ${activity.status === 'Assigned' ? 'forms-badge-success' : activity.status === 'Generated' || activity.status === 'Created' ? 'forms-badge-info' : 'forms-badge-danger'}`}>
                                   {activity.status}
                                 </span>
                               </div>
-                              <div className="forms-flow-assign is-center">
+                              <div className="forms-flow-assign is-center" data-label="Assign Info">
                                 <button
                                   type="button"
                                   className="forms-icon-btn forms-assign-info-btn has-tooltip"
@@ -1185,24 +1246,6 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onAlert 
         </div>
       ) : null}
 
-      {previewActivity ? (
-        <div className="forms-modal-backdrop" onClick={() => setPreviewActivity(null)} aria-hidden="true">
-          <div className="forms-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="forms-modal-head">
-              <div>
-                <h3>Preview Assessment</h3>
-                <p>Preview the checklist, rubric, or image task before assigning.</p>
-              </div>
-              <button type="button" className="ghost" onClick={() => setPreviewActivity(null)}>Close</button>
-            </div>
-            <div className="forms-preview-card">
-              <strong>{findActivity(previewActivity.recordId, previewActivity.activityId)?.name}</strong>
-              <span>Status: {findActivity(previewActivity.recordId, previewActivity.activityId)?.status}</span>
-              <p>This is a lightweight preview placeholder for the generated or manually created assessment content.</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </section>
   )
 }

@@ -1,4 +1,5 @@
 ﻿import { useState } from 'react'
+import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import {
   assessmentYearOptions,
   assessmentSgtMap,
@@ -67,9 +68,9 @@ function DashboardSummaryPage({ onBackToAssessment }) {
   return (
     <section className="vx-content forms-page dashboard-summary-page">
       <div className="dashboard-summary-shell">
+        <PageBreadcrumbs items={[{ label: 'Evaluation' }, { label: 'Dashboard Summary' }]} />
         <div className="dashboard-summary-hero">
           <div className="dashboard-summary-hero-copy">
-            <span className="dashboard-summary-kicker">Dashboard summary</span>
             <h1>Dashboard Summary</h1>
             <p>
               Filter the student directory, open a learner, and review a clean progress snapshot

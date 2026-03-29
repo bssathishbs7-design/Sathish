@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandMark from '../assets/brand-mark.svg'
@@ -32,12 +32,27 @@ export default function Sidebar({
   onCloseMobile,
 }) {
   const isSkillsActive = SKILL_PAGES.includes(activePage)
-  const [skillsOpen, setSkillsOpen] = useState(true)
-  const showSkillsChildren = sidebarCollapsed ? skillsOpen : (skillsOpen || isSkillsActive)
+  const [skillsOpen, setSkillsOpen] = useState(isSkillsActive)
+  const skillsGroupRef = useRef(null)
+  const showSkillsChildren = skillsOpen
+  const useCollapsedFlyout = sidebarCollapsed && !mobileSidebarOpen
   const handleSelectSidebarPage = (page) => {
-    setSkillsOpen(false)
+    setSkillsOpen(SKILL_PAGES.includes(page))
     onSelectPage(page)
   }
+
+  useEffect(() => {
+    if (!useCollapsedFlyout || !skillsOpen) return undefined
+
+    const handlePointerDown = (event) => {
+      if (!skillsGroupRef.current?.contains(event.target)) {
+        setSkillsOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [skillsOpen, useCollapsedFlyout])
 
   return (
     <aside className={`vx-sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
@@ -67,7 +82,11 @@ export default function Sidebar({
           <div key={group.section} className="vx-menu-group">
             {group.items.map((item) => (
               item.children ? (
-                <div key={item.label} className={`vx-link-group ${isSkillsActive ? 'active' : ''}`}>
+                <div
+                  key={item.label}
+                  ref={skillsGroupRef}
+                  className={`vx-link-group ${isSkillsActive ? 'active' : ''}`}
+                >
                   <button
                     type="button"
                     className={`vx-link vx-link-parent ${isSkillsActive ? 'active' : ''}`}
@@ -83,7 +102,7 @@ export default function Sidebar({
                     </span>
                   </button>
 
-                  <div className={`vx-sublinks ${showSkillsChildren ? 'open' : ''} ${sidebarCollapsed ? 'is-flyout' : ''}`}>
+                  <div className={`vx-sublinks ${showSkillsChildren ? 'open' : ''} ${useCollapsedFlyout ? 'is-flyout' : ''}`}>
                     {item.children.map((child) => (
                       <button
                         key={child.label}
@@ -94,7 +113,7 @@ export default function Sidebar({
                         <span className="vx-sublink-icon" aria-hidden="true">
                           <child.icon size={14} strokeWidth={2} />
                         </span>
-                        <span className={sidebarCollapsed ? 'vx-sublink-text' : 'vx-link-text'}>{child.label}</span>
+                        <span className={useCollapsedFlyout ? 'vx-sublink-text' : 'vx-link-text'}>{child.label}</span>
                       </button>
                     ))}
                   </div>

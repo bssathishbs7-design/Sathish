@@ -8,6 +8,7 @@ import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import ImageActivityPage from './pages/ImageActivityPage'
+import InterpretationActivityPage from './pages/InterpretationActivityPage'
 import { APP_PAGES } from './config/appPages'
 const baseRows = [
   ['1', 'Mark', 'Otto', '@mdo'],
@@ -103,6 +104,8 @@ function App() {
   const useCompactLogo = theme === 'light' && sidebarCollapsed
   const [activePage, setActivePage] = useState(APP_PAGES.DASHBOARD)
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
+  const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)
+  const [savedImageActivities, setSavedImageActivities] = useState({})
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
@@ -231,10 +234,16 @@ function App() {
             <SkillManagementPage
               onGenerateComplete={(page) => setActivePage(page)}
               onAlert={showAlert}
+              savedImageActivities={savedImageActivities}
               onOpenImageActivity={(activity) => {
                 setSelectedImageActivity(activity)
                 setActivePage(APP_PAGES.IMAGE_ACTIVITY)
                 showAlert({ tone: 'primary', message: 'Image activity workspace opened.' })
+              }}
+              onOpenInterpretationActivity={(activity) => {
+                setSelectedInterpretationActivity(activity)
+                setActivePage(APP_PAGES.INTERPRETATION_ACTIVITY)
+                showAlert({ tone: 'primary', message: 'Interpretation activity workspace opened.' })
               }}
             />
           ) : activePage === APP_PAGES.EVALUATION ? (
@@ -243,7 +252,23 @@ function App() {
               onAlert={showAlert}
             />
           ) : activePage === APP_PAGES.IMAGE_ACTIVITY ? (
-            <ImageActivityPage activityData={selectedImageActivity} onAlert={showAlert} />
+            <ImageActivityPage
+              activityData={selectedImageActivity}
+              onAlert={showAlert}
+              onSaveSkillActivity={(savedActivity) => {
+                if (!savedActivity?.activity?.id) return
+                setSavedImageActivities((current) => ({
+                  ...current,
+                  [savedActivity.activity.id]: savedActivity,
+                }))
+                setSelectedImageActivity(savedActivity)
+              }}
+            />
+          ) : activePage === APP_PAGES.INTERPRETATION_ACTIVITY ? (
+            <InterpretationActivityPage
+              activityData={selectedInterpretationActivity}
+              onAlert={showAlert}
+            />
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
             <FacultyManagementPageV2 onAlert={showAlert} />
           ) : activePage === APP_PAGES.DASHBOARD_SUMMARY ? (

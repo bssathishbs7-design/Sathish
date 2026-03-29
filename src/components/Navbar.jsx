@@ -1,13 +1,13 @@
 import {
   Bell,
-  ChevronFirst,
-  ChevronLast,
   ChevronRight,
   LogOut,
   Maximize,
   Menu,
   Minimize,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
   Sun,
   UserPen,
@@ -63,7 +63,7 @@ export default function Navbar({
         onClick={onToggleSidebar}
         aria-label="Collapse sidebar"
       >
-        {sidebarCollapsed ? <ChevronLast size={18} strokeWidth={2} /> : <ChevronFirst size={18} strokeWidth={2} />}
+        {sidebarCollapsed ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}
       </button>
 
       <div className="vx-global-search">

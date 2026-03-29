@@ -1,4 +1,5 @@
 ﻿import { useState } from 'react'
+import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import {
   assessmentSgtMap,
   assessmentYearOptions,
@@ -268,6 +269,7 @@ function SkillAssessmentPage({ onOpenDashboardSummary, onAlert }) {
   return (
     <section className="vx-content forms-page skill-assessment-page">
       <div className="skill-assessment-shell">
+        <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Evaluation' }]} />
         <div className="skill-assessment-hero">
           <div className="skill-assessment-hero-copy">
             <h1>Evaluation</h1>

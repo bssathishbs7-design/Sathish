@@ -1,4 +1,5 @@
 ﻿import { useState } from 'react'
+import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import {
   Download,
   Eye,
@@ -229,6 +230,7 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
   return (
     <section className="vx-content faculty-management-page">
       <div className="faculty-page-shell">
+        <PageBreadcrumbs items={[{ label: 'Faculty' }, { label: 'Faculty Management' }]} />
         <div className="faculty-page-hero">
           <div className="faculty-page-hero-copy">
             <h1>Faculty Management</h1>

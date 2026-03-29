@@ -1,10 +1,9 @@
 import {
-  ClipboardList,
-  FileImage,
+  BarChart3,
+  ClipboardCheck,
   FileText,
-  FolderKanban,
-  LayoutDashboard,
-  UserPen,
+  SlidersHorizontal,
+  UsersRound,
 } from 'lucide-react'
 
 export const APP_PAGES = {
@@ -12,6 +11,7 @@ export const APP_PAGES = {
   CONFIGURATION: 'Configuration',
   EVALUATION: 'Evaluation',
   IMAGE_ACTIVITY: 'Image Activity',
+  INTERPRETATION_ACTIVITY: 'Interpretation Activity',
   FACULTY_MANAGEMENT: 'Faculty Management',
   DASHBOARD_SUMMARY: 'Dashboard Summary',
   PROFILE_SETTINGS: 'Profile Settings',
@@ -23,6 +23,7 @@ export const SKILL_PAGES = [
   APP_PAGES.CONFIGURATION,
   APP_PAGES.EVALUATION,
   APP_PAGES.IMAGE_ACTIVITY,
+  APP_PAGES.INTERPRETATION_ACTIVITY,
 ]
 
 export const SIDEBAR_MENU = [
@@ -33,13 +34,12 @@ export const SIDEBAR_MENU = [
         label: 'Skills',
         icon: FileText,
         children: [
-          { label: APP_PAGES.CONFIGURATION, icon: FolderKanban },
-          { label: APP_PAGES.EVALUATION, icon: ClipboardList },
-          { label: APP_PAGES.DASHBOARD, icon: LayoutDashboard },
-          { label: APP_PAGES.IMAGE_ACTIVITY, icon: FileImage },
+          { label: APP_PAGES.CONFIGURATION, icon: SlidersHorizontal },
+          { label: APP_PAGES.EVALUATION, icon: ClipboardCheck },
+          { label: APP_PAGES.DASHBOARD, icon: BarChart3 },
         ],
       },
-      { label: APP_PAGES.FACULTY_MANAGEMENT, icon: UserPen },
+      { label: APP_PAGES.FACULTY_MANAGEMENT, icon: UsersRound },
     ],
   },
 ]
