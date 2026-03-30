@@ -9,12 +9,14 @@ import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import ImageActivityPage from './pages/ImageActivityPage'
 import InterpretationActivityPage from './pages/InterpretationActivityPage'
+import OspeActivityPage from './pages/OspeActivityPage'
 import { APP_PAGES } from './config/appPages'
 
 const PAGE_PATHS = {
   [APP_PAGES.DASHBOARD]: '/',
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
+  [APP_PAGES.OSPE_ACTIVITY]: '/skills/ospe-activity',
   [APP_PAGES.IMAGE_ACTIVITY]: '/skills/image-activity',
   [APP_PAGES.INTERPRETATION_ACTIVITY]: '/skills/interpretation-activity',
   [APP_PAGES.FACULTY_MANAGEMENT]: '/faculty-management',
@@ -296,6 +298,8 @@ function App() {
               onOpenDashboardSummary={() => navigateToPage(APP_PAGES.DASHBOARD_SUMMARY)}
               onAlert={showAlert}
             />
+          ) : activePage === APP_PAGES.OSPE_ACTIVITY ? (
+            <OspeActivityPage onAlert={showAlert} />
           ) : activePage === APP_PAGES.IMAGE_ACTIVITY ? (
             <ImageActivityPage
               key={selectedImageActivity?.activity?.id ?? selectedImageActivity?.id ?? 'image-activity'}

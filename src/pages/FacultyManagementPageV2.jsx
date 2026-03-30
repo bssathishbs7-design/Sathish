@@ -3,9 +3,9 @@ import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import {
   Download,
   Eye,
-  MoreHorizontal,
   Plus,
   Search,
+  SlidersHorizontal,
   Trash2,
   UserPen,
   X,
@@ -177,7 +177,7 @@ export default function FacultyManagementPageV2({ onAlert }) {
   const [statusFilter, setStatusFilter] = useState('')
   const [searchFaculty, setSearchFaculty] = useState('')
   const [detailedView, setDetailedView] = useState(false)
-  const [showFilters, setShowFilters] = useState(true)
+  const [showFilters, setShowFilters] = useState(false)
   const [expandedFacultyId, setExpandedFacultyId] = useState(facultyRows[0]?.id ?? '')
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -332,21 +332,7 @@ export default function FacultyManagementPageV2({ onAlert }) {
           </div>
 
           <div className="faculty-toolbar">
-            <label className="faculty-searchbox">
-              <Search size={16} strokeWidth={2} />
-              <input
-                type="search"
-                value={searchFaculty}
-                onChange={(event) => resetAndSet(setSearchFaculty)(event.target.value)}
-                placeholder="Search by name, role, or employee ID"
-              />
-            </label>
-
             <div className="faculty-toolbar-actions">
-              <button type="button" className="faculty-utility-btn" onClick={() => setShowFilters((current) => !current)}>
-                <MoreHorizontal size={16} strokeWidth={2} />
-                <span>Filter</span>
-              </button>
               <button type="button" className="faculty-utility-btn" onClick={handleImportFaculty}>
                 <Download size={16} strokeWidth={2} />
                 <span>Import</span>
@@ -359,8 +345,31 @@ export default function FacultyManagementPageV2({ onAlert }) {
           </div>
         </div>
 
-        {showFilters ? (
-          <section className="faculty-filter-strip">
+        <section className="faculty-filter-strip">
+          <div className="faculty-filter-topbar">
+            <label className="faculty-searchbox faculty-searchbox-inline">
+              <Search size={16} strokeWidth={2} />
+              <input
+                type="search"
+                value={searchFaculty}
+                onChange={(event) => resetAndSet(setSearchFaculty)(event.target.value)}
+                placeholder="Search by name, role, or employee ID"
+              />
+            </label>
+
+            <button
+              type="button"
+              className={`faculty-utility-btn faculty-filter-toggle-btn ${showFilters ? 'active' : ''}`}
+              onClick={() => setShowFilters((current) => !current)}
+              aria-label={showFilters ? 'Hide filters' : 'Show filters'}
+              title={showFilters ? 'Hide filters' : 'Show filters'}
+            >
+              <SlidersHorizontal size={16} strokeWidth={2} />
+            </button>
+          </div>
+
+          {showFilters ? (
+            <>
             <label className="forms-field">
               <span>Designation</span>
               <div className="forms-select-wrap">
@@ -396,19 +405,9 @@ export default function FacultyManagementPageV2({ onAlert }) {
                 </select>
               </div>
             </label>
-
-              <label className="forms-field faculty-detailed-toggle">
-                <span>Table Mode</span>
-                <button
-                  type="button"
-                  className={`faculty-toggle ${detailedView ? 'active' : ''}`}
-                  onClick={() => setDetailedView((current) => !current)}
-                >
-                  Detailed View
-                </button>
-              </label>
-          </section>
-        ) : null}
+            </>
+          ) : null}
+        </section>
 
         <section className="faculty-stats-row">
           <div><span>Total Faculty</span><strong>{totalCount}</strong></div>
