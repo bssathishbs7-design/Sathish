@@ -42,6 +42,10 @@ export default function Sidebar({
   }
 
   useEffect(() => {
+    setSkillsOpen(isSkillsActive)
+  }, [isSkillsActive])
+
+  useEffect(() => {
     if (!useCollapsedFlyout || !skillsOpen) return undefined
 
     const handlePointerDown = (event) => {

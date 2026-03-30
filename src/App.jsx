@@ -10,6 +10,25 @@ import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import ImageActivityPage from './pages/ImageActivityPage'
 import InterpretationActivityPage from './pages/InterpretationActivityPage'
 import { APP_PAGES } from './config/appPages'
+
+const PAGE_PATHS = {
+  [APP_PAGES.DASHBOARD]: '/',
+  [APP_PAGES.CONFIGURATION]: '/skills/configuration',
+  [APP_PAGES.EVALUATION]: '/skills/evaluation',
+  [APP_PAGES.IMAGE_ACTIVITY]: '/skills/image-activity',
+  [APP_PAGES.INTERPRETATION_ACTIVITY]: '/skills/interpretation-activity',
+  [APP_PAGES.FACULTY_MANAGEMENT]: '/faculty-management',
+  [APP_PAGES.DASHBOARD_SUMMARY]: '/skills/dashboard-summary',
+  [APP_PAGES.PROFILE_SETTINGS]: '/profile/settings',
+  [APP_PAGES.LOGIN]: '/login',
+}
+
+const PATH_PAGES = Object.fromEntries(
+  Object.entries(PAGE_PATHS).map(([page, path]) => [path, page]),
+)
+
+const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? APP_PAGES.DASHBOARD
+
 const baseRows = [
   ['1', 'Mark', 'Otto', '@mdo'],
   ['2', 'Jacob', 'Thornton', '@fat'],
@@ -99,10 +118,10 @@ function AppAlert({ alert }) {
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-  const [theme, setTheme] = useState('light')
+  const [theme, setTheme] = useState(() => window.localStorage.getItem('vx-theme') ?? 'light')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const useCompactLogo = theme === 'light' && sidebarCollapsed
-  const [activePage, setActivePage] = useState(APP_PAGES.DASHBOARD)
+  const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)
   const [savedImageActivities, setSavedImageActivities] = useState({})
@@ -139,6 +158,26 @@ function App() {
   }, [profileToast])
 
   useEffect(() => {
+    window.localStorage.setItem('vx-theme', theme)
+  }, [theme])
+
+  useEffect(() => {
+    const resolvedPage = getPageFromPath(window.location.pathname)
+    if (!PATH_PAGES[window.location.pathname]) {
+      window.history.replaceState({ page: resolvedPage }, '', PAGE_PATHS[resolvedPage])
+    }
+
+    const handlePopState = () => {
+      setActivePage(getPageFromPath(window.location.pathname))
+      setMobileSidebarOpen(false)
+      setIsProfileMenuOpen(false)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  useEffect(() => {
     if (!alerts.length) return undefined
 
     const timers = alerts.map((alert) => window.setTimeout(() => {
@@ -152,7 +191,7 @@ function App() {
     if (!message) return
 
     const id = `alert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    setAlerts([{ id, tone, message, duration }])
+    setAlerts((current) => [...current, { id, tone, message, duration }])
   }
 
   const toggleFullscreen = async () => {
@@ -163,19 +202,30 @@ function App() {
     }
   }
 
-  const handleEditProfile = () => {
+  const navigateToPage = (page, options = {}) => {
+    const { replace = false } = options
+    const nextPath = PAGE_PATHS[page] ?? PAGE_PATHS[APP_PAGES.DASHBOARD]
+    const historyMethod = replace ? 'replaceState' : 'pushState'
+
+    if (window.location.pathname !== nextPath || replace) {
+      window.history[historyMethod]({ page }, '', nextPath)
+    }
+
+    setActivePage(page)
+    setMobileSidebarOpen(false)
     setIsProfileMenuOpen(false)
-    setActivePage(APP_PAGES.PROFILE_SETTINGS)
+  }
+
+  const handleEditProfile = () => {
+    navigateToPage(APP_PAGES.PROFILE_SETTINGS)
     showAlert({ tone: 'primary', message: 'Profile settings opened.' })
-    window.history.pushState({}, '', '/profile/settings')
   }
 
   const handleSignOut = () => {
     setIsProfileMenuOpen(false)
     setProfileToast('Logging out...')
-    setActivePage(APP_PAGES.LOGIN)
+    navigateToPage(APP_PAGES.LOGIN)
     showAlert({ tone: 'warning', message: 'You have been signed out of the current session.' })
-    window.history.pushState({}, '', '/login')
   }
 
   return (
@@ -192,13 +242,7 @@ function App() {
         theme={theme}
         useCompactLogo={useCompactLogo}
         activePage={activePage}
-        onSelectPage={(page) => {
-          setActivePage(page)
-          setMobileSidebarOpen(false)
-          if (window.innerWidth >= 1024) {
-            setSidebarCollapsed(true)
-          }
-        }}
+        onSelectPage={navigateToPage}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />
 
@@ -217,6 +261,7 @@ function App() {
           onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
+          onOpenNotifications={() => showAlert({ tone: 'primary', message: 'No new notifications right now.' })}
           theme={theme}
           onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
           isProfileMenuOpen={isProfileMenuOpen}
@@ -229,30 +274,31 @@ function App() {
 
         <div key={activePage} className="vx-page-surface vx-page-dissolve">
           {activePage === APP_PAGES.DASHBOARD ? (
-            <DashboardSummaryPage onBackToAssessment={() => setActivePage(APP_PAGES.EVALUATION)} />
+            <DashboardSummaryPage onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)} />
           ) : activePage === APP_PAGES.CONFIGURATION ? (
             <SkillManagementPage
-              onGenerateComplete={(page) => setActivePage(page)}
+              onGenerateComplete={navigateToPage}
               onAlert={showAlert}
               savedImageActivities={savedImageActivities}
               onOpenImageActivity={(activity) => {
                 setSelectedImageActivity(activity)
-                setActivePage(APP_PAGES.IMAGE_ACTIVITY)
+                navigateToPage(APP_PAGES.IMAGE_ACTIVITY)
                 showAlert({ tone: 'primary', message: 'Image activity workspace opened.' })
               }}
               onOpenInterpretationActivity={(activity) => {
                 setSelectedInterpretationActivity(activity)
-                setActivePage(APP_PAGES.INTERPRETATION_ACTIVITY)
+                navigateToPage(APP_PAGES.INTERPRETATION_ACTIVITY)
                 showAlert({ tone: 'primary', message: 'Interpretation activity workspace opened.' })
               }}
             />
           ) : activePage === APP_PAGES.EVALUATION ? (
             <SkillAssessmentPage
-              onOpenDashboardSummary={() => setActivePage(APP_PAGES.DASHBOARD_SUMMARY)}
+              onOpenDashboardSummary={() => navigateToPage(APP_PAGES.DASHBOARD_SUMMARY)}
               onAlert={showAlert}
             />
           ) : activePage === APP_PAGES.IMAGE_ACTIVITY ? (
             <ImageActivityPage
+              key={selectedImageActivity?.activity?.id ?? selectedImageActivity?.id ?? 'image-activity'}
               activityData={selectedImageActivity}
               onAlert={showAlert}
               onSaveSkillActivity={(savedActivity) => {
@@ -266,13 +312,14 @@ function App() {
             />
           ) : activePage === APP_PAGES.INTERPRETATION_ACTIVITY ? (
             <InterpretationActivityPage
+              key={selectedInterpretationActivity?.activity?.id ?? selectedInterpretationActivity?.id ?? 'interpretation-activity'}
               activityData={selectedInterpretationActivity}
               onAlert={showAlert}
             />
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
             <FacultyManagementPageV2 onAlert={showAlert} />
           ) : activePage === APP_PAGES.DASHBOARD_SUMMARY ? (
-            <DashboardSummaryPage onBackToAssessment={() => setActivePage(APP_PAGES.EVALUATION)} />
+            <DashboardSummaryPage onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)} />
           ) : activePage === APP_PAGES.PROFILE_SETTINGS ? (
             <section className="vx-content profile-settings-page">
               <div className="profile-settings-card">
@@ -280,8 +327,8 @@ function App() {
                 <h1>{profileUser.name}</h1>
                 <p>{profileUser.registerId} • {profileUser.role}</p>
                 <div className="profile-settings-actions">
-                  <button type="button" className="tool-btn green" onClick={() => setActivePage(APP_PAGES.DASHBOARD_SUMMARY)}>Back to Dashboard</button>
-                  <button type="button" className="ghost" onClick={() => setActivePage(APP_PAGES.CONFIGURATION)}>Close</button>
+                  <button type="button" className="tool-btn green" onClick={() => navigateToPage(APP_PAGES.DASHBOARD_SUMMARY)}>Back to Dashboard</button>
+                  <button type="button" className="ghost" onClick={() => navigateToPage(APP_PAGES.CONFIGURATION)}>Close</button>
                 </div>
               </div>
             </section>
@@ -291,7 +338,7 @@ function App() {
                 <span className="profile-settings-kicker">Signed out</span>
                 <h1>Logging out...</h1>
                 <p>You have been redirected to the login experience.</p>
-                <button type="button" className="tool-btn green" onClick={() => setActivePage(APP_PAGES.CONFIGURATION)}>Return to app</button>
+                <button type="button" className="tool-btn green" onClick={() => navigateToPage(APP_PAGES.CONFIGURATION)}>Return to app</button>
               </div>
             </section>
           ) : (
@@ -335,11 +382,17 @@ function App() {
         <button
           type="button"
           className={activePage === APP_PAGES.DASHBOARD ? 'active' : ''}
-          onClick={() => setActivePage(APP_PAGES.DASHBOARD)}
+          onClick={() => navigateToPage(APP_PAGES.DASHBOARD)}
         >
           {APP_PAGES.DASHBOARD}
         </button>
-        <button type="button">Profile</button>
+        <button
+          type="button"
+          className={activePage === APP_PAGES.PROFILE_SETTINGS ? 'active' : ''}
+          onClick={handleEditProfile}
+        >
+          Profile
+        </button>
       </nav>
     </div>
   )

@@ -37,6 +37,7 @@ export default function Navbar({
   onToggleSidebar,
   isFullscreen,
   onToggleFullscreen,
+  onOpenNotifications,
   theme,
   onToggleTheme,
   isProfileMenuOpen,
@@ -74,7 +75,7 @@ export default function Navbar({
       </div>
 
       <div className="vx-actions">
-        <button type="button" className="vx-icon-btn" aria-label="Notifications">
+        <button type="button" className="vx-icon-btn" aria-label="Notifications" onClick={onOpenNotifications}>
           <Bell size={18} strokeWidth={2} />
         </button>
         <button type="button" className="vx-icon-btn" aria-label="Fullscreen" onClick={onToggleFullscreen}>

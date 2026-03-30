@@ -151,7 +151,27 @@ const facultyRows = [
 const roleOptions = ['Course Lead', 'Exam Coordinator', 'Module Coordinator', 'Assessment Reviewer', 'Practical Lead', 'Content Reviewer', 'Attendance Lead', 'Lab Coordinator']
 const designationOptions = ['Professor', 'Associate Professor', 'Assistant Professor', 'Tutor', 'Senior Resident']
 const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology', 'Community Medicine', 'Microbiology']
-  export default function FacultyManagementPageV2({ onAlert }) {
+const createFacultyDraft = (nextId = 'FAC-007') => ({
+  facultyId: nextId,
+  name: '',
+  designation: 'Assistant Professor',
+  email: '',
+  phone: '',
+  department: 'Anatomy',
+  status: 'Active',
+})
+
+const deriveAvatar = (name) => (
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'FA'
+)
+
+export default function FacultyManagementPageV2({ onAlert }) {
+  const [facultyData, setFacultyData] = useState(facultyRows)
   const [designationFilter, setDesignationFilter] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -161,18 +181,11 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
   const [expandedFacultyId, setExpandedFacultyId] = useState(facultyRows[0]?.id ?? '')
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [editingFacultyId, setEditingFacultyId] = useState(null)
   const [selectedRoles, setSelectedRoles] = useState(['Course Lead'])
-  const [addForm, setAddForm] = useState({
-    facultyId: 'FAC-007',
-    name: '',
-    designation: 'Assistant Professor',
-    email: '',
-    phone: '',
-    department: 'Anatomy',
-    status: 'Active',
-  })
+  const [addForm, setAddForm] = useState(() => createFacultyDraft())
 
-  const visibleRows = facultyRows.filter((row) => {
+  const visibleRows = facultyData.filter((row) => {
     const matchesDesignation = !designationFilter || row.designation === designationFilter
     const matchesRole = !roleFilter || row.roles.includes(roleFilter)
     const matchesStatus = !statusFilter || row.status === statusFilter
@@ -190,11 +203,16 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
   const perPage = 5
   const totalPages = Math.max(1, Math.ceil(visibleRows.length / perPage))
   const pageRows = visibleRows.slice((currentPage - 1) * perPage, currentPage * perPage)
-  const totalCount = facultyRows.length
-  const activeCount = facultyRows.filter((row) => row.status === 'Active').length
-  const inactiveCount = facultyRows.filter((row) => row.status === 'Inactive').length
-  const unassignedCount = facultyRows.filter((row) => row.status === 'Not Assigned' || row.assignment.assignmentStatus !== 'Assigned').length
+  const totalCount = facultyData.length
+  const activeCount = facultyData.filter((row) => row.status === 'Active').length
+  const inactiveCount = facultyData.filter((row) => row.status === 'Inactive').length
+  const unassignedCount = facultyData.filter((row) => row.status === 'Not Assigned' || row.assignment.assignmentStatus !== 'Assigned').length
   const rowColumns = detailedView ? 9 : 6
+  const nextFacultyId = `FAC-${String(facultyData.length + 1).padStart(3, '0')}`
+  const modalTitle = editingFacultyId ? 'Edit Faculty' : 'Add Faculty'
+  const modalDescription = editingFacultyId
+    ? 'Update faculty identity, role mapping, and department assignment.'
+    : 'Capture faculty identity, role mapping, and department assignment.'
 
   const resetAndSet = (setter) => (value) => {
     setter(value)
@@ -217,14 +235,90 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
     setCurrentPage(Math.min(Math.max(nextPage, 1), totalPages))
   }
 
+  const handleOpenAddFaculty = () => {
+    setEditingFacultyId(null)
+    setSelectedRoles(['Course Lead'])
+    setAddForm(createFacultyDraft(nextFacultyId))
+    setIsAddOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsAddOpen(false)
+    setEditingFacultyId(null)
+    setSelectedRoles(['Course Lead'])
+    setAddForm(createFacultyDraft(nextFacultyId))
+  }
+
+  const handleImportFaculty = () => {
+    onAlert?.({ tone: 'primary', message: 'Faculty import will be connected to your source file flow next.' })
+  }
+
+  const handleViewFaculty = (facultyId) => {
+    setExpandedFacultyId(facultyId)
+    onAlert?.({ tone: 'primary', message: 'Faculty assignment details opened below.' })
+  }
+
+  const handleEditFaculty = (row) => {
+    setEditingFacultyId(row.id)
+    setSelectedRoles(row.roles)
+    setAddForm({
+      facultyId: row.id,
+      name: row.name,
+      designation: row.designation,
+      email: row.email,
+      phone: row.phone ?? '',
+      department: row.department,
+      status: row.status,
+    })
+    setIsAddOpen(true)
+  }
+
+  const handleDeleteFaculty = (facultyId) => {
+    setFacultyData((current) => current.filter((row) => row.id !== facultyId))
+    setExpandedFacultyId((current) => (current === facultyId ? '' : current))
+    setCurrentPage(1)
+    onAlert?.({ tone: 'danger', message: 'Faculty profile removed from the directory.' })
+  }
+
   const handleSaveFaculty = () => {
     if (!addForm.name.trim() || !addForm.email.trim()) {
       onAlert?.({ tone: 'warning', message: 'Complete the faculty name and email before saving.' })
       return
     }
 
-    setIsAddOpen(false)
-    onAlert?.({ tone: 'secondary', message: 'Faculty profile saved successfully.' })
+    const normalizedName = addForm.name.trim()
+    const nextFacultyRecord = {
+      id: editingFacultyId ?? addForm.facultyId.trim(),
+      name: normalizedName,
+      designation: addForm.designation,
+      email: addForm.email.trim(),
+      phone: addForm.phone.trim(),
+      department: addForm.department,
+      roles: selectedRoles.length ? selectedRoles : ['Course Lead'],
+      status: addForm.status,
+      avatar: deriveAvatar(normalizedName),
+      assignment: {
+        course: 'Pending course mapping',
+        department: addForm.department,
+        yearSem: 'To be assigned',
+        subjects: 'Pending subject mapping',
+        classSec: 'TBD',
+        studentCount: 0,
+        assignmentStatus: addForm.status === 'Not Assigned' ? 'Pending Allocation' : 'Assigned',
+      },
+    }
+
+    setFacultyData((current) => (
+      editingFacultyId
+        ? current.map((row) => (row.id === editingFacultyId ? { ...row, ...nextFacultyRecord } : row))
+        : [nextFacultyRecord, ...current]
+    ))
+    setExpandedFacultyId(nextFacultyRecord.id)
+    handleCloseModal()
+    onAlert?.({
+      tone: 'secondary',
+      message: editingFacultyId ? 'Faculty profile updated successfully.' : 'Faculty profile saved successfully.',
+    })
   }
 
   return (
@@ -253,11 +347,11 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
                 <MoreHorizontal size={16} strokeWidth={2} />
                 <span>Filter</span>
               </button>
-              <button type="button" className="faculty-utility-btn">
+              <button type="button" className="faculty-utility-btn" onClick={handleImportFaculty}>
                 <Download size={16} strokeWidth={2} />
                 <span>Import</span>
               </button>
-              <button type="button" className="tool-btn green" onClick={() => setIsAddOpen(true)}>
+              <button type="button" className="tool-btn green" onClick={handleOpenAddFaculty}>
                 <Plus size={16} strokeWidth={2} />
                 Add Faculty
               </button>
@@ -400,13 +494,13 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
                       ) : null}
                       <td onClick={(event) => event.stopPropagation()}>
                         <div className="faculty-action-set">
-                          <button type="button" className="faculty-icon-btn has-tooltip" data-tooltip="View">
+                          <button type="button" className="faculty-icon-btn has-tooltip" data-tooltip="View" onClick={() => handleViewFaculty(row.id)}>
                             <Eye size={16} strokeWidth={2} />
                           </button>
-                          <button type="button" className="faculty-icon-btn has-tooltip" data-tooltip="Edit">
+                          <button type="button" className="faculty-icon-btn has-tooltip" data-tooltip="Edit" onClick={() => handleEditFaculty(row)}>
                             <UserPen size={16} strokeWidth={2} />
                           </button>
-                          <button type="button" className="faculty-icon-btn is-danger has-tooltip" data-tooltip="Delete">
+                          <button type="button" className="faculty-icon-btn is-danger has-tooltip" data-tooltip="Delete" onClick={() => handleDeleteFaculty(row.id)}>
                             <Trash2 size={16} strokeWidth={2} />
                           </button>
                         </div>
@@ -469,14 +563,14 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
           </div>
         </section>
 
-        <div className={`faculty-modal-backdrop ${isAddOpen ? 'open' : ''}`} onClick={() => setIsAddOpen(false)} aria-hidden="true">
+        <div className={`faculty-modal-backdrop ${isAddOpen ? 'open' : ''}`} onClick={handleCloseModal} aria-hidden="true">
           <div className="faculty-modal" onClick={(event) => event.stopPropagation()}>
             <div className="faculty-modal-head">
               <div>
-                <h3>Add Faculty</h3>
-                <p>Capture faculty identity, role mapping, and department assignment.</p>
+                <h3>{modalTitle}</h3>
+                <p>{modalDescription}</p>
               </div>
-              <button type="button" className="faculty-icon-btn" onClick={() => setIsAddOpen(false)} aria-label="Close add faculty">
+              <button type="button" className="faculty-icon-btn" onClick={handleCloseModal} aria-label="Close add faculty">
                 <X size={16} strokeWidth={2} />
               </button>
             </div>
@@ -578,7 +672,7 @@ const departmentOptions = ['Anatomy', 'Physiology', 'Pathology', 'Pharmacology',
 
             <div className="faculty-modal-actions">
               <button type="button" className="tool-btn green" onClick={handleSaveFaculty}>Save Faculty</button>
-              <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Cancel</button>
+              <button type="button" className="ghost" onClick={handleCloseModal}>Cancel</button>
             </div>
           </div>
         </div>

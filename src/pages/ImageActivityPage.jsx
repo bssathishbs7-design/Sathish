@@ -31,10 +31,6 @@ const scaffoldingTypeOptions = [
   { value: 'True or False', label: 'True or False', helper: 'Binary answer format' },
   { value: 'Fill in the blanks', label: 'Fill in the blanks', helper: 'Short completion prompt' },
 ]
-const scaffoldingTypeMeta = Object.fromEntries(
-  scaffoldingTypeOptions.map((option) => [option.value, option]),
-)
-
 const imageSlots = [
   { key: 'A' },
   { key: 'B' },
@@ -117,7 +113,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       ? 'Interpret the most important clinical finding visible in the case.'
       : 'Describe principles and methods of artificial respiration'
   )
-  const defaultMarksEnabled = Boolean(activity) ? activity.marks !== 'Nil' : true
+  const defaultMarksEnabled = activity ? activity.marks !== 'Nil' : true
   const defaultCertifiable = activity?.certifiable ?? false
   const activityTag = activity?.type ?? (isInterpretationWorkflow ? 'Interpretation' : 'Image')
   const activityStatus = activity?.status ?? 'Draft'
@@ -159,18 +155,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const totalGeneratedMarks = hasMarks
     ? [...createdSkillQuestions, ...generatedQuestions].reduce((total, question) => total + (Number(question.marks) || 0), 0)
     : 0
-
-  useEffect(() => {
-    setActivityName(defaultActivityName)
-    setHasMarks(savedDraft?.hasMarks ?? defaultMarksEnabled)
-    setIsCertifiable(savedDraft?.isCertifiable ?? defaultCertifiable)
-    setImages(createImageState(savedDraft?.images ?? []))
-    setCreatedSkillQuestions(savedDraft?.createdSkillQuestions ?? [])
-    setGeneratedQuestions(savedDraft?.generatedQuestions ?? [])
-    setIsSkillActivitySaved(savedDraft?.isSkillActivitySaved ?? false)
-    setActiveCreatedSkillQuestionId(null)
-    setActiveEditableQuestionId(null)
-  }, [defaultActivityName, defaultMarksEnabled, defaultCertifiable, savedDraft])
 
   useEffect(() => {
     imageUrlsRef.current = images.map((image) => image.previewUrl).filter(Boolean)

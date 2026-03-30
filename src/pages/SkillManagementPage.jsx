@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import {
   CheckCircle2,
   ChevronDown,
@@ -147,7 +147,6 @@ const defaultActivityDraft = {
 }
 
 const generationModes = [
-  { value: 'Generate All', label: 'Generate All', detail: 'Build the complete page and activity bundle.' },
   { value: 'Checklist', label: 'Checklist', detail: 'Focus on checklist-led assessment content.' },
   { value: 'Form', label: 'Form', detail: 'Draft a form-first experience for the activity.' },
   { value: 'Scaffolding', label: 'Scaffolding', detail: 'Create guided steps and supporting structure.' },
@@ -182,6 +181,8 @@ const generationStatusSteps = [
  * - Page-level workflow in src/pages/
  */
 function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenInterpretationActivity, onAlert, savedImageActivities = {} }) {
+  const generationPopoverRef = useRef(null)
+  const handledGenerationSuccessRef = useRef('')
   const [records, setRecords] = useState(competencyRecords)
   const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
   const [searchQuery, setSearchQuery] = useState('')
@@ -223,10 +224,6 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   const selectedRecord = filteredRecords.find((record) => record.id === selectedRecordId) ?? filteredRecords[0] ?? null
   const getDefaultSubject = (list) => list[0]?.subject ?? 'Human Anatomy'
   const getDefaultYear = (list) => list[0]?.year ?? 'First Year'
-  const generationActivity = generationFlow
-    ? records.find((record) => record.id === generationFlow.recordId)
-      ?.activities.find((activity) => activity.id === generationFlow.activityId) ?? null
-    : null
   const generationSelectionLabel = generationFlow?.selectedModes?.join(', ') ?? ''
   const generationStatusLabel = generationStatusSteps
     .slice()
@@ -344,17 +341,34 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
       setGenerationFlow((current) => {
         if (!current || current.phase !== 'processing') return current
 
-        const hasGenerateAll = current.selectedModes.includes('Generate All')
         const hasScaffolding = current.selectedModes.includes('Scaffolding')
-        const pace = hasGenerateAll
-          ? 14
-          : hasScaffolding
-            ? 18
-            : 16
+        const pace = hasScaffolding ? 18 : 16
+        const nextProgress = Math.min(current.progress + pace, 100)
+
+        if (nextProgress >= 100) {
+          setRecords((existingRecords) => existingRecords.map((record) => (
+            record.id === current.recordId
+              ? {
+                  ...record,
+                  activities: record.activities.map((activity) => (
+                    activity.id === current.activityId
+                      ? { ...activity, status: 'Generated', marks: '10' }
+                      : activity
+                  )),
+                }
+              : record
+          )))
+
+          return {
+            ...current,
+            progress: 100,
+            phase: 'success',
+          }
+        }
 
         return {
           ...current,
-          progress: Math.min(current.progress + pace, 100),
+          progress: nextProgress,
         }
       })
     }, 240)
@@ -363,31 +377,24 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   }, [generationFlow?.activityId, generationFlow?.phase, generationFlow?.recordId, generationFlow?.selectedModes])
 
   useEffect(() => {
-    if (!generationFlow || generationFlow.phase !== 'processing' || generationFlow.progress < 100) {
-      return undefined
+    if (!generationFlow) return undefined
+
+    const handlePointerDown = (event) => {
+      if (generationPopoverRef.current?.contains(event.target)) return
+      setGenerationFlow(null)
     }
 
-    setRecords((current) => current.map((record) => (
-      record.id === generationFlow.recordId
-        ? {
-            ...record,
-            activities: record.activities.map((activity) => (
-              activity.id === generationFlow.activityId
-                ? { ...activity, status: 'Generated', marks: '10' }
-                : activity
-            )),
-          }
-        : record
-    )))
-
-    setGenerationFlow((current) => {
-      if (!current || current.phase !== 'processing') return current
-      return { ...current, phase: 'success' }
-    })
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [generationFlow])
 
   useEffect(() => {
     if (!generationFlow || generationFlow.phase !== 'success') return undefined
+
+    const successKey = `${generationFlow.recordId}-${generationFlow.activityId}`
+    if (handledGenerationSuccessRef.current === successKey) return undefined
+
+    handledGenerationSuccessRef.current = successKey
 
     onAlert?.({ tone: 'secondary', message: 'Activity generation completed successfully.' })
     const timer = window.setTimeout(() => {
@@ -421,7 +428,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
       setGenerationFlow({
         recordId,
         activityId,
-        selectedModes: [],
+        selectedModes: ['Checklist'],
         phase: 'selection',
         progress: 0,
       })
@@ -517,9 +524,22 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   const handleSelectGenerationMode = (mode) => {
     setGenerationFlow((current) => {
       if (!current || current.phase !== 'selection') return current
-      const selectedModes = current.selectedModes.includes(mode)
+
+      const isActive = current.selectedModes.includes(mode)
+
+      if (mode === 'Checklist') {
+        const selectedModes = isActive ? [] : ['Checklist']
+        return { ...current, selectedModes }
+      }
+
+      if (!current.selectedModes.includes('Checklist')) {
+        return current
+      }
+
+      const selectedModes = isActive
         ? current.selectedModes.filter((item) => item !== mode)
         : [...current.selectedModes, mode]
+
       return { ...current, selectedModes }
     })
   }
@@ -538,6 +558,27 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   const handleCloseGenerationFlow = () => {
     setGenerationFlow(null)
   }
+
+  const handleSelectAllGenerationModes = () => {
+    setGenerationFlow((current) => {
+      if (!current || current.phase !== 'selection') return current
+      const hasAllSelected = generationModes.every((mode) => current.selectedModes.includes(mode.value))
+
+      if (hasAllSelected) {
+        return {
+          ...current,
+          selectedModes: ['Checklist'],
+        }
+      }
+
+      return {
+        ...current,
+        selectedModes: generationModes.map((mode) => mode.value),
+      }
+    })
+  }
+
+  const hasAllGenerationModesSelected = generationModes.every((mode) => generationFlow?.selectedModes?.includes(mode.value))
 
   const getStateConfig = (activity) => {
     const savedImageActivity = activity.type === 'Image' ? savedImageActivities[activity.id] : null
@@ -647,7 +688,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
       <div className="forms-flow-shell">
         <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Configuration' }]} />
         <div className="forms-flow-head">
-          <div>
+          <div className="forms-flow-head-copy">
             <h1>Configuration</h1>
             <p>Move from competency discovery to activity creation, review, and assignment in one clear screen.</p>
           </div>
@@ -878,7 +919,10 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                 <span className="forms-badge forms-badge-neutral">{activity.marks}</span>
                               </div>
                               <div className="forms-flow-actions" data-label="Actions">
-                                <div className="forms-flow-action-main">
+                                <div
+                                  className="forms-flow-action-main"
+                                  ref={generationFlow?.recordId === record.id && generationFlow?.activityId === activity.id ? generationPopoverRef : null}
+                                >
                                   <button
                                     type="button"
                                     className={`forms-flow-primary is-${state.primaryTone}`}
@@ -892,7 +936,9 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                       ? `Generating ${generationFlow.progress}%`
                                       : state.primaryLabel}
                                   </button>
-                                  {generationFlow?.recordId === record.id && generationFlow?.activityId === activity.id ? (
+                                  {generationFlow?.recordId === record.id
+                                  && generationFlow?.activityId === activity.id
+                                  && generationFlow.phase !== 'success' ? (
                                     <div className={`generation-tooltip ${generationFlow.phase}`}>
                                       <div className="generation-tooltip-head">
                                         <span className="generation-tooltip-kicker">
@@ -910,7 +956,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                       {generationFlow.phase === 'selection' ? (
                                         <>
                                           <div className="generation-tooltip-list" role="listbox" aria-label="Generation modes">
-                                            {generationModes.map((mode) => {
+                                            {generationModes.filter((mode) => mode.value === 'Checklist').map((mode) => {
                                               const isActive = generationFlow.selectedModes.includes(mode.value)
                                               return (
                                                 <button
@@ -920,27 +966,65 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                                   onClick={() => handleSelectGenerationMode(mode.value)}
                                                   aria-pressed={isActive}
                                                 >
-                                                  <span className="generation-tooltip-icon" aria-hidden="true">
-                                                    <Sparkles size={12} strokeWidth={2.2} />
+                                                  <span className="generation-tooltip-icon is-check" aria-hidden="true">
+                                                    <CheckCircle2 size={14} strokeWidth={2.4} />
                                                   </span>
                                                   <span className="generation-tooltip-copy">
                                                     <strong>{mode.label}</strong>
-                                                    <small>{mode.detail}</small>
+                                                    <small>Core generation output. Required to enable Form and Scaffolding.</small>
                                                   </span>
                                                 </button>
                                               )
                                             })}
                                           </div>
+                                          <div className="generation-tooltip-section">
+                                            <div className="generation-tooltip-section-head">
+                                              <span>Add-ons</span>
+                                              <button
+                                                type="button"
+                                                className="generation-tooltip-link"
+                                                onClick={handleSelectAllGenerationModes}
+                                              >
+                                                {hasAllGenerationModesSelected ? 'Unselect add-ons' : 'Select all'}
+                                              </button>
+                                            </div>
+                                            <div className="generation-tooltip-list" role="listbox" aria-label="Generation add-ons">
+                                              {generationModes.filter((mode) => mode.value !== 'Checklist').map((mode) => {
+                                                const isActive = generationFlow.selectedModes.includes(mode.value)
+                                                const isDisabled = !generationFlow.selectedModes.includes('Checklist')
+                                                return (
+                                                  <button
+                                                    key={mode.value}
+                                                    type="button"
+                                                    className={`generation-tooltip-item ${isActive ? 'active' : ''} ${isDisabled ? 'is-disabled' : ''}`}
+                                                    onClick={() => handleSelectGenerationMode(mode.value)}
+                                                    aria-pressed={isActive}
+                                                    disabled={isDisabled}
+                                                  >
+                                                    <span className="generation-tooltip-icon" aria-hidden="true">
+                                                      {mode.value === 'Form'
+                                                        ? <FileText size={13} strokeWidth={2.2} />
+                                                        : <Sparkles size={12} strokeWidth={2.2} />}
+                                                    </span>
+                                                    <span className="generation-tooltip-copy">
+                                                      <strong>{mode.label}</strong>
+                                                      <small>{mode.detail}</small>
+                                                    </span>
+                                                  </button>
+                                                )
+                                              })}
+                                            </div>
+                                          </div>
                                           <button
                                             type="button"
                                             className="generation-tooltip-action"
                                             onClick={handleStartGeneration}
-                                            disabled={generationFlow.selectedModes.length === 0}
+                                            disabled={!generationFlow.selectedModes.includes('Checklist')}
                                           >
                                             Generate
                                           </button>
                                         </>
-                                      ) : generationFlow.phase === 'processing' ? (
+                                      ) : (
                                         <div className="generation-tooltip-progress">
                                           <div className="generation-tooltip-status">
                                             <strong>{generationStatusLabel}</strong>
@@ -954,11 +1038,6 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                             {' '}
                                             in progress.
                                           </p>
-                                        </div>
-                                      ) : (
-                                        <div className="generation-tooltip-success">
-                                          <CheckCircle2 size={14} strokeWidth={2.4} />
-                                          <span>Success. Redirecting now.</span>
                                         </div>
                                       )}
                                     </div>
@@ -1252,4 +1331,5 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
 
 
 export default SkillManagementPage
+
 

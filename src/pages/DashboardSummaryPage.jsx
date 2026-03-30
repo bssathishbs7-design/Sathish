@@ -239,7 +239,7 @@ function DashboardSummaryPage({ onBackToAssessment }) {
           </div>
 
           <div className="dashboard-summary-roster-list">
-            {recentCourses.length ? recentCourses.map(({ student, progress, status, score, hours }) => (
+            {recentCourses.length ? recentCourses.map(({ student, status, score, hours }) => (
               <article
                 key={student.id}
                 className={`dashboard-summary-roster-row ${student.id === selectedStudent?.id ? 'is-active' : ''}`}

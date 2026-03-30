@@ -37,7 +37,6 @@ function SkillAssessmentPage({ onOpenDashboardSummary, onAlert }) {
   const [attemptCount, setAttemptCount] = useState('')
   const [selectedActivityId, setSelectedActivityId] = useState('')
   const [previewAssessment, setPreviewAssessment] = useState(null)
-  const [searchMessage, setSearchMessage] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [isEvaluationStarted, setIsEvaluationStarted] = useState(false)
   const [selectedStudentIndex, setSelectedStudentIndex] = useState(null)
@@ -88,7 +87,6 @@ function SkillAssessmentPage({ onOpenDashboardSummary, onAlert }) {
     setSelectedActivityId('')
     setPreviewAssessment(null)
     setIsEvaluationStarted(false)
-    setSearchMessage('')
   }
 
   const handleYearChange = (value) => {
@@ -117,7 +115,6 @@ function SkillAssessmentPage({ onOpenDashboardSummary, onAlert }) {
     setSelectedActivityId(value)
     setPreviewAssessment(null)
     setIsEvaluationStarted(false)
-    setSearchMessage('')
   }
 
   const handleResetSearch = () => {
@@ -126,7 +123,6 @@ function SkillAssessmentPage({ onOpenDashboardSummary, onAlert }) {
     setAttemptCount('')
     setSelectedActivityId('')
     setPreviewAssessment(null)
-    setSearchMessage('')
     setIsSearching(false)
     setIsEvaluationStarted(false)
     setSelectedStudentIndex(null)
@@ -135,30 +131,25 @@ function SkillAssessmentPage({ onOpenDashboardSummary, onAlert }) {
 
   const handleSearchAssessment = () => {
     if (!selectedYear && !selectedSgt) {
-      setSearchMessage('Select a Year or SGT to continue.')
       onAlert?.({ tone: 'warning', message: 'Select a Year or SGT to continue.' })
       return
     }
 
     if (!attemptCount) {
-      setSearchMessage('Enter an attempt count to continue.')
       onAlert?.({ tone: 'warning', message: 'Enter an attempt count to continue.' })
       return
     }
 
     if (!selectedActivityId) {
-      setSearchMessage('Choose a competency activity before searching.')
       onAlert?.({ tone: 'warning', message: 'Choose a competency activity before searching.' })
       return
     }
 
     if (!selectedActivity) {
-      setSearchMessage('The chosen activity is not available for this filter set.')
       onAlert?.({ tone: 'danger', message: 'The chosen activity is not available for the current filter set.' })
       return
     }
 
-    setSearchMessage('')
     setIsSearching(true)
     window.setTimeout(() => {
       setIsSearching(false)
