@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
+import { BarChart3 } from 'lucide-react'
 import '../styles/dashboard-summary.css'
 import {
   assessmentYearOptions,
@@ -70,19 +71,10 @@ function DashboardSummaryPage({ onBackToAssessment }) {
     <section className="vx-content forms-page dashboard-summary-page">
       <div className="dashboard-summary-shell">
         <PageBreadcrumbs items={[{ label: 'Evaluation' }, { label: 'Dashboard Summary' }]} />
-        <div className="dashboard-summary-hero">
-          <div className="dashboard-summary-hero-copy">
+        <div className="vx-page-intro">
+          <div className="vx-page-intro-title">
+            <BarChart3 size={18} strokeWidth={2} className="vx-page-intro-icon" aria-hidden="true" />
             <h1>Dashboard Summary</h1>
-            <p>
-              Filter the student directory, open a learner, and review a clean progress snapshot
-              before drilling into details.
-            </p>
-          </div>
-
-          <div className="dashboard-summary-hero-actions">
-            <button type="button" className="ghost" onClick={onBackToAssessment}>
-              Back to Assessment
-            </button>
           </div>
         </div>
 

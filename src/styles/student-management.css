@@ -93,10 +93,15 @@
 
 .student-management-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
   gap: 14px;
   padding: 18px 20px;
-  align-items: end;
+}
+
+.student-management-toolbar-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
 }
 
 .student-management-search {
@@ -117,6 +122,147 @@
   background: transparent;
   color: #163229;
   font: inherit;
+}
+
+.student-management-filter-toggle,
+.student-management-filter-clear,
+.student-management-filter-done {
+  min-height: 42px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 700;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.student-management-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid #d8e5dc;
+  background: #fff;
+  color: #35596b;
+}
+
+.student-management-filter-toggle:hover,
+.student-management-filter-toggle.is-active {
+  border-color: #b7d6c5;
+  background: #f1fbf6;
+  color: #0f6844;
+  box-shadow: 0 10px 22px rgba(15, 104, 68, 0.08);
+}
+
+.student-management-filter-panel {
+  display: grid;
+  gap: 16px;
+  padding: 14px 0 0;
+  border-top: 1px solid #e3ece6;
+  background: transparent;
+  box-shadow: none;
+}
+
+.student-management-filter-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-management-filter-header strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #163229;
+  font-size: 0.96rem;
+}
+
+.student-management-filter-header p {
+  margin: 0;
+  color: #748697;
+  font-size: 0.87rem;
+  line-height: 1.5;
+}
+
+.student-management-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.student-management-filter-panel .forms-field {
+  margin: 0;
+}
+
+.student-management-filter-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-management-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.student-management-filter-chip,
+.student-management-filter-hint {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.student-management-filter-chip {
+  background: #ecf8f2;
+  color: #0f7a58;
+}
+
+.student-management-filter-hint {
+  background: #f3f6f8;
+  color: #6d837b;
+}
+
+.student-management-filter-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.student-management-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 1px solid #d8e5dc;
+  background: #fff;
+  color: #476274;
+}
+
+.student-management-filter-clear:hover {
+  border-color: #c5d8df;
+  background: #f6fbff;
+  color: #24475f;
+}
+
+.student-management-filter-done {
+  padding: 0 16px;
+  border: 1px solid #15936d;
+  background: #15936d;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(15, 131, 100, 0.14);
+}
+
+.student-management-filter-done:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(15, 131, 100, 0.18);
 }
 
 .student-management-table-card {
@@ -244,6 +390,62 @@
   color: #e2ecf5;
 }
 
+.theme-dark .student-management-filter-toggle {
+  border-color: #243652;
+  background: #0f1828;
+  color: #a9bbcf;
+}
+
+.theme-dark .student-management-filter-toggle:hover,
+.theme-dark .student-management-filter-toggle.is-active {
+  border-color: #2c4967;
+  background: #11233a;
+  color: #d6ebff;
+  box-shadow: 0 14px 26px rgba(5, 12, 24, 0.34);
+}
+
+.theme-dark .student-management-filter-panel {
+  border-top-color: #243652;
+  background: transparent;
+  box-shadow: none;
+}
+
+.theme-dark .student-management-filter-header strong {
+  color: #e2ecf5;
+}
+
+.theme-dark .student-management-filter-header p {
+  color: #94a5bb;
+}
+
+.theme-dark .student-management-filter-chip {
+  background: rgba(40, 178, 128, 0.18);
+  color: #8fe3bf;
+}
+
+.theme-dark .student-management-filter-hint {
+  background: #142338;
+  color: #8ca1bb;
+}
+
+.theme-dark .student-management-filter-clear {
+  border-color: #243652;
+  background: #0f1828;
+  color: #b7c9da;
+}
+
+.theme-dark .student-management-filter-clear:hover {
+  border-color: #35526f;
+  background: #122238;
+  color: #edf6ff;
+}
+
+.theme-dark .student-management-filter-done {
+  border-color: #1e9b74;
+  background: linear-gradient(180deg, #1d9973, #127659);
+  box-shadow: 0 12px 24px rgba(6, 31, 24, 0.34);
+}
+
 .theme-dark .student-management-table td:first-child,
 .theme-dark .student-management-table td:last-child,
 .theme-dark .student-management-table td {
@@ -252,8 +454,13 @@
 
 @media (max-width: 900px) {
   .student-management-stats,
-  .student-management-toolbar {
+  .student-management-toolbar-topbar,
+  .student-management-filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .student-management-filter-toggle {
+    width: 100%;
   }
 }
 
@@ -264,5 +471,10 @@
 
   .student-management-hero {
     padding: 18px;
+  }
+
+  .student-management-toolbar,
+  .student-management-filter-panel {
+    padding: 16px;
   }
 }

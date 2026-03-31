@@ -19,7 +19,9 @@
 }
 
 .theme-dark .skill-assessment-page::before {
-  background: #f6fbff;
+  background:
+    radial-gradient(circle at top right, rgba(95, 232, 177, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(15, 24, 40, 0.92), rgba(15, 24, 40, 0.96));
 }
 
 .skill-assessment-search-stack { display: grid; gap: 12px; }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ClipboardCheck, FlaskConical, Stethoscope } from 'lucide-react'
+import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import '../styles/ospe-activity.css'
 
 const ospeStations = [
@@ -46,6 +47,13 @@ function OspeActivityPage({ onAlert }) {
   return (
     <section className="vx-content forms-page ospe-page">
       <div className="ospe-shell">
+        <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'OSPE Activity' }]} />
+        <div className="vx-page-intro">
+          <div className="vx-page-intro-title">
+            <Stethoscope size={18} strokeWidth={2} className="vx-page-intro-icon" aria-hidden="true" />
+            <h1>OSPE Activity</h1>
+          </div>
+        </div>
         <div className="ospe-stats">
           <article className="vx-card ospe-stat-card">
             <span>Visible stations</span>
