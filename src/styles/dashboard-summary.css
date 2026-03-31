@@ -1,21 +1,6 @@
 .dashboard-summary-page {
   position: relative;
-  overflow: hidden;
   padding-top: 24px;
-}
-.dashboard-summary-page::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: #f6fbff;
-}
-.dashboard-summary-page > * { position: relative; z-index: 1; }
-.theme-dark .dashboard-summary-page::before {
-  background:
-    radial-gradient(circle at top center, rgba(95, 232, 177, 0.07), transparent 24%),
-    linear-gradient(180deg, rgba(15, 24, 40, 0.92), rgba(15, 24, 40, 0.96));
 }
 .dashboard-summary-shell { display: grid; gap: 20px; }
 .dashboard-summary-hero, .dashboard-summary-toolbar, .dashboard-summary-directory, .dashboard-summary-overview, .dashboard-summary-audit-card {

@@ -4,7 +4,6 @@
 
 .configuration-page {
   position: relative;
-  overflow: hidden;
 }
 
 .configuration-page .forms-flow-shell {
@@ -13,26 +12,6 @@
 
 .configuration-page .vx-page-intro-title h1 {
   line-height: 1.04;
-}
-
-.configuration-page::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: #f6fbff;
-}
-
-.configuration-page > * {
-  position: relative;
-  z-index: 1;
-}
-
-.theme-dark .configuration-page::before {
-  background:
-    radial-gradient(circle at top left, rgba(95, 232, 177, 0.08), transparent 26%),
-    linear-gradient(180deg, rgba(15, 24, 40, 0.92), rgba(15, 24, 40, 0.96));
 }
 
 .configuration-page .tool-btn,
