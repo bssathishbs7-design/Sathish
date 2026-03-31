@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
+import '../styles/evaluation.css'
 import {
   assessmentSgtMap,
   assessmentYearOptions,

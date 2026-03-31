@@ -7,6 +7,7 @@ import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
+import StudentManagementPage from './pages/StudentManagementPage'
 import ImageActivityPage from './pages/ImageActivityPage'
 import InterpretationActivityPage from './pages/InterpretationActivityPage'
 import OspeActivityPage from './pages/OspeActivityPage'
@@ -20,6 +21,7 @@ const PAGE_PATHS = {
   [APP_PAGES.IMAGE_ACTIVITY]: '/skills/image-activity',
   [APP_PAGES.INTERPRETATION_ACTIVITY]: '/skills/interpretation-activity',
   [APP_PAGES.FACULTY_MANAGEMENT]: '/faculty-management',
+  [APP_PAGES.STUDENT_MANAGEMENT]: '/student-management',
   [APP_PAGES.DASHBOARD_SUMMARY]: '/skills/dashboard-summary',
   [APP_PAGES.PROFILE_SETTINGS]: '/profile/settings',
   [APP_PAGES.LOGIN]: '/login',
@@ -322,6 +324,8 @@ function App() {
             />
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
             <FacultyManagementPageV2 onAlert={showAlert} />
+          ) : activePage === APP_PAGES.STUDENT_MANAGEMENT ? (
+            <StudentManagementPage onAlert={showAlert} />
           ) : activePage === APP_PAGES.DASHBOARD_SUMMARY ? (
             <DashboardSummaryPage onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)} />
           ) : activePage === APP_PAGES.PROFILE_SETTINGS ? (

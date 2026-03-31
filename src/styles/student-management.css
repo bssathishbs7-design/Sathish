@@ -1,0 +1,268 @@
+.student-management-page {
+  padding-top: 24px;
+}
+
+.student-management-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.student-management-hero,
+.student-management-stats,
+.student-management-toolbar,
+.student-management-table-card {
+  border: 1px solid #dfe9e2;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #fbfdfc);
+  box-shadow: 0 10px 24px rgba(15, 68, 20, 0.06);
+}
+
+.student-management-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+}
+
+.student-management-hero-copy {
+  display: grid;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.student-management-kicker {
+  display: inline-flex;
+  width: fit-content;
+  padding: 7px 13px;
+  border: 1px solid #88ffd0;
+  border-radius: 999px;
+  background: #d6ffef;
+  color: #0f8364;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.student-management-hero-copy h1 {
+  margin: 0;
+  color: #0f6844;
+  font-size: clamp(1.55rem, 1.28rem + 0.8vw, 2.1rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.student-management-hero-copy p,
+.student-management-table-head p {
+  margin: 0;
+  color: var(--app-text-muted, #64748b);
+  line-height: 1.62;
+}
+
+.student-management-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 8px;
+}
+
+.student-management-stat-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+}
+
+.student-management-stat-card span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.student-management-stat-card strong {
+  color: #163229;
+  font-size: 1.18rem;
+}
+
+.student-management-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
+  gap: 14px;
+  padding: 18px 20px;
+  align-items: end;
+}
+
+.student-management-search {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid #d8e5dc;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.student-management-search input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #163229;
+  font: inherit;
+}
+
+.student-management-table-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.student-management-table-head h2 {
+  margin: 0 0 6px;
+  color: #163229;
+  font-size: 1.02rem;
+}
+
+.student-management-table-wrap {
+  overflow: auto;
+}
+
+.student-management-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.student-management-table th {
+  padding: 0 14px 4px;
+  color: #7b8c82;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.student-management-table td {
+  padding: 14px;
+  background: #fff;
+  border-top: 1px solid #e5efe8;
+  border-bottom: 1px solid #e5efe8;
+  color: #163229;
+}
+
+.student-management-table td:first-child {
+  border-left: 1px solid #e5efe8;
+  border-radius: 14px 0 0 14px;
+}
+
+.student-management-table td:last-child {
+  border-right: 1px solid #e5efe8;
+  border-radius: 0 14px 14px 0;
+}
+
+.student-management-student-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.student-management-student-cell strong {
+  color: #163229;
+}
+
+.student-management-student-cell span {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.student-management-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.student-management-status.is-active {
+  background: #d6ffef;
+  color: #0f8364;
+}
+
+.student-management-status.is-review {
+  background: #eef4ff;
+  color: #2f6db5;
+}
+
+.student-management-status.is-inactive {
+  background: #fff1f1;
+  color: #bf3b3b;
+}
+
+.theme-dark .student-management-hero,
+.theme-dark .student-management-stats,
+.theme-dark .student-management-toolbar,
+.theme-dark .student-management-table-card,
+.theme-dark .student-management-table td {
+  border-color: #243652;
+  background: #111c30;
+}
+
+.theme-dark .student-management-hero-copy h1,
+.theme-dark .student-management-stat-card strong,
+.theme-dark .student-management-table-head h2,
+.theme-dark .student-management-student-cell strong,
+.theme-dark .student-management-table td {
+  color: #e2ecf5;
+}
+
+.theme-dark .student-management-hero-copy p,
+.theme-dark .student-management-table-head p,
+.theme-dark .student-management-stat-card span,
+.theme-dark .student-management-student-cell span,
+.theme-dark .student-management-table th {
+  color: #94a5bb;
+}
+
+.theme-dark .student-management-search {
+  border-color: #243652;
+  background: #0f1828;
+}
+
+.theme-dark .student-management-search input {
+  color: #e2ecf5;
+}
+
+.theme-dark .student-management-table td:first-child,
+.theme-dark .student-management-table td:last-child,
+.theme-dark .student-management-table td {
+  border-color: #243652;
+}
+
+@media (max-width: 900px) {
+  .student-management-stats,
+  .student-management-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 759px) {
+  .student-management-page {
+    padding: 16px;
+  }
+
+  .student-management-hero {
+    padding: 18px;
+  }
+}

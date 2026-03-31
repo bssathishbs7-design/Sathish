@@ -1,0 +1,43 @@
+/* SkillManagementPage page-level config stylesheet.
+   Core Configuration visuals still remain in src/App.css to avoid any UI regression.
+   This file now owns page-scoped wrapper and button hooks safely. */
+
+.configuration-page {
+  position: relative;
+  overflow: hidden;
+}
+
+.configuration-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: #f6fbff;
+}
+
+.configuration-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+.theme-dark .configuration-page::before {
+  background: #f6fbff;
+}
+
+.configuration-page .tool-btn,
+.configuration-page .ghost,
+.configuration-page .forms-page-btn,
+.configuration-page .activity-footer-actions .tool-btn.green,
+.configuration-page .activity-footer-actions .ghost,
+.configuration-page .activity-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+}
+
+.configuration-page .forms-flow-head > .tool-btn {
+  min-height: 36px;
+  border-radius: 10px;
+}

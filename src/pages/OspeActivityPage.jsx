@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ClipboardCheck, FlaskConical, Stethoscope } from 'lucide-react'
+import '../styles/ospe-activity.css'
 
 const ospeStations = [
   {

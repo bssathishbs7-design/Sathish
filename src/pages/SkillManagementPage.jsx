@@ -17,6 +17,7 @@ import {
 import { createPortal } from 'react-dom'
 import { APP_PAGES } from '../config/appPages'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
+import '../styles/config/skill-management.css'
 
 const workflowSteps = [
   {
@@ -190,9 +191,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [builderActivity, setBuilderActivity] = useState(null)
-  const [assignmentActivity, setAssignmentActivity] = useState(null)
   const [builderNotes, setBuilderNotes] = useState('Assessment instructions and checklist content')
-  const [assignmentTarget, setAssignmentTarget] = useState('Batch A • 28 students')
   const [generationFlow, setGenerationFlow] = useState(null)
   const [activityFormRecordId, setActivityFormRecordId] = useState(null)
   const [activityDraft, setActivityDraft] = useState(defaultActivityDraft)
@@ -419,6 +418,22 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     .find((record) => record.id === recordId)
     ?.activities.find((activity) => activity.id === activityId) ?? null
 
+  const assignActivityToDefaultBatch = (recordId, activityId, batch = 'Batch A • 28 students') => {
+    setRecords((current) => current.map((record) => (
+      record.id === recordId
+        ? {
+            ...record,
+            activities: record.activities.map((activity) => (
+              activity.id === activityId
+                ? { ...activity, status: 'Assigned', batch }
+                : activity
+            )),
+          }
+        : record
+    )))
+    onAlert?.({ tone: 'secondary', message: 'Assessment assigned successfully.' })
+  }
+
   const handlePrimaryAction = (recordId, activityId) => {
     const activity = findActivity(recordId, activityId)
     const record = records.find((item) => item.id === recordId)
@@ -438,8 +453,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
 
     if (activity.status === 'Not Created') {
       if (savedImageActivity) {
-        setAssignmentActivity({ recordId, activityId })
-        setAssignmentTarget(activity.batch)
+        assignActivityToDefaultBatch(recordId, activityId, activity.batch && activity.batch !== 'No batch selected' ? activity.batch : 'Batch A • 28 students')
         return
       }
 
@@ -479,8 +493,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     }
 
     if (activity.status === 'Generated' || activity.status === 'Created' || activity.status === 'Assigned') {
-      setAssignmentActivity({ recordId, activityId })
-      setAssignmentTarget(activity.batch)
+      assignActivityToDefaultBatch(recordId, activityId, activity.batch && activity.batch !== 'No batch selected' ? activity.batch : 'Batch A • 28 students')
     }
   }
 
@@ -501,25 +514,6 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     )))
     setBuilderActivity(null)
     onAlert?.({ tone: 'secondary', message: 'Manual assessment saved successfully.' })
-  }
-
-  const handleSubmitAssignment = () => {
-    if (!assignmentActivity) return
-
-    setRecords((current) => current.map((record) => (
-      record.id === assignmentActivity.recordId
-        ? {
-            ...record,
-            activities: record.activities.map((activity) => (
-              activity.id === assignmentActivity.activityId
-                ? { ...activity, status: 'Assigned', batch: assignmentTarget }
-                : activity
-            )),
-          }
-        : record
-    )))
-    setAssignmentActivity(null)
-    onAlert?.({ tone: 'secondary', message: 'Assessment assigned successfully.' })
   }
 
   const handleSelectGenerationMode = (mode) => {
@@ -693,7 +687,6 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
             <h1>Configuration</h1>
             <p>Move from competency discovery to activity creation, review, and assignment in one clear screen.</p>
           </div>
-          <button type="button" className="tool-btn green" onClick={() => setIsAddOpen(true)}>+ Add Skill Assessment</button>
         </div>
 
         <div className="forms-flow-steps">
@@ -727,6 +720,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
               />
             </label>
             <button type="button" className="tool-btn" onClick={() => setIsFilterOpen(true)}>Search Filter</button>
+            <button type="button" className="tool-btn green" onClick={() => setIsAddOpen(true)}>+ Add Skill Assessment</button>
           </div>
 
           <div className="forms-hierarchy-list">
@@ -1294,34 +1288,6 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
             <div className="forms-modal-actions">
               <button type="button" className="ghost" onClick={() => setBuilderActivity(null)}>Cancel</button>
               <button type="button" className="tool-btn green" onClick={handleSaveBuilder}>Save Assessment</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {assignmentActivity ? (
-        <div className="forms-modal-backdrop" onClick={() => setAssignmentActivity(null)} aria-hidden="true">
-          <div className="forms-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="forms-modal-head">
-              <div>
-                <h3>Student Selection</h3>
-                <p>Assignment path for ready or finalized activities.</p>
-              </div>
-              <button type="button" className="ghost" onClick={() => setAssignmentActivity(null)}>Close</button>
-            </div>
-            <label className="forms-field forms-field-full">
-              <span>Class / Batch Assignment</span>
-              <div className="forms-select-wrap">
-                <select value={assignmentTarget} onChange={(event) => setAssignmentTarget(event.target.value)}>
-                  <option>Batch A • 28 students</option>
-                  <option>Batch B • 24 students</option>
-                  <option>Batch C • 30 students</option>
-                </select>
-              </div>
-            </label>
-            <div className="forms-modal-actions">
-              <button type="button" className="ghost" onClick={() => setAssignmentActivity(null)}>Cancel</button>
-              <button type="button" className="tool-btn green" onClick={handleSubmitAssignment}>Submit</button>
             </div>
           </div>
         </div>
