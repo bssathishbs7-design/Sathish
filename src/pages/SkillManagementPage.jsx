@@ -14,6 +14,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { APP_PAGES } from '../config/appPages'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
 
@@ -684,7 +685,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   )
 
   return (
-    <section className="vx-content forms-page">
+    <section className="vx-content forms-page configuration-page">
       <div className="forms-flow-shell">
         <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Configuration' }]} />
         <div className="forms-flow-head">
@@ -1149,7 +1150,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
         </div>
       ) : null}
 
-      {isAddOpen ? (
+      {isAddOpen ? createPortal(
         <div className="forms-modal-backdrop forms-modal-skill-assessment-backdrop" onClick={() => setIsAddOpen(false)} aria-hidden="true">
           <div className="forms-modal forms-modal-activity forms-modal-skill-assessment" onClick={(event) => event.stopPropagation()}>
             <div className="forms-modal-head">
@@ -1272,7 +1273,8 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
 
       {builderActivity ? (

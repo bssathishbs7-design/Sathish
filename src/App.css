@@ -1,6 +1,9 @@
 ﻿.vx-shell {
   min-height: 100svh;
-  background: #eef1f7;
+  background:
+    radial-gradient(circle at top left, rgba(95, 232, 177, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 32%),
+    linear-gradient(180deg, #f7fbff 0%, #f5f8fc 34%, #eef3f8 100%);
   color: #0f6844;
   display: grid;
   grid-template-columns: 1fr;
@@ -18,6 +21,42 @@
   --app-shadow-soft: var(--shadow-soft);
   --app-motion: var(--motion-standard);
   --app-motion-snappy: var(--motion-snappy);
+}
+
+.vx-shell::before,
+.vx-shell::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 999px;
+  filter: blur(60px);
+}
+
+.vx-shell::before {
+  top: -120px;
+  left: -40px;
+  width: 320px;
+  height: 320px;
+  background: rgba(95, 232, 177, 0.18);
+  opacity: 0.72;
+}
+
+.vx-shell::after {
+  right: -80px;
+  bottom: 8%;
+  width: 360px;
+  height: 360px;
+  background: rgba(96, 165, 250, 0.14);
+  opacity: 0.66;
+}
+
+.vx-sidebar,
+.vx-topbar,
+.vx-main,
+.vx-mobile-nav {
+  position: relative;
+  z-index: 1;
 }
 
 .ospe-page {
@@ -296,7 +335,7 @@
 }
 
 .vx-shell {
-  --app-surface: rgba(255, 255, 255, 0.72);
+  --app-surface: rgb(255 255 255);
   --app-surface-strong: rgba(255, 255, 255, 0.84);
   --app-border: rgba(148, 163, 184, 0.12);
   --app-text: #163229;
@@ -512,7 +551,7 @@
   color: #0f6844;
   background: linear-gradient(180deg, #effff7, #ddfff0);
   border-color: #88ffd0;
-  font-weight: 600;
+  font-weight: 500;
   box-shadow: 0 10px 22px rgba(95, 232, 177, 0.18);
 }
 
@@ -620,7 +659,7 @@
   color: #0f6844;
   background: linear-gradient(180deg, #effff7, #ddfff0);
   border-color: #88ffd0;
-  font-weight: 600;
+  font-weight: 500;
   box-shadow: 0 10px 22px rgba(95, 232, 177, 0.18);
 }
 
@@ -1234,7 +1273,7 @@
   border: 0;
   border-radius: 0;
   border-top: 0;
-  background: #fff;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(250, 252, 255, 0.96));
   padding: 14px;
 }
 
@@ -1620,7 +1659,7 @@
 .vx-table th {
   background: #f8faff;
   color: var(--color-text-secondary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .is-bordered .vx-table,
@@ -1870,9 +1909,22 @@
 }
 
 .theme-dark {
-  background: #0f172a;
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.12), transparent 28%),
+    radial-gradient(circle at 82% 16%, rgba(59, 130, 246, 0.12), transparent 30%),
+    linear-gradient(180deg, #08111f 0%, #0b1425 36%, #0f172a 100%);
   color: #e2e8f0;
   --vx-divider: #24324a;
+}
+
+.theme-dark.vx-shell::before {
+  background: rgba(20, 184, 166, 0.16);
+  opacity: 0.42;
+}
+
+.theme-dark.vx-shell::after {
+  background: rgba(59, 130, 246, 0.14);
+  opacity: 0.34;
 }
 
 .theme-dark .vx-sidebar,
@@ -1887,7 +1939,7 @@
 .theme-dark .vx-dots,
 .theme-dark .vx-title-actions button,
 .theme-dark .vx-mobile-nav button {
-  background: #111c30;
+  background: linear-gradient(180deg, rgba(17, 28, 48, 0.96), rgba(14, 23, 40, 0.98));
   color: #dbe5f3;
   border-color: #24324a;
 }
@@ -5389,16 +5441,6 @@
   animation: modal-backdrop-fade 180ms ease-out;
 }
 
-@media (min-width: 1180px) {
-  .forms-modal-skill-assessment-backdrop {
-    padding-left: 270px;
-  }
-
-  .is-collapsed .forms-modal-skill-assessment-backdrop {
-    padding-left: 84px;
-  }
-}
-
 .forms-modal {
   width: min(100%, 560px);
   border: 1px solid #dfe8e2;
@@ -7498,6 +7540,31 @@
 
 .theme-dark .generation-tooltip-success {
   color: #e2e8f0;
+}
+
+.theme-dark .configuration-page::before,
+.theme-dark .skill-assessment-page::before,
+.theme-dark .dashboard-summary-page::before,
+.theme-dark .faculty-management-page::before {
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.theme-dark .generation-tooltip-section-head::before {
+  border-top-color: rgba(148, 163, 184, 0.22);
+}
+
+.theme-dark .generation-tooltip-section-head span {
+  background: rgba(17, 28, 48, 0.98);
+  color: #94a5bb;
+}
+
+.theme-dark .generation-tooltip-link {
+  background: rgba(17, 28, 48, 0.98);
+  color: #7af0c1;
+}
+
+.theme-dark .generation-tooltip-link:hover {
+  color: #a7f3d0;
 }
 
 @media (max-width: 759px) {
@@ -10579,6 +10646,34 @@
   padding: 0;
 }
 
+.configuration-page,
+.skill-assessment-page,
+.dashboard-summary-page,
+.faculty-management-page {
+  position: relative;
+  overflow: hidden;
+}
+
+.configuration-page::before,
+.skill-assessment-page::before,
+.dashboard-summary-page::before,
+.faculty-management-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: #f6fbff;
+}
+
+.configuration-page > *,
+.skill-assessment-page > *,
+.dashboard-summary-page > *,
+.faculty-management-page > * {
+  position: relative;
+  z-index: 1;
+}
+
 .faculty-page-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -11711,6 +11806,8 @@
 }
 
 .generation-tooltip-action {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   min-height: 40px;
   margin-top: 12px;
@@ -11722,6 +11819,20 @@
   font-weight: 700;
   font-size: 0.94rem;
   box-shadow: 0 10px 22px rgba(95, 232, 177, 0.18);
+}
+
+.generation-tooltip-action:not(:disabled) {
+  animation: generation-tooltip-button-pulse 1.8s ease-in-out infinite;
+}
+
+.generation-tooltip-action:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.32) 50%, transparent 82%);
+  transform: translateX(-135%);
+  animation: generation-tooltip-button-shimmer 2.2s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .generation-tooltip-action:hover:not(:disabled) {
@@ -11810,6 +11921,28 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes generation-tooltip-button-pulse {
+  0%,
+  100% {
+    box-shadow: 0 10px 22px rgba(95, 232, 177, 0.18);
+  }
+
+  50% {
+    box-shadow: 0 10px 24px rgba(95, 232, 177, 0.3);
+  }
+}
+
+@keyframes generation-tooltip-button-shimmer {
+  0%,
+  100% {
+    transform: translateX(-135%);
+  }
+
+  55% {
+    transform: translateX(135%);
   }
 }
 
@@ -12387,10 +12520,12 @@
 }
 
 .image-activity-created-skill-card.is-active {
-  border-color: rgba(59, 130, 246, 0.24);
+  border-color: rgba(59, 130, 246, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 248, 255, 1));
   box-shadow:
     0 12px 24px rgba(15, 23, 42, 0.08),
-    0 0 0 1px rgba(59, 130, 246, 0.1);
+    0 0 0 2px rgba(59, 130, 246, 0.12);
 }
 
 .image-activity-created-skill-head {
@@ -14644,10 +14779,12 @@
 }
 
 .theme-dark .image-activity-created-skill-card.is-active {
-  border-color: rgba(96, 165, 250, 0.28);
+  border-color: rgba(96, 165, 250, 0.4);
+  background:
+    linear-gradient(180deg, rgba(16, 28, 47, 0.98), rgba(12, 24, 40, 1));
   box-shadow:
     0 14px 28px rgba(2, 6, 23, 0.2),
-    0 0 0 1px rgba(96, 165, 250, 0.14);
+    0 0 0 2px rgba(96, 165, 250, 0.18);
 }
 
 .theme-dark .image-activity-created-skill-title strong,
@@ -15537,4 +15674,81 @@
   min-height: 34px;
   padding: 0 11px;
   font-size: 0.8rem;
+}
+
+/* Cross-page button uniformity */
+.configuration-page .tool-btn,
+.configuration-page .ghost,
+.configuration-page .forms-page-btn,
+.configuration-page .activity-footer-actions .tool-btn.green,
+.configuration-page .activity-footer-actions .ghost,
+.skill-assessment-page .tool-btn,
+.skill-assessment-page .ghost,
+.skill-assessment-page .dashboard-summary-info-btn,
+.skill-assessment-page .dashboard-summary-mini-btn,
+.dashboard-summary-page .tool-btn,
+.dashboard-summary-page .ghost,
+.dashboard-summary-page .dashboard-summary-info-btn,
+.dashboard-summary-page .dashboard-summary-mini-btn,
+.faculty-management-page .tool-btn,
+.faculty-management-page .ghost,
+.faculty-management-page .faculty-utility-btn,
+.faculty-management-page .faculty-icon-btn,
+.faculty-management-page .faculty-toggle,
+.faculty-management-page .dashboard-summary-info-btn,
+.faculty-management-page .dashboard-summary-mini-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+}
+
+.faculty-management-page .faculty-icon-btn {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+}
+
+.configuration-page .forms-flow-head > .tool-btn,
+.skill-assessment-page .skill-assessment-summary-btn,
+.dashboard-summary-page .dashboard-summary-mini-btn,
+.dashboard-summary-page .dashboard-summary-info-btn,
+.faculty-management-page .faculty-toolbar .tool-btn.green,
+.faculty-management-page .faculty-modal-actions .tool-btn.green,
+.faculty-management-page .faculty-modal-actions .ghost {
+  min-height: 36px;
+  border-radius: 10px;
+}
+
+.image-activity-page .tool-btn,
+.image-activity-page .ghost,
+.image-activity-page .activity-btn,
+.image-activity-page .act-btn,
+.image-activity-page .image-activity-inline-actions > .tool-btn,
+.image-activity-page .image-activity-inline-actions .image-activity-scaffolding-anchor > .ghost,
+.image-activity-page .image-activity-skill-actions > .tool-btn,
+.image-activity-page .image-activity-skill-actions > .ghost,
+.image-activity-page .image-activity-skill-actions .image-activity-scaffolding-anchor > .ghost,
+.configuration-page .activity-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+}
+
+.image-activity-page .image-activity-skill-actions > .tool-btn,
+.image-activity-page .image-activity-skill-actions > .ghost,
+.image-activity-page .image-activity-skill-actions .image-activity-scaffolding-anchor > .ghost {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.image-activity-page .image-activity-inline-actions > .tool-btn,
+.image-activity-page .image-activity-inline-actions .image-activity-scaffolding-anchor > .ghost {
+  min-height: 36px;
+  padding: 0 12px;
 }

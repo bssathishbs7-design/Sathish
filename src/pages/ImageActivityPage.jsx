@@ -81,6 +81,18 @@ const createGeneratedQuestion = (type, index) => ({
   explanation: 'Add a short explanation for the expected answer.',
 })
 
+const isSameQuestionContent = (question, baselineQuestion) => (
+  question?.type === baselineQuestion?.type
+  && question?.questionText === baselineQuestion?.questionText
+  && JSON.stringify(question?.options ?? []) === JSON.stringify(baselineQuestion?.options ?? [])
+  && question?.cognitive === baselineQuestion?.cognitive
+  && question?.affective === baselineQuestion?.affective
+  && question?.psychomotor === baselineQuestion?.psychomotor
+  && question?.marks === baselineQuestion?.marks
+  && question?.answerKey === baselineQuestion?.answerKey
+  && question?.explanation === baselineQuestion?.explanation
+)
+
 /**
  * ImageActivityPage Implementation Contract
  * Structure:
@@ -127,6 +139,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const skillStepLabel = isInterpretationWorkflow
     ? 'Step 2 : Building the Skill Assessment Interpretation Type Question'
     : 'Step 2 : Building the Skill Assessment Image Type Question'
+  const defaultSkillQuestion = useMemo(() => createGeneratedQuestion('Descriptive', 0), [])
 
   const [activityName, setActivityName] = useState(defaultActivityName)
   const [isEditingName, setIsEditingName] = useState(false)
@@ -135,8 +148,14 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const [isAssetsSectionOpen, setIsAssetsSectionOpen] = useState(true)
   const [images, setImages] = useState(() => createImageState(savedDraft?.images ?? []))
   const [previewImage, setPreviewImage] = useState(null)
-  const [createdSkillQuestions, setCreatedSkillQuestions] = useState(savedDraft?.createdSkillQuestions ?? [])
-  const [activeCreatedSkillQuestionId, setActiveCreatedSkillQuestionId] = useState(null)
+  const [createdSkillQuestions, setCreatedSkillQuestions] = useState(
+    savedDraft?.createdSkillQuestions?.length
+      ? savedDraft.createdSkillQuestions
+      : [createGeneratedQuestion('Descriptive', 0)],
+  )
+  const [activeCreatedSkillQuestionId, setActiveCreatedSkillQuestionId] = useState(
+    savedDraft?.createdSkillQuestions?.[0]?.id ?? defaultSkillQuestion.id,
+  )
   const [generatedQuestions, setGeneratedQuestions] = useState(savedDraft?.generatedQuestions ?? [])
   const [activeEditableQuestionId, setActiveEditableQuestionId] = useState(null)
   const [draggedQuestionId, setDraggedQuestionId] = useState(null)
@@ -242,15 +261,20 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     [scaffoldingSelection],
   )
   const hasAnyQuestionCreated = createdSkillQuestions.length > 0 || generatedQuestions.length > 0
-  const shouldShowSkillBuilder = isInterpretationWorkflow || uploadedImageCount > 0
-  const shouldShowSaveActions = hasAnyQuestionCreated && (isInterpretationWorkflow || uploadedImageCount > 0)
+  const hasEditedDefaultCreatedQuestion = useMemo(() => {
+    const firstQuestion = createdSkillQuestions[0]
+    if (!firstQuestion) return false
+    return !isSameQuestionContent(firstQuestion, defaultSkillQuestion)
+  }, [createdSkillQuestions, defaultSkillQuestion])
+  const shouldShowAddQuestionButton = createdSkillQuestions.length > 1 || hasEditedDefaultCreatedQuestion
+  const shouldShowSkillBuilder = true
 
-  const handleCreateSkill = () => {
+  const handleAddQuestion = () => {
     const nextQuestion = createGeneratedQuestion('Descriptive', createdSkillQuestions.length)
     setCreatedSkillQuestions((current) => [...current, nextQuestion])
     setActiveCreatedSkillQuestionId(nextQuestion.id)
     setIsSkillActivitySaved(false)
-    onAlert?.({ tone: 'secondary', message: 'Skill question created successfully.' })
+    onAlert?.({ tone: 'secondary', message: 'New question added successfully.' })
   }
 
   const handleGenerateScaffolding = () => {
@@ -650,11 +674,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                   <div className="image-activity-skill-card-top">
                     <div className="image-activity-inline-actions image-activity-skill-actions" ref={scaffoldingTooltipRef}>
                       {!isSkillActivitySaved ? (
-                        <button type="button" className="tool-btn green" onClick={handleCreateSkill}>
-                          {createdSkillQuestions.length > 0 ? 'Add Question' : 'Create Skill'}
-                        </button>
-                      ) : null}
-                      {generatedQuestions.length === 0 ? (
                         <div className="image-activity-scaffolding-anchor">
                           <button
                             type="button"
@@ -733,13 +752,18 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                           ) : null}
                         </div>
                       ) : null}
-                      {shouldShowSaveActions ? (
+                      {!isSkillActivitySaved && shouldShowAddQuestionButton ? (
+                        <button type="button" className="ghost" onClick={handleAddQuestion}>
+                          Add Question
+                        </button>
+                      ) : null}
+                      {shouldShowSkillBuilder ? (
                         isSkillActivitySaved ? (
                           <button type="button" className="tool-btn image-activity-review-assign-btn" onClick={handleReviewAssign}>
                             Review/Assign
                           </button>
                         ) : (
-                          <button type="button" className="ghost" onClick={handleSaveSkillActivity}>
+                          <button type="button" className="ghost" onClick={handleSaveSkillActivity} disabled={!hasAnyQuestionCreated}>
                             Save Skill Activity
                           </button>
                         )
@@ -747,16 +771,18 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                     </div>
                   </div>
 
-                  {createdSkillQuestions.length > 0 ? (
-                    <div className="image-activity-created-skill-list">
-                      {createdSkillQuestions.map((question, index) => {
+                  <div className="image-activity-created-skill-list">
+                    {createdSkillQuestions.map((question, index) => {
+                        const isPreviewOnly = false
                         const isCreatedSkillActive = activeCreatedSkillQuestionId === question.id
                         return (
                           <article
                             key={question.id}
                             data-created-skill-question-id={question.id}
                             className={`image-activity-created-skill-card ${isCreatedSkillActive ? 'is-active' : ''}`}
-                            onClick={() => setActiveCreatedSkillQuestionId(question.id)}
+                            onClick={() => {
+                              setActiveCreatedSkillQuestionId(question.id)
+                            }}
                           >
                           <div className="image-activity-created-skill-head">
                             <div className="image-activity-created-skill-title">
@@ -772,7 +798,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                               <span className={`image-activity-generated-mark-pill ${!hasMarks ? 'is-disabled' : ''}`}>
                                 {hasMarks ? `${question.marks} mark` : 'Marks disabled'}
                               </span>
-                              {isCreatedSkillActive ? (
+                              {isCreatedSkillActive && !isPreviewOnly ? (
                                 <button
                                   type="button"
                                   className="image-activity-asset-btn is-danger"
@@ -797,8 +823,12 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                 <textarea
                                   rows={4}
                                   value={question.questionText}
-                                  onChange={(event) => updateCreatedSkillQuestion(question.id, 'questionText', event.target.value)}
+                                  onChange={(event) => {
+                                    if (isPreviewOnly) return
+                                    updateCreatedSkillQuestion(question.id, 'questionText', event.target.value)
+                                  }}
                                   onClick={(event) => event.stopPropagation()}
+                                  readOnly={isPreviewOnly}
                                 />
                               </label>
 
@@ -807,10 +837,14 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                 <label className="forms-field">
                                   <span>Marks</span>
                                   <input
-                                    disabled={!hasMarks}
+                                    disabled={!hasMarks || isPreviewOnly}
                                     value={question.marks}
-                                    onChange={(event) => updateCreatedSkillQuestion(question.id, 'marks', event.target.value)}
+                                    onChange={(event) => {
+                                      if (isPreviewOnly) return
+                                      updateCreatedSkillQuestion(question.id, 'marks', event.target.value)
+                                    }}
                                     onClick={(event) => event.stopPropagation()}
+                                    readOnly={isPreviewOnly}
                                   />
                                 </label>
 
@@ -819,8 +853,12 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                   <div className="forms-select-wrap">
                                     <select
                                       value={question.cognitive}
-                                      onChange={(event) => updateCreatedSkillQuestion(question.id, 'cognitive', event.target.value)}
+                                      onChange={(event) => {
+                                        if (isPreviewOnly) return
+                                        updateCreatedSkillQuestion(question.id, 'cognitive', event.target.value)
+                                      }}
                                       onClick={(event) => event.stopPropagation()}
+                                      disabled={isPreviewOnly}
                                     >
                                       {cognitiveScaffoldingOptions.map((option) => (
                                         <option key={option} value={option}>{option}</option>
@@ -834,8 +872,12 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                   <div className="forms-select-wrap">
                                     <select
                                       value={question.affective}
-                                      onChange={(event) => updateCreatedSkillQuestion(question.id, 'affective', event.target.value)}
+                                      onChange={(event) => {
+                                        if (isPreviewOnly) return
+                                        updateCreatedSkillQuestion(question.id, 'affective', event.target.value)
+                                      }}
                                       onClick={(event) => event.stopPropagation()}
+                                      disabled={isPreviewOnly}
                                     >
                                       {affectiveScaffoldingOptions.map((option) => (
                                         <option key={option} value={option}>{option}</option>
@@ -849,8 +891,12 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                   <div className="forms-select-wrap">
                                     <select
                                       value={question.psychomotor}
-                                      onChange={(event) => updateCreatedSkillQuestion(question.id, 'psychomotor', event.target.value)}
+                                      onChange={(event) => {
+                                        if (isPreviewOnly) return
+                                        updateCreatedSkillQuestion(question.id, 'psychomotor', event.target.value)
+                                      }}
                                       onClick={(event) => event.stopPropagation()}
+                                      disabled={isPreviewOnly}
                                     >
                                       {psychomotorScaffoldingOptions.map((option) => (
                                         <option key={option} value={option}>{option}</option>
@@ -864,8 +910,12 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                 <span>Answer &amp; Explanation</span>
                                 <input
                                   value={question.answerKey}
-                                  onChange={(event) => updateCreatedSkillQuestion(question.id, 'answerKey', event.target.value)}
+                                  onChange={(event) => {
+                                    if (isPreviewOnly) return
+                                    updateCreatedSkillQuestion(question.id, 'answerKey', event.target.value)
+                                  }}
                                   onClick={(event) => event.stopPropagation()}
+                                  readOnly={isPreviewOnly}
                                 />
                               </label>
                             </div>
@@ -879,8 +929,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                         </article>
                         )
                       })}
-                    </div>
-                  ) : null}
+                  </div>
                 </section>
               ) : null}
             </>
