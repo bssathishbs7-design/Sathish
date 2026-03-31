@@ -17,6 +17,13 @@ import {
 import { createPortal } from 'react-dom'
 import { APP_PAGES } from '../config/appPages'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
+import {
+  GET_ALL_COURSE_API,
+  GET_ALL_YEAR_API,
+  getAuthHeaders,
+  getCourseParam,
+  getInstitutionParam,
+} from '../api/api'
 
 const workflowSteps = [
   {
@@ -199,6 +206,11 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   const [yearFilter, setYearFilter] = useState('All Years')
   const [subjectFilter, setSubjectFilter] = useState('All Subjects')
   const [activeSearchField, setActiveSearchField] = useState(null)
+  const [academicYears, setAcademicYears] = useState([])
+  const [isYearLoading, setIsYearLoading] = useState(false)
+  const [academicCourses, setAcademicCourses] = useState([])
+  const [selectedCourseKey, setSelectedCourseKey] = useState('')
+  const [isCourseLoading, setIsCourseLoading] = useState(false)
   const [newRecord, setNewRecord] = useState({
     year: 'First Year',
     subject: 'Human Anatomy',
@@ -210,6 +222,9 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   const subjects = ['All Subjects', ...new Set(records.map((record) => record.subject))]
   const topicSuggestions = [...new Set(records.map((record) => record.topic).filter(Boolean))]
   const competencySuggestions = [...new Set(records.map((record) => record.competency).filter(Boolean))]
+  const academicYearOptions = academicYears.length
+    ? academicYears
+    : years.filter((year) => year !== 'All Years')
 
   const filteredRecords = records.filter((record) => {
     const query = searchQuery.trim().toLowerCase()
@@ -296,6 +311,13 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     setActiveSearchField(null)
   }
 
+  const handleCourseChange = (event) => {
+    const nextKey = event.target.value
+    setSelectedCourseKey(nextKey)
+    localStorage.setItem('courseKey', nextKey)
+    setAcademicYears([])
+  }
+
   const handleCreateActivity = () => {
     if (!activityFormRecordId) return
 
@@ -378,11 +400,118 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   }, [generationFlow?.activityId, generationFlow?.phase, generationFlow?.recordId, generationFlow?.selectedModes])
 
   useEffect(() => {
-    if (!generationFlow) return undefined
+    let isMounted = true
 
-    const handlePointerDown = (event) => {
-      if (generationPopoverRef.current?.contains(event.target)) return
-      setGenerationFlow(null)
+    const normalizeYearLabel = (item) => {
+      if (!item) return null
+      if (typeof item === 'string') return item
+      return item.year
+        || item.year_name
+        || item.yearName
+        || item.name
+        || item.label
+        || null
+    }
+
+    const loadAcademicYears = async () => {
+      setIsYearLoading(true)
+      try {
+        const courseKey = selectedCourseKey || getCourseParam() || import.meta.env.VITE_DEV_COURSE_KEY || ''
+        if (isMounted && courseKey && !selectedCourseKey) {
+          setSelectedCourseKey(courseKey)
+        }
+        const institutionId = getInstitutionParam()
+        const query = courseKey
+          ? `?course=${encodeURIComponent(courseKey)}&onboarded=true`
+          : institutionId
+            ? `?institutionId=${encodeURIComponent(institutionId)}`
+            : ''
+        const url = `${GET_ALL_YEAR_API}${query}`
+        const response = await fetch(url, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+        })
+        if (!response.ok) throw new Error('Failed to fetch years')
+        const payload = await response.json()
+        const list = Array.isArray(payload)
+          ? payload
+          : payload?.data || payload?.result || payload?.years || []
+        const normalized = list
+          .map(normalizeYearLabel)
+          .filter(Boolean)
+        const unique = [...new Set(normalized)]
+        if (isMounted && unique.length) {
+          setAcademicYears(unique)
+          setNewRecord((current) => ({
+            ...current,
+            year: unique[0],
+          }))
+        }
+      } catch (error) {
+        // Keep fallback year list derived from local records.
+      } finally {
+        if (isMounted) setIsYearLoading(false)
+      }
+    }
+
+    loadAcademicYears()
+
+    return () => {
+      isMounted = false
+    }
+  }, [selectedCourseKey])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadCourses = async () => {
+      setIsCourseLoading(true)
+      try {
+        const response = await fetch(GET_ALL_COURSE_API, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+        })
+        if (!response.ok) throw new Error('Failed to fetch courses')
+        const payload = await response.json()
+        const list = Array.isArray(payload)
+          ? payload
+          : payload?.data || payload?.result || payload?.courses || []
+        const normalized = list
+          .map((item) => {
+            if (!item) return null
+            const key = item.key || item.course_key || item.courseKey || item.code
+            const name = item.name || item.course || item.label || item.title
+            if (!key) return null
+            return { key, name: name || key }
+          })
+          .filter(Boolean)
+        if (isMounted && normalized.length) {
+          setAcademicCourses(normalized)
+          const preferredKey = getCourseParam() || import.meta.env.VITE_DEV_COURSE_KEY || normalized[0].key
+          setSelectedCourseKey(preferredKey)
+          localStorage.setItem('courseKey', preferredKey)
+        }
+      } catch (error) {
+        // Ignore and keep fallback behavior.
+      } finally {
+        if (isMounted) setIsCourseLoading(false)
+      }
+    }
+
+    loadCourses()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!generationFlow || generationFlow.phase !== 'processing' || generationFlow.progress < 100) {
+      return undefined
     }
 
     document.addEventListener('mousedown', handlePointerDown)
@@ -1172,12 +1301,40 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
 
                 <div className="forms-modal-grid skill-assessment-inline-grid">
                   <label className="forms-field">
+                    <span>Course</span>
+                    <div className="forms-select-wrap">
+                      <select
+                        value={selectedCourseKey}
+                        onChange={handleCourseChange}
+                        disabled={isCourseLoading && !academicCourses.length}
+                      >
+                        {isCourseLoading && !academicCourses.length ? (
+                          <option value="">Loading...</option>
+                        ) : (
+                          academicCourses.map((course) => (
+                            <option key={course.key} value={course.key}>
+                              {course.name}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+                  </label>
+                  <label className="forms-field">
                     <span>Year</span>
                     <div className="forms-select-wrap">
-                      <select value={newRecord.year} onChange={(event) => setNewRecord((current) => ({ ...current, year: event.target.value }))}>
-                        {years.filter((year) => year !== 'All Years').map((year) => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
+                      <select
+                        value={newRecord.year}
+                        onChange={(event) => setNewRecord((current) => ({ ...current, year: event.target.value }))}
+                        disabled={isYearLoading && !academicYearOptions.length}
+                      >
+                        {isYearLoading && !academicYearOptions.length ? (
+                          <option value="">Loading...</option>
+                        ) : (
+                          academicYearOptions.map((year) => (
+                            <option key={year} value={year}>{year}</option>
+                          ))
+                        )}
                       </select>
                     </div>
                   </label>

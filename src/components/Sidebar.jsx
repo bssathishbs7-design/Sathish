@@ -4,24 +4,6 @@ import brandLogo from '../assets/brand-logo.svg'
 import brandMark from '../assets/brand-mark.svg'
 import { SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
 
-/**
- * Sidebar Implementation Contract
- * Structure:
- * - Shared navigation rail with one nested "Skills" group and top-level destinations.
- * Dependencies:
- * - Brand assets, lucide-react icons, and shared page metadata from src/config/appPages.js
- * Props / Data:
- * - Receives active page and shell callbacks from App.jsx
- * State:
- * - Local UI state only for skills group expansion
- * Hooks / Providers:
- * - No context provider required; app-level navigation remains prop-driven
- * Responsive behavior:
- * - Desktop supports collapse/flyout behavior
- * - Mobile supports slide-in drawer behavior with explicit close control
- * Placement:
- * - Shared shell component in src/components/
- */
 export default function Sidebar({
   mobileSidebarOpen,
   sidebarCollapsed,

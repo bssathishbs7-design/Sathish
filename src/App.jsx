@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import { AlertTriangle, CheckCircle2, Info, OctagonAlert } from 'lucide-react'
 import Navbar from './components/Navbar'
@@ -135,6 +135,52 @@ function App() {
     registerId: 'MC2568',
     role: 'Admin',
   }
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    if (window.__DEV_AUTH_MOCKED__) return
+
+    const mockEnabled =
+      import.meta.env.VITE_DEV_MOCK_SESSION === 'true' ||
+      import.meta.env.REACT_APP_DEV_MOCK_SESSION === 'true'
+    if (!mockEnabled) return
+
+    // Dev-only auth + institution mock to bypass full login flow.
+    const tokenFromEnv = import.meta.env.VITE_AUTH_TOKEN
+    const header = 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0'
+    const payload = 'eyJleHAiOjE4OTM0NTYwMDB9'
+    const fallbackToken = `${header}.${payload}.`
+    const authToken = tokenFromEnv || fallbackToken
+
+    const userEmail = import.meta.env.VITE_DEV_USER_EMAIL || 'dev@medsy.ai'
+    const universityName = import.meta.env.VITE_DEV_UNIVERSITY_NAME || 'demo-university'
+    const collegeName = import.meta.env.VITE_DEV_COLLEGE_NAME || 'demo-college'
+    const institutionId = import.meta.env.VITE_DEV_INSTITUTION_ID || 'demo-institution-id'
+    const role = import.meta.env.VITE_DEV_ROLE || 'admin'
+    const universityKey = import.meta.env.VITE_DEV_UNIVERSITY_KEY || 'UNI26QA5'
+    const courseKey = import.meta.env.VITE_DEV_COURSE_KEY || 'DE2'
+
+    document.cookie = `authToken=${authToken}; path=/`
+    localStorage.setItem('user', JSON.stringify(userEmail))
+    localStorage.setItem(
+      'permissionData',
+      JSON.stringify({
+        permissions: { module_permissions: {} },
+        university: collegeName,
+        role,
+      }),
+    )
+    localStorage.setItem('universityName', JSON.stringify(universityName))
+    localStorage.setItem('collegeName', JSON.stringify(collegeName))
+    localStorage.setItem('institutionId', JSON.stringify(institutionId))
+    localStorage.setItem('universityKey', JSON.stringify(universityKey))
+    localStorage.setItem('courseKey', JSON.stringify(courseKey))
+
+    window.__DEV_AUTH_MOCKED__ = true
+    if (window.location.pathname === '/' || window.location.pathname === '/login') {
+      window.location.href = `/${collegeName}/dashboard`
+    }
+  }, [])
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement))
