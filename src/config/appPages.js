@@ -2,6 +2,7 @@ import {
   BarChart3,
   ClipboardCheck,
   FileText,
+  GraduationCap,
   Stethoscope,
   SlidersHorizontal,
   UsersRound,
@@ -15,6 +16,7 @@ export const APP_PAGES = {
   IMAGE_ACTIVITY: 'Image Activity',
   INTERPRETATION_ACTIVITY: 'Interpretation Activity',
   FACULTY_MANAGEMENT: 'Faculty Management',
+  STUDENT_MANAGEMENT: 'Student Management',
   DASHBOARD_SUMMARY: 'Dashboard Summary',
   PROFILE_SETTINGS: 'Profile Settings',
   LOGIN: 'Login',
@@ -44,6 +46,7 @@ export const SIDEBAR_MENU = [
         ],
       },
       { label: APP_PAGES.FACULTY_MANAGEMENT, icon: UsersRound },
+      { label: APP_PAGES.STUDENT_MANAGEMENT, icon: GraduationCap },
     ],
   },
 ]

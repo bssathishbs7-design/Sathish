@@ -20,6 +20,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import '../styles/config/image-activity.css'
 
 const cognitiveScaffoldingOptions = ['Not Applicable', 'Remember', 'Understand', 'Apply', 'Analyse', 'Evaluate', 'Create']
 const affectiveScaffoldingOptions = ['Not Applicable', 'Receive', 'Respond', 'Value', 'Organize', 'Characterize']
@@ -151,7 +152,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const [createdSkillQuestions, setCreatedSkillQuestions] = useState(
     savedDraft?.createdSkillQuestions?.length
       ? savedDraft.createdSkillQuestions
-      : [createGeneratedQuestion('Descriptive', 0)],
+      : [defaultSkillQuestion],
   )
   const [activeCreatedSkillQuestionId, setActiveCreatedSkillQuestionId] = useState(
     savedDraft?.createdSkillQuestions?.[0]?.id ?? defaultSkillQuestion.id,
@@ -266,6 +267,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     if (!firstQuestion) return false
     return !isSameQuestionContent(firstQuestion, defaultSkillQuestion)
   }, [createdSkillQuestions, defaultSkillQuestion])
+  const initialCreatedSkillQuestionId = createdSkillQuestions[0]?.id ?? defaultSkillQuestion.id
   const shouldShowAddQuestionButton = createdSkillQuestions.length > 1 || hasEditedDefaultCreatedQuestion
   const shouldShowSkillBuilder = true
 
@@ -446,8 +448,9 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
 
       return next
     })
-    setCreatedSkillQuestions([])
-    setActiveCreatedSkillQuestionId(null)
+    const resetDefaultQuestion = createGeneratedQuestion('Descriptive', 0)
+    setCreatedSkillQuestions([resetDefaultQuestion])
+    setActiveCreatedSkillQuestionId(resetDefaultQuestion.id)
     setGeneratedQuestions([])
     setActiveEditableQuestionId(null)
     setIsSkillActivitySaved(false)
@@ -466,7 +469,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   }
 
   return (
-    <section className="vx-content forms-page image-activity-page">
+    <section className={`vx-content forms-page image-activity-page ${isInterpretationWorkflow ? 'interpretation-activity-page' : ''}`.trim()}>
       <div className="image-activity-workspace image-activity-workspace--enhanced">
         <section className="image-activity-banner image-activity-banner--enhanced">
           <div className="image-activity-banner-main">
@@ -774,7 +777,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                   <div className="image-activity-created-skill-list">
                     {createdSkillQuestions.map((question, index) => {
                         const isPreviewOnly = false
-                        const isCreatedSkillActive = activeCreatedSkillQuestionId === question.id
+                        const isCreatedSkillActive = (activeCreatedSkillQuestionId ?? initialCreatedSkillQuestionId) === question.id
                         return (
                           <article
                             key={question.id}
