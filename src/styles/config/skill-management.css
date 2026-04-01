@@ -55,7 +55,6 @@
   flex: 0 0 40px;
   position: relative;
   overflow: visible;
-  z-index: 1;
 }
 
 .configuration-page .forms-flow-panel-search > .tool-btn.green {
