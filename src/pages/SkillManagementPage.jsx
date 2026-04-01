@@ -16,7 +16,6 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { createPortal } from 'react-dom'
 import { APP_PAGES } from '../config/appPages'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import '../styles/config/skill-management.css'
@@ -197,6 +196,14 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     || activityTypeFilter !== 'All Activities'
     || certifiableFilter !== 'All Certifiable'
     || statusFilter !== 'All Statuses'
+
+  const activeListFilterCount = [
+    yearFilter !== 'All Years',
+    subjectFilter !== 'All Subjects',
+    activityTypeFilter !== 'All Activities',
+    certifiableFilter !== 'All Certifiable',
+    statusFilter !== 'All Statuses',
+  ].filter(Boolean).length
 
   const filteredRecords = records.filter((record) => {
     const query = searchQuery.trim().toLowerCase()
@@ -721,12 +728,118 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
               title={isFilterOpen ? 'Hide search filters' : 'Show search filters'}
             >
               <SlidersHorizontal size={16} strokeWidth={2.2} />
+              {activeListFilterCount ? (
+                <span className="forms-inline-filter-toggle-badge" aria-hidden="true">
+                  {activeListFilterCount}
+                </span>
+              ) : null}
             </button>
-            <button type="button" className="tool-btn green" onClick={() => setIsAddOpen(true)}>
+            <button
+              type="button"
+              className="tool-btn green"
+              onClick={() => setIsAddOpen((current) => !current)}
+              aria-expanded={isAddOpen}
+              aria-controls="configuration-add-competency-panel"
+            >
               <ClipboardPlus size={15} strokeWidth={2.2} />
               Add Competency
             </button>
           </div>
+
+          {isAddOpen ? (
+            <div id="configuration-add-competency-panel" className="configuration-inline-compact-builder">
+              <div className="configuration-inline-compact-grid">
+                <label className="forms-field">
+                  <span>Year</span>
+                  <div className="forms-select-wrap">
+                    <select value={newRecord.year} onChange={(event) => setNewRecord((current) => ({ ...current, year: event.target.value }))}>
+                      {years.filter((year) => year !== 'All Years').map((year) => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+
+                <label className="forms-field">
+                  <span>Subject</span>
+                  <div className="forms-select-wrap">
+                    <select value={newRecord.subject} onChange={(event) => setNewRecord((current) => ({ ...current, subject: event.target.value }))}>
+                      {subjects.filter((subject) => subject !== 'All Subjects').map((subject) => (
+                        <option key={subject} value={subject}>{subject}</option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+
+                <label className="forms-field skill-assessment-search-field configuration-inline-compact-field-wide">
+                  <span>Topic</span>
+                  <input
+                    value={newRecord.topic}
+                    onFocus={() => setActiveSearchField('topic')}
+                    onBlur={() => window.setTimeout(() => setActiveSearchField((current) => (current === 'topic' ? null : current)), 120)}
+                    onChange={(event) => {
+                      setNewRecord((current) => ({ ...current, topic: event.target.value }))
+                      setActiveSearchField('topic')
+                    }}
+                    placeholder="Topic name"
+                  />
+                  {activeSearchField === 'topic' && activeSearchSuggestions.length ? (
+                    <div className="skill-assessment-suggest-list" role="listbox" aria-label="Topic suggestions">
+                      {activeSearchSuggestions.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          className="skill-assessment-suggest-item"
+                          onMouseDown={(event) => {
+                            event.preventDefault()
+                            handleSearchSuggestionPick('topic', item)
+                          }}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </label>
+
+                <label className="forms-field skill-assessment-search-field configuration-inline-compact-field-wide">
+                  <span>Competency</span>
+                  <input
+                    value={newRecord.competency}
+                    onFocus={() => setActiveSearchField('competency')}
+                    onBlur={() => window.setTimeout(() => setActiveSearchField((current) => (current === 'competency' ? null : current)), 120)}
+                    onChange={(event) => {
+                      setNewRecord((current) => ({ ...current, competency: event.target.value }))
+                      setActiveSearchField('competency')
+                    }}
+                    placeholder="Competency name"
+                  />
+                  {activeSearchField === 'competency' && activeSearchSuggestions.length ? (
+                    <div className="skill-assessment-suggest-list" role="listbox" aria-label="Competency suggestions">
+                      {activeSearchSuggestions.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          className="skill-assessment-suggest-item"
+                          onMouseDown={(event) => {
+                            event.preventDefault()
+                            handleSearchSuggestionPick('competency', item)
+                          }}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </label>
+              </div>
+
+              <div className="configuration-inline-compact-actions">
+                <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Cancel</button>
+                <button type="button" className="tool-btn green" onClick={handleAddRecord}>Create Competency</button>
+              </div>
+            </div>
+          ) : null}
 
           {isFilterOpen ? (
             <div id="configuration-inline-filters" className="forms-inline-filter-panel">
@@ -806,6 +919,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                   )}
                 </div>
                 <div className="forms-inline-filter-actions">
+                  <button type="button" className="ghost" onClick={() => setIsFilterOpen(false)}>Cancel</button>
                   {hasActiveListFilters ? (
                     <button type="button" className="ghost" onClick={handleClearListFilters}>Clear</button>
                   ) : null}
@@ -1199,133 +1313,6 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
           </div>
         </div>
       </div>
-
-      {isAddOpen ? createPortal(
-        <div className="forms-modal-backdrop forms-modal-skill-assessment-backdrop" onClick={() => setIsAddOpen(false)} aria-hidden="true">
-          <div className="forms-modal forms-modal-activity forms-modal-skill-assessment" onClick={(event) => event.stopPropagation()}>
-            <div className="forms-modal-head">
-              <div className="activity-modal-head-copy">
-                <span className="activity-modal-kicker">Add Skill Assessment</span>
-                <p>Add the year, subject, topic, and competency to create a new record.</p>
-              </div>
-              <button type="button" className="activity-modal-close" onClick={() => setIsAddOpen(false)} aria-label="Close skill assessment builder">
-                <X size={16} strokeWidth={2.2} />
-              </button>
-            </div>
-            <div className="activity-config-card skill-assessment-config-card">
-              <div className="activity-config-section">
-                <div className="activity-config-copy">
-                  <span className="activity-section-step">01</span>
-                  <h4>Academic Context</h4>
-                  <p>Pick the year and subject.</p>
-                </div>
-
-                <div className="forms-modal-grid skill-assessment-inline-grid">
-                  <label className="forms-field">
-                    <span>Year</span>
-                    <div className="forms-select-wrap">
-                      <select value={newRecord.year} onChange={(event) => setNewRecord((current) => ({ ...current, year: event.target.value }))}>
-                        {years.filter((year) => year !== 'All Years').map((year) => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </label>
-                  <label className="forms-field">
-                    <span>Subject</span>
-                    <div className="forms-select-wrap">
-                      <select value={newRecord.subject} onChange={(event) => setNewRecord((current) => ({ ...current, subject: event.target.value }))}>
-                        {subjects.filter((subject) => subject !== 'All Subjects').map((subject) => (
-                          <option key={subject} value={subject}>{subject}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <div className="activity-config-section skill-assessment-details-section">
-                <div className="activity-config-copy">
-                  <span className="activity-section-step">02</span>
-                  <h4>Competency Details</h4>
-                  <p>Add the topic and competency statement.</p>
-                </div>
-
-                <div className="skill-assessment-search-stack">
-                  <label className="forms-field forms-field-full skill-assessment-search-field">
-                    <span>Search Topic</span>
-                    <input
-                      value={newRecord.topic}
-                      onFocus={() => setActiveSearchField('topic')}
-                      onBlur={() => window.setTimeout(() => setActiveSearchField((current) => (current === 'topic' ? null : current)), 120)}
-                      onChange={(event) => {
-                        setNewRecord((current) => ({ ...current, topic: event.target.value }))
-                        setActiveSearchField('topic')
-                      }}
-                      placeholder="Topic name"
-                    />
-                    {activeSearchField === 'topic' && activeSearchSuggestions.length ? (
-                      <div className="skill-assessment-suggest-list" role="listbox" aria-label="Topic suggestions">
-                        {activeSearchSuggestions.map((item) => (
-                          <button
-                            key={item}
-                            type="button"
-                            className="skill-assessment-suggest-item"
-                            onMouseDown={(event) => {
-                              event.preventDefault()
-                              handleSearchSuggestionPick('topic', item)
-                            }}
-                          >
-                            {item}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                  </label>
-
-                  <label className="forms-field forms-field-full skill-assessment-search-field">
-                    <span>Search Competency</span>
-                    <input
-                      value={newRecord.competency}
-                      onFocus={() => setActiveSearchField('competency')}
-                      onBlur={() => window.setTimeout(() => setActiveSearchField((current) => (current === 'competency' ? null : current)), 120)}
-                      onChange={(event) => {
-                        setNewRecord((current) => ({ ...current, competency: event.target.value }))
-                        setActiveSearchField('competency')
-                      }}
-                      placeholder="Competency name"
-                    />
-                    {activeSearchField === 'competency' && activeSearchSuggestions.length ? (
-                      <div className="skill-assessment-suggest-list" role="listbox" aria-label="Competency suggestions">
-                        {activeSearchSuggestions.map((item) => (
-                          <button
-                            key={item}
-                            type="button"
-                            className="skill-assessment-suggest-item"
-                            onMouseDown={(event) => {
-                              event.preventDefault()
-                              handleSearchSuggestionPick('competency', item)
-                            }}
-                          >
-                            {item}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div className="forms-modal-actions">
-              <div className="activity-footer-actions">
-                <button type="button" className="ghost" onClick={() => setIsAddOpen(false)}>Cancel</button>
-                <button type="button" className="tool-btn green" onClick={handleAddRecord}>Create Record</button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      ) : null}
 
       {builderActivity ? (
         <div className="forms-modal-backdrop" onClick={() => setBuilderActivity(null)} aria-hidden="true">
