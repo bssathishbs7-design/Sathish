@@ -1,18 +1,7 @@
 .dashboard-summary-page {
   position: relative;
-  overflow: hidden;
   padding-top: 24px;
 }
-.dashboard-summary-page::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: #f6fbff;
-}
-.dashboard-summary-page > * { position: relative; z-index: 1; }
-.theme-dark .dashboard-summary-page::before { background: #f6fbff; }
 .dashboard-summary-shell { display: grid; gap: 20px; }
 .dashboard-summary-hero, .dashboard-summary-toolbar, .dashboard-summary-directory, .dashboard-summary-overview, .dashboard-summary-audit-card {
   border: 1px solid #dfe9e2; border-radius: 18px; background: linear-gradient(180deg, #ffffff, #fbfdfc); box-shadow: 0 10px 24px rgba(15, 68, 20, 0.06);

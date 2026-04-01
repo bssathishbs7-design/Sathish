@@ -7,6 +7,7 @@ import {
   Search,
   SlidersHorizontal,
   Trash2,
+  UsersRound,
   UserPen,
   X,
 } from 'lucide-react'
@@ -325,9 +326,14 @@ export default function FacultyManagementPageV2({ onAlert }) {
     <section className="vx-content faculty-management-page">
       <div className="faculty-page-shell">
         <PageBreadcrumbs items={[{ label: 'Faculty' }, { label: 'Faculty Management' }]} />
+        <div className="vx-page-intro">
+          <div className="vx-page-intro-title">
+            <UsersRound size={18} strokeWidth={2} className="vx-page-intro-icon" aria-hidden="true" />
+            <h1>Faculty Management</h1>
+          </div>
+        </div>
         <div className="faculty-page-hero">
           <div className="faculty-page-hero-copy">
-            <h1>Faculty Management</h1>
             <p>Search faculty, review assignments, and manage department load from one clear directory.</p>
           </div>
 

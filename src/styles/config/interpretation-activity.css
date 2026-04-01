@@ -1,2 +1,89 @@
 /* InterpretationActivityPage currently reuses ImageActivityPage markup and visuals. Keep interpretation-specific overrides here. */
-.interpretation-activity-page {}
+.interpretation-activity-page .image-activity-banner--enhanced {
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 320px);
+  column-gap: 18px;
+  padding: 20px;
+}
+
+.interpretation-activity-page .image-activity-banner-main {
+  gap: 8px;
+}
+
+.interpretation-activity-page .image-activity-competency-summary {
+  max-width: 64ch;
+  font-size: 0.9rem;
+}
+
+.interpretation-activity-page .image-activity-meta-strip {
+  gap: 6px;
+}
+
+.interpretation-activity-page .image-activity-meta-card {
+  min-height: 58px;
+  padding: 8px 10px;
+}
+
+.interpretation-activity-page .image-activity-assets-card--enhanced,
+.interpretation-activity-page .image-activity-builder-card--enhanced {
+  padding: 15px;
+}
+
+.interpretation-activity-page .image-activity-config-panel--enhanced {
+  padding: 13px;
+}
+
+.interpretation-activity-page .image-activity-config-panel--enhanced .image-activity-toggle-card {
+  min-height: 64px;
+  padding: 11px 12px;
+}
+
+.interpretation-activity-page .image-activity-created-skill-card,
+.interpretation-activity-page .image-activity-generated-card {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.interpretation-activity-page .image-activity-created-skill-summary,
+.interpretation-activity-page .image-activity-generated-summary-text {
+  font-size: 0.92rem;
+  line-height: 1.42;
+}
+
+.interpretation-activity-page .image-activity-created-skill-body .forms-field textarea,
+.interpretation-activity-page .image-activity-generated-body .forms-field textarea {
+  min-height: 104px;
+}
+
+.interpretation-activity-page .image-activity-upload-box {
+  min-height: 144px;
+  padding: 16px 14px;
+}
+
+.interpretation-activity-page .image-activity-upload-preview img {
+  min-height: 168px;
+}
+
+.interpretation-activity-page .image-activity-preview-dialog {
+  width: min(100%, 920px);
+}
+
+@media (max-width: 1024px) {
+  .interpretation-activity-page .image-activity-banner--enhanced {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .interpretation-activity-page .image-activity-banner--enhanced,
+  .interpretation-activity-page .image-activity-assets-card--enhanced,
+  .interpretation-activity-page .image-activity-builder-card--enhanced {
+    padding: 14px;
+  }
+}
+
+.theme-dark .interpretation-activity-page .image-activity-banner--enhanced {
+  background:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.08), transparent 34%),
+    linear-gradient(180deg, #111c30, #0f1828);
+}

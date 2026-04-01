@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
+import { ClipboardCheck } from 'lucide-react'
 import '../styles/evaluation.css'
 import {
   assessmentSgtMap,
@@ -32,7 +33,7 @@ import {
  * Placement:
  * - Page-level workflow in src/pages/
  */
-function SkillAssessmentPage({ onOpenDashboardSummary, onAlert }) {
+function SkillAssessmentPage({ onAlert }) {
   const [selectedYear, setSelectedYear] = useState('')
   const [selectedSgt, setSelectedSgt] = useState('')
   const [attemptCount, setAttemptCount] = useState('')
@@ -262,16 +263,10 @@ function SkillAssessmentPage({ onOpenDashboardSummary, onAlert }) {
     <section className="vx-content forms-page skill-assessment-page">
       <div className="skill-assessment-shell">
         <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Evaluation' }]} />
-        <div className="skill-assessment-hero">
-          <div className="skill-assessment-hero-copy">
+        <div className="vx-page-intro">
+          <div className="vx-page-intro-title">
+            <ClipboardCheck size={18} strokeWidth={2} className="vx-page-intro-icon" aria-hidden="true" />
             <h1>Evaluation</h1>
-            <p>Choose a Year or SGT, set the attempt count, then search and launch the evaluation workspace.</p>
-          </div>
-
-          <div className="skill-assessment-hero-actions">
-            <button type="button" className="tool-btn green skill-assessment-summary-btn" onClick={onOpenDashboardSummary}>
-              Dashboard Summary
-            </button>
           </div>
         </div>
 

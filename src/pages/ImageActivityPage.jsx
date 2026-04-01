@@ -162,6 +162,10 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const [draggedQuestionId, setDraggedQuestionId] = useState(null)
   const [isSkillActivitySaved, setIsSkillActivitySaved] = useState(savedDraft?.isSkillActivitySaved ?? false)
   const [isScaffoldingTooltipOpen, setIsScaffoldingTooltipOpen] = useState(false)
+  const [isMetaExpanded, setIsMetaExpanded] = useState(false)
+  const [isCreatedQuestionsOpen, setIsCreatedQuestionsOpen] = useState(true)
+  const [isGeneratedQuestionsOpen, setIsGeneratedQuestionsOpen] = useState(Boolean(savedDraft?.generatedQuestions?.length))
+  const [activeWorkflowStep, setActiveWorkflowStep] = useState('context')
   const [scaffoldingSelection, setScaffoldingSelection] = useState({
     MCQ: 0,
     Descriptive: 0,
@@ -170,12 +174,15 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   })
   const imageUrlsRef = useRef([])
   const scaffoldingTooltipRef = useRef(null)
+  const bannerSectionRef = useRef(null)
+  const assetsSectionRef = useRef(null)
+  const manualSectionRef = useRef(null)
+  const generatedSectionRef = useRef(null)
 
   const certifiableLabel = isCertifiable ? 'Yes' : 'No'
   const totalGeneratedMarks = hasMarks
     ? [...createdSkillQuestions, ...generatedQuestions].reduce((total, question) => total + (Number(question.marks) || 0), 0)
     : 0
-
   useEffect(() => {
     imageUrlsRef.current = images.map((image) => image.previewUrl).filter(Boolean)
   }, [images])
@@ -267,9 +274,22 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     if (!firstQuestion) return false
     return !isSameQuestionContent(firstQuestion, defaultSkillQuestion)
   }, [createdSkillQuestions, defaultSkillQuestion])
-  const initialCreatedSkillQuestionId = createdSkillQuestions[0]?.id ?? defaultSkillQuestion.id
   const shouldShowAddQuestionButton = createdSkillQuestions.length > 1 || hasEditedDefaultCreatedQuestion
   const shouldShowSkillBuilder = true
+  const workflowSections = [
+    { id: 'context', label: 'Context', value: 'Ready', ref: bannerSectionRef },
+    { id: 'reference', label: 'References', value: `${uploadedImageCount}/${imageSlots.length}`, ref: assetsSectionRef },
+    { id: 'manual', label: 'Manual Questions', value: `${createdSkillQuestions.length}`, ref: manualSectionRef },
+    { id: 'generated', label: 'AI Questions', value: `${generatedQuestions.length}`, ref: generatedSectionRef },
+  ]
+
+  const jumpToWorkflowSection = (stepId, sectionRef, beforeScroll) => {
+    setActiveWorkflowStep(stepId)
+    beforeScroll?.()
+    window.requestAnimationFrame(() => {
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   const handleAddQuestion = () => {
     const nextQuestion = createGeneratedQuestion('Descriptive', createdSkillQuestions.length)
@@ -298,6 +318,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     ))
 
     setGeneratedQuestions(nextGeneratedQuestions)
+    setIsGeneratedQuestionsOpen(true)
     setActiveEditableQuestionId(null)
     setIsSkillActivitySaved(false)
     setIsScaffoldingTooltipOpen(false)
@@ -471,11 +492,22 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   return (
     <section className={`vx-content forms-page image-activity-page ${isInterpretationWorkflow ? 'interpretation-activity-page' : ''}`.trim()}>
       <div className="image-activity-workspace image-activity-workspace--enhanced">
-        <section className="image-activity-banner image-activity-banner--enhanced">
+        <section ref={bannerSectionRef} className="image-activity-banner image-activity-banner--enhanced">
           <div className="image-activity-banner-main">
             <div className="image-activity-banner-head">
               <span className="image-activity-section-badge">Phase 1: Contextual Setup</span>
-              <span className="image-activity-state-badge">{activityStatus}</span>
+              <div className="image-activity-banner-actions">
+                <span className="image-activity-state-badge">{activityStatus}</span>
+                <button
+                  type="button"
+                  className="image-activity-meta-toggle"
+                  onClick={() => setIsMetaExpanded((current) => !current)}
+                  aria-expanded={isMetaExpanded}
+                >
+                  {isMetaExpanded ? 'Less details' : 'More details'}
+                  {isMetaExpanded ? <ChevronUp size={15} strokeWidth={2.2} /> : <ChevronDown size={15} strokeWidth={2.2} />}
+                </button>
+              </div>
             </div>
             <div className="image-activity-title-row">
               {isEditingName ? (
@@ -499,6 +531,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
               </button>
             </div>
             {activityTopic ? <span className="image-activity-topic-pill">{activityTopic}</span> : null}
+            <p className="image-activity-competency-summary">{activityCompetency}</p>
             <div className="image-activity-meta-strip">
               <article className="image-activity-meta-card">
                 <div className="image-activity-meta-head">
@@ -514,13 +547,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                 </div>
                 <strong>{activitySubject}</strong>
               </article>
-              <article className="image-activity-meta-card image-activity-meta-card-wide">
-                <div className="image-activity-meta-head">
-                  <span className="image-activity-meta-icon" aria-hidden="true"><Target size={14} strokeWidth={2} /></span>
-                  <span>Competency</span>
-                </div>
-                <strong>{activityCompetency}</strong>
-              </article>
               <article className="image-activity-meta-card">
                 <div className="image-activity-meta-head">
                   <span className="image-activity-meta-icon" aria-hidden="true"><Tag size={14} strokeWidth={2} /></span>
@@ -530,26 +556,39 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
               </article>
               <article className="image-activity-meta-card">
                 <div className="image-activity-meta-head">
-                  <span className="image-activity-meta-icon" aria-hidden="true"><BadgeCheck size={14} strokeWidth={2} /></span>
-                  <span>Certifiable</span>
-                </div>
-                <strong>{certifiableLabel}</strong>
-              </article>
-              <article className="image-activity-meta-card">
-                <div className="image-activity-meta-head">
                   <span className="image-activity-meta-icon" aria-hidden="true"><CheckCircle2 size={14} strokeWidth={2} /></span>
                   <span>Total Marks</span>
                 </div>
                 <strong>{hasMarks ? totalGeneratedMarks : 'Disabled'}</strong>
               </article>
+              {isMetaExpanded ? (
+                <>
+                  <article className="image-activity-meta-card image-activity-meta-card-wide">
+                    <div className="image-activity-meta-head">
+                      <span className="image-activity-meta-icon" aria-hidden="true"><Target size={14} strokeWidth={2} /></span>
+                      <span>Competency</span>
+                    </div>
+                    <strong>{activityCompetency}</strong>
+                  </article>
+                  <article className="image-activity-meta-card">
+                    <div className="image-activity-meta-head">
+                      <span className="image-activity-meta-icon" aria-hidden="true"><BadgeCheck size={14} strokeWidth={2} /></span>
+                      <span>Certifiable</span>
+                    </div>
+                    <strong>{certifiableLabel}</strong>
+                  </article>
+                </>
+              ) : null}
             </div>
 
           </div>
 
           <div className="image-activity-config-panel image-activity-config-panel--enhanced">
-            <div className="image-activity-config-head">
-              <span>Activity Settings</span>
-              <small>Adjust key visibility and certification options.</small>
+            <div className="image-activity-config-toggle-head">
+              <div className="image-activity-config-head">
+                <span>Activity Settings</span>
+                <small>{hasMarks ? 'Marks enabled' : 'Marks disabled'} • {certifiableLabel} certifiable</small>
+              </div>
             </div>
             <div className="image-activity-toggle-card">
               <div>
@@ -583,7 +622,31 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
           </div>
         </section>
 
-        <section className="vx-card image-activity-assets-card image-activity-assets-card--enhanced">
+        <nav className="image-activity-workflow-strip" aria-label="Image activity workflow">
+          {workflowSections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              className={`image-activity-workflow-pill ${activeWorkflowStep === section.id ? 'is-active' : ''}`}
+              onClick={() => jumpToWorkflowSection(
+                section.id,
+                section.ref,
+                section.id === 'reference'
+                  ? () => setIsAssetsSectionOpen(true)
+                  : section.id === 'manual'
+                    ? () => setIsCreatedQuestionsOpen(true)
+                    : section.id === 'generated'
+                      ? () => setIsGeneratedQuestionsOpen(true)
+                      : undefined,
+              )}
+            >
+              <span>{section.label}</span>
+              <strong>{section.value}</strong>
+            </button>
+          ))}
+        </nav>
+
+        <section ref={assetsSectionRef} className="vx-card image-activity-assets-card image-activity-assets-card--enhanced">
           <div className="image-activity-section-head">
             <div>
               <span className="image-activity-section-badge">
@@ -673,9 +736,21 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
               ) : null}
 
               {shouldShowSkillBuilder ? (
-                <section className="image-activity-skill-card image-activity-skill-card--stacked">
+                <section ref={manualSectionRef} className="image-activity-skill-card image-activity-skill-card--stacked">
                   <div className="image-activity-skill-card-top">
+                    <div className="image-activity-skill-builder-copy">
+                      <span className="image-activity-section-badge">{skillStepLabel}</span>
+                    </div>
                     <div className="image-activity-inline-actions image-activity-skill-actions" ref={scaffoldingTooltipRef}>
+                      <button
+                        type="button"
+                        className="image-activity-section-toggle"
+                        onClick={() => setIsCreatedQuestionsOpen((current) => !current)}
+                        aria-expanded={isCreatedQuestionsOpen}
+                        aria-label={isCreatedQuestionsOpen ? 'Collapse manual question section' : 'Expand manual question section'}
+                      >
+                        {isCreatedQuestionsOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
+                      </button>
                       {!isSkillActivitySaved ? (
                         <div className="image-activity-scaffolding-anchor">
                           <button
@@ -755,11 +830,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                           ) : null}
                         </div>
                       ) : null}
-                      {!isSkillActivitySaved && shouldShowAddQuestionButton ? (
-                        <button type="button" className="ghost" onClick={handleAddQuestion}>
-                          Add Question
-                        </button>
-                      ) : null}
                       {shouldShowSkillBuilder ? (
                         isSkillActivitySaved ? (
                           <button type="button" className="tool-btn image-activity-review-assign-btn" onClick={handleReviewAssign}>
@@ -774,19 +844,21 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                     </div>
                   </div>
 
-                  <div className="image-activity-created-skill-list">
-                    {createdSkillQuestions.map((question, index) => {
-                        const isPreviewOnly = false
-                        const isCreatedSkillActive = (activeCreatedSkillQuestionId ?? initialCreatedSkillQuestionId) === question.id
-                        return (
-                          <article
-                            key={question.id}
-                            data-created-skill-question-id={question.id}
-                            className={`image-activity-created-skill-card ${isCreatedSkillActive ? 'is-active' : ''}`}
-                            onClick={() => {
-                              setActiveCreatedSkillQuestionId(question.id)
-                            }}
-                          >
+                  {isCreatedQuestionsOpen ? (
+                    <>
+                      <div className="image-activity-created-skill-list">
+                        {createdSkillQuestions.map((question, index) => {
+                          const isPreviewOnly = false
+                          const isCreatedSkillActive = activeCreatedSkillQuestionId === question.id
+                          return (
+                            <article
+                              key={question.id}
+                              data-created-skill-question-id={question.id}
+                              className={`image-activity-created-skill-card ${isCreatedSkillActive ? 'is-active' : ''}`}
+                              onClick={() => {
+                                setActiveCreatedSkillQuestionId(question.id)
+                              }}
+                            >
                           <div className="image-activity-created-skill-head">
                             <div className="image-activity-created-skill-title">
                               <span className="image-activity-generated-drag-handle" aria-hidden="true">
@@ -929,10 +1001,19 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                               </div>
                             </div>
                           )}
-                        </article>
-                        )
-                      })}
-                  </div>
+                            </article>
+                          )
+                        })}
+                      </div>
+                      {!isSkillActivitySaved && shouldShowAddQuestionButton ? (
+                        <div className="image-activity-created-skill-footer">
+                          <button type="button" className="ghost" onClick={handleAddQuestion}>
+                            Add Question
+                          </button>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
                 </section>
               ) : null}
             </>
@@ -940,20 +1021,35 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
         </section>
 
         {generatedQuestions.length > 0 ? (
-          <section className="vx-card image-activity-builder-card image-activity-builder-card--enhanced">
+          <section ref={generatedSectionRef} className="vx-card image-activity-builder-card image-activity-builder-card--enhanced">
             <div className="image-activity-question-entry image-activity-generated-questions">
               <div className="image-activity-question-head">
                 <div>
                   <span className="image-activity-section-badge">Generated Scaffolding Questions</span>
+                  <p className="image-activity-section-copy">
+                    Review generated items only when you need to refine or reorder them.
+                  </p>
                 </div>
-                <div className="image-activity-question-count">
-                  <span className="image-activity-question-count-label">Total created</span>
-                  <strong>{generatedQuestions.length}</strong>
+                <div className="image-activity-question-head-actions">
+                  <div className="image-activity-question-count">
+                    <span className="image-activity-question-count-label">Total created</span>
+                    <strong>{generatedQuestions.length}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    className="image-activity-section-toggle"
+                    onClick={() => setIsGeneratedQuestionsOpen((current) => !current)}
+                    aria-expanded={isGeneratedQuestionsOpen}
+                    aria-label={isGeneratedQuestionsOpen ? 'Collapse generated question list' : 'Expand generated question list'}
+                  >
+                    {isGeneratedQuestionsOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
+                  </button>
                 </div>
               </div>
 
-              <div className="image-activity-question-list">
-                {generatedQuestions.map((question, index) => {
+              {isGeneratedQuestionsOpen ? (
+                <div className="image-activity-question-list">
+                  {generatedQuestions.map((question, index) => {
                   const isCardEditing = activeEditableQuestionId === question.id
                   return (
                     <article
@@ -1124,8 +1220,9 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                       </div>
                     </article>
                   )
-                })}
-              </div>
+                  })}
+                </div>
+              ) : null}
             </div>
           </section>
         ) : null}

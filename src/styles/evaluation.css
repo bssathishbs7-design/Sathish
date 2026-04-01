@@ -1,25 +1,6 @@
 .skill-assessment-page {
   position: relative;
-  overflow: hidden;
   padding-top: 24px;
-}
-
-.skill-assessment-page::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: #f6fbff;
-}
-
-.skill-assessment-page > * {
-  position: relative;
-  z-index: 1;
-}
-
-.theme-dark .skill-assessment-page::before {
-  background: #f6fbff;
 }
 
 .skill-assessment-search-stack { display: grid; gap: 12px; }

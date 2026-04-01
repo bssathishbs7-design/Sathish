@@ -3,12 +3,14 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  ClipboardPlus,
   Eye,
   FileText,
   Info,
   Image as ImageIcon,
   MoreHorizontal,
   Search,
+  SlidersHorizontal,
   Sparkles,
   Stethoscope,
   Trash2,
@@ -18,29 +20,6 @@ import { createPortal } from 'react-dom'
 import { APP_PAGES } from '../config/appPages'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import '../styles/config/skill-management.css'
-
-const workflowSteps = [
-  {
-    step: '1. Pick',
-    title: 'Choose a competency',
-    detail: 'Search by year, subject, or topic, then select the row you need.',
-  },
-  {
-    step: '2. Add',
-    title: 'Create activities',
-    detail: 'Add OSPE, OSCE, Interpretation, or Image tasks as needed.',
-  },
-  {
-    step: '3. Generate',
-    title: 'Build the content',
-    detail: 'Use Generate for AI output or create the content manually.',
-  },
-  {
-    step: '4. Review',
-    title: 'Check and assign',
-    detail: 'Preview, adjust, and assign the activity to students.',
-  },
-]
 
 const competencyRecords = [
   {
@@ -197,6 +176,9 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   const [activityDraft, setActivityDraft] = useState(defaultActivityDraft)
   const [yearFilter, setYearFilter] = useState('All Years')
   const [subjectFilter, setSubjectFilter] = useState('All Subjects')
+  const [activityTypeFilter, setActivityTypeFilter] = useState('All Activities')
+  const [certifiableFilter, setCertifiableFilter] = useState('All Certifiable')
+  const [statusFilter, setStatusFilter] = useState('All Statuses')
   const [activeSearchField, setActiveSearchField] = useState(null)
   const [academicYears, setAcademicYears] = useState([])
   const [isYearLoading, setIsYearLoading] = useState(false)
@@ -212,11 +194,14 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
 
   const years = ['All Years', ...new Set(records.map((record) => record.year))]
   const subjects = ['All Subjects', ...new Set(records.map((record) => record.subject))]
+  const activityTypeOptions = ['All Activities', ...new Set(records.flatMap((record) => record.activities.map((activity) => activity.type)).filter(Boolean))]
   const topicSuggestions = [...new Set(records.map((record) => record.topic).filter(Boolean))]
   const competencySuggestions = [...new Set(records.map((record) => record.competency).filter(Boolean))]
-  const academicYearOptions = academicYears.length
-    ? academicYears
-    : years.filter((year) => year !== 'All Years')
+  const hasActiveListFilters = yearFilter !== 'All Years'
+    || subjectFilter !== 'All Subjects'
+    || activityTypeFilter !== 'All Activities'
+    || certifiableFilter !== 'All Certifiable'
+    || statusFilter !== 'All Statuses'
 
   const filteredRecords = records.filter((record) => {
     const query = searchQuery.trim().toLowerCase()
@@ -225,8 +210,14 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
       || record.topic.toLowerCase().includes(query)
     const matchesYear = yearFilter === 'All Years' || record.year === yearFilter
     const matchesSubject = subjectFilter === 'All Subjects' || record.subject === subjectFilter
+    const matchesActivityType = activityTypeFilter === 'All Activities'
+      || record.activities.some((activity) => activity.type === activityTypeFilter)
+    const matchesCertifiable = certifiableFilter === 'All Certifiable'
+      || record.activities.some((activity) => (certifiableFilter === 'Certifiable' ? activity.certifiable : !activity.certifiable))
+    const matchesStatus = statusFilter === 'All Statuses'
+      || record.activities.some((activity) => activity.status === statusFilter)
 
-    return matchesSearch && matchesYear && matchesSubject
+    return matchesSearch && matchesYear && matchesSubject && matchesActivityType && matchesCertifiable && matchesStatus
   })
 
   const selectedRecord = filteredRecords.find((record) => record.id === selectedRecordId) ?? filteredRecords[0] ?? null
@@ -286,6 +277,14 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   const handleCloseActivityForm = () => {
     setActivityFormRecordId(null)
     setActivityDraft(defaultActivityDraft)
+  }
+
+  const handleClearListFilters = () => {
+    setYearFilter('All Years')
+    setSubjectFilter('All Subjects')
+    setActivityTypeFilter('All Activities')
+    setCertifiableFilter('All Certifiable')
+    setStatusFilter('All Statuses')
   }
 
   const handleActivityDraftChange = (field, value) => {
@@ -804,21 +803,11 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     <section className="vx-content forms-page configuration-page">
       <div className="forms-flow-shell">
         <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Configuration' }]} />
-        <div className="forms-flow-head">
-          <div className="forms-flow-head-copy">
+        <div className="vx-page-intro">
+          <div className="vx-page-intro-title">
+            <SlidersHorizontal size={18} strokeWidth={2} aria-hidden="true" />
             <h1>Configuration</h1>
-            <p>Move from competency discovery to activity creation, review, and assignment in one clear screen.</p>
           </div>
-        </div>
-
-        <div className="forms-flow-steps">
-          {workflowSteps.map((item) => (
-            <article key={item.step} className="forms-flow-step">
-              <span>{item.step}</span>
-              <h3>{item.title}</h3>
-              <p>{item.detail}</p>
-            </article>
-          ))}
         </div>
 
         <div className="forms-flow-panel">
@@ -841,9 +830,109 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                 aria-label="Search competencies"
               />
             </label>
-            <button type="button" className="tool-btn" onClick={() => setIsFilterOpen(true)}>Search Filter</button>
-            <button type="button" className="tool-btn green" onClick={() => setIsAddOpen(true)}>+ Add Skill Assessment</button>
+            <button
+              type="button"
+              className={`tool-btn forms-inline-filter-toggle ${isFilterOpen || hasActiveListFilters ? 'is-active' : ''}`}
+              onClick={() => setIsFilterOpen((current) => !current)}
+              aria-expanded={isFilterOpen}
+              aria-controls="configuration-inline-filters"
+              aria-label={isFilterOpen ? 'Hide search filters' : 'Show search filters'}
+              title={isFilterOpen ? 'Hide search filters' : 'Show search filters'}
+            >
+              <SlidersHorizontal size={16} strokeWidth={2.2} />
+            </button>
+            <button type="button" className="tool-btn green" onClick={() => setIsAddOpen(true)}>
+              <ClipboardPlus size={15} strokeWidth={2.2} />
+              Add Competency
+            </button>
           </div>
+
+          {isFilterOpen ? (
+            <div id="configuration-inline-filters" className="forms-inline-filter-panel">
+              <div className="forms-inline-filter-panel-head">
+                <div>
+                  <strong>Refine Competency List</strong>
+                  <p>Filter the configuration records by year and subject without leaving this page.</p>
+                </div>
+              </div>
+              <div className="forms-inline-filter-grid">
+                <label className="forms-field">
+                  <span>Year</span>
+                  <div className="forms-select-wrap">
+                    <select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)}>
+                      {years.map((year) => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+                <label className="forms-field">
+                  <span>Subject</span>
+                  <div className="forms-select-wrap">
+                    <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
+                      {subjects.map((subject) => (
+                        <option key={subject} value={subject}>{subject}</option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+                <label className="forms-field">
+                  <span>Activity</span>
+                  <div className="forms-select-wrap">
+                    <select value={activityTypeFilter} onChange={(event) => setActivityTypeFilter(event.target.value)}>
+                      {activityTypeOptions.map((activityType) => (
+                        <option key={activityType} value={activityType}>{activityType}</option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+                <label className="forms-field">
+                  <span>Certifiable</span>
+                  <div className="forms-select-wrap">
+                    <select value={certifiableFilter} onChange={(event) => setCertifiableFilter(event.target.value)}>
+                      <option>All Certifiable</option>
+                      <option>Certifiable</option>
+                      <option>Non-Certifiable</option>
+                    </select>
+                  </div>
+                </label>
+                <label className="forms-field">
+                  <span>Status</span>
+                  <div className="forms-select-wrap">
+                    <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                      <option>All Statuses</option>
+                      <option>Not Generated</option>
+                      <option>Generated</option>
+                      <option>Not Created</option>
+                      <option>Created</option>
+                      <option>Assigned</option>
+                    </select>
+                  </div>
+                </label>
+              </div>
+              <div className="forms-inline-filter-footer">
+                <div className="forms-inline-filter-chips" aria-live="polite">
+                  {hasActiveListFilters ? (
+                    <>
+                      {yearFilter !== 'All Years' ? <span className="forms-inline-filter-chip">{yearFilter}</span> : null}
+                      {subjectFilter !== 'All Subjects' ? <span className="forms-inline-filter-chip">{subjectFilter}</span> : null}
+                      {activityTypeFilter !== 'All Activities' ? <span className="forms-inline-filter-chip">{activityTypeFilter}</span> : null}
+                      {certifiableFilter !== 'All Certifiable' ? <span className="forms-inline-filter-chip">{certifiableFilter}</span> : null}
+                      {statusFilter !== 'All Statuses' ? <span className="forms-inline-filter-chip">{statusFilter}</span> : null}
+                    </>
+                  ) : (
+                    <span className="forms-inline-filter-hint">No filters applied</span>
+                  )}
+                </div>
+                <div className="forms-inline-filter-actions">
+                  {hasActiveListFilters ? (
+                    <button type="button" className="ghost" onClick={handleClearListFilters}>Clear</button>
+                  ) : null}
+                  <button type="button" className="tool-btn green" onClick={() => setIsFilterOpen(false)}>Apply</button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="forms-hierarchy-list">
             {filteredRecords.map((record) => {
@@ -1229,42 +1318,6 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
           </div>
         </div>
       </div>
-
-      {isFilterOpen ? (
-        <div className="forms-modal-backdrop" onClick={() => setIsFilterOpen(false)} aria-hidden="true">
-          <div className="forms-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="forms-modal-head">
-              <div>
-                <h3>Advanced Filter</h3>
-                <p>Sort the competency list by year and subject.</p>
-              </div>
-              <button type="button" className="ghost" onClick={() => setIsFilterOpen(false)}>Close</button>
-            </div>
-            <div className="forms-modal-grid">
-              <label className="forms-field">
-                <span>Year</span>
-                <div className="forms-select-wrap">
-                  <select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)}>
-                    {years.map((year) => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-              </label>
-              <label className="forms-field">
-                <span>Subject</span>
-                <div className="forms-select-wrap">
-                  <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
-                    {subjects.map((subject) => (
-                      <option key={subject} value={subject}>{subject}</option>
-                    ))}
-                  </select>
-                </div>
-              </label>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {isAddOpen ? createPortal(
         <div className="forms-modal-backdrop forms-modal-skill-assessment-backdrop" onClick={() => setIsAddOpen(false)} aria-hidden="true">
