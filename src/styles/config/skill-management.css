@@ -53,11 +53,32 @@
   min-width: 40px;
   padding: 0;
   flex: 0 0 40px;
+  position: relative;
+  overflow: visible;
 }
 
 .configuration-page .forms-flow-panel-search > .tool-btn.green {
   min-width: 156px;
   padding-inline: 16px;
+}
+
+.configuration-page .forms-inline-filter-toggle-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #0f6844;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 0 1px #ffffff;
 }
 
 .configuration-page .forms-inline-filter-toggle.is-active {
@@ -68,11 +89,11 @@
 
 .configuration-page .forms-inline-filter-panel {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   margin-top: 12px;
   margin-right: 18px;
   margin-left: 18px;
-  padding: 18px 18px 14px;
+  padding: 16px;
   border: 1px solid #d9e7de;
   border-radius: 16px;
   background: #fcfffd;
@@ -101,17 +122,31 @@
 .configuration-page .forms-inline-filter-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px 12px;
-  align-items: end;
+  align-items: start;
+  column-gap: 16px;
+  row-gap: 12px;
 }
 
 .configuration-page .forms-inline-filter-grid .forms-field {
+  display: grid;
+  align-content: start;
+  gap: 0;
   margin: 0;
   min-width: 0;
 }
 
 .configuration-page .forms-inline-filter-grid .forms-field > span {
+  min-height: 18px;
   margin-bottom: 6px;
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+}
+
+.configuration-page .forms-inline-filter-grid .forms-field select,
+.configuration-page .forms-inline-filter-grid .forms-field input {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
 }
 
 .configuration-page .forms-inline-filter-footer {
@@ -119,8 +154,9 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding-top: 4px;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e6efea;
   width: 100%;
   box-sizing: border-box;
 }
@@ -160,10 +196,87 @@
   margin-left: auto;
 }
 
+.configuration-page .forms-inline-filter-actions .tool-btn.green {
+  min-width: 112px;
+}
+
+.configuration-page .configuration-inline-compact-builder {
+  display: grid;
+  gap: 14px;
+  margin: 12px 18px 0;
+  padding: 16px;
+  border: 1px solid #d9e7de;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.configuration-page .configuration-inline-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  column-gap: 16px;
+  row-gap: 12px;
+}
+
+.configuration-page .configuration-inline-compact-builder .forms-field {
+  display: grid;
+  align-content: start;
+  gap: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.configuration-page .configuration-inline-compact-builder .forms-field > span {
+  min-height: 18px;
+  margin-bottom: 6px;
+  color: #7c9087;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.configuration-page .configuration-inline-compact-builder .forms-field input,
+.configuration-page .configuration-inline-compact-builder .forms-field select {
+  min-height: 40px;
+  border-radius: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.configuration-page .configuration-inline-compact-field-wide {
+  grid-column: 1 / -1;
+}
+
+.configuration-page .configuration-inline-compact-field-wide .skill-assessment-suggest-list {
+  left: 0;
+  right: 0;
+}
+
+.configuration-page .configuration-inline-compact-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e6efea;
+}
+
+.configuration-page .configuration-inline-compact-actions .ghost,
+.configuration-page .configuration-inline-compact-actions .tool-btn.green {
+  min-width: 144px;
+}
+
 .theme-dark .configuration-page .forms-inline-filter-toggle.is-active {
   border-color: #35526f;
   background: #11233a;
   color: #d9f7eb;
+}
+
+.theme-dark .configuration-page .forms-inline-filter-toggle-badge {
+  background: #34d399;
+  color: #052e24;
+  box-shadow: 0 0 0 1px #0f1828;
 }
 
 .theme-dark .configuration-page .forms-inline-filter-panel {
@@ -187,6 +300,23 @@
 .theme-dark .configuration-page .forms-inline-filter-hint {
   background: #142338;
   color: #8ca1bb;
+}
+
+.theme-dark .configuration-page .forms-inline-filter-footer {
+  border-top-color: #243652;
+}
+
+.theme-dark .configuration-page .configuration-inline-compact-builder {
+  border-color: #243652;
+  background: rgba(16, 29, 48, 0.72);
+}
+
+.theme-dark .configuration-page .configuration-inline-compact-builder .forms-field > span {
+  color: #8ea7a0;
+}
+
+.theme-dark .configuration-page .configuration-inline-compact-actions {
+  border-top-color: #243652;
 }
 
 @media (max-width: 759px) {
@@ -213,6 +343,16 @@
     padding: 14px;
   }
 
+  .configuration-page .configuration-inline-compact-builder {
+    margin-right: 14px;
+    margin-left: 14px;
+    padding: 14px;
+  }
+
+  .configuration-page .configuration-inline-compact-grid {
+    grid-template-columns: 1fr;
+  }
+
   .configuration-page .forms-inline-filter-footer {
     align-items: stretch;
   }
@@ -224,5 +364,15 @@
   .configuration-page .forms-inline-filter-actions {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  .configuration-page .configuration-inline-compact-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .configuration-page .configuration-inline-compact-actions .ghost,
+  .configuration-page .configuration-inline-compact-actions .tool-btn.green {
+    flex: 1 1 0;
   }
 }

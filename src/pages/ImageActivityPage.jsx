@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   BadgeCheck,
@@ -10,6 +10,7 @@ import {
   ChevronUp,
   CheckCircle2,
   Eye,
+  Flag,
   ImagePlus,
   GripVertical,
   Pencil,
@@ -18,6 +19,7 @@ import {
   Target,
   Trash2,
   Upload,
+  Plus,
   X,
 } from 'lucide-react'
 import '../styles/config/image-activity.css'
@@ -26,6 +28,9 @@ const cognitiveScaffoldingOptions = ['Not Applicable', 'Remember', 'Understand',
 const affectiveScaffoldingOptions = ['Not Applicable', 'Receive', 'Respond', 'Value', 'Organize', 'Characterize']
 const psychomotorOptions = ['Perception', 'Set', 'Guided Response', 'Mechanism', 'Adaptation', 'Origination']
 const psychomotorScaffoldingOptions = ['Not Applicable', ...psychomotorOptions]
+const QUESTION_TEXT_PLACEHOLDER = 'Enter your question here......'
+const dropdownValueOptions = ['mmHg', 'bpm', 'kg / lbs', 'mg/dL / mmol/L']
+const answerInputTypeOptions = ['Numeric Value', 'Text box', 'Image Upload']
 const scaffoldingTypeOptions = [
   { value: 'MCQ', label: 'MCQ', helper: 'Multi Choice Question' },
   { value: 'Descriptive', label: 'Descriptive', helper: 'Long-form response' },
@@ -61,7 +66,7 @@ const createGeneratedQuestion = (type, index) => ({
     type === 'MCQ'
       ? 'Select the most appropriate answer based on the image provided.'
       : type === 'Descriptive'
-        ? 'Describe the most important clinical finding visible in the image.'
+        ? ''
         : type === 'True or False'
           ? 'The labelled structure is functioning normally in this image.'
           : 'The highlighted structure is the ________.',
@@ -72,7 +77,10 @@ const createGeneratedQuestion = (type, index) => ({
   cognitive: 'Not Applicable',
   affective: 'Not Applicable',
   psychomotor: 'Not Applicable',
+  isCritical: false,
   marks: '1',
+  dropdownValues: [],
+  answerInputType: 'Text box',
   answerKey:
     type === 'MCQ'
       ? 'Option A'
@@ -89,10 +97,26 @@ const isSameQuestionContent = (question, baselineQuestion) => (
   && question?.cognitive === baselineQuestion?.cognitive
   && question?.affective === baselineQuestion?.affective
   && question?.psychomotor === baselineQuestion?.psychomotor
+  && question?.isCritical === baselineQuestion?.isCritical
   && question?.marks === baselineQuestion?.marks
+  && JSON.stringify(question?.dropdownValues ?? []) === JSON.stringify(baselineQuestion?.dropdownValues ?? [])
+  && question?.answerInputType === baselineQuestion?.answerInputType
   && question?.answerKey === baselineQuestion?.answerKey
   && question?.explanation === baselineQuestion?.explanation
 )
+
+const getActiveDomainBadge = (question) => {
+  if (question?.cognitive && question.cognitive !== 'Not Applicable') {
+    return `Cognitive: ${question.cognitive}`
+  }
+  if (question?.affective && question.affective !== 'Not Applicable') {
+    return `Affective: ${question.affective}`
+  }
+  if (question?.psychomotor && question.psychomotor !== 'Not Applicable') {
+    return `Psychomotor: ${question.psychomotor}`
+  }
+  return null
+}
 
 /**
  * ImageActivityPage Implementation Contract
@@ -134,12 +158,12 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const activitySubject = record?.subject ?? 'Not available'
   const activityCompetency = record?.competency ?? 'Not available'
   const activityTopic = record?.topic ?? ''
-  const uploadStepLabel = isInterpretationWorkflow
-    ? 'Step 1 : Upload Interpretation Reference Images'
-    : 'Step 1 : Upload Clinical Reference Images'
-  const skillStepLabel = isInterpretationWorkflow
-    ? 'Step 2 : Building the Skill Assessment Interpretation Type Question'
-    : 'Step 2 : Building the Skill Assessment Image Type Question'
+  const uploadSectionHeading = isInterpretationWorkflow ? 'Reference Cases' : 'Reference Images'
+  const uploadSectionDescription = isInterpretationWorkflow
+    ? 'Upload 1 or 2 reference cases first. This step is required before you continue with question building.'
+    : 'Upload 1 or 2 reference images first. This step is required before you continue with question building.'
+  const skillSectionHeading = 'Create Questions'
+  const skillSectionDescription = 'Create at least one manual question. AI scaffolding is optional and only comes after the main question is ready.'
   const defaultSkillQuestion = useMemo(() => createGeneratedQuestion('Descriptive', 0), [])
 
   const [activityName, setActivityName] = useState(defaultActivityName)
@@ -154,18 +178,23 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       ? savedDraft.createdSkillQuestions
       : [defaultSkillQuestion],
   )
+  const [createdDropdownDrafts, setCreatedDropdownDrafts] = useState({})
+  const [customDropdownOptions, setCustomDropdownOptions] = useState(savedDraft?.customDropdownOptions ?? [])
+  const [activeAddValueQuestionId, setActiveAddValueQuestionId] = useState(null)
+  const [newDropdownOptionDraft, setNewDropdownOptionDraft] = useState('')
   const [activeCreatedSkillQuestionId, setActiveCreatedSkillQuestionId] = useState(
     savedDraft?.createdSkillQuestions?.[0]?.id ?? defaultSkillQuestion.id,
   )
   const [generatedQuestions, setGeneratedQuestions] = useState(savedDraft?.generatedQuestions ?? [])
   const [activeEditableQuestionId, setActiveEditableQuestionId] = useState(null)
   const [draggedQuestionId, setDraggedQuestionId] = useState(null)
-  const [isSkillActivitySaved, setIsSkillActivitySaved] = useState(savedDraft?.isSkillActivitySaved ?? false)
+  const [isAutoSaving, setIsAutoSaving] = useState(false)
+  const [isActivityCreated, setIsActivityCreated] = useState(Boolean(savedDraft?.isSkillActivitySaved || activity?.status === 'Created'))
   const [isScaffoldingTooltipOpen, setIsScaffoldingTooltipOpen] = useState(false)
   const [isMetaExpanded, setIsMetaExpanded] = useState(false)
   const [isCreatedQuestionsOpen, setIsCreatedQuestionsOpen] = useState(true)
   const [isGeneratedQuestionsOpen, setIsGeneratedQuestionsOpen] = useState(Boolean(savedDraft?.generatedQuestions?.length))
-  const [activeWorkflowStep, setActiveWorkflowStep] = useState('context')
+  const [activeWorkflowStep, setActiveWorkflowStep] = useState(isInterpretationWorkflow ? 'manual' : 'context')
   const [scaffoldingSelection, setScaffoldingSelection] = useState({
     MCQ: 0,
     Descriptive: 0,
@@ -174,6 +203,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   })
   const imageUrlsRef = useRef([])
   const scaffoldingTooltipRef = useRef(null)
+  const addValueTooltipRef = useRef(null)
   const bannerSectionRef = useRef(null)
   const assetsSectionRef = useRef(null)
   const manualSectionRef = useRef(null)
@@ -218,6 +248,20 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [isScaffoldingTooltipOpen])
+
+  useEffect(() => {
+    if (!activeAddValueQuestionId) return undefined
+
+    const onPointerDown = (event) => {
+      if (!addValueTooltipRef.current?.contains(event.target)) {
+        setActiveAddValueQuestionId(null)
+        setNewDropdownOptionDraft('')
+      }
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [activeAddValueQuestionId])
 
   useEffect(() => {
     if (!activeCreatedSkillQuestionId) return undefined
@@ -274,14 +318,44 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     if (!firstQuestion) return false
     return !isSameQuestionContent(firstQuestion, defaultSkillQuestion)
   }, [createdSkillQuestions, defaultSkillQuestion])
-  const shouldShowAddQuestionButton = createdSkillQuestions.length > 1 || hasEditedDefaultCreatedQuestion
+  const hasCompletedUploadStep = isInterpretationWorkflow ? true : uploadedImageCount >= 1
+  const hasCompletedQuestionStep = hasEditedDefaultCreatedQuestion || createdSkillQuestions.length > 1
+  const hasGeneratedScaffolding = generatedQuestions.length > 0
+  const canUseScaffolding = hasCompletedQuestionStep && !hasGeneratedScaffolding
+  const hasDraftContent = uploadedImageCount > 0 || hasAnyQuestionCreated
   const shouldShowSkillBuilder = true
-  const workflowSections = [
-    { id: 'context', label: 'Context', value: 'Ready', ref: bannerSectionRef },
-    { id: 'reference', label: 'References', value: `${uploadedImageCount}/${imageSlots.length}`, ref: assetsSectionRef },
-    { id: 'manual', label: 'Manual Questions', value: `${createdSkillQuestions.length}`, ref: manualSectionRef },
-    { id: 'generated', label: 'AI Questions', value: `${generatedQuestions.length}`, ref: generatedSectionRef },
-  ]
+  const allDropdownValueOptions = useMemo(
+    () => [...dropdownValueOptions, ...customDropdownOptions.filter((option) => !dropdownValueOptions.includes(option))],
+    [customDropdownOptions],
+  )
+  const currentDraftSignature = useMemo(() => JSON.stringify({
+    activityName,
+    hasMarks,
+    isCertifiable,
+    customDropdownOptions,
+    images: images.map((image) => ({
+      key: image.key,
+      previewUrl: image.previewUrl,
+      error: image.error,
+      hasFile: Boolean(image.file),
+    })),
+    createdSkillQuestions,
+    generatedQuestions,
+  }), [activityName, hasMarks, isCertifiable, customDropdownOptions, images, createdSkillQuestions, generatedQuestions])
+  const [lastSavedSignature, setLastSavedSignature] = useState(savedDraft ? currentDraftSignature : '')
+  const canCreateActivity = hasCompletedUploadStep && hasCompletedQuestionStep && !isAutoSaving
+  const canReviewAssign = hasCompletedUploadStep && hasCompletedQuestionStep && isActivityCreated
+  const workflowSections = isInterpretationWorkflow
+    ? [
+      { id: 'manual', label: 'Question', value: hasCompletedQuestionStep ? 'Ready' : 'Required', ref: manualSectionRef },
+      { id: 'generated', label: 'Scaffolding', value: generatedQuestions.length > 0 ? `${generatedQuestions.length}` : 'Optional', ref: generatedSectionRef },
+    ]
+    : [
+      { id: 'context', label: 'Context', value: 'Ready', ref: bannerSectionRef },
+      { id: 'reference', label: 'Upload', value: hasCompletedUploadStep ? 'Ready' : 'Required', ref: assetsSectionRef },
+      { id: 'manual', label: 'Question', value: hasCompletedQuestionStep ? 'Ready' : 'Required', ref: manualSectionRef },
+      { id: 'generated', label: 'Scaffolding', value: generatedQuestions.length > 0 ? `${generatedQuestions.length}` : 'Optional', ref: generatedSectionRef },
+    ]
 
   const jumpToWorkflowSection = (stepId, sectionRef, beforeScroll) => {
     setActiveWorkflowStep(stepId)
@@ -295,11 +369,21 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     const nextQuestion = createGeneratedQuestion('Descriptive', createdSkillQuestions.length)
     setCreatedSkillQuestions((current) => [...current, nextQuestion])
     setActiveCreatedSkillQuestionId(nextQuestion.id)
-    setIsSkillActivitySaved(false)
+    setIsActivityCreated(false)
     onAlert?.({ tone: 'secondary', message: 'New question added successfully.' })
   }
 
   const handleGenerateScaffolding = () => {
+    if (!canUseScaffolding) {
+      onAlert?.({
+        tone: 'warning',
+        message: hasGeneratedScaffolding
+          ? 'Scaffolding is already created. Remove the generated questions first to generate again.'
+          : 'Create at least one manual question before generating scaffolding.',
+      })
+      return
+    }
+
     const selectedTypes = Object.entries(scaffoldingSelection).filter(([, range]) => range > 0)
 
     if (!selectedTypes.length) {
@@ -320,8 +404,8 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     setGeneratedQuestions(nextGeneratedQuestions)
     setIsGeneratedQuestionsOpen(true)
     setActiveEditableQuestionId(null)
-    setIsSkillActivitySaved(false)
     setIsScaffoldingTooltipOpen(false)
+    setIsActivityCreated(false)
     onAlert?.({ tone: 'secondary', message: 'Scaffolding questions created successfully.' })
   }
 
@@ -343,34 +427,118 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const updateCreatedSkillQuestion = (id, field, value) => {
     setCreatedSkillQuestions((current) => current.map((question) => (
       question.id === id
-        ? { ...question, [field]: value }
+        ? {
+          ...question,
+          ...(field === 'cognitive'
+            ? {
+              cognitive: value,
+              affective: value !== 'Not Applicable' ? 'Not Applicable' : question.affective,
+              psychomotor: value !== 'Not Applicable' ? 'Not Applicable' : question.psychomotor,
+            }
+            : field === 'affective'
+              ? {
+                affective: value,
+                cognitive: value !== 'Not Applicable' ? 'Not Applicable' : question.cognitive,
+                psychomotor: value !== 'Not Applicable' ? 'Not Applicable' : question.psychomotor,
+              }
+              : field === 'psychomotor'
+                ? {
+                  psychomotor: value,
+                  cognitive: value !== 'Not Applicable' ? 'Not Applicable' : question.cognitive,
+                  affective: value !== 'Not Applicable' ? 'Not Applicable' : question.affective,
+                }
+                : { [field]: value }),
+        }
         : question
     )))
+    setIsActivityCreated(false)
+  }
+
+  const handleSaveCustomDropdownOption = () => {
+    const nextValue = newDropdownOptionDraft.trim()
+    if (!nextValue || !activeAddValueQuestionId) {
+      onAlert?.({ tone: 'warning', message: 'Enter a value before saving.' })
+      return
+    }
+
+    const alreadyExists = [...dropdownValueOptions, ...customDropdownOptions]
+      .some((option) => option.toLowerCase() === nextValue.toLowerCase())
+
+    if (alreadyExists) {
+      onAlert?.({ tone: 'warning', message: 'Value already exists.' })
+      return
+    }
+
+    setCustomDropdownOptions((current) => [...current, nextValue])
+    setCreatedDropdownDrafts((current) => ({ ...current, [activeAddValueQuestionId]: nextValue }))
+    setCreatedSkillQuestions((current) => current.map((question) => (
+      question.id === activeAddValueQuestionId
+        ? { ...question, dropdownValues: [...(question.dropdownValues ?? []), nextValue] }
+        : question
+    )))
+    setNewDropdownOptionDraft('')
+    setActiveAddValueQuestionId(null)
+    setIsActivityCreated(false)
+    onAlert?.({ tone: 'secondary', message: 'Value added.' })
+  }
+
+  const removeCreatedSkillDropdownValue = (id, valueIndex) => {
+    setCreatedSkillQuestions((current) => current.map((question) => (
+      question.id === id
+        ? {
+          ...question,
+          dropdownValues: (question.dropdownValues ?? []).filter((_, index) => index !== valueIndex),
+        }
+        : question
+    )))
+    setIsActivityCreated(false)
   }
 
   const deleteCreatedSkillQuestion = (id) => {
     setCreatedSkillQuestions((current) => current.filter((question) => question.id !== id))
     setActiveCreatedSkillQuestionId((current) => (current === id ? null : current))
-    setIsSkillActivitySaved(false)
+    setIsActivityCreated(false)
     onAlert?.({ tone: 'warning', message: 'Skill question removed.' })
   }
 
   const updateGeneratedQuestion = (id, field, value) => {
     setGeneratedQuestions((current) => current.map((question) => (
       question.id === id
-        ? { ...question, [field]: value }
+        ? {
+          ...question,
+          ...(field === 'cognitive'
+            ? {
+              cognitive: value,
+              affective: value !== 'Not Applicable' ? 'Not Applicable' : question.affective,
+              psychomotor: value !== 'Not Applicable' ? 'Not Applicable' : question.psychomotor,
+            }
+            : field === 'affective'
+              ? {
+                affective: value,
+                cognitive: value !== 'Not Applicable' ? 'Not Applicable' : question.cognitive,
+                psychomotor: value !== 'Not Applicable' ? 'Not Applicable' : question.psychomotor,
+              }
+              : field === 'psychomotor'
+                ? {
+                  psychomotor: value,
+                  cognitive: value !== 'Not Applicable' ? 'Not Applicable' : question.cognitive,
+                  affective: value !== 'Not Applicable' ? 'Not Applicable' : question.affective,
+                }
+                : { [field]: value }),
+        }
         : question
     )))
+    setIsActivityCreated(false)
   }
 
   const deleteGeneratedQuestion = (id) => {
     setGeneratedQuestions((current) => current.filter((question) => question.id !== id))
     setActiveEditableQuestionId((current) => (current === id ? null : current))
-    setIsSkillActivitySaved(false)
+    setIsActivityCreated(false)
     onAlert?.({ tone: 'warning', message: 'Generated question removed.' })
   }
 
-  const handleSaveSkillActivity = async () => {
+  const persistSkillActivityDraft = useCallback(async () => {
     const savedImages = await Promise.all(
       images.map(async (image) => ({
         key: image.key,
@@ -380,7 +548,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       })),
     )
 
-    setIsSkillActivitySaved(true)
     onSaveSkillActivity?.({
       activity: {
         ...activity,
@@ -397,11 +564,17 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
         isSkillActivitySaved: true,
       },
     })
-    onAlert?.({ tone: 'secondary', message: 'Skill activity saved successfully.' })
-  }
+  }, [activity, activityName, createdSkillQuestions, generatedQuestions, hasMarks, images, isCertifiable, onSaveSkillActivity, record])
 
   const handleReviewAssign = () => {
     onAlert?.({ tone: 'primary', message: 'Review/Assign flow is ready for the saved skill activity.' })
+  }
+
+  const handleCreateActivity = async () => {
+    await persistSkillActivityDraft()
+    setLastSavedSignature(currentDraftSignature)
+    setIsActivityCreated(true)
+    onAlert?.({ tone: 'secondary', message: 'Activity created successfully. You can review and assign it now.' })
   }
 
   const moveGeneratedQuestion = (sourceId, targetId) => {
@@ -417,6 +590,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       nextQuestions.splice(targetIndex, 0, movedQuestion)
       return nextQuestions
     })
+    setIsActivityCreated(false)
   }
 
   const handleImageUpload = (slotKey, event) => {
@@ -440,6 +614,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     }))
 
     event.target.value = ''
+    setIsActivityCreated(false)
     onAlert?.({ tone: 'secondary', message: `Image ${slotKey} uploaded successfully.` })
   }
 
@@ -474,7 +649,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     setActiveCreatedSkillQuestionId(resetDefaultQuestion.id)
     setGeneratedQuestions([])
     setActiveEditableQuestionId(null)
-    setIsSkillActivitySaved(false)
+    setIsActivityCreated(false)
     onAlert?.({ tone: 'danger', message: `Image ${slotKey} removed from the activity.` })
   }
 
@@ -488,6 +663,29 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     const nextIndex = (activePreviewIndex + direction + uploadedPreviewImages.length) % uploadedPreviewImages.length
     setPreviewImage(uploadedPreviewImages[nextIndex])
   }
+
+  useEffect(() => {
+    if (!hasDraftContent || currentDraftSignature === lastSavedSignature) {
+      return undefined
+    }
+
+    let cancelled = false
+
+    const timeoutId = window.setTimeout(() => {
+      ;(async () => {
+        setIsAutoSaving(true)
+        await persistSkillActivityDraft()
+        if (cancelled) return
+        setLastSavedSignature(currentDraftSignature)
+        setIsAutoSaving(false)
+      })()
+    }, 500)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [currentDraftSignature, hasDraftContent, lastSavedSignature, persistSkillActivityDraft])
 
   return (
     <section className={`vx-content forms-page image-activity-page ${isInterpretationWorkflow ? 'interpretation-activity-page' : ''}`.trim()}>
@@ -647,11 +845,14 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
         </nav>
 
         <section ref={assetsSectionRef} className="vx-card image-activity-assets-card image-activity-assets-card--enhanced">
-          <div className="image-activity-section-head">
+          <div className={`image-activity-section-head ${isInterpretationWorkflow ? 'is-interpretation-compact' : ''}`.trim()}>
             <div>
-              <span className="image-activity-section-badge">
-                {(isInterpretationWorkflow ? skillStepLabel : uploadStepLabel)} <span className="image-activity-required-mark">*</span>
-              </span>
+              {!isInterpretationWorkflow ? (
+                <h2 className="image-activity-section-title-badge image-activity-section-title-badge--reference">{uploadSectionHeading}</h2>
+              ) : null}
+              {!isInterpretationWorkflow ? (
+                <p className="image-activity-section-copy">{uploadSectionDescription}</p>
+              ) : null}
             </div>
             {!isInterpretationWorkflow ? (
               <div className="image-activity-section-actions">
@@ -675,7 +876,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
           {isAssetsSectionOpen ? (
             <>
               {!isInterpretationWorkflow ? (
-                <div className="image-activity-assets-grid">
+                <div className={`image-activity-assets-grid ${visibleImageSlots.length === 1 ? 'is-single' : ''}`}>
                   {visibleImageSlots.map((image, index) => {
                     const slot = imageSlots[index]
                     const isFilled = Boolean(image.file || image.previewUrl)
@@ -739,9 +940,14 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                 <section ref={manualSectionRef} className="image-activity-skill-card image-activity-skill-card--stacked">
                   <div className="image-activity-skill-card-top">
                     <div className="image-activity-skill-builder-copy">
-                      <span className="image-activity-section-badge">{skillStepLabel}</span>
+                      {isInterpretationWorkflow ? (
+                        <h2 className="image-activity-section-title-badge image-activity-section-title-badge--question">{skillSectionHeading}</h2>
+                      ) : (
+                        <h2 className="image-activity-section-title-badge image-activity-section-title-badge--question">{skillSectionHeading}</h2>
+                      )}
+                      <p>{skillSectionDescription}</p>
                     </div>
-                    <div className="image-activity-inline-actions image-activity-skill-actions" ref={scaffoldingTooltipRef}>
+                    <div className="image-activity-inline-actions image-activity-skill-actions">
                       <button
                         type="button"
                         className="image-activity-section-toggle"
@@ -751,96 +957,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                       >
                         {isCreatedQuestionsOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
                       </button>
-                      {!isSkillActivitySaved ? (
-                        <div className="image-activity-scaffolding-anchor">
-                          <button
-                            type="button"
-                            className="ghost"
-                            onClick={() => setIsScaffoldingTooltipOpen((current) => !current)}
-                            aria-expanded={isScaffoldingTooltipOpen}
-                          >
-                            <Sparkles size={15} strokeWidth={2.2} />
-                            Generate Scaffolding
-                          </button>
-                          {isScaffoldingTooltipOpen ? (
-                            <div className="image-activity-scaffolding-tooltip">
-                              <div className="image-activity-scaffolding-tooltip-head">
-                                <span className="image-activity-scaffolding-tooltip-kicker">Choose Generation</span>
-                                <button
-                                  type="button"
-                                  className="image-activity-scaffolding-close"
-                                  aria-label="Close scaffolding tooltip"
-                                  onClick={() => setIsScaffoldingTooltipOpen(false)}
-                                >
-                                  <X size={14} strokeWidth={2} />
-                                </button>
-                              </div>
-
-                              <p className="image-activity-scaffolding-tooltip-note">
-                                Select one or more question types, set the count from 1 to 5, then click Generate.
-                              </p>
-
-                              <div className="image-activity-scaffolding-option-list">
-                                {scaffoldingTypeOptions.map((option) => {
-                                  const isSelected = scaffoldingSelection[option.value] > 0
-                                  return (
-                                    <div key={option.value} className={`image-activity-scaffolding-option ${isSelected ? 'is-selected' : ''}`}>
-                                      <div className="image-activity-scaffolding-row">
-                                        <button
-                                          type="button"
-                                          className="image-activity-scaffolding-choice"
-                                          onClick={() => handleToggleScaffoldingType(option.value)}
-                                        >
-                                          <span className="image-activity-scaffolding-choice-icon" aria-hidden="true">
-                                            <Sparkles size={14} strokeWidth={2} />
-                                          </span>
-                                          <span className="image-activity-scaffolding-choice-copy">
-                                            <strong>{option.label}</strong>
-                                            <small>{option.helper}</small>
-                                          </span>
-                                        </button>
-                                        {isSelected ? (
-                                          <label className="forms-field image-activity-scaffolding-range">
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              max="5"
-                                              value={scaffoldingSelection[option.value]}
-                                              onChange={(event) => handleScaffoldingRangeChange(option.value, event.target.value)}
-                                            />
-                                          </label>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-
-                              <div className="image-activity-scaffolding-tooltip-actions">
-                                <button
-                                  type="button"
-                                  className="tool-btn green"
-                                  onClick={handleGenerateScaffolding}
-                                  disabled={!hasSelectedScaffoldingType}
-                                >
-                                  Generate
-                                </button>
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      {shouldShowSkillBuilder ? (
-                        isSkillActivitySaved ? (
-                          <button type="button" className="tool-btn image-activity-review-assign-btn" onClick={handleReviewAssign}>
-                            Review/Assign
-                          </button>
-                        ) : (
-                          <button type="button" className="ghost" onClick={handleSaveSkillActivity} disabled={!hasAnyQuestionCreated}>
-                            Save Skill Activity
-                          </button>
-                        )
-                      ) : null}
                     </div>
                   </div>
 
@@ -850,6 +966,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                         {createdSkillQuestions.map((question, index) => {
                           const isPreviewOnly = false
                           const isCreatedSkillActive = activeCreatedSkillQuestionId === question.id
+                          const activeDomainBadge = getActiveDomainBadge(question)
                           return (
                             <article
                               key={question.id}
@@ -864,16 +981,22 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                               <span className="image-activity-generated-drag-handle" aria-hidden="true">
                                 <GripVertical size={16} strokeWidth={2} />
                               </span>
-                              <strong>Question {index + 1}</strong>
+                              <span className="image-activity-question-number-badge">Q{index + 1}</span>
                             </div>
                             <div className="image-activity-created-skill-meta">
-                              <span className="image-activity-generated-tag">{question.cognitive}</span>
-                              <span className="image-activity-generated-tag">{question.affective}</span>
-                              <span className="image-activity-generated-tag">{question.psychomotor}</span>
+                              {question.isCritical ? (
+                                <span className="image-activity-criticality-pill">
+                                  <Flag size={12} strokeWidth={2} />
+                                  Criticality
+                                </span>
+                              ) : null}
+                              {activeDomainBadge ? (
+                                <span className="image-activity-generated-tag">{activeDomainBadge}</span>
+                              ) : null}
                               <span className={`image-activity-generated-mark-pill ${!hasMarks ? 'is-disabled' : ''}`}>
                                 {hasMarks ? `${question.marks} mark` : 'Marks disabled'}
                               </span>
-                              {isCreatedSkillActive && !isPreviewOnly ? (
+                              {isCreatedSkillActive && !isPreviewOnly && index > 0 ? (
                                 <button
                                   type="button"
                                   className="image-activity-asset-btn is-danger"
@@ -889,110 +1012,261 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                             </div>
                           </div>
 
-                          <p className="image-activity-created-skill-summary">{question.questionText}</p>
+                          <p className="image-activity-created-skill-summary">{question.questionText || QUESTION_TEXT_PLACEHOLDER}</p>
 
                           {isCreatedSkillActive ? (
                             <div className="image-activity-created-skill-body">
-                              <label className="forms-field forms-field-full">
-                                <span>Question Text</span>
-                                <textarea
-                                  rows={4}
-                                  value={question.questionText}
-                                  onChange={(event) => {
-                                    if (isPreviewOnly) return
-                                    updateCreatedSkillQuestion(question.id, 'questionText', event.target.value)
-                                  }}
-                                  onClick={(event) => event.stopPropagation()}
-                                  readOnly={isPreviewOnly}
-                                />
-                              </label>
-
-                              <div className="image-activity-generated-section-label">Assessment Tags</div>
-                              <div className="image-activity-generated-meta-grid">
-                                <label className="forms-field">
-                                  <span>Marks</span>
-                                  <input
-                                    disabled={!hasMarks || isPreviewOnly}
-                                    value={question.marks}
-                                    onChange={(event) => {
-                                      if (isPreviewOnly) return
-                                      updateCreatedSkillQuestion(question.id, 'marks', event.target.value)
-                                    }}
-                                    onClick={(event) => event.stopPropagation()}
-                                    readOnly={isPreviewOnly}
-                                  />
-                                </label>
-
-                                <label className="forms-field">
-                                  <span>Cognitive</span>
-                                  <div className="forms-select-wrap">
-                                    <select
-                                      value={question.cognitive}
+                              <div className="image-activity-created-skill-editor">
+                                <div className="image-activity-created-skill-editor-main">
+                                  <label className="forms-field forms-field-full">
+                                    <textarea
+                                      rows={4}
+                                      value={question.questionText}
+                                      placeholder={QUESTION_TEXT_PLACEHOLDER}
                                       onChange={(event) => {
                                         if (isPreviewOnly) return
-                                        updateCreatedSkillQuestion(question.id, 'cognitive', event.target.value)
+                                        updateCreatedSkillQuestion(question.id, 'questionText', event.target.value)
                                       }}
                                       onClick={(event) => event.stopPropagation()}
-                                      disabled={isPreviewOnly}
-                                    >
-                                      {cognitiveScaffoldingOptions.map((option) => (
-                                        <option key={option} value={option}>{option}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </label>
+                                      readOnly={isPreviewOnly}
+                                    />
+                                  </label>
 
-                                <label className="forms-field">
-                                  <span>Affective</span>
-                                  <div className="forms-select-wrap">
-                                    <select
-                                      value={question.affective}
-                                      onChange={(event) => {
-                                        if (isPreviewOnly) return
-                                        updateCreatedSkillQuestion(question.id, 'affective', event.target.value)
-                                      }}
-                                      onClick={(event) => event.stopPropagation()}
-                                      disabled={isPreviewOnly}
-                                    >
-                                      {affectiveScaffoldingOptions.map((option) => (
-                                        <option key={option} value={option}>{option}</option>
-                                      ))}
-                                    </select>
+                                  <div className="image-activity-created-skill-value-card">
+                                    <div className="image-activity-answer-type-row">
+                                      <label className="forms-field image-activity-answer-type-select-field">
+                                        <span>Select Value</span>
+                                        <div className="image-activity-dropdown-builder">
+                                          <div className="forms-select-wrap">
+                                            <select
+                                              value={createdDropdownDrafts[question.id] ?? ''}
+                                              onChange={(event) => {
+                                                if (isPreviewOnly) return
+                                                setCreatedDropdownDrafts((current) => ({
+                                                  ...current,
+                                                  [question.id]: event.target.value,
+                                                }))
+                                              }}
+                                              onClick={(event) => event.stopPropagation()}
+                                              disabled={isPreviewOnly}
+                                            >
+                                              <option value="">Select value</option>
+                                              {allDropdownValueOptions.map((option) => (
+                                                <option key={option} value={option}>{option}</option>
+                                              ))}
+                                            </select>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            className="ghost image-activity-dropdown-add-button"
+                                            onClick={(event) => {
+                                              event.stopPropagation()
+                                              if (isPreviewOnly) return
+                                              setActiveAddValueQuestionId((current) => (current === question.id ? null : question.id))
+                                              setNewDropdownOptionDraft('')
+                                            }}
+                                            disabled={isPreviewOnly}
+                                            aria-label="Add answer type value"
+                                            aria-expanded={activeAddValueQuestionId === question.id}
+                                          >
+                                            <Plus size={16} strokeWidth={2.2} />
+                                          </button>
+                                          {activeAddValueQuestionId === question.id ? (
+                                            <div
+                                              ref={addValueTooltipRef}
+                                              className="image-activity-add-value-tooltip"
+                                              onClick={(event) => event.stopPropagation()}
+                                            >
+                                              <div className="image-activity-add-value-tooltip-copy">
+                                                <strong>Add Value</strong>
+                                                <p>Create a new selectable value for this question.</p>
+                                              </div>
+                                              <label className="forms-field forms-field-full">
+                                                <span>Add Field</span>
+                                                <input
+                                                  type="text"
+                                                  value={newDropdownOptionDraft}
+                                                  placeholder="Add Value"
+                                                  onChange={(event) => setNewDropdownOptionDraft(event.target.value)}
+                                                />
+                                              </label>
+                                              <div className="image-activity-add-value-tooltip-actions">
+                                                <button
+                                                  type="button"
+                                                  className="ghost"
+                                                  onClick={() => setNewDropdownOptionDraft('')}
+                                                >
+                                                  Clear
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  className="tool-btn green"
+                                                  onClick={handleSaveCustomDropdownOption}
+                                                >
+                                                  Save
+                                                </button>
+                                              </div>
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      </label>
+                                      <label className="forms-field image-activity-answer-type-kind-field">
+                                        <span>Input Type</span>
+                                        <div className="forms-select-wrap">
+                                          <select
+                                            value={question.answerInputType ?? 'Text box'}
+                                            onChange={(event) => {
+                                              if (isPreviewOnly) return
+                                              updateCreatedSkillQuestion(question.id, 'answerInputType', event.target.value)
+                                            }}
+                                            onClick={(event) => event.stopPropagation()}
+                                            disabled={isPreviewOnly}
+                                          >
+                                            {answerInputTypeOptions.map((option) => (
+                                              <option key={option} value={option}>{option}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      </label>
+                                    </div>
+                                    {question.dropdownValues?.length ? (
+                                      <div className="image-activity-dropdown-values">
+                                        {question.dropdownValues.map((value, valueIndex) => (
+                                          <span
+                                            key={`${question.id}-dropdown-${valueIndex}-${value}`}
+                                            className="image-activity-dropdown-pill"
+                                          >
+                                            <span>{value}</span>
+                                            {!isPreviewOnly ? (
+                                              <button
+                                                type="button"
+                                                onClick={(event) => {
+                                                  event.stopPropagation()
+                                                  removeCreatedSkillDropdownValue(question.id, valueIndex)
+                                                }}
+                                                aria-label={`Remove ${value}`}
+                                              >
+                                                <X size={12} strokeWidth={2} />
+                                              </button>
+                                            ) : null}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                    <label className="forms-field forms-field-full">
+                                      <span>Answer &amp; Explanation</span>
+                                      <input
+                                        value={question.answerKey}
+                                        onChange={(event) => {
+                                          if (isPreviewOnly) return
+                                          updateCreatedSkillQuestion(question.id, 'answerKey', event.target.value)
+                                        }}
+                                        onClick={(event) => event.stopPropagation()}
+                                        readOnly={isPreviewOnly}
+                                      />
+                                    </label>
                                   </div>
-                                </label>
+                                </div>
 
-                                <label className="forms-field">
-                                  <span>Psychomotor</span>
-                                  <div className="forms-select-wrap">
-                                    <select
-                                      value={question.psychomotor}
-                                      onChange={(event) => {
-                                        if (isPreviewOnly) return
-                                        updateCreatedSkillQuestion(question.id, 'psychomotor', event.target.value)
-                                      }}
-                                      onClick={(event) => event.stopPropagation()}
-                                      disabled={isPreviewOnly}
-                                    >
-                                      {psychomotorScaffoldingOptions.map((option) => (
-                                        <option key={option} value={option}>{option}</option>
-                                      ))}
-                                    </select>
+                                <div className="image-activity-created-skill-editor-side">
+                                  <div className="image-activity-created-skill-side-card">
+                                    <div className="image-activity-generated-section-label">Assessment Tags</div>
+
+                                    <div className="image-activity-created-skill-side-top">
+                                      <label className="forms-field">
+                                        <span>Marks</span>
+                                        <input
+                                          disabled={!hasMarks || isPreviewOnly}
+                                          value={question.marks}
+                                          onChange={(event) => {
+                                            if (isPreviewOnly) return
+                                            updateCreatedSkillQuestion(question.id, 'marks', event.target.value)
+                                          }}
+                                          onClick={(event) => event.stopPropagation()}
+                                          readOnly={isPreviewOnly}
+                                        />
+                                      </label>
+
+                                      <label className="forms-field image-activity-question-toggle-field">
+                                        <span>Criticality</span>
+                                        <button
+                                          type="button"
+                                          className={`image-activity-criticality-toggle ${question.isCritical ? 'is-active' : ''}`}
+                                          onClick={(event) => {
+                                            event.stopPropagation()
+                                            if (isPreviewOnly) return
+                                            updateCreatedSkillQuestion(question.id, 'isCritical', !question.isCritical)
+                                          }}
+                                          aria-pressed={question.isCritical}
+                                          disabled={isPreviewOnly}
+                                        >
+                                          <span className="image-activity-criticality-toggle-track" aria-hidden="true">
+                                            <span className="image-activity-criticality-toggle-thumb" />
+                                          </span>
+                                          <span className="image-activity-criticality-toggle-label">{question.isCritical ? 'On' : 'Off'}</span>
+                                        </button>
+                                      </label>
+                                    </div>
+
+                                    <label className="forms-field">
+                                      <span>Cognitive</span>
+                                      <div className="forms-select-wrap">
+                                        <select
+                                          value={question.cognitive}
+                                          onChange={(event) => {
+                                            if (isPreviewOnly) return
+                                            updateCreatedSkillQuestion(question.id, 'cognitive', event.target.value)
+                                          }}
+                                          onClick={(event) => event.stopPropagation()}
+                                          disabled={isPreviewOnly}
+                                        >
+                                          {cognitiveScaffoldingOptions.map((option) => (
+                                            <option key={option} value={option}>{option}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </label>
+
+                                    <label className="forms-field">
+                                      <span>Affective</span>
+                                      <div className="forms-select-wrap">
+                                        <select
+                                          value={question.affective}
+                                          onChange={(event) => {
+                                            if (isPreviewOnly) return
+                                            updateCreatedSkillQuestion(question.id, 'affective', event.target.value)
+                                          }}
+                                          onClick={(event) => event.stopPropagation()}
+                                          disabled={isPreviewOnly}
+                                        >
+                                          {affectiveScaffoldingOptions.map((option) => (
+                                            <option key={option} value={option}>{option}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </label>
+
+                                    <label className="forms-field">
+                                      <span>Psychomotor</span>
+                                      <div className="forms-select-wrap">
+                                        <select
+                                          value={question.psychomotor}
+                                          onChange={(event) => {
+                                            if (isPreviewOnly) return
+                                            updateCreatedSkillQuestion(question.id, 'psychomotor', event.target.value)
+                                          }}
+                                          onClick={(event) => event.stopPropagation()}
+                                          disabled={isPreviewOnly}
+                                        >
+                                          {psychomotorScaffoldingOptions.map((option) => (
+                                            <option key={option} value={option}>{option}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </label>
                                   </div>
-                                </label>
+                                </div>
                               </div>
-
-                              <label className="forms-field forms-field-full">
-                                <span>Answer &amp; Explanation</span>
-                                <input
-                                  value={question.answerKey}
-                                  onChange={(event) => {
-                                    if (isPreviewOnly) return
-                                    updateCreatedSkillQuestion(question.id, 'answerKey', event.target.value)
-                                  }}
-                                  onClick={(event) => event.stopPropagation()}
-                                  readOnly={isPreviewOnly}
-                                />
-                              </label>
                             </div>
                           ) : (
                             <div className="image-activity-created-skill-body">
@@ -1005,13 +1279,100 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                           )
                         })}
                       </div>
-                      {!isSkillActivitySaved && shouldShowAddQuestionButton ? (
-                        <div className="image-activity-created-skill-footer">
+                      <div className="image-activity-builder-actions-bar">
+                        <div className="image-activity-builder-actions-copy">
+                          <strong>Continue building</strong>
+                          <span>Add another manual question or generate guided supporting questions from the one you already wrote.</span>
+                        </div>
+                        <div className="image-activity-builder-actions-main">
                           <button type="button" className="ghost" onClick={handleAddQuestion}>
                             Add Question
                           </button>
+                          <div className="image-activity-scaffolding-anchor" ref={scaffoldingTooltipRef}>
+                            <div className="image-activity-scaffolding-trigger">
+                          <button
+                            type="button"
+                            className="ghost image-activity-scaffolding-button"
+                            onClick={() => setIsScaffoldingTooltipOpen((current) => !current)}
+                            aria-expanded={isScaffoldingTooltipOpen}
+                            disabled={!canUseScaffolding}
+                            title={hasGeneratedScaffolding ? 'Scaffolding already created' : 'Generate scaffolding'}
+                          >
+                            <Sparkles size={15} strokeWidth={2.2} />
+                            <span>Generate Scaffolding</span>
+                          </button>
+                            </div>
+                            {isScaffoldingTooltipOpen && canUseScaffolding ? (
+                              <div className="image-activity-scaffolding-tooltip">
+                                <div className="image-activity-scaffolding-tooltip-head">
+                                  <span className="image-activity-scaffolding-tooltip-kicker">Choose Generation</span>
+                                  <button
+                                    type="button"
+                                    className="image-activity-scaffolding-close"
+                                    aria-label="Close scaffolding tooltip"
+                                    onClick={() => setIsScaffoldingTooltipOpen(false)}
+                                  >
+                                    <X size={14} strokeWidth={2} />
+                                  </button>
+                                </div>
+
+                                <p className="image-activity-scaffolding-tooltip-note">
+                                  Select one or more question types, set the count from 1 to 5, then click Generate.
+                                </p>
+
+                                <div className="image-activity-scaffolding-option-list">
+                                  {scaffoldingTypeOptions.map((option) => {
+                                    const isSelected = scaffoldingSelection[option.value] > 0
+                                    return (
+                                      <div key={option.value} className={`image-activity-scaffolding-option ${isSelected ? 'is-selected' : ''}`}>
+                                        <div className="image-activity-scaffolding-row">
+                                        <button
+                                          type="button"
+                                          className="image-activity-scaffolding-choice"
+                                          onClick={() => handleToggleScaffoldingType(option.value)}
+                                          aria-pressed={isSelected}
+                                        >
+                                            <span className="image-activity-scaffolding-choice-icon" aria-hidden="true">
+                                              <Sparkles size={14} strokeWidth={2} />
+                                            </span>
+                                            <span className="image-activity-scaffolding-choice-copy">
+                                              <strong>{option.label}</strong>
+                                              <small>{option.helper}</small>
+                                            </span>
+                                          </button>
+                                        {isSelected ? (
+                                          <label className="forms-field image-activity-scaffolding-range">
+                                            <span>Count</span>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              max="5"
+                                              value={scaffoldingSelection[option.value]}
+                                                onChange={(event) => handleScaffoldingRangeChange(option.value, event.target.value)}
+                                              />
+                                            </label>
+                                          ) : null}
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+
+                                <div className="image-activity-scaffolding-tooltip-actions">
+                                  <button
+                                    type="button"
+                                    className="tool-btn green"
+                                    onClick={handleGenerateScaffolding}
+                                    disabled={!hasSelectedScaffoldingType}
+                                  >
+                                    Generate
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
-                      ) : null}
+                      </div>
                     </>
                   ) : null}
                 </section>
@@ -1024,15 +1385,16 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
           <section ref={generatedSectionRef} className="vx-card image-activity-builder-card image-activity-builder-card--enhanced">
             <div className="image-activity-question-entry image-activity-generated-questions">
               <div className="image-activity-question-head">
-                <div>
-                  <span className="image-activity-section-badge">Generated Scaffolding Questions</span>
+                <div className="image-activity-question-head-copy">
+                  <span className="image-activity-step-kicker">Step 3 Optional</span>
+                  <h2>Generated Questions</h2>
                   <p className="image-activity-section-copy">
-                    Review generated items only when you need to refine or reorder them.
+                    Generate supporting questions only if you need extra guided practice from the main manual question.
                   </p>
                 </div>
                 <div className="image-activity-question-head-actions">
                   <div className="image-activity-question-count">
-                    <span className="image-activity-question-count-label">Total created</span>
+                    <span className="image-activity-question-count-label">Created</span>
                     <strong>{generatedQuestions.length}</strong>
                   </div>
                   <button
@@ -1050,8 +1412,9 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
               {isGeneratedQuestionsOpen ? (
                 <div className="image-activity-question-list">
                   {generatedQuestions.map((question, index) => {
-                  const isCardEditing = activeEditableQuestionId === question.id
-                  return (
+                    const isCardEditing = activeEditableQuestionId === question.id
+                    const activeDomainBadge = getActiveDomainBadge(question)
+                    return (
                     <article
                       key={question.id}
                       data-generated-question-id={question.id}
@@ -1081,9 +1444,15 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                             </div>
                             <div className="image-activity-generated-card-meta">
                               <div className="image-activity-generated-tags">
-                                <span className="image-activity-generated-tag">{question.cognitive}</span>
-                                <span className="image-activity-generated-tag">{question.affective}</span>
-                                <span className="image-activity-generated-tag">{question.psychomotor}</span>
+                                {question.isCritical ? (
+                                  <span className="image-activity-criticality-pill">
+                                    <Flag size={12} strokeWidth={2} />
+                                    Criticality
+                                  </span>
+                                ) : null}
+                                {activeDomainBadge ? (
+                                  <span className="image-activity-generated-tag">{activeDomainBadge}</span>
+                                ) : null}
                               </div>
                               <div className="image-activity-generated-card-actions">
                                 <span className={`image-activity-generated-mark-pill ${!hasMarks ? 'is-disabled' : ''}`}>
@@ -1107,7 +1476,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                             </div>
                           </div>
                           <p className="image-activity-generated-summary-text">
-                            {question.questionText}
+                            {question.questionText || QUESTION_TEXT_PLACEHOLDER}
                           </p>
                         </div>
                       </div>
@@ -1115,10 +1484,10 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                       <div className="image-activity-generated-body">
                         {isCardEditing ? (
                           <label className="forms-field forms-field-full">
-                            <span>Question Text</span>
                             <textarea
                               rows={3}
                               value={question.questionText}
+                              placeholder={QUESTION_TEXT_PLACEHOLDER}
                               onChange={(event) => updateGeneratedQuestion(question.id, 'questionText', event.target.value)}
                               onClick={(event) => event.stopPropagation()}
                             />
@@ -1157,6 +1526,24 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                           <>
                             <div className="image-activity-generated-section-label">Assessment Tags</div>
                             <div className="image-activity-generated-meta-grid">
+                              <label className="forms-field image-activity-question-toggle-field">
+                                <span>Criticality</span>
+                                <button
+                                  type="button"
+                                  className={`image-activity-criticality-toggle ${question.isCritical ? 'is-active' : ''}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    updateGeneratedQuestion(question.id, 'isCritical', !question.isCritical)
+                                  }}
+                                  aria-pressed={question.isCritical}
+                                >
+                                  <span className="image-activity-criticality-toggle-track" aria-hidden="true">
+                                    <span className="image-activity-criticality-toggle-thumb" />
+                                  </span>
+                                  <span className="image-activity-criticality-toggle-label">{question.isCritical ? 'On' : 'Off'}</span>
+                                </button>
+                              </label>
+
                               <label className="forms-field">
                                 <span>Marks</span>
                                 <input
@@ -1226,6 +1613,48 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
             </div>
           </section>
         ) : null}
+
+        <div className="vx-card image-activity-builder-footer image-activity-builder-footer--final">
+          <div className="image-activity-builder-status">
+            <span
+              className={`image-activity-builder-status-dot ${
+                isAutoSaving ? 'is-saving' : isActivityCreated ? 'is-saved' : 'is-pending'
+              }`}
+              aria-hidden="true"
+            />
+            <div className="image-activity-builder-status-copy">
+              <strong>
+                {isAutoSaving ? 'Saving changes...' : isActivityCreated ? 'Activity created' : 'Finish building the activity'}
+              </strong>
+              <small>
+                {canReviewAssign
+                  ? 'The activity is ready. Continue to review and assignment.'
+                  : 'Upload at least one image, complete one manual question, then create the activity.'}
+              </small>
+            </div>
+          </div>
+          <div className="image-activity-builder-footer-actions">
+            {isActivityCreated ? (
+              <button
+                type="button"
+                className="tool-btn image-activity-review-assign-btn"
+                onClick={handleReviewAssign}
+                disabled={!canReviewAssign}
+              >
+                Review &amp; Assign
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="tool-btn green"
+                onClick={handleCreateActivity}
+                disabled={!canCreateActivity}
+              >
+                Create Activity
+              </button>
+            )}
+          </div>
+        </div>
 
       </div>
       {previewImage ? createPortal(
