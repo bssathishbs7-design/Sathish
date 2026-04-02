@@ -160,9 +160,10 @@ const generationStatusSteps = [
  * Placement:
  * - Page-level workflow in src/pages/
  */
-function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenInterpretationActivity, onAlert, savedImageActivities = {} }) {
+function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenInterpretationActivity, onOpenOspeActivity, onAlert, savedImageActivities = {} }) {
   const generationPopoverRef = useRef(null)
   const handledGenerationSuccessRef = useRef('')
+  const activityNameInputRef = useRef(null)
   const [records, setRecords] = useState(competencyRecords)
   const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
   const [searchQuery, setSearchQuery] = useState('')
@@ -281,12 +282,52 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     setActivityDraft(defaultActivityDraft)
   }
 
+  useEffect(() => {
+    if (!activityFormRecordId) return undefined
+
+    const frameId = window.requestAnimationFrame(() => {
+      activityNameInputRef.current?.focus()
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [activityFormRecordId])
+
   const handleClearListFilters = () => {
     setYearFilter('All Years')
     setSubjectFilter('All Subjects')
     setActivityTypeFilter('All Activities')
     setCertifiableFilter('All Certifiable')
     setStatusFilter('All Statuses')
+  }
+
+  const openAssociatedActivityPage = (record, activity) => {
+    if (!activity) return
+
+    const recordPayload = record
+      ? {
+          year: record.year,
+          subject: record.subject,
+          competency: record.competency,
+          topic: record.topic,
+        }
+      : null
+
+    if (activity.type === 'Image') {
+      onOpenImageActivity?.(savedImageActivities[activity.id] ?? { activity, record: recordPayload })
+      return
+    }
+
+    if (activity.type === 'Interpretation') {
+      onOpenInterpretationActivity?.({ activity, record: recordPayload })
+      return
+    }
+
+    if (activity.type === 'OSPE' || activity.type === 'OSCE') {
+      onOpenOspeActivity?.({ activity, record: recordPayload })
+      return
+    }
+
+    onAlert?.({ tone: 'primary', message: 'This activity page is not connected yet.' })
   }
 
   const handleActivityDraftChange = (field, value) => {
@@ -407,12 +448,20 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
 
     onAlert?.({ tone: 'secondary', message: 'Activity generation completed successfully.' })
     const timer = window.setTimeout(() => {
-      onGenerateComplete?.(APP_PAGES.EVALUATION)
+      if ((generationFlow.activityType === 'OSPE' || generationFlow.activityType === 'OSCE') && generationFlow.activitySnapshot) {
+        onOpenOspeActivity?.({
+          activity: generationFlow.activitySnapshot,
+          record: generationFlow.recordSnapshot,
+          generatedModes: generationFlow.selectedModes,
+        })
+      } else {
+        onGenerateComplete?.(APP_PAGES.EVALUATION)
+      }
       setGenerationFlow(null)
     }, 1100)
 
     return () => window.clearTimeout(timer)
-  }, [generationFlow, onAlert, onGenerateComplete])
+  }, [generationFlow, onAlert, onGenerateComplete, onOpenOspeActivity])
 
   const handleDeleteActivity = (recordId, activityId) => {
     setRecords((current) => current.map((record) => (
@@ -453,6 +502,16 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
       setGenerationFlow({
         recordId,
         activityId,
+        activityType: activity.type,
+        activitySnapshot: activity,
+        recordSnapshot: record
+          ? {
+              year: record.year,
+              subject: record.subject,
+              competency: record.competency,
+              topic: record.topic,
+            }
+          : null,
         selectedModes: ['Checklist'],
         phase: 'selection',
         progress: 0,
@@ -502,7 +561,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     }
 
     if (activity.status === 'Generated' || activity.status === 'Created' || activity.status === 'Assigned') {
-      assignActivityToDefaultBatch(recordId, activityId, activity.batch && activity.batch !== 'No batch selected' ? activity.batch : 'Batch A • 28 students')
+      openAssociatedActivityPage(record, activity)
     }
   }
 
@@ -583,6 +642,11 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   }
 
   const hasAllGenerationModesSelected = generationModes.every((mode) => generationFlow?.selectedModes?.includes(mode.value))
+
+  const canOpenActivityFromRow = (activity) => {
+    const savedImageActivity = activity.type === 'Image' ? savedImageActivities[activity.id] : null
+    return Boolean(savedImageActivity) || activity.status === 'Created' || activity.status === 'Assigned'
+  }
 
   const getStateConfig = (activity) => {
     const savedImageActivity = activity.type === 'Image' ? savedImageActivities[activity.id] : null
@@ -771,7 +835,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                   </div>
                 </label>
 
-                <label className="forms-field skill-assessment-search-field configuration-inline-compact-field-wide">
+                <label className="forms-field skill-assessment-search-field">
                   <span>Topic</span>
                   <input
                     value={newRecord.topic}
@@ -802,7 +866,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                   ) : null}
                 </label>
 
-                <label className="forms-field skill-assessment-search-field configuration-inline-compact-field-wide">
+                <label className="forms-field skill-assessment-search-field">
                   <span>Competency</span>
                   <input
                     value={newRecord.competency}
@@ -990,6 +1054,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                             <label className="activity-inline-field activity-inline-field-full">
                               <span>Activity Name</span>
                               <input
+                                ref={activityNameInputRef}
                                 value={activityDraft.manualName}
                                 onChange={(event) => handleActivityDraftChange('manualName', event.target.value)}
                                 placeholder="e.g. Clinical Assessment 2024"
@@ -1077,6 +1142,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                       <div className="forms-flow-rows">
                         {record.activities.map((activity) => {
                           const state = getStateConfig(activity)
+                          const isRowNavigable = canOpenActivityFromRow(activity)
                           const isProcessing = generationFlow?.recordId === record.id
                             && generationFlow?.activityId === activity.id
                             && generationFlow.phase === 'processing'
@@ -1090,7 +1156,18 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                   && generationFlow.phase === 'selection'
                                   ? 'generation-tooltip-open'
                                   : ''
+                              } ${
+                                isRowNavigable ? 'is-row-navigable' : ''
                               }`}
+                              onClick={isRowNavigable ? () => openAssociatedActivityPage(record, activity) : undefined}
+                              onKeyDown={isRowNavigable ? (event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault()
+                                  openAssociatedActivityPage(record, activity)
+                                }
+                              } : undefined}
+                              role={isRowNavigable ? 'button' : undefined}
+                              tabIndex={isRowNavigable ? 0 : -1}
                             >
                               <div className="forms-flow-activity" data-label="Activity Name">
                                 <div
@@ -1119,7 +1196,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                               <div className="forms-flow-cell is-center" data-label="Marks">
                                 <span className="forms-badge forms-badge-neutral">{activity.marks}</span>
                               </div>
-                              <div className="forms-flow-actions" data-label="Actions">
+                              <div className="forms-flow-actions" data-label="Actions" onClick={(event) => event.stopPropagation()}>
                                 <div
                                   className="forms-flow-action-main"
                                   ref={generationFlow?.recordId === record.id && generationFlow?.activityId === activity.id ? generationPopoverRef : null}
@@ -1172,7 +1249,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                                   </span>
                                                   <span className="generation-tooltip-copy">
                                                     <strong>{mode.label}</strong>
-                                                    <small>Core generation output. Required to enable Form and Scaffolding.</small>
+                                                    <small>Required base output.</small>
                                                   </span>
                                                 </button>
                                               )
@@ -1209,7 +1286,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                                     </span>
                                                     <span className="generation-tooltip-copy">
                                                       <strong>{mode.label}</strong>
-                                                      <small>{mode.detail}</small>
+                                                      <small>{mode.value === 'Form' ? 'Draft activity form.' : 'Add guided support.'}</small>
                                                     </span>
                                                   </button>
                                                 )
@@ -1250,26 +1327,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                       type="button"
                                       className="forms-icon-btn"
                                       aria-label="Preview"
-                                      onClick={() => {
-                                        const savedImageActivity = activity.type === 'Image' ? savedImageActivities[activity.id] : null
-
-                                        if (activity.type === 'Image') {
-                                          onOpenImageActivity?.(
-                                            savedImageActivity ?? {
-                                              activity,
-                                              record: {
-                                                year: record.year,
-                                                subject: record.subject,
-                                                competency: record.competency,
-                                                topic: record.topic,
-                                              },
-                                            },
-                                          )
-                                          return
-                                        }
-
-                                        onAlert?.({ tone: 'primary', message: 'Preview is available from the saved activity page.' })
-                                      }}
+                                      onClick={() => openAssociatedActivityPage(record, activity)}
                                     >
                                       <Eye size={16} strokeWidth={2} />
                                     </button>
