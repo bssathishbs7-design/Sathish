@@ -1113,7 +1113,8 @@
   font-size: 0.86rem;
   font-weight: 500;
   line-height: 1.5;
-  max-width: 70ch;
+  max-width: none;
+  text-align: justify;
 }
 
 .image-activity-created-skill-meta .image-activity-generated-tag,
