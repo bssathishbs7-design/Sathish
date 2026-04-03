@@ -128,6 +128,7 @@ function App() {
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)
+  const [selectedOspeActivity, setSelectedOspeActivity] = useState(null)
   const [savedImageActivities, setSavedImageActivities] = useState({})
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
@@ -330,6 +331,11 @@ function App() {
               onGenerateComplete={navigateToPage}
               onAlert={showAlert}
               savedImageActivities={savedImageActivities}
+              onOpenOspeActivity={(activity) => {
+                setSelectedOspeActivity(activity)
+                navigateToPage(APP_PAGES.OSPE_ACTIVITY)
+                showAlert({ tone: 'primary', message: 'OSPE activity workspace opened.' })
+              }}
               onOpenImageActivity={(activity) => {
                 setSelectedImageActivity(activity)
                 navigateToPage(APP_PAGES.IMAGE_ACTIVITY)
@@ -347,7 +353,11 @@ function App() {
               onAlert={showAlert}
             />
           ) : activePage === APP_PAGES.OSPE_ACTIVITY ? (
-            <OspeActivityPage onAlert={showAlert} />
+            <OspeActivityPage
+              key={selectedOspeActivity?.activity?.id ?? selectedOspeActivity?.id ?? 'ospe-activity'}
+              activityData={selectedOspeActivity}
+              onAlert={showAlert}
+            />
           ) : activePage === APP_PAGES.IMAGE_ACTIVITY ? (
             <ImageActivityPage
               key={selectedImageActivity?.activity?.id ?? selectedImageActivity?.id ?? 'image-activity'}

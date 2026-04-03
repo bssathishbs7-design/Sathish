@@ -208,6 +208,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const assetsSectionRef = useRef(null)
   const manualSectionRef = useRef(null)
   const generatedSectionRef = useRef(null)
+  const footerSectionRef = useRef(null)
 
   const certifiableLabel = isCertifiable ? 'Yes' : 'No'
   const totalGeneratedMarks = hasMarks
@@ -234,6 +235,18 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     return () => {
       document.body.style.overflow = previousOverflow
     }
+  }, [previewImage])
+
+  useEffect(() => {
+    if (!previewImage) return undefined
+
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      setPreviewImage(null)
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
   }, [previewImage])
 
   useEffect(() => {
@@ -345,17 +358,74 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const [lastSavedSignature, setLastSavedSignature] = useState(savedDraft ? currentDraftSignature : '')
   const canCreateActivity = hasCompletedUploadStep && hasCompletedQuestionStep && !isAutoSaving
   const canReviewAssign = hasCompletedUploadStep && hasCompletedQuestionStep && isActivityCreated
-  const workflowSections = isInterpretationWorkflow
-    ? [
-      { id: 'manual', label: 'Question', value: hasCompletedQuestionStep ? 'Ready' : 'Required', ref: manualSectionRef },
-      { id: 'generated', label: 'Scaffolding', value: generatedQuestions.length > 0 ? `${generatedQuestions.length}` : 'Optional', ref: generatedSectionRef },
-    ]
-    : [
-      { id: 'context', label: 'Context', value: 'Ready', ref: bannerSectionRef },
-      { id: 'reference', label: 'Upload', value: hasCompletedUploadStep ? 'Ready' : 'Required', ref: assetsSectionRef },
-      { id: 'manual', label: 'Question', value: hasCompletedQuestionStep ? 'Ready' : 'Required', ref: manualSectionRef },
-      { id: 'generated', label: 'Scaffolding', value: generatedQuestions.length > 0 ? `${generatedQuestions.length}` : 'Optional', ref: generatedSectionRef },
-    ]
+  const readinessTone = isActivityCreated
+    ? 'is-created'
+    : canCreateActivity
+      ? 'is-ready'
+      : hasCompletedUploadStep || hasCompletedQuestionStep
+        ? 'is-progress'
+        : 'is-pending'
+  const readinessSummary = useMemo(() => {
+    if (isActivityCreated) {
+      return {
+        label: 'Created',
+        text: 'Activity created. Continue to Review & Assign when you are ready.',
+      }
+    }
+
+    if (canCreateActivity) {
+      return {
+        label: 'Ready',
+        text: hasGeneratedScaffolding
+          ? 'Everything required is complete. You can create the activity now.'
+          : 'Main requirements are complete. You can create the activity now or add optional scaffolding first.',
+      }
+    }
+
+    if (!hasCompletedUploadStep && !hasCompletedQuestionStep) {
+      return {
+        label: 'In progress',
+        text: isInterpretationWorkflow
+          ? 'Complete one manual question to make this activity ready.'
+          : 'Add at least one image and complete one manual question to make this activity ready.',
+      }
+    }
+
+    if (!hasCompletedUploadStep) {
+      return {
+        label: 'Missing image',
+        text: 'Add at least one reference image to unlock activity creation.',
+      }
+    }
+
+    return {
+      label: 'Missing question',
+      text: 'Complete one manual question to unlock activity creation.',
+    }
+  }, [
+    canCreateActivity,
+    hasCompletedQuestionStep,
+    hasCompletedUploadStep,
+    hasGeneratedScaffolding,
+    isActivityCreated,
+    isInterpretationWorkflow,
+  ])
+  const footerStatusTone = isAutoSaving ? 'is-saving' : readinessTone
+  const footerStatusSummary = isAutoSaving
+    ? { label: 'Saving', text: 'Saving the latest changes to this activity.' }
+    : readinessSummary
+  const getSectionExpandAction = useCallback((sectionId) => {
+    if (sectionId === 'reference') {
+      return () => setIsAssetsSectionOpen(true)
+    }
+    if (sectionId === 'manual') {
+      return () => setIsCreatedQuestionsOpen(true)
+    }
+    if (sectionId === 'generated') {
+      return () => setIsGeneratedQuestionsOpen(true)
+    }
+    return undefined
+  }, [])
 
   const jumpToWorkflowSection = (stepId, sectionRef, beforeScroll) => {
     setActiveWorkflowStep(stepId)
@@ -728,23 +798,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                 <Pencil size={16} strokeWidth={2} />
               </button>
             </div>
-            {activityTopic ? <span className="image-activity-topic-pill">{activityTopic}</span> : null}
-            <p className="image-activity-competency-summary">{activityCompetency}</p>
             <div className="image-activity-meta-strip">
-              <article className="image-activity-meta-card">
-                <div className="image-activity-meta-head">
-                  <span className="image-activity-meta-icon" aria-hidden="true"><CalendarDays size={14} strokeWidth={2} /></span>
-                  <span>Year</span>
-                </div>
-                <strong>{activityYear}</strong>
-              </article>
-              <article className="image-activity-meta-card">
-                <div className="image-activity-meta-head">
-                  <span className="image-activity-meta-icon" aria-hidden="true"><BookOpen size={14} strokeWidth={2} /></span>
-                  <span>Subject</span>
-                </div>
-                <strong>{activitySubject}</strong>
-              </article>
               <article className="image-activity-meta-card">
                 <div className="image-activity-meta-head">
                   <span className="image-activity-meta-icon" aria-hidden="true"><Tag size={14} strokeWidth={2} /></span>
@@ -759,8 +813,29 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                 </div>
                 <strong>{hasMarks ? totalGeneratedMarks : 'Disabled'}</strong>
               </article>
+              <article className="image-activity-meta-card">
+                <div className="image-activity-meta-head">
+                  <span className="image-activity-meta-icon" aria-hidden="true"><BadgeCheck size={14} strokeWidth={2} /></span>
+                  <span>Certifiable</span>
+                </div>
+                <strong>{certifiableLabel}</strong>
+              </article>
               {isMetaExpanded ? (
                 <>
+                  <article className="image-activity-meta-card">
+                    <div className="image-activity-meta-head">
+                      <span className="image-activity-meta-icon" aria-hidden="true"><CalendarDays size={14} strokeWidth={2} /></span>
+                      <span>Year</span>
+                    </div>
+                    <strong>{activityYear}</strong>
+                  </article>
+                  <article className="image-activity-meta-card">
+                    <div className="image-activity-meta-head">
+                      <span className="image-activity-meta-icon" aria-hidden="true"><BookOpen size={14} strokeWidth={2} /></span>
+                      <span>Subject</span>
+                    </div>
+                    <strong>{activitySubject}</strong>
+                  </article>
                   <article className="image-activity-meta-card image-activity-meta-card-wide">
                     <div className="image-activity-meta-head">
                       <span className="image-activity-meta-icon" aria-hidden="true"><Target size={14} strokeWidth={2} /></span>
@@ -768,20 +843,13 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                     </div>
                     <strong>{activityCompetency}</strong>
                   </article>
-                  <article className="image-activity-meta-card">
-                    <div className="image-activity-meta-head">
-                      <span className="image-activity-meta-icon" aria-hidden="true"><BadgeCheck size={14} strokeWidth={2} /></span>
-                      <span>Certifiable</span>
-                    </div>
-                    <strong>{certifiableLabel}</strong>
-                  </article>
                 </>
               ) : null}
             </div>
 
           </div>
 
-          <div className="image-activity-config-panel image-activity-config-panel--enhanced">
+            <div className="image-activity-config-panel image-activity-config-panel--enhanced">
             <div className="image-activity-config-toggle-head">
               <div className="image-activity-config-head">
                 <span>Activity Settings</span>
@@ -819,30 +887,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
             </div>
           </div>
         </section>
-
-        <nav className="image-activity-workflow-strip" aria-label="Image activity workflow">
-          {workflowSections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              className={`image-activity-workflow-pill ${activeWorkflowStep === section.id ? 'is-active' : ''}`}
-              onClick={() => jumpToWorkflowSection(
-                section.id,
-                section.ref,
-                section.id === 'reference'
-                  ? () => setIsAssetsSectionOpen(true)
-                  : section.id === 'manual'
-                    ? () => setIsCreatedQuestionsOpen(true)
-                    : section.id === 'generated'
-                      ? () => setIsGeneratedQuestionsOpen(true)
-                      : undefined,
-              )}
-            >
-              <span>{section.label}</span>
-              <strong>{section.value}</strong>
-            </button>
-          ))}
-        </nav>
 
         <section ref={assetsSectionRef} className="vx-card image-activity-assets-card image-activity-assets-card--enhanced">
           <div className={`image-activity-section-head ${isInterpretationWorkflow ? 'is-interpretation-compact' : ''}`.trim()}>
@@ -1614,23 +1658,15 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
           </section>
         ) : null}
 
-        <div className="vx-card image-activity-builder-footer image-activity-builder-footer--final">
+        <div ref={footerSectionRef} className="vx-card image-activity-builder-footer image-activity-builder-footer--final">
           <div className="image-activity-builder-status">
             <span
-              className={`image-activity-builder-status-dot ${
-                isAutoSaving ? 'is-saving' : isActivityCreated ? 'is-saved' : 'is-pending'
-              }`}
+              className={`image-activity-builder-status-dot ${footerStatusTone}`}
               aria-hidden="true"
             />
             <div className="image-activity-builder-status-copy">
-              <strong>
-                {isAutoSaving ? 'Saving changes...' : isActivityCreated ? 'Activity created' : 'Finish building the activity'}
-              </strong>
-              <small>
-                {canReviewAssign
-                  ? 'The activity is ready. Continue to review and assignment.'
-                  : 'Upload at least one image, complete one manual question, then create the activity.'}
-              </small>
+              <strong>{footerStatusSummary.label}</strong>
+              <small>{footerStatusSummary.text}</small>
             </div>
           </div>
           <div className="image-activity-builder-footer-actions">
