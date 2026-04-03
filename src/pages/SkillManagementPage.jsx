@@ -172,6 +172,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   const [builderActivity, setBuilderActivity] = useState(null)
   const [builderNotes, setBuilderNotes] = useState('Assessment instructions and checklist content')
   const [generationFlow, setGenerationFlow] = useState(null)
+  const [pendingOspeOpen, setPendingOspeOpen] = useState(null)
   const [activityFormRecordId, setActivityFormRecordId] = useState(null)
   const [activityDraft, setActivityDraft] = useState(defaultActivityDraft)
   const [yearFilter, setYearFilter] = useState('All Years')
@@ -323,7 +324,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     }
 
     if (activity.type === 'OSPE' || activity.type === 'OSCE') {
-      onOpenOspeActivity?.({ activity, record: recordPayload })
+      onOpenOspeActivity?.({ activity, record: recordPayload, generatedModes: activity.generatedModes ?? ['Checklist'] })
       return
     }
 
@@ -396,21 +397,37 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
         const nextProgress = Math.min(current.progress + pace, 100)
 
         if (nextProgress >= 100) {
+          const generatedActivitySnapshot = {
+            ...current.activitySnapshot,
+            status: 'Generated',
+            marks: '10',
+            generatedModes: current.selectedModes,
+          }
+
           setRecords((existingRecords) => existingRecords.map((record) => (
             record.id === current.recordId
               ? {
                   ...record,
                   activities: record.activities.map((activity) => (
                     activity.id === current.activityId
-                      ? { ...activity, status: 'Generated', marks: '10' }
+                      ? { ...activity, status: 'Generated', marks: '10', generatedModes: current.selectedModes }
                       : activity
                   )),
                 }
               : record
           )))
 
+          if (current.activityType === 'OSPE' || current.activityType === 'OSCE') {
+            setPendingOspeOpen({
+              activity: generatedActivitySnapshot,
+              record: current.recordSnapshot,
+              generatedModes: current.selectedModes,
+            })
+          }
+
           return {
             ...current,
+            activitySnapshot: generatedActivitySnapshot,
             progress: 100,
             phase: 'success',
           }
@@ -447,21 +464,22 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     handledGenerationSuccessRef.current = successKey
 
     onAlert?.({ tone: 'secondary', message: 'Activity generation completed successfully.' })
-    const timer = window.setTimeout(() => {
-      if ((generationFlow.activityType === 'OSPE' || generationFlow.activityType === 'OSCE') && generationFlow.activitySnapshot) {
-        onOpenOspeActivity?.({
-          activity: generationFlow.activitySnapshot,
-          record: generationFlow.recordSnapshot,
-          generatedModes: generationFlow.selectedModes,
-        })
-      } else {
-        onGenerateComplete?.(APP_PAGES.EVALUATION)
-      }
-      setGenerationFlow(null)
-    }, 1100)
-
-    return () => window.clearTimeout(timer)
+    if (generationFlow.activityType !== 'OSPE' && generationFlow.activityType !== 'OSCE') {
+      onGenerateComplete?.(APP_PAGES.EVALUATION)
+    }
+    setGenerationFlow(null)
+    return undefined
   }, [generationFlow, onAlert, onGenerateComplete, onOpenOspeActivity])
+
+  useEffect(() => {
+    if (!pendingOspeOpen) return undefined
+
+    onAlert?.({ tone: 'secondary', message: 'Activity generation completed successfully.' })
+    onOpenOspeActivity?.(pendingOspeOpen)
+    setPendingOspeOpen(null)
+    setGenerationFlow(null)
+    return undefined
+  }, [onAlert, onOpenOspeActivity, pendingOspeOpen])
 
   const handleDeleteActivity = (recordId, activityId) => {
     setRecords((current) => current.map((record) => (
@@ -499,6 +517,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     if (!activity) return
 
     if (activity.status === 'Not Generated') {
+      handledGenerationSuccessRef.current = ''
       setGenerationFlow({
         recordId,
         activityId,
@@ -614,6 +633,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
         onAlert?.({ tone: 'warning', message: 'Select at least one generation mode before continuing.' })
         return current
       }
+      handledGenerationSuccessRef.current = ''
       return { ...current, phase: 'processing', progress: 0 }
     })
   }

@@ -288,7 +288,6 @@ function App() {
               onOpenOspeActivity={(activity) => {
                 setSelectedOspeActivity(activity)
                 navigateToPage(APP_PAGES.OSPE_ACTIVITY)
-                showAlert({ tone: 'primary', message: 'OSPE activity workspace opened.' })
               }}
               onOpenImageActivity={(activity) => {
                 setSelectedImageActivity(activity)
@@ -308,7 +307,7 @@ function App() {
             />
           ) : activePage === APP_PAGES.OSPE_ACTIVITY ? (
             <OspeActivityPage
-              key={selectedOspeActivity?.activity?.id ?? selectedOspeActivity?.id ?? 'ospe-activity'}
+              key={`${selectedOspeActivity?.activity?.id ?? selectedOspeActivity?.id ?? 'ospe-activity'}-${selectedOspeActivity?.generatedModes?.join('-') ?? 'checklist'}`}
               activityData={selectedOspeActivity}
               onAlert={showAlert}
             />

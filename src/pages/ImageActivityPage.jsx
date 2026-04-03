@@ -37,20 +37,20 @@ const scaffoldingTypeOptions = [
   { value: 'True or False', label: 'True or False', helper: 'Binary answer format' },
   { value: 'Fill in the blanks', label: 'Fill in the blanks', helper: 'Short completion prompt' },
 ]
-const imageSlots = [
-  { key: 'A' },
-  { key: 'B' },
-]
-
-const createImageState = (savedImages = []) => imageSlots.map((slot) => {
-  const existing = savedImages.find((image) => image.key === slot.key)
-  return {
-    key: slot.key,
-    file: existing?.file ?? null,
-    previewUrl: existing?.previewUrl ?? '',
-    error: existing?.error ?? '',
-  }
+const createImageSlot = (existing = {}, index = 0) => ({
+  key: existing?.key ?? `image-slot-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+  file: existing?.file ?? null,
+  previewUrl: existing?.previewUrl ?? '',
+  error: existing?.error ?? '',
 })
+
+const createImageState = (savedImages = []) => {
+  if (savedImages.length) {
+    return savedImages.map((image, index) => createImageSlot(image, index))
+  }
+
+  return [createImageSlot({}, 0)]
+}
 
 const fileToDataUrl = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader()
@@ -118,6 +118,8 @@ const getActiveDomainBadge = (question) => {
   return null
 }
 
+const getImageSlotLabel = (index) => String.fromCharCode(65 + index)
+
 /**
  * ImageActivityPage Implementation Contract
  * Structure:
@@ -161,7 +163,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const uploadSectionHeading = isInterpretationWorkflow ? 'Reference Cases' : 'Reference Images'
   const uploadSectionDescription = isInterpretationWorkflow
     ? 'Upload 1 or 2 reference cases first. This step is required before you continue with question building.'
-    : 'Upload 1 or 2 reference images first. This step is required before you continue with question building.'
+    : 'Upload reference images first. This step is required before you continue with question building.'
   const skillSectionHeading = 'Create Questions'
   const skillSectionDescription = 'Create at least one manual question. AI scaffolding is optional and only comes after the main question is ready.'
   const defaultSkillQuestion = useMemo(() => createGeneratedQuestion('Descriptive', 0), [])
@@ -309,14 +311,14 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     [images],
   )
 
-  const visibleImageCount = Math.min(uploadedImageCount + 1, imageSlots.length)
-  const visibleImageSlots = images.slice(0, visibleImageCount)
+  const visibleImageSlots = images
+  const canAddAnotherImage = !isInterpretationWorkflow && uploadedImageCount >= 1
   const uploadedPreviewImages = useMemo(
     () => images
       .filter((image) => image.previewUrl)
       .map((image) => ({
         slotKey: image.key,
-        title: `Image ${image.key}`,
+        title: `Image ${getImageSlotLabel(images.findIndex((entry) => entry.key === image.key))}`,
         url: image.previewUrl,
       })),
     [images],
@@ -685,34 +687,43 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
 
     event.target.value = ''
     setIsActivityCreated(false)
-    onAlert?.({ tone: 'secondary', message: `Image ${slotKey} uploaded successfully.` })
+    onAlert?.({ tone: 'secondary', message: 'Image uploaded successfully.' })
+  }
+
+  const handleAddImageUpload = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const readerUrl = URL.createObjectURL(file)
+
+    setImages((current) => [
+      ...current,
+      createImageSlot({
+        file,
+        previewUrl: readerUrl,
+        error: '',
+      }, current.length),
+    ])
+
+    event.target.value = ''
+    setIsActivityCreated(false)
+    onAlert?.({ tone: 'secondary', message: 'Image uploaded successfully.' })
   }
 
   const handleRemoveImage = (slotKey) => {
     setImages((current) => {
-      const next = current.map((image) => ({ ...image }))
-      const index = next.findIndex((image) => image.key === slotKey)
-      if (index === -1) return current
-
-      const removed = next[index]
+      const removed = current.find((image) => image.key === slotKey)
+      if (!removed) return current
       if (removed.previewUrl) {
         URL.revokeObjectURL(removed.previewUrl)
       }
-
-      for (let imageIndex = index; imageIndex < next.length - 1; imageIndex += 1) {
-        next[imageIndex].file = next[imageIndex + 1].file
-        next[imageIndex].previewUrl = next[imageIndex + 1].previewUrl
-      }
-
-      next[next.length - 1].file = null
-      next[next.length - 1].previewUrl = ''
-      next[next.length - 1].error = ''
 
       if (previewImage?.slotKey === slotKey) {
         setPreviewImage(null)
       }
 
-      return next
+      const next = current.filter((image) => image.key !== slotKey)
+      return next.length ? next : [createImageSlot({}, 0)]
     })
     const resetDefaultQuestion = createGeneratedQuestion('Descriptive', 0)
     setCreatedSkillQuestions([resetDefaultQuestion])
@@ -720,7 +731,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     setGeneratedQuestions([])
     setActiveEditableQuestionId(null)
     setIsActivityCreated(false)
-    onAlert?.({ tone: 'danger', message: `Image ${slotKey} removed from the activity.` })
+    onAlert?.({ tone: 'danger', message: 'Image removed from the activity.' })
   }
 
   const activePreviewIndex = previewImage
@@ -902,7 +913,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
               <div className="image-activity-section-actions">
                 <span className="image-activity-chip">
                   <ImagePlus size={14} strokeWidth={2} />
-                  {uploadedImageCount}/{imageSlots.length} uploaded
+                  {uploadedImageCount} uploaded
                 </span>
                 <button
                   type="button"
@@ -920,64 +931,87 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
           {isAssetsSectionOpen ? (
             <>
               {!isInterpretationWorkflow ? (
-                <div className={`image-activity-assets-grid ${visibleImageSlots.length === 1 ? 'is-single' : ''}`}>
-                  {visibleImageSlots.map((image, index) => {
-                    const slot = imageSlots[index]
-                    const isFilled = Boolean(image.file || image.previewUrl)
+                <>
+                  <div className="image-activity-upload-row">
+                    <div className="image-activity-assets-grid">
+                      {visibleImageSlots.map((image, index) => {
+                        const isFilled = Boolean(image.file || image.previewUrl)
+                        const slotLabel = getImageSlotLabel(index)
 
-                    return (
-                      <article key={slot.key} className={`image-activity-asset image-activity-asset--enhanced ${isFilled ? 'is-filled' : 'is-empty'}`}>
-                        <div className="image-activity-asset-top">
-                          <div className="image-activity-asset-title">
-                            <span>{slot.key}</span>
-                            <small>{isFilled ? 'Uploaded' : 'Next slot'}</small>
-                          </div>
-                          {isFilled ? (
-                            <div className="image-activity-asset-actions">
-                              <button
-                                type="button"
-                                className="image-activity-asset-btn"
-                                onClick={() => setPreviewImage({ slotKey: slot.key, title: `Image ${slot.key}`, url: image.previewUrl })}
-                                aria-label="Preview image"
-                              >
-                                <Eye size={15} strokeWidth={2} />
-                              </button>
-                              <button
-                                type="button"
-                                className="image-activity-asset-btn is-danger"
-                                onClick={() => handleRemoveImage(slot.key)}
-                                aria-label="Remove image"
-                              >
-                                <Trash2 size={15} strokeWidth={2} />
-                              </button>
+                        return (
+                          <article key={image.key} className={`image-activity-asset image-activity-asset--enhanced ${isFilled ? 'is-filled' : 'is-empty'}`}>
+                            <div className="image-activity-asset-top">
+                              <div className="image-activity-asset-title">
+                                <span>{slotLabel}</span>
+                                <small>{isFilled ? 'Uploaded' : 'Ready to upload'}</small>
+                              </div>
+                              {isFilled ? (
+                                <div className="image-activity-asset-actions">
+                                  <button
+                                    type="button"
+                                    className="image-activity-asset-btn"
+                                    onClick={() => setPreviewImage({ slotKey: image.key, title: `Image ${slotLabel}`, url: image.previewUrl })}
+                                    aria-label="Preview image"
+                                  >
+                                    <Eye size={15} strokeWidth={2} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="image-activity-asset-btn is-danger"
+                                    onClick={() => handleRemoveImage(image.key)}
+                                    aria-label="Remove image"
+                                  >
+                                    <Trash2 size={15} strokeWidth={2} />
+                                  </button>
+                                </div>
+                              ) : null}
                             </div>
-                          ) : null}
-                        </div>
-                        {isFilled ? (
-                          <div className="image-activity-upload-preview">
-                            <img src={image.previewUrl} alt={`Image ${slot.key}`} />
-                          </div>
-                        ) : null}
-                        {!isFilled ? (
-                          <label className="image-activity-upload-box" htmlFor={`image-upload-${slot.key}`}>
-                            <Upload size={20} strokeWidth={2} />
-                            <p>Upload image</p>
-                            <small>JPG or PNG, recommended 700 x 700 px or above</small>
-                            <span className="image-activity-upload-link">Click to browse</span>
-                          </label>
-                        ) : null}
-                        <input
-                          id={`image-upload-${slot.key}`}
-                          className="image-activity-upload-input"
-                          type="file"
-                          accept="image/png,image/jpeg,image/jpg"
-                          onChange={(event) => handleImageUpload(slot.key, event)}
-                        />
-                        {image.error ? <p className="image-activity-upload-error">{image.error}</p> : null}
-                      </article>
-                    )
-                  })}
-                </div>
+                            {isFilled ? (
+                              <div className="image-activity-upload-preview">
+                                <img src={image.previewUrl} alt={`Image ${slotLabel}`} />
+                              </div>
+                            ) : null}
+                            {!isFilled ? (
+                              <label className="image-activity-upload-box" htmlFor={`image-upload-${image.key}`}>
+                                <Upload size={20} strokeWidth={2} />
+                                <p>Upload image</p>
+                                <small>JPG or PNG, recommended 700 x 700 px or above</small>
+                                <span className="image-activity-upload-link">Click to browse</span>
+                              </label>
+                            ) : null}
+                            <input
+                              id={`image-upload-${image.key}`}
+                              className="image-activity-upload-input"
+                              type="file"
+                              accept="image/png,image/jpeg,image/jpg"
+                              onChange={(event) => handleImageUpload(image.key, event)}
+                            />
+                            {image.error ? <p className="image-activity-upload-error">{image.error}</p> : null}
+                          </article>
+                        )
+                      })}
+                    </div>
+                  {canAddAnotherImage ? (
+                    <label
+                      className="image-activity-add-image-btn"
+                      htmlFor="image-upload-add"
+                      aria-label="Add another image"
+                      data-tooltip="Upload Image"
+                    >
+                      <Plus size={18} strokeWidth={2.2} />
+                    </label>
+                  ) : null}
+                  {canAddAnotherImage ? (
+                    <input
+                      id="image-upload-add"
+                      className="image-activity-upload-input"
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg"
+                      onChange={handleAddImageUpload}
+                    />
+                  ) : null}
+                  </div>
+                </>
               ) : null}
 
               {shouldShowSkillBuilder ? (
