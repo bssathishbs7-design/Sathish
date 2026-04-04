@@ -124,7 +124,7 @@ function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [theme, setTheme] = useState(() => window.localStorage.getItem('vx-theme') ?? 'light')
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const useCompactLogo = theme === 'light' && sidebarCollapsed
+  const useCompactLogo = sidebarCollapsed
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
+import brandLogoDark from '../assets/brand-logo-dark.svg'
 import brandMark from '../assets/brand-mark.svg'
 import { SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
 
@@ -31,6 +32,7 @@ export default function Sidebar({
   onSelectPage,
   onCloseMobile,
 }) {
+  const resolvedBrandLogo = theme === 'dark' ? brandLogoDark : brandLogo
   const isSkillsActive = SKILL_PAGES.includes(activePage)
   const [skillsOpen, setSkillsOpen] = useState(isSkillsActive)
   const skillsGroupRef = useRef(null)
@@ -63,9 +65,9 @@ export default function Sidebar({
       <div className="vx-sidebar-scroll">
         <div className="vx-logo-row">
           <img
-            src={brandLogo}
+            src={resolvedBrandLogo}
             alt="Brand logo"
-            className={`vx-logo-image vx-logo-full ${theme === 'dark' ? 'is-white' : ''} ${useCompactLogo ? 'hide-logo' : ''}`}
+            className={`vx-logo-image vx-logo-full ${useCompactLogo ? 'hide-logo' : ''}`}
           />
           <img
             src={brandMark}

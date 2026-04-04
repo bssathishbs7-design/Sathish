@@ -1,9 +1,6 @@
 ﻿.vx-shell {
   min-height: 100svh;
-  background:
-    radial-gradient(circle at top left, rgba(95, 232, 177, 0.14), transparent 30%),
-    radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 32%),
-    linear-gradient(180deg, #f7fbff 0%, #f5f8fc 34%, #eef3f8 100%);
+  background: #f8f8f8;
   color: #0f6844;
   display: grid;
   grid-template-columns: 1fr;
@@ -1273,7 +1270,7 @@
   border: 0;
   border-radius: 0;
   border-top: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(250, 252, 255, 0.96));
+  background: #f8f8f8;
   padding: 14px;
 }
 
@@ -2062,7 +2059,7 @@
 }
 
 .theme-dark .vx-logo-full {
-  display: none;
+  display: block;
 }
 
 .theme-dark .vx-logo-row {
@@ -3397,7 +3394,7 @@
   --forms-surface-strong: #ffffff;
   --forms-soft: #f4f8f5;
   padding: 14px;
-  background: #ffffff;
+  background: #f8f8f8;
 }
 
 .forms-head,
@@ -4568,7 +4565,8 @@
 
 /* Workflow forms page */
 .forms-page {
-  padding: 24px;
+  padding: 14px;
+  background: #f8f8f8;
 }
 
 .forms-flow-shell {

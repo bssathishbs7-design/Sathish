@@ -63,6 +63,7 @@ const createFormItem = (index) => ({
   id: `form-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
   questionText: '',
   selectedValue: 'Nil',
+  answerText: '',
   marks: '1',
   cognitive: 'Not Applicable',
   affective: 'Not Applicable',
@@ -276,14 +277,9 @@ function FormCard({
   isEditing,
   marksEnabled,
   valueOptions,
-  isAddValueOpen,
-  addValueDraft,
   onActivate,
   onUpdate,
   onDelete,
-  onToggleAddValue,
-  onAddValueDraftChange,
-  onSaveValue,
 }) {
   const activeDomainBadge = getActiveDomainBadge(item)
   return (
@@ -315,90 +311,76 @@ function FormCard({
       </div>
       {isEditing ? (
         <div className="ospe-builder-card-body" onClick={(event) => event.stopPropagation()}>
-          <div className="ospe-form-edit-layout">
-            <div className="ospe-form-content-panel">
-              <label className="forms-field ospe-field--question ospe-form-question-panel">
-                <span>Form Question</span>
-                <textarea rows={3} value={item.questionText} onChange={(event) => onUpdate(item.id, 'questionText', event.target.value)} placeholder="Write the form question" />
-              </label>
-              <label className="forms-field ospe-form-value-field">
-                <span>Select Value</span>
-                <div className="ospe-form-value-row">
-                  <div className="forms-select-wrap">
-                    <select value={item.selectedValue} onChange={(event) => onUpdate(item.id, 'selectedValue', event.target.value)}>
-                      {valueOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                  </div>
-                  <button type="button" className="ospe-icon-btn" onClick={(event) => { event.stopPropagation(); onToggleAddValue(item.id) }} aria-label="Add dropdown value">
-                    <Plus size={14} strokeWidth={2.2} />
-                  </button>
-                </div>
-                {isAddValueOpen ? (
-                  <div className="ospe-add-value-tooltip">
-                    <input value={addValueDraft} onChange={(event) => onAddValueDraftChange(event.target.value)} placeholder="Add value" />
-                    <button type="button" className="tool-btn green" onClick={() => onSaveValue(item.id)}>Save</button>
+          <div className="ospe-form-inline-editor">
+            <label className="forms-field ospe-form-inline-question">
+              <span>Form Question</span>
+              <input value={item.questionText} onChange={(event) => onUpdate(item.id, 'questionText', event.target.value)} placeholder="Write the form question" />
+            </label>
+            <label className="forms-field ospe-form-inline-value">
+              <span>Values</span>
+              <div className="forms-select-wrap">
+                <select value={item.selectedValue} onChange={(event) => onUpdate(item.id, 'selectedValue', event.target.value)}>
+                  {valueOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </div>
+            </label>
+            <label className="forms-field ospe-field--marks ospe-form-inline-marks">
+              <span>Marks</span>
+              <input value={item.marks} onChange={(event) => onUpdate(item.id, 'marks', event.target.value)} disabled={!marksEnabled} />
+            </label>
+            <div className="forms-field ospe-assessment-criticality ospe-form-inline-criticality">
+              <span>Criticality</span>
+              <button
+                type="button"
+                className={`ospe-criticality-toggle ${item.isCritical ? 'is-active' : ''}`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onUpdate(item.id, 'isCritical', !item.isCritical)
+                }}
+                aria-pressed={item.isCritical}
+              >
+                <span className="ospe-criticality-toggle-track" aria-hidden="true">
+                  <span className="ospe-criticality-toggle-thumb" />
+                </span>
+                <span className="ospe-criticality-toggle-label">{item.isCritical ? 'On' : 'Off'}</span>
+              </button>
+            </div>
+          </div>
+          <div className="ospe-form-inline-secondary">
+            <label className="forms-field ospe-form-answer-field">
+              <span>Answer</span>
+              <input value={item.answerText ?? ''} onChange={(event) => onUpdate(item.id, 'answerText', event.target.value)} placeholder="Write the answer" />
+            </label>
+            <div className="forms-field ospe-domain-tags-field">
+              <span>Domain tags</span>
+              <div className="ospe-domain-tags">
+                <button
+                  type="button"
+                  className={`ghost ospe-domain-tags-trigger ${item.isDomainTagsOpen ? 'is-active' : ''}`}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onUpdate(item.id, 'isDomainTagsOpen', !item.isDomainTagsOpen)
+                  }}
+                  aria-expanded={item.isDomainTagsOpen}
+                >
+                  <span>{getDomainTagsButtonLabel(item)}</span>
+                </button>
+                {item.isDomainTagsOpen ? (
+                  <div className="ospe-domain-tags-popover" onClick={(event) => event.stopPropagation()}>
+                    <label className="forms-field">
+                      <span>Cognitive</span>
+                      <div className="forms-select-wrap"><select value={item.cognitive} onChange={(event) => onUpdate(item.id, 'cognitive', event.target.value)}>{cognitiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
+                    </label>
+                    <label className="forms-field">
+                      <span>Affective</span>
+                      <div className="forms-select-wrap"><select value={item.affective} onChange={(event) => onUpdate(item.id, 'affective', event.target.value)}>{affectiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
+                    </label>
+                    <label className="forms-field">
+                      <span>Psychomotor</span>
+                      <div className="forms-select-wrap"><select value={item.psychomotor} onChange={(event) => onUpdate(item.id, 'psychomotor', event.target.value)}>{psychomotorOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
+                    </label>
                   </div>
                 ) : null}
-              </label>
-            </div>
-            <div className="ospe-assessment-card ospe-form-assessment-panel">
-              <span className="ospe-assessment-card-title">Assessment Tags</span>
-              <div className="ospe-assessment-card-top">
-                <div className="ospe-assessment-card-primary">
-                  <label className="forms-field ospe-field--marks">
-                    <span>Marks</span>
-                    <input value={item.marks} onChange={(event) => onUpdate(item.id, 'marks', event.target.value)} disabled={!marksEnabled} />
-                  </label>
-                  <div className="forms-field ospe-assessment-criticality">
-                    <span>Criticality</span>
-                    <button
-                      type="button"
-                      className={`ospe-criticality-toggle ${item.isCritical ? 'is-active' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onUpdate(item.id, 'isCritical', !item.isCritical)
-                      }}
-                      aria-pressed={item.isCritical}
-                    >
-                      <span className="ospe-criticality-toggle-track" aria-hidden="true">
-                        <span className="ospe-criticality-toggle-thumb" />
-                      </span>
-                      <span className="ospe-criticality-toggle-label">{item.isCritical ? 'On' : 'Off'}</span>
-                    </button>
-                  </div>
-                </div>
-                <div className="forms-field ospe-domain-tags-field">
-                  <span>Domain tags</span>
-                  <div className="ospe-domain-tags">
-                    <button
-                      type="button"
-                      className={`ghost ospe-domain-tags-trigger ${item.isDomainTagsOpen ? 'is-active' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onUpdate(item.id, 'isDomainTagsOpen', !item.isDomainTagsOpen)
-                      }}
-                      aria-expanded={item.isDomainTagsOpen}
-                    >
-                      <span>{getDomainTagsButtonLabel(item)}</span>
-                    </button>
-                    {item.isDomainTagsOpen ? (
-                      <div className="ospe-domain-tags-popover" onClick={(event) => event.stopPropagation()}>
-                        <label className="forms-field">
-                          <span>Cognitive</span>
-                          <div className="forms-select-wrap"><select value={item.cognitive} onChange={(event) => onUpdate(item.id, 'cognitive', event.target.value)}>{cognitiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                        </label>
-                        <label className="forms-field">
-                          <span>Affective</span>
-                          <div className="forms-select-wrap"><select value={item.affective} onChange={(event) => onUpdate(item.id, 'affective', event.target.value)}>{affectiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                        </label>
-                        <label className="forms-field">
-                          <span>Psychomotor</span>
-                          <div className="forms-select-wrap"><select value={item.psychomotor} onChange={(event) => onUpdate(item.id, 'psychomotor', event.target.value)}>{psychomotorOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                        </label>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -485,9 +467,6 @@ function OspeActivityPage({ activityData, onAlert }) {
   const [hasCreatedChecklist, setHasCreatedChecklist] = useState(true)
   const [hasCreatedForm, setHasCreatedForm] = useState(() => generatedModules.form)
   const [hasCreatedScaffolding, setHasCreatedScaffolding] = useState(() => generatedModules.scaffolding)
-  const [customFormValues, setCustomFormValues] = useState([])
-  const [activeAddValueId, setActiveAddValueId] = useState(null)
-  const [addValueDraft, setAddValueDraft] = useState('')
   const [isFormTooltipOpen, setIsFormTooltipOpen] = useState(false)
   const [formGenerationCount, setFormGenerationCount] = useState(7)
   const [isScaffoldingTooltipOpen, setIsScaffoldingTooltipOpen] = useState(false)
@@ -552,8 +531,6 @@ function OspeActivityPage({ activityData, onAlert }) {
     setHasCreatedScaffolding(generatedModules.scaffolding)
     setActiveEditorId('')
     setActiveTab('Checklist')
-    setActiveAddValueId(null)
-    setAddValueDraft('')
     setMarksEnabled(activity?.marks !== 'Nil')
     setCertifiableEnabled(Boolean(activity?.certifiable ?? activity?.showCertifiable))
     setIsFormTooltipOpen(false)
@@ -585,7 +562,7 @@ function OspeActivityPage({ activityData, onAlert }) {
   const formTotalMarks = useMemo(() => sumItemMarks(formItems), [formItems])
   const scaffoldingTotalMarks = useMemo(() => sumItemMarks(scaffoldItems), [scaffoldItems])
   const overallTotalMarks = checklistTotalMarks + formTotalMarks + scaffoldingTotalMarks
-  const formValueOptions = [...defaultFormValues, ...customFormValues.filter((value) => !defaultFormValues.includes(value))]
+  const formValueOptions = defaultFormValues
   const checklistReady = checklistItems.some((item) => item.text.trim())
   const formReady = !formItems.length || formItems.some((item) => item.questionText.trim())
   const canSaveActivity = checklistReady && formReady
@@ -624,22 +601,13 @@ function OspeActivityPage({ activityData, onAlert }) {
   const generateFormItems = (count) => Array.from({ length: count }, (_, index) => createFormItem(index))
   const handleGenerateFormFromTooltip = () => {
     const nextCount = Math.min(20, Math.max(1, Number(formGenerationCount) || 7))
+    const nextItems = generateFormItems(nextCount)
     setHasCreatedForm(true)
-    setFormItems(generateFormItems(nextCount))
+    setFormItems(nextItems)
+    setActiveEditorId(nextItems[0]?.id ?? '')
     setActiveTab('Form')
     setIsFormTooltipOpen(false)
     onAlert?.({ tone: 'secondary', message: 'Form generated successfully.' })
-  }
-  const saveNewFormValue = (itemId) => {
-    const nextValue = addValueDraft.trim()
-    if (!nextValue) return onAlert?.({ tone: 'warning', message: 'Enter a value before saving.' })
-    if (![...defaultFormValues, ...customFormValues].some((value) => value.toLowerCase() === nextValue.toLowerCase())) {
-      setCustomFormValues((current) => [...current, nextValue])
-    }
-    updateForm(itemId, 'selectedValue', nextValue)
-    setAddValueDraft('')
-    setActiveAddValueId(null)
-    onAlert?.({ tone: 'secondary', message: 'Dropdown value added.' })
   }
   const hasSelectedScaffoldingType = Object.values(scaffoldingSelection).some((value) => value > 0)
   const handleToggleScaffoldingType = (type) => {
@@ -682,6 +650,15 @@ function OspeActivityPage({ activityData, onAlert }) {
       setIsFormTooltipOpen(false)
       setIsScaffoldingTooltipOpen(!hasCreatedScaffolding)
       return
+    }
+    if (tab === 'Checklist' && checklistItems.length) {
+      setActiveEditorId((current) => (checklistItems.some((item) => item.id === current) ? current : checklistItems[0].id))
+    }
+    if (tab === 'Form' && formItems.length) {
+      setActiveEditorId((current) => (formItems.some((item) => item.id === current) ? current : formItems[0].id))
+    }
+    if (tab === 'Scaffolding' && scaffoldItems.length) {
+      setActiveEditorId((current) => (scaffoldItems.some((item) => item.id === current) ? current : scaffoldItems[0].id))
     }
     setIsFormTooltipOpen(false)
     setIsScaffoldingTooltipOpen(false)
@@ -862,7 +839,7 @@ function OspeActivityPage({ activityData, onAlert }) {
               <div className="ospe-section-card ospe-section-card--embedded">
                 <div className="ospe-section-head"><div><h3>Generated Form</h3><p>Generated form items are ready to review, edit, and extend as needed.</p></div><MetaPill tone={hasMarks ? 'success' : 'default'}>{hasMarks ? `Total Marks: ${formTotalMarks}` : 'Marks Disabled'}</MetaPill></div>
               </div>
-              <div className="ospe-stage-list">{formItems.map((item, index) => <FormCard key={item.id} item={item} index={index} isEditing={activeEditorId === item.id} marksEnabled={hasMarks} valueOptions={formValueOptions} isAddValueOpen={activeAddValueId === item.id} addValueDraft={addValueDraft} onActivate={setActiveEditorId} onUpdate={updateForm} onDelete={deleteForm} onToggleAddValue={(id) => { setActiveAddValueId((current) => (current === id ? null : id)); setAddValueDraft('') }} onAddValueDraftChange={setAddValueDraft} onSaveValue={saveNewFormValue} />)}</div>
+              <div className="ospe-stage-list">{formItems.map((item, index) => <FormCard key={item.id} item={item} index={index} isEditing={activeEditorId === item.id} marksEnabled={hasMarks} valueOptions={formValueOptions} onActivate={setActiveEditorId} onUpdate={updateForm} onDelete={deleteForm} />)}</div>
               <div className="ospe-section-actions">
                 <button type="button" className="ghost ospe-section-action-btn" onClick={addFormQuestion}><Plus size={16} strokeWidth={2} /><span>Add Form</span></button>
               </div>
