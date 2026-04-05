@@ -15746,34 +15746,9 @@
   border-radius: 10px;
 }
 
-.image-activity-page .tool-btn,
-.image-activity-page .ghost,
-.image-activity-page .activity-btn,
-.image-activity-page .act-btn,
-.image-activity-page .image-activity-inline-actions > .tool-btn,
-.image-activity-page .image-activity-inline-actions .image-activity-scaffolding-anchor > .ghost,
-.image-activity-page .image-activity-skill-actions > .tool-btn,
-.image-activity-page .image-activity-skill-actions > .ghost,
-.image-activity-page .image-activity-skill-actions .image-activity-scaffolding-anchor > .ghost,
 .configuration-page .activity-btn {
   min-height: 36px;
   padding: 0 12px;
   border-radius: 10px;
   font-size: 0.84rem;
-}
-
-.image-activity-page .image-activity-skill-actions > .tool-btn,
-.image-activity-page .image-activity-skill-actions > .ghost,
-.image-activity-page .image-activity-skill-actions .image-activity-scaffolding-anchor > .ghost {
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 0.84rem;
-  font-weight: 700;
-}
-
-.image-activity-page .image-activity-inline-actions > .tool-btn,
-.image-activity-page .image-activity-inline-actions .image-activity-scaffolding-anchor > .ghost {
-  min-height: 36px;
-  padding: 0 12px;
 }

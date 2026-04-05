@@ -230,25 +230,31 @@
 }
 
 .ospe-builder-card-head {
+  position: relative;
   align-items: flex-start;
   display: grid;
   gap: 10px;
-}
-
-.ospe-builder-card-topline {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
   width: 100%;
 }
 
+.ospe-builder-card-topline {
+  display: block;
+  min-height: 38px;
+  align-items: start;
+  width: 100%;
+}
+
+.ospe-builder-card-topline > .ospe-builder-card-copy {
+  min-width: 0;
+  padding-right: 168px;
+}
+
 .ospe-builder-card-meta {
+  position: absolute;
+  top: 0;
+  right: 0;
   justify-content: flex-end;
   flex-wrap: nowrap;
-  flex-shrink: 0;
-  margin-left: auto;
-  align-self: flex-start;
 }
 
 .ospe-builder-card-meta .ospe-meta-pill {
@@ -739,7 +745,7 @@
   display: grid;
   gap: 8px;
   min-width: 0;
-  flex: 1 1 auto;
+  justify-items: start;
 }
 
 .ospe-checklist-title-row {
@@ -758,6 +764,7 @@
 .ospe-builder-card-question {
   display: block;
   width: 100%;
+  grid-column: 1 / -1;
   color: #17332a;
   font-size: 0.94rem;
   font-weight: 700;
@@ -767,6 +774,12 @@
   overflow-wrap: break-word;
   word-break: break-word;
 }
+
+.ospe-builder-card-topline .ospe-builder-card-kicker {
+  width: auto;
+  max-width: fit-content;
+}
+
 
 .ospe-builder-card-body {
   display: grid;
@@ -879,39 +892,99 @@
   align-content: start;
 }
 
-.ospe-form-inline-editor {
+.ospe-scaffold-content-panel {
+  min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) 92px max-content;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #dfe9e2;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fcfefd, #f6fbf8);
+  height: 100%;
+  align-content: start;
+}
+
+.ospe-form-edit-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 340px);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.ospe-form-prompt-field,
+.ospe-form-response-answer,
+.ospe-form-response-unit {
+  display: grid;
+  gap: 5px;
+}
+
+.ospe-form-prompt-field input,
+.ospe-form-response-answer input,
+.ospe-form-response-answer textarea,
+.ospe-form-response-unit select {
+  min-height: 38px;
+}
+
+.ospe-form-response-answer textarea {
+  min-height: 72px;
+  resize: vertical;
+  text-align: justify;
+}
+
+.ospe-form-response-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ospe-form-response-row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) minmax(140px, 180px) 38px;
   gap: 10px;
   align-items: end;
 }
 
-.ospe-form-inline-question,
-.ospe-form-inline-value {
-  display: grid;
-  gap: 5px;
-}
-
-.ospe-form-inline-question input,
-.ospe-form-inline-value select {
+.ospe-form-response-label {
   min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: #eef5f0;
+  color: #3d5748;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.ospe-form-inline-marks,
-.ospe-form-inline-criticality {
-  align-self: end;
+.ospe-form-response-delete {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  border: 1px solid #f4c7c3;
+  border-radius: 12px;
+  background: #fff;
+  color: #d94841;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
-.ospe-form-inline-secondary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: 10px;
-  margin-top: 10px;
+.ospe-form-response-delete:hover {
+  background: #fff5f5;
 }
 
-.ospe-form-answer-field {
-  display: grid;
-  gap: 5px;
+.ospe-form-response-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ospe-inline-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ospe-form-question-panel textarea {
@@ -926,6 +999,36 @@
   text-align: justify;
 }
 
+.ospe-scaffold-prompt-panel {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ospe-scaffold-prompt-panel textarea {
+  min-height: 96px;
+  height: 96px;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  text-align: justify;
+}
+
+.ospe-scaffold-answer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.ospe-scaffold-answer-grid textarea {
+  min-height: 72px;
+  resize: vertical;
+  text-align: justify;
+}
+
 .ospe-checklist-assessment-panel {
   min-width: 0;
   height: 100%;
@@ -935,8 +1038,22 @@
 
 .ospe-form-assessment-panel {
   min-width: 0;
+  height: 100%;
   align-content: start;
   overflow: visible;
+}
+
+.ospe-scaffold-assessment-panel {
+  min-width: 0;
+  height: 100%;
+  align-content: start;
+  overflow: visible;
+}
+
+.ospe-scaffold-domain-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
 }
 
 .ospe-assessment-card {
@@ -1586,9 +1703,9 @@
 }
 
 .ospe-footer-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 16px;
   padding: 14px 16px;
 }
@@ -1596,16 +1713,17 @@
 .ospe-footer-status {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
+  width: 100%;
 }
 
 .ospe-footer-status-dot {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 999px;
   flex: 0 0 auto;
-  margin-top: 6px;
+  margin-top: 7px;
 }
 
 .ospe-footer-status-dot.is-progress {
@@ -1617,18 +1735,21 @@
 }
 
 .ospe-footer-copy {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   min-width: 0;
 }
 
 .ospe-footer-copy strong {
+  display: block;
   color: #17332a;
   font-size: 0.92rem;
-  line-height: 1.2;
+  line-height: 1.05;
 }
 
 .ospe-footer-copy small {
+  margin-top: 4px;
   color: #62746c;
   font-size: 0.9rem;
   line-height: 1.35;
@@ -1636,6 +1757,44 @@
 
 .ospe-footer-actions > .tool-btn {
   min-width: 156px;
+  white-space: nowrap;
+}
+
+.ospe-footer-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 10px;
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.ospe-review-assign-btn {
+  border-color: transparent;
+  color: #ffffff;
+  background: linear-gradient(135deg, #f5a623 0%, #ea8b1f 100%);
+  box-shadow: 0 10px 22px rgba(234, 139, 31, 0.24);
+}
+
+.ospe-review-assign-btn:hover,
+.ospe-review-assign-btn:focus-visible {
+  border-color: transparent;
+  background: linear-gradient(135deg, #f7ad32 0%, #ed9126 100%);
+  box-shadow: 0 12px 24px rgba(234, 139, 31, 0.28);
+}
+
+.theme-dark .ospe-review-assign-btn {
+  border-color: transparent;
+  color: #ffffff;
+  background: linear-gradient(135deg, #f5a623 0%, #ea8b1f 100%);
+  box-shadow: 0 10px 22px rgba(234, 139, 31, 0.28);
+}
+
+.theme-dark .ospe-review-assign-btn:hover,
+.theme-dark .ospe-review-assign-btn:focus-visible {
+  border-color: transparent;
+  background: linear-gradient(135deg, #f7ad32 0%, #ed9126 100%);
 }
 
 .theme-dark .ospe-header-card,
@@ -1987,6 +2146,16 @@
   background: #111c30;
 }
 
+.theme-dark .ospe-form-response-delete {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: #111c30;
+  color: #fca5a5;
+}
+
+.theme-dark .ospe-form-response-delete:hover {
+  background: #172336;
+}
+
 .theme-dark .ospe-scaffolding-tooltip::before,
 .theme-dark .ospe-form-tooltip::before {
   border-top-color: #243652;
@@ -2147,6 +2316,15 @@
   .ospe-addon-strip-actions > * {
     width: 100%;
     justify-content: center;
+  }
+
+  .ospe-form-edit-layout,
+  .ospe-form-response-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ospe-form-response-label {
+    justify-content: flex-start;
   }
 
   .ospe-scaffolding-tooltip {

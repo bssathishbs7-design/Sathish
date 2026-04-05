@@ -1,5 +1,4 @@
 import ImageActivityPage from './ImageActivityPage'
-import '../styles/config/interpretation-activity.css'
 
 const interpretationActivitySeed = {
   activity: {
