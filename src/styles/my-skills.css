@@ -1,0 +1,342 @@
+.my-skills-page {
+  display: grid;
+}
+
+.my-skills-hero {
+  display: grid;
+  gap: 18px;
+}
+
+.my-skills-hero h1 {
+  margin: 10px 0 8px;
+  color: #102f1f;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+}
+
+.my-skills-hero p {
+  margin: 0;
+  max-width: 760px;
+  color: #6c8177;
+}
+
+.my-skills-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.my-skills-stat-card,
+.my-skills-insight-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.my-skills-stat-card strong,
+.my-skills-insight-card strong,
+.my-skills-note strong,
+.my-skills-progress-copy strong,
+.my-skills-activity-card strong {
+  display: block;
+  color: #1b3128;
+}
+
+.my-skills-stat-card span,
+.my-skills-insight-card p,
+.my-skills-progress-card small,
+.my-skills-activity-card p,
+.my-skills-note p {
+  color: #71867b;
+  margin: 0;
+}
+
+.my-skills-section-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.my-skills-progress-grid {
+  grid-template-columns: 1.15fr 0.85fr;
+}
+
+.my-skills-section {
+  display: grid;
+  gap: 16px;
+}
+
+.my-skills-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.my-skills-section-head h3 {
+  margin: 0;
+}
+
+.my-skills-section-head span {
+  color: #71867b;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.my-skills-activity-list,
+.my-skills-progress-list,
+.my-skills-insight-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.my-skills-activity-card,
+.my-skills-progress-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #dfe9e2;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #fbfdfc);
+  box-shadow: 0 10px 24px rgba(15, 68, 20, 0.06);
+}
+
+.my-skills-activity-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.my-skills-activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: #71867b;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.my-skills-activity-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.my-skills-activity-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.my-skills-attempt-pill,
+.my-skills-activity-type {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.my-skills-attempt-pill {
+  border: 1px solid #f0d48a;
+  background: #fffdf3;
+  color: #b48618;
+}
+
+.my-skills-activity-type {
+  border: 1px solid #dbe8e2;
+  background: #eefbf5;
+  color: #0f8364;
+}
+
+.my-skills-activity-type.is-image {
+  border-color: #cfcef9;
+  background: #ecebff;
+  color: #4456db;
+}
+
+.my-skills-activity-type.is-interpretation {
+  border-color: #ffd8bb;
+  background: #fff1e7;
+  color: #f46b18;
+}
+
+.my-skills-activity-type.is-ospe {
+  border-color: #c7f2ef;
+  background: #e8fbfb;
+  color: #10a5b1;
+}
+
+.my-skills-activity-type.is-osce {
+  border-color: #ebcdfa;
+  background: #f7e7ff;
+  color: #7d35e8;
+}
+
+.my-skills-activity-title {
+  margin: 2px 0 14px;
+  font-size: clamp(1.45rem, 2vw, 1.62rem);
+  line-height: 1.24;
+  letter-spacing: -0.03em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.my-skills-activity-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: auto;
+}
+
+.my-skills-activity-card .tool-btn,
+.my-skills-activity-card .ghost {
+  width: fit-content;
+  min-height: 44px;
+  padding-inline: 20px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+.my-skills-activity-cta.is-muted {
+  border-color: #dde3e6;
+  background: #eceef0;
+  color: #a4acb2;
+  box-shadow: none;
+}
+
+.my-skills-progress-meter {
+  height: 10px;
+  border-radius: 999px;
+  background: #edf4f0;
+  overflow: hidden;
+}
+
+.my-skills-progress-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1b9a6f, #69d7b0);
+}
+
+.my-skills-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.my-skills-note-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: #eefbf5;
+  color: #0f8364;
+  flex: 0 0 40px;
+}
+
+.theme-dark .my-skills-note-icon {
+  background: rgba(95, 232, 177, 0.12);
+  color: #8ee4ca;
+}
+
+.theme-dark .my-skills-activity-card,
+.theme-dark .my-skills-progress-card {
+  border-color: rgba(95, 232, 177, 0.12);
+  background: rgba(10, 20, 34, 0.95);
+}
+
+.theme-dark .my-skills-hero p,
+.theme-dark .my-skills-section-head span,
+.theme-dark .my-skills-stat-card span,
+.theme-dark .my-skills-insight-card p,
+.theme-dark .my-skills-progress-card small,
+.theme-dark .my-skills-activity-card p,
+.theme-dark .my-skills-note p,
+.theme-dark .my-skills-activity-meta {
+  color: #9db3aa;
+}
+
+.theme-dark .my-skills-stat-card strong,
+.theme-dark .my-skills-insight-card strong,
+.theme-dark .my-skills-note strong,
+.theme-dark .my-skills-progress-copy strong,
+.theme-dark .my-skills-activity-card strong,
+.theme-dark .my-skills-hero h1,
+.theme-dark .my-skills-section-head h3 {
+  color: #e6efeb;
+}
+
+.theme-dark .my-skills-attempt-pill {
+  border-color: rgba(214, 174, 63, 0.34);
+  background: rgba(77, 57, 9, 0.32);
+  color: #f3ca68;
+}
+
+.theme-dark .my-skills-activity-type {
+  border-color: rgba(95, 232, 177, 0.16);
+  background: rgba(95, 232, 177, 0.12);
+  color: #8ee4ca;
+}
+
+.theme-dark .my-skills-activity-type.is-image {
+  border-color: rgba(125, 139, 255, 0.24);
+  background: rgba(53, 65, 145, 0.28);
+  color: #bec7ff;
+}
+
+.theme-dark .my-skills-activity-type.is-interpretation {
+  border-color: rgba(244, 107, 24, 0.24);
+  background: rgba(103, 47, 14, 0.34);
+  color: #ffc39b;
+}
+
+.theme-dark .my-skills-activity-type.is-ospe {
+  border-color: rgba(16, 165, 177, 0.24);
+  background: rgba(9, 79, 87, 0.34);
+  color: #96edf5;
+}
+
+.theme-dark .my-skills-activity-type.is-osce {
+  border-color: rgba(125, 53, 232, 0.24);
+  background: rgba(66, 25, 108, 0.34);
+  color: #dab8ff;
+}
+
+.theme-dark .my-skills-activity-cta.is-muted {
+  border-color: rgba(147, 161, 171, 0.18);
+  background: rgba(94, 105, 113, 0.28);
+  color: #8f9da6;
+}
+
+.theme-dark .my-skills-progress-meter {
+  background: #162536;
+}
+
+@media (max-width: 980px) {
+  .my-skills-hero-stats,
+  .my-skills-progress-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .my-skills-activity-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .my-skills-activity-list {
+    grid-template-columns: 1fr;
+  }
+
+  .my-skills-activity-foot {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

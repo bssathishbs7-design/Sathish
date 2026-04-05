@@ -301,8 +301,9 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     setStatusFilter('All Statuses')
   }
 
-  const openAssociatedActivityPage = (record, activity) => {
+  const openAssociatedActivityPage = (record, activity, options = {}) => {
     if (!activity) return
+    const { openReviewAssign = false } = options
 
     const recordPayload = record
       ? {
@@ -314,17 +315,22 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
       : null
 
     if (activity.type === 'Image') {
-      onOpenImageActivity?.(savedImageActivities[activity.id] ?? { activity, record: recordPayload })
+      const savedPayload = savedImageActivities[activity.id]
+      onOpenImageActivity?.(
+        savedPayload
+          ? { ...savedPayload, openReviewAssign }
+          : { activity, record: recordPayload, openReviewAssign },
+      )
       return
     }
 
     if (activity.type === 'Interpretation') {
-      onOpenInterpretationActivity?.({ activity, record: recordPayload })
+      onOpenInterpretationActivity?.({ activity, record: recordPayload, openReviewAssign })
       return
     }
 
     if (activity.type === 'OSPE' || activity.type === 'OSCE') {
-      onOpenOspeActivity?.({ activity, record: recordPayload, generatedModes: activity.generatedModes ?? ['Checklist'] })
+      onOpenOspeActivity?.({ activity, record: recordPayload, generatedModes: activity.generatedModes ?? ['Checklist'], openReviewAssign })
       return
     }
 
@@ -580,7 +586,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
     }
 
     if (activity.status === 'Generated' || activity.status === 'Created' || activity.status === 'Assigned') {
-      openAssociatedActivityPage(record, activity)
+      openAssociatedActivityPage(record, activity, { openReviewAssign: true })
     }
   }
 

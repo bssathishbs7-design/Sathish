@@ -29,12 +29,35 @@ const affectiveScaffoldingOptions = ['Not Applicable', 'Receive', 'Respond', 'Va
 const psychomotorOptions = ['Perception', 'Set', 'Guided Response', 'Mechanism', 'Adaptation', 'Origination']
 const psychomotorScaffoldingOptions = ['Not Applicable', ...psychomotorOptions]
 const QUESTION_TEXT_PLACEHOLDER = 'Enter your question here......'
+const ASSIGN_YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year Part 1', 'Third Year Part 2', 'Final Year']
+const ASSIGN_SGT_OPTIONS = {
+  'First Year': ['SGT A', 'SGT B', 'SGT C'],
+  'Second Year': ['SGT D', 'SGT E'],
+  'Third Year Part 1': ['SGT F', 'SGT G'],
+  'Third Year Part 2': ['SGT H', 'SGT I'],
+  'Final Year': ['SGT J', 'SGT K'],
+}
+const ASSIGN_SERVER_TIME = {
+  date: '2026-04-05',
+  label: 'Server time (IST)',
+}
 const scaffoldingTypeOptions = [
   { value: 'MCQ', label: 'MCQ', helper: 'Multi Choice Question' },
   { value: 'Descriptive', label: 'Descriptive', helper: 'Long-form response' },
   { value: 'True or False', label: 'True or False', helper: 'Binary answer format' },
   { value: 'Fill in the blanks', label: 'Fill in the blanks', helper: 'Short completion prompt' },
 ]
+
+const buildAssignThresholdRows = (totalMarks) => {
+  const safeTotal = Math.max(1, Number(totalMarks) || 10)
+  const firstCut = Number((safeTotal / 3).toFixed(1))
+  const secondCut = Number(((safeTotal * 2) / 3).toFixed(1))
+  return [
+    { id: `threshold-a-${safeTotal}`, label: 'Below Expectation', from: '0', to: String(firstCut) },
+    { id: `threshold-b-${safeTotal}`, label: 'Competent', from: String(firstCut), to: String(secondCut) },
+    { id: `threshold-c-${safeTotal}`, label: 'Proficient', from: String(secondCut), to: String(safeTotal) },
+  ]
+}
 const createImageSlot = (existing = {}, index = 0) => ({
   key: existing?.key ?? `image-slot-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
   file: existing?.file ?? null,
@@ -162,11 +185,12 @@ const buildAutoAnswerAndExplanation = (questionText) => {
  * Placement:
  * - Page-level workflow in src/pages/ because it owns substantial screen-specific state
  */
-export default function ImageActivityPage({ activityData, onAlert, onSaveSkillActivity, workflowType = 'image' }) {
+export default function ImageActivityPage({ activityData, onAlert, onSaveSkillActivity, onAssignActivity, workflowType = 'image' }) {
   const isInterpretationWorkflow = workflowType === 'interpretation'
   const activity = activityData?.activity ?? activityData ?? null
   const record = activityData?.record ?? null
   const savedDraft = activityData?.draft ?? null
+  const assignDefaultYear = ASSIGN_YEAR_OPTIONS.includes(record?.year) ? record.year : ASSIGN_YEAR_OPTIONS[0]
   const defaultActivityName = activity?.name ?? (
     isInterpretationWorkflow
       ? 'Interpret the most important clinical finding visible in the case.'
@@ -209,6 +233,13 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const [draggedQuestionId, setDraggedQuestionId] = useState(null)
   const [isAutoSaving, setIsAutoSaving] = useState(false)
   const [isActivityCreated, setIsActivityCreated] = useState(Boolean(savedDraft?.isSkillActivitySaved || activity?.status === 'Created'))
+  const [isReviewAssignPopupOpen, setIsReviewAssignPopupOpen] = useState(false)
+  const [assignThresholds, setAssignThresholds] = useState(() => buildAssignThresholdRows(10))
+  const [assignYear, setAssignYear] = useState(assignDefaultYear)
+  const [assignSgt, setAssignSgt] = useState('')
+  const [isAssignScheduleEnabled, setIsAssignScheduleEnabled] = useState(false)
+  const [assignSchedule, setAssignSchedule] = useState({ date: '', time: '', meridiem: 'AM' })
+  const [assignContent, setAssignContent] = useState({ form: false, question: true, scaffolding: false })
   const [isScaffoldingTooltipOpen, setIsScaffoldingTooltipOpen] = useState(false)
   const [isMetaExpanded, setIsMetaExpanded] = useState(false)
   const [isGeneratedQuestionsOpen, setIsGeneratedQuestionsOpen] = useState(Boolean(savedDraft?.generatedQuestions?.length))
@@ -235,6 +266,12 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const totalGeneratedMarks = hasMarks
     ? [...createdSkillQuestions, ...generatedQuestions].reduce((total, question) => total + (Number(question.marks) || 0), 0)
     : 0
+
+  useEffect(() => {
+    if (!activityData?.openReviewAssign) return
+    setIsReviewAssignPopupOpen(true)
+  }, [activityData])
+
   useEffect(() => {
     imageUrlsRef.current = images.map((image) => image.previewUrl).filter(Boolean)
   }, [images])
@@ -260,7 +297,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   }, [])
 
   useEffect(() => {
-    if (!previewImage) return undefined
+    if (!previewImage && !isReviewAssignPopupOpen) return undefined
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -268,7 +305,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     return () => {
       document.body.style.overflow = previousOverflow
     }
-  }, [previewImage])
+  }, [isReviewAssignPopupOpen, previewImage])
 
   useEffect(() => {
     if (!previewImage) return undefined
@@ -371,7 +408,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   }), [activityName, hasMarks, isCertifiable, images, createdSkillQuestions, generatedQuestions])
   const [lastSavedSignature, setLastSavedSignature] = useState(savedDraft ? currentDraftSignature : '')
   const canCreateActivity = hasCompletedUploadStep && hasCompletedQuestionStep && !isAutoSaving
-  const canReviewAssign = hasCompletedUploadStep && hasCompletedQuestionStep && isActivityCreated
   const readinessTone = isActivityCreated
     ? 'is-created'
     : canCreateActivity
@@ -383,7 +419,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     if (isActivityCreated) {
       return {
         label: 'Created',
-        text: 'Activity created. Continue to Review & Assign when you are ready.',
+        text: 'Activity created successfully. You can continue refining the activity here.',
       }
     }
 
@@ -428,6 +464,32 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const footerStatusSummary = isAutoSaving
     ? { label: 'Saving', text: 'Saving the latest changes to this activity.' }
     : readinessSummary
+  const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
+  const imageAssignHelperText = generatedQuestions.length === 0
+    ? 'Scaffolding is not generated yet. Only student-facing modules created for this activity can be assigned.'
+    : ''
+  const assignThresholdErrors = useMemo(() => assignThresholds.map((row, index) => {
+    const from = Number(row.from)
+    const to = Number(row.to)
+    const totalMarks = Math.max(1, Number(totalGeneratedMarks) || 10)
+    if (Number.isNaN(from) || Number.isNaN(to)) return 'Enter valid values.'
+    if (!row.label.trim()) return 'Label is required.'
+    if (from > to) return '`From` must be less than or equal to `To`.'
+    if (index === 0 && from !== 0) return 'First row must start at 0.'
+    if (index > 0) {
+      const previousTo = Number(assignThresholds[index - 1].to)
+      if (Math.abs(previousTo - from) > 0.001) return ''
+    }
+    if (index === assignThresholds.length - 1 && Math.abs(to - totalMarks) > 0.001) {
+      return ''
+    }
+    return ''
+  }), [assignThresholds, totalGeneratedMarks])
+  const canProceedAssign = assignThresholdErrors.every((error) => !error)
+    && Boolean(assignYear)
+    && Boolean(assignSgt)
+    && (!isAssignScheduleEnabled || Boolean(assignSchedule.date && assignSchedule.time && assignSchedule.meridiem))
+
   const getSectionExpandAction = useCallback((sectionId) => {
     if (sectionId === 'reference') {
       return () => setIsAssetsSectionOpen(true)
@@ -752,15 +814,70 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     })
   }, [activity, activityName, createdSkillQuestions, generatedQuestions, hasMarks, images, isCertifiable, onSaveSkillActivity, record])
 
-  const handleReviewAssign = () => {
-    onAlert?.({ tone: 'primary', message: 'Review/Assign flow is ready for the saved skill activity.' })
-  }
-
   const handleCreateActivity = async () => {
     await persistSkillActivityDraft()
     setLastSavedSignature(currentDraftSignature)
     setIsActivityCreated(true)
-    onAlert?.({ tone: 'secondary', message: 'Activity created successfully. You can review and assign it now.' })
+    onAlert?.({ tone: 'secondary', message: 'Activity created successfully.' })
+  }
+
+  const handleReviewAssign = () => {
+    setAssignThresholds(buildAssignThresholdRows(totalGeneratedMarks || 10))
+    setAssignYear(assignDefaultYear)
+    setAssignSgt('')
+    setIsAssignScheduleEnabled(false)
+    setAssignSchedule({ date: '', time: '', meridiem: 'AM' })
+    setAssignContent({
+      form: false,
+      question: true,
+      scaffolding: generatedQuestions.length > 0,
+    })
+    setIsReviewAssignPopupOpen(true)
+  }
+
+  const updateAssignThreshold = (id, field, value) => {
+    setAssignThresholds((current) => current.map((row) => (row.id === id ? { ...row, [field]: value } : row)))
+  }
+
+  const addAssignThreshold = () => {
+    const totalMarks = Math.max(1, Number(totalGeneratedMarks) || 10)
+    const lastRow = assignThresholds[assignThresholds.length - 1]
+    setAssignThresholds((current) => [
+      ...current.slice(0, -1),
+      { ...lastRow, id: `${lastRow.id}-split`, to: lastRow.from },
+      { id: `threshold-${Date.now()}`, label: 'New Label', from: lastRow.from, to: String(totalMarks) },
+    ])
+  }
+
+  const deleteAssignThreshold = (id) => {
+    setAssignThresholds((current) => current.filter((row) => row.id !== id))
+  }
+
+  const handleProceedAssign = () => {
+    if (!canProceedAssign) {
+      onAlert?.({ tone: 'warning', message: 'Complete thresholds, year, SGT, and schedule fields before proceeding.' })
+      return
+    }
+
+    onAssignActivity?.({
+      id: activity?.id ?? `image-assignment-${Date.now()}`,
+      title: activityName,
+      type: activityTag,
+      createdDate: new Date().toLocaleDateString('en-GB'),
+      attemptCount: '0 / 1',
+      status: 'Assigned',
+      assignedTo: `${assignYear} • ${assignSgt}`,
+      activityData: {
+        ...(resolvedActivityData ?? {}),
+        activity: {
+          ...(activity ?? {}),
+          name: activityName,
+          status: 'Created',
+        },
+        record,
+      },
+    })
+    setIsReviewAssignPopupOpen(false)
   }
 
   const moveGeneratedQuestion = (sourceId, targetId) => {
@@ -1679,29 +1796,193 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
             </div>
           </div>
           <div className="image-activity-builder-footer-actions">
-            {isActivityCreated ? (
-              <button
-                type="button"
-                className="tool-btn image-activity-review-assign-btn"
-                onClick={handleReviewAssign}
-                disabled={!canReviewAssign}
-              >
-                Review &amp; Assign
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="tool-btn green"
-                onClick={handleCreateActivity}
-                disabled={!canCreateActivity}
-              >
-                Create Activity
-              </button>
-            )}
+            <button
+              type="button"
+              className={`tool-btn ${isActivityCreated ? 'image-activity-review-assign-btn' : 'green'}`}
+              onClick={isActivityCreated ? handleReviewAssign : handleCreateActivity}
+              disabled={isActivityCreated ? false : !canCreateActivity}
+            >
+              {isActivityCreated ? 'Review / Assign' : 'Create Activity'}
+            </button>
           </div>
         </div>
 
       </div>
+      {isReviewAssignPopupOpen ? createPortal(
+        <div className="image-activity-review-popup-backdrop" onClick={() => setIsReviewAssignPopupOpen(false)} aria-hidden="true">
+          <section className="image-activity-review-popup-dialog" onClick={(event) => event.stopPropagation()}>
+            <div className="image-activity-review-popup-head">
+              <div className="image-activity-review-popup-copy">
+                <span className="image-activity-review-popup-kicker">Configuration &amp; Assign</span>
+                <p>Set the assignment content, threshold configuration, target group, and optional schedule.</p>
+              </div>
+              <button
+                type="button"
+                className="image-activity-review-popup-close"
+                onClick={() => setIsReviewAssignPopupOpen(false)}
+                aria-label="Close Review and Assign"
+              >
+                <X size={16} strokeWidth={2.2} />
+              </button>
+            </div>
+            <div className="image-activity-assign-content-row">
+              <span className="image-activity-assign-panel-badge">Assign Type Check :</span>
+              <label className="image-activity-assign-check">
+                <input
+                  type="checkbox"
+                  checked={assignContent.question}
+                  onChange={(event) => setAssignContent((current) => ({ ...current, question: event.target.checked }))}
+                />
+                <span>Question</span>
+              </label>
+              {generatedQuestions.length > 0 ? (
+                <label className="image-activity-assign-check">
+                  <input
+                    type="checkbox"
+                    checked={assignContent.scaffolding}
+                    onChange={(event) => setAssignContent((current) => ({ ...current, scaffolding: event.target.checked }))}
+                  />
+                  <span>Scaffolding</span>
+                </label>
+              ) : null}
+            </div>
+            {imageAssignHelperText ? <small className="image-activity-assign-helper">{imageAssignHelperText}</small> : null}
+            <div className="image-activity-review-popup-foot">
+              <div className="image-activity-assign-grid">
+                <section className="image-activity-assign-panel">
+                  <div className="image-activity-assign-panel-head">
+                    <span className="image-activity-assign-panel-badge">Threshold Configuration *</span>
+                  </div>
+                  <div className="image-activity-threshold-list">
+                    {assignThresholds.map((row, index) => (
+                      <div key={row.id} className="image-activity-threshold-row">
+                        <input
+                          value={row.label}
+                          onChange={(event) => updateAssignThreshold(row.id, 'label', event.target.value)}
+                          placeholder="Text label"
+                        />
+                        <input
+                          value={row.from}
+                          onChange={(event) => updateAssignThreshold(row.id, 'from', event.target.value)}
+                          placeholder="0"
+                        />
+                        <input
+                          value={row.to}
+                          onChange={(event) => updateAssignThreshold(row.id, 'to', event.target.value)}
+                          placeholder="0"
+                        />
+                        <div className="image-activity-threshold-actions">
+                          <button
+                            type="button"
+                            className="ghost image-activity-threshold-delete"
+                            onClick={() => deleteAssignThreshold(row.id)}
+                            disabled={assignThresholds.length === 1}
+                            aria-label={`Delete threshold ${index + 1}`}
+                          >
+                            <Trash2 size={14} strokeWidth={2} />
+                          </button>
+                          {index === assignThresholds.length - 1 ? (
+                            <button
+                              type="button"
+                              className="ghost image-activity-threshold-add"
+                              onClick={addAssignThreshold}
+                              aria-label="Add threshold"
+                            >
+                              <Plus size={15} strokeWidth={2.2} />
+                            </button>
+                          ) : <span className="image-activity-threshold-add-placeholder" aria-hidden="true" />}
+                        </div>
+                        {assignThresholdErrors[index] ? (
+                          <small className="image-activity-assign-error">{assignThresholdErrors[index]}</small>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="image-activity-assign-panel">
+                  <div className="image-activity-assign-panel-head">
+                    <span className="image-activity-assign-panel-badge">Assigning To *</span>
+                  </div>
+                  <div className="image-activity-assign-targets">
+                    <div className="forms-select-wrap">
+                      <select
+                        value={assignYear}
+                        onChange={(event) => {
+                          setAssignYear(event.target.value)
+                          setAssignSgt('')
+                        }}
+                      >
+                        {ASSIGN_YEAR_OPTIONS.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="forms-select-wrap">
+                      <select value={assignSgt} onChange={(event) => setAssignSgt(event.target.value)} disabled={!assignYear}>
+                        <option value="">{assignYear ? 'SGT Dropdown' : 'Select Year first'}</option>
+                        {assignSgtOptions.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <label className="image-activity-assign-schedule-toggle">
+                    <input
+                      type="checkbox"
+                      checked={isAssignScheduleEnabled}
+                      onChange={(event) => {
+                        const isEnabled = event.target.checked
+                        setIsAssignScheduleEnabled(isEnabled)
+                        if (isEnabled) {
+                          setAssignSchedule((current) => ({
+                            ...current,
+                            date: current.date || ASSIGN_SERVER_TIME.date,
+                          }))
+                        }
+                      }}
+                    />
+                    <span>If you want schedule...</span>
+                  </label>
+                  {isAssignScheduleEnabled ? (
+                    <div className="image-activity-assign-schedule-row">
+                      <input
+                        type="date"
+                        min={ASSIGN_SERVER_TIME.date}
+                        value={assignSchedule.date}
+                        onChange={(event) => setAssignSchedule((current) => ({ ...current, date: event.target.value }))}
+                      />
+                      <input
+                        type="time"
+                        value={assignSchedule.time}
+                        onChange={(event) => setAssignSchedule((current) => ({ ...current, time: event.target.value }))}
+                      />
+                        <div className="forms-select-wrap">
+                          <select
+                            value={assignSchedule.meridiem}
+                            onChange={(event) => setAssignSchedule((current) => ({ ...current, meridiem: event.target.value }))}
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
+                      </div>
+                  ) : null}
+                </section>
+              </div>
+              <div className="image-activity-assign-actions">
+                <button type="button" className="ghost" onClick={() => setIsReviewAssignPopupOpen(false)}>
+                  Close
+                </button>
+                <button type="button" className="tool-btn green" onClick={handleProceedAssign} disabled={!canProceedAssign}>
+                  Proceed
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>,
+        document.body,
+      ) : null}
       {previewImage ? createPortal(
         <div className="image-activity-preview-modal" onClick={() => setPreviewImage(null)} aria-hidden="true">
           <div className="image-activity-preview-dialog" onClick={(event) => event.stopPropagation()}>

@@ -32,11 +32,13 @@ const interpretationActivitySeed = {
  * Placement:
  * - Page-level route wrapper in src/pages/.
  */
-export default function InterpretationActivityPage({ activityData, onAlert }) {
+export default function InterpretationActivityPage({ activityData, onAlert, onSaveSkillActivity, onAssignActivity }) {
   return (
     <ImageActivityPage
       activityData={activityData ?? interpretationActivitySeed}
       onAlert={onAlert}
+      onSaveSkillActivity={onSaveSkillActivity}
+      onAssignActivity={onAssignActivity}
       workflowType="interpretation"
     />
   )

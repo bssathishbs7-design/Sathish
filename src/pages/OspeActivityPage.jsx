@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   BookCheck,
   CheckCircle2,
@@ -23,6 +24,18 @@ const affectiveOptions = ['Not Applicable', 'Receive', 'Respond', 'Value', 'Orga
 const psychomotorOptions = ['Not Applicable', 'Perception', 'Set', 'Guided Response', 'Mechanism', 'Adaptation', 'Origination']
 const defaultFormResponseTypes = ['Nil', 'Structure', 'Finding', 'Diagnosis', 'Significance', 'Function', 'Action', 'Nerve', 'Muscle', 'Ligament', 'Phase', 'Lesion']
 const scaffoldStarterTypes = ['MCQ', 'Descriptive', 'True or False', 'Fill in the blanks']
+const ASSIGN_YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year Part 1', 'Third Year Part 2', 'Final Year']
+const ASSIGN_SGT_OPTIONS = {
+  'First Year': ['SGT A', 'SGT B', 'SGT C'],
+  'Second Year': ['SGT D', 'SGT E'],
+  'Third Year Part 1': ['SGT F', 'SGT G'],
+  'Third Year Part 2': ['SGT H', 'SGT I'],
+  'Final Year': ['SGT J', 'SGT K'],
+}
+const ASSIGN_SERVER_TIME = {
+  date: '2026-04-05',
+  label: 'Server time (IST)',
+}
 const scaffoldingTypeOptions = [
   { value: 'MCQ', label: 'MCQ', helper: 'Multi Choice Question' },
   { value: 'Descriptive', label: 'Descriptive', helper: 'Long-form response' },
@@ -107,6 +120,16 @@ const formStationBlueprints = [
     ],
   },
 ]
+const buildAssignThresholdRows = (totalMarks) => {
+  const safeTotal = Math.max(1, Number(totalMarks) || 10)
+  const firstCut = Number((safeTotal / 3).toFixed(1))
+  const secondCut = Number(((safeTotal * 2) / 3).toFixed(1))
+  return [
+    { id: `threshold-a-${safeTotal}`, label: 'Below Expectation', from: '0', to: String(firstCut) },
+    { id: `threshold-b-${safeTotal}`, label: 'Competent', from: String(firstCut), to: String(secondCut) },
+    { id: `threshold-c-${safeTotal}`, label: 'Proficient', from: String(secondCut), to: String(safeTotal) },
+  ]
+}
 const fallbackOspeActivitySeed = {
   activity: {
     id: 'ospe-activity-seed',
@@ -725,10 +748,11 @@ function ScaffoldingCard({ item, index, isEditing, marksEnabled, onActivate, onU
   )
 }
 
-function OspeActivityPage({ activityData, onAlert }) {
+function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const resolvedActivityData = activityData ?? fallbackOspeActivitySeed
   const activity = resolvedActivityData?.activity ?? resolvedActivityData ?? null
   const record = resolvedActivityData?.record ?? null
+  const assignDefaultYear = ASSIGN_YEAR_OPTIONS.includes(record?.year) ? record.year : ASSIGN_YEAR_OPTIONS[0]
   const generatedModes = resolvedActivityData?.generatedModes ?? ['Checklist']
   const generatedModules = useMemo(() => buildGeneratedModules(generatedModes), [generatedModes])
 
@@ -742,6 +766,13 @@ function OspeActivityPage({ activityData, onAlert }) {
   const [marksEnabled, setMarksEnabled] = useState(() => activity?.marks !== 'Nil')
   const [certifiableEnabled, setCertifiableEnabled] = useState(() => Boolean(activity?.certifiable ?? activity?.showCertifiable))
   const [isActivitySaved, setIsActivitySaved] = useState(false)
+  const [isReviewAssignPopupOpen, setIsReviewAssignPopupOpen] = useState(false)
+  const [assignThresholds, setAssignThresholds] = useState(() => buildAssignThresholdRows(10))
+  const [assignYear, setAssignYear] = useState(assignDefaultYear)
+  const [assignSgt, setAssignSgt] = useState('')
+  const [isAssignScheduleEnabled, setIsAssignScheduleEnabled] = useState(false)
+  const [assignSchedule, setAssignSchedule] = useState({ date: '', time: '', meridiem: 'AM' })
+  const [assignContent, setAssignContent] = useState({ form: false, question: true, scaffolding: false })
   const [hasCreatedChecklist, setHasCreatedChecklist] = useState(true)
   const [hasCreatedForm, setHasCreatedForm] = useState(() => generatedModules.form)
   const [hasCreatedScaffolding, setHasCreatedScaffolding] = useState(() => generatedModules.scaffolding)
@@ -757,6 +788,11 @@ function OspeActivityPage({ activityData, onAlert }) {
     'True or False': 0,
     'Fill in the blanks': 0,
   })
+
+  useEffect(() => {
+    if (!resolvedActivityData?.openReviewAssign) return
+    setIsReviewAssignPopupOpen(true)
+  }, [resolvedActivityData])
 
   useEffect(() => {
     if (!activeEditorId) return undefined
@@ -848,6 +884,35 @@ function OspeActivityPage({ activityData, onAlert }) {
   const canSaveActivity = checklistReady && formReady
   const hasMarks = marksEnabled
   const isCertifiable = certifiableEnabled
+  const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
+  const ospeMissingAssignTypes = [
+    formCount === 0 ? 'Form' : null,
+    scaffoldingCount === 0 ? 'Scaffolding' : null,
+  ].filter(Boolean)
+  const ospeAssignHelperText = ospeMissingAssignTypes.length
+    ? `${ospeMissingAssignTypes.join(' and ')} ${ospeMissingAssignTypes.length > 1 ? 'are' : 'is'} not generated yet. Only student-facing modules created for this activity can be assigned.`
+    : ''
+  const assignThresholdErrors = useMemo(() => assignThresholds.map((row, index) => {
+    const from = Number(row.from)
+    const to = Number(row.to)
+    const totalMarks = Math.max(1, Number(overallTotalMarks) || 10)
+    if (Number.isNaN(from) || Number.isNaN(to)) return 'Enter valid values.'
+    if (!row.label.trim()) return 'Label is required.'
+    if (from > to) return '`From` must be less than or equal to `To`.'
+    if (index === 0 && from !== 0) return 'First row must start at 0.'
+    if (index > 0) {
+      const previousTo = Number(assignThresholds[index - 1].to)
+      if (Math.abs(previousTo - from) > 0.001) return ''
+    }
+    if (index === assignThresholds.length - 1 && Math.abs(to - totalMarks) > 0.001) {
+      return ''
+    }
+    return ''
+  }), [assignThresholds, overallTotalMarks])
+  const canProceedAssign = assignThresholdErrors.every((error) => !error)
+    && Boolean(assignYear)
+    && Boolean(assignSgt)
+    && (!isAssignScheduleEnabled || Boolean(assignSchedule.date && assignSchedule.time && assignSchedule.meridiem))
   const certifiableLabel = isCertifiable ? 'Yes' : 'No'
   const totalMarksLabel = hasMarks ? overallTotalMarks : 'Disabled'
   const readinessSummary = useMemo(() => {
@@ -876,8 +941,62 @@ function OspeActivityPage({ activityData, onAlert }) {
       onAlert?.({ tone: 'secondary', message: 'OSPE activity saved successfully.' })
       return
     }
+    setAssignThresholds(buildAssignThresholdRows(overallTotalMarks || 10))
+    setAssignYear(assignDefaultYear)
+    setAssignSgt('')
+    setIsAssignScheduleEnabled(false)
+    setAssignSchedule({ date: '', time: '', meridiem: 'AM' })
+    setAssignContent({
+      form: formCount > 0,
+      question: false,
+      scaffolding: scaffoldingCount > 0,
+    })
+    setIsReviewAssignPopupOpen(true)
+  }
 
-    onAlert?.({ tone: 'secondary', message: 'OSPE activity is ready for review and assignment.' })
+  const updateAssignThreshold = (id, field, value) => {
+    setAssignThresholds((current) => current.map((row) => (row.id === id ? { ...row, [field]: value } : row)))
+  }
+
+  const addAssignThreshold = () => {
+    const totalMarks = Math.max(1, Number(overallTotalMarks) || 10)
+    const lastRow = assignThresholds[assignThresholds.length - 1]
+    setAssignThresholds((current) => [
+      ...current.slice(0, -1),
+      { ...lastRow, id: `${lastRow.id}-split`, to: lastRow.from },
+      { id: `threshold-${Date.now()}`, label: 'New Label', from: lastRow.from, to: String(totalMarks) },
+    ])
+  }
+
+  const deleteAssignThreshold = (id) => {
+    setAssignThresholds((current) => current.filter((row) => row.id !== id))
+  }
+
+  const handleProceedAssign = () => {
+    if (!canProceedAssign) {
+      onAlert?.({ tone: 'warning', message: 'Complete thresholds, year, SGT, and schedule fields before proceeding.' })
+      return
+    }
+
+    onAssignActivity?.({
+      id: activity?.id ?? `ospe-assignment-${Date.now()}`,
+      title: activityName,
+      type: activity?.type ?? 'OSPE',
+      createdDate: new Date().toLocaleDateString('en-GB'),
+      attemptCount: '0 / 1',
+      status: 'Assigned',
+      assignedTo: `${assignYear} • ${assignSgt}`,
+      activityData: {
+        ...(resolvedActivityData ?? {}),
+        activity: {
+          ...(activity ?? {}),
+          name: activityName,
+          status: 'Assigned',
+        },
+        record,
+      },
+    })
+    setIsReviewAssignPopupOpen(false)
   }
   const updateChecklist = (id, field, value) => setChecklistItems((current) => current.map((item) => (item.id === id ? applyExclusiveTaxonomyUpdate(item, field, value) : item)))
   const updateForm = (id, field, value) => setFormItems((current) => current.map((item) => (item.id === id ? applyExclusiveTaxonomyUpdate(item, field, value) : item)))
@@ -1090,7 +1209,7 @@ function OspeActivityPage({ activityData, onAlert }) {
               </div>
               <div className="ospe-header-actions">
                 <button type="button" className="ghost" onClick={() => onAlert?.({ tone: 'secondary', message: 'Preview station opened.' })}><Eye size={16} strokeWidth={2} /><span>Preview</span></button>
-                <button type="button" className={`tool-btn ${isActivitySaved ? 'ospe-review-assign-btn' : 'green'}`} onClick={handleActivityAction} disabled={!canSaveActivity}><BookCheck size={16} strokeWidth={2} /><span>{isActivitySaved ? 'Review / Assign' : 'Save Activity'}</span></button>
+                <button type="button" className={`tool-btn ${isActivitySaved ? 'ospe-review-assign-btn' : 'green'}`} onClick={handleActivityAction} disabled={isActivitySaved ? false : !canSaveActivity}><BookCheck size={16} strokeWidth={2} /><span>{isActivitySaved ? 'Review / Assign' : 'Save Activity'}</span></button>
               </div>
             </div>
           </div>
@@ -1258,11 +1377,184 @@ function OspeActivityPage({ activityData, onAlert }) {
             </div>
           </div>
           <div className="ospe-footer-actions">
-            <button type="button" className={`tool-btn ${isActivitySaved ? 'ospe-review-assign-btn' : 'green'}`} onClick={handleActivityAction} disabled={!canSaveActivity}>
+            <button type="button" className={`tool-btn ${isActivitySaved ? 'ospe-review-assign-btn' : 'green'}`} onClick={handleActivityAction} disabled={isActivitySaved ? false : !canSaveActivity}>
               {isActivitySaved ? 'Review / Assign' : 'Save Activity'}
             </button>
           </div>
         </div>
+
+        {isReviewAssignPopupOpen ? createPortal(
+          <div className="ospe-review-popup-backdrop" onClick={() => setIsReviewAssignPopupOpen(false)} aria-hidden="true">
+            <section className="ospe-review-popup-dialog" onClick={(event) => event.stopPropagation()}>
+              <div className="ospe-review-popup-head">
+                <div className="ospe-review-popup-copy">
+                  <span className="ospe-review-popup-kicker">Configuration &amp; Assign</span>
+                  <p>Set the assignment content, threshold configuration, target group, and optional schedule.</p>
+                </div>
+                <button
+                  type="button"
+                  className="ospe-review-popup-close"
+                  onClick={() => setIsReviewAssignPopupOpen(false)}
+                  aria-label="Close Review and Assign"
+                >
+                  <X size={16} strokeWidth={2.2} />
+                </button>
+              </div>
+              <div className="ospe-assign-content-row">
+                <span className="ospe-assign-panel-badge">Assign Type Check :</span>
+                {formCount > 0 ? (
+                  <label className="ospe-assign-check">
+                    <input
+                      type="checkbox"
+                      checked={assignContent.form}
+                      onChange={(event) => setAssignContent((current) => ({ ...current, form: event.target.checked }))}
+                    />
+                    <span>Form</span>
+                  </label>
+                ) : null}
+                {scaffoldingCount > 0 ? (
+                  <label className="ospe-assign-check">
+                    <input
+                      type="checkbox"
+                      checked={assignContent.scaffolding}
+                      onChange={(event) => setAssignContent((current) => ({ ...current, scaffolding: event.target.checked }))}
+                    />
+                    <span>Scaffolding</span>
+                  </label>
+                ) : null}
+              </div>
+              {ospeAssignHelperText ? <small className="ospe-assign-helper">{ospeAssignHelperText}</small> : null}
+              <div className="ospe-review-popup-foot">
+                <div className="ospe-assign-grid">
+                  <section className="ospe-assign-panel">
+                    <div className="ospe-assign-panel-head">
+                      <span className="ospe-assign-panel-badge">Threshold Configuration *</span>
+                    </div>
+                    <div className="ospe-threshold-list">
+                      {assignThresholds.map((row, index) => (
+                        <div key={row.id} className="ospe-threshold-row">
+                          <input
+                            value={row.label}
+                            onChange={(event) => updateAssignThreshold(row.id, 'label', event.target.value)}
+                            placeholder="Text label"
+                          />
+                          <input
+                            value={row.from}
+                            onChange={(event) => updateAssignThreshold(row.id, 'from', event.target.value)}
+                            placeholder="0"
+                          />
+                          <input
+                            value={row.to}
+                            onChange={(event) => updateAssignThreshold(row.id, 'to', event.target.value)}
+                            placeholder="0"
+                          />
+                          <div className="ospe-threshold-actions">
+                            <button
+                              type="button"
+                              className="ghost ospe-threshold-delete"
+                              onClick={() => deleteAssignThreshold(row.id)}
+                              disabled={assignThresholds.length === 1}
+                              aria-label={`Delete threshold ${index + 1}`}
+                            >
+                              <Trash2 size={14} strokeWidth={2} />
+                            </button>
+                            {index === assignThresholds.length - 1 ? (
+                              <button type="button" className="ghost ospe-threshold-add" onClick={addAssignThreshold} aria-label="Add threshold">
+                                <Plus size={15} strokeWidth={2.2} />
+                              </button>
+                            ) : <span className="ospe-threshold-add-placeholder" aria-hidden="true" />}
+                          </div>
+                          {assignThresholdErrors[index] ? (
+                            <small className="ospe-assign-error">{assignThresholdErrors[index]}</small>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="ospe-assign-panel">
+                    <div className="ospe-assign-panel-head">
+                      <span className="ospe-assign-panel-badge">Assigning To *</span>
+                    </div>
+                    <div className="ospe-assign-targets">
+                      <div className="forms-select-wrap">
+                        <select
+                          value={assignYear}
+                          onChange={(event) => {
+                            setAssignYear(event.target.value)
+                            setAssignSgt('')
+                          }}
+                        >
+                          {ASSIGN_YEAR_OPTIONS.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="forms-select-wrap">
+                        <select value={assignSgt} onChange={(event) => setAssignSgt(event.target.value)} disabled={!assignYear}>
+                          <option value="">{assignYear ? 'SGT Dropdown' : 'Select Year first'}</option>
+                          {assignSgtOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <label className="ospe-assign-schedule-toggle">
+                      <input
+                        type="checkbox"
+                        checked={isAssignScheduleEnabled}
+                        onChange={(event) => {
+                          const isEnabled = event.target.checked
+                          setIsAssignScheduleEnabled(isEnabled)
+                          if (isEnabled) {
+                            setAssignSchedule((current) => ({
+                              ...current,
+                              date: current.date || ASSIGN_SERVER_TIME.date,
+                            }))
+                          }
+                        }}
+                      />
+                      <span>If you want schedule...</span>
+                    </label>
+                    {isAssignScheduleEnabled ? (
+                      <div className="ospe-assign-schedule-row">
+                        <input
+                          type="date"
+                          min={ASSIGN_SERVER_TIME.date}
+                          value={assignSchedule.date}
+                          onChange={(event) => setAssignSchedule((current) => ({ ...current, date: event.target.value }))}
+                        />
+                        <input
+                          type="time"
+                          value={assignSchedule.time}
+                          onChange={(event) => setAssignSchedule((current) => ({ ...current, time: event.target.value }))}
+                        />
+                        <div className="forms-select-wrap">
+                          <select
+                            value={assignSchedule.meridiem}
+                            onChange={(event) => setAssignSchedule((current) => ({ ...current, meridiem: event.target.value }))}
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
+                      </div>
+                    ) : null}
+                  </section>
+                </div>
+                <div className="ospe-assign-actions">
+                  <button type="button" className="ghost" onClick={() => setIsReviewAssignPopupOpen(false)}>
+                    Close
+                  </button>
+                  <button type="button" className="tool-btn green" onClick={handleProceedAssign} disabled={!canProceedAssign}>
+                    Proceed
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>,
+          document.body,
+        ) : null}
 
       </div>
     </section>

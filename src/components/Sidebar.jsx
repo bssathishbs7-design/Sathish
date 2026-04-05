@@ -3,7 +3,7 @@ import { ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandLogoDark from '../assets/brand-logo-dark.svg'
 import brandMark from '../assets/brand-mark.svg'
-import { SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
+import { MY_SKILL_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
 
 /**
  * Sidebar Implementation Contract
@@ -33,32 +33,43 @@ export default function Sidebar({
   onCloseMobile,
 }) {
   const resolvedBrandLogo = theme === 'dark' ? brandLogoDark : brandLogo
-  const isSkillsActive = SKILL_PAGES.includes(activePage)
-  const [skillsOpen, setSkillsOpen] = useState(isSkillsActive)
-  const skillsGroupRef = useRef(null)
-  const showSkillsChildren = skillsOpen
+  const activeGroupMap = {
+    Skills: SKILL_PAGES.includes(activePage),
+    'My Skills': MY_SKILL_PAGES.includes(activePage),
+  }
+  const [openGroups, setOpenGroups] = useState(activeGroupMap)
+  const groupRefs = useRef({})
   const useCollapsedFlyout = sidebarCollapsed && !mobileSidebarOpen
   const handleSelectSidebarPage = (page) => {
-    setSkillsOpen(SKILL_PAGES.includes(page))
+    setOpenGroups((current) => ({
+      ...current,
+      Skills: SKILL_PAGES.includes(page),
+      'My Skills': MY_SKILL_PAGES.includes(page),
+    }))
     onSelectPage(page)
   }
 
   useEffect(() => {
-    setSkillsOpen(isSkillsActive)
-  }, [isSkillsActive])
+    setOpenGroups((current) => ({
+      ...current,
+      ...activeGroupMap,
+    }))
+  }, [activePage])
 
   useEffect(() => {
-    if (!useCollapsedFlyout || !skillsOpen) return undefined
+    const openLabels = Object.entries(openGroups).filter(([, isOpen]) => isOpen).map(([label]) => label)
+    if (!useCollapsedFlyout || !openLabels.length) return undefined
 
     const handlePointerDown = (event) => {
-      if (!skillsGroupRef.current?.contains(event.target)) {
-        setSkillsOpen(false)
+      const clickedInsideOpenGroup = openLabels.some((label) => groupRefs.current[label]?.contains(event.target))
+      if (!clickedInsideOpenGroup) {
+        setOpenGroups((current) => Object.fromEntries(Object.keys(current).map((label) => [label, false])))
       }
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [skillsOpen, useCollapsedFlyout])
+  }, [openGroups, useCollapsedFlyout])
 
   return (
     <aside className={`vx-sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
@@ -90,25 +101,25 @@ export default function Sidebar({
               item.children ? (
                 <div
                   key={item.label}
-                  ref={skillsGroupRef}
-                  className={`vx-link-group ${isSkillsActive ? 'active' : ''}`}
+                  ref={(node) => { groupRefs.current[item.label] = node }}
+                  className={`vx-link-group ${activeGroupMap[item.label] ? 'active' : ''}`}
                 >
                   <button
                     type="button"
-                    className={`vx-link vx-link-parent ${isSkillsActive ? 'active' : ''}`}
-                    onClick={() => setSkillsOpen((open) => !open)}
-                    aria-expanded={showSkillsChildren}
+                    className={`vx-link vx-link-parent ${activeGroupMap[item.label] ? 'active' : ''}`}
+                    onClick={() => setOpenGroups((current) => ({ ...current, [item.label]: !current[item.label] }))}
+                    aria-expanded={Boolean(openGroups[item.label])}
                   >
                     <span className="vx-link-icon" aria-hidden="true">
                       <item.icon size={16} strokeWidth={2} />
                     </span>
                     <span className="vx-link-text">{item.label}</span>
-                    <span className={`vx-link-caret ${showSkillsChildren ? 'open' : ''}`} aria-hidden="true">
+                    <span className={`vx-link-caret ${openGroups[item.label] ? 'open' : ''}`} aria-hidden="true">
                       <ChevronDown size={16} strokeWidth={2.2} />
                     </span>
                   </button>
 
-                  <div className={`vx-sublinks ${showSkillsChildren ? 'open' : ''} ${useCollapsedFlyout ? 'is-flyout' : ''}`}>
+                  <div className={`vx-sublinks ${openGroups[item.label] ? 'open' : ''} ${useCollapsedFlyout ? 'is-flyout' : ''}`}>
                     {item.children.map((child) => (
                       <button
                         key={child.label}

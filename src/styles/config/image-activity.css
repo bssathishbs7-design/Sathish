@@ -3,8 +3,85 @@
   background: #f8f8f8;
 }
 
+.image-activity-page .ghost,
+.image-activity-page .tool-btn {
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.image-activity-page .ghost:hover {
+  transform: translateY(-1px);
+}
+
+.image-activity-page .ghost:focus-visible,
+.image-activity-page .tool-btn:focus-visible,
+.image-activity-page .forms-field input:focus-visible,
+.image-activity-page .forms-field select:focus-visible,
+.image-activity-page .forms-field textarea:focus-visible,
+.image-activity-page .forms-select-wrap:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(95, 232, 177, 0.18);
+}
+
+.image-activity-page .forms-field {
+  margin: 0;
+}
+
+.image-activity-page .forms-field > span {
+  display: block;
+  margin-bottom: 5px;
+  color: #6f8377;
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.image-activity-page .forms-field input,
+.image-activity-page .forms-field textarea,
+.image-activity-page .forms-field select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #d8e5dc;
+  border-radius: 11px;
+  box-sizing: border-box;
+}
+
+.image-activity-page .forms-field textarea {
+  min-height: 76px;
+  padding-top: 10px;
+  resize: vertical;
+}
+
+.image-activity-page .forms-select-wrap::after {
+  background-size: 14px 14px;
+}
+
+.image-activity-page .forms-select-wrap:hover::after,
+.image-activity-page .forms-select-wrap:focus-within::after {
+  opacity: 1;
+}
+
 .theme-dark .image-activity-page {
   background: #0f172a;
+}
+
+.theme-dark .image-activity-page .ghost:focus-visible,
+.theme-dark .image-activity-page .tool-btn:focus-visible,
+.theme-dark .image-activity-page .forms-field input:focus-visible,
+.theme-dark .image-activity-page .forms-field select:focus-visible,
+.theme-dark .image-activity-page .forms-field textarea:focus-visible,
+.theme-dark .image-activity-page .forms-select-wrap:focus-within {
+  box-shadow: 0 0 0 3px rgba(95, 232, 177, 0.18);
+}
+
+.theme-dark .image-activity-page .forms-field > span {
+  color: #90a59a;
+}
+
+.theme-dark .image-activity-page .forms-field input,
+.theme-dark .image-activity-page .forms-field textarea,
+.theme-dark .image-activity-page .forms-field select {
+  border-color: rgba(95, 232, 177, 0.12);
 }
 
 .image-activity-shell {
@@ -1537,6 +1614,434 @@
   gap: 8px;
 }
 
+.image-activity-review-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(16, 24, 21, 0.56);
+  backdrop-filter: blur(10px);
+  animation: image-review-popup-backdrop-in 0.2s ease-out;
+  overflow: auto;
+}
+
+.image-activity-review-popup-dialog {
+  width: min(940px, 100%);
+  max-height: calc(100vh - 48px);
+  margin: auto;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(18, 82, 61, 0.12);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top left, rgba(15, 131, 100, 0.08), transparent 30%),
+    linear-gradient(180deg, #ffffff, #fbfefd);
+  box-shadow: 0 28px 64px rgba(9, 27, 18, 0.22);
+  transform-origin: center top;
+  animation: image-review-popup-dialog-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: auto;
+}
+
+.image-activity-review-popup-head,
+.image-activity-review-popup-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.image-activity-review-popup-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.image-activity-review-popup-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: #ecf8f1;
+  color: #0f8a68;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.image-activity-review-popup-copy p,
+.image-activity-review-popup-foot small {
+  margin: 0;
+  color: #667c72;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.image-activity-review-popup-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #dce9e2;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #446559;
+  transition: transform 0.18s ease, border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+}
+
+.image-activity-review-popup-close:hover {
+  transform: rotate(90deg);
+  border-color: rgba(15, 138, 104, 0.28);
+  color: #0f8a68;
+  background: #ffffff;
+}
+
+.image-activity-review-popup-foot {
+  display: grid;
+  gap: 14px;
+}
+
+.image-activity-assign-content-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(18, 82, 61, 0.14);
+  border-radius: 16px;
+  background: #ffffff;
+  color: #17332a;
+  font-size: 0.95rem;
+}
+
+.image-activity-assign-content-row > span {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.image-activity-assign-helper {
+  display: block;
+  margin-top: -2px;
+  color: #6f8377;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.image-activity-assign-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #d9e4de;
+  border-radius: 999px;
+  background: #fff;
+  color: #3f5a50;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.image-activity-assign-check:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.image-activity-assign-check:hover {
+  border-color: rgba(15, 138, 104, 0.22);
+  background: #f8fdfb;
+}
+
+.image-activity-assign-check:has(input:checked) {
+  border-color: rgba(95, 232, 177, 0.45);
+  background: linear-gradient(180deg, #f7fffb, #ecfdf5);
+  color: #0f8364;
+  box-shadow: 0 6px 14px rgba(95, 232, 177, 0.1);
+}
+
+.image-activity-assign-check input {
+  width: 14px;
+  height: 14px;
+  accent-color: #0f8364;
+}
+
+.image-activity-assign-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 14px;
+}
+
+.image-activity-assign-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(18, 82, 61, 0.14);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.image-activity-assign-panel-head strong {
+  color: #17332a;
+  font-size: 0.94rem;
+}
+
+.image-activity-assign-panel-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #eef8f4;
+  color: #0f8364;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.image-activity-assign-panel-head {
+  padding-bottom: 2px;
+  border-bottom: 1px solid #e8f0eb;
+}
+
+.image-activity-threshold-list,
+.image-activity-assign-targets {
+  display: grid;
+  gap: 10px;
+}
+
+.image-activity-threshold-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) 72px 72px 88px;
+  gap: 8px;
+  align-items: start;
+}
+
+.image-activity-threshold-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.image-activity-threshold-add-placeholder {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+}
+
+.image-activity-threshold-row input,
+.image-activity-assign-schedule-row input,
+.image-activity-assign-targets .forms-select-wrap select,
+.image-activity-assign-schedule-row .forms-select-wrap select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #dce9e2;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #17332a;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.image-activity-threshold-row input:hover,
+.image-activity-assign-schedule-row input:hover,
+.image-activity-assign-targets .forms-select-wrap select:hover,
+.image-activity-assign-schedule-row .forms-select-wrap select:hover {
+  border-color: rgba(15, 138, 104, 0.22);
+  background: #fcfffd;
+}
+
+.image-activity-threshold-row input:focus,
+.image-activity-threshold-row input:focus-visible,
+.image-activity-assign-schedule-row input:focus,
+.image-activity-assign-schedule-row input:focus-visible,
+.image-activity-assign-targets .forms-select-wrap select:focus,
+.image-activity-assign-targets .forms-select-wrap select:focus-visible,
+.image-activity-assign-schedule-row .forms-select-wrap select:focus,
+.image-activity-assign-schedule-row .forms-select-wrap select:focus-visible {
+  border-color: rgba(15, 138, 104, 0.32);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.08);
+}
+
+.image-activity-threshold-row input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.image-activity-threshold-row input[type='number']::-webkit-outer-spin-button,
+.image-activity-threshold-row input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.image-activity-threshold-delete,
+.image-activity-threshold-add {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  white-space: nowrap;
+  border: 1px solid #dce9e2;
+  background: #ffffff;
+  color: #446559;
+  box-shadow: none;
+}
+
+.image-activity-threshold-delete {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.image-activity-threshold-add {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.image-activity-threshold-add:hover {
+  border-color: rgba(15, 138, 104, 0.28);
+  background: #f3fbf7;
+  color: #0f8364;
+  transform: translateY(-1px);
+}
+
+.image-activity-threshold-add:focus-visible {
+  outline: none;
+  border-color: rgba(15, 138, 104, 0.3);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.image-activity-threshold-delete:hover:not(:disabled) {
+  border-color: rgba(239, 68, 68, 0.26);
+  background: #fff5f5;
+  color: #cc4b37;
+  transform: translateY(-1px);
+}
+
+.image-activity-threshold-delete:focus-visible {
+  outline: none;
+  border-color: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+
+.image-activity-assign-error {
+  grid-column: 1 / -1;
+  color: #cc4b37;
+  font-size: 0.78rem;
+}
+
+.image-activity-assign-schedule-toggle {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #3f5a50;
+  font-size: 0.95rem;
+  min-height: 36px;
+  width: fit-content;
+  padding: 0 2px;
+  transition: color 0.18s ease;
+}
+
+.image-activity-assign-schedule-toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: #0f8364;
+}
+
+.image-activity-assign-schedule-toggle:hover {
+  color: #17332a;
+}
+
+.image-activity-assign-schedule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 108px 80px;
+  gap: 8px;
+}
+
+.image-activity-assign-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.image-activity-assign-targets .forms-select-wrap select:disabled,
+.image-activity-assign-schedule-row input:disabled,
+.image-activity-assign-schedule-row .forms-select-wrap select:disabled {
+  background: #f5f8f6;
+  color: #7b8f86;
+  cursor: not-allowed;
+}
+
+.image-activity-assign-targets .forms-select-wrap select,
+.image-activity-assign-schedule-row .forms-select-wrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 42px;
+}
+
+.image-activity-assign-actions .ghost {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid #dce9e2;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #446559;
+  box-shadow: none;
+}
+
+.image-activity-assign-actions .ghost:hover {
+  border-color: rgba(15, 138, 104, 0.24);
+  background: #f8fdfb;
+  color: #0f8364;
+}
+
+.image-activity-assign-actions .tool-btn.green {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(15, 138, 104, 0.18);
+}
+
+@keyframes image-review-popup-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes image-review-popup-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .image-activity-dropdown-values {
   display: flex;
   flex-wrap: wrap;
@@ -1774,6 +2279,159 @@
 .theme-dark .image-activity-review-assign-btn:hover {
   border-color: transparent;
   background: linear-gradient(135deg, #f7ad32 0%, #ed9126 100%);
+}
+
+.theme-dark .image-activity-review-popup-backdrop {
+  background: rgba(2, 7, 15, 0.78);
+  backdrop-filter: blur(12px);
+}
+
+.theme-dark .image-activity-review-popup-dialog {
+  border-color: rgba(95, 232, 177, 0.12);
+  background:
+    radial-gradient(circle at top left, rgba(95, 232, 177, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(10, 19, 34, 0.98), rgba(8, 15, 28, 0.98));
+  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.48);
+}
+
+.theme-dark .image-activity-review-popup-head,
+.theme-dark .image-activity-review-popup-foot {
+  color: #e6efeb;
+}
+
+.theme-dark .image-activity-review-popup-copy p,
+.theme-dark .image-activity-review-popup-foot small,
+.theme-dark .image-activity-assign-helper,
+.theme-dark .image-activity-assign-schedule-toggle,
+.theme-dark .image-activity-assign-error {
+  color: #9cb2aa;
+}
+
+.theme-dark .image-activity-assign-content-row > span,
+.theme-dark .image-activity-assign-check span,
+.theme-dark .image-activity-assign-panel-head strong {
+  color: #e6efeb;
+}
+
+.theme-dark .image-activity-review-popup-close,
+.theme-dark .image-activity-assign-content-row,
+.theme-dark .image-activity-assign-panel {
+  border-color: rgba(95, 232, 177, 0.12);
+  background: rgba(11, 21, 37, 0.92);
+}
+
+.theme-dark .image-activity-review-popup-close {
+  color: #b8c9c2;
+}
+
+.theme-dark .image-activity-review-popup-close:hover {
+  background: rgba(14, 27, 45, 0.98);
+  color: #8ee4ca;
+}
+
+.theme-dark .image-activity-assign-panel-head {
+  border-bottom-color: rgba(95, 232, 177, 0.1);
+}
+
+.theme-dark .image-activity-assign-panel-badge,
+.theme-dark .image-activity-review-popup-kicker {
+  background: rgba(95, 232, 177, 0.12);
+  color: #8ee4ca;
+}
+
+.theme-dark .image-activity-assign-check input {
+  accent-color: #5fe8b1;
+}
+
+.theme-dark .image-activity-assign-check {
+  border-color: rgba(95, 232, 177, 0.12);
+  background: rgba(12, 23, 39, 0.9);
+  color: #c7d7d1;
+}
+
+.theme-dark .image-activity-assign-check:hover {
+  border-color: rgba(95, 232, 177, 0.26);
+  background: rgba(16, 30, 49, 0.96);
+}
+
+.theme-dark .image-activity-assign-check:has(input:checked) {
+  border-color: rgba(95, 232, 177, 0.3);
+  background: linear-gradient(180deg, rgba(14, 34, 39, 0.98), rgba(9, 28, 31, 0.98));
+  color: #8ee4ca;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.24);
+}
+
+.theme-dark .image-activity-threshold-row input,
+.theme-dark .image-activity-assign-schedule-row input,
+.theme-dark .image-activity-assign-targets .forms-select-wrap select,
+.theme-dark .image-activity-assign-schedule-row .forms-select-wrap select {
+  border-color: rgba(95, 232, 177, 0.12);
+  background: #0f1a2a;
+  color: #e4eeea;
+}
+
+.theme-dark .image-activity-threshold-row input:hover,
+.theme-dark .image-activity-assign-schedule-row input:hover,
+.theme-dark .image-activity-assign-targets .forms-select-wrap select:hover,
+.theme-dark .image-activity-assign-schedule-row .forms-select-wrap select:hover {
+  border-color: rgba(95, 232, 177, 0.22);
+  background: #122031;
+}
+
+.theme-dark .image-activity-threshold-row input:focus,
+.theme-dark .image-activity-threshold-row input:focus-visible,
+.theme-dark .image-activity-assign-schedule-row input:focus,
+.theme-dark .image-activity-assign-schedule-row input:focus-visible,
+.theme-dark .image-activity-assign-targets .forms-select-wrap select:focus,
+.theme-dark .image-activity-assign-targets .forms-select-wrap select:focus-visible,
+.theme-dark .image-activity-assign-schedule-row .forms-select-wrap select:focus,
+.theme-dark .image-activity-assign-schedule-row .forms-select-wrap select:focus-visible {
+  border-color: rgba(95, 232, 177, 0.3);
+  box-shadow: 0 0 0 4px rgba(95, 232, 177, 0.1);
+}
+
+.theme-dark .image-activity-assign-targets .forms-select-wrap select:disabled,
+.theme-dark .image-activity-assign-schedule-row input:disabled,
+.theme-dark .image-activity-assign-schedule-row .forms-select-wrap select:disabled {
+  background: #111c2c;
+  color: #6f867d;
+}
+
+.theme-dark .image-activity-assign-targets .forms-select-wrap::after,
+.theme-dark .image-activity-assign-schedule-row .forms-select-wrap::after {
+  color: #8ea89f;
+}
+
+.theme-dark .image-activity-assign-targets .forms-select-wrap:focus-within::after,
+.theme-dark .image-activity-assign-targets .forms-select-wrap:hover::after,
+.theme-dark .image-activity-assign-schedule-row .forms-select-wrap:focus-within::after,
+.theme-dark .image-activity-assign-schedule-row .forms-select-wrap:hover::after {
+  color: #8ee4ca;
+}
+
+.theme-dark .image-activity-threshold-delete,
+.theme-dark .image-activity-threshold-add,
+.theme-dark .image-activity-assign-actions .ghost {
+  border-color: rgba(95, 232, 177, 0.12);
+  background: #132238;
+  color: #d5e2dd;
+}
+
+.theme-dark .image-activity-threshold-add:hover,
+.theme-dark .image-activity-assign-actions .ghost:hover {
+  border-color: rgba(95, 232, 177, 0.24);
+  background: #173048;
+  color: #8ee4ca;
+}
+
+.theme-dark .image-activity-threshold-delete:hover:not(:disabled) {
+  border-color: rgba(239, 68, 68, 0.24);
+  background: rgba(127, 29, 29, 0.28);
+  color: #fda4a4;
+}
+
+.theme-dark .image-activity-assign-actions .tool-btn.green {
+  box-shadow: 0 16px 34px rgba(6, 74, 57, 0.28);
 }
 
 .theme-dark .image-activity-builder-footer {
@@ -4528,6 +5186,16 @@
 }
 
 @media (max-width: 900px) {
+  .image-activity-review-popup-dialog {
+    padding: 18px;
+  }
+
+  .image-activity-assign-grid,
+  .image-activity-assign-schedule-row,
+  .image-activity-threshold-row {
+    grid-template-columns: 1fr;
+  }
+
   .image-activity-upload-row {
     flex-wrap: nowrap;
   }
