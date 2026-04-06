@@ -930,7 +930,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       status: 'Assigned',
       assignedTo: `${assignYear} • ${assignSgt}`,
       activityData: {
-        ...(resolvedActivityData ?? {}),
+          ...(activityData ?? {}),
         activity: {
           ...(activity ?? {}),
           name: activityName,
