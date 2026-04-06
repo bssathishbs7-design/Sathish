@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
   Activity,
-  ArrowRight,
   CalendarDays,
   ChartColumn,
   CheckCircle2,
@@ -9,6 +8,7 @@ import {
   LayoutGrid,
   Play,
   RotateCcw,
+  Search,
 } from 'lucide-react'
 import '../styles/ospe-activity.css'
 import '../styles/my-skills.css'
@@ -19,8 +19,6 @@ const defaultActivities = [
   {
     title: 'Upper Limb Landmark Identification',
     type: 'Image',
-    competency: 'AN1.5',
-    assignedTo: 'First Year • SGT A',
     status: 'Assigned',
     action: 'Start Activity',
     tone: 'primary',
@@ -30,8 +28,6 @@ const defaultActivities = [
   {
     title: 'Blood Group Determination Station',
     type: 'OSCE',
-    competency: 'PY2.7',
-    assignedTo: 'Second Year • SGT D',
     status: 'Assigned',
     action: 'Yet to Start',
     tone: 'secondary',
@@ -41,8 +37,6 @@ const defaultActivities = [
   {
     title: 'Artificial Respiration Interpretation',
     type: 'Interpretation',
-    competency: 'AN1.5',
-    assignedTo: 'First Year • SGT C',
     status: 'Live Activity',
     action: 'Start Activity',
     tone: 'primary',
@@ -52,8 +46,6 @@ const defaultActivities = [
   {
     title: 'WBC Count Checklist Station',
     type: 'OSPE',
-    competency: 'AN1.2',
-    assignedTo: 'Final Year • SGT J',
     status: 'Completed',
     action: 'View Submission',
     tone: 'secondary',
@@ -62,33 +54,40 @@ const defaultActivities = [
   },
 ]
 
+const metricToFilter = {
+  Assigned: 'Assigned',
+  'Live Activity': 'Live Activity',
+  Completed: 'Completed',
+  'Activity Results': 'Completed',
+}
+
 function ActivityCard({ item, onStartActivity }) {
-  const attemptLabel = item.attemptCount
-    ? item.attemptCount.includes('/')
-      ? `Attempt : ${item.attemptCount.split('/')[0].trim()}`
-      : `Attempt : ${item.attemptCount}`
-    : 'Attempt : 1'
+  const attemptValue = item.attemptCount?.split('/')?.[0]?.trim() ?? '0'
   const typeToneClass = `is-${String(item.type).toLowerCase().replace(/\s+/g, '-')}`
   const isReadyAction = item.tone === 'primary'
 
   return (
     <article className="my-skills-activity-card">
       <div className="my-skills-activity-card-head">
-        <span className="my-skills-attempt-pill">{attemptLabel}</span>
+        <span className="my-skills-attempt-pill">Attempt {attemptValue}</span>
         <span className={`my-skills-activity-type ${typeToneClass}`}>{item.type}</span>
       </div>
+
       <strong className="my-skills-activity-title">{item.title}</strong>
+
       <div className="my-skills-activity-foot">
-        <div className="my-skills-activity-meta">
-          <span className="my-skills-date-pill"><CalendarDays size={13} strokeWidth={2} /> {item.createdDate ?? 'DD-MM-YYYY'}</span>
-        </div>
+        <span className="my-skills-date-pill">
+          <CalendarDays size={12} strokeWidth={2} />
+          {item.createdDate ?? 'DD-MM-YYYY'}
+        </span>
+
         <button
           type="button"
           className={`tool-btn ${isReadyAction ? 'green' : 'ghost'} my-skills-activity-cta ${!isReadyAction ? 'is-muted' : ''}`}
           onClick={() => isReadyAction && onStartActivity?.(item)}
           disabled={!isReadyAction}
         >
-          {isReadyAction ? <Play size={13} strokeWidth={2.2} /> : null}
+          {isReadyAction ? <Play size={12} strokeWidth={2.2} /> : null}
           {isReadyAction ? item.action ?? 'Start Activity' : item.action ?? 'Yet to Start'}
         </button>
       </div>
@@ -96,38 +95,17 @@ function ActivityCard({ item, onStartActivity }) {
   )
 }
 
-function InsightCard({ kicker, title, meta, actionLabel, onAction, tone = 'default', children }) {
-  return (
-    <article className={`my-skills-insight-card is-${tone}`}>
-      <div className="my-skills-insight-head">
-        <span className="ospe-kicker">{kicker}</span>
-      </div>
-      <div className="my-skills-insight-copy">
-        <strong>{title}</strong>
-        {meta ? <p>{meta}</p> : null}
-      </div>
-      {children}
-      {actionLabel ? (
-        <button type="button" className="tool-btn ghost my-skills-insight-action" onClick={onAction}>
-          {actionLabel}
-          <ArrowRight size={14} strokeWidth={2.2} />
-        </button>
-      ) : null}
-    </article>
-  )
-}
-
 export default function MySkillActivityPage({ assignedActivities = [], onStartActivity }) {
   const [activeFilter, setActiveFilter] = useState('All')
+  const [activeMetric, setActiveMetric] = useState('Overall Activity')
   const [query, setQuery] = useState('')
 
   const activityItems = useMemo(() => ([
     ...assignedActivities.map((item) => ({
-          ...item,
-          action: 'Start Activity',
-          tone: 'primary',
-          status: item.status ?? 'Assigned',
-          competency: item.competency ?? item.activityData?.record?.competency ?? '',
+      ...item,
+      action: 'Start Activity',
+      tone: 'primary',
+      status: item.status ?? 'Assigned',
     })),
     ...defaultActivities,
   ]), [assignedActivities])
@@ -137,9 +115,7 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
     return activityItems.filter((item) => {
       const matchesFilter = activeFilter === 'All' ? true : item.status === activeFilter
       const matchesQuery = normalizedQuery
-        ? [item.title, item.type, item.status, item.assignedTo, item.competency]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(normalizedQuery))
+        ? [item.title, item.type, item.status].some((value) => String(value).toLowerCase().includes(normalizedQuery))
         : true
       return matchesFilter && matchesQuery
     })
@@ -154,134 +130,115 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
     { label: 'Activity Results', value: activityItems.filter((item) => item.status === 'Completed').length, icon: ChartColumn, tone: 'is-results' },
   ]
 
-  const liveActivity = activityItems.find((item) => item.status === 'Live Activity') ?? activityItems.find((item) => item.status === 'Assigned') ?? null
-  const upcomingActivity = activityItems.find((item) => item.status === 'Assigned') ?? null
-  const recentResult = activityItems.find((item) => item.status === 'Completed') ?? null
-  const quickProgress = {
-    completed: activityItems.filter((item) => item.status === 'Completed').length,
-    overall: activityItems.length,
-    attempts: kpiItems.find((item) => item.label === 'Attempt')?.value ?? 0,
-    results: kpiItems.find((item) => item.label === 'Activity Results')?.value ?? 0,
+  const liveActivity = activityItems.find((item) => item.status === 'Live Activity') ?? null
+
+  const handleMetricClick = (label) => {
+    setActiveMetric(label)
+    setActiveFilter(metricToFilter[label] ?? 'All')
+  }
+
+  const handleFilterClick = (filter) => {
+    setActiveFilter(filter)
+    setActiveMetric(filter === 'All' ? 'Overall Activity' : filter)
   }
 
   return (
     <section className="vx-content ospe-page my-skills-page">
-      <div className="ospe-shell">
-        <div className="my-skills-hero ospe-header-card">
-          <div className="my-skills-hero-copy">
+      <div className="ospe-shell my-skills-shell">
+        <section className="my-skills-overview">
+          <div className="my-skills-overview-main">
             <span className="ospe-kicker">My Skills</span>
-            <h1>My Skill Activity</h1>
-            <p>Start the next essential activity, continue what is active, and review progress with less clutter.</p>
+            <div className="my-skills-overview-copy">
+              <h1>My Skill Activity</h1>
+              <p>Track what is active, start what is ready, and review assigned work in one clean flow.</p>
+            </div>
+            <div className="my-skills-overview-inline">
+              <span><strong>{activityItems.length}</strong> Overall</span>
+              <span><strong>{kpiItems[1].value}</strong> Live</span>
+              <span><strong>{kpiItems[5].value}</strong> Results</span>
+            </div>
           </div>
-          <div className="my-skills-kpi-grid">
-            {kpiItems.map((item) => {
-              const Icon = item.icon
-              return (
-                <article key={item.label} className={`ospe-summary-card my-skills-kpi-card ${item.tone}`}>
-                  <span className="my-skills-kpi-icon">
-                    <Icon size={16} strokeWidth={2.2} />
-                    {item.isLive ? <span className="my-skills-kpi-live-dot" aria-hidden="true" /> : null}
-                  </span>
-                  <div>
-                    <strong>{item.value}</strong>
-                    <span>{item.label}</span>
-                  </div>
-                </article>
-              )
-            })}
+
+          <div className="my-skills-live-card">
+            <div className="my-skills-live-card-top">
+              <span className="my-skills-live-indicator">
+                <span className="my-skills-live-indicator-dot" aria-hidden="true" />
+                Live activity
+              </span>
+              <span className="my-skills-live-card-date">{liveActivity?.createdDate ?? 'No date'}</span>
+            </div>
+            <strong>{liveActivity?.title ?? 'No live activity right now'}</strong>
+            <p>{liveActivity ? `${liveActivity.type} is ready for the next student attempt.` : 'New active assignments will appear here when they are available.'}</p>
+            {liveActivity ? (
+              <button type="button" className="tool-btn green my-skills-live-card-cta" onClick={() => onStartActivity?.(liveActivity)}>
+                <Play size={13} strokeWidth={2.2} />
+                Start Activity
+              </button>
+            ) : null}
           </div>
+        </section>
+
+        <div className="my-skills-metrics-grid" role="list" aria-label="Activity metrics">
+          {kpiItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className={`my-skills-metric-card ${item.tone} ${activeMetric === item.label ? 'is-active' : ''}`}
+                role="listitem"
+                onClick={() => handleMetricClick(item.label)}
+              >
+                <span className="my-skills-metric-card-icon">
+                  <Icon size={16} strokeWidth={2.1} />
+                  {item.isLive ? <span className="my-skills-metric-live-dot" aria-hidden="true" /> : null}
+                </span>
+                <div className="my-skills-metric-card-copy">
+                  <strong>{item.value}</strong>
+                  <span>{item.label}</span>
+                </div>
+              </button>
+            )
+          })}
         </div>
 
-        <div className="my-skills-dashboard-grid">
-          <section className="ospe-section-card my-skills-section">
-            <div className="my-skills-toolbar">
-              <div className="my-skills-filter-row">
-                {statusFilters.map((filter) => (
-                  <button
-                    key={filter}
-                    type="button"
-                    className={`my-skills-filter-chip ${activeFilter === filter ? 'is-active' : ''}`}
-                    onClick={() => setActiveFilter(filter)}
-                  >
-                    {filter}
-                  </button>
-                ))}
-              </div>
-              <label className="my-skills-search">
-                <span className="my-skills-search-label">Search</span>
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search activity"
-                />
-              </label>
-            </div>
-            <div className="my-skills-section-head">
-              <div>
-                <h3>Activity Board</h3>
-                <p>Find what is ready first, then scan what is live or completed.</p>
-              </div>
-              <span className="ospe-topic-pill">{filteredItems.length} Results</span>
-            </div>
-            <div className="my-skills-activity-list">
-              {filteredItems.map((item) => (
-                <ActivityCard key={`${item.status}-${item.title}-${item.type}`} item={item} onStartActivity={onStartActivity} />
+        <section className="my-skills-board-shell">
+          <div className="my-skills-toolbar">
+            <div className="my-skills-filter-row">
+              {statusFilters.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={`my-skills-filter-chip ${activeFilter === filter ? 'is-active' : ''}`}
+                  onClick={() => handleFilterClick(filter)}
+                >
+                  {filter}
+                </button>
               ))}
             </div>
-          </section>
 
-          <aside className="my-skills-insight-rail">
-            <InsightCard
-              kicker="Live Now"
-              title={liveActivity?.title ?? 'No live activity right now'}
-              meta={liveActivity ? `${liveActivity.type} • ${liveActivity.createdDate}` : 'Assigned activities will appear here when they become active.'}
-              actionLabel={liveActivity ? 'Open Activity' : null}
-              onAction={() => liveActivity && onStartActivity?.(liveActivity)}
-              tone="live"
-            >
-              {liveActivity ? (
-                <div className="my-skills-insight-pills">
-                  <span className="my-skills-attempt-pill">{liveActivity.attemptCount ?? '0 / 1'}</span>
-                  <span className={`my-skills-activity-type is-${String(liveActivity.type).toLowerCase().replace(/\s+/g, '-')}`}>{liveActivity.type}</span>
-                </div>
-              ) : null}
-            </InsightCard>
+            <label className="my-skills-search">
+              <Search size={14} strokeWidth={2.2} aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search activity"
+              />
+            </label>
+          </div>
 
-            <InsightCard
-              kicker="Upcoming"
-              title={upcomingActivity?.title ?? 'No scheduled activity'}
-              meta={upcomingActivity ? `${upcomingActivity.assignedTo} • ${upcomingActivity.createdDate}` : 'New assignments will be highlighted here.'}
-              tone="upcoming"
-            />
+          <div className="my-skills-board-head">
+            <h3>Activity Board</h3>
+            <span className="ospe-topic-pill">{filteredItems.length} Results</span>
+          </div>
 
-            <InsightCard
-              kicker="Recent Result"
-              title={recentResult?.title ?? 'No published result yet'}
-              meta={recentResult ? `${recentResult.type} • Result available` : 'Completed activity results will surface here.'}
-              actionLabel={recentResult ? 'View Result' : null}
-              onAction={() => recentResult && onStartActivity?.(recentResult)}
-              tone="result"
-            />
-
-            <article className="my-skills-insight-card is-progress">
-              <div className="my-skills-insight-head">
-                <span className="ospe-kicker">Quick Progress</span>
-              </div>
-              <div className="my-skills-progress-copy">
-                <strong>{quickProgress.completed} / {quickProgress.overall}</strong>
-                <p>Activities completed across your current skill workflow.</p>
-              </div>
-              <div className="my-skills-progress-meter">
-                <span style={{ width: `${quickProgress.overall ? (quickProgress.completed / quickProgress.overall) * 100 : 0}%` }} />
-              </div>
-              <div className="my-skills-progress-stats">
-                <span>Attempts {quickProgress.attempts}</span>
-                <span>Results {quickProgress.results}</span>
-              </div>
-            </article>
-          </aside>
-        </div>
+          <div className="my-skills-activity-list">
+            {filteredItems.map((item) => (
+              <ActivityCard key={`${item.status}-${item.title}-${item.type}`} item={item} onStartActivity={onStartActivity} />
+            ))}
+          </div>
+        </section>
       </div>
     </section>
   )
