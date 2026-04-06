@@ -29,15 +29,16 @@ import {
  * Placement:
  * - Page-level reporting screen in src/pages/
  */
-function DashboardSummaryPage({ onBackToAssessment }) {
+function DashboardSummaryPage({ onBackToAssessment, dashboardData }) {
   const [yearFilter, setYearFilter] = useState('')
   const [batchFilter, setBatchFilter] = useState('')
   const [sgtFilter, setSgtFilter] = useState('')
   const [activityFilter, setActivityFilter] = useState('')
   const [searchStudent, setSearchStudent] = useState('')
-  const [selectedStudentId, setSelectedStudentId] = useState(dashboardStudentProfiles[0]?.id ?? '')
+  const seededProfiles = dashboardData?.student ? [dashboardData.student, ...dashboardStudentProfiles] : dashboardStudentProfiles
+  const [selectedStudentId, setSelectedStudentId] = useState(seededProfiles[0]?.id ?? '')
 
-  const visibleStudents = dashboardStudentProfiles.filter((student) => {
+  const visibleStudents = seededProfiles.filter((student) => {
     const matchesYear = !yearFilter || student.year === yearFilter
     const matchesBatch = !batchFilter || student.batch === batchFilter
     const matchesSgt = !sgtFilter || student.sgt === sgtFilter
@@ -50,9 +51,9 @@ function DashboardSummaryPage({ onBackToAssessment }) {
     return matchesYear && matchesBatch && matchesSgt && matchesActivity && matchesSearch
   })
 
-  const selectedStudent = dashboardStudentProfiles.find((student) => student.id === selectedStudentId)
+  const selectedStudent = seededProfiles.find((student) => student.id === selectedStudentId)
     ?? visibleStudents[0]
-    ?? dashboardStudentProfiles[0]
+    ?? seededProfiles[0]
   const cognitiveBars = [
     { label: 'Remembering', value: selectedStudent?.cognitive ?? 0 },
     { label: 'Understanding', value: Math.max((selectedStudent?.cognitive ?? 0) - 8, 0) },
@@ -209,7 +210,9 @@ function DashboardSummaryPage({ onBackToAssessment }) {
             </div>
 
             <div className="dashboard-summary-performance-note">
-              Success grows with steady weekly effort. Keep pushing forward.
+              {dashboardData?.report
+                ? `${dashboardData.report.activityTitle} published with ${dashboardData.report.obtainedMarks}/${dashboardData.report.totalMarks} and threshold "${dashboardData.report.thresholdLabel}".`
+                : 'Success grows with steady weekly effort. Keep pushing forward.'}
             </div>
           </section>
         </div>

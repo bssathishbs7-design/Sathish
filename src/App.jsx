@@ -6,6 +6,8 @@ import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
+import MySkillActivityPage from './pages/MySkillActivityPage'
+import ProgressTrackingPage from './pages/ProgressTrackingPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import StudentManagementPage from './pages/StudentManagementPage'
 import ImageActivityPage from './pages/ImageActivityPage'
@@ -20,6 +22,8 @@ const PAGE_PATHS = {
   [APP_PAGES.OSPE_ACTIVITY]: '/skills/ospe-activity',
   [APP_PAGES.IMAGE_ACTIVITY]: '/skills/image-activity',
   [APP_PAGES.INTERPRETATION_ACTIVITY]: '/skills/interpretation-activity',
+  [APP_PAGES.MY_SKILL_ACTIVITY]: '/my-skills/activity',
+  [APP_PAGES.PROGRESS_TRACKING]: '/my-skills/progress',
   [APP_PAGES.FACULTY_MANAGEMENT]: '/faculty-management',
   [APP_PAGES.STUDENT_MANAGEMENT]: '/student-management',
   [APP_PAGES.DASHBOARD_SUMMARY]: '/skills/dashboard-summary',
@@ -124,12 +128,14 @@ function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [theme, setTheme] = useState(() => window.localStorage.getItem('vx-theme') ?? 'light')
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const useCompactLogo = theme === 'light' && sidebarCollapsed
+  const useCompactLogo = sidebarCollapsed
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)
   const [selectedOspeActivity, setSelectedOspeActivity] = useState(null)
+  const [selectedDashboardData, setSelectedDashboardData] = useState(null)
   const [savedImageActivities, setSavedImageActivities] = useState({})
+  const [assignedSkillActivities, setAssignedSkillActivities] = useState([])
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
@@ -279,6 +285,42 @@ function App() {
     showAlert({ tone: 'warning', message: 'You have been signed out of the current session.' })
   }
 
+  const openDashboardSummaryPage = (dashboardData) => {
+    setSelectedDashboardData(dashboardData ?? null)
+    navigateToPage(APP_PAGES.DASHBOARD_SUMMARY)
+  }
+
+  const handleAssignSkillActivity = (assignment) => {
+    if (!assignment?.id) return
+    setAssignedSkillActivities((current) => {
+      const next = current.filter((item) => item.id !== assignment.id)
+      return [assignment, ...next]
+    })
+    showAlert({ tone: 'secondary', message: 'Activity assigned successfully. It is now available in My Skill Activity.' })
+    navigateToPage(APP_PAGES.MY_SKILL_ACTIVITY)
+  }
+
+  const handleStartAssignedSkillActivity = (assignment) => {
+    if (!assignment?.activityData?.activity) return
+
+    if (assignment.type === 'Image') {
+      setSelectedImageActivity(assignment.activityData)
+      navigateToPage(APP_PAGES.IMAGE_ACTIVITY)
+      return
+    }
+
+    if (assignment.type === 'Interpretation') {
+      setSelectedInterpretationActivity(assignment.activityData)
+      navigateToPage(APP_PAGES.INTERPRETATION_ACTIVITY)
+      return
+    }
+
+    if (assignment.type === 'OSPE' || assignment.type === 'OSCE') {
+      setSelectedOspeActivity(assignment.activityData)
+      navigateToPage(APP_PAGES.OSPE_ACTIVITY)
+    }
+  }
+
   return (
     <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''}`}>
       <div
@@ -356,12 +398,14 @@ function App() {
               key={`${selectedOspeActivity?.activity?.id ?? selectedOspeActivity?.id ?? 'ospe-activity'}-${selectedOspeActivity?.generatedModes?.join('-') ?? 'checklist'}`}
               activityData={selectedOspeActivity}
               onAlert={showAlert}
+              onAssignActivity={handleAssignSkillActivity}
             />
           ) : activePage === APP_PAGES.IMAGE_ACTIVITY ? (
             <ImageActivityPage
               key={selectedImageActivity?.activity?.id ?? selectedImageActivity?.id ?? 'image-activity'}
               activityData={selectedImageActivity}
               onAlert={showAlert}
+              onAssignActivity={handleAssignSkillActivity}
               onSaveSkillActivity={(savedActivity) => {
                 if (!savedActivity?.activity?.id) return
                 setSavedImageActivities((current) => ({
@@ -376,13 +420,24 @@ function App() {
               key={selectedInterpretationActivity?.activity?.id ?? selectedInterpretationActivity?.id ?? 'interpretation-activity'}
               activityData={selectedInterpretationActivity}
               onAlert={showAlert}
+              onAssignActivity={handleAssignSkillActivity}
+              onSaveSkillActivity={(savedActivity) => {
+                setSelectedInterpretationActivity(savedActivity)
+              }}
             />
+          ) : activePage === APP_PAGES.MY_SKILL_ACTIVITY ? (
+            <MySkillActivityPage assignedActivities={assignedSkillActivities} onStartActivity={handleStartAssignedSkillActivity} />
+          ) : activePage === APP_PAGES.PROGRESS_TRACKING ? (
+            <ProgressTrackingPage />
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
             <FacultyManagementPageV2 onAlert={showAlert} />
           ) : activePage === APP_PAGES.STUDENT_MANAGEMENT ? (
             <StudentManagementPage onAlert={showAlert} />
           ) : activePage === APP_PAGES.DASHBOARD_SUMMARY ? (
-            <DashboardSummaryPage onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)} />
+            <DashboardSummaryPage
+              dashboardData={selectedDashboardData}
+              onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}
+            />
           ) : activePage === APP_PAGES.PROFILE_SETTINGS ? (
             <section className="vx-content profile-settings-page">
               <div className="profile-settings-card">
@@ -438,6 +493,7 @@ function App() {
             </section>
           )}
         </div>
+
       </main>
 
       <nav className="vx-mobile-nav">
