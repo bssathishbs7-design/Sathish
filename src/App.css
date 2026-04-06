@@ -783,7 +783,10 @@
   }
 
   .vx-topbar {
-    grid-template-columns: auto 1fr auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     padding: 8px;
   }
 
@@ -792,10 +795,35 @@
   }
 
   .vx-global-search {
+    display: none;
+  }
+
+  .vx-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: auto;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .vx-profile-menu {
+    margin-left: 0;
     min-width: 0;
   }
 
-  .vx-search-placeholder {
+  .vx-profile-trigger {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+    padding-right: 10px;
+  }
+
+  .vx-profile-trigger > div {
+    min-width: 0;
+  }
+
+  .vx-profile-trigger strong {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1236,10 +1264,6 @@
 }
 
 @media (max-width: 759px) {
-  .vx-profile-menu {
-    margin-left: 2px;
-  }
-
   .vx-profile-tooltip {
     right: -6px;
     width: min(288px, calc(100vw - 24px));
@@ -1247,10 +1271,6 @@
 
   .vx-profile-trigger p {
     display: none;
-  }
-
-  .vx-profile-trigger {
-    padding-right: 6px;
   }
 }
 
@@ -15751,4 +15771,180 @@
   padding: 0 12px;
   border-radius: 10px;
   font-size: 0.84rem;
+}
+
+@media (max-width: 760px) {
+  .vx-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .vx-collapse-btn,
+  .vx-global-search {
+    display: none;
+  }
+
+  .vx-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-left: auto;
+    width: auto;
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .vx-shell,
+  .vx-main,
+  .vx-page-surface {
+    overflow-x: hidden;
+  }
+
+  .vx-overlay {
+    z-index: 130;
+    backdrop-filter: blur(6px);
+  }
+
+  .vx-sidebar {
+    z-index: 140;
+    width: min(320px, calc(100vw - 56px));
+    max-width: calc(100vw - 56px);
+    padding: 14px 14px 18px;
+    overflow: hidden;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+  }
+
+  .vx-sidebar-scroll {
+    overflow-x: hidden;
+  }
+
+  .vx-logo-row {
+    margin: -14px -14px 15px;
+    padding: 10px 14px;
+  }
+
+  .vx-logo-row .hide-desktop {
+    right: 14px;
+  }
+
+  .vx-mobile-nav {
+    z-index: 90;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .vx-shell:has(.vx-sidebar.open) .vx-mobile-nav {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(calc(100% + 16px));
+  }
+}
+
+@media (max-width: 759px) {
+  .forms-flow-row {
+    gap: 12px;
+    padding: 14px 0 16px;
+  }
+
+  .forms-flow-activity,
+  .forms-flow-cell,
+  .forms-flow-actions,
+  .forms-flow-assign {
+    display: grid;
+    gap: 8px;
+    justify-items: start;
+    align-items: start;
+    width: 100%;
+  }
+
+  .forms-flow-activity::before,
+  .forms-flow-cell::before,
+  .forms-flow-actions::before,
+  .forms-flow-assign::before {
+    margin-bottom: 0;
+    line-height: 1;
+  }
+
+  .forms-flow-cell.is-center {
+    justify-content: flex-start;
+  }
+
+  .forms-flow-actions {
+    grid-template-columns: minmax(0, max-content) auto;
+    column-gap: 10px;
+    row-gap: 8px;
+    align-items: center;
+  }
+
+  .forms-flow-action-main,
+  .forms-flow-action-icons {
+    width: auto;
+    min-width: 0;
+  }
+
+  .forms-flow-action-main {
+    display: flex;
+    align-items: center;
+  }
+
+  .forms-flow-primary {
+    width: auto;
+    min-width: 170px;
+    justify-content: center;
+  }
+
+  .forms-flow-action-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+
+  .forms-flow-action-icons > *,
+  .forms-flow-action-icons .forms-icon-btn,
+  .forms-assign-info-btn {
+    width: 40px;
+    min-width: 40px;
+    flex: 0 0 40px;
+  }
+
+  .forms-flow-assign {
+    justify-items: start;
+  }
+
+  .forms-badge,
+  .forms-certifiable,
+  .t-type {
+    justify-self: start;
+  }
+
+  .forms-flow-row.generation-tooltip-open .forms-flow-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .forms-flow-row.generation-tooltip-open .forms-flow-action-main {
+    display: grid;
+    width: min(304px, 100%);
+    align-items: stretch;
+    justify-items: stretch;
+  }
+
+  .forms-flow-row.generation-tooltip-open .generation-tooltip {
+    width: min(304px, 100%);
+    margin-top: 8px;
+  }
+
+  .forms-flow-row.generation-tooltip-open .forms-flow-action-icons {
+    width: min(304px, 100%);
+  }
 }
