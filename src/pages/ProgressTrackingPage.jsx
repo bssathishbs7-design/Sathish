@@ -1,5 +1,4 @@
 import { ChartNoAxesCombined, CircleCheckBig, Gauge, Target } from 'lucide-react'
-import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import '../styles/my-skills.css'
 
 const competencyProgress = [
@@ -11,7 +10,6 @@ const competencyProgress = [
 export default function ProgressTrackingPage() {
   return (
     <section className="vx-content my-skills-page">
-      <PageBreadcrumbs items={['My Skills', 'Progress Tracking']} />
       <div className="my-skills-hero vx-card">
         <div>
           <span className="my-skills-kicker">My Skills</span>

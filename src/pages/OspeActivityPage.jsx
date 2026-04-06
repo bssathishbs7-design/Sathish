@@ -885,6 +885,23 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const hasMarks = marksEnabled
   const isCertifiable = certifiableEnabled
   const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
+  useEffect(() => {
+    if (!assignYear) {
+      if (assignSgt) {
+        setAssignSgt('')
+      }
+      return
+    }
+    if (!assignSgtOptions.length) {
+      if (assignSgt) {
+        setAssignSgt('')
+      }
+      return
+    }
+    if (!assignSgt || !assignSgtOptions.includes(assignSgt)) {
+      setAssignSgt(assignSgtOptions[0])
+    }
+  }, [assignSgt, assignSgtOptions, assignYear])
   const ospeMissingAssignTypes = [
     formCount === 0 ? 'Form' : null,
     scaffoldingCount === 0 ? 'Scaffolding' : null,
@@ -1490,12 +1507,12 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                           ))}
                         </select>
                       </div>
-                      <div className="forms-select-wrap">
-                        <select value={assignSgt} onChange={(event) => setAssignSgt(event.target.value)} disabled={!assignYear}>
-                          <option value="">{assignYear ? 'SGT Dropdown' : 'Select Year first'}</option>
-                          {assignSgtOptions.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
+                        <div className="forms-select-wrap">
+                          <select value={assignSgt} onChange={(event) => setAssignSgt(event.target.value)} disabled={!assignYear}>
+                            {!assignYear ? <option value="">Select Year first</option> : null}
+                            {assignSgtOptions.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
                         </select>
                       </div>
                     </div>

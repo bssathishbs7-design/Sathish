@@ -1,5 +1,5 @@
+import { useState } from 'react'
 import { BookOpenCheck, CalendarDays, Clock3, FileCheck2, Play, Sparkles } from 'lucide-react'
-import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import '../styles/ospe-activity.css'
 import '../styles/my-skills.css'
 
@@ -26,6 +26,7 @@ const defaultActivitySections = [
 ]
 
 function ActivityCard({ item, onStartActivity }) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const attemptLabel = item.attemptCount
     ? item.attemptCount.includes('/')
       ? `Attempt : ${item.attemptCount.split('/')[0].trim()}`
@@ -41,6 +42,20 @@ function ActivityCard({ item, onStartActivity }) {
         <span className={`my-skills-activity-type ${typeToneClass}`}>{item.type}</span>
       </div>
       <strong className="my-skills-activity-title">{item.title}</strong>
+      <button
+        type="button"
+        className="my-skills-read-more"
+        onClick={() => setIsExpanded((current) => !current)}
+        aria-expanded={isExpanded}
+      >
+        {isExpanded ? 'Show less' : 'Read more'}
+      </button>
+      {isExpanded ? (
+        <div className="my-skills-activity-details">
+          <p>Competency: {item.competency}</p>
+          {item.assignedTo ? <p>Assigned to: {item.assignedTo}</p> : null}
+        </div>
+      ) : null}
       <div className="my-skills-activity-foot">
         <div className="my-skills-activity-meta">
           <span><CalendarDays size={14} strokeWidth={2} /> Date : {item.createdDate ?? 'DD-MM-YYYY'}</span>
@@ -80,13 +95,12 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
 
   return (
     <section className="vx-content ospe-page my-skills-page">
-      <PageBreadcrumbs items={['My Skills', 'My Skill Activity']} />
       <div className="ospe-shell">
       <div className="my-skills-hero ospe-header-card">
         <div>
           <span className="ospe-kicker">My Skills</span>
           <h1>My Skill Activity</h1>
-          <p>Track assigned skill activities, continue in-progress work, and review completed submissions from one place.</p>
+          <p>Start the next essential activity, continue what is active, and review progress with less clutter.</p>
         </div>
         <div className="my-skills-hero-stats">
           <article className="ospe-summary-card my-skills-stat-card">
@@ -117,14 +131,6 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
           </section>
         ))}
       </div>
-
-      <section className="ospe-footer-card my-skills-note">
-        <div className="my-skills-note-icon"><Sparkles size={18} strokeWidth={2.2} /></div>
-        <div>
-          <strong>Best next step</strong>
-          <p>Use this page for action-oriented work. Use `Progress Tracking` when you want a bigger competency and completion view.</p>
-        </div>
-      </section>
       </div>
     </section>
   )

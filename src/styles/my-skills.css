@@ -1,10 +1,16 @@
 .my-skills-page {
   display: grid;
+  gap: 24px;
+  padding-top: 8px;
+}
+
+.my-skills-page .ospe-shell {
+  gap: 22px;
 }
 
 .my-skills-hero {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .my-skills-hero h1 {
@@ -16,8 +22,9 @@
 
 .my-skills-hero p {
   margin: 0;
-  max-width: 760px;
+  max-width: 620px;
   color: #6c8177;
+  line-height: 1.6;
 }
 
 .my-skills-hero-stats {
@@ -53,7 +60,7 @@
 
 .my-skills-section-grid {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .my-skills-progress-grid {
@@ -92,10 +99,10 @@
 .my-skills-activity-card,
 .my-skills-progress-card {
   display: grid;
-  gap: 12px;
-  padding: 18px;
+  gap: 14px;
+  padding: 22px;
   border: 1px solid #dfe9e2;
-  border-radius: 18px;
+  border-radius: 20px;
   background: linear-gradient(180deg, #ffffff, #fbfdfc);
   box-shadow: 0 10px 24px rgba(15, 68, 20, 0.06);
 }
@@ -175,7 +182,7 @@
 }
 
 .my-skills-activity-title {
-  margin: 2px 0 14px;
+  margin: 4px 0 0;
   font-size: clamp(1.45rem, 2vw, 1.62rem);
   line-height: 1.24;
   letter-spacing: -0.03em;
@@ -185,12 +192,43 @@
   overflow: hidden;
 }
 
+.my-skills-read-more {
+  width: fit-content;
+  margin-top: -2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f8364;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.my-skills-read-more:hover,
+.my-skills-read-more:focus-visible {
+  color: #0b6a51;
+  text-decoration: underline;
+}
+
+.my-skills-activity-details {
+  display: grid;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.my-skills-activity-details p {
+  margin: 0;
+  color: #5f7469;
+  line-height: 1.55;
+}
+
 .my-skills-activity-foot {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
-  margin-top: auto;
+  gap: 22px;
+  margin-top: 8px;
+  padding-top: 8px;
 }
 
 .my-skills-activity-card .tool-btn,
@@ -223,29 +261,6 @@
   background: linear-gradient(90deg, #1b9a6f, #69d7b0);
 }
 
-.my-skills-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-.my-skills-note-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
-  background: #eefbf5;
-  color: #0f8364;
-  flex: 0 0 40px;
-}
-
-.theme-dark .my-skills-note-icon {
-  background: rgba(95, 232, 177, 0.12);
-  color: #8ee4ca;
-}
-
 .theme-dark .my-skills-activity-card,
 .theme-dark .my-skills-progress-card {
   border-color: rgba(95, 232, 177, 0.12);
@@ -258,14 +273,16 @@
 .theme-dark .my-skills-insight-card p,
 .theme-dark .my-skills-progress-card small,
 .theme-dark .my-skills-activity-card p,
-.theme-dark .my-skills-note p,
 .theme-dark .my-skills-activity-meta {
   color: #9db3aa;
 }
 
+.theme-dark .my-skills-activity-details p {
+  color: #a8bbb3;
+}
+
 .theme-dark .my-skills-stat-card strong,
 .theme-dark .my-skills-insight-card strong,
-.theme-dark .my-skills-note strong,
 .theme-dark .my-skills-progress-copy strong,
 .theme-dark .my-skills-activity-card strong,
 .theme-dark .my-skills-hero h1,
@@ -309,6 +326,15 @@
   color: #dab8ff;
 }
 
+.theme-dark .my-skills-read-more {
+  color: #8ee4ca;
+}
+
+.theme-dark .my-skills-read-more:hover,
+.theme-dark .my-skills-read-more:focus-visible {
+  color: #b5f2df;
+}
+
 .theme-dark .my-skills-activity-cta.is-muted {
   border-color: rgba(147, 161, 171, 0.18);
   background: rgba(94, 105, 113, 0.28);
@@ -331,6 +357,11 @@
 }
 
 @media (max-width: 720px) {
+  .my-skills-page {
+    gap: 18px;
+    padding-top: 2px;
+  }
+
   .my-skills-activity-list {
     grid-template-columns: 1fr;
   }
