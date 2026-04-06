@@ -7270,6 +7270,14 @@
   gap: 10px;
 }
 
+.image-activity-page .image-activity-created-skill-field-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .image-activity-page .image-activity-created-skill-field-head > span {
   color: #73867b;
   font-size: 0.76rem;
@@ -7295,6 +7303,31 @@
   border-top-color: #1b8c68;
   border-radius: 999px;
   animation: image-activity-spin 0.8s linear infinite;
+}
+
+.image-activity-page .image-activity-answer-key-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.image-activity-page .image-activity-answer-key-btn:hover:not(:disabled) {
+  border-color: #7af0c1;
+  background: #d0ffec;
+  color: #0b6a51;
+  transform: translateY(-1px);
+}
+
+.image-activity-page .image-activity-answer-key-btn:disabled {
+  cursor: not-allowed;
 }
 
 .image-activity-page .image-activity-created-skill-question-panel textarea {
@@ -7362,6 +7395,16 @@
 .theme-dark .image-activity-page .image-activity-created-skill-field-spinner {
   border-color: rgba(110, 231, 183, 0.18);
   border-top-color: #6ee7b7;
+}
+
+.theme-dark .image-activity-page .image-activity-answer-key-btn {
+  border-color: rgba(95, 232, 177, 0.18);
+}
+
+.theme-dark .image-activity-page .image-activity-answer-key-btn:hover:not(:disabled) {
+  border-color: rgba(95, 232, 177, 0.28);
+  background: rgba(95, 232, 177, 0.08);
+  color: #b5f2df;
 }
 
 .theme-dark .image-activity-page .image-activity-asset--enhanced:hover,
