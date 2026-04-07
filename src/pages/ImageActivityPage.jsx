@@ -22,12 +22,18 @@ import {
   Plus,
   X,
 } from 'lucide-react'
+import DomainBadgeRow from '../components/DomainBadgeRow'
 import '../styles/config/image-activity.css'
 
 const cognitiveScaffoldingOptions = ['Not Applicable', 'Remember', 'Understand', 'Apply', 'Analyse', 'Evaluate', 'Create']
 const affectiveScaffoldingOptions = ['Not Applicable', 'Receive', 'Respond', 'Value', 'Organize', 'Characterize']
 const psychomotorOptions = ['Perception', 'Set', 'Guided Response', 'Mechanism', 'Adaptation', 'Origination']
 const psychomotorScaffoldingOptions = ['Not Applicable', ...psychomotorOptions]
+const domainOptionsMap = {
+  cognitive: cognitiveScaffoldingOptions,
+  affective: affectiveScaffoldingOptions,
+  psychomotor: psychomotorScaffoldingOptions,
+}
 const QUESTION_TEXT_PLACEHOLDER = 'Enter your question here......'
 const ASSIGN_YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year Part 1', 'Third Year Part 2', 'Final Year']
 const ASSIGN_SGT_OPTIONS = {
@@ -121,19 +127,6 @@ const isSameQuestionContent = (question, baselineQuestion) => (
   && question?.answerKey === baselineQuestion?.answerKey
   && question?.explanation === baselineQuestion?.explanation
 )
-
-const getActiveDomainBadge = (question) => {
-  if (question?.cognitive && question.cognitive !== 'Not Applicable') {
-    return `Cognitive: ${question.cognitive}`
-  }
-  if (question?.affective && question.affective !== 'Not Applicable') {
-    return `Affective: ${question.affective}`
-  }
-  if (question?.psychomotor && question.psychomotor !== 'Not Applicable') {
-    return `Psychomotor: ${question.psychomotor}`
-  }
-  return null
-}
 
 const getImageSlotLabel = (index) => String.fromCharCode(65 + index)
 
@@ -607,25 +600,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       question.id === id
         ? {
           ...question,
-          ...(field === 'cognitive'
-            ? {
-              cognitive: value,
-              affective: value !== 'Not Applicable' ? 'Not Applicable' : question.affective,
-              psychomotor: value !== 'Not Applicable' ? 'Not Applicable' : question.psychomotor,
-            }
-            : field === 'affective'
-              ? {
-                affective: value,
-                cognitive: value !== 'Not Applicable' ? 'Not Applicable' : question.cognitive,
-                psychomotor: value !== 'Not Applicable' ? 'Not Applicable' : question.psychomotor,
-              }
-              : field === 'psychomotor'
-                ? {
-                  psychomotor: value,
-                  cognitive: value !== 'Not Applicable' ? 'Not Applicable' : question.cognitive,
-                  affective: value !== 'Not Applicable' ? 'Not Applicable' : question.affective,
-                }
-                : { [field]: value }),
+          [field]: value,
         }
         : question
     )))
@@ -806,25 +781,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       question.id === id
         ? {
           ...question,
-          ...(field === 'cognitive'
-            ? {
-              cognitive: value,
-              affective: value !== 'Not Applicable' ? 'Not Applicable' : question.affective,
-              psychomotor: value !== 'Not Applicable' ? 'Not Applicable' : question.psychomotor,
-            }
-            : field === 'affective'
-              ? {
-                affective: value,
-                cognitive: value !== 'Not Applicable' ? 'Not Applicable' : question.cognitive,
-                psychomotor: value !== 'Not Applicable' ? 'Not Applicable' : question.psychomotor,
-              }
-              : field === 'psychomotor'
-                ? {
-                  psychomotor: value,
-                  cognitive: value !== 'Not Applicable' ? 'Not Applicable' : question.cognitive,
-                  affective: value !== 'Not Applicable' ? 'Not Applicable' : question.affective,
-                }
-                : { [field]: value }),
+          [field]: value,
         }
         : question
     )))
@@ -1431,7 +1388,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                         {createdSkillQuestions.map((question, index) => {
                           const isPreviewOnly = false
                           const isCreatedSkillActive = activeCreatedSkillQuestionId === question.id
-                          const activeDomainBadge = getActiveDomainBadge(question)
                           return (
                             <article
                               key={question.id}
@@ -1445,12 +1401,9 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                             <div className="image-activity-created-skill-topline">
                               <span className="image-activity-question-number-badge">Q{index + 1}</span>
                               <div className="image-activity-created-skill-meta">
-                                <span className={`image-activity-generated-mark-pill ${!hasMarks ? 'is-disabled' : ''}`}>
+                              <span className={`image-activity-generated-mark-pill ${!hasMarks ? 'is-disabled' : ''}`}>
                                   {hasMarks ? `${question.marks} mark` : 'Marks disabled'}
                                 </span>
-                                {activeDomainBadge ? (
-                                  <span className="image-activity-generated-tag">{activeDomainBadge}</span>
-                                ) : null}
                                 {question.isCritical ? (
                                   <span className="image-activity-criticality-pill">
                                     <Flag size={12} strokeWidth={2} />
@@ -1543,97 +1496,52 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                     <div className="image-activity-generated-section-label">Assessment Tags</div>
 
                                     <div className="image-activity-created-skill-side-top">
-                                      <label className="forms-field">
-                                        <span>Marks</span>
-                                        <input
-                                          disabled={!hasMarks || isPreviewOnly}
-                                          value={question.marks}
-                                          onChange={(event) => {
-                                            if (isPreviewOnly) return
-                                            updateCreatedSkillQuestion(question.id, 'marks', event.target.value)
-                                          }}
-                                          onClick={(event) => event.stopPropagation()}
-                                          readOnly={isPreviewOnly}
+                                      <div className="image-activity-created-skill-side-primary">
+                                        <label className="forms-field">
+                                          <span>Marks</span>
+                                          <input
+                                            disabled={!hasMarks || isPreviewOnly}
+                                            value={question.marks}
+                                            onChange={(event) => {
+                                              if (isPreviewOnly) return
+                                              updateCreatedSkillQuestion(question.id, 'marks', event.target.value)
+                                            }}
+                                            onClick={(event) => event.stopPropagation()}
+                                            readOnly={isPreviewOnly}
+                                          />
+                                        </label>
+
+                                        <label className="forms-field image-activity-question-toggle-field">
+                                          <span>Criticality</span>
+                                          <button
+                                            type="button"
+                                            className={`image-activity-criticality-toggle ${question.isCritical ? 'is-active' : ''}`}
+                                            onClick={(event) => {
+                                              event.stopPropagation()
+                                              if (isPreviewOnly) return
+                                              updateCreatedSkillQuestion(question.id, 'isCritical', !question.isCritical)
+                                            }}
+                                            aria-pressed={question.isCritical}
+                                            disabled={isPreviewOnly}
+                                          >
+                                            <span className="image-activity-criticality-toggle-track" aria-hidden="true">
+                                              <span className="image-activity-criticality-toggle-thumb" />
+                                            </span>
+                                            <span className="image-activity-criticality-toggle-label">{question.isCritical ? 'On' : 'Off'}</span>
+                                          </button>
+                                        </label>
+                                      </div>
+                                      <div className="image-activity-created-skill-side-taxonomy">
+                                        <span className="image-activity-created-skill-side-taxonomy-label">Domain Tags</span>
+                                        <DomainBadgeRow
+                                          className="image-activity-domain-badge-row image-activity-domain-badge-row--inline is-stacked"
+                                          values={question}
+                                          optionsMap={domainOptionsMap}
+                                          disabled={isPreviewOnly}
+                                          onChange={(field, value) => updateCreatedSkillQuestion(question.id, field, value)}
                                         />
-                                      </label>
-
-                                      <label className="forms-field image-activity-question-toggle-field">
-                                        <span>Criticality</span>
-                                        <button
-                                          type="button"
-                                          className={`image-activity-criticality-toggle ${question.isCritical ? 'is-active' : ''}`}
-                                          onClick={(event) => {
-                                            event.stopPropagation()
-                                            if (isPreviewOnly) return
-                                            updateCreatedSkillQuestion(question.id, 'isCritical', !question.isCritical)
-                                          }}
-                                          aria-pressed={question.isCritical}
-                                          disabled={isPreviewOnly}
-                                        >
-                                          <span className="image-activity-criticality-toggle-track" aria-hidden="true">
-                                            <span className="image-activity-criticality-toggle-thumb" />
-                                          </span>
-                                          <span className="image-activity-criticality-toggle-label">{question.isCritical ? 'On' : 'Off'}</span>
-                                        </button>
-                                      </label>
+                                      </div>
                                     </div>
-
-                                    <label className="forms-field">
-                                      <span>Cognitive</span>
-                                      <div className="forms-select-wrap">
-                                        <select
-                                          value={question.cognitive}
-                                          onChange={(event) => {
-                                            if (isPreviewOnly) return
-                                            updateCreatedSkillQuestion(question.id, 'cognitive', event.target.value)
-                                          }}
-                                          onClick={(event) => event.stopPropagation()}
-                                          disabled={isPreviewOnly}
-                                        >
-                                          {cognitiveScaffoldingOptions.map((option) => (
-                                            <option key={option} value={option}>{option}</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    </label>
-
-                                    <label className="forms-field">
-                                      <span>Affective</span>
-                                      <div className="forms-select-wrap">
-                                        <select
-                                          value={question.affective}
-                                          onChange={(event) => {
-                                            if (isPreviewOnly) return
-                                            updateCreatedSkillQuestion(question.id, 'affective', event.target.value)
-                                          }}
-                                          onClick={(event) => event.stopPropagation()}
-                                          disabled={isPreviewOnly}
-                                        >
-                                          {affectiveScaffoldingOptions.map((option) => (
-                                            <option key={option} value={option}>{option}</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    </label>
-
-                                    <label className="forms-field">
-                                      <span>Psychomotor</span>
-                                      <div className="forms-select-wrap">
-                                        <select
-                                          value={question.psychomotor}
-                                          onChange={(event) => {
-                                            if (isPreviewOnly) return
-                                            updateCreatedSkillQuestion(question.id, 'psychomotor', event.target.value)
-                                          }}
-                                          onClick={(event) => event.stopPropagation()}
-                                          disabled={isPreviewOnly}
-                                        >
-                                          {psychomotorScaffoldingOptions.map((option) => (
-                                            <option key={option} value={option}>{option}</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    </label>
                                   </div>
                                 </div>
                               </div>
@@ -1689,7 +1597,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                 <div className="image-activity-question-list image-activity-generated-questions image-activity-generated-scaffolding">
                   {generatedQuestions.map((question, index) => {
                     const isCardEditing = activeEditableQuestionId === question.id
-                    const activeDomainBadge = getActiveDomainBadge(question)
                     return (
                     <article
                       key={question.id}
@@ -1716,9 +1623,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                               <span className={`image-activity-generated-mark-pill ${!hasMarks ? 'is-disabled' : ''}`}>
                                 {hasMarks ? `${question.marks} mark` : 'Marks disabled'}
                               </span>
-                              {activeDomainBadge ? (
-                                <span className="image-activity-generated-tag">{activeDomainBadge}</span>
-                              ) : null}
                               {question.isCritical ? (
                                 <span className="image-activity-criticality-pill">
                                   <Flag size={12} strokeWidth={2} />
@@ -1809,69 +1713,46 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                             <div className="image-activity-generated-assessment-card">
                               <div className="image-activity-generated-section-label">Assessment Tags</div>
                               <div className="image-activity-generated-assessment-top">
-                                <label className="forms-field">
-                                  <span>Marks</span>
-                                  <input
-                                    disabled={!hasMarks}
-                                    value={question.marks}
-                                    onChange={(event) => updateGeneratedQuestion(question.id, 'marks', event.target.value)}
-                                    onClick={(event) => event.stopPropagation()}
+                                <div className="image-activity-generated-assessment-primary">
+                                  <label className="forms-field">
+                                    <span>Marks</span>
+                                    <input
+                                      disabled={!hasMarks}
+                                      value={question.marks}
+                                      onChange={(event) => updateGeneratedQuestion(question.id, 'marks', event.target.value)}
+                                      onClick={(event) => event.stopPropagation()}
+                                    />
+                                  </label>
+
+                                  <label className="forms-field image-activity-question-toggle-field">
+                                    <span>Criticality</span>
+                                    <button
+                                      type="button"
+                                      className={`image-activity-criticality-toggle ${question.isCritical ? 'is-active' : ''}`}
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        updateGeneratedQuestion(question.id, 'isCritical', !question.isCritical)
+                                      }}
+                                      aria-pressed={question.isCritical}
+                                    >
+                                      <span className="image-activity-criticality-toggle-track" aria-hidden="true">
+                                        <span className="image-activity-criticality-toggle-thumb" />
+                                      </span>
+                                      <span className="image-activity-criticality-toggle-label">{question.isCritical ? 'On' : 'Off'}</span>
+                                    </button>
+                                  </label>
+                                </div>
+                                <div className="image-activity-generated-assessment-taxonomy">
+                                  <span className="image-activity-generated-assessment-taxonomy-label">Domain Tags</span>
+                                  <DomainBadgeRow
+                                    className="image-activity-domain-badge-row image-activity-domain-badge-row--inline is-stacked"
+                                    values={question}
+                                    optionsMap={domainOptionsMap}
+                                    onChange={(field, value) => updateGeneratedQuestion(question.id, field, value)}
                                   />
-                                </label>
-
-                                <label className="forms-field image-activity-question-toggle-field">
-                                  <span>Criticality</span>
-                                  <button
-                                    type="button"
-                                    className={`image-activity-criticality-toggle ${question.isCritical ? 'is-active' : ''}`}
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      updateGeneratedQuestion(question.id, 'isCritical', !question.isCritical)
-                                    }}
-                                    aria-pressed={question.isCritical}
-                                  >
-                                    <span className="image-activity-criticality-toggle-track" aria-hidden="true">
-                                      <span className="image-activity-criticality-toggle-thumb" />
-                                    </span>
-                                    <span className="image-activity-criticality-toggle-label">{question.isCritical ? 'On' : 'Off'}</span>
-                                  </button>
-                                </label>
+                                </div>
                               </div>
 
-                              <div className="image-activity-generated-assessment-grid">
-                                <label className="forms-field">
-                                  <span>Cognitive</span>
-                                  <div className="forms-select-wrap">
-                                    <select value={question.cognitive} onChange={(event) => updateGeneratedQuestion(question.id, 'cognitive', event.target.value)} onClick={(event) => event.stopPropagation()}>
-                                      {cognitiveScaffoldingOptions.map((option) => (
-                                        <option key={option} value={option}>{option}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </label>
-
-                                <label className="forms-field">
-                                  <span>Affective</span>
-                                  <div className="forms-select-wrap">
-                                    <select value={question.affective} onChange={(event) => updateGeneratedQuestion(question.id, 'affective', event.target.value)} onClick={(event) => event.stopPropagation()}>
-                                      {affectiveScaffoldingOptions.map((option) => (
-                                        <option key={option} value={option}>{option}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </label>
-
-                                <label className="forms-field">
-                                  <span>Psychomotor</span>
-                                  <div className="forms-select-wrap">
-                                    <select value={question.psychomotor} onChange={(event) => updateGeneratedQuestion(question.id, 'psychomotor', event.target.value)} onClick={(event) => event.stopPropagation()}>
-                                      {psychomotorScaffoldingOptions.map((option) => (
-                                        <option key={option} value={option}>{option}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </label>
-                              </div>
                             </div>
                           </div>
                         ) : (

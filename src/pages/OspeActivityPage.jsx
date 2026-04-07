@@ -17,11 +17,17 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import DomainBadgeRow from '../components/DomainBadgeRow'
 import '../styles/ospe-activity.css'
 
 const cognitiveOptions = ['Not Applicable', 'Remember', 'Understand', 'Apply', 'Analyse', 'Evaluate', 'Create']
 const affectiveOptions = ['Not Applicable', 'Receive', 'Respond', 'Value', 'Organize', 'Characterize']
 const psychomotorOptions = ['Not Applicable', 'Perception', 'Set', 'Guided Response', 'Mechanism', 'Adaptation', 'Origination']
+const domainOptionsMap = {
+  cognitive: cognitiveOptions,
+  affective: affectiveOptions,
+  psychomotor: psychomotorOptions,
+}
 const defaultFormResponseTypes = ['Nil', 'Structure', 'Finding', 'Diagnosis', 'Significance', 'Function', 'Action', 'Nerve', 'Muscle', 'Ligament', 'Phase', 'Lesion']
 const scaffoldStarterTypes = ['MCQ', 'Descriptive', 'True or False', 'Fill in the blanks']
 const ASSIGN_YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year Part 1', 'Third Year Part 2', 'Final Year']
@@ -156,7 +162,6 @@ const createChecklistItem = (index) => ({
   psychomotor: 'Not Applicable',
   isCritical: false,
   isEnabled: true,
-  isDomainTagsOpen: false,
 })
 
 const createFormResponse = (label, expectedResponse = 'Nil', keySeed = 'response') => ({
@@ -187,7 +192,6 @@ const createFormItem = (index) => {
   affective: 'Not Applicable',
   psychomotor: 'Not Applicable',
   isCritical: false,
-  isDomainTagsOpen: false,
 })
 }
 
@@ -215,7 +219,6 @@ const createScaffoldItem = (type, index) => ({
   affective: 'Not Applicable',
   psychomotor: 'Not Applicable',
   isCritical: false,
-  isDomainTagsOpen: false,
 })
 
 const buildInitialChecklistItems = () => Array.from({ length: 5 }, (_, index) => createChecklistItem(index))
@@ -227,40 +230,9 @@ const buildGeneratedModules = (generatedModes = []) => ({
   scaffolding: generatedModes.includes('Scaffolding'),
 })
 const sumItemMarks = (items = []) => items.reduce((total, item) => total + (Number(item?.marks) || 0), 0)
-const taxonomyFields = ['cognitive', 'affective', 'psychomotor']
 
 function MetaPill({ children, tone = 'default' }) {
   return <span className={`ospe-meta-pill is-${tone}`}>{children}</span>
-}
-
-function applyExclusiveTaxonomyUpdate(item, field, value) {
-  if (!taxonomyFields.includes(field)) {
-    return { ...item, [field]: value }
-  }
-
-  const nextItem = {
-    ...item,
-    cognitive: 'Not Applicable',
-    affective: 'Not Applicable',
-    psychomotor: 'Not Applicable',
-    isDomainTagsOpen: true,
-  }
-
-  nextItem[field] = value
-  return nextItem
-}
-
-function getActiveDomainBadge(item) {
-  if (item?.cognitive && item.cognitive !== 'Not Applicable') {
-    return `Cognitive: ${item.cognitive}`
-  }
-  if (item?.affective && item.affective !== 'Not Applicable') {
-    return `Affective: ${item.affective}`
-  }
-  if (item?.psychomotor && item.psychomotor !== 'Not Applicable') {
-    return `Psychomotor: ${item.psychomotor}`
-  }
-  return null
 }
 
 function getFormTypeMeta(formType) {
@@ -328,24 +300,7 @@ function InlineToggle({ checked, onChange, label }) {
   )
 }
 
-function TaxonomyBadges({ item, includeValue }) {
-  const activeDomainBadge = getActiveDomainBadge(item)
-  return (
-    <>
-      {includeValue ? <MetaPill tone="default">{includeValue}</MetaPill> : null}
-      <MetaPill tone="default">{item.marks} mark</MetaPill>
-      {activeDomainBadge ? <MetaPill tone="info">{activeDomainBadge}</MetaPill> : null}
-      {item.isCritical ? <MetaPill tone="warning"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
-    </>
-  )
-}
-
-function getDomainTagsButtonLabel(item) {
-  return getActiveDomainBadge(item) ?? 'Add tags'
-}
-
 function ChecklistCard({ item, index, isEditing, marksEnabled, onActivate, onUpdate, onDelete }) {
-  const activeDomainBadge = getActiveDomainBadge(item)
   return (
     <article className={`ospe-builder-card ${isEditing ? 'is-editing' : ''}`} data-editor-id={item.id} onClick={() => onActivate(item.id)}>
       <div className="ospe-builder-card-head">
@@ -357,7 +312,6 @@ function ChecklistCard({ item, index, isEditing, marksEnabled, onActivate, onUpd
           </div>
           <div className="ospe-builder-card-meta">
             <MetaPill tone="default">{item.marks} mark</MetaPill>
-            {activeDomainBadge ? <MetaPill tone="info">{activeDomainBadge}</MetaPill> : null}
             {item.isCritical ? <MetaPill tone="warning"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
             {!item.isEnabled ? <MetaPill tone="warning">Disabled</MetaPill> : null}
             <button
@@ -382,66 +336,43 @@ function ChecklistCard({ item, index, isEditing, marksEnabled, onActivate, onUpd
               <span>Checklist Question</span>
               <textarea rows={4} value={item.text} onChange={(event) => onUpdate(item.id, 'text', event.target.value)} placeholder='Write one measurable step, e.g. "Identifies the structure correctly"' />
             </label>
-            <div className="ospe-assessment-card ospe-checklist-assessment-panel">
-              <span className="ospe-assessment-card-title">Assessment Tags</span>
-              <div className="ospe-assessment-card-top">
-                <div className="ospe-assessment-card-primary">
-                  <label className="forms-field ospe-field--marks">
-                    <span>Marks</span>
-                    <input value={item.marks} onChange={(event) => onUpdate(item.id, 'marks', event.target.value)} disabled={!marksEnabled} />
-                  </label>
-                  <div className="forms-field ospe-assessment-criticality">
-                    <span>Criticality</span>
-                    <button
-                      type="button"
-                      className={`ospe-criticality-toggle ${item.isCritical ? 'is-active' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onUpdate(item.id, 'isCritical', !item.isCritical)
-                      }}
-                      aria-pressed={item.isCritical}
-                    >
-                      <span className="ospe-criticality-toggle-track" aria-hidden="true">
-                        <span className="ospe-criticality-toggle-thumb" />
-                      </span>
-                      <span className="ospe-criticality-toggle-label">{item.isCritical ? 'On' : 'Off'}</span>
-                    </button>
-                  </div>
-                </div>
-                <div className="forms-field ospe-domain-tags-field">
-                  <span>Domain tags</span>
-                  <div className="ospe-domain-tags">
-                    <button
-                      type="button"
-                      className={`ghost ospe-domain-tags-trigger ${item.isDomainTagsOpen ? 'is-active' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onUpdate(item.id, 'isDomainTagsOpen', !item.isDomainTagsOpen)
-                      }}
-                      aria-expanded={item.isDomainTagsOpen}
-                    >
-                      <span>{getDomainTagsButtonLabel(item)}</span>
-                    </button>
-                    {item.isDomainTagsOpen ? (
-                      <div className="ospe-domain-tags-popover" onClick={(event) => event.stopPropagation()}>
-                        <label className="forms-field">
-                          <span>Cognitive</span>
-                          <div className="forms-select-wrap"><select value={item.cognitive} onChange={(event) => onUpdate(item.id, 'cognitive', event.target.value)}>{cognitiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                        </label>
-                        <label className="forms-field">
-                          <span>Affective</span>
-                          <div className="forms-select-wrap"><select value={item.affective} onChange={(event) => onUpdate(item.id, 'affective', event.target.value)}>{affectiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                        </label>
-                        <label className="forms-field">
-                          <span>Psychomotor</span>
-                          <div className="forms-select-wrap"><select value={item.psychomotor} onChange={(event) => onUpdate(item.id, 'psychomotor', event.target.value)}>{psychomotorOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                        </label>
+                <div className="ospe-assessment-card ospe-checklist-assessment-panel">
+                  <span className="ospe-assessment-card-title">Assessment Tags</span>
+                  <div className="ospe-assessment-card-top">
+                    <div className="ospe-assessment-card-primary">
+                      <label className="forms-field ospe-field--marks">
+                        <span>Marks</span>
+                        <input value={item.marks} onChange={(event) => onUpdate(item.id, 'marks', event.target.value)} disabled={!marksEnabled} />
+                      </label>
+                      <div className="forms-field ospe-assessment-criticality">
+                        <span>Criticality</span>
+                        <button
+                          type="button"
+                          className={`ospe-criticality-toggle ${item.isCritical ? 'is-active' : ''}`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            onUpdate(item.id, 'isCritical', !item.isCritical)
+                          }}
+                          aria-pressed={item.isCritical}
+                        >
+                          <span className="ospe-criticality-toggle-track" aria-hidden="true">
+                            <span className="ospe-criticality-toggle-thumb" />
+                          </span>
+                          <span className="ospe-criticality-toggle-label">{item.isCritical ? 'On' : 'Off'}</span>
+                        </button>
                       </div>
-                    ) : null}
+                    </div>
+                    <div className="ospe-assessment-card-taxonomy">
+                      <span className="ospe-assessment-card-taxonomy-label">Domain Tags</span>
+                      <DomainBadgeRow
+                        className="ospe-domain-badge-row ospe-domain-badge-row--inline is-stacked"
+                        values={item}
+                        optionsMap={domainOptionsMap}
+                        onChange={(field, value) => onUpdate(item.id, field, value)}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
           </div>
         </div>
       ) : null}
@@ -463,7 +394,6 @@ function FormCard({
   onDeleteResponse,
   onDelete,
 }) {
-  const activeDomainBadge = getActiveDomainBadge(item)
   const responses = getVisibleFormResponses(item)
   return (
     <article className={`ospe-builder-card ${isEditing ? 'is-editing' : ''}`} data-editor-id={item.id} onClick={() => onActivate(item.id)}>
@@ -474,7 +404,6 @@ function FormCard({
           </div>
           <div className="ospe-builder-card-meta">
             <MetaPill tone="default">{item.marks} mark</MetaPill>
-            {activeDomainBadge ? <MetaPill tone="info">{activeDomainBadge}</MetaPill> : null}
             {item.isCritical ? <MetaPill tone="warning"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
             <button
               type="button"
@@ -570,66 +499,43 @@ function FormCard({
                 </div>
               ) : null}
             </div>
-            <div className="ospe-assessment-card ospe-form-assessment-panel">
-              <span className="ospe-assessment-card-title">Assessment Tags</span>
-              <div className="ospe-assessment-card-top">
-                <div className="ospe-assessment-card-primary">
-                  <label className="forms-field ospe-field--marks">
-                    <span>Marks</span>
-                    <input value={item.marks} onChange={(event) => onUpdate(item.id, 'marks', event.target.value)} disabled={!marksEnabled} />
-                  </label>
-                  <div className="forms-field ospe-assessment-criticality">
-                    <span>Criticality</span>
-                    <button
-                      type="button"
-                      className={`ospe-criticality-toggle ${item.isCritical ? 'is-active' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onUpdate(item.id, 'isCritical', !item.isCritical)
-                      }}
-                      aria-pressed={item.isCritical}
-                    >
-                      <span className="ospe-criticality-toggle-track" aria-hidden="true">
-                        <span className="ospe-criticality-toggle-thumb" />
-                      </span>
-                      <span className="ospe-criticality-toggle-label">{item.isCritical ? 'On' : 'Off'}</span>
-                    </button>
-                  </div>
-                </div>
-                <div className="forms-field ospe-domain-tags-field">
-                  <span>Domain tags</span>
-                  <div className="ospe-domain-tags">
-                    <button
-                      type="button"
-                      className={`ghost ospe-domain-tags-trigger ${item.isDomainTagsOpen ? 'is-active' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onUpdate(item.id, 'isDomainTagsOpen', !item.isDomainTagsOpen)
-                      }}
-                      aria-expanded={item.isDomainTagsOpen}
-                    >
-                      <span>{getDomainTagsButtonLabel(item)}</span>
-                    </button>
-                    {item.isDomainTagsOpen ? (
-                      <div className="ospe-domain-tags-popover" onClick={(event) => event.stopPropagation()}>
-                        <label className="forms-field">
-                          <span>Cognitive</span>
-                          <div className="forms-select-wrap"><select value={item.cognitive} onChange={(event) => onUpdate(item.id, 'cognitive', event.target.value)}>{cognitiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                        </label>
-                        <label className="forms-field">
-                          <span>Affective</span>
-                          <div className="forms-select-wrap"><select value={item.affective} onChange={(event) => onUpdate(item.id, 'affective', event.target.value)}>{affectiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                        </label>
-                        <label className="forms-field">
-                          <span>Psychomotor</span>
-                          <div className="forms-select-wrap"><select value={item.psychomotor} onChange={(event) => onUpdate(item.id, 'psychomotor', event.target.value)}>{psychomotorOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                        </label>
+                <div className="ospe-assessment-card ospe-form-assessment-panel">
+                  <span className="ospe-assessment-card-title">Assessment Tags</span>
+                  <div className="ospe-assessment-card-top">
+                    <div className="ospe-assessment-card-primary">
+                      <label className="forms-field ospe-field--marks">
+                        <span>Marks</span>
+                        <input value={item.marks} onChange={(event) => onUpdate(item.id, 'marks', event.target.value)} disabled={!marksEnabled} />
+                      </label>
+                      <div className="forms-field ospe-assessment-criticality">
+                        <span>Criticality</span>
+                        <button
+                          type="button"
+                          className={`ospe-criticality-toggle ${item.isCritical ? 'is-active' : ''}`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            onUpdate(item.id, 'isCritical', !item.isCritical)
+                          }}
+                          aria-pressed={item.isCritical}
+                        >
+                          <span className="ospe-criticality-toggle-track" aria-hidden="true">
+                            <span className="ospe-criticality-toggle-thumb" />
+                          </span>
+                          <span className="ospe-criticality-toggle-label">{item.isCritical ? 'On' : 'Off'}</span>
+                        </button>
                       </div>
-                    ) : null}
+                    </div>
+                    <div className="ospe-assessment-card-taxonomy">
+                      <span className="ospe-assessment-card-taxonomy-label">Domain Tags</span>
+                      <DomainBadgeRow
+                        className="ospe-domain-badge-row ospe-domain-badge-row--inline is-stacked"
+                        values={item}
+                        optionsMap={domainOptionsMap}
+                        onChange={(field, value) => onUpdate(item.id, field, value)}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
           </div>
         </div>
       ) : null}
@@ -638,7 +544,6 @@ function FormCard({
 }
 
 function ScaffoldingCard({ item, index, isEditing, marksEnabled, onActivate, onUpdate, onDelete }) {
-  const activeDomainBadge = getActiveDomainBadge(item)
   return (
     <article className={`ospe-builder-card ${isEditing ? 'is-editing' : ''}`} data-editor-id={item.id} onClick={() => onActivate(item.id)}>
       <div className="ospe-builder-card-head">
@@ -649,7 +554,6 @@ function ScaffoldingCard({ item, index, isEditing, marksEnabled, onActivate, onU
           <div className="ospe-builder-card-meta">
             <MetaPill tone="default">{item.type}</MetaPill>
             <MetaPill tone="default">{item.marks} mark</MetaPill>
-            {activeDomainBadge ? <MetaPill tone="info">{activeDomainBadge}</MetaPill> : null}
             {item.isCritical ? <MetaPill tone="warning"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
             <button
               type="button"
@@ -725,19 +629,14 @@ function ScaffoldingCard({ item, index, isEditing, marksEnabled, onActivate, onU
                     </button>
                   </div>
                 </div>
-                <div className="ospe-scaffold-domain-grid">
-                  <label className="forms-field">
-                    <span>Cognitive</span>
-                    <div className="forms-select-wrap"><select value={item.cognitive} onChange={(event) => onUpdate(item.id, 'cognitive', event.target.value)}>{cognitiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                  </label>
-                  <label className="forms-field">
-                    <span>Affective</span>
-                    <div className="forms-select-wrap"><select value={item.affective} onChange={(event) => onUpdate(item.id, 'affective', event.target.value)}>{affectiveOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                  </label>
-                  <label className="forms-field">
-                    <span>Psychomotor</span>
-                    <div className="forms-select-wrap"><select value={item.psychomotor} onChange={(event) => onUpdate(item.id, 'psychomotor', event.target.value)}>{psychomotorOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>
-                  </label>
+                <div className="ospe-assessment-card-taxonomy">
+                  <span className="ospe-assessment-card-taxonomy-label">Domain Tags</span>
+                  <DomainBadgeRow
+                    className="ospe-domain-badge-row ospe-domain-badge-row--inline is-stacked"
+                    values={item}
+                    optionsMap={domainOptionsMap}
+                    onChange={(field, value) => onUpdate(item.id, field, value)}
+                  />
                 </div>
               </div>
             </div>
@@ -805,32 +704,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [activeEditorId])
-
-  useEffect(() => {
-    const onPointerDown = (event) => {
-      if (event.target.closest('.ospe-domain-tags')) return
-      setChecklistItems((current) => {
-        let hasOpenPopover = false
-        const next = current.map((item) => {
-          if (!item.isDomainTagsOpen) return item
-          hasOpenPopover = true
-          return { ...item, isDomainTagsOpen: false }
-        })
-        return hasOpenPopover ? next : current
-      })
-      setFormItems((current) => {
-        let hasOpenPopover = false
-        const next = current.map((item) => {
-          if (!item.isDomainTagsOpen) return item
-          hasOpenPopover = true
-          return { ...item, isDomainTagsOpen: false }
-        })
-        return hasOpenPopover ? next : current
-      })
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [])
 
   useEffect(() => {
     if (activeTab === 'Form' && !formItems.length && !isFormTooltipOpen && !hasCreatedForm) setActiveTab(scaffoldItems.length ? 'Scaffolding' : 'Checklist')
@@ -1059,8 +932,8 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     })
     setIsReviewAssignPopupOpen(false)
   }
-  const updateChecklist = (id, field, value) => setChecklistItems((current) => current.map((item) => (item.id === id ? applyExclusiveTaxonomyUpdate(item, field, value) : item)))
-  const updateForm = (id, field, value) => setFormItems((current) => current.map((item) => (item.id === id ? applyExclusiveTaxonomyUpdate(item, field, value) : item)))
+  const updateChecklist = (id, field, value) => setChecklistItems((current) => current.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
+  const updateForm = (id, field, value) => setFormItems((current) => current.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
   const updateFormResponse = (id, responseKey, field, value) => setFormItems((current) => current.map((item) => (
     item.id === id
       ? {
@@ -1102,7 +975,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     setFormUnitOptions((current) => (current.includes(normalizedUnit) ? current : [...current, normalizedUnit]))
     updateFormResponse(formId, responseKey, 'expectedResponse', normalizedUnit)
   }
-  const updateScaffold = (id, field, value) => setScaffoldItems((current) => current.map((item) => (item.id === id ? applyExclusiveTaxonomyUpdate(item, field, value) : item)))
+  const updateScaffold = (id, field, value) => setScaffoldItems((current) => current.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
   const addChecklist = () => { const next = createChecklistItem(checklistItems.length); setHasCreatedChecklist(true); setChecklistItems((current) => [...current, next]); setActiveEditorId(next.id) }
   const addFormQuestion = (formType = 'single') => {
     const next = {
@@ -1220,6 +1093,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                   const count = tab === 'Checklist' ? checklistCount : tab === 'Form' ? formCount : scaffoldingCount
                   const isAvailable = tab === 'Checklist' ? true : count > 0
                   const isCurrentTab = activeTab === tab
+                  const TabIcon = tab === 'Checklist' ? ListChecks : tab === 'Form' ? FileText : BookCheck
                   return (
                     <button
                       key={tab}
@@ -1229,7 +1103,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                       aria-expanded={tab === 'Form' ? isFormTooltipOpen : tab === 'Scaffolding' ? isScaffoldingTooltipOpen : undefined}
                     >
                       <span className="ospe-tab-icon" aria-hidden="true">
-                        <Sparkles size={14} strokeWidth={2} />
+                        <TabIcon size={14} strokeWidth={2} />
                       </span>
                       <span>{tab}</span>
                       <strong>{count}</strong>

@@ -775,6 +775,16 @@
   word-break: break-word;
 }
 
+.ospe-domain-badge-row {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+}
+
+.ospe-domain-badge-row--inline {
+  margin-top: 0;
+  align-self: start;
+}
+
 .ospe-builder-card-topline .ospe-builder-card-kicker {
   width: auto;
   max-width: fit-content;
@@ -1031,23 +1041,26 @@
 
 .ospe-checklist-assessment-panel {
   min-width: 0;
-  height: 100%;
+  height: auto;
   align-content: start;
   overflow: visible;
+  align-self: start;
 }
 
 .ospe-form-assessment-panel {
   min-width: 0;
-  height: 100%;
+  height: auto;
   align-content: start;
   overflow: visible;
+  align-self: start;
 }
 
 .ospe-scaffold-assessment-panel {
   min-width: 0;
-  height: 100%;
+  height: auto;
   align-content: start;
   overflow: visible;
+  align-self: start;
 }
 
 .ospe-scaffold-domain-grid {
@@ -1058,7 +1071,7 @@
 
 .ospe-assessment-card {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   padding: 12px;
   border: 1px solid #dfe9e2;
   border-radius: 16px;
@@ -1076,15 +1089,40 @@
 
 .ospe-assessment-card-top {
   display: grid;
-  gap: 10px;
+  gap: 14px 20px;
   align-items: start;
+  grid-template-columns: minmax(108px, 124px) minmax(0, 1fr);
+  justify-content: stretch;
+  width: 100%;
 }
 
 .ospe-assessment-card-primary {
   display: grid;
-  grid-template-columns: 92px minmax(120px, max-content);
-  gap: 22px;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  width: 100%;
+}
+
+.ospe-assessment-card-taxonomy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  align-self: start;
+  width: 100%;
+  max-width: none;
+  padding-top: 0;
+  justify-items: stretch;
+}
+
+.ospe-assessment-card-taxonomy-label {
+  color: #73877d;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  margin: 0;
 }
 
 .ospe-assessment-card-primary > .forms-field,

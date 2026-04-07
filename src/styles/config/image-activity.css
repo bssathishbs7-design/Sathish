@@ -1203,6 +1203,15 @@
   text-align: justify;
 }
 
+.image-activity-domain-badge-row {
+  margin-top: 12px;
+}
+
+.image-activity-domain-badge-row--inline {
+  margin-top: 0;
+  align-self: start;
+}
+
 .image-activity-created-skill-body {
   display: grid;
   gap: 8px;
@@ -1241,6 +1250,7 @@
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(251, 254, 253, 0.98), rgba(246, 251, 248, 0.98));
   border: 1px solid rgba(18, 82, 61, 0.08);
+  align-self: start;
 }
 
 .image-activity-created-skill-question-panel textarea {
@@ -1298,9 +1308,43 @@
 
 .image-activity-created-skill-side-top {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  align-items: end;
+  grid-template-columns: minmax(108px, 124px) minmax(0, 1fr);
+  gap: 14px 20px;
+  align-items: start;
+  justify-content: stretch;
+  width: 100%;
+}
+
+.image-activity-created-skill-side-primary,
+.image-activity-generated-assessment-primary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  width: 100%;
+}
+
+.image-activity-created-skill-side-taxonomy,
+.image-activity-generated-assessment-taxonomy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  align-self: start;
+  width: 100%;
+  max-width: none;
+  padding-top: 0;
+  justify-items: stretch;
+}
+
+.image-activity-created-skill-side-taxonomy-label,
+.image-activity-generated-assessment-taxonomy-label {
+  color: #73877d;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  margin: 0;
 }
 
 .image-activity-created-skill-answer {
@@ -3899,7 +3943,7 @@
 }
 
 .image-activity-generated-edit-layout--scaffolding {
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 340px);
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.92fr);
   gap: 12px;
   align-items: stretch;
 }
@@ -3912,8 +3956,9 @@
 
 .image-activity-generated-edit-layout--scaffolding .image-activity-generated-content-panel,
 .image-activity-generated-edit-layout--scaffolding .image-activity-generated-assessment-card {
-  height: 100%;
+  height: auto;
   align-content: start;
+  align-self: start;
 }
 
 .image-activity-generated-content-card,
@@ -3975,9 +4020,11 @@
 
 .image-activity-generated-assessment-top {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr);
-  gap: 10px 12px;
-  align-items: end;
+  grid-template-columns: minmax(108px, 124px) minmax(0, 1fr);
+  gap: 14px 20px;
+  align-items: start;
+  justify-content: stretch;
+  width: 100%;
 }
 
 .image-activity-generated-edit-layout--scaffolding .image-activity-generated-assessment-top {
@@ -6836,9 +6883,9 @@
 
 .image-activity-page .image-activity-generated-edit-layout--scaffolding {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 340px);
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.92fr);
   gap: 12px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .image-activity-page .image-activity-generated-content-card,
@@ -6858,7 +6905,8 @@
   border-radius: 16px;
   background: linear-gradient(180deg, #fcfefd, #f6fbf8);
   align-content: start;
-  height: 100%;
+  height: auto;
+  align-self: start;
 }
 
 .image-activity-page .image-activity-generated-question-panel {
@@ -6893,14 +6941,17 @@
   display: grid;
   gap: 8px;
   align-content: start;
-  height: 100%;
+  height: auto;
+  align-self: start;
 }
 
 .image-activity-page .image-activity-generated-assessment-top {
   display: grid;
-  grid-template-columns: 92px minmax(120px, max-content);
-  gap: 22px;
-  align-items: end;
+  grid-template-columns: minmax(108px, 124px) minmax(0, 1fr);
+  gap: 14px 20px;
+  align-items: start;
+  justify-content: stretch;
+  width: 100%;
 }
 
 .image-activity-page .image-activity-generated-assessment-grid {
@@ -7232,9 +7283,9 @@
 
 .image-activity-page .image-activity-created-skill-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 340px);
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.92fr);
   gap: 12px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .image-activity-page .image-activity-created-skill-editor-main,
@@ -7251,6 +7302,7 @@
   border: 1px solid #dfe9e2;
   border-radius: 16px;
   background: linear-gradient(180deg, #fcfefd, #f6fbf8);
+  align-self: start;
 }
 
 .image-activity-page .image-activity-created-skill-question-panel {
@@ -7347,11 +7399,33 @@
   gap: 10px;
 }
 
+.image-activity-page .image-activity-created-skill-side-primary,
+.image-activity-page .image-activity-generated-assessment-primary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  width: 100%;
+}
+
+.image-activity-page .image-activity-created-skill-side-taxonomy,
+.image-activity-page .image-activity-generated-assessment-taxonomy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  align-self: start;
+  width: 100%;
+  max-width: none;
+  justify-items: stretch;
+}
+
 .image-activity-page .image-activity-created-skill-side-top {
   display: grid;
-  grid-template-columns: 92px minmax(120px, max-content);
-  gap: 22px;
-  align-items: end;
+  grid-template-columns: minmax(108px, 124px) minmax(0, 1fr);
+  gap: 14px 20px;
+  align-items: start;
+  justify-content: stretch;
+  width: 100%;
 }
 
 .image-activity-page .image-activity-answer-type-row {
