@@ -915,11 +915,45 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     setAssignThresholds((current) => current.filter((row) => row.id !== id))
   }
 
-  const handleProceedAssign = () => {
+  const handleProceedAssign = async () => {
     if (!canProceedAssign) {
       onAlert?.({ tone: 'warning', message: 'Complete thresholds, year, SGT, and schedule fields before proceeding.' })
       return
     }
+
+    const referenceImages = (await Promise.all(
+      images
+        .filter((image) => image.previewUrl)
+        .map(async (image, index) => ({
+        id: image.key ?? `reference-${index + 1}`,
+        src: image.file ? await fileToDataUrl(image.file) : image.previewUrl,
+        label: `Reference ${index + 1}`,
+        })),
+    ))
+
+    const mappedQuestions = createdSkillQuestions.map((question, index) => ({
+      id: question.id ?? `question-${index + 1}`,
+      type: question.type ?? 'Descriptive',
+      prompt: question.questionText || QUESTION_TEXT_PLACEHOLDER,
+      questionText: question.questionText || QUESTION_TEXT_PLACEHOLDER,
+      explanation: question.explanation ?? '',
+      answerKey: question.answerKey ?? '',
+      marks: question.marks ?? '1',
+      placeholder: 'Write your answer here.',
+      options: question.options ?? [],
+    }))
+
+    const mappedScaffolding = generatedQuestions.map((question, index) => ({
+      id: question.id ?? `scaffold-${index + 1}`,
+      type: question.type ?? 'Descriptive',
+      prompt: question.questionText || QUESTION_TEXT_PLACEHOLDER,
+      questionText: question.questionText || QUESTION_TEXT_PLACEHOLDER,
+      explanation: question.explanation ?? '',
+      answerKey: question.answerKey ?? '',
+      marks: question.marks ?? '1',
+      placeholder: 'Complete this mandatory scaffolding response.',
+      options: question.options ?? [],
+    }))
 
     onAssignActivity?.({
       id: activity?.id ?? `image-assignment-${Date.now()}`,
@@ -929,6 +963,26 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       attemptCount: '0 / 1',
       status: 'Assigned',
       assignedTo: `${assignYear} • ${assignSgt}`,
+      thresholds: assignThresholds,
+      schedule: isAssignScheduleEnabled ? assignSchedule : null,
+      assignContent,
+      examData: {
+        assignContent,
+        durationMinutes: 30,
+        thresholds: assignThresholds,
+        schedule: isAssignScheduleEnabled ? assignSchedule : null,
+        proctoring: {
+          mode: 'Online Proctoring',
+          fullscreenRequired: true,
+          autoSubmitOnTimeout: true,
+        },
+        modules: {
+          referenceImages,
+          questions: assignContent.question ? mappedQuestions : [],
+          form: [],
+          scaffolding: assignContent.scaffolding ? mappedScaffolding : [],
+        },
+      },
       activityData: {
           ...(activityData ?? {}),
         activity: {

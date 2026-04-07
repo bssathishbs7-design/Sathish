@@ -995,6 +995,30 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       return
     }
 
+    const mappedFormItems = formItems.map((item, index) => ({
+      id: item.id ?? `form-${index + 1}`,
+      formType: item.formType ?? 'single',
+      prompt: item.questionText || `Form ${index + 1}`,
+      questionText: item.questionText || `Form ${index + 1}`,
+      marks: item.marks ?? '1',
+      responses: getVisibleFormResponses(item).map((response, responseIndex) => ({
+        key: response.key ?? `${item.id ?? 'form'}-response-${responseIndex + 1}`,
+        label: response.label ?? `Response ${responseIndex + 1}`,
+      })),
+    }))
+
+    const mappedScaffolding = scaffoldItems.map((item, index) => ({
+      id: item.id ?? `scaffold-${index + 1}`,
+      type: item.type ?? 'Descriptive',
+      prompt: item.questionText || `Scaffolding ${index + 1}`,
+      questionText: item.questionText || `Scaffolding ${index + 1}`,
+      marks: item.marks ?? '1',
+      placeholder: 'Complete this mandatory scaffolding response.',
+      options: item.options ?? [],
+      answerKey: item.answerKey ?? '',
+      explanation: item.explanation ?? '',
+    }))
+
     onAssignActivity?.({
       id: activity?.id ?? `ospe-assignment-${Date.now()}`,
       title: activityName,
@@ -1003,6 +1027,26 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       attemptCount: '0 / 1',
       status: 'Assigned',
       assignedTo: `${assignYear} • ${assignSgt}`,
+      thresholds: assignThresholds,
+      schedule: isAssignScheduleEnabled ? assignSchedule : null,
+      assignContent,
+      examData: {
+        assignContent,
+        durationMinutes: 30,
+        thresholds: assignThresholds,
+        schedule: isAssignScheduleEnabled ? assignSchedule : null,
+        proctoring: {
+          mode: 'Online Proctoring',
+          fullscreenRequired: true,
+          autoSubmitOnTimeout: true,
+        },
+        modules: {
+          referenceImages: [],
+          questions: [],
+          form: assignContent.form ? mappedFormItems : [],
+          scaffolding: assignContent.scaffolding ? mappedScaffolding : [],
+        },
+      },
       activityData: {
         ...(resolvedActivityData ?? {}),
         activity: {
