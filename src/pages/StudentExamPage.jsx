@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   Clock3,
-  Expand,
   FileText,
   Image as ImageIcon,
   Play,
+  SendHorizonal,
   ShieldCheck,
 } from 'lucide-react'
 import '../styles/student-exam.css'
@@ -16,12 +18,9 @@ const fallbackExam = {
   id: 'fallback-student-exam',
   title: 'Student Activity',
   type: 'Interpretation',
-  attemptCount: '0 / 1',
-  createdDate: '07/04/2026',
-  assignedTo: 'First Year • SGT A',
   examData: {
     assignContent: { question: true, form: false, scaffolding: true },
-    durationMinutes: 30,
+    durationMinutes: null,
     proctoring: {
       mode: 'Online Proctoring',
       fullscreenRequired: true,
@@ -36,6 +35,8 @@ const fallbackExam = {
           prompt: 'Review the clinical prompt and write the most appropriate interpretation.',
           marks: '5',
           placeholder: 'Enter your answer here.',
+          domain: 'Cognitive',
+          isCritical: true,
         },
       ],
       form: [],
@@ -46,6 +47,7 @@ const fallbackExam = {
           prompt: 'State one supporting point for your interpretation.',
           marks: '1',
           placeholder: 'Add one supporting point.',
+          domain: 'Cognitive',
         },
       ],
     },
@@ -60,6 +62,12 @@ const formatRemainingTime = (totalSeconds) => {
 }
 
 const normalizePrompt = (value, fallback) => value?.trim() || fallback
+
+const getItemTypeBadge = (section, item, activityType) => {
+  if (section === 'form') return 'Form'
+  if (section === 'scaffolding') return 'Scaffolding'
+  return item.kind === 'MCQ' || item.kind === 'True or False' ? item.kind : activityType
+}
 
 const getAssignedSections = (assignment) => {
   const resolved = assignment ?? fallbackExam
@@ -77,6 +85,9 @@ const getAssignedSections = (assignment) => {
         marks: question.marks ?? '1',
         placeholder: question.placeholder ?? 'Enter your answer here.',
         options: question.options ?? [],
+        domain: question.domain ?? 'Cognitive',
+        isCritical: Boolean(question.isCritical),
+        tags: question.tags ?? [],
       }))
     : []
 
@@ -85,7 +96,7 @@ const getAssignedSections = (assignment) => {
         id: item.id ?? `form-${index + 1}`,
         section: 'form',
         kind: item.formType ?? 'single',
-        title: `Form ${index + 1}`,
+        title: `Question ${index + 1}`,
         prompt: normalizePrompt(item.questionText ?? item.prompt, 'Add the form prompt here.'),
         marks: item.marks ?? '1',
         responses: (item.responses ?? []).map((response, responseIndex) => ({
@@ -93,6 +104,9 @@ const getAssignedSections = (assignment) => {
           label: response.label ?? `Response ${responseIndex + 1}`,
           placeholder: `Enter ${response.label ?? `response ${responseIndex + 1}`.toLowerCase()}`,
         })),
+        domain: item.domain ?? 'Psychomotor',
+        isCritical: Boolean(item.isCritical),
+        tags: item.tags ?? [],
       }))
     : []
 
@@ -101,21 +115,24 @@ const getAssignedSections = (assignment) => {
         id: question.id ?? `scaffold-${index + 1}`,
         section: 'scaffolding',
         kind: question.type ?? 'Descriptive',
-        title: `Scaffolding ${index + 1}`,
+        title: `Question ${questionSections.length + formSections.length + index + 1}`,
         prompt: normalizePrompt(question.questionText ?? question.prompt, 'Add the scaffolding prompt here.'),
         marks: question.marks ?? '1',
         placeholder: question.placeholder ?? 'Complete this mandatory scaffolding response.',
         options: question.options ?? [],
+        domain: question.domain ?? 'Cognitive',
+        isCritical: Boolean(question.isCritical),
+        tags: question.tags ?? [],
       }))
     : []
 
   return {
     resolved,
     examData,
-    assignContent,
     questionSections,
     formSections,
     scaffoldingSections,
+    examItems: [...questionSections, ...formSections, ...scaffoldingSections],
   }
 }
 
@@ -129,32 +146,78 @@ function buildInitialAnswers(sections) {
   }
 }
 
-function QuestionResponseCard({ item, value, onChange, isMandatory }) {
+function StudentQuestionCard({
+  item,
+  activityType,
+  value,
+  formValues,
+  onChangeQuestion,
+  onChangeForm,
+  referenceImages,
+  progressLabel,
+}) {
   const isChoice = item.kind === 'MCQ' || item.kind === 'True or False'
   const options = item.kind === 'True or False' && item.options.length === 0 ? ['True', 'False'] : item.options
+  const badges = [
+    progressLabel,
+    `Domain: ${item.domain ?? 'Cognitive'}`,
+    `${item.marks} Marks`,
+    getItemTypeBadge(item.section, item, activityType),
+    ...(item.isCritical ? ['Critical'] : []),
+    ...(item.tags ?? []),
+  ]
 
   return (
-    <article className={`student-exam-question-card ${item.section === 'scaffolding' ? 'is-scaffolding' : ''}`}>
-      <div className="student-exam-question-head">
-        <div>
-          <span className="student-exam-question-kicker">{item.title}</span>
-          <h3>{item.prompt}</h3>
+    <article className="student-exam-question-stage">
+      <div className="student-exam-question-top">
+        <div className="student-exam-badge-row">
+          {badges.map((badge) => (
+            <span key={`${item.id}-${badge}`} className={`student-exam-badge ${badge === 'Critical' ? 'is-critical' : ''}`}>
+              {badge}
+            </span>
+          ))}
         </div>
-        <div className="student-exam-question-meta">
-          <span>{item.marks} Marks</span>
-          {isMandatory ? <span className="student-exam-required-pill">Mandatory</span> : null}
+        <div className="student-exam-question-copy">
+          <h2>{item.prompt}</h2>
         </div>
       </div>
 
-      {isChoice && options.length ? (
-        <div className="student-exam-choice-list" role="radiogroup" aria-label={item.title}>
+      {referenceImages.length ? (
+        <div className="student-exam-stage-media">
+          {referenceImages.map((image) => (
+            <figure key={image.id ?? image.src} className="student-exam-stage-media-card">
+              {image.previewUrl || image.src ? (
+                <img src={image.previewUrl ?? image.src} alt={image.label ?? 'Assigned reference'} />
+              ) : (
+                <ImageIcon size={24} strokeWidth={2} />
+              )}
+            </figure>
+          ))}
+        </div>
+      ) : null}
+
+      {item.section === 'form' ? (
+        <div className="student-exam-form-stack">
+          {item.responses.map((response) => (
+            <label key={response.id} className="student-exam-field">
+              <span>{response.label}</span>
+              <input
+                value={formValues[response.id] ?? ''}
+                onChange={(event) => onChangeForm(response.id, event.target.value)}
+                placeholder={response.placeholder}
+              />
+            </label>
+          ))}
+        </div>
+      ) : isChoice && options.length ? (
+        <div className="student-exam-choice-grid" role="radiogroup" aria-label={item.title}>
           {options.map((option) => (
-            <label key={option} className={`student-exam-choice ${value === option ? 'is-selected' : ''}`}>
+            <label key={option} className={`student-exam-choice-card ${value === option ? 'is-selected' : ''}`}>
               <input
                 type="radio"
                 name={item.id}
                 checked={value === option}
-                onChange={() => onChange(option)}
+                onChange={() => onChangeQuestion(item.id, option, item.section)}
               />
               <span>{option}</span>
             </label>
@@ -162,16 +225,17 @@ function QuestionResponseCard({ item, value, onChange, isMandatory }) {
         </div>
       ) : item.kind === 'Fill in the blanks' ? (
         <input
-          className="student-exam-text-input"
+          className="student-exam-answer-input"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => onChangeQuestion(item.id, event.target.value, item.section)}
           placeholder={item.placeholder}
         />
       ) : (
         <textarea
-          rows={4}
+          rows={7}
+          className="student-exam-answer-area"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => onChangeQuestion(item.id, event.target.value, item.section)}
           placeholder={item.placeholder}
         />
       )}
@@ -179,90 +243,73 @@ function QuestionResponseCard({ item, value, onChange, isMandatory }) {
   )
 }
 
-function FormResponseCard({ item, responses, onChange }) {
-  return (
-    <article className="student-exam-question-card is-form">
-      <div className="student-exam-question-head">
-        <div>
-          <span className="student-exam-question-kicker">{item.title}</span>
-          <h3>{item.prompt}</h3>
-        </div>
-        <div className="student-exam-question-meta">
-          <span>{item.marks} Marks</span>
-          <span className="student-exam-required-pill">Mandatory</span>
-        </div>
-      </div>
-
-      <div className="student-exam-form-response-list">
-        {item.responses.map((response) => (
-          <label key={response.id} className="student-exam-form-response">
-            <span>{response.label}</span>
-            <input
-              value={responses[response.id] ?? ''}
-              onChange={(event) => onChange(response.id, event.target.value)}
-              placeholder={response.placeholder}
-            />
-          </label>
-        ))}
-      </div>
-    </article>
-  )
-}
-
 export default function StudentExamPage({ assignment, onBackToActivities, onSubmitExam, onAlert }) {
   const sections = useMemo(() => getAssignedSections(assignment), [assignment])
-  const { resolved, examData, questionSections, formSections, scaffoldingSections } = sections
-
+  const { resolved, examData, examItems } = sections
+  const hasTimer = Boolean(examData.durationMinutes)
   const [phase, setPhase] = useState('prestart')
   const [answers, setAnswers] = useState(() => buildInitialAnswers(sections))
-  const [remainingSeconds, setRemainingSeconds] = useState((examData.durationMinutes ?? 30) * 60)
+  const [remainingSeconds, setRemainingSeconds] = useState((examData.durationMinutes ?? 0) * 60)
   const [warningCount, setWarningCount] = useState(0)
   const [tabSwitchCount, setTabSwitchCount] = useState(0)
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0)
   const [proctoringLog, setProctoringLog] = useState([])
+  const [isFocusPaused, setIsFocusPaused] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false)
   const [submittedAt, setSubmittedAt] = useState('')
   const hasSubmittedRef = useRef(false)
+  const lastViolationAtRef = useRef(0)
 
   useEffect(() => {
     const nextSections = getAssignedSections(assignment)
     setAnswers(buildInitialAnswers(nextSections))
-    setRemainingSeconds((nextSections.examData.durationMinutes ?? 30) * 60)
+    setRemainingSeconds((nextSections.examData.durationMinutes ?? 0) * 60)
     setWarningCount(0)
     setTabSwitchCount(0)
     setFullscreenExitCount(0)
     setProctoringLog([])
+    setIsFocusPaused(false)
+    setCurrentIndex(0)
+    setIsSubmitConfirmOpen(false)
     setSubmittedAt('')
     setPhase('prestart')
     hasSubmittedRef.current = false
   }, [assignment])
 
-  const requiredQuestionIds = questionSections.map((item) => item.id)
-  const requiredScaffoldingIds = scaffoldingSections.map((item) => item.id)
-  const requiredFormIds = formSections.flatMap((item) => item.responses.map((response) => response.id))
-  const totalRequiredCount = requiredQuestionIds.length + requiredScaffoldingIds.length + requiredFormIds.length
-  const completedCount = [
-    ...requiredQuestionIds.map((id) => answers.questions[id]),
-    ...requiredScaffoldingIds.map((id) => answers.scaffolding[id]),
-    ...requiredFormIds.map((id) => answers.forms[id]),
-  ].filter((value) => String(value ?? '').trim()).length
+  const completedCount = examItems.filter((item) => {
+    if (item.section === 'form') {
+      return item.responses.every((response) => String(answers.forms[response.id] ?? '').trim())
+    }
 
-  const proctoringSummary = useMemo(() => ([
-    { label: 'Tab switches', value: tabSwitchCount },
-    { label: 'Fullscreen exits', value: fullscreenExitCount },
-    { label: 'Warnings', value: warningCount },
-  ]), [fullscreenExitCount, tabSwitchCount, warningCount])
+    const source = item.section === 'scaffolding' ? answers.scaffolding : answers.questions
+    return Boolean(String(source[item.id] ?? '').trim())
+  }).length
 
-  const isSubmissionReady = completedCount === totalRequiredCount && totalRequiredCount > 0
+  const currentItem = examItems[currentIndex] ?? null
+  const currentItemValue = currentItem
+    ? currentItem.section === 'scaffolding'
+      ? answers.scaffolding[currentItem.id] ?? ''
+      : answers.questions[currentItem.id] ?? ''
+    : ''
+
+  const isCurrentAnswered = currentItem
+    ? currentItem.section === 'form'
+      ? currentItem.responses.every((response) => String(answers.forms[response.id] ?? '').trim())
+      : Boolean(String(currentItemValue).trim())
+    : false
+
+  const isSubmissionReady = examItems.length > 0 && completedCount === examItems.length
 
   const appendProctoringEvent = (message) => {
     setProctoringLog((current) => [
       { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message, time: new Date().toLocaleTimeString('en-GB') },
       ...current,
-    ].slice(0, 5))
+    ].slice(0, 10))
   }
 
   useEffect(() => {
-    if (phase !== 'active') return undefined
+    if (phase !== 'active' || isFocusPaused || !hasTimer) return undefined
 
     const timer = window.setInterval(() => {
       setRemainingSeconds((current) => {
@@ -275,42 +322,50 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [phase])
+  }, [hasTimer, isFocusPaused, phase])
 
   useEffect(() => {
-    if (phase !== 'active' || remainingSeconds > 0 || hasSubmittedRef.current) return
-
+    if (!hasTimer || phase !== 'active' || remainingSeconds > 0 || hasSubmittedRef.current) return
     handleSubmit('timeout')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, remainingSeconds])
+  }, [hasTimer, phase, remainingSeconds])
 
   useEffect(() => {
     if (phase !== 'active') return undefined
 
+    const registerViolation = (message, counter) => {
+      const now = Date.now()
+      if (now - lastViolationAtRef.current < 600) return
+      lastViolationAtRef.current = now
+
+      setWarningCount((current) => current + 1)
+      if (counter === 'tab') setTabSwitchCount((current) => current + 1)
+      if (counter === 'fullscreen') setFullscreenExitCount((current) => current + 1)
+      appendProctoringEvent(message)
+      setIsFocusPaused(true)
+      onAlert?.({ tone: 'warning', message })
+    }
+
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setWarningCount((current) => current + 1)
-        setTabSwitchCount((current) => current + 1)
-        appendProctoringEvent('Tab switch detected during the monitored attempt.')
-        onAlert?.({ tone: 'warning', message: 'Tab switching is recorded during the exam.' })
-      }
+      if (document.hidden) registerViolation('Focus was lost during the monitored exam.', 'tab')
+    }
+
+    const handleWindowBlur = () => {
+      registerViolation('Focus was lost during the monitored exam.', 'tab')
     }
 
     const handleFullscreenChange = () => {
       if (examData.proctoring?.fullscreenRequired && !document.fullscreenElement) {
-        setWarningCount((current) => current + 1)
-        setFullscreenExitCount((current) => current + 1)
-        appendProctoringEvent('Fullscreen was exited during the monitored attempt.')
-        onAlert?.({ tone: 'warning', message: 'Fullscreen exit detected during the exam.' })
+        registerViolation('Fullscreen exit detected during the exam.', 'fullscreen')
       }
     }
 
-    window.addEventListener('blur', handleVisibilityChange)
+    window.addEventListener('blur', handleWindowBlur)
     document.addEventListener('visibilitychange', handleVisibilityChange)
     document.addEventListener('fullscreenchange', handleFullscreenChange)
 
     return () => {
-      window.removeEventListener('blur', handleVisibilityChange)
+      window.removeEventListener('blur', handleWindowBlur)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
@@ -321,25 +376,32 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       try {
         await document.documentElement.requestFullscreen()
       } catch {
-        onAlert?.({ tone: 'warning', message: 'Fullscreen could not be enabled. The exam will continue with monitoring warnings.' })
+        onAlert?.({ tone: 'warning', message: 'Fullscreen could not be enabled. Monitoring will continue.' })
       }
     }
 
     appendProctoringEvent('Exam started with online monitoring active.')
+    setIsFocusPaused(false)
     setPhase('active')
   }
 
-  const updateQuestionAnswer = (id, value) => {
-    setAnswers((current) => ({
-      ...current,
-      questions: { ...current.questions, [id]: value },
-    }))
+  const resumeExam = async () => {
+    if (examData.proctoring?.fullscreenRequired && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+      try {
+        await document.documentElement.requestFullscreen()
+      } catch {
+        onAlert?.({ tone: 'warning', message: 'Resume attempted without fullscreen. Monitoring will continue.' })
+      }
+    }
+
+    setIsFocusPaused(false)
   }
 
-  const updateScaffoldingAnswer = (id, value) => {
+  const updateQuestionAnswer = (id, value, section) => {
+    const key = section === 'scaffolding' ? 'scaffolding' : 'questions'
     setAnswers((current) => ({
       ...current,
-      scaffolding: { ...current.scaffolding, [id]: value },
+      [key]: { ...current[key], [id]: value },
     }))
   }
 
@@ -350,23 +412,36 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
     }))
   }
 
+  const moveQuestion = (direction) => {
+    setCurrentIndex((current) => Math.max(0, Math.min(examItems.length - 1, current + direction)))
+  }
+
+  const requestFinalSubmit = () => {
+    if (!isSubmissionReady) {
+      onAlert?.({ tone: 'warning', message: 'Complete every mandatory question before final submission.' })
+      return
+    }
+    setIsSubmitConfirmOpen(true)
+  }
+
   const handleSubmit = (reason = 'manual') => {
     if (hasSubmittedRef.current) return
-
     if (reason === 'manual' && !isSubmissionReady) {
-      onAlert?.({ tone: 'warning', message: 'Complete all mandatory questions and scaffolding before submitting.' })
+      onAlert?.({ tone: 'warning', message: 'Complete every mandatory question before final submission.' })
       return
     }
 
     hasSubmittedRef.current = true
     const submittedTimestamp = new Date().toLocaleString('en-GB')
+    setIsFocusPaused(false)
+    setIsSubmitConfirmOpen(false)
     setSubmittedAt(submittedTimestamp)
     setPhase('submitted')
 
     onSubmitExam?.({
       ...resolved,
       status: 'Completed',
-      attemptCount: resolved.attemptCount?.replace(/^0\s*\//, '1 /') ?? '1 / 1',
+      attemptCount: '1 / 1',
       submittedAt: submittedTimestamp,
       answers,
       proctoring: {
@@ -380,247 +455,197 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
 
     onAlert?.({
       tone: reason === 'timeout' ? 'warning' : 'secondary',
-      message: reason === 'timeout'
-        ? 'Time is over. The activity was auto-submitted.'
-        : 'Activity submitted successfully.',
+      message: reason === 'timeout' ? 'Time is over. The activity was auto-submitted.' : 'Activity submitted successfully.',
     })
   }
 
   const renderedReferenceImages = examData.modules?.referenceImages ?? []
+  const prestartBadges = [
+    `${examItems.length} Questions`,
+    ...(sections.formSections.length ? [`${sections.formSections.length} Forms`] : []),
+    ...(sections.scaffoldingSections.length ? ['Mandatory Scaffolding'] : []),
+    examData.proctoring?.mode ?? 'Online Proctoring',
+    ...(hasTimer ? [`${examData.durationMinutes} min`] : []),
+  ]
 
   return (
     <section className="student-exam-page">
       <div className="student-exam-shell">
-        <section className="student-exam-hero">
-          <div className="student-exam-hero-copy">
-            <span className="student-exam-kicker">Student Exam</span>
-            <h1>{resolved.title}</h1>
-            <p>{resolved.type} • {resolved.assignedTo ?? 'Assigned activity'} • Attempt {resolved.attemptCount ?? '0 / 1'}</p>
-          </div>
-
-          <div className="student-exam-hero-status">
-            <div>
-              <span>Mode</span>
-              <strong>{examData.proctoring?.mode ?? 'Online Proctoring'}</strong>
-            </div>
-            <div>
-              <span>Timer</span>
-              <strong>{formatRemainingTime(remainingSeconds)}</strong>
-            </div>
-            <div>
-              <span>Progress</span>
-              <strong>{completedCount} / {totalRequiredCount}</strong>
-            </div>
-          </div>
-        </section>
-
         {phase === 'prestart' ? (
-          <div className="student-exam-grid">
-            <section className="student-exam-panel">
-              <div className="student-exam-panel-head">
-                <span className="student-exam-panel-kicker">Exam Rules</span>
-                <h2>Start a monitored activity</h2>
-                <p>This exam starts immediately, records tab switching, and does not support save draft.</p>
+          <section className="student-exam-entry">
+            <div className="student-exam-entry-copy">
+              <span className="student-exam-kicker">Student Exam</span>
+              <h1>{resolved.title}</h1>
+              <p>{resolved.type} assessment with monitored single-flow navigation.</p>
+              <div className="student-exam-badge-row">
+                {prestartBadges.map((badge) => (
+                  <span key={badge} className="student-exam-badge">{badge}</span>
+                ))}
               </div>
+            </div>
 
-              <div className="student-exam-rule-list">
-                <div><ShieldCheck size={16} strokeWidth={2.1} /><span>Online proctoring is active for this attempt.</span></div>
-                <div><Clock3 size={16} strokeWidth={2.1} /><span>Auto-submit will run when the timer reaches zero.</span></div>
-                <div><AlertTriangle size={16} strokeWidth={2.1} /><span>Tab switches and fullscreen exits are recorded.</span></div>
-                <div><CheckCircle2 size={16} strokeWidth={2.1} /><span>Assigned scaffolding is mandatory and must be completed.</span></div>
-              </div>
-
-              <div className="student-exam-module-strip">
-                {questionSections.length ? <span><FileText size={14} strokeWidth={2} /> Question</span> : null}
-                {formSections.length ? <span><Activity size={14} strokeWidth={2} /> Form</span> : null}
-                {scaffoldingSections.length ? <span><CheckCircle2 size={14} strokeWidth={2} /> Scaffolding</span> : null}
-              </div>
-
-              <div className="student-exam-panel-actions">
-                <button type="button" className="ghost" onClick={onBackToActivities}>Back</button>
-                <button type="button" className="tool-btn green" onClick={startExam}>
-                  <Play size={14} strokeWidth={2.2} />
+            <div className="student-exam-entry-side">
+              <div className="student-exam-entry-panel">
+                <div className="student-exam-entry-rule">
+                  <ShieldCheck size={18} strokeWidth={2.1} />
+                  <span>Online proctoring is active for this attempt.</span>
+                </div>
+                {hasTimer ? (
+                  <div className="student-exam-entry-rule">
+                    <Clock3 size={18} strokeWidth={2.1} />
+                    <span>Auto-submit will run when the timer reaches zero.</span>
+                  </div>
+                ) : null}
+                <div className="student-exam-entry-rule">
+                  <AlertTriangle size={18} strokeWidth={2.1} />
+                  <span>Tab switches and fullscreen exits are recorded.</span>
+                </div>
+                <button type="button" className="student-exam-primary-btn" onClick={startExam}>
+                  <Play size={16} strokeWidth={2.2} />
                   Start Activity
                 </button>
               </div>
-            </section>
-
-            <section className="student-exam-panel is-side">
-              <div className="student-exam-panel-head">
-                <span className="student-exam-panel-kicker">Assignment Summary</span>
-                <h2>What the student will answer</h2>
-              </div>
-
-              <div className="student-exam-summary-grid">
-                <div><span>Questions</span><strong>{questionSections.length}</strong></div>
-                <div><span>Forms</span><strong>{formSections.length}</strong></div>
-                <div><span>Scaffolding</span><strong>{scaffoldingSections.length}</strong></div>
-                <div><span>Duration</span><strong>{examData.durationMinutes ?? 30} min</strong></div>
-              </div>
-            </section>
-          </div>
+            </div>
+          </section>
         ) : null}
 
-        {phase === 'active' ? (
-          <div className="student-exam-grid">
-            <section className="student-exam-panel student-exam-panel-main">
-              <div className="student-exam-sticky-bar">
-                <div className="student-exam-live-chip">
-                  <ShieldCheck size={14} strokeWidth={2.1} />
-                  Live monitored
-                </div>
-                <div className="student-exam-timer-chip">
-                  <Clock3 size={14} strokeWidth={2.1} />
-                  {formatRemainingTime(remainingSeconds)}
-                </div>
+        {phase === 'active' && currentItem ? (
+          <div className="student-exam-stage">
+            <header className="student-exam-topbar">
+              <div className="student-exam-topbar-copy">
+                <span className="student-exam-kicker">Student Exam</span>
+                <h1>{resolved.title}</h1>
               </div>
-
-              {renderedReferenceImages.length ? (
-                <section className="student-exam-reference-panel">
-                  <div className="student-exam-panel-head">
-                    <span className="student-exam-panel-kicker">Reference</span>
-                    <h2>Assigned visual context</h2>
-                  </div>
-                  <div className="student-exam-reference-grid">
-                    {renderedReferenceImages.map((image) => (
-                      <div key={image.id ?? image.slotKey ?? image.previewUrl} className="student-exam-reference-card">
-                        {image.previewUrl || image.src ? <img src={image.previewUrl ?? image.src} alt={image.label ?? 'Assigned reference'} /> : <ImageIcon size={24} strokeWidth={2} />}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {questionSections.length ? (
-                <section className="student-exam-section">
-                  <div className="student-exam-panel-head">
-                    <span className="student-exam-panel-kicker">Question Block</span>
-                    <h2>Main assigned questions</h2>
-                  </div>
-                  <div className="student-exam-question-list">
-                    {questionSections.map((item) => (
-                      <QuestionResponseCard
-                        key={item.id}
-                        item={item}
-                        value={answers.questions[item.id] ?? ''}
-                        onChange={(value) => updateQuestionAnswer(item.id, value)}
-                        isMandatory
-                      />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {formSections.length ? (
-                <section className="student-exam-section">
-                  <div className="student-exam-panel-head">
-                    <span className="student-exam-panel-kicker">Form Block</span>
-                    <h2>Assigned form responses</h2>
-                  </div>
-                  <div className="student-exam-question-list">
-                    {formSections.map((item) => (
-                      <FormResponseCard
-                        key={item.id}
-                        item={item}
-                        responses={answers.forms}
-                        onChange={updateFormAnswer}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {scaffoldingSections.length ? (
-                <section className="student-exam-section">
-                  <div className="student-exam-panel-head">
-                    <span className="student-exam-panel-kicker">Mandatory Scaffolding</span>
-                    <h2>Complete every assigned support prompt</h2>
-                    <p>Scaffolding is part of the graded student flow for this attempt.</p>
-                  </div>
-                  <div className="student-exam-question-list">
-                    {scaffoldingSections.map((item) => (
-                      <QuestionResponseCard
-                        key={item.id}
-                        item={item}
-                        value={answers.scaffolding[item.id] ?? ''}
-                        onChange={(value) => updateScaffoldingAnswer(item.id, value)}
-                        isMandatory
-                      />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              <div className="student-exam-submit-bar">
-                <div className="student-exam-submit-copy">
-                  <strong>Submit when every mandatory answer is complete.</strong>
-                  <span>{completedCount} of {totalRequiredCount} required responses are complete.</span>
-                </div>
-                <button type="button" className="tool-btn green" onClick={() => handleSubmit('manual')}>
-                  Submit Activity
-                </button>
+              <div className="student-exam-topbar-meta">
+                <span className="student-exam-status-pill is-live-monitoring">
+                  <span className="student-exam-live-dot" aria-hidden="true" />
+                  Live Monitoring
+                </span>
+                <span className="student-exam-status-pill">
+                  <Activity size={14} strokeWidth={2.1} />
+                  Question {currentIndex + 1} of {examItems.length}
+                </span>
+                {hasTimer ? (
+                  <span className="student-exam-status-pill">
+                    <Clock3 size={14} strokeWidth={2.1} />
+                    {formatRemainingTime(remainingSeconds)}
+                  </span>
+                ) : null}
               </div>
-            </section>
+            </header>
 
-            <aside className="student-exam-panel is-side">
-              <div className="student-exam-panel-head">
-                <span className="student-exam-panel-kicker">Proctoring</span>
-                <h2>Live monitoring</h2>
-              </div>
-
-              <div className="student-exam-summary-grid">
-                {proctoringSummary.map((item) => (
-                  <div key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </div>
-                ))}
-              </div>
-
-              <div className="student-exam-log">
-                <strong>Recent events</strong>
-                <div className="student-exam-log-list">
-                  {proctoringLog.length ? proctoringLog.map((entry) => (
-                    <div key={entry.id}>
-                      <span>{entry.time}</span>
-                      <p>{entry.message}</p>
+            <section className="student-exam-stage-card">
+              {isFocusPaused ? (
+                <div className="student-exam-pause-overlay" role="alertdialog" aria-modal="true" aria-labelledby="exam-pause-title">
+                  <div className="student-exam-pause-card">
+                    <div className="student-exam-pause-icon" aria-hidden="true">
+                      <AlertTriangle size={20} strokeWidth={2.2} />
                     </div>
-                  )) : (
-                    <div>
-                      <span>Live</span>
-                      <p>No warnings recorded yet for this attempt.</p>
+                    <span className="student-exam-panel-kicker">Monitoring Pause</span>
+                    <h2 id="exam-pause-title">Exam paused after focus loss</h2>
+                    <p>This event has been recorded. Resume the monitored exam to continue answering.</p>
+                    <div className="student-exam-pause-stats">
+                      <span>Warnings {warningCount}</span>
+                      <span>Tab switches {tabSwitchCount}</span>
+                      <span>Fullscreen exits {fullscreenExitCount}</span>
                     </div>
+                    <button type="button" className="student-exam-primary-btn" onClick={resumeExam}>
+                      Resume Exam
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <StudentQuestionCard
+                item={currentItem}
+                activityType={resolved.type}
+                value={currentItemValue}
+                formValues={answers.forms}
+                onChangeQuestion={updateQuestionAnswer}
+                onChangeForm={updateFormAnswer}
+                referenceImages={currentIndex === 0 ? renderedReferenceImages : []}
+                progressLabel={`Question ${currentIndex + 1} of ${examItems.length}`}
+              />
+
+              <footer className="student-exam-stage-footer">
+                <div className="student-exam-stage-progress">
+                  <span>{completedCount} of {examItems.length} completed</span>
+                  <div className="student-exam-stage-progress-bar" aria-hidden="true">
+                    <span style={{ width: `${(completedCount / Math.max(examItems.length, 1)) * 100}%` }} />
+                  </div>
+                </div>
+
+                <div className="student-exam-nav">
+                  <button type="button" className="student-exam-secondary-btn" onClick={() => moveQuestion(-1)} disabled={currentIndex === 0}>
+                    <ArrowLeft size={16} strokeWidth={2.1} />
+                    Previous
+                  </button>
+
+                  {currentIndex < examItems.length - 1 ? (
+                    <button
+                      type="button"
+                      className="student-exam-primary-btn"
+                      onClick={() => moveQuestion(1)}
+                    >
+                      Next
+                      <ArrowRight size={16} strokeWidth={2.1} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="student-exam-primary-btn"
+                      onClick={requestFinalSubmit}
+                      disabled={!isCurrentAnswered}
+                    >
+                      <SendHorizonal size={16} strokeWidth={2.1} />
+                      Submit Activity
+                    </button>
                   )}
                 </div>
-              </div>
-            </aside>
+              </footer>
+            </section>
           </div>
         ) : null}
 
         {phase === 'submitted' ? (
-          <section className="student-exam-panel student-exam-submitted">
+          <section className="student-exam-submitted-stage">
             <div className="student-exam-submitted-icon">
-              <CheckCircle2 size={26} strokeWidth={2.1} />
+              <CheckCircle2 size={28} strokeWidth={2.1} />
             </div>
-            <div className="student-exam-panel-head">
+            <div className="student-exam-submitted-copy">
               <span className="student-exam-panel-kicker">Submitted</span>
               <h2>Activity submitted successfully</h2>
-              <p>{submittedAt ? `Submission recorded on ${submittedAt}.` : 'Submission recorded.'}</p>
+              <p>{submittedAt ? `Submission recorded on ${submittedAt}.` : 'Submission recorded successfully.'}</p>
             </div>
-
-            <div className="student-exam-summary-grid">
-              <div><span>Warnings</span><strong>{warningCount}</strong></div>
-              <div><span>Tab switches</span><strong>{tabSwitchCount}</strong></div>
-              <div><span>Fullscreen exits</span><strong>{fullscreenExitCount}</strong></div>
-              <div><span>Completed</span><strong>{completedCount} / {totalRequiredCount}</strong></div>
+            <div className="student-exam-badge-row">
+              <span className="student-exam-badge">Completed {completedCount} / {examItems.length}</span>
+              <span className="student-exam-badge">Warnings {warningCount}</span>
+              <span className="student-exam-badge">Tab switches {tabSwitchCount}</span>
             </div>
-
-            <div className="student-exam-panel-actions">
-              <button type="button" className="ghost" onClick={onBackToActivities}>Back to My Skill Activity</button>
-            </div>
+            <button type="button" className="student-exam-secondary-btn" onClick={onBackToActivities}>
+              Back to My Skill Activity
+            </button>
           </section>
         ) : null}
       </div>
+
+      {isSubmitConfirmOpen ? (
+        <div className="student-exam-confirm-backdrop" onClick={() => setIsSubmitConfirmOpen(false)} aria-hidden="true">
+          <div className="student-exam-confirm-dialog" onClick={(event) => event.stopPropagation()}>
+            <span className="student-exam-panel-kicker">Final Submission</span>
+            <h3>Submit this activity now?</h3>
+            <p>You cannot edit your answers after final submission.</p>
+            <div className="student-exam-confirm-actions">
+              <button type="button" className="student-exam-secondary-btn" onClick={() => setIsSubmitConfirmOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="student-exam-primary-btn" onClick={() => handleSubmit('manual')}>
+                Submit Final
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

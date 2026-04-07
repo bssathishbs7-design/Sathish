@@ -142,6 +142,7 @@ function App() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
+  const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
   const profileUser = {
     name: 'Karthik Subramanian',
     registerId: 'MC2568',
@@ -282,24 +283,28 @@ function App() {
   }
 
   return (
-    <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''}`}>
-      <div
-        className={`vx-overlay ${mobileSidebarOpen ? 'open' : ''}`}
-        onClick={() => setMobileSidebarOpen(false)}
-        aria-hidden="true"
-      />
+    <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''} ${isExamMode ? 'is-exam-mode' : ''}`}>
+      {!isExamMode ? (
+        <div
+          className={`vx-overlay ${mobileSidebarOpen ? 'open' : ''}`}
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      ) : null}
 
-      <Sidebar
-        mobileSidebarOpen={mobileSidebarOpen}
-        sidebarCollapsed={sidebarCollapsed}
-        theme={theme}
-        useCompactLogo={useCompactLogo}
-        activePage={activePage}
-        onSelectPage={navigateToPage}
-        onCloseMobile={() => setMobileSidebarOpen(false)}
-      />
+      {!isExamMode ? (
+        <Sidebar
+          mobileSidebarOpen={mobileSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          theme={theme}
+          useCompactLogo={useCompactLogo}
+          activePage={activePage}
+          onSelectPage={navigateToPage}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
+        />
+      ) : null}
 
-      <main className="vx-main">
+      <main className={`vx-main ${isExamMode ? 'is-exam-main' : ''}`}>
         {alerts.length ? (
           <div className="vx-alert-stack">
             {alerts.map((alert) => (
@@ -308,24 +313,26 @@ function App() {
           </div>
         ) : null}
 
-        <Navbar
-          sidebarCollapsed={sidebarCollapsed}
-          onOpenSidebar={() => setMobileSidebarOpen(true)}
-          onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          onOpenNotifications={() => showAlert({ tone: 'primary', message: 'No new notifications right now.' })}
-          theme={theme}
-          onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
-          isProfileMenuOpen={isProfileMenuOpen}
-          onToggleProfileMenu={() => setIsProfileMenuOpen((open) => !open)}
-          profileUser={profileUser}
-          onEditProfile={handleEditProfile}
-          onSignOut={handleSignOut}
-          profileToast={profileToast}
-        />
+        {!isExamMode ? (
+          <Navbar
+            sidebarCollapsed={sidebarCollapsed}
+            onOpenSidebar={() => setMobileSidebarOpen(true)}
+            onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
+            onOpenNotifications={() => showAlert({ tone: 'primary', message: 'No new notifications right now.' })}
+            theme={theme}
+            onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+            isProfileMenuOpen={isProfileMenuOpen}
+            onToggleProfileMenu={() => setIsProfileMenuOpen((open) => !open)}
+            profileUser={profileUser}
+            onEditProfile={handleEditProfile}
+            onSignOut={handleSignOut}
+            profileToast={profileToast}
+          />
+        ) : null}
 
-        <div key={activePage} className="vx-page-surface vx-page-dissolve">
+        <div key={activePage} className={`vx-page-surface vx-page-dissolve ${isExamMode ? 'is-exam-surface' : ''}`}>
           {activePage === APP_PAGES.DASHBOARD ? (
             <DashboardSummaryPage onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)} />
           ) : activePage === APP_PAGES.CONFIGURATION ? (
@@ -463,23 +470,25 @@ function App() {
 
       </main>
 
-      <nav className="vx-mobile-nav">
-        <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
-        <button
-          type="button"
-          className={activePage === APP_PAGES.DASHBOARD ? 'active' : ''}
-          onClick={() => navigateToPage(APP_PAGES.DASHBOARD)}
-        >
-          {APP_PAGES.DASHBOARD}
-        </button>
-        <button
-          type="button"
-          className={activePage === APP_PAGES.PROFILE_SETTINGS ? 'active' : ''}
-          onClick={handleEditProfile}
-        >
-          Profile
-        </button>
-      </nav>
+      {!isExamMode ? (
+        <nav className="vx-mobile-nav">
+          <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
+          <button
+            type="button"
+            className={activePage === APP_PAGES.DASHBOARD ? 'active' : ''}
+            onClick={() => navigateToPage(APP_PAGES.DASHBOARD)}
+          >
+            {APP_PAGES.DASHBOARD}
+          </button>
+          <button
+            type="button"
+            className={activePage === APP_PAGES.PROFILE_SETTINGS ? 'active' : ''}
+            onClick={handleEditProfile}
+          >
+            Profile
+          </button>
+        </nav>
+      ) : null}
     </div>
   )
 }
