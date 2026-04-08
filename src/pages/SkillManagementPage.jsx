@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ClipboardPlus,
   Eye,
+  FlaskConical,
   FileSignature,
   FileText,
   Info,
@@ -1126,7 +1127,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                       ? FileText
                                       : option.value === 'OSCE'
                                         ? Stethoscope
-                                        : Sparkles
+                                        : FlaskConical
 
                                   const Icon = icon
                                   const isActive = activityDraft.assessmentType === option.value

@@ -4,10 +4,14 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  BadgeCheck,
+  CalendarDays,
   CheckCircle2,
   Clock3,
+  Eye,
   FileText,
   Image as ImageIcon,
+  Shapes,
   Play,
   SendHorizonal,
   ShieldCheck,
@@ -18,6 +22,8 @@ const fallbackExam = {
   id: 'fallback-student-exam',
   title: 'Student Activity',
   type: 'Interpretation',
+  createdDate: '08/04/2026',
+  attemptCount: '0 / 1',
   examData: {
     assignContent: { question: true, form: false, scaffolding: true },
     durationMinutes: null,
@@ -457,15 +463,37 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       tone: reason === 'timeout' ? 'warning' : 'secondary',
       message: reason === 'timeout' ? 'Time is over. The activity was auto-submitted.' : 'Activity submitted successfully.',
     })
+
+    onBackToActivities?.()
   }
 
   const renderedReferenceImages = examData.modules?.referenceImages ?? []
+  const summaryItems = [
+    { label: 'Assessment Type', value: resolved.type ?? 'Activity', icon: Shapes },
+    { label: 'Questions', value: String(examItems.length), icon: FileText },
+    { label: 'Marks', value: examItems.reduce((total, item) => total + (Number(item.marks) || 0), 0) || 'Nil', icon: BadgeCheck },
+    { label: 'Duration', value: hasTimer ? `${examData.durationMinutes} min` : 'Flexible', icon: Clock3 },
+    { label: 'Attempt', value: resolved.attemptCount ?? '0 / 1', icon: Activity },
+    { label: 'Assigned On', value: resolved.createdDate ?? 'Not set', icon: CalendarDays },
+  ]
+  const instructionItems = [
+    'Read each question fully before answering.',
+    'Stay on this page during the monitored attempt.',
+    hasTimer ? 'Your activity will auto-submit when the timer ends.' : 'Submit the activity only after reviewing all answers.',
+    examData.proctoring?.fullscreenRequired
+      ? 'Fullscreen is required for this monitored attempt.'
+      : 'Keep the activity window active until submission.',
+  ]
   const prestartBadges = [
-    `${examItems.length} Questions`,
-    ...(sections.formSections.length ? [`${sections.formSections.length} Forms`] : []),
-    ...(sections.scaffoldingSections.length ? ['Mandatory Scaffolding'] : []),
-    examData.proctoring?.mode ?? 'Online Proctoring',
-    ...(hasTimer ? [`${examData.durationMinutes} min`] : []),
+    { label: `${examItems.length} Questions`, tone: 'is-question', icon: FileText },
+    ...(sections.formSections.length
+      ? [{ label: `${sections.formSections.length} Forms`, tone: 'is-form', icon: Shapes }]
+      : []),
+    ...(sections.scaffoldingSections.length
+      ? [{ label: 'Mandatory Scaffolding', tone: 'is-scaffolding', icon: Activity }]
+      : []),
+    { label: examData.proctoring?.mode ?? 'Online Proctoring', tone: 'is-proctoring', icon: ShieldCheck },
+    ...(hasTimer ? [{ label: `${examData.durationMinutes} min`, tone: 'is-duration', icon: Clock3 }] : []),
   ]
 
   return (
@@ -474,31 +502,65 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
         {phase === 'prestart' ? (
           <section className="student-exam-entry">
             <div className="student-exam-entry-copy">
-              <span className="student-exam-kicker">Student Exam</span>
+              <button type="button" className="student-exam-back-link" onClick={onBackToActivities}>
+                <ArrowLeft size={15} strokeWidth={2.2} />
+                Back to My Skills
+              </button>
+              <span className="student-exam-kicker is-briefing">
+                <Eye size={12} strokeWidth={2.1} />
+                Assessment Briefing
+              </span>
               <h1>{resolved.title}</h1>
-              <p>{resolved.type} assessment with monitored single-flow navigation.</p>
+              <p>Review the activity details, rules, and timing below before you begin this monitored student attempt.</p>
               <div className="student-exam-badge-row">
-                {prestartBadges.map((badge) => (
-                  <span key={badge} className="student-exam-badge">{badge}</span>
+                {prestartBadges.map((badge) => {
+                  const BadgeIcon = badge.icon
+                  return (
+                    <span key={badge.label} className={`student-exam-badge ${badge.tone}`}>
+                      <BadgeIcon size={12} strokeWidth={2} />
+                      {badge.label}
+                    </span>
+                  )
+                })}
+              </div>
+              <div className="student-exam-summary-grid">
+                {summaryItems.map((item) => (
+                  <article key={item.label} className="student-exam-summary-card">
+                    <span>
+                      <item.icon size={14} strokeWidth={2} />
+                      {item.label}
+                    </span>
+                    <strong>{item.value}</strong>
+                  </article>
                 ))}
               </div>
             </div>
 
             <div className="student-exam-entry-side">
               <div className="student-exam-entry-panel">
+                <div className="student-exam-entry-panel-head">
+                  <span className="student-exam-panel-kicker">Before You Start</span>
+                  <strong>Instruction</strong>
+                </div>
                 <div className="student-exam-entry-rule">
                   <ShieldCheck size={18} strokeWidth={2.1} />
                   <span>Online proctoring is active for this attempt.</span>
                 </div>
-                {hasTimer ? (
-                  <div className="student-exam-entry-rule">
-                    <Clock3 size={18} strokeWidth={2.1} />
-                    <span>Auto-submit will run when the timer reaches zero.</span>
-                  </div>
-                ) : null}
+                <div className="student-exam-entry-rule">
+                  <Clock3 size={18} strokeWidth={2.1} />
+                  <span>{hasTimer ? 'Auto-submit will run when the timer reaches zero.' : 'No timer is configured, but your monitoring rules still apply.'}</span>
+                </div>
                 <div className="student-exam-entry-rule">
                   <AlertTriangle size={18} strokeWidth={2.1} />
                   <span>Tab switches and fullscreen exits are recorded.</span>
+                </div>
+                <div className="student-exam-instruction-list">
+                  {instructionItems.map((instruction) => (
+                    <div key={instruction} className="student-exam-instruction-item">
+                      <span className="student-exam-instruction-dot" aria-hidden="true" />
+                      <span>{instruction}</span>
+                    </div>
+                  ))}
                 </div>
                 <button type="button" className="student-exam-primary-btn" onClick={startExam}>
                   <Play size={16} strokeWidth={2.2} />

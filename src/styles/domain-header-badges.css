@@ -1,0 +1,87 @@
+.domain-header-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.domain-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  max-width: 118px;
+  flex: 0 1 auto;
+}
+
+.domain-header-badge-key {
+  font-size: 0.54rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.82;
+  flex: 0 0 auto;
+}
+
+.domain-header-badge-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.domain-header-badge.is-cognitive {
+  border-color: rgba(83, 214, 182, 0.52);
+  background: rgba(232, 255, 247, 0.96);
+  color: #13735a;
+}
+
+.domain-header-badge.is-affective {
+  border-color: rgba(119, 212, 244, 0.54);
+  background: rgba(236, 251, 255, 0.96);
+  color: #0b6991;
+}
+
+.domain-header-badge.is-psychomotor {
+  border-color: rgba(214, 205, 222, 0.8);
+  background: rgba(249, 247, 251, 0.97);
+  color: #6c6275;
+}
+
+body.dark-mode .domain-header-badge.is-cognitive,
+.theme-dark .domain-header-badge.is-cognitive {
+  border-color: rgba(58, 176, 143, 0.54);
+  background: rgba(10, 40, 31, 0.94);
+  color: #88f0c5;
+}
+
+body.dark-mode .domain-header-badge.is-affective,
+.theme-dark .domain-header-badge.is-affective {
+  border-color: rgba(72, 161, 200, 0.56);
+  background: rgba(9, 33, 41, 0.94);
+  color: #8cdcff;
+}
+
+body.dark-mode .domain-header-badge.is-psychomotor,
+.theme-dark .domain-header-badge.is-psychomotor {
+  border-color: rgba(129, 118, 145, 0.58);
+  background: rgba(28, 24, 34, 0.94);
+  color: #d7c8e7;
+}
+
+@media (max-width: 760px) {
+  .domain-header-badges {
+    gap: 5px;
+    flex-wrap: nowrap;
+  }
+
+  .domain-header-badge {
+    max-width: 104px;
+    padding-inline: 8px;
+  }
+}

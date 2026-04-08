@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import DomainBadgeRow from '../components/DomainBadgeRow'
+import DomainHeaderBadges from '../components/DomainHeaderBadges'
 import '../styles/ospe-activity.css'
 
 const cognitiveOptions = ['Not Applicable', 'Remember', 'Understand', 'Apply', 'Analyse', 'Evaluate', 'Create']
@@ -136,6 +137,9 @@ const buildAssignThresholdRows = (totalMarks) => {
     { id: `threshold-c-${safeTotal}`, label: 'Proficient', from: String(secondCut), to: String(safeTotal) },
   ]
 }
+const buildEmptyAssignThresholdRows = () => ([
+  { id: `threshold-${Date.now()}`, label: '', from: '0', to: '' },
+])
 const fallbackOspeActivitySeed = {
   activity: {
     id: 'ospe-activity-seed',
@@ -302,7 +306,7 @@ function InlineToggle({ checked, onChange, label }) {
 
 function ChecklistCard({ item, index, isEditing, marksEnabled, onActivate, onUpdate, onDelete }) {
   return (
-    <article className={`ospe-builder-card ${isEditing ? 'is-editing' : ''}`} data-editor-id={item.id} onClick={() => onActivate(item.id)}>
+    <article className={`ospe-builder-card ${isEditing ? 'is-editing' : ''} ${item.isCritical ? 'is-critical' : ''}`} data-editor-id={item.id} onClick={() => onActivate(item.id)}>
       <div className="ospe-builder-card-head">
         <div className="ospe-builder-card-topline">
           <div className="ospe-builder-card-copy">
@@ -311,8 +315,9 @@ function ChecklistCard({ item, index, isEditing, marksEnabled, onActivate, onUpd
             </div>
           </div>
           <div className="ospe-builder-card-meta">
+            <DomainHeaderBadges values={item} />
             <MetaPill tone="default">{item.marks} mark</MetaPill>
-            {item.isCritical ? <MetaPill tone="warning"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
+            {item.isCritical ? <MetaPill tone="criticality"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
             {!item.isEnabled ? <MetaPill tone="warning">Disabled</MetaPill> : null}
             <button
               type="button"
@@ -396,15 +401,16 @@ function FormCard({
 }) {
   const responses = getVisibleFormResponses(item)
   return (
-    <article className={`ospe-builder-card ${isEditing ? 'is-editing' : ''}`} data-editor-id={item.id} onClick={() => onActivate(item.id)}>
+    <article className={`ospe-builder-card ${isEditing ? 'is-editing' : ''} ${item.isCritical ? 'is-critical' : ''}`} data-editor-id={item.id} onClick={() => onActivate(item.id)}>
       <div className="ospe-builder-card-head">
         <div className="ospe-builder-card-topline">
           <div className="ospe-builder-card-copy">
             <span className="ospe-builder-card-kicker">Form {index + 1}</span>
           </div>
           <div className="ospe-builder-card-meta">
+            <DomainHeaderBadges values={item} />
             <MetaPill tone="default">{item.marks} mark</MetaPill>
-            {item.isCritical ? <MetaPill tone="warning"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
+            {item.isCritical ? <MetaPill tone="criticality"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
             <button
               type="button"
               className="ospe-icon-btn is-danger"
@@ -450,7 +456,7 @@ function FormCard({
                       )}
                     </label>
                     <label className="forms-field ospe-form-response-unit">
-                      <span>{responseIndex === 0 ? 'Expected response' : ''}</span>
+                      <span>{responseIndex === 0 ? 'Optional Input' : ''}</span>
                       <div className="forms-select-wrap">
                         <select
                           value={response.expectedResponse}
@@ -463,7 +469,7 @@ function FormCard({
                           }}
                         >
                           {unitOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                          <option value={addResponseTypeOptionValue}>+ Add expected response</option>
+                          <option value={addResponseTypeOptionValue}>+ Add Input response</option>
                         </select>
                       </div>
                     </label>
@@ -545,16 +551,17 @@ function FormCard({
 
 function ScaffoldingCard({ item, index, isEditing, marksEnabled, onActivate, onUpdate, onDelete }) {
   return (
-    <article className={`ospe-builder-card ${isEditing ? 'is-editing' : ''}`} data-editor-id={item.id} onClick={() => onActivate(item.id)}>
+    <article className={`ospe-builder-card ${isEditing ? 'is-editing' : ''} ${item.isCritical ? 'is-critical' : ''}`} data-editor-id={item.id} onClick={() => onActivate(item.id)}>
       <div className="ospe-builder-card-head">
         <div className="ospe-builder-card-topline">
           <div className="ospe-builder-card-copy">
             <span className="ospe-builder-card-kicker">Scaffolding {index + 1}</span>
           </div>
           <div className="ospe-builder-card-meta">
+            <DomainHeaderBadges values={item} />
             <MetaPill tone="default">{item.type}</MetaPill>
             <MetaPill tone="default">{item.marks} mark</MetaPill>
-            {item.isCritical ? <MetaPill tone="warning"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
+            {item.isCritical ? <MetaPill tone="criticality"><Flag size={12} strokeWidth={2} />Criticality</MetaPill> : null}
             <button
               type="button"
               className="ospe-icon-btn is-danger"
@@ -666,12 +673,12 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const [certifiableEnabled, setCertifiableEnabled] = useState(() => Boolean(activity?.certifiable ?? activity?.showCertifiable))
   const [isActivitySaved, setIsActivitySaved] = useState(false)
   const [isReviewAssignPopupOpen, setIsReviewAssignPopupOpen] = useState(false)
-  const [assignThresholds, setAssignThresholds] = useState(() => buildAssignThresholdRows(10))
+  const [assignThresholds, setAssignThresholds] = useState(() => buildEmptyAssignThresholdRows())
   const [assignYear, setAssignYear] = useState(assignDefaultYear)
   const [assignSgt, setAssignSgt] = useState('')
   const [isAssignScheduleEnabled, setIsAssignScheduleEnabled] = useState(false)
   const [assignSchedule, setAssignSchedule] = useState({ date: '', time: '', meridiem: 'AM' })
-  const [assignContent, setAssignContent] = useState({ form: false, question: true, scaffolding: false })
+  const [assignContent, setAssignContent] = useState({ checklist: true, form: false, question: false, scaffolding: false })
   const [hasCreatedChecklist, setHasCreatedChecklist] = useState(true)
   const [hasCreatedForm, setHasCreatedForm] = useState(() => generatedModules.form)
   const [hasCreatedScaffolding, setHasCreatedScaffolding] = useState(() => generatedModules.scaffolding)
@@ -779,15 +786,13 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     formCount === 0 ? 'Form' : null,
     scaffoldingCount === 0 ? 'Scaffolding' : null,
   ].filter(Boolean)
-  const ospeAssignHelperText = ospeMissingAssignTypes.length
-    ? `${ospeMissingAssignTypes.join(' and ')} ${ospeMissingAssignTypes.length > 1 ? 'are' : 'is'} not generated yet. Only student-facing modules created for this activity can be assigned.`
-    : ''
+  const ospeAssignHelperText = ''
   const assignThresholdErrors = useMemo(() => assignThresholds.map((row, index) => {
     const from = Number(row.from)
     const to = Number(row.to)
     const totalMarks = Math.max(1, Number(overallTotalMarks) || 10)
     if (Number.isNaN(from) || Number.isNaN(to)) return 'Enter valid values.'
-    if (!row.label.trim()) return 'Label is required.'
+    if (!row.label.trim()) return ''
     if (from > to) return '`From` must be less than or equal to `To`.'
     if (index === 0 && from !== 0) return 'First row must start at 0.'
     if (index > 0) {
@@ -831,12 +836,13 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       onAlert?.({ tone: 'secondary', message: 'OSPE activity saved successfully.' })
       return
     }
-    setAssignThresholds(buildAssignThresholdRows(overallTotalMarks || 10))
+    setAssignThresholds(buildEmptyAssignThresholdRows())
     setAssignYear(assignDefaultYear)
     setAssignSgt('')
     setIsAssignScheduleEnabled(false)
     setAssignSchedule({ date: '', time: '', meridiem: 'AM' })
     setAssignContent({
+      checklist: true,
       form: formCount > 0,
       question: false,
       scaffolding: scaffoldingCount > 0,
@@ -849,12 +855,9 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   }
 
   const addAssignThreshold = () => {
-    const totalMarks = Math.max(1, Number(overallTotalMarks) || 10)
-    const lastRow = assignThresholds[assignThresholds.length - 1]
     setAssignThresholds((current) => [
-      ...current.slice(0, -1),
-      { ...lastRow, id: `${lastRow.id}-split`, to: lastRow.from },
-      { id: `threshold-${Date.now()}`, label: 'New Label', from: lastRow.from, to: String(totalMarks) },
+      ...current,
+      { id: `threshold-${Date.now()}`, label: '', from: '', to: '' },
     ])
   }
 
@@ -891,6 +894,15 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       answerKey: item.answerKey ?? '',
       explanation: item.explanation ?? '',
     }))
+    const mappedChecklist = checklistItems.map((item, index) => ({
+      id: item.id ?? `checklist-${index + 1}`,
+      text: item.text || `Checklist ${index + 1}`,
+      marks: item.marks ?? '1',
+      cognitive: item.cognitive ?? 'Not Applicable',
+      affective: item.affective ?? 'Not Applicable',
+      psychomotor: item.psychomotor ?? 'Not Applicable',
+      isCritical: Boolean(item.isCritical),
+    }))
 
     onAssignActivity?.({
       id: activity?.id ?? `ospe-assignment-${Date.now()}`,
@@ -916,6 +928,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
         modules: {
           referenceImages: [],
           questions: [],
+          checklist: assignContent.checklist ? mappedChecklist : [],
           form: assignContent.form ? mappedFormItems : [],
           scaffolding: assignContent.scaffolding ? mappedScaffolding : [],
         },
@@ -1335,33 +1348,52 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                   <X size={16} strokeWidth={2.2} />
                 </button>
               </div>
-              <div className="ospe-assign-content-row">
-                <span className="ospe-assign-panel-badge">Assign Type Check :</span>
-                {formCount > 0 ? (
-                  <label className="ospe-assign-check">
-                    <input
-                      type="checkbox"
-                      checked={assignContent.form}
-                      onChange={(event) => setAssignContent((current) => ({ ...current, form: event.target.checked }))}
-                    />
-                    <span>Form</span>
-                  </label>
-                ) : null}
-                {scaffoldingCount > 0 ? (
-                  <label className="ospe-assign-check">
-                    <input
-                      type="checkbox"
-                      checked={assignContent.scaffolding}
-                      onChange={(event) => setAssignContent((current) => ({ ...current, scaffolding: event.target.checked }))}
-                    />
-                    <span>Scaffolding</span>
-                  </label>
-                ) : null}
+              <div className="ospe-assign-type-grid">
+                <section className="ospe-assign-panel ospe-assign-panel--compact">
+                  <div className="ospe-assign-panel-head">
+                    <span className="ospe-assign-panel-badge">Assign To Faculty :</span>
+                  </div>
+                  <div className="ospe-assign-pill-row">
+                    <label className="ospe-assign-check is-static">
+                      <input
+                        type="checkbox"
+                        checked={assignContent.checklist}
+                        onChange={(event) => setAssignContent((current) => ({ ...current, checklist: event.target.checked }))}
+                      />
+                      <span>Checklist</span>
+                    </label>
+                  </div>
+                </section>
+                <section className="ospe-assign-panel ospe-assign-panel--compact">
+                  <div className="ospe-assign-panel-head">
+                    <span className="ospe-assign-panel-badge">Assign To Student :</span>
+                  </div>
+                  <div className="ospe-assign-pill-row">
+                    <label className={`ospe-assign-check ${formCount > 0 ? '' : 'is-disabled'}`.trim()}>
+                      <input
+                        type="checkbox"
+                        checked={assignContent.form}
+                        disabled={formCount === 0}
+                        onChange={(event) => setAssignContent((current) => ({ ...current, form: event.target.checked }))}
+                      />
+                      <span>Form</span>
+                    </label>
+                    <label className={`ospe-assign-check ${scaffoldingCount > 0 ? '' : 'is-disabled'}`.trim()}>
+                      <input
+                        type="checkbox"
+                        checked={assignContent.scaffolding}
+                        disabled={scaffoldingCount === 0}
+                        onChange={(event) => setAssignContent((current) => ({ ...current, scaffolding: event.target.checked }))}
+                      />
+                      <span>Scaffolding</span>
+                    </label>
+                  </div>
+                </section>
               </div>
               {ospeAssignHelperText ? <small className="ospe-assign-helper">{ospeAssignHelperText}</small> : null}
               <div className="ospe-review-popup-foot">
                 <div className="ospe-assign-grid">
-                  <section className="ospe-assign-panel">
+                <section className="ospe-assign-panel ospe-assign-panel--threshold">
                     <div className="ospe-assign-panel-head">
                       <span className="ospe-assign-panel-badge">Threshold Configuration *</span>
                     </div>
@@ -1371,17 +1403,17 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                           <input
                             value={row.label}
                             onChange={(event) => updateAssignThreshold(row.id, 'label', event.target.value)}
-                            placeholder="Text label"
+                            placeholder="Create label"
                           />
                           <input
                             value={row.from}
                             onChange={(event) => updateAssignThreshold(row.id, 'from', event.target.value)}
-                            placeholder="0"
+                            placeholder="From"
                           />
                           <input
                             value={row.to}
                             onChange={(event) => updateAssignThreshold(row.id, 'to', event.target.value)}
-                            placeholder="0"
+                            placeholder="To"
                           />
                           <div className="ospe-threshold-actions">
                             <button
@@ -1407,7 +1439,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                     </div>
                   </section>
 
-                  <section className="ospe-assign-panel">
+                <section className="ospe-assign-panel ospe-assign-panel--targets">
                     <div className="ospe-assign-panel-head">
                       <span className="ospe-assign-panel-badge">Assigning To *</span>
                     </div>
