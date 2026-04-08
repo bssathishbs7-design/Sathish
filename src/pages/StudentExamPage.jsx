@@ -4,17 +4,26 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  BookOpenCheck,
   BadgeCheck,
   CalendarDays,
   CheckCircle2,
   Clock3,
   Eye,
   FileText,
+  Fingerprint,
+  GraduationCap,
+  HeartHandshake,
+  Images,
   Image as ImageIcon,
+  Microscope,
   Shapes,
   Play,
   SendHorizonal,
   ShieldCheck,
+  Stethoscope,
+  UserRound,
+  Users,
 } from 'lucide-react'
 import '../styles/student-exam.css'
 
@@ -69,11 +78,56 @@ const formatRemainingTime = (totalSeconds) => {
 
 const normalizePrompt = (value, fallback) => value?.trim() || fallback
 
+const normalizeDomainValue = (value) => value ?? 'Not Applicable'
+
 const getItemTypeBadge = (section, item, activityType) => {
   if (section === 'form') return 'Form'
   if (section === 'scaffolding') return 'Scaffolding'
   return item.kind === 'MCQ' || item.kind === 'True or False' ? item.kind : activityType
 }
+
+const getItemTypeBadgeConfig = (label) => {
+  const normalized = String(label ?? '').toLowerCase()
+
+  if (normalized.includes('image')) return { tone: 'is-type-image', icon: Images }
+  if (normalized.includes('interpretation')) return { tone: 'is-type-interpretation', icon: Stethoscope }
+  if (normalized.includes('ospe')) return { tone: 'is-type-ospe', icon: Microscope }
+  if (normalized.includes('osce')) return { tone: 'is-type-osce', icon: Stethoscope }
+  if (normalized.includes('scaffolding')) return { tone: 'is-type-scaffolding', icon: Activity }
+  if (normalized.includes('form')) return { tone: 'is-type-form', icon: Shapes }
+  if (normalized.includes('mcq')) return { tone: 'is-type-question', icon: BookOpenCheck }
+  if (normalized.includes('true or false')) return { tone: 'is-type-question', icon: BookOpenCheck }
+
+  return { tone: 'is-type-question', icon: FileText }
+}
+
+const getStudentExamContext = (resolved, examItems) => ({
+  studentName:
+    resolved.studentName
+    ?? resolved.student?.name
+    ?? resolved.assignedStudentName
+    ?? resolved.assigneeName
+    ?? 'Assigned Student',
+  studentId:
+    resolved.studentId
+    ?? resolved.student?.id
+    ?? resolved.assignedStudentId
+    ?? resolved.registrationNumber
+    ?? 'MC2568',
+  year:
+    resolved.year
+    ?? resolved.student?.year
+    ?? resolved.targetYear
+    ?? resolved.assigningYear
+    ?? 'First Year',
+  sgt:
+    resolved.sgt
+    ?? resolved.student?.sgt
+    ?? resolved.targetSgt
+    ?? resolved.assigningSgt
+    ?? 'SGT A',
+  questionCount: examItems.length,
+})
 
 const getAssignedSections = (assignment) => {
   const resolved = assignment ?? fallbackExam
@@ -92,6 +146,9 @@ const getAssignedSections = (assignment) => {
         placeholder: question.placeholder ?? 'Enter your answer here.',
         options: question.options ?? [],
         domain: question.domain ?? 'Cognitive',
+        cognitive: normalizeDomainValue(question.cognitive ?? (question.domain === 'Cognitive' ? question.domain : undefined)),
+        affective: normalizeDomainValue(question.affective),
+        psychomotor: normalizeDomainValue(question.psychomotor),
         isCritical: Boolean(question.isCritical),
         tags: question.tags ?? [],
       }))
@@ -111,6 +168,9 @@ const getAssignedSections = (assignment) => {
           placeholder: `Enter ${response.label ?? `response ${responseIndex + 1}`.toLowerCase()}`,
         })),
         domain: item.domain ?? 'Psychomotor',
+        cognitive: normalizeDomainValue(item.cognitive),
+        affective: normalizeDomainValue(item.affective),
+        psychomotor: normalizeDomainValue(item.psychomotor ?? (item.domain === 'Psychomotor' ? item.domain : undefined)),
         isCritical: Boolean(item.isCritical),
         tags: item.tags ?? [],
       }))
@@ -127,6 +187,9 @@ const getAssignedSections = (assignment) => {
         placeholder: question.placeholder ?? 'Complete this mandatory scaffolding response.',
         options: question.options ?? [],
         domain: question.domain ?? 'Cognitive',
+        cognitive: normalizeDomainValue(question.cognitive ?? (question.domain === 'Cognitive' ? question.domain : undefined)),
+        affective: normalizeDomainValue(question.affective),
+        psychomotor: normalizeDomainValue(question.psychomotor),
         isCritical: Boolean(question.isCritical),
         tags: question.tags ?? [],
       }))
@@ -165,21 +228,22 @@ function StudentQuestionCard({
   const isChoice = item.kind === 'MCQ' || item.kind === 'True or False'
   const options = item.kind === 'True or False' && item.options.length === 0 ? ['True', 'False'] : item.options
   const badges = [
-    progressLabel,
-    `Domain: ${item.domain ?? 'Cognitive'}`,
-    `${item.marks} Marks`,
-    getItemTypeBadge(item.section, item, activityType),
-    ...(item.isCritical ? ['Critical'] : []),
-    ...(item.tags ?? []),
+    { label: `COG ${item.cognitive ?? 'Not Applicable'}`, tone: 'is-domain-cognitive' },
+    { label: `AFF ${item.affective ?? 'Not Applicable'}`, tone: 'is-domain-affective' },
+    { label: `PSY ${item.psychomotor ?? 'Not Applicable'}`, tone: 'is-domain-psychomotor' },
+    ...(item.isCritical ? [{ label: 'Criticality', tone: 'is-critical', icon: AlertTriangle }] : []),
+    { label: `${item.marks} Mark${String(item.marks) === '1' ? '' : 's'}`, tone: 'is-marks', icon: BadgeCheck },
+    ...(item.tags ?? []).map((tag) => ({ label: tag, tone: 'is-tag' })),
   ]
 
   return (
-    <article className="student-exam-question-stage">
+    <article className={`student-exam-question-stage ${item.isCritical ? 'is-critical' : ''}`}>
       <div className="student-exam-question-top">
         <div className="student-exam-badge-row">
           {badges.map((badge) => (
-            <span key={`${item.id}-${badge}`} className={`student-exam-badge ${badge === 'Critical' ? 'is-critical' : ''}`}>
-              {badge}
+            <span key={`${item.id}-${badge.label}`} className={`student-exam-badge ${badge.tone ?? ''}`}>
+              {badge.icon ? <badge.icon size={12} strokeWidth={2} /> : null}
+              {badge.label}
             </span>
           ))}
         </div>
@@ -468,6 +532,8 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   }
 
   const renderedReferenceImages = examData.modules?.referenceImages ?? []
+  const examContext = getStudentExamContext(resolved, examItems)
+  const sessionTypeConfig = getItemTypeBadgeConfig(resolved.type ?? 'Activity')
   const summaryItems = [
     { label: 'Assessment Type', value: resolved.type ?? 'Activity', icon: Shapes },
     { label: 'Questions', value: String(examItems.length), icon: FileText },
@@ -573,12 +639,55 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
 
         {phase === 'active' && currentItem ? (
           <div className="student-exam-stage">
-            <header className="student-exam-topbar">
-              <div className="student-exam-topbar-copy">
-                <span className="student-exam-kicker">Student Exam</span>
+            <section className="student-exam-session-banner">
+              <div className="student-exam-session-banner-copy">
+                <span className="student-exam-kicker">Live Exam Session</span>
                 <h1>{resolved.title}</h1>
+                <p>Monitored student attempt in progress. Review the active session details before continuing the response flow.</p>
+                <div className="student-exam-session-banner-tags">
+                  <span className={`student-exam-badge ${sessionTypeConfig.tone}`}>
+                    <sessionTypeConfig.icon size={12} strokeWidth={2} />
+                    {resolved.type ?? 'Activity'}
+                  </span>
+                  <span className="student-exam-badge is-marks">
+                    <FileText size={12} strokeWidth={2} />
+                    {examContext.questionCount} Questions
+                  </span>
+                </div>
               </div>
-              <div className="student-exam-topbar-meta">
+
+              <div className="student-exam-session-banner-grid">
+                <article className="student-exam-session-tile">
+                  <span>
+                    <UserRound size={13} strokeWidth={2} />
+                    Student Name
+                  </span>
+                  <strong>{examContext.studentName}</strong>
+                </article>
+                <article className="student-exam-session-tile">
+                  <span>
+                    <Fingerprint size={13} strokeWidth={2} />
+                    Student ID
+                  </span>
+                  <strong>{examContext.studentId}</strong>
+                </article>
+                <article className="student-exam-session-tile">
+                  <span>
+                    <GraduationCap size={13} strokeWidth={2} />
+                    Year
+                  </span>
+                  <strong>{examContext.year}</strong>
+                </article>
+                <article className="student-exam-session-tile">
+                  <span>
+                    <Users size={13} strokeWidth={2} />
+                    SGT
+                  </span>
+                  <strong>{examContext.sgt}</strong>
+                </article>
+              </div>
+
+              <div className="student-exam-session-banner-status">
                 <span className="student-exam-status-pill is-live-monitoring">
                   <span className="student-exam-live-dot" aria-hidden="true" />
                   Live Monitoring
@@ -594,7 +703,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                   </span>
                 ) : null}
               </div>
-            </header>
+            </section>
 
             <section className="student-exam-stage-card">
               {isFocusPaused ? (
