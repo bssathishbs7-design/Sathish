@@ -1302,6 +1302,19 @@
   min-width: 0;
 }
 
+.vx-shell.is-exam-mode {
+  background: #08120e;
+}
+
+.vx-shell.is-exam-mode::before,
+.vx-shell.is-exam-mode::after {
+  display: none;
+}
+
+.vx-main.is-exam-main {
+  min-height: 100svh;
+}
+
 .vx-topbar {
   position: sticky;
   top: 0;
@@ -1391,6 +1404,14 @@
   position: relative;
   overflow: visible;
   isolation: isolate;
+}
+
+.vx-page-surface.is-exam-surface {
+  min-height: 100svh;
+}
+
+.vx-page-surface.is-exam-surface::before {
+  display: none;
 }
 
 .vx-page-surface::before {
@@ -1820,6 +1841,10 @@
 @media (min-width: 1180px) {
   .vx-shell {
     grid-template-columns: 260px 1fr;
+  }
+
+  .vx-shell.is-exam-mode {
+    grid-template-columns: 1fr;
   }
 
   .vx-overlay {
@@ -15930,6 +15955,8 @@
   .forms-flow-row.generation-tooltip-open .forms-flow-actions {
     grid-template-columns: 1fr;
     align-items: stretch;
+    justify-items: start;
+    width: 100%;
   }
 
   .forms-flow-row.generation-tooltip-open .forms-flow-action-main {
@@ -15937,14 +15964,18 @@
     width: min(304px, 100%);
     align-items: stretch;
     justify-items: stretch;
+    justify-self: start;
   }
 
   .forms-flow-row.generation-tooltip-open .generation-tooltip {
     width: min(304px, 100%);
     margin-top: 8px;
+    justify-self: start;
   }
 
   .forms-flow-row.generation-tooltip-open .forms-flow-action-icons {
     width: min(304px, 100%);
+    margin-top: 6px;
+    justify-content: flex-start;
   }
 }

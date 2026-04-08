@@ -103,8 +103,8 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
   const activityItems = useMemo(() => ([
     ...assignedActivities.map((item) => ({
       ...item,
-      action: 'Start Activity',
-      tone: 'primary',
+      action: item.action ?? (item.status === 'Completed' ? 'View Submission' : 'Start Activity'),
+      tone: item.tone ?? (item.status === 'Completed' ? 'secondary' : 'primary'),
       status: item.status ?? 'Assigned',
     })),
     ...defaultActivities,

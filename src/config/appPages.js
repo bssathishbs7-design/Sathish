@@ -15,6 +15,7 @@ export const APP_PAGES = {
   IMAGE_ACTIVITY: 'Image Activity',
   INTERPRETATION_ACTIVITY: 'Interpretation Activity',
   MY_SKILL_ACTIVITY: 'My Skill Activity',
+  STUDENT_EXAM: 'Student Exam',
   PROGRESS_TRACKING: 'Progress Tracking',
   FACULTY_MANAGEMENT: 'Faculty Management',
   STUDENT_MANAGEMENT: 'Student Management',
@@ -34,6 +35,7 @@ export const SKILL_PAGES = [
 
 export const MY_SKILL_PAGES = [
   APP_PAGES.MY_SKILL_ACTIVITY,
+  APP_PAGES.STUDENT_EXAM,
   APP_PAGES.PROGRESS_TRACKING,
 ]
 

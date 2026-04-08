@@ -8,6 +8,7 @@ import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import MySkillActivityPage from './pages/MySkillActivityPage'
 import ProgressTrackingPage from './pages/ProgressTrackingPage'
+import StudentExamPage from './pages/StudentExamPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import StudentManagementPage from './pages/StudentManagementPage'
 import ImageActivityPage from './pages/ImageActivityPage'
@@ -23,6 +24,7 @@ const PAGE_PATHS = {
   [APP_PAGES.IMAGE_ACTIVITY]: '/skills/image-activity',
   [APP_PAGES.INTERPRETATION_ACTIVITY]: '/skills/interpretation-activity',
   [APP_PAGES.MY_SKILL_ACTIVITY]: '/my-skills/activity',
+  [APP_PAGES.STUDENT_EXAM]: '/my-skills/exam',
   [APP_PAGES.PROGRESS_TRACKING]: '/my-skills/progress',
   [APP_PAGES.FACULTY_MANAGEMENT]: '/faculty-management',
   [APP_PAGES.STUDENT_MANAGEMENT]: '/student-management',
@@ -136,9 +138,11 @@ function App() {
   const [selectedDashboardData, setSelectedDashboardData] = useState(null)
   const [savedImageActivities, setSavedImageActivities] = useState({})
   const [assignedSkillActivities, setAssignedSkillActivities] = useState([])
+  const [selectedStudentExamAssignment, setSelectedStudentExamAssignment] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
+  const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
   const profileUser = {
     name: 'Karthik Subramanian',
     registerId: 'MC2568',
@@ -301,45 +305,52 @@ function App() {
   }
 
   const handleStartAssignedSkillActivity = (assignment) => {
-    if (!assignment?.activityData?.activity) return
+    if (!assignment) return
+    setSelectedStudentExamAssignment(assignment)
+    navigateToPage(APP_PAGES.STUDENT_EXAM)
+  }
 
-    if (assignment.type === 'Image') {
-      setSelectedImageActivity(assignment.activityData)
-      navigateToPage(APP_PAGES.IMAGE_ACTIVITY)
-      return
-    }
+  const handleSubmitStudentExam = (submission) => {
+    if (!submission?.id) return
 
-    if (assignment.type === 'Interpretation') {
-      setSelectedInterpretationActivity(assignment.activityData)
-      navigateToPage(APP_PAGES.INTERPRETATION_ACTIVITY)
-      return
-    }
+    setAssignedSkillActivities((current) => current.map((item) => (
+      item.id === submission.id
+        ? {
+            ...item,
+            ...submission,
+            status: 'Completed',
+            action: 'View Submission',
+            tone: 'secondary',
+          }
+        : item
+    )))
 
-    if (assignment.type === 'OSPE' || assignment.type === 'OSCE') {
-      setSelectedOspeActivity(assignment.activityData)
-      navigateToPage(APP_PAGES.OSPE_ACTIVITY)
-    }
+    setSelectedStudentExamAssignment(submission)
   }
 
   return (
-    <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''}`}>
-      <div
-        className={`vx-overlay ${mobileSidebarOpen ? 'open' : ''}`}
-        onClick={() => setMobileSidebarOpen(false)}
-        aria-hidden="true"
-      />
+    <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''} ${isExamMode ? 'is-exam-mode' : ''}`}>
+      {!isExamMode ? (
+        <div
+          className={`vx-overlay ${mobileSidebarOpen ? 'open' : ''}`}
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      ) : null}
 
-      <Sidebar
-        mobileSidebarOpen={mobileSidebarOpen}
-        sidebarCollapsed={sidebarCollapsed}
-        theme={theme}
-        useCompactLogo={useCompactLogo}
-        activePage={activePage}
-        onSelectPage={navigateToPage}
-        onCloseMobile={() => setMobileSidebarOpen(false)}
-      />
+      {!isExamMode ? (
+        <Sidebar
+          mobileSidebarOpen={mobileSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          theme={theme}
+          useCompactLogo={useCompactLogo}
+          activePage={activePage}
+          onSelectPage={navigateToPage}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
+        />
+      ) : null}
 
-      <main className="vx-main">
+      <main className={`vx-main ${isExamMode ? 'is-exam-main' : ''}`}>
         {alerts.length ? (
           <div className="vx-alert-stack">
             {alerts.map((alert) => (
@@ -348,24 +359,26 @@ function App() {
           </div>
         ) : null}
 
-        <Navbar
-          sidebarCollapsed={sidebarCollapsed}
-          onOpenSidebar={() => setMobileSidebarOpen(true)}
-          onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          onOpenNotifications={() => showAlert({ tone: 'primary', message: 'No new notifications right now.' })}
-          theme={theme}
-          onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
-          isProfileMenuOpen={isProfileMenuOpen}
-          onToggleProfileMenu={() => setIsProfileMenuOpen((open) => !open)}
-          profileUser={profileUser}
-          onEditProfile={handleEditProfile}
-          onSignOut={handleSignOut}
-          profileToast={profileToast}
-        />
+        {!isExamMode ? (
+          <Navbar
+            sidebarCollapsed={sidebarCollapsed}
+            onOpenSidebar={() => setMobileSidebarOpen(true)}
+            onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
+            onOpenNotifications={() => showAlert({ tone: 'primary', message: 'No new notifications right now.' })}
+            theme={theme}
+            onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+            isProfileMenuOpen={isProfileMenuOpen}
+            onToggleProfileMenu={() => setIsProfileMenuOpen((open) => !open)}
+            profileUser={profileUser}
+            onEditProfile={handleEditProfile}
+            onSignOut={handleSignOut}
+            profileToast={profileToast}
+          />
+        ) : null}
 
-        <div key={activePage} className="vx-page-surface vx-page-dissolve">
+        <div key={activePage} className={`vx-page-surface vx-page-dissolve ${isExamMode ? 'is-exam-surface' : ''}`}>
           {activePage === APP_PAGES.DASHBOARD ? (
             <DashboardSummaryPage onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)} />
           ) : activePage === APP_PAGES.CONFIGURATION ? (
@@ -427,6 +440,13 @@ function App() {
             />
           ) : activePage === APP_PAGES.MY_SKILL_ACTIVITY ? (
             <MySkillActivityPage assignedActivities={assignedSkillActivities} onStartActivity={handleStartAssignedSkillActivity} />
+          ) : activePage === APP_PAGES.STUDENT_EXAM ? (
+            <StudentExamPage
+              assignment={selectedStudentExamAssignment}
+              onBackToActivities={() => navigateToPage(APP_PAGES.MY_SKILL_ACTIVITY)}
+              onSubmitExam={handleSubmitStudentExam}
+              onAlert={showAlert}
+            />
           ) : activePage === APP_PAGES.PROGRESS_TRACKING ? (
             <ProgressTrackingPage />
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
@@ -496,23 +516,25 @@ function App() {
 
       </main>
 
-      <nav className="vx-mobile-nav">
-        <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
-        <button
-          type="button"
-          className={activePage === APP_PAGES.DASHBOARD ? 'active' : ''}
-          onClick={() => navigateToPage(APP_PAGES.DASHBOARD)}
-        >
-          {APP_PAGES.DASHBOARD}
-        </button>
-        <button
-          type="button"
-          className={activePage === APP_PAGES.PROFILE_SETTINGS ? 'active' : ''}
-          onClick={handleEditProfile}
-        >
-          Profile
-        </button>
-      </nav>
+      {!isExamMode ? (
+        <nav className="vx-mobile-nav">
+          <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
+          <button
+            type="button"
+            className={activePage === APP_PAGES.DASHBOARD ? 'active' : ''}
+            onClick={() => navigateToPage(APP_PAGES.DASHBOARD)}
+          >
+            {APP_PAGES.DASHBOARD}
+          </button>
+          <button
+            type="button"
+            className={activePage === APP_PAGES.PROFILE_SETTINGS ? 'active' : ''}
+            onClick={handleEditProfile}
+          >
+            Profile
+          </button>
+        </nav>
+      ) : null}
     </div>
   )
 }
