@@ -5,26 +5,29 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
+  CircleCheckBig,
+  CircleX,
+  History,
   FileText,
-  FolderKanban,
-  GraduationCap,
   Image as ImageIcon,
   Microscope,
   Search,
   Shapes,
   Stethoscope,
   Tag,
-  UserRound,
   Users,
 } from 'lucide-react'
-import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import '../styles/evaluation.css'
 import '../styles/start-evaluation.css'
 
-const FACULTY_LIST = [
-  { id: 'fac-1', name: 'Dr. Meera Nair', role: 'Lead Evaluator' },
-  { id: 'fac-2', name: 'Dr. Arjun Kumar', role: 'Co Evaluator' },
+const CHECKLIST_FALLBACK_PROMPTS = [
+  'Performs hand hygiene and introduces self to the patient.',
+  'Confirms patient identity and explains the procedure clearly.',
+  'Positions the patient correctly before starting the examination.',
+  'Uses the instrument safely and follows the correct examination sequence.',
+  'Communicates findings clearly and maintains professional behaviour.',
 ]
 
 const formatDate = (value) => (value ? String(value).split(',')[0].trim() : 'Not set')
@@ -52,6 +55,51 @@ const getActivityTypeIcon = (value) => {
   return Shapes
 }
 
+const getChecklistMarksState = (value, maxMarks) => {
+  if (value === '' || value === null || value === undefined) return ''
+
+  const numericValue = Number(value)
+  const numericMax = Number(maxMarks)
+
+  if (Number.isNaN(numericValue) || Number.isNaN(numericMax)) return 'is-invalid'
+  if (numericValue === 0) return 'is-invalid'
+  if (numericValue > numericMax) return 'is-invalid'
+  if (numericValue > 0) return 'is-valid'
+
+  return ''
+}
+
+const getChecklistCardState = (decisionState, marksState) => {
+  if (decisionState === 'wrong' || marksState === 'is-invalid') return 'is-error'
+  if (decisionState === 'right' || marksState === 'is-valid') return 'is-success'
+  return ''
+}
+
+const getSanitizedChecklistMarksValue = (rawValue, maxMarks) => {
+  if (rawValue === '') return ''
+  if (!/^\d*\.?\d*$/.test(rawValue)) return null
+
+  const numericValue = Number(rawValue)
+  const numericMax = Number(maxMarks)
+
+  if (Number.isNaN(numericValue) || Number.isNaN(numericMax)) return null
+  if (numericValue < 0 || numericValue > numericMax) return null
+
+  return rawValue
+}
+
+const getDecisionStateFromMarks = (value) => {
+  if (value === '' || value === null || value === undefined) return ''
+
+  const numericValue = Number(value)
+
+  if (Number.isNaN(numericValue)) return ''
+  if (numericValue === 0) return 'wrong'
+  if (numericValue > 0) return 'right'
+
+  return ''
+}
+
 const buildStudentName = (index, sgt = 'SGT') => {
   const names = [
     'Aarav Menon',
@@ -64,7 +112,7 @@ const buildStudentName = (index, sgt = 'SGT') => {
     'Tanvi Patel',
   ]
 
-  return `${names[index % names.length]} ${sgt.replace(/\s+/g, '')}${index + 1}`
+  return names[index % names.length]
 }
 
 const buildEvaluationItems = (assignment, record) => {
@@ -89,9 +137,9 @@ const buildEvaluationItems = (assignment, record) => {
   })
 
   const checklistItems = (modules.checklist ?? []).map((item, index) => ({
-    ...createMetadata(item, index, `Checklist ${index + 1}`, 'checklist'),
-    label: item.text ?? `Checklist ${index + 1}`,
-    prompt: item.text ?? item.questionText ?? item.prompt ?? `Checklist ${index + 1} prompt not available.`,
+    ...createMetadata(item, index, `Checklist Item ${index + 1}`, 'checklist'),
+    label: item.text ?? CHECKLIST_FALLBACK_PROMPTS[index] ?? `Clinical checklist item ${index + 1}`,
+    prompt: item.text ?? item.questionText ?? item.prompt ?? CHECKLIST_FALLBACK_PROMPTS[index] ?? `Clinical checklist item ${index + 1}`,
     type: 'checklist',
     sectionLabel: 'Checklist',
   }))
@@ -143,9 +191,23 @@ const buildEvaluationItems = (assignment, record) => {
   if (activityType === 'osce' || activityType === 'ospe') {
     return [
       {
-        ...createMetadata({}, 0, 'Checklist 1', 'check'),
-        label: 'Checklist 1',
-        prompt: 'Verifies identity and preparation steps.',
+        ...createMetadata({}, 0, 'Checklist Item 1', 'check'),
+        label: CHECKLIST_FALLBACK_PROMPTS[0],
+        prompt: CHECKLIST_FALLBACK_PROMPTS[0],
+        type: 'checklist',
+        sectionLabel: 'Checklist',
+      },
+      {
+        ...createMetadata({}, 1, 'Checklist Item 2', 'check'),
+        label: CHECKLIST_FALLBACK_PROMPTS[1],
+        prompt: CHECKLIST_FALLBACK_PROMPTS[1],
+        type: 'checklist',
+        sectionLabel: 'Checklist',
+      },
+      {
+        ...createMetadata({}, 2, 'Checklist Item 3', 'check'),
+        label: CHECKLIST_FALLBACK_PROMPTS[2],
+        prompt: CHECKLIST_FALLBACK_PROMPTS[2],
         type: 'checklist',
         sectionLabel: 'Checklist',
       },
@@ -192,10 +254,10 @@ const buildStudentSubmission = (student, items, record, latestSubmission) => {
       return {
         ...item,
         status: hasRealSubmission ? 'Completed' : index % 2 === 0 ? 'Completed' : 'Pending',
-        answer:
+        remarks:
           hasRealSubmission
-            ? answers.questions?.[item.id] ?? answers.scaffolding?.[item.id] ?? 'Reviewed by evaluator.'
-            : `Observation ${index + 1} recorded for ${student.name}.`,
+            ? answers.questions?.[item.id] ?? answers.scaffolding?.[item.id] ?? ''
+            : '',
       }
     }
 
@@ -242,10 +304,14 @@ const buildStudentRoster = (record, assignment, latestSubmission) => {
   })
 }
 
-function StudentResponsePanel({ student, record }) {
+function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
   const activityType = String(record?.activityType ?? '').toLowerCase()
   const Icon = getActivityTypeIcon(record?.activityType)
   const submission = student?.submission
+  const [checklistRemarks, setChecklistRemarks] = useState({})
+  const [openChecklistRemarks, setOpenChecklistRemarks] = useState({})
+  const [checklistDecisions, setChecklistDecisions] = useState({})
+  const [checklistMarks, setChecklistMarks] = useState({})
   const groupedItems = useMemo(() => {
     const groups = (submission?.items ?? []).reduce((accumulator, item) => {
       const key = item.sectionLabel ?? 'Questions'
@@ -273,6 +339,39 @@ function StudentResponsePanel({ student, record }) {
     }
   }, [activeSection, groupedItems])
 
+  useEffect(() => {
+    if (!student?.id) {
+      setChecklistRemarks({})
+      setOpenChecklistRemarks({})
+      setChecklistDecisions({})
+      setChecklistMarks({})
+      onObtainedMarksChange?.(0)
+      return
+    }
+
+    const checklistItems = (submission?.items ?? []).filter((item) => item.type === 'checklist')
+    const nextRemarks = Object.fromEntries(
+      checklistItems.map((item) => [item.id, item.remarks ?? '']),
+    )
+    const nextDecisions = Object.fromEntries(
+      checklistItems.map((item) => [item.id, '']),
+    )
+    const nextMarks = Object.fromEntries(
+      checklistItems.map((item) => [item.id, '']),
+    )
+
+    setChecklistRemarks(nextRemarks)
+    setOpenChecklistRemarks({})
+    setChecklistDecisions(nextDecisions)
+    setChecklistMarks(nextMarks)
+    onObtainedMarksChange?.(0)
+  }, [student?.id, submission])
+
+  useEffect(() => {
+    const obtainedMarks = Object.values(checklistMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    onObtainedMarksChange?.(obtainedMarks)
+  }, [checklistMarks, onObtainedMarksChange])
+
   if (!student) {
     return (
       <section className="start-eval-detail-card start-eval-empty-state">
@@ -292,50 +391,67 @@ function StudentResponsePanel({ student, record }) {
 
   const activeGroup = groupedItems.find((group) => group.label === activeSection) ?? groupedItems[0]
   const activeItems = activeGroup?.items ?? []
+  const evaluatedCount = useMemo(() => (
+    activeItems.reduce((count, item) => {
+      if (item.type === 'checklist') {
+        return count + (checklistDecisions[item.id] === 'right' || checklistDecisions[item.id] === 'wrong' ? 1 : 0)
+      }
+
+      return count
+    }, 0)
+  ), [activeItems, checklistDecisions])
 
   return (
     <section className="start-eval-detail-card">
-      <div className="start-eval-detail-head">
-        <div>
-          <span className={`eval-type-chip ${getActivityTypeTone(record?.activityType)}`}>
-            {record?.activityType}
-          </span>
-          <h2>{student.name}</h2>
-          <p>{student.registerId} • Submitted {formatDate(submission?.submittedAt)}</p>
-        </div>
-        <span className={`eval-status-pill ${student.evaluationStatus === 'Completed' ? 'is-complete' : 'is-pending'}`}>
-          {student.evaluationStatus}
-        </span>
-      </div>
-
-      <div className="start-eval-response-kicker">
-        <Icon size={14} strokeWidth={2} />
-        {activityType === 'osce' || activityType === 'ospe' ? 'Checklist Review' : 'Student Response Review'}
-      </div>
-
       {groupedItems.length ? (
-        <div className="start-eval-section-tabs" role="tablist" aria-label="Student response sections">
-          {groupedItems.map((group) => (
-            <button
-              key={group.label}
-              type="button"
-              role="tab"
-              aria-selected={group.label === activeSection}
-              className={`start-eval-section-tab ${group.label === activeSection ? 'is-active' : ''}`}
-              onClick={() => setActiveSection(group.label)}
-            >
-              <span>{group.label}</span>
-              <small>{group.items.length}</small>
-            </button>
-          ))}
+        <div className="start-eval-section-head">
+          <div className="start-eval-section-tabs" role="tablist" aria-label="Student response sections">
+            {groupedItems.map((group) => (
+              <button
+                key={group.label}
+                type="button"
+                role="tab"
+                aria-selected={group.label === activeSection}
+                className={`start-eval-section-tab ${group.label === activeSection ? 'is-active' : ''}`}
+                onClick={() => setActiveSection(group.label)}
+              >
+                <span>{group.label}</span>
+                <small>{group.items.length}</small>
+              </button>
+            ))}
+          </div>
+
+          <span className="start-eval-section-progress-badge">
+            Evaluated {evaluatedCount} / {activeItems.length}
+          </span>
         </div>
       ) : null}
 
       <div className="start-eval-response-list is-ordered">
-        {activeItems.map((item, index) => (
-          <article key={item.id} className={`start-eval-response-item ${item.isCritical ? 'is-critical' : ''}`}>
-            <div className="start-eval-response-label">
-              <strong>{item.label}</strong>
+        {activeItems.map((item) => {
+          const decisionState = checklistDecisions[item.id] ?? ''
+          const marksState = item.type === 'checklist'
+            ? getChecklistMarksState(checklistMarks[item.id], item.marks)
+            : ''
+          const cardState = item.type === 'checklist'
+            ? getChecklistCardState(decisionState, marksState)
+            : ''
+
+          return (
+            <article key={item.id} className={`start-eval-response-item ${item.isCritical ? 'is-critical' : ''} ${cardState}`.trim()}>
+            <div className={`start-eval-response-top ${item.type === 'checklist' ? 'is-checklist' : ''}`}>
+              <div className="start-eval-response-label">
+                {item.type !== 'checklist' && item.type !== 'scaffolding' ? <strong>{item.label}</strong> : null}
+              </div>
+
+              <div className="start-eval-badge-row">
+                {item.type !== 'checklist' && item.type !== 'scaffolding' ? <span className="start-eval-meta-badge is-section">{item.sectionLabel}</span> : null}
+                <span className="start-eval-meta-badge is-marks"><BadgeCheck size={12} strokeWidth={2} /> {item.marks} mark{String(item.marks) === '1' ? '' : 's'}</span>
+                {item.isCritical ? <span className="start-eval-meta-badge is-critical"><AlertTriangle size={12} strokeWidth={2} /> Criticality</span> : null}
+                {item.domains?.map((domain) => <span key={`${item.id}-${domain.label}`} className={`start-eval-meta-badge ${domain.tone}`}>{domain.label}</span>)}
+                {item.tags?.map((tag) => <span key={`${item.id}-${tag}`} className="start-eval-meta-badge is-tag"><Tag size={12} strokeWidth={2} /> {tag}</span>)}
+              </div>
+
               {item.type === 'checklist' ? (
                 <span className={`eval-status-pill ${item.status === 'Completed' ? 'is-complete' : 'is-pending'}`}>
                   {item.status}
@@ -343,19 +459,8 @@ function StudentResponsePanel({ student, record }) {
               ) : null}
             </div>
 
-            <div className="start-eval-question-index">Question {index + 1}</div>
-
-            <div className="start-eval-badge-row">
-              <span className={`eval-type-chip ${getActivityTypeTone(record?.activityType)}`}>{record?.activityType}</span>
-              <span className="start-eval-meta-badge is-section">{item.sectionLabel}</span>
-              <span className="start-eval-meta-badge is-marks"><BadgeCheck size={12} strokeWidth={2} /> {item.marks} mark{String(item.marks) === '1' ? '' : 's'}</span>
-              {item.isCritical ? <span className="start-eval-meta-badge is-critical"><AlertTriangle size={12} strokeWidth={2} /> Criticality</span> : null}
-              {item.domains?.map((domain) => <span key={`${item.id}-${domain.label}`} className={`start-eval-meta-badge ${domain.tone}`}>{domain.label}</span>)}
-              {item.tags?.map((tag) => <span key={`${item.id}-${tag}`} className="start-eval-meta-badge is-tag"><Tag size={12} strokeWidth={2} /> {tag}</span>)}
-            </div>
-
             <div className="start-eval-question-box">
-              <span>Question</span>
+              <span>{item.type === 'checklist' ? 'Checklist Question' : 'Question'}</span>
               <strong>{item.prompt}</strong>
             </div>
 
@@ -370,7 +475,76 @@ function StudentResponsePanel({ student, record }) {
               </div>
             ) : null}
 
-            {item.answers ? (
+            {item.type === 'checklist' ? (
+              <div className="start-eval-checklist-actions">
+                <button
+                  type="button"
+                  className={`start-eval-remarks-toggle ${openChecklistRemarks[item.id] ? 'is-open' : ''}`}
+                  onClick={() => setOpenChecklistRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                >
+                  Remarks
+                </button>
+
+                <div className="start-eval-checklist-actions-end">
+                  <label className="start-eval-checklist-marks-field">
+                    <span>Obtained</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={item.marks}
+                      step="0.1"
+                      className={`start-eval-checklist-marks ${marksState}`}
+                      value={checklistMarks[item.id] ?? ''}
+                      onChange={(event) => {
+                        const nextValue = getSanitizedChecklistMarksValue(event.target.value, item.marks)
+
+                        if (nextValue === null) return
+
+                        setChecklistMarks((current) => ({ ...current, [item.id]: nextValue }))
+                        setChecklistDecisions((current) => ({ ...current, [item.id]: getDecisionStateFromMarks(nextValue) }))
+                      }}
+                      placeholder="Marks"
+                    />
+                  </label>
+
+                  <div className="start-eval-checklist-decision-group" role="group" aria-label="Checklist evaluation">
+                    <button
+                      type="button"
+                      className={`start-eval-checklist-icon-btn is-wrong ${decisionState === 'wrong' ? 'is-active' : ''}`}
+                      aria-label="Mark as wrong"
+                      onClick={() => {
+                        setChecklistMarks((current) => ({ ...current, [item.id]: '' }))
+                        setChecklistDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'wrong' ? '' : 'wrong' }))
+                      }}
+                    >
+                      <CircleX size={16} strokeWidth={2} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`start-eval-checklist-icon-btn is-right ${decisionState === 'right' ? 'is-active' : ''}`}
+                      aria-label="Mark as right"
+                      onClick={() => {
+                        setChecklistMarks((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : String(item.marks ?? '') }))
+                        setChecklistDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : 'right' }))
+                      }}
+                    >
+                      <CircleCheckBig size={16} strokeWidth={2} />
+                    </button>
+                  </div>
+                </div>
+
+                {openChecklistRemarks[item.id] ? (
+                  <label className="start-eval-remarks-box">
+                    <textarea
+                      rows={2}
+                      value={checklistRemarks[item.id] ?? ''}
+                      onChange={(event) => setChecklistRemarks((current) => ({ ...current, [item.id]: event.target.value }))}
+                      placeholder="Add remarks"
+                    />
+                  </label>
+                ) : null}
+              </div>
+            ) : item.answers ? (
               <div className="start-eval-form-response-list">
                 {item.answers.map((response) => (
                   <div key={response.label} className="start-eval-form-response">
@@ -386,18 +560,23 @@ function StudentResponsePanel({ student, record }) {
               </div>
             )}
 
-            <div className="start-eval-evaluator-grid">
-              <div className="start-eval-answer-box is-answer-key">
-                <span>Answer Key</span>
-                <strong>{item.answerKey}</strong>
+            {item.type !== 'checklist' && item.type !== 'form' ? (
+              <div className="start-eval-evaluator-grid">
+                <div className="start-eval-answer-box is-answer-key">
+                  <span>Answer Key</span>
+                  <strong>{item.answerKey}</strong>
+                </div>
+                {item.type !== 'scaffolding' ? (
+                  <div className="start-eval-answer-box is-explanation">
+                    <span>Explanation Answer</span>
+                    <strong>{item.explanation}</strong>
+                  </div>
+                ) : null}
               </div>
-              <div className="start-eval-answer-box is-explanation">
-                <span>Explanation Answer</span>
-                <strong>{item.explanation}</strong>
-              </div>
-            </div>
+            ) : null}
           </article>
-        ))}
+          )
+        })}
       </div>
     </section>
   )
@@ -405,7 +584,10 @@ function StudentResponsePanel({ student, record }) {
 
 export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluation }) {
   const [studentSearch, setStudentSearch] = useState('')
+  const [studentFilter, setStudentFilter] = useState('all')
   const [selectedStudentId, setSelectedStudentId] = useState('')
+  const [isStudentPickerOpen, setIsStudentPickerOpen] = useState(false)
+  const [obtainedMarks, setObtainedMarks] = useState(0)
 
   const roster = useMemo(
     () => buildStudentRoster(evaluationRecord, evaluationRecord?.assignment, evaluationRecord?.latestSubmission),
@@ -416,11 +598,17 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
     const needle = studentSearch.trim().toLowerCase()
 
     return roster.filter((student) => (
-      !needle
-      || student.name.toLowerCase().includes(needle)
-      || student.registerId.toLowerCase().includes(needle)
+      (studentFilter === 'all'
+        || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')
+        || (studentFilter === 'pending' && student.submissionStatus !== 'Submitted')
+        || (studentFilter === 'evaluated' && student.evaluationStatus === 'Completed'))
+      && (
+        !needle
+        || student.name.toLowerCase().includes(needle)
+        || student.registerId.toLowerCase().includes(needle)
+      )
     ))
-  }, [roster, studentSearch])
+  }, [roster, studentFilter, studentSearch])
 
   useEffect(() => {
     if (!filteredStudents.length) {
@@ -435,20 +623,42 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
   }, [filteredStudents, selectedStudentId])
 
   const selectedStudent = filteredStudents.find((student) => student.id === selectedStudentId) ?? null
+  const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
   const submittedCount = roster.filter((student) => student.submissionStatus === 'Submitted').length
   const completedCount = roster.filter((student) => student.evaluationStatus === 'Completed').length
+  const pendingCount = roster.filter((student) => student.submissionStatus !== 'Submitted').length
+  const totalMarks = useMemo(() => {
+    const items = selectedStudent?.submission?.items ?? []
+
+    return items.reduce((sum, item) => sum + (Number(item.marks) || 0), 0)
+  }, [selectedStudent])
+  const studentFilterOptions = [
+    { id: 'all', label: 'All', count: roster.length },
+    { id: 'submitted', label: 'Submitted', count: submittedCount },
+    { id: 'pending', label: 'Pending', count: pendingCount },
+    { id: 'evaluated', label: 'Evaluated', count: completedCount },
+  ]
+
+  const handleSelectStudent = (studentId) => {
+    setSelectedStudentId(studentId)
+    setIsStudentPickerOpen(false)
+  }
+
+  const handlePreviousStudent = () => {
+    if (selectedStudentIndex > 0) {
+      setSelectedStudentId(filteredStudents[selectedStudentIndex - 1].id)
+    }
+  }
+
+  const handleNextStudent = () => {
+    if (selectedStudentIndex > -1 && selectedStudentIndex < filteredStudents.length - 1) {
+      setSelectedStudentId(filteredStudents[selectedStudentIndex + 1].id)
+    }
+  }
 
   return (
     <section className="vx-content forms-page start-evaluation-page">
       <div className="start-eval-shell">
-        <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Evaluation' }, { label: 'Start Evaluation' }]} />
-        <div className="vx-page-intro">
-          <div className="vx-page-intro-title">
-            <ClipboardCheck size={18} strokeWidth={2} className="vx-page-intro-icon" aria-hidden="true" />
-            <h1>Start Evaluation</h1>
-          </div>
-        </div>
-
         <section className="start-eval-summary-card">
           <div className="start-eval-summary-copy">
             <div className="start-eval-summary-badges">
@@ -482,83 +692,137 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
         </section>
 
         <section className="start-eval-board">
-          <aside className="start-eval-student-panel">
-            <div className="start-eval-panel-head">
-              <div>
-                <strong>Students</strong>
-                <p>Click a student to switch the question and answer panel.</p>
-              </div>
-              <button type="button" className="ghost start-eval-back-btn" onClick={onBackToEvaluation}>
-                <ChevronLeft size={15} strokeWidth={2} />
-                Back
-              </button>
-            </div>
-
-            <label className="start-eval-student-search">
-              <Search size={15} strokeWidth={2} />
-              <input
-                value={studentSearch}
-                onChange={(event) => setStudentSearch(event.target.value)}
-                placeholder="Search student"
-              />
-            </label>
-
-            <div className="start-eval-student-list">
-              {filteredStudents.map((student) => (
-                <button
-                  key={student.id}
-                  type="button"
-                  className={`start-eval-student-item ${student.id === selectedStudentId ? 'is-active' : ''}`}
-                  onClick={() => setSelectedStudentId(student.id)}
-                >
-                  <div className="start-eval-student-main">
-                    <span className="start-eval-student-avatar">{student.name.slice(0, 2).toUpperCase()}</span>
-                    <div>
-                      <strong>{student.name}</strong>
-                      <p>{student.registerId}</p>
-                    </div>
-                  </div>
-                  <div className="start-eval-student-meta">
-                    <span className={`eval-status-pill ${student.submissionStatus === 'Submitted' ? 'is-complete' : 'is-pending'}`}>
-                      {student.submissionStatus}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </aside>
-
           <div className="start-eval-main-panel">
-            <StudentResponsePanel student={selectedStudent} record={evaluationRecord} />
-
-            <section className="start-eval-faculty-card">
-              <div className="start-eval-panel-head">
-                <div>
-                  <strong>Faculty</strong>
-                  <p>Assigned evaluators for this batch.</p>
+            <section className="start-eval-student-nav-card">
+              <div className="start-eval-student-nav-copy">
+                <span className="start-eval-student-nav-kicker">Student Review</span>
+                <strong>{selectedStudent?.name ?? 'No student selected'}</strong>
+                <p>
+                  {selectedStudent?.registerId ?? 'No register number'}
+                  {' • '}
+                  {filteredStudents.length ? `${Math.max(selectedStudentIndex + 1, 1)} of ${filteredStudents.length}` : '0 of 0'}
+                </p>
+                <div className="start-eval-student-nav-meta">
+                  <span className={`eval-status-pill ${selectedStudent?.evaluationStatus === 'Completed' ? 'is-complete' : 'is-pending'}`}>
+                    {selectedStudent?.evaluationStatus ?? 'Pending'}
+                  </span>
+                  <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
                 </div>
               </div>
 
-              <div className="start-eval-faculty-list">
-                {FACULTY_LIST.map((faculty) => (
-                  <article key={faculty.id} className="start-eval-faculty-item">
-                    <span className="start-eval-faculty-avatar"><UserRound size={15} strokeWidth={2} /></span>
-                    <div>
-                      <strong>{faculty.name}</strong>
-                      <p>{faculty.role}</p>
-                    </div>
-                  </article>
+              <div className="start-eval-student-nav-actions">
+                <button
+                  type="button"
+                  className="ghost start-eval-nav-btn"
+                >
+                  <History size={15} strokeWidth={2} />
+                  Exam Logs
+                </button>
+                <button
+                  type="button"
+                  className="ghost start-eval-nav-btn"
+                  onClick={handlePreviousStudent}
+                  disabled={selectedStudentIndex <= 0}
+                >
+                  <ChevronLeft size={15} strokeWidth={2} />
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className="ghost start-eval-nav-btn"
+                  onClick={handleNextStudent}
+                  disabled={selectedStudentIndex === -1 || selectedStudentIndex >= filteredStudents.length - 1}
+                >
+                  Next
+                  <ChevronRight size={15} strokeWidth={2} />
+                </button>
+                <button
+                  type="button"
+                  className="ghost start-eval-picker-btn"
+                  onClick={() => setIsStudentPickerOpen(true)}
+                >
+                  <Users size={15} strokeWidth={2} />
+                  Students
+                </button>
+              </div>
+            </section>
+
+            <StudentResponsePanel
+              student={selectedStudent}
+              record={evaluationRecord}
+              onObtainedMarksChange={setObtainedMarks}
+            />
+          </div>
+        </section>
+
+        {isStudentPickerOpen ? (
+          <div className="start-eval-student-picker-overlay" role="dialog" aria-modal="true" aria-label="Student list">
+            <div className="start-eval-student-picker">
+              <div className="start-eval-panel-head">
+                <div>
+                  <strong>Students</strong>
+                  <p>Select a student to continue evaluation.</p>
+                </div>
+                <button type="button" className="ghost start-eval-back-btn" onClick={() => setIsStudentPickerOpen(false)}>
+                  <ChevronLeft size={15} strokeWidth={2} />
+                  Close
+                </button>
+              </div>
+
+              <label className="start-eval-student-search">
+                <Search size={15} strokeWidth={2} />
+                <input
+                  value={studentSearch}
+                  onChange={(event) => setStudentSearch(event.target.value)}
+                  placeholder="Search student"
+                />
+              </label>
+
+              <div className="start-eval-student-filters" role="tablist" aria-label="Student filters">
+                {studentFilterOptions.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={studentFilter === filter.id}
+                    className={`start-eval-student-filter-chip ${studentFilter === filter.id ? 'is-active' : ''}`}
+                    onClick={() => setStudentFilter(filter.id)}
+                  >
+                    <span>{filter.label}</span>
+                    <small>{filter.count}</small>
+                  </button>
                 ))}
               </div>
 
-              <div className="start-eval-batch-strip">
-                <span><GraduationCap size={13} strokeWidth={2} /> {evaluationRecord?.year ?? 'Year not set'}</span>
-                <span><FolderKanban size={13} strokeWidth={2} /> {evaluationRecord?.sgt ?? 'SGT not set'}</span>
+              <div className="start-eval-student-list is-picker">
+                {filteredStudents.map((student) => (
+                  <button
+                    key={student.id}
+                    type="button"
+                    className={`start-eval-student-item ${student.id === selectedStudentId ? 'is-active' : ''}`}
+                    onClick={() => handleSelectStudent(student.id)}
+                  >
+                    <div className="start-eval-student-main">
+                      <span className="start-eval-student-avatar">{student.name.slice(0, 2).toUpperCase()}</span>
+                      <div>
+                        <strong>{student.name}</strong>
+                        <p>{student.registerId}</p>
+                      </div>
+                    </div>
+                    <div className="start-eval-student-meta">
+                      <span className={`eval-status-pill ${student.submissionStatus === 'Submitted' ? 'is-complete' : 'is-pending'}`}>
+                        {student.submissionStatus}
+                      </span>
+                    </div>
+                  </button>
+                ))}
               </div>
-            </section>
+            </div>
           </div>
-        </section>
+        ) : null}
       </div>
     </section>
   )
 }
+
+
