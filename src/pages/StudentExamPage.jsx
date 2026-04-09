@@ -555,9 +555,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
     ...(sections.formSections.length
       ? [{ label: `${sections.formSections.length} Forms`, tone: 'is-form', icon: Shapes }]
       : []),
-    ...(sections.scaffoldingSections.length
-      ? [{ label: 'Mandatory Scaffolding', tone: 'is-scaffolding', icon: Activity }]
-      : []),
     { label: examData.proctoring?.mode ?? 'Online Proctoring', tone: 'is-proctoring', icon: ShieldCheck },
     ...(hasTimer ? [{ label: `${examData.durationMinutes} min`, tone: 'is-duration', icon: Clock3 }] : []),
   ]

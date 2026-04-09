@@ -904,6 +904,10 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       marks: question.marks ?? '1',
       placeholder: 'Write your answer here.',
       options: question.options ?? [],
+      cognitive: question.cognitive ?? 'Not Applicable',
+      affective: question.affective ?? 'Not Applicable',
+      psychomotor: question.psychomotor ?? 'Not Applicable',
+      isCritical: Boolean(question.isCritical),
     }))
 
     const mappedScaffolding = generatedQuestions.map((question, index) => ({
@@ -916,6 +920,10 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       marks: question.marks ?? '1',
       placeholder: 'Complete this mandatory scaffolding response.',
       options: question.options ?? [],
+      cognitive: question.cognitive ?? 'Not Applicable',
+      affective: question.affective ?? 'Not Applicable',
+      psychomotor: question.psychomotor ?? 'Not Applicable',
+      isCritical: Boolean(question.isCritical),
     }))
 
     onAssignActivity?.({
@@ -1438,7 +1446,9 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                             </div>
                           </div>
 
-                          <p className="image-activity-created-skill-summary">{question.questionText || QUESTION_TEXT_PLACEHOLDER}</p>
+                          {!isCreatedSkillActive ? (
+                            <p className="image-activity-created-skill-summary">{question.questionText || QUESTION_TEXT_PLACEHOLDER}</p>
+                          ) : null}
 
                           {isCreatedSkillActive ? (
                             <div className="image-activity-created-skill-body">
@@ -1655,9 +1665,11 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                             </div>
                           </div>
                         </div>
-                        <strong className="image-activity-generated-card-question">
-                          {question.questionText || QUESTION_TEXT_PLACEHOLDER}
-                        </strong>
+                        {!isCardEditing ? (
+                          <strong className="image-activity-generated-card-question">
+                            {question.questionText || QUESTION_TEXT_PLACEHOLDER}
+                          </strong>
+                        ) : null}
                       </div>
 
                       <div className="image-activity-generated-body">
