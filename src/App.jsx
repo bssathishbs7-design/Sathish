@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
+import StartEvaluationPage from './pages/StartEvaluationPage'
 import MySkillActivityPage from './pages/MySkillActivityPage'
 import ProgressTrackingPage from './pages/ProgressTrackingPage'
 import StudentExamPage from './pages/StudentExamPage'
@@ -20,6 +21,7 @@ const PAGE_PATHS = {
   [APP_PAGES.DASHBOARD]: '/',
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
+  [APP_PAGES.START_EVALUATION]: '/skills/start-evaluation',
   [APP_PAGES.OSPE_ACTIVITY]: '/skills/ospe-activity',
   [APP_PAGES.IMAGE_ACTIVITY]: '/skills/image-activity',
   [APP_PAGES.INTERPRETATION_ACTIVITY]: '/skills/interpretation-activity',
@@ -185,6 +187,7 @@ function App() {
   const [assignedSkillActivities, setAssignedSkillActivities] = useState([])
   const [evaluationRecords, setEvaluationRecords] = useState([])
   const [selectedStudentExamAssignment, setSelectedStudentExamAssignment] = useState(null)
+  const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
@@ -340,6 +343,20 @@ function App() {
     setSelectedStudentExamAssignment(submission)
   }
 
+  const handleOpenStartEvaluation = (record) => {
+    if (!record) return
+
+    const linkedAssignment = assignedSkillActivities.find((item) => item.id === record.id)
+    const linkedSubmission = linkedAssignment?.answers ? linkedAssignment : null
+
+    setSelectedEvaluationRecord({
+      ...record,
+      assignment: linkedAssignment ?? null,
+      latestSubmission: linkedSubmission,
+    })
+    navigateToPage(APP_PAGES.START_EVALUATION)
+  }
+
   return (
     <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''} ${isExamMode ? 'is-exam-mode' : ''}`}>
       {!isExamMode ? (
@@ -418,6 +435,12 @@ function App() {
               onOpenDashboardSummary={() => navigateToPage(APP_PAGES.DASHBOARD_SUMMARY)}
               onAlert={showAlert}
               evaluationRecords={evaluationRecords}
+              onStartEvaluation={handleOpenStartEvaluation}
+            />
+          ) : activePage === APP_PAGES.START_EVALUATION ? (
+            <StartEvaluationPage
+              evaluationRecord={selectedEvaluationRecord}
+              onBackToEvaluation={() => navigateToPage(APP_PAGES.EVALUATION)}
             />
           ) : activePage === APP_PAGES.OSPE_ACTIVITY ? (
             <OspeActivityPage

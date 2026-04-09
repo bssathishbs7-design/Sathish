@@ -236,7 +236,7 @@ function EvaluationTable({
   )
 }
 
-export default function SkillAssessmentPage({ onAlert, evaluationRecords = [] }) {
+export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], onStartEvaluation }) {
   const [viewMode, setViewMode] = useState('card')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedYear, setSelectedYear] = useState('')
@@ -348,6 +348,11 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [] })
   }
 
   const handleOpenEvaluation = (record) => {
+    if (onStartEvaluation) {
+      onStartEvaluation(record)
+      return
+    }
+
     onAlert?.({
       tone: 'primary',
       message: `Evaluation workspace opened for ${record.activityName} (${record.year} - ${record.sgt}).`,
