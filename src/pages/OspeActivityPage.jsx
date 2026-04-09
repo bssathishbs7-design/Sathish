@@ -332,7 +332,7 @@ function ChecklistCard({ item, index, isEditing, marksEnabled, onActivate, onUpd
             </button>
           </div>
         </div>
-        <strong className="ospe-builder-card-question">{item.text.trim() || 'Write one observable checklist step for this station.'}</strong>
+        {!isEditing ? <strong className="ospe-builder-card-question">{item.text.trim() || 'Write one observable checklist step for this station.'}</strong> : null}
       </div>
       {isEditing ? (
         <div className="ospe-builder-card-body" onClick={(event) => event.stopPropagation()}>
@@ -424,7 +424,7 @@ function FormCard({
             </button>
           </div>
         </div>
-        <strong className="ospe-builder-card-question">{getFormPromptText(item)}</strong>
+        {!isEditing ? <strong className="ospe-builder-card-question">{getFormPromptText(item)}</strong> : null}
       </div>
       {isEditing ? (
         <div className="ospe-builder-card-body" onClick={(event) => event.stopPropagation()}>
@@ -575,7 +575,7 @@ function ScaffoldingCard({ item, index, isEditing, marksEnabled, onActivate, onU
             </button>
           </div>
         </div>
-        <strong className="ospe-builder-card-question">{item.questionText.trim() || OSPE_SCAFFOLD_QUESTION_PLACEHOLDER}</strong>
+        {!isEditing ? <strong className="ospe-builder-card-question">{item.questionText.trim() || OSPE_SCAFFOLD_QUESTION_PLACEHOLDER}</strong> : null}
       </div>
       {isEditing ? (
         <div className="ospe-builder-card-body" onClick={(event) => event.stopPropagation()}>
@@ -877,6 +877,10 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       prompt: item.questionText || `Form ${index + 1}`,
       questionText: item.questionText || `Form ${index + 1}`,
       marks: item.marks ?? '1',
+      cognitive: item.cognitive ?? 'Not Applicable',
+      affective: item.affective ?? 'Not Applicable',
+      psychomotor: item.psychomotor ?? 'Not Applicable',
+      isCritical: Boolean(item.isCritical),
       responses: getVisibleFormResponses(item).map((response, responseIndex) => ({
         key: response.key ?? `${item.id ?? 'form'}-response-${responseIndex + 1}`,
         label: response.label ?? `Response ${responseIndex + 1}`,
@@ -893,6 +897,10 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       options: item.options ?? [],
       answerKey: item.answerKey ?? '',
       explanation: item.explanation ?? '',
+      cognitive: item.cognitive ?? 'Not Applicable',
+      affective: item.affective ?? 'Not Applicable',
+      psychomotor: item.psychomotor ?? 'Not Applicable',
+      isCritical: Boolean(item.isCritical),
     }))
     const mappedChecklist = checklistItems.map((item, index) => ({
       id: item.id ?? `checklist-${index + 1}`,
