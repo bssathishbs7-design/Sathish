@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
+  ArrowUpDown,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
-  Filter,
   FolderKanban,
   GraduationCap,
   LayoutGrid,
@@ -18,6 +18,31 @@ import '../styles/evaluation.css'
 import { skillAssessmentActivities } from './skillAssessmentData'
 
 const normalizeDate = (value) => (value ? String(value).split(',')[0].trim() : '')
+
+const getActivityTypeTone = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+
+  if (normalized === 'ospe') return 'is-ospe'
+  if (normalized === 'osce') return 'is-osce'
+  if (normalized === 'interpretation') return 'is-interpretation'
+  if (normalized === 'image') return 'is-image'
+
+  return ''
+}
+
+const parseAttemptValue = (value) => {
+  if (!value) return 0
+  const [first] = String(value).split('/')
+  return Number.parseInt(first, 10) || 0
+}
+
+const parseDateValue = (value) => {
+  if (!value) return 0
+  const normalized = String(value).split(',')[0].trim()
+  const [day, month, year] = normalized.split('/').map((part) => Number.parseInt(part, 10))
+  if (!day || !month || !year) return 0
+  return new Date(year, month - 1, day).getTime()
+}
 
 const buildFallbackRecords = () => skillAssessmentActivities.slice(0, 8).map((activity, index) => ({
   id: `evaluation-${activity.id}`,
@@ -40,7 +65,7 @@ function EvaluationCard({ record, onOpenEvaluation }) {
     <article className="eval-card">
       <div className="eval-card-top">
         <div className="eval-card-topline">
-          <span className="eval-type-chip">{record.activityType}</span>
+          <span className={`eval-type-chip ${getActivityTypeTone(record.activityType)}`}>{record.activityType}</span>
           <span className={`eval-status-pill ${isCompleted ? 'is-complete' : 'is-pending'}`}>
             {statusLabel}
           </span>
@@ -48,7 +73,6 @@ function EvaluationCard({ record, onOpenEvaluation }) {
 
         <div className="eval-card-title">
           <h3>{record.activityName}</h3>
-          <p>{record.year || 'Not set'} • {record.sgt || 'Not set'} • {record.studentCount ?? 0} students</p>
         </div>
       </div>
 
@@ -74,9 +98,12 @@ function EvaluationCard({ record, onOpenEvaluation }) {
       <div className="eval-card-foot">
         <div className="eval-card-foot-copy">
           <span><CalendarDays size={12} strokeWidth={2} /> {normalizeDate(record.createdDate) || 'Not set'}</span>
-          <small>{record.questionCount ?? 0} checkpoints</small>
         </div>
-        <button type="button" className="tool-btn green eval-action-btn" onClick={() => onOpenEvaluation(record)}>
+        <button
+          type="button"
+          className={`tool-btn ${isCompleted ? 'eval-view-btn' : 'green'} eval-action-btn`}
+          onClick={() => onOpenEvaluation(record)}
+        >
           {isCompleted ? 'View' : 'Start'}
         </button>
       </div>
@@ -84,20 +111,42 @@ function EvaluationCard({ record, onOpenEvaluation }) {
   )
 }
 
-function EvaluationTable({ records, onOpenEvaluation }) {
+function EvaluationTable({
+  records,
+  onOpenEvaluation,
+  sortKey,
+  sortDirection,
+  onSort,
+  currentPage,
+  pageCount,
+  totalRecords,
+  onPageChange,
+}) {
+  const renderSortableHeader = (label, key) => (
+    <button
+      type="button"
+      className={`eval-table-sort ${sortKey === key ? 'is-active' : ''}`}
+      onClick={() => onSort(key)}
+    >
+      <span>{label}</span>
+      <ArrowUpDown size={13} strokeWidth={2} />
+      {sortKey === key ? <small>{sortDirection === 'asc' ? 'Asc' : 'Desc'}</small> : null}
+    </button>
+  )
+
   return (
     <div className="eval-table-wrap">
       <table className="eval-table">
         <thead>
           <tr>
-            <th>Activity</th>
-            <th>Type</th>
-            <th>Year</th>
-            <th>SGT</th>
-            <th>Students</th>
-            <th>Attempt</th>
-            <th>Created</th>
-            <th>Status</th>
+            <th>{renderSortableHeader('Activity', 'activityName')}</th>
+            <th>{renderSortableHeader('Type', 'activityType')}</th>
+            <th>{renderSortableHeader('Year', 'year')}</th>
+            <th>{renderSortableHeader('SGT', 'sgt')}</th>
+            <th>{renderSortableHeader('Students', 'studentCount')}</th>
+            <th>{renderSortableHeader('Attempt', 'attemptCount')}</th>
+            <th>{renderSortableHeader('Created', 'createdDate')}</th>
+            <th>{renderSortableHeader('Status', 'evaluationStatus')}</th>
             <th />
           </tr>
         </thead>
@@ -110,12 +159,23 @@ function EvaluationTable({ records, onOpenEvaluation }) {
                 <td>
                   <div className="eval-table-title">
                     <strong>{record.activityName}</strong>
-                    <span>{record.questionCount ?? 0} checkpoints</span>
                   </div>
                 </td>
-                <td><span className="eval-type-chip">{record.activityType}</span></td>
-                <td>{record.year || 'Not set'}</td>
-                <td>{record.sgt || 'Not set'}</td>
+                <td>
+                  <span className={`eval-type-chip eval-table-clip-chip ${getActivityTypeTone(record.activityType)}`} title={record.activityType}>
+                    {record.activityType}
+                  </span>
+                </td>
+                <td>
+                  <span className="eval-table-clip-text" title={record.year || 'Not set'}>
+                    {record.year || 'Not set'}
+                  </span>
+                </td>
+                <td>
+                  <span className="eval-table-clip-text" title={record.sgt || 'Not set'}>
+                    {record.sgt || 'Not set'}
+                  </span>
+                </td>
                 <td>{record.studentCount ?? 0}</td>
                 <td>{record.attemptCount || 'Not set'}</td>
                 <td>{normalizeDate(record.createdDate) || 'Not set'}</td>
@@ -125,7 +185,11 @@ function EvaluationTable({ records, onOpenEvaluation }) {
                   </span>
                 </td>
                 <td>
-                  <button type="button" className="tool-btn green eval-table-action" onClick={() => onOpenEvaluation(record)}>
+                  <button
+                    type="button"
+                    className={`tool-btn ${isCompleted ? 'eval-view-btn' : 'green'} eval-table-action`}
+                    onClick={() => onOpenEvaluation(record)}
+                  >
                     {isCompleted ? 'View' : 'Start'}
                   </button>
                 </td>
@@ -134,6 +198,40 @@ function EvaluationTable({ records, onOpenEvaluation }) {
           })}
         </tbody>
       </table>
+
+      <div className="eval-table-footer">
+        <span>{totalRecords} results</span>
+        <div className="eval-pagination" aria-label="Table pagination">
+          <button
+            type="button"
+            className="eval-page-btn"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Prev
+          </button>
+
+          {Array.from({ length: pageCount }, (_, index) => index + 1).map((page) => (
+            <button
+              key={page}
+              type="button"
+              className={`eval-page-btn ${currentPage === page ? 'is-active' : ''}`}
+              onClick={() => onPageChange(page)}
+            >
+              {page}
+            </button>
+          ))}
+
+          <button
+            type="button"
+            className="eval-page-btn"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === pageCount}
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -145,6 +243,9 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [] })
   const [selectedSgt, setSelectedSgt] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedActivityType, setSelectedActivityType] = useState('')
+  const [sortKey, setSortKey] = useState('createdDate')
+  const [sortDirection, setSortDirection] = useState('desc')
+  const [currentPage, setCurrentPage] = useState(1)
 
   const sourceRecords = evaluationRecords.length ? evaluationRecords : buildFallbackRecords()
 
@@ -173,6 +274,53 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [] })
     })
   }, [sourceRecords, searchQuery, selectedYear, selectedSgt, selectedStatus, selectedActivityType])
 
+  const sortedRecords = useMemo(() => {
+    const records = [...filteredRecords]
+    const direction = sortDirection === 'asc' ? 1 : -1
+
+    records.sort((left, right) => {
+      let leftValue = left[sortKey]
+      let rightValue = right[sortKey]
+
+      if (sortKey === 'studentCount') {
+        leftValue = Number(left.studentCount ?? 0)
+        rightValue = Number(right.studentCount ?? 0)
+      } else if (sortKey === 'attemptCount') {
+        leftValue = parseAttemptValue(left.attemptCount)
+        rightValue = parseAttemptValue(right.attemptCount)
+      } else if (sortKey === 'createdDate') {
+        leftValue = parseDateValue(left.createdDate)
+        rightValue = parseDateValue(right.createdDate)
+      } else {
+        leftValue = String(leftValue ?? '').toLowerCase()
+        rightValue = String(rightValue ?? '').toLowerCase()
+      }
+
+      if (leftValue < rightValue) return -1 * direction
+      if (leftValue > rightValue) return 1 * direction
+      return 0
+    })
+
+    return records
+  }, [filteredRecords, sortDirection, sortKey])
+
+  const pageSize = 8
+  const pageCount = Math.max(1, Math.ceil(sortedRecords.length / pageSize))
+  const paginatedRecords = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return sortedRecords.slice(startIndex, startIndex + pageSize)
+  }, [currentPage, sortedRecords])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, selectedYear, selectedSgt, selectedStatus, selectedActivityType, sortKey, sortDirection, viewMode])
+
+  useEffect(() => {
+    if (currentPage > pageCount) {
+      setCurrentPage(pageCount)
+    }
+  }, [currentPage, pageCount])
+
   const metrics = useMemo(() => ({
     total: filteredRecords.length,
     pending: filteredRecords.filter((record) => record.evaluationStatus === 'Pending Evaluation').length,
@@ -189,26 +337,14 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [] })
     { label: 'SGTs', value: metrics.sgts, icon: FolderKanban, tone: 'is-sgts' },
   ]
 
-  const resetFilters = () => {
-    setSearchQuery('')
-    setSelectedYear('')
-    setSelectedSgt('')
-    setSelectedStatus('')
-    setSelectedActivityType('')
-  }
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))
+      return
+    }
 
-  const activeFilterChips = [
-    selectedYear ? { key: 'year', label: `Year: ${selectedYear}` } : null,
-    selectedSgt ? { key: 'sgt', label: `SGT: ${selectedSgt}` } : null,
-    selectedActivityType ? { key: 'type', label: `Type: ${selectedActivityType}` } : null,
-    selectedStatus ? { key: 'status', label: selectedStatus === 'Pending Evaluation' ? 'Pending' : 'Completed' } : null,
-  ].filter(Boolean)
-
-  const clearSingleFilter = (key) => {
-    if (key === 'year') setSelectedYear('')
-    if (key === 'sgt') setSelectedSgt('')
-    if (key === 'type') setSelectedActivityType('')
-    if (key === 'status') setSelectedStatus('')
+    setSortKey(key)
+    setSortDirection(key === 'createdDate' ? 'desc' : 'asc')
   }
 
   const handleOpenEvaluation = (record) => {
@@ -223,22 +359,12 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [] })
       <div className="eval-shell">
         <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Evaluation' }]} />
 
-        <header className="eval-header">
-          <div className="eval-header-copy">
-            <span className="eval-kicker">2026 Review Workspace</span>
+        <div className="vx-page-intro">
+          <div className="vx-page-intro-title">
+            <ClipboardCheck size={18} strokeWidth={2} className="vx-page-intro-icon" aria-hidden="true" />
             <h1>Evaluation</h1>
-            <p>Clean batch review for year and SGT level assessments.</p>
-            <div className="eval-header-inline">
-              <span><strong>{metrics.pending}</strong> Pending</span>
-              <span><strong>{metrics.completed}</strong> Completed</span>
-              <span><strong>{metrics.years}</strong> Years</span>
-            </div>
           </div>
-          <div className="eval-header-side">
-            <span>{metrics.pending} pending</span>
-            <strong>{metrics.total} live records</strong>
-          </div>
-        </header>
+        </div>
 
         <section className="eval-stats">
           {metricItems.map((item) => {
@@ -256,12 +382,7 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [] })
         </section>
 
         <section className="eval-toolbar">
-          <div className="eval-toolbar-top">
-            <div className="eval-toolbar-title">
-              <h2>{viewMode === 'card' ? 'Evaluation Cards' : 'Evaluation Table'}</h2>
-              <span>{filteredRecords.length} results</span>
-            </div>
-
+          <div className="eval-toolbar-row">
             <label className="eval-search">
               <Search size={15} strokeWidth={2} />
               <input
@@ -270,6 +391,38 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [] })
                 placeholder="Search activity, year, SGT"
               />
             </label>
+
+            <div className="eval-filters">
+              <label className="eval-filter-chip">
+                <span>Year</span>
+                <div className="forms-select-wrap">
+                  <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+                    <option value="">All years</option>
+                    {yearOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </div>
+              </label>
+
+              <label className="eval-filter-chip">
+                <span>SGT</span>
+                <div className="forms-select-wrap">
+                  <select value={selectedSgt} onChange={(event) => setSelectedSgt(event.target.value)}>
+                    <option value="">All SGTs</option>
+                    {sgtOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </div>
+              </label>
+
+              <label className="eval-filter-chip">
+                <span>Type</span>
+                <div className="forms-select-wrap">
+                  <select value={selectedActivityType} onChange={(event) => setSelectedActivityType(event.target.value)}>
+                    <option value="">All types</option>
+                    {activityTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </div>
+              </label>
+            </div>
 
             <div className="eval-view-switch" role="tablist" aria-label="Evaluation layout">
               <button type="button" className={`eval-view-btn ${viewMode === 'card' ? 'is-active' : ''}`} onClick={() => setViewMode('card')}>
@@ -281,92 +434,29 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [] })
                 Table
               </button>
             </div>
-
-            <button type="button" className="ghost eval-reset-btn" onClick={resetFilters}>
-              <Filter size={14} strokeWidth={2} />
-              Clear filters
-            </button>
           </div>
-
-          <div className="eval-filters">
-            <label className="eval-filter-chip">
-              <span>Year</span>
-              <div className="forms-select-wrap">
-                <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
-                  <option value="">All years</option>
-                  {yearOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-            </label>
-
-            <label className="eval-filter-chip">
-              <span>SGT</span>
-              <div className="forms-select-wrap">
-                <select value={selectedSgt} onChange={(event) => setSelectedSgt(event.target.value)}>
-                  <option value="">All SGTs</option>
-                  {sgtOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-            </label>
-
-            <label className="eval-filter-chip">
-              <span>Type</span>
-              <div className="forms-select-wrap">
-                <select value={selectedActivityType} onChange={(event) => setSelectedActivityType(event.target.value)}>
-                  <option value="">All types</option>
-                  {activityTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-            </label>
-
-            <label className="eval-filter-chip">
-              <span>Status</span>
-              <div className="forms-select-wrap">
-                <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}>
-                  <option value="">All statuses</option>
-                  <option value="Pending Evaluation">Pending Evaluation</option>
-                  <option value="Completed Evaluation">Completed Evaluation</option>
-                </select>
-              </div>
-            </label>
-          </div>
-
-          <div className="eval-filter-actions">
-            <button type="button" className="tool-btn green eval-apply-btn">
-              Apply
-            </button>
-            <button type="button" className="ghost eval-clear-btn" onClick={resetFilters}>
-              Clear filter
-            </button>
-          </div>
-
-          {activeFilterChips.length ? (
-            <div className="eval-active-filters" aria-label="Active filters">
-              {activeFilterChips.map((chip) => (
-                <button
-                  key={chip.key}
-                  type="button"
-                  className="eval-active-chip"
-                  onClick={() => clearSingleFilter(chip.key)}
-                >
-                  {chip.label}
-                  <span aria-hidden="true">x</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
         </section>
 
         {filteredRecords.length ? (
           <section className="eval-content">
             {viewMode === 'card' ? (
               <div className="eval-card-grid">
-                {filteredRecords.map((record) => (
+                {sortedRecords.map((record) => (
                   <EvaluationCard key={record.id} record={record} onOpenEvaluation={handleOpenEvaluation} />
                 ))}
               </div>
             ) : (
-              <EvaluationTable records={filteredRecords} onOpenEvaluation={handleOpenEvaluation} />
+              <EvaluationTable
+                records={paginatedRecords}
+                onOpenEvaluation={handleOpenEvaluation}
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                currentPage={currentPage}
+                pageCount={pageCount}
+                totalRecords={sortedRecords.length}
+                onPageChange={setCurrentPage}
+              />
             )}
           </section>
         ) : (
