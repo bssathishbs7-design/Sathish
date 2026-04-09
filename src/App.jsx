@@ -319,7 +319,7 @@ function App() {
             ...item,
             ...submission,
             status: 'Completed',
-            action: 'View Submission',
+            action: 'View Results',
             tone: 'secondary',
           }
         : item

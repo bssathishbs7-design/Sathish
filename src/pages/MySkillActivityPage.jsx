@@ -7,7 +7,6 @@ import {
   ClipboardList,
   LayoutGrid,
   Play,
-  RotateCcw,
   Search,
 } from 'lucide-react'
 import '../styles/ospe-activity.css'
@@ -47,7 +46,7 @@ const defaultActivities = [
     title: 'WBC Count Checklist Station',
     type: 'OSPE',
     status: 'Completed',
-    action: 'View Submission',
+    action: 'View Results',
     tone: 'secondary',
     attemptCount: '1 / 1',
     createdDate: '02/04/2026',
@@ -101,9 +100,9 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
   const [query, setQuery] = useState('')
 
   const activityItems = useMemo(() => ([
-    ...assignedActivities.map((item) => ({
+      ...assignedActivities.map((item) => ({
       ...item,
-      action: item.action ?? (item.status === 'Completed' ? 'View Submission' : 'Start Activity'),
+      action: item.action ?? (item.status === 'Completed' ? 'View Results' : 'Start Activity'),
       tone: item.tone ?? (item.status === 'Completed' ? 'secondary' : 'primary'),
       status: item.status ?? 'Assigned',
     })),
@@ -125,7 +124,6 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
     { label: 'Assigned', value: activityItems.filter((item) => item.status === 'Assigned').length, icon: ClipboardList, tone: 'is-assigned' },
     { label: 'Live Activity', value: activityItems.filter((item) => item.status === 'Live Activity').length, icon: Activity, tone: 'is-live', isLive: true },
     { label: 'Completed', value: activityItems.filter((item) => item.status === 'Completed').length, icon: CheckCircle2, tone: 'is-completed' },
-    { label: 'Attempt', value: activityItems.reduce((total, item) => total + Number(String(item.attemptCount ?? '0').split('/')[0].trim() || 0), 0), icon: RotateCcw, tone: 'is-attempt' },
     { label: 'Overall Activity', value: activityItems.length, icon: LayoutGrid, tone: 'is-overall' },
     { label: 'Activity Results', value: activityItems.filter((item) => item.status === 'Completed').length, icon: ChartColumn, tone: 'is-results' },
   ]
@@ -155,7 +153,7 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
             <div className="my-skills-overview-inline">
               <span><strong>{activityItems.length}</strong> Overall</span>
               <span><strong>{kpiItems[1].value}</strong> Live</span>
-              <span><strong>{kpiItems[5].value}</strong> Results</span>
+              <span><strong>{kpiItems[4].value}</strong> Results</span>
             </div>
           </div>
 

@@ -5,15 +5,19 @@ import {
   ChevronRight,
   ClipboardPlus,
   Eye,
+  FlaskConical,
+  FileSignature,
   FileText,
   Info,
   Image as ImageIcon,
+  ListChecks,
   MoreHorizontal,
   Search,
   SlidersHorizontal,
   Sparkles,
   Stethoscope,
   Trash2,
+  Wrench,
   X,
 } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
@@ -1242,7 +1246,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                       ? FileText
                                       : option.value === 'OSCE'
                                         ? Stethoscope
-                                        : Sparkles
+                                        : FlaskConical
 
                                   const Icon = icon
                                   const isActive = activityDraft.assessmentType === option.value
@@ -1389,8 +1393,8 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                                   onClick={() => handleSelectGenerationMode(mode.value)}
                                                   aria-pressed={isActive}
                                                 >
-                                                  <span className="generation-tooltip-icon is-check" aria-hidden="true">
-                                                    <CheckCircle2 size={14} strokeWidth={2.4} />
+                                                  <span className="generation-tooltip-icon" aria-hidden="true">
+                                                    <ListChecks size={13} strokeWidth={2.2} />
                                                   </span>
                                                   <span className="generation-tooltip-copy">
                                                     <strong>{mode.label}</strong>
@@ -1426,8 +1430,8 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                                                   >
                                                     <span className="generation-tooltip-icon" aria-hidden="true">
                                                       {mode.value === 'Form'
-                                                        ? <FileText size={13} strokeWidth={2.2} />
-                                                        : <Sparkles size={12} strokeWidth={2.2} />}
+                                                        ? <FileSignature size={13} strokeWidth={2.2} />
+                                                        : <Wrench size={13} strokeWidth={2.2} />}
                                                     </span>
                                                     <span className="generation-tooltip-copy">
                                                       <strong>{mode.label}</strong>
