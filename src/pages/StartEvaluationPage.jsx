@@ -318,6 +318,22 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
   const [openChecklistRemarks, setOpenChecklistRemarks] = useState({})
   const [checklistDecisions, setChecklistDecisions] = useState({})
   const [checklistMarks, setChecklistMarks] = useState({})
+  const [formRemarks, setFormRemarks] = useState({})
+  const [openFormRemarks, setOpenFormRemarks] = useState({})
+  const [formDecisions, setFormDecisions] = useState({})
+  const [formMarks, setFormMarks] = useState({})
+  const [scaffoldingRemarks, setScaffoldingRemarks] = useState({})
+  const [openScaffoldingRemarks, setOpenScaffoldingRemarks] = useState({})
+  const [scaffoldingDecisions, setScaffoldingDecisions] = useState({})
+  const [scaffoldingMarks, setScaffoldingMarks] = useState({})
+  const [imageRemarks, setImageRemarks] = useState({})
+  const [openImageRemarks, setOpenImageRemarks] = useState({})
+  const [imageDecisions, setImageDecisions] = useState({})
+  const [imageMarks, setImageMarks] = useState({})
+  const [manualQuestionRemarks, setManualQuestionRemarks] = useState({})
+  const [openManualQuestionRemarks, setOpenManualQuestionRemarks] = useState({})
+  const [manualQuestionDecisions, setManualQuestionDecisions] = useState({})
+  const [manualQuestionMarks, setManualQuestionMarks] = useState({})
   const groupedItems = useMemo(() => {
     const groups = (submission?.items ?? []).reduce((accumulator, item) => {
       const key = item.sectionLabel ?? 'Questions'
@@ -351,11 +367,31 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
       setOpenChecklistRemarks({})
       setChecklistDecisions({})
       setChecklistMarks({})
+      setFormRemarks({})
+      setOpenFormRemarks({})
+      setFormDecisions({})
+      setFormMarks({})
+      setScaffoldingRemarks({})
+      setOpenScaffoldingRemarks({})
+      setScaffoldingDecisions({})
+      setScaffoldingMarks({})
+      setImageRemarks({})
+      setOpenImageRemarks({})
+      setImageDecisions({})
+      setImageMarks({})
+      setManualQuestionRemarks({})
+      setOpenManualQuestionRemarks({})
+      setManualQuestionDecisions({})
+      setManualQuestionMarks({})
       onObtainedMarksChange?.(0)
       return
     }
 
     const checklistItems = (submission?.items ?? []).filter((item) => item.type === 'checklist')
+    const formItems = (submission?.items ?? []).filter((item) => item.type === 'form')
+    const scaffoldingItems = (submission?.items ?? []).filter((item) => item.type === 'scaffolding')
+    const imageItems = (submission?.items ?? []).filter((item) => item.type === 'image')
+    const manualQuestionItems = (submission?.items ?? []).filter((item) => item.type === 'question')
     const nextRemarks = Object.fromEntries(
       checklistItems.map((item) => [item.id, item.remarks ?? '']),
     )
@@ -365,18 +401,75 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
     const nextMarks = Object.fromEntries(
       checklistItems.map((item) => [item.id, '']),
     )
+    const nextFormRemarks = Object.fromEntries(
+      formItems.map((item) => [item.id, '']),
+    )
+    const nextFormDecisions = Object.fromEntries(
+      formItems.map((item) => [item.id, '']),
+    )
+    const nextFormMarks = Object.fromEntries(
+      formItems.map((item) => [item.id, '']),
+    )
+    const nextScaffoldingRemarks = Object.fromEntries(
+      scaffoldingItems.map((item) => [item.id, '']),
+    )
+    const nextScaffoldingDecisions = Object.fromEntries(
+      scaffoldingItems.map((item) => [item.id, '']),
+    )
+    const nextScaffoldingMarks = Object.fromEntries(
+      scaffoldingItems.map((item) => [item.id, '']),
+    )
+    const nextImageRemarks = Object.fromEntries(
+      imageItems.map((item) => [item.id, '']),
+    )
+    const nextImageDecisions = Object.fromEntries(
+      imageItems.map((item) => [item.id, '']),
+    )
+    const nextImageMarks = Object.fromEntries(
+      imageItems.map((item) => [item.id, '']),
+    )
+    const nextManualQuestionRemarks = Object.fromEntries(
+      manualQuestionItems.map((item) => [item.id, '']),
+    )
+    const nextManualQuestionDecisions = Object.fromEntries(
+      manualQuestionItems.map((item) => [item.id, '']),
+    )
+    const nextManualQuestionMarks = Object.fromEntries(
+      manualQuestionItems.map((item) => [item.id, '']),
+    )
 
     setChecklistRemarks(nextRemarks)
     setOpenChecklistRemarks({})
     setChecklistDecisions(nextDecisions)
     setChecklistMarks(nextMarks)
+    setFormRemarks(nextFormRemarks)
+    setOpenFormRemarks({})
+    setFormDecisions(nextFormDecisions)
+    setFormMarks(nextFormMarks)
+    setScaffoldingRemarks(nextScaffoldingRemarks)
+    setOpenScaffoldingRemarks({})
+    setScaffoldingDecisions(nextScaffoldingDecisions)
+    setScaffoldingMarks(nextScaffoldingMarks)
+    setImageRemarks(nextImageRemarks)
+    setOpenImageRemarks({})
+    setImageDecisions(nextImageDecisions)
+    setImageMarks(nextImageMarks)
+    setManualQuestionRemarks(nextManualQuestionRemarks)
+    setOpenManualQuestionRemarks({})
+    setManualQuestionDecisions(nextManualQuestionDecisions)
+    setManualQuestionMarks(nextManualQuestionMarks)
     onObtainedMarksChange?.(0)
   }, [student?.id, submission])
 
   useEffect(() => {
-    const obtainedMarks = Object.values(checklistMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    const checklistObtainedMarks = Object.values(checklistMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    const formObtainedMarks = Object.values(formMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    const scaffoldingObtainedMarks = Object.values(scaffoldingMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    const imageObtainedMarks = Object.values(imageMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    const manualQuestionObtainedMarks = Object.values(manualQuestionMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    const obtainedMarks = checklistObtainedMarks + formObtainedMarks + scaffoldingObtainedMarks + imageObtainedMarks + manualQuestionObtainedMarks
     onObtainedMarksChange?.(obtainedMarks)
-  }, [checklistMarks, onObtainedMarksChange])
+  }, [checklistMarks, formMarks, imageMarks, manualQuestionMarks, onObtainedMarksChange, scaffoldingMarks])
 
   if (!student) {
     return (
@@ -400,6 +493,22 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
   const evaluatedCount = activeItems.reduce((count, item) => {
     if (item.type === 'checklist') {
       return count + (checklistDecisions[item.id] === 'right' || checklistDecisions[item.id] === 'wrong' ? 1 : 0)
+    }
+
+    if (item.type === 'form') {
+      return count + (formDecisions[item.id] === 'right' || formDecisions[item.id] === 'wrong' ? 1 : 0)
+    }
+
+    if (item.type === 'scaffolding') {
+      return count + (scaffoldingDecisions[item.id] === 'right' || scaffoldingDecisions[item.id] === 'wrong' ? 1 : 0)
+    }
+
+    if (item.type === 'image') {
+      return count + (imageDecisions[item.id] === 'right' || imageDecisions[item.id] === 'wrong' ? 1 : 0)
+    }
+
+    if (item.type === 'question') {
+      return count + (manualQuestionDecisions[item.id] === 'right' || manualQuestionDecisions[item.id] === 'wrong' ? 1 : 0)
     }
 
     return count
@@ -433,14 +542,40 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
 
       <div className="start-eval-response-list is-ordered">
         {activeItems.map((item) => {
-          const decisionState = checklistDecisions[item.id] ?? ''
-          const itemStatus = item.type === 'checklist'
-            ? getChecklistItemStatus(decisionState, checklistMarks[item.id])
+          const isChecklist = item.type === 'checklist'
+          const isForm = item.type === 'form'
+          const isScaffolding = item.type === 'scaffolding'
+          const isImage = item.type === 'image'
+          const isManualQuestion = item.type === 'question'
+          const decisionState = isChecklist
+            ? (checklistDecisions[item.id] ?? '')
+            : isForm
+              ? (formDecisions[item.id] ?? '')
+              : isScaffolding
+                ? (scaffoldingDecisions[item.id] ?? '')
+                : isImage
+                  ? (imageDecisions[item.id] ?? '')
+                  : isManualQuestion
+                    ? (manualQuestionDecisions[item.id] ?? '')
+              : ''
+          const marksValue = isChecklist
+            ? checklistMarks[item.id]
+            : isForm
+              ? formMarks[item.id]
+              : isScaffolding
+                ? scaffoldingMarks[item.id]
+                : isImage
+                  ? imageMarks[item.id]
+                  : isManualQuestion
+                    ? manualQuestionMarks[item.id]
+              : ''
+          const itemStatus = isChecklist || isForm || isScaffolding || isImage || isManualQuestion
+            ? getChecklistItemStatus(decisionState, marksValue)
             : item.status
-          const marksState = item.type === 'checklist'
-            ? getChecklistMarksState(checklistMarks[item.id], item.marks)
+          const marksState = isChecklist || isForm || isScaffolding || isImage || isManualQuestion
+            ? getChecklistMarksState(marksValue, item.marks)
             : ''
-          const cardState = item.type === 'checklist'
+          const cardState = isChecklist || isForm || isScaffolding || isImage || isManualQuestion
             ? getChecklistCardState(decisionState, marksState)
             : ''
 
@@ -459,7 +594,7 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
                 {item.tags?.map((tag) => <span key={`${item.id}-${tag}`} className="start-eval-meta-badge is-tag"><Tag size={12} strokeWidth={2} /> {tag}</span>)}
               </div>
 
-              {item.type === 'checklist' ? (
+              {item.type === 'checklist' || item.type === 'form' || item.type === 'scaffolding' || item.type === 'image' || item.type === 'question' ? (
                 <span className={`eval-status-pill ${itemStatus === 'Completed' ? 'is-complete' : 'is-pending'}`}>
                   {itemStatus}
                 </span>
@@ -552,19 +687,303 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
                 ) : null}
               </div>
             ) : item.answers ? (
-              <div className="start-eval-form-response-list">
-                {item.answers.map((response) => (
-                  <div key={response.label} className="start-eval-form-response">
-                    <span>{response.label}</span>
-                    <strong>{response.value}</strong>
+              <>
+                <div className="start-eval-form-response-list">
+                  {item.answers.map((response) => (
+                    <div key={response.label} className="start-eval-form-response">
+                      <span>{response.label}</span>
+                      <strong>{response.value}</strong>
+                    </div>
+                  ))}
+                </div>
+
+                {item.type === 'form' ? (
+                  <div className="start-eval-checklist-actions">
+                    <button
+                      type="button"
+                      className={`start-eval-remarks-toggle ${openFormRemarks[item.id] ? 'is-open' : ''}`}
+                      onClick={() => setOpenFormRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                    >
+                      Remarks
+                    </button>
+
+                    <div className="start-eval-checklist-actions-end">
+                      <label className="start-eval-checklist-marks-field">
+                        <span>Obtained</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.marks}
+                          step="0.1"
+                          className={`start-eval-checklist-marks ${marksState}`}
+                          value={formMarks[item.id] ?? ''}
+                          onChange={(event) => {
+                            const nextValue = getSanitizedChecklistMarksValue(event.target.value, item.marks)
+
+                            if (nextValue === null) return
+
+                            setFormMarks((current) => ({ ...current, [item.id]: nextValue }))
+                            setFormDecisions((current) => ({ ...current, [item.id]: getDecisionStateFromMarks(nextValue) }))
+                          }}
+                          placeholder="Marks"
+                        />
+                      </label>
+
+                      <div className="start-eval-checklist-decision-group" role="group" aria-label="Form evaluation">
+                        <button
+                          type="button"
+                          className={`start-eval-checklist-icon-btn is-wrong ${decisionState === 'wrong' ? 'is-active' : ''}`}
+                          aria-label="Mark as wrong"
+                          onClick={() => {
+                            setFormMarks((current) => ({ ...current, [item.id]: '' }))
+                            setFormDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'wrong' ? '' : 'wrong' }))
+                          }}
+                        >
+                          <CircleX size={16} strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`start-eval-checklist-icon-btn is-right ${decisionState === 'right' ? 'is-active' : ''}`}
+                          aria-label="Mark as right"
+                          onClick={() => {
+                            setFormMarks((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : String(item.marks ?? '') }))
+                            setFormDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : 'right' }))
+                          }}
+                        >
+                          <CircleCheckBig size={16} strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {openFormRemarks[item.id] ? (
+                      <label className="start-eval-remarks-box">
+                        <textarea
+                          rows={2}
+                          value={formRemarks[item.id] ?? ''}
+                          onChange={(event) => setFormRemarks((current) => ({ ...current, [item.id]: event.target.value }))}
+                          placeholder="Add remarks"
+                        />
+                      </label>
+                    ) : null}
                   </div>
-                ))}
-              </div>
+                ) : null}
+              </>
             ) : (
-              <div className="start-eval-answer-box">
-                <span>Student Answer</span>
-                <strong>{item.answer}</strong>
-              </div>
+              <>
+                <div className="start-eval-answer-box">
+                  <span>Student Answer</span>
+                  <strong>{item.answer}</strong>
+                </div>
+
+                {item.type === 'scaffolding' ? (
+                  <div className="start-eval-checklist-actions">
+                    <button
+                      type="button"
+                      className={`start-eval-remarks-toggle ${openScaffoldingRemarks[item.id] ? 'is-open' : ''}`}
+                      onClick={() => setOpenScaffoldingRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                    >
+                      Remarks
+                    </button>
+
+                    <div className="start-eval-checklist-actions-end">
+                      <label className="start-eval-checklist-marks-field">
+                        <span>Obtained</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.marks}
+                          step="0.1"
+                          className={`start-eval-checklist-marks ${marksState}`}
+                          value={scaffoldingMarks[item.id] ?? ''}
+                          onChange={(event) => {
+                            const nextValue = getSanitizedChecklistMarksValue(event.target.value, item.marks)
+
+                            if (nextValue === null) return
+
+                            setScaffoldingMarks((current) => ({ ...current, [item.id]: nextValue }))
+                            setScaffoldingDecisions((current) => ({ ...current, [item.id]: getDecisionStateFromMarks(nextValue) }))
+                          }}
+                          placeholder="Marks"
+                        />
+                      </label>
+
+                      <div className="start-eval-checklist-decision-group" role="group" aria-label="Scaffolding evaluation">
+                        <button
+                          type="button"
+                          className={`start-eval-checklist-icon-btn is-wrong ${decisionState === 'wrong' ? 'is-active' : ''}`}
+                          aria-label="Mark as wrong"
+                          onClick={() => {
+                            setScaffoldingMarks((current) => ({ ...current, [item.id]: '' }))
+                            setScaffoldingDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'wrong' ? '' : 'wrong' }))
+                          }}
+                        >
+                          <CircleX size={16} strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`start-eval-checklist-icon-btn is-right ${decisionState === 'right' ? 'is-active' : ''}`}
+                          aria-label="Mark as right"
+                          onClick={() => {
+                            setScaffoldingMarks((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : String(item.marks ?? '') }))
+                            setScaffoldingDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : 'right' }))
+                          }}
+                        >
+                          <CircleCheckBig size={16} strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {openScaffoldingRemarks[item.id] ? (
+                      <label className="start-eval-remarks-box">
+                        <textarea
+                          rows={2}
+                          value={scaffoldingRemarks[item.id] ?? ''}
+                          onChange={(event) => setScaffoldingRemarks((current) => ({ ...current, [item.id]: event.target.value }))}
+                          placeholder="Add remarks"
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                ) : item.type === 'image' ? (
+                  <div className="start-eval-checklist-actions">
+                    <button
+                      type="button"
+                      className={`start-eval-remarks-toggle ${openImageRemarks[item.id] ? 'is-open' : ''}`}
+                      onClick={() => setOpenImageRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                    >
+                      Remarks
+                    </button>
+
+                    <div className="start-eval-checklist-actions-end">
+                      <label className="start-eval-checklist-marks-field">
+                        <span>Obtained</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.marks}
+                          step="0.1"
+                          className={`start-eval-checklist-marks ${marksState}`}
+                          value={imageMarks[item.id] ?? ''}
+                          onChange={(event) => {
+                            const nextValue = getSanitizedChecklistMarksValue(event.target.value, item.marks)
+
+                            if (nextValue === null) return
+
+                            setImageMarks((current) => ({ ...current, [item.id]: nextValue }))
+                            setImageDecisions((current) => ({ ...current, [item.id]: getDecisionStateFromMarks(nextValue) }))
+                          }}
+                          placeholder="Marks"
+                        />
+                      </label>
+
+                      <div className="start-eval-checklist-decision-group" role="group" aria-label="Image evaluation">
+                        <button
+                          type="button"
+                          className={`start-eval-checklist-icon-btn is-wrong ${decisionState === 'wrong' ? 'is-active' : ''}`}
+                          aria-label="Mark as wrong"
+                          onClick={() => {
+                            setImageMarks((current) => ({ ...current, [item.id]: '' }))
+                            setImageDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'wrong' ? '' : 'wrong' }))
+                          }}
+                        >
+                          <CircleX size={16} strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`start-eval-checklist-icon-btn is-right ${decisionState === 'right' ? 'is-active' : ''}`}
+                          aria-label="Mark as right"
+                          onClick={() => {
+                            setImageMarks((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : String(item.marks ?? '') }))
+                            setImageDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : 'right' }))
+                          }}
+                        >
+                          <CircleCheckBig size={16} strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {openImageRemarks[item.id] ? (
+                      <label className="start-eval-remarks-box">
+                        <textarea
+                          rows={2}
+                          value={imageRemarks[item.id] ?? ''}
+                          onChange={(event) => setImageRemarks((current) => ({ ...current, [item.id]: event.target.value }))}
+                          placeholder="Add remarks"
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                ) : item.type === 'question' ? (
+                  <div className="start-eval-checklist-actions">
+                    <button
+                      type="button"
+                      className={`start-eval-remarks-toggle ${openManualQuestionRemarks[item.id] ? 'is-open' : ''}`}
+                      onClick={() => setOpenManualQuestionRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                    >
+                      Remarks
+                    </button>
+
+                    <div className="start-eval-checklist-actions-end">
+                      <label className="start-eval-checklist-marks-field">
+                        <span>Obtained</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.marks}
+                          step="0.1"
+                          className={`start-eval-checklist-marks ${marksState}`}
+                          value={manualQuestionMarks[item.id] ?? ''}
+                          onChange={(event) => {
+                            const nextValue = getSanitizedChecklistMarksValue(event.target.value, item.marks)
+
+                            if (nextValue === null) return
+
+                            setManualQuestionMarks((current) => ({ ...current, [item.id]: nextValue }))
+                            setManualQuestionDecisions((current) => ({ ...current, [item.id]: getDecisionStateFromMarks(nextValue) }))
+                          }}
+                          placeholder="Marks"
+                        />
+                      </label>
+
+                      <div className="start-eval-checklist-decision-group" role="group" aria-label="Manual question evaluation">
+                        <button
+                          type="button"
+                          className={`start-eval-checklist-icon-btn is-wrong ${decisionState === 'wrong' ? 'is-active' : ''}`}
+                          aria-label="Mark as wrong"
+                          onClick={() => {
+                            setManualQuestionMarks((current) => ({ ...current, [item.id]: '' }))
+                            setManualQuestionDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'wrong' ? '' : 'wrong' }))
+                          }}
+                        >
+                          <CircleX size={16} strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`start-eval-checklist-icon-btn is-right ${decisionState === 'right' ? 'is-active' : ''}`}
+                          aria-label="Mark as right"
+                          onClick={() => {
+                            setManualQuestionMarks((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : String(item.marks ?? '') }))
+                            setManualQuestionDecisions((current) => ({ ...current, [item.id]: current[item.id] === 'right' ? '' : 'right' }))
+                          }}
+                        >
+                          <CircleCheckBig size={16} strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {openManualQuestionRemarks[item.id] ? (
+                      <label className="start-eval-remarks-box">
+                        <textarea
+                          rows={2}
+                          value={manualQuestionRemarks[item.id] ?? ''}
+                          onChange={(event) => setManualQuestionRemarks((current) => ({ ...current, [item.id]: event.target.value }))}
+                          placeholder="Add remarks"
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
             )}
 
             {item.type !== 'checklist' && item.type !== 'form' ? (
