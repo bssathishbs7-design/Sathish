@@ -100,6 +100,12 @@ const getDecisionStateFromMarks = (value) => {
   return ''
 }
 
+const getChecklistItemStatus = (decisionState, marksValue) => {
+  if (decisionState === 'right' || decisionState === 'wrong') return 'Completed'
+  if (marksValue !== '' && marksValue !== null && marksValue !== undefined) return 'Completed'
+  return 'Pending'
+}
+
 const buildStudentName = (index, sgt = 'SGT') => {
   const names = [
     'Aarav Menon',
@@ -428,6 +434,9 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
       <div className="start-eval-response-list is-ordered">
         {activeItems.map((item) => {
           const decisionState = checklistDecisions[item.id] ?? ''
+          const itemStatus = item.type === 'checklist'
+            ? getChecklistItemStatus(decisionState, checklistMarks[item.id])
+            : item.status
           const marksState = item.type === 'checklist'
             ? getChecklistMarksState(checklistMarks[item.id], item.marks)
             : ''
@@ -451,8 +460,8 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
               </div>
 
               {item.type === 'checklist' ? (
-                <span className={`eval-status-pill ${item.status === 'Completed' ? 'is-complete' : 'is-pending'}`}>
-                  {item.status}
+                <span className={`eval-status-pill ${itemStatus === 'Completed' ? 'is-complete' : 'is-pending'}`}>
+                  {itemStatus}
                 </span>
               ) : null}
             </div>
@@ -580,7 +589,7 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
   )
 }
 
-export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluation }) {
+export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluation, onOpenExamLog }) {
   const [studentSearch, setStudentSearch] = useState('')
   const [studentFilter, setStudentFilter] = useState('all')
   const [selectedStudentId, setSelectedStudentId] = useState('')
@@ -658,13 +667,20 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
     <section className="vx-content forms-page start-evaluation-page">
       <div className="start-eval-shell">
         <section className="start-eval-summary-card">
-          <div className="start-eval-summary-copy">
-            <div className="start-eval-summary-badges">
-              <span className={`eval-type-chip ${getActivityTypeTone(evaluationRecord?.activityType)}`}>{evaluationRecord?.activityType ?? 'Activity'}</span>
-              <span className={`eval-status-pill ${evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'is-complete' : 'is-pending'}`}>
-                {evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'Completed' : 'Pending'}
+          <div className="start-eval-summary-main">
+            <div className="start-eval-summary-topline">
+              <div className="start-eval-summary-badges">
+                <span className={`eval-type-chip ${getActivityTypeTone(evaluationRecord?.activityType)}`}>{evaluationRecord?.activityType ?? 'Activity'}</span>
+                <span className={`eval-status-pill ${evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'is-complete' : 'is-pending'}`}>
+                  {evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'Completed' : 'Pending'}
+                </span>
+              </div>
+              <span className="start-eval-summary-date">
+                <CalendarDays size={13} strokeWidth={2} />
+                Created {formatDate(evaluationRecord?.createdDate)}
               </span>
             </div>
+            <div className="start-eval-summary-copy">
             <h2>{evaluationRecord?.activityName ?? 'No evaluation selected'}</h2>
             <p>{evaluationRecord?.year ?? 'Year not set'} • {evaluationRecord?.sgt ?? 'SGT not set'}</p>
           </div>
@@ -682,10 +698,7 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
               <span><ClipboardCheck size={13} strokeWidth={2} /> Evaluated</span>
               <strong>{completedCount}</strong>
             </article>
-            <article className="start-eval-summary-tile">
-              <span><CalendarDays size={13} strokeWidth={2} /> Created</span>
-              <strong>{formatDate(evaluationRecord?.createdDate)}</strong>
-            </article>
+          </div>
           </div>
         </section>
 
@@ -712,6 +725,12 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                 <button
                   type="button"
                   className="ghost start-eval-nav-btn"
+                  onClick={() => onOpenExamLog?.({
+                    evaluationRecord,
+                    student: selectedStudent,
+                    totalMarks,
+                    obtainedMarks,
+                  })}
                 >
                   <History size={15} strokeWidth={2} />
                   Exam Logs
