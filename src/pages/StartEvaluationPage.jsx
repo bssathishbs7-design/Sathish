@@ -391,15 +391,13 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
 
   const activeGroup = groupedItems.find((group) => group.label === activeSection) ?? groupedItems[0]
   const activeItems = activeGroup?.items ?? []
-  const evaluatedCount = useMemo(() => (
-    activeItems.reduce((count, item) => {
-      if (item.type === 'checklist') {
-        return count + (checklistDecisions[item.id] === 'right' || checklistDecisions[item.id] === 'wrong' ? 1 : 0)
-      }
+  const evaluatedCount = activeItems.reduce((count, item) => {
+    if (item.type === 'checklist') {
+      return count + (checklistDecisions[item.id] === 'right' || checklistDecisions[item.id] === 'wrong' ? 1 : 0)
+    }
 
-      return count
-    }, 0)
-  ), [activeItems, checklistDecisions])
+    return count
+  }, 0)
 
   return (
     <section className="start-eval-detail-card">
