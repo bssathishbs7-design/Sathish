@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
+import StartEvaluationPage from './pages/StartEvaluationPage'
 import MySkillActivityPage from './pages/MySkillActivityPage'
 import ProgressTrackingPage from './pages/ProgressTrackingPage'
 import StudentExamPage from './pages/StudentExamPage'
@@ -20,6 +21,7 @@ const PAGE_PATHS = {
   [APP_PAGES.DASHBOARD]: '/',
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
+  [APP_PAGES.START_EVALUATION]: '/skills/start-evaluation',
   [APP_PAGES.OSPE_ACTIVITY]: '/skills/ospe-activity',
   [APP_PAGES.IMAGE_ACTIVITY]: '/skills/image-activity',
   [APP_PAGES.INTERPRETATION_ACTIVITY]: '/skills/interpretation-activity',
@@ -38,6 +40,51 @@ const PATH_PAGES = Object.fromEntries(
 )
 
 const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? APP_PAGES.DASHBOARD
+
+const STUDENT_COUNT_BY_YEAR_AND_SGT = {
+  'First Year': { 'SGT A': 42, 'SGT B': 38, 'SGT C': 40 },
+  'Second Year': { 'SGT A': 36, 'SGT B': 34, 'SGT C': 32 },
+  'Third Year': { 'SGT A': 28, 'SGT B': 30, 'SGT C': 26 },
+  'Final Year': { 'SGT A': 24, 'SGT B': 22, 'SGT C': 20 },
+}
+
+const parseAssignmentTarget = (assignedTo = '') => {
+  const [year = 'First Year', sgt = 'SGT A'] = String(assignedTo)
+    .split(/\s*(?:•|·|â€¢)\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  return { year, sgt }
+}
+
+const estimateStudentCount = (year, sgt) => (
+  STUDENT_COUNT_BY_YEAR_AND_SGT[year]?.[sgt]
+  ?? Object.values(STUDENT_COUNT_BY_YEAR_AND_SGT[year] ?? {}).reduce((sum, count) => sum + count, 0)
+  ?? 30
+)
+
+const getAssignmentQuestionCount = (assignment) => (
+  (assignment.examData?.modules?.questions?.length ?? 0)
+  + (assignment.examData?.modules?.form?.length ?? 0)
+  + (assignment.examData?.modules?.scaffolding?.length ?? 0)
+)
+
+const buildEvaluationRecordFromAssignment = (assignment) => {
+  const { year, sgt } = parseAssignmentTarget(assignment.assignedTo)
+
+  return {
+    id: assignment.id,
+    activityName: assignment.title ?? 'Untitled Activity',
+    activityType: assignment.type ?? 'Activity',
+    studentCount: assignment.studentCount ?? estimateStudentCount(year, sgt),
+    year,
+    sgt,
+    attemptCount: assignment.attemptCount ?? '0 / 1',
+    createdDate: assignment.createdDate ?? new Date().toLocaleDateString('en-GB'),
+    evaluationStatus: assignment.evaluationStatus ?? 'Pending Evaluation',
+    questionCount: assignment.questionCount ?? getAssignmentQuestionCount(assignment),
+  }
+}
 
 const baseRows = [
   ['1', 'Mark', 'Otto', '@mdo'],
@@ -138,7 +185,9 @@ function App() {
   const [selectedDashboardData, setSelectedDashboardData] = useState(null)
   const [savedImageActivities, setSavedImageActivities] = useState({})
   const [assignedSkillActivities, setAssignedSkillActivities] = useState([])
+  const [evaluationRecords, setEvaluationRecords] = useState([])
   const [selectedStudentExamAssignment, setSelectedStudentExamAssignment] = useState(null)
+  const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
@@ -296,10 +345,22 @@ function App() {
 
   const handleAssignSkillActivity = (assignment) => {
     if (!assignment?.id) return
+    const { year, sgt } = parseAssignmentTarget(assignment.assignedTo)
+    const normalizedAssignment = {
+      ...assignment,
+      year,
+      sgt,
+      studentCount: assignment.studentCount ?? estimateStudentCount(year, sgt),
+    }
+
     setAssignedSkillActivities((current) => {
       const next = current.filter((item) => item.id !== assignment.id)
-      return [assignment, ...next]
+      return [normalizedAssignment, ...next]
     })
+    setEvaluationRecords((current) => [
+      buildEvaluationRecordFromAssignment(normalizedAssignment),
+      ...current.filter((item) => item.id !== normalizedAssignment.id),
+    ])
     showAlert({ tone: 'secondary', message: 'Activity assigned successfully. It is now available in My Skill Activity.' })
     navigateToPage(APP_PAGES.MY_SKILL_ACTIVITY)
   }
@@ -326,6 +387,20 @@ function App() {
     )))
 
     setSelectedStudentExamAssignment(submission)
+  }
+
+  const handleOpenStartEvaluation = (record) => {
+    if (!record) return
+
+    const linkedAssignment = assignedSkillActivities.find((item) => item.id === record.id)
+    const linkedSubmission = linkedAssignment?.answers ? linkedAssignment : null
+
+    setSelectedEvaluationRecord({
+      ...record,
+      assignment: linkedAssignment ?? null,
+      latestSubmission: linkedSubmission,
+    })
+    navigateToPage(APP_PAGES.START_EVALUATION)
   }
 
   return (
@@ -405,6 +480,13 @@ function App() {
             <SkillAssessmentPage
               onOpenDashboardSummary={() => navigateToPage(APP_PAGES.DASHBOARD_SUMMARY)}
               onAlert={showAlert}
+              evaluationRecords={evaluationRecords}
+              onStartEvaluation={handleOpenStartEvaluation}
+            />
+          ) : activePage === APP_PAGES.START_EVALUATION ? (
+            <StartEvaluationPage
+              evaluationRecord={selectedEvaluationRecord}
+              onBackToEvaluation={() => navigateToPage(APP_PAGES.EVALUATION)}
             />
           ) : activePage === APP_PAGES.OSPE_ACTIVITY ? (
             <OspeActivityPage

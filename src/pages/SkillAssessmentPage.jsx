@@ -1,268 +1,369 @@
-﻿import { useState } from 'react'
-import PageBreadcrumbs from '../components/PageBreadcrumbs'
-import { ClipboardCheck } from 'lucide-react'
-import '../styles/evaluation.css'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  assessmentSgtMap,
-  assessmentYearOptions,
-  createStudentAssessmentState,
-  evaluationStudents,
-  gradingChecklistItems,
-  gradingQuestions,
-  gradingTabs,
-  skillAssessmentActivities,
-} from './skillAssessmentData'
+  Activity,
+  ArrowUpDown,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardCheck,
+  FolderKanban,
+  GraduationCap,
+  LayoutGrid,
+  Rows3,
+  Search,
+  Shapes,
+  Users,
+} from 'lucide-react'
+import PageBreadcrumbs from '../components/PageBreadcrumbs'
+import '../styles/evaluation.css'
+import { skillAssessmentActivities } from './skillAssessmentData'
 
-/**
- * SkillAssessmentPage Implementation Contract
- * Structure:
- * - Evaluation workflow with search filters, activity selection, and learner-level assessment state.
- * Dependencies:
- * - React local state
- * - Shared data from skillAssessmentData.js
- * Props / Data:
- * - onOpenDashboardSummary triggers the summary page from the evaluation flow
- * State:
- * - Owns filter selections, preview state, evaluation progress, and per-student assessment updates
- * Hooks / Providers:
- * - No global provider required because evaluation state is page-scoped
- * Required assets:
- * - Consumes shared mock data and grading structures from skillAssessmentData.js
- * Responsive behavior:
- * - Filter bar, student panels, and grading layouts should stack cleanly without losing context
- * Placement:
- * - Page-level workflow in src/pages/
- */
-function SkillAssessmentPage({ onAlert }) {
-  const [selectedYear, setSelectedYear] = useState('')
-  const [selectedSgt, setSelectedSgt] = useState('')
-  const [attemptCount, setAttemptCount] = useState('')
-  const [selectedActivityId, setSelectedActivityId] = useState('')
-  const [previewAssessment, setPreviewAssessment] = useState(null)
-  const [isSearching, setIsSearching] = useState(false)
-  const [isEvaluationStarted, setIsEvaluationStarted] = useState(false)
-  const [selectedStudentIndex, setSelectedStudentIndex] = useState(null)
-  const [isLoadingStudent, setIsLoadingStudent] = useState(false)
-  const [studentAssessments, setStudentAssessments] = useState(() => Object.fromEntries(
-    evaluationStudents.map((student) => [student.id, createStudentAssessmentState()])
-  ))
+const normalizeDate = (value) => (value ? String(value).split(',')[0].trim() : '')
 
-  const availableSgtOptions = selectedYear
-    ? assessmentSgtMap[selectedYear] ?? []
-    : Object.values(assessmentSgtMap).flat()
+const getActivityTypeTone = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase()
 
-  const filteredActivities = skillAssessmentActivities.filter((activity) => {
-    const matchesYear = !selectedYear || activity.year === selectedYear
-    const matchesSgt = !selectedSgt || activity.sgt === selectedSgt
-    const attemptNumber = Number(attemptCount)
-    const matchesAttempt = !attemptCount || !activity.completedAttempts.includes(attemptNumber)
+  if (normalized === 'ospe') return 'is-ospe'
+  if (normalized === 'osce') return 'is-osce'
+  if (normalized === 'interpretation') return 'is-interpretation'
+  if (normalized === 'image') return 'is-image'
 
-    return matchesYear && matchesSgt && matchesAttempt
-  })
+  return ''
+}
 
-  const selectedActivity = filteredActivities.find((activity) => activity.id === selectedActivityId) ?? null
-  const selectedStudent = selectedStudentIndex !== null ? evaluationStudents[selectedStudentIndex] ?? null : null
-  const selectedStudentAssessment = selectedStudent ? studentAssessments[selectedStudent.id] ?? createStudentAssessmentState() : null
-  const selectedStudentEvalNumber = selectedStudentIndex !== null ? selectedStudentIndex + 1 : 1
-  const selectedStudentTotal = 12
-  const obtainedMarks = selectedStudentAssessment
-    ? Object.values(selectedStudentAssessment.checklist).filter((status) => status === 'pass').length * 2
-    : 0
-  const checklistCompleted = selectedStudentAssessment
-    ? Object.values(selectedStudentAssessment.checklist).filter((status) => status !== 'pending').length
-    : 0
-  const evaluationStatus = selectedStudentAssessment?.submitted ? 'Complete' : 'Incomplete'
+const parseAttemptValue = (value) => {
+  if (!value) return 0
+  const [first] = String(value).split('/')
+  return Number.parseInt(first, 10) || 0
+}
 
-  const findYearForSgt = (sgt) => (
-    assessmentYearOptions.find((year) => (assessmentSgtMap[year] ?? []).includes(sgt)) ?? ''
+const parseDateValue = (value) => {
+  if (!value) return 0
+  const normalized = String(value).split(',')[0].trim()
+  const [day, month, year] = normalized.split('/').map((part) => Number.parseInt(part, 10))
+  if (!day || !month || !year) return 0
+  return new Date(year, month - 1, day).getTime()
+}
+
+const buildFallbackRecords = () => skillAssessmentActivities.slice(0, 8).map((activity, index) => ({
+  id: `evaluation-${activity.id}`,
+  activityName: activity.name,
+  activityType: activity.skillType,
+  studentCount: 24 + (index * 4),
+  year: activity.year,
+  sgt: activity.sgt,
+  attemptCount: `${(index % 3) + 1} / 3`,
+  createdDate: `0${(index % 8) + 1}/04/2026`,
+  evaluationStatus: index % 3 === 0 ? 'Completed Evaluation' : 'Pending Evaluation',
+  questionCount: 2 + (index % 4),
+}))
+
+function EvaluationCard({ record, onOpenEvaluation }) {
+  const isCompleted = record.evaluationStatus === 'Completed Evaluation'
+  const statusLabel = isCompleted ? 'Completed' : 'Pending'
+
+  return (
+    <article className="eval-card">
+      <div className="eval-card-top">
+        <div className="eval-card-topline">
+          <span className={`eval-type-chip ${getActivityTypeTone(record.activityType)}`}>{record.activityType}</span>
+          <span className={`eval-status-pill ${isCompleted ? 'is-complete' : 'is-pending'}`}>
+            {statusLabel}
+          </span>
+        </div>
+
+        <div className="eval-card-title">
+          <h3>{record.activityName}</h3>
+        </div>
+      </div>
+
+      <div className="eval-card-meta">
+        <div className="eval-card-meta-item">
+          <span><Users size={12} strokeWidth={2} /> Students</span>
+          <strong>{record.studentCount ?? 0}</strong>
+        </div>
+        <div className="eval-card-meta-item">
+          <span><GraduationCap size={12} strokeWidth={2} /> Year</span>
+          <strong>{record.year || 'Not set'}</strong>
+        </div>
+        <div className="eval-card-meta-item">
+          <span><FolderKanban size={12} strokeWidth={2} /> SGT</span>
+          <strong>{record.sgt || 'Not set'}</strong>
+        </div>
+        <div className="eval-card-meta-item">
+          <span><Shapes size={12} strokeWidth={2} /> Attempt</span>
+          <strong>{record.attemptCount || 'Not set'}</strong>
+        </div>
+      </div>
+
+      <div className="eval-card-foot">
+        <div className="eval-card-foot-copy">
+          <span><CalendarDays size={12} strokeWidth={2} /> {normalizeDate(record.createdDate) || 'Not set'}</span>
+        </div>
+        <button
+          type="button"
+          className={`tool-btn ${isCompleted ? 'eval-view-btn' : 'green'} eval-action-btn`}
+          onClick={() => onOpenEvaluation(record)}
+        >
+          {isCompleted ? 'View' : 'Start'}
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function EvaluationTable({
+  records,
+  onOpenEvaluation,
+  sortKey,
+  sortDirection,
+  onSort,
+  currentPage,
+  pageCount,
+  totalRecords,
+  onPageChange,
+}) {
+  const renderSortableHeader = (label, key) => (
+    <button
+      type="button"
+      className={`eval-table-sort ${sortKey === key ? 'is-active' : ''}`}
+      onClick={() => onSort(key)}
+    >
+      <span>{label}</span>
+      <ArrowUpDown size={13} strokeWidth={2} />
+      {sortKey === key ? <small>{sortDirection === 'asc' ? 'Asc' : 'Desc'}</small> : null}
+    </button>
   )
 
-  const updateStudentAssessment = (studentId, updater) => {
-    setStudentAssessments((current) => {
-      const existing = current[studentId] ?? createStudentAssessmentState()
-      const next = typeof updater === 'function' ? updater(existing) : updater
-      return { ...current, [studentId]: { ...existing, ...next, lastSavedAt: Date.now() } }
+  return (
+    <div className="eval-table-wrap">
+      <table className="eval-table">
+        <thead>
+          <tr>
+            <th>{renderSortableHeader('Activity', 'activityName')}</th>
+            <th>{renderSortableHeader('Type', 'activityType')}</th>
+            <th>{renderSortableHeader('Year', 'year')}</th>
+            <th>{renderSortableHeader('SGT', 'sgt')}</th>
+            <th>{renderSortableHeader('Students', 'studentCount')}</th>
+            <th>{renderSortableHeader('Attempt', 'attemptCount')}</th>
+            <th>{renderSortableHeader('Created', 'createdDate')}</th>
+            <th>{renderSortableHeader('Status', 'evaluationStatus')}</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {records.map((record) => {
+            const isCompleted = record.evaluationStatus === 'Completed Evaluation'
+
+            return (
+              <tr key={record.id}>
+                <td>
+                  <div className="eval-table-title">
+                    <strong>{record.activityName}</strong>
+                  </div>
+                </td>
+                <td>
+                  <span className={`eval-type-chip eval-table-clip-chip ${getActivityTypeTone(record.activityType)}`} title={record.activityType}>
+                    {record.activityType}
+                  </span>
+                </td>
+                <td>
+                  <span className="eval-table-clip-text" title={record.year || 'Not set'}>
+                    {record.year || 'Not set'}
+                  </span>
+                </td>
+                <td>
+                  <span className="eval-table-clip-text" title={record.sgt || 'Not set'}>
+                    {record.sgt || 'Not set'}
+                  </span>
+                </td>
+                <td>{record.studentCount ?? 0}</td>
+                <td>{record.attemptCount || 'Not set'}</td>
+                <td>{normalizeDate(record.createdDate) || 'Not set'}</td>
+                <td>
+                  <span className={`eval-status-pill ${isCompleted ? 'is-complete' : 'is-pending'}`}>
+                    {isCompleted ? 'Completed' : 'Pending'}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className={`tool-btn ${isCompleted ? 'eval-view-btn' : 'green'} eval-table-action`}
+                    onClick={() => onOpenEvaluation(record)}
+                  >
+                    {isCompleted ? 'View' : 'Start'}
+                  </button>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+
+      <div className="eval-table-footer">
+        <span>{totalRecords} results</span>
+        <div className="eval-pagination" aria-label="Table pagination">
+          <button
+            type="button"
+            className="eval-page-btn"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Prev
+          </button>
+
+          {Array.from({ length: pageCount }, (_, index) => index + 1).map((page) => (
+            <button
+              key={page}
+              type="button"
+              className={`eval-page-btn ${currentPage === page ? 'is-active' : ''}`}
+              onClick={() => onPageChange(page)}
+            >
+              {page}
+            </button>
+          ))}
+
+          <button
+            type="button"
+            className="eval-page-btn"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === pageCount}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], onStartEvaluation }) {
+  const [viewMode, setViewMode] = useState('card')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
+  const [selectedSgt, setSelectedSgt] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedActivityType, setSelectedActivityType] = useState('')
+  const [sortKey, setSortKey] = useState('createdDate')
+  const [sortDirection, setSortDirection] = useState('desc')
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const sourceRecords = evaluationRecords.length ? evaluationRecords : buildFallbackRecords()
+
+  const yearOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.year).filter(Boolean))], [sourceRecords])
+  const sgtOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.sgt).filter(Boolean))], [sourceRecords])
+  const activityTypeOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.activityType).filter(Boolean))], [sourceRecords])
+
+  const filteredRecords = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase()
+
+    return sourceRecords.filter((record) => {
+      const matchesSearch = !normalizedSearch || [
+        record.activityName,
+        record.activityType,
+        record.year,
+        record.sgt,
+      ].some((value) => String(value ?? '').toLowerCase().includes(normalizedSearch))
+
+      return (
+        matchesSearch
+        && (!selectedYear || record.year === selectedYear)
+        && (!selectedSgt || record.sgt === selectedSgt)
+        && (!selectedStatus || record.evaluationStatus === selectedStatus)
+        && (!selectedActivityType || record.activityType === selectedActivityType)
+      )
+    })
+  }, [sourceRecords, searchQuery, selectedYear, selectedSgt, selectedStatus, selectedActivityType])
+
+  const sortedRecords = useMemo(() => {
+    const records = [...filteredRecords]
+    const direction = sortDirection === 'asc' ? 1 : -1
+
+    records.sort((left, right) => {
+      let leftValue = left[sortKey]
+      let rightValue = right[sortKey]
+
+      if (sortKey === 'studentCount') {
+        leftValue = Number(left.studentCount ?? 0)
+        rightValue = Number(right.studentCount ?? 0)
+      } else if (sortKey === 'attemptCount') {
+        leftValue = parseAttemptValue(left.attemptCount)
+        rightValue = parseAttemptValue(right.attemptCount)
+      } else if (sortKey === 'createdDate') {
+        leftValue = parseDateValue(left.createdDate)
+        rightValue = parseDateValue(right.createdDate)
+      } else {
+        leftValue = String(leftValue ?? '').toLowerCase()
+        rightValue = String(rightValue ?? '').toLowerCase()
+      }
+
+      if (leftValue < rightValue) return -1 * direction
+      if (leftValue > rightValue) return 1 * direction
+      return 0
+    })
+
+    return records
+  }, [filteredRecords, sortDirection, sortKey])
+
+  const pageSize = 8
+  const pageCount = Math.max(1, Math.ceil(sortedRecords.length / pageSize))
+  const paginatedRecords = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return sortedRecords.slice(startIndex, startIndex + pageSize)
+  }, [currentPage, sortedRecords])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, selectedYear, selectedSgt, selectedStatus, selectedActivityType, sortKey, sortDirection, viewMode])
+
+  useEffect(() => {
+    if (currentPage > pageCount) {
+      setCurrentPage(pageCount)
+    }
+  }, [currentPage, pageCount])
+
+  const metrics = useMemo(() => ({
+    total: filteredRecords.length,
+    pending: filteredRecords.filter((record) => record.evaluationStatus === 'Pending Evaluation').length,
+    completed: filteredRecords.filter((record) => record.evaluationStatus === 'Completed Evaluation').length,
+    years: new Set(filteredRecords.map((record) => record.year).filter(Boolean)).size,
+    sgts: new Set(filteredRecords.map((record) => `${record.year}-${record.sgt}`).filter(Boolean)).size,
+  }), [filteredRecords])
+
+  const metricItems = [
+    { label: 'Total', value: metrics.total, icon: ClipboardCheck, tone: 'is-total' },
+    { label: 'Pending', value: metrics.pending, icon: Activity, tone: 'is-pending' },
+    { label: 'Completed', value: metrics.completed, icon: CheckCircle2, tone: 'is-complete' },
+    { label: 'Years', value: metrics.years, icon: GraduationCap, tone: 'is-years' },
+    { label: 'SGTs', value: metrics.sgts, icon: FolderKanban, tone: 'is-sgts' },
+  ]
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'createdDate' ? 'desc' : 'asc')
+  }
+
+  const handleOpenEvaluation = (record) => {
+    if (onStartEvaluation) {
+      onStartEvaluation(record)
+      return
+    }
+
+    onAlert?.({
+      tone: 'primary',
+      message: `Evaluation workspace opened for ${record.activityName} (${record.year} - ${record.sgt}).`,
     })
   }
 
-  const clearDerivedState = () => {
-    setSelectedActivityId('')
-    setPreviewAssessment(null)
-    setIsEvaluationStarted(false)
-  }
-
-  const handleYearChange = (value) => {
-    setSelectedYear(value)
-    setSelectedSgt('')
-    clearDerivedState()
-  }
-
-  const handleSgtChange = (value) => {
-    setSelectedSgt(value)
-    if (value) {
-      const derivedYear = findYearForSgt(value)
-      if (derivedYear) {
-        setSelectedYear(derivedYear)
-      }
-    }
-    clearDerivedState()
-  }
-
-  const handleAttemptChange = (value) => {
-    setAttemptCount(value)
-    clearDerivedState()
-  }
-
-  const handleActivityChange = (value) => {
-    setSelectedActivityId(value)
-    setPreviewAssessment(null)
-    setIsEvaluationStarted(false)
-  }
-
-  const handleResetSearch = () => {
-    setSelectedYear('')
-    setSelectedSgt('')
-    setAttemptCount('')
-    setSelectedActivityId('')
-    setPreviewAssessment(null)
-    setIsSearching(false)
-    setIsEvaluationStarted(false)
-    setSelectedStudentIndex(null)
-    setIsLoadingStudent(false)
-  }
-
-  const handleSearchAssessment = () => {
-    if (!selectedYear && !selectedSgt) {
-      onAlert?.({ tone: 'warning', message: 'Select a Year or SGT to continue.' })
-      return
-    }
-
-    if (!attemptCount) {
-      onAlert?.({ tone: 'warning', message: 'Enter an attempt count to continue.' })
-      return
-    }
-
-    if (!selectedActivityId) {
-      onAlert?.({ tone: 'warning', message: 'Choose a competency activity before searching.' })
-      return
-    }
-
-    if (!selectedActivity) {
-      onAlert?.({ tone: 'danger', message: 'The chosen activity is not available for the current filter set.' })
-      return
-    }
-
-    setIsSearching(true)
-    window.setTimeout(() => {
-      setIsSearching(false)
-      setPreviewAssessment(selectedActivity)
-      setIsEvaluationStarted(false)
-      onAlert?.({ tone: 'primary', message: 'Evaluation flow loaded successfully.' })
-    }, 650)
-  }
-
-  const handleStartEvaluation = () => {
-    if (!previewAssessment) {
-      onAlert?.({ tone: 'warning', message: 'Search and preview an activity before starting evaluation.' })
-      return
-    }
-    setIsEvaluationStarted(true)
-    setSelectedStudentIndex(0)
-    onAlert?.({ tone: 'primary', message: 'Evaluation started for the selected activity.' })
-  }
-
-  const handleSelectStudent = (index) => {
-    setIsLoadingStudent(true)
-    window.setTimeout(() => {
-      setSelectedStudentIndex(index)
-      setIsLoadingStudent(false)
-      const student = evaluationStudents[index]
-      if (student) {
-        setStudentAssessments((current) => ({
-          ...current,
-          [student.id]: current[student.id] ?? createStudentAssessmentState(),
-        }))
-      }
-    }, 180)
-  }
-
-  const handleChecklistStatus = (itemId, status) => {
-    if (!selectedStudent) return
-    updateStudentAssessment(selectedStudent.id, (current) => ({
-      ...current,
-      checklist: {
-        ...current.checklist,
-        [itemId]: status,
-      },
-      submitted: false,
-    }))
-  }
-
-  const handleTabChange = (tabId) => {
-    if (!selectedStudent) return
-    updateStudentAssessment(selectedStudent.id, (current) => ({
-      ...current,
-      activeTab: tabId,
-    }))
-  }
-
-  const handleStudentFieldChange = (field, value) => {
-    if (!selectedStudent) return
-    updateStudentAssessment(selectedStudent.id, (current) => ({
-      ...current,
-      [field]: value,
-      submitted: false,
-    }))
-  }
-
-  const handleQuestionChange = (questionKey, value) => {
-    if (!selectedStudent) return
-    updateStudentAssessment(selectedStudent.id, (current) => ({
-      ...current,
-      questionAnswers: {
-        ...current.questionAnswers,
-        [questionKey]: value,
-      },
-      submitted: false,
-    }))
-  }
-
-  const handleSaveEvaluation = () => {
-    if (!selectedStudent) {
-      onAlert?.({ tone: 'warning', message: 'Select a student before saving the evaluation.' })
-      return
-    }
-    updateStudentAssessment(selectedStudent.id, (current) => ({
-      ...current,
-      lastSavedAt: Date.now(),
-    }))
-    onAlert?.({ tone: 'secondary', message: 'Evaluation saved successfully.' })
-  }
-
-  const handleSubmitEvaluation = () => {
-    if (!selectedStudent) {
-      onAlert?.({ tone: 'warning', message: 'Select a student before submitting the evaluation.' })
-      return
-    }
-    updateStudentAssessment(selectedStudent.id, (current) => ({
-      ...current,
-      submitted: true,
-      activeTab: current.activeTab,
-    }))
-    onAlert?.({ tone: 'secondary', message: 'Evaluation submitted successfully.' })
-  }
-
-  const handleStepStudent = (direction) => {
-    if (selectedStudentIndex === null) return
-    const nextIndex = selectedStudentIndex + direction
-    if (nextIndex < 0 || nextIndex >= evaluationStudents.length) return
-    handleSelectStudent(nextIndex)
-  }
-
   return (
-    <section className="vx-content forms-page skill-assessment-page">
-      <div className="skill-assessment-shell">
+    <section className="vx-content eval-page">
+      <div className="eval-shell">
         <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Evaluation' }]} />
+
         <div className="vx-page-intro">
           <div className="vx-page-intro-title">
             <ClipboardCheck size={18} strokeWidth={2} className="vx-page-intro-icon" aria-hidden="true" />
@@ -270,374 +371,107 @@ function SkillAssessmentPage({ onAlert }) {
           </div>
         </div>
 
-        <div className={`skill-assessment-stage ${previewAssessment ? 'has-preview' : ''}`}>
-          <section className="skill-assessment-panel skill-assessment-config">
-            <div className="skill-assessment-panel-head">
-              <div>
-                <h2>Configuration</h2>
-                <p>Set the narrow filters before loading the available competency activities.</p>
-              </div>
-              <span className="skill-assessment-panel-pill">Step 1 - 2</span>
-            </div>
+        <section className="eval-stats">
+          {metricItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <article key={item.label} className={`eval-stat ${item.tone}`}>
+                <span className="eval-stat-icon"><Icon size={14} strokeWidth={2.1} /></span>
+                <div className="eval-stat-copy">
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              </article>
+            )
+          })}
+        </section>
 
-            <div className="skill-assessment-form-grid">
-              <label className="forms-field">
+        <section className="eval-toolbar">
+          <div className="eval-toolbar-row">
+            <label className="eval-search">
+              <Search size={15} strokeWidth={2} />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search activity, year, SGT"
+              />
+            </label>
+
+            <div className="eval-filters">
+              <label className="eval-filter-chip">
                 <span>Year</span>
                 <div className="forms-select-wrap">
-                  <select value={selectedYear} onChange={(event) => handleYearChange(event.target.value)}>
-                    <option value="">Select year</option>
-                    {assessmentYearOptions.map((year) => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
+                  <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+                    <option value="">All years</option>
+                    {yearOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </div>
               </label>
 
-              <label className="forms-field">
+              <label className="eval-filter-chip">
                 <span>SGT</span>
                 <div className="forms-select-wrap">
-                  <select value={selectedSgt} onChange={(event) => handleSgtChange(event.target.value)}>
-                    <option value="">Select SGT</option>
-                    {availableSgtOptions.map((sgt) => (
-                      <option key={sgt} value={sgt}>{sgt}</option>
-                    ))}
+                  <select value={selectedSgt} onChange={(event) => setSelectedSgt(event.target.value)}>
+                    <option value="">All SGTs</option>
+                    {sgtOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </div>
               </label>
 
-              <label className="forms-field">
-                <span>Attempt Count</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="3"
-                  inputMode="numeric"
-                  value={attemptCount}
-                  onChange={(event) => handleAttemptChange(event.target.value)}
-                  placeholder="1, 2, or 3"
-                />
-              </label>
-
-              <label className="forms-field forms-field-full">
-                <span>Select Competency Activity</span>
+              <label className="eval-filter-chip">
+                <span>Type</span>
                 <div className="forms-select-wrap">
-                  <select value={selectedActivityId} onChange={(event) => handleActivityChange(event.target.value)}>
-                    <option value="">Choose activity</option>
-                    {filteredActivities.map((activity) => (
-                      <option key={activity.id} value={activity.id}>
-                        {activity.competency} - {activity.name}
-                      </option>
-                    ))}
+                  <select value={selectedActivityType} onChange={(event) => setSelectedActivityType(event.target.value)}>
+                    <option value="">All types</option>
+                    {activityTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </div>
               </label>
             </div>
 
-            <div className="skill-assessment-actions">
-              <button
-                type="button"
-                className="tool-btn green skill-assessment-search-btn"
-                onClick={handleSearchAssessment}
-                disabled={isSearching}
-              >
-                {isSearching ? (
-                  <>
-                    <span className="skill-assessment-spinner" aria-hidden="true" />
-                    Searching...
-                  </>
-                ) : (
-                  'Search Activity'
-                )}
+            <div className="eval-view-switch" role="tablist" aria-label="Evaluation layout">
+              <button type="button" className={`eval-view-btn ${viewMode === 'card' ? 'is-active' : ''}`} onClick={() => setViewMode('card')}>
+                <LayoutGrid size={14} strokeWidth={2} />
+                Cards
               </button>
-              <button type="button" className="ghost" onClick={handleResetSearch}>Reset Search</button>
+              <button type="button" className={`eval-view-btn ${viewMode === 'table' ? 'is-active' : ''}`} onClick={() => setViewMode('table')}>
+                <Rows3 size={14} strokeWidth={2} />
+                Table
+              </button>
             </div>
+          </div>
+        </section>
 
+        {filteredRecords.length ? (
+          <section className="eval-content">
+            {viewMode === 'card' ? (
+              <div className="eval-card-grid">
+                {sortedRecords.map((record) => (
+                  <EvaluationCard key={record.id} record={record} onOpenEvaluation={handleOpenEvaluation} />
+                ))}
+              </div>
+            ) : (
+              <EvaluationTable
+                records={paginatedRecords}
+                onOpenEvaluation={handleOpenEvaluation}
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                currentPage={currentPage}
+                pageCount={pageCount}
+                totalRecords={sortedRecords.length}
+                onPageChange={setCurrentPage}
+              />
+            )}
           </section>
-
-          {previewAssessment ? (
-            <aside className="skill-assessment-panel skill-assessment-preview-panel">
-              <div className="skill-assessment-panel-head">
-                <div>
-                  <h2>Evaluation Preview</h2>
-                  <p>Confirm the activity before entering the grading workspace.</p>
-                </div>
-                <span className="skill-assessment-panel-pill is-live">Ready</span>
-              </div>
-
-              <div className="skill-assessment-preview-card">
-                <div className="skill-assessment-preview-head">
-                  <span className="skill-assessment-badge is-competency">{previewAssessment.competency}</span>
-                  <span className="skill-assessment-badge is-skill">{previewAssessment.skillType}</span>
-                </div>
-
-                <strong>{previewAssessment.name}</strong>
-
-                <div className="skill-assessment-preview-meta">
-                  <div>
-                    <span>Year / SGT</span>
-                    <strong>{previewAssessment.year} • {previewAssessment.sgt}</strong>
-                  </div>
-                  <div>
-                    <span>No. of Students</span>
-                    <strong>{previewAssessment.students}</strong>
-                  </div>
-                  <div>
-                    <span>Attempt Count</span>
-                    <strong>{attemptCount}</strong>
-                  </div>
-                </div>
-
-                <p>The selected activity is ready for evaluation. Review the summary and then start the grading flow.</p>
-
-                <div className="skill-assessment-preview-actions">
-                  <button type="button" className="tool-btn green" onClick={handleStartEvaluation}>
-                    Start Evaluation
-                  </button>
-                  <button type="button" className="ghost" onClick={handleResetSearch}>
-                    Reset Search
-                  </button>
-                </div>
-              </div>
-            </aside>
-          ) : null}
-        </div>
-
-        {isEvaluationStarted && previewAssessment ? (
-          <section className="skill-assessment-panel skill-assessment-execution-panel">
-            <div className="skill-assessment-panel-head">
-              <div>
-                <h2>Grading Workspace</h2>
-                <p>Click a student to open the assessment flow, then move between tabs without losing progress.</p>
-              </div>
-              <span className="skill-assessment-panel-pill is-live">Live session</span>
-            </div>
-
-            <div className="skill-assessment-execution-summary">
-              <div>
-                <span>Activity</span>
-                <strong>{previewAssessment.name}</strong>
-              </div>
-              <div>
-                <span>Competency</span>
-                <strong>{previewAssessment.competency}</strong>
-              </div>
-              <div>
-                <span>Skill Type</span>
-                <strong>{previewAssessment.skillType}</strong>
-              </div>
-            </div>
-
-            <div className="skill-assessment-grading-layout">
-              <aside className="skill-assessment-grading-list-panel">
-                <div className="skill-assessment-list-head">
-                  <strong>Student list</strong>
-                  <span>{evaluationStudents.length} students</span>
-                </div>
-                <div className="skill-assessment-student-list">
-                  {evaluationStudents.map((student, index) => {
-                    const studentState = studentAssessments[student.id] ?? createStudentAssessmentState()
-                    const isActive = selectedStudent?.id === student.id
-
-                    return (
-                      <article
-                        key={student.id}
-                        className={`skill-assessment-student-row ${isActive ? 'is-active' : ''}`}
-                        onClick={() => handleSelectStudent(index)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault()
-                            handleSelectStudent(index)
-                          }
-                        }}
-                      >
-                        <div className="skill-assessment-student-index">{index + 1}</div>
-                        <div className="skill-assessment-student-main">
-                          <strong>{student.name}</strong>
-                          <span>{student.id}</span>
-                        </div>
-                        <div className="skill-assessment-student-actions">
-                          <div className={`skill-assessment-student-status ${studentState.submitted ? 'is-complete' : ''}`}>
-                            {studentState.submitted ? 'Complete' : 'Pending'}
-                          </div>
-                          <button type="button" className="skill-assessment-grade-btn" onClick={() => handleSelectStudent(index)}>
-                            Grade
-                          </button>
-                        </div>
-                      </article>
-                    )
-                  })}
-                </div>
-              </aside>
-
-              <section className="skill-assessment-grading-workspace">
-                {isLoadingStudent ? (
-                  <div className="skill-assessment-loading-state">
-                    <span className="skill-assessment-spinner" aria-hidden="true" />
-                    Loading student workspace...
-                  </div>
-                ) : selectedStudent && selectedStudentAssessment ? (
-                  <div className="skill-assessment-grading-card" key={selectedStudent.id}>
-                    <div className="skill-assessment-grading-header">
-                      <div>
-                        <h3>{selectedStudent.id} - {selectedStudent.name}</h3>
-                        <p>Activity synced for focused grading in a single workspace.</p>
-                      </div>
-                      <div className="skill-assessment-grading-header-badges">
-                        <span className="skill-assessment-badge is-competency">{previewAssessment.competency}</span>
-                        <span className="skill-assessment-badge is-skill">{previewAssessment.skillType}</span>
-                      </div>
-                    </div>
-
-                    <div className="skill-assessment-grading-metrics">
-                      <div>
-                        <span>Eval Count</span>
-                        <strong>{selectedStudentEvalNumber} Out of {selectedStudentTotal}</strong>
-                      </div>
-                      <div>
-                        <span>Eval Status</span>
-                        <strong>{evaluationStatus}</strong>
-                      </div>
-                      <div>
-                        <span>Obtained Marks</span>
-                        <strong>{String(obtainedMarks).padStart(2, '0')} / 10</strong>
-                      </div>
-                      <div>
-                        <span>Checklist Done</span>
-                        <strong>{checklistCompleted} / {gradingChecklistItems.length}</strong>
-                      </div>
-                    </div>
-
-                    <div className="skill-assessment-tab-list" role="tablist" aria-label="Assessment phases">
-                      {gradingTabs.map((tab) => (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          role="tab"
-                          className={selectedStudentAssessment.activeTab === tab.id ? 'active' : ''}
-                          aria-selected={selectedStudentAssessment.activeTab === tab.id}
-                          onClick={() => handleTabChange(tab.id)}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="skill-assessment-tab-panel">
-                      {selectedStudentAssessment.activeTab === 'checklist' ? (
-                        <div className="skill-assessment-checklist">
-                          {gradingChecklistItems.map((item) => {
-                            const status = selectedStudentAssessment.checklist[item.id] ?? 'pending'
-                            return (
-                              <article key={item.id} className={`skill-assessment-checklist-item is-${status}`}>
-                                <div>
-                                  <strong>{item.label}</strong>
-                                  <span>{item.hint}</span>
-                                </div>
-                                <div className="skill-assessment-checklist-actions">
-                                  <button
-                                    type="button"
-                                    className={status === 'pass' ? 'is-active pass' : 'pass'}
-                                    onClick={() => handleChecklistStatus(item.id, 'pass')}
-                                  >
-                                    Pass
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={status === 'fail' ? 'is-active fail' : 'fail'}
-                                    onClick={() => handleChecklistStatus(item.id, 'fail')}
-                                  >
-                                    Fail
-                                  </button>
-                                </div>
-                              </article>
-                            )
-                          })}
-                        </div>
-                      ) : null}
-
-                      {selectedStudentAssessment.activeTab === 'form' ? (
-                        <div className="skill-assessment-form-panel">
-                          <label className="skill-assessment-textarea-field">
-                            <span>Activity Form Notes</span>
-                            <textarea
-                              rows="7"
-                              value={selectedStudentAssessment.formNotes}
-                              onChange={(event) => handleStudentFieldChange('formNotes', event.target.value)}
-                              placeholder="Capture observed technique, sequence, and guidance points..."
-                            />
-                          </label>
-                        </div>
-                      ) : null}
-
-                      {selectedStudentAssessment.activeTab === 'questions' ? (
-                        <div className="skill-assessment-question-list">
-                          {gradingQuestions.map((question, index) => {
-                            const keyName = `question-${index + 1}`
-                            return (
-                              <label key={keyName} className="skill-assessment-textarea-field">
-                                <span>{question}</span>
-                                <textarea
-                                  rows="4"
-                                  value={selectedStudentAssessment.questionAnswers[keyName] ?? ''}
-                                  onChange={(event) => handleQuestionChange(keyName, event.target.value)}
-                                  placeholder="Enter the student response or your evaluation notes..."
-                                />
-                              </label>
-                            )
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <label className="skill-assessment-remarks-field">
-                      <span>Enter your remarks...</span>
-                      <textarea
-                        rows="4"
-                        value={selectedStudentAssessment.remarks}
-                        onChange={(event) => handleStudentFieldChange('remarks', event.target.value)}
-                        placeholder="Add constructive remarks for the student report..."
-                      />
-                    </label>
-
-                    <div className="skill-assessment-footer-bar">
-                      <div className="skill-assessment-save-state">
-                        <span>Auto-save</span>
-                        <strong>Saved just now</strong>
-                      </div>
-                      <div className="skill-assessment-footer-actions">
-                        <button type="button" className="ghost" onClick={() => handleStepStudent(-1)} disabled={selectedStudentIndex === 0}>
-                          Previous
-                        </button>
-                        <button type="button" className="ghost" onClick={handleSaveEvaluation}>
-                          Save Evaluation
-                        </button>
-                        <button type="button" className="tool-btn green" onClick={handleSubmitEvaluation}>
-                          Submit Evaluation
-                        </button>
-                        <button type="button" className="ghost" onClick={() => handleStepStudent(1)} disabled={selectedStudentIndex === evaluationStudents.length - 1}>
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="skill-assessment-empty-state">
-                    <strong>Select a student to begin grading</strong>
-                    <p>Choose a name from the left panel to open the assessment workspace with synced activity details, count tracking, and tabs.</p>
-                  </div>
-                )}
-              </section>
-            </div>
+        ) : (
+          <section className="eval-empty">
+            <CheckCircle2 size={22} strokeWidth={2} />
+            <strong>No evaluation records match these filters.</strong>
+            <p>Try a broader search or clear the active filters.</p>
           </section>
-        ) : null}
+        )}
       </div>
     </section>
   )
 }
-
-
-export default SkillAssessmentPage
-
-
