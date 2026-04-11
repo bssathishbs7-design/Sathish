@@ -1,0 +1,315 @@
+.exam-log-page {
+  padding-top: 12px;
+}
+
+.exam-log-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.exam-log-header-card,
+.exam-log-table-card {
+  border: 1px solid #e6ede9;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 24px rgba(18, 42, 30, 0.04);
+  padding: 18px;
+}
+
+.exam-log-header-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.exam-log-kicker {
+  color: #75897f;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.exam-log-copy h2 {
+  margin: 8px 0 4px;
+  color: #163229;
+  font-size: 1.4rem;
+}
+
+.exam-log-copy p,
+.exam-log-panel-head p {
+  margin: 0;
+  color: #74897f;
+}
+
+.exam-log-header-badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.exam-log-header-badges .eval-status-pill,
+.exam-log-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.exam-log-header-badges .eval-status-pill {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 12px;
+  justify-self: auto;
+  align-self: center;
+}
+
+.exam-log-summary-pill {
+  border: 1px solid #d8e4de;
+  border-radius: 999px;
+  background: #f6faf8;
+  color: #204438;
+}
+
+.exam-log-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.exam-log-back-btn,
+.exam-log-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+}
+
+.exam-log-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.exam-log-summary-tile {
+  display: grid;
+  gap: 6px;
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid #e7ede9;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #fbfcfb);
+}
+
+.exam-log-summary-tile span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #75897f;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.exam-log-summary-tile strong,
+.exam-log-panel-head strong {
+  color: #163229;
+}
+
+.exam-log-summary-tile.is-warning {
+  border-color: #f3d7ae;
+  background: linear-gradient(180deg, #fffaf2, #fffdf8);
+}
+
+.exam-log-summary-tile.is-tab {
+  border-color: #d2def5;
+  background: linear-gradient(180deg, #f6f9ff, #fcfdff);
+}
+
+.exam-log-summary-tile.is-fullscreen {
+  border-color: #dccff6;
+  background: linear-gradient(180deg, #faf7ff, #fdfbff);
+}
+
+.exam-log-summary-tile.is-network {
+  border-color: #d7ebe4;
+  background: linear-gradient(180deg, #f5fcf9, #fbfffd);
+}
+
+.exam-log-table-wrap {
+  overflow-x: auto;
+  margin-top: 14px;
+}
+
+.exam-log-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+
+.exam-log-table th,
+.exam-log-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #edf1ef;
+  text-align: left;
+  vertical-align: top;
+}
+
+.exam-log-table th {
+  color: #75897f;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.exam-log-table td {
+  color: #224338;
+  font-size: 0.92rem;
+}
+
+.exam-log-event-pill,
+.exam-log-severity-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.exam-log-event-pill.is-warning,
+.exam-log-severity-pill.is-warning {
+  border: 1px solid #f2cf99;
+  background: #fff8ed;
+  color: #c7821d;
+}
+
+.exam-log-event-pill.is-success,
+.exam-log-severity-pill.is-success {
+  border: 1px solid #bfe4cf;
+  background: #effaf4;
+  color: #1f8c58;
+}
+
+.exam-log-event-pill.is-tab {
+  border: 1px solid #c7d7f4;
+  background: #f4f8ff;
+  color: #2f63b5;
+}
+
+.exam-log-event-pill.is-fullscreen {
+  border: 1px solid #dfd0f9;
+  background: #faf6ff;
+  color: #7b4bc9;
+}
+
+.exam-log-event-pill.is-network {
+  border: 1px solid #cae6dc;
+  background: #f2fbf7;
+  color: #257d63;
+}
+
+.exam-log-event-pill.is-info,
+.exam-log-severity-pill.is-info {
+  border: 1px solid #d8e4de;
+  background: #f7faf8;
+  color: #4f6c61;
+}
+
+.exam-log-severity-pill.is-danger {
+  border: 1px solid #f0c7c7;
+  background: #fff5f5;
+  color: #cb4b4b;
+}
+
+.exam-log-empty-cell {
+  color: #75897f;
+  text-align: center;
+}
+
+.theme-dark .exam-log-header-card,
+.theme-dark .exam-log-table-card,
+.theme-dark .exam-log-summary-tile {
+  border-color: #243652;
+  background: linear-gradient(180deg, rgba(17, 28, 48, 0.98), rgba(13, 22, 39, 0.98));
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.24);
+}
+
+.theme-dark .exam-log-copy h2,
+.theme-dark .exam-log-summary-tile strong,
+.theme-dark .exam-log-panel-head strong,
+.theme-dark .exam-log-table td {
+  color: #e6efeb;
+}
+
+.theme-dark .exam-log-copy p,
+.theme-dark .exam-log-panel-head p,
+.theme-dark .exam-log-kicker,
+.theme-dark .exam-log-summary-tile span,
+.theme-dark .exam-log-table th,
+.theme-dark .exam-log-empty-cell {
+  color: #9db3aa;
+}
+
+.theme-dark .exam-log-summary-pill {
+  border-color: #28463f;
+  background: rgba(24, 52, 45, 0.9);
+  color: #d8f0e5;
+}
+
+.theme-dark .exam-log-table th,
+.theme-dark .exam-log-table td {
+  border-bottom-color: #20314c;
+}
+
+@media (max-width: 1120px) {
+  .exam-log-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .exam-log-header-card {
+    flex-direction: column;
+  }
+
+  .exam-log-header-actions {
+    justify-content: flex-start;
+  }
+
+  .exam-log-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .exam-log-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .exam-log-header-actions {
+    width: 100%;
+  }
+
+  .exam-log-back-btn,
+  .exam-log-reset-btn {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}

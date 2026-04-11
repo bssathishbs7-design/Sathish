@@ -7,6 +7,7 @@ import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import StartEvaluationPage from './pages/StartEvaluationPage'
+import ExamLogPage from './pages/ExamLogPage'
 import MySkillActivityPage from './pages/MySkillActivityPage'
 import ProgressTrackingPage from './pages/ProgressTrackingPage'
 import StudentExamPage from './pages/StudentExamPage'
@@ -22,6 +23,7 @@ const PAGE_PATHS = {
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
   [APP_PAGES.START_EVALUATION]: '/skills/start-evaluation',
+  [APP_PAGES.EXAM_LOG]: '/skills/exam-log',
   [APP_PAGES.OSPE_ACTIVITY]: '/skills/ospe-activity',
   [APP_PAGES.IMAGE_ACTIVITY]: '/skills/image-activity',
   [APP_PAGES.INTERPRETATION_ACTIVITY]: '/skills/interpretation-activity',
@@ -186,8 +188,10 @@ function App() {
   const [savedImageActivities, setSavedImageActivities] = useState({})
   const [assignedSkillActivities, setAssignedSkillActivities] = useState([])
   const [evaluationRecords, setEvaluationRecords] = useState([])
+  const [examMonitoringLogs, setExamMonitoringLogs] = useState([])
   const [selectedStudentExamAssignment, setSelectedStudentExamAssignment] = useState(null)
   const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(null)
+  const [selectedExamLogContext, setSelectedExamLogContext] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
@@ -389,6 +393,20 @@ function App() {
     setSelectedStudentExamAssignment(submission)
   }
 
+  const handleRecordExamLog = (entry) => {
+    if (!entry?.activityId || !entry?.studentId || !entry?.eventType) return
+
+    setExamMonitoringLogs((current) => [
+      {
+        id: entry.id ?? `exam-log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        timestamp: entry.timestamp ?? new Date().toISOString(),
+        severity: entry.severity ?? 'info',
+        ...entry,
+      },
+      ...current,
+    ])
+  }
+
   const handleOpenStartEvaluation = (record) => {
     if (!record) return
 
@@ -401,6 +419,86 @@ function App() {
       latestSubmission: linkedSubmission,
     })
     navigateToPage(APP_PAGES.START_EVALUATION)
+  }
+
+  const handleOpenExamLog = (context) => {
+    if (!context) return
+    setSelectedExamLogContext(context)
+    navigateToPage(APP_PAGES.EXAM_LOG)
+  }
+
+  const handleResetExamActivity = (context) => {
+    const activityId = context?.evaluationRecord?.id ?? context?.activityId
+    if (!activityId) return
+
+    setAssignedSkillActivities((current) => current.map((item) => (
+      item.id === activityId
+        ? {
+            ...item,
+            status: 'Assigned',
+            action: 'Start Activity',
+            tone: 'primary',
+            attemptCount: '0 / 1',
+            submittedAt: null,
+            answers: null,
+            proctoring: null,
+          }
+        : item
+    )))
+
+    setEvaluationRecords((current) => current.map((item) => (
+      item.id === activityId
+        ? {
+            ...item,
+            evaluationStatus: 'Pending Evaluation',
+            attemptCount: '0 / 1',
+          }
+        : item
+    )))
+
+    setSelectedStudentExamAssignment((current) => (
+      current?.id === activityId
+        ? {
+            ...current,
+            status: 'Assigned',
+            action: 'Start Activity',
+            tone: 'primary',
+            attemptCount: '0 / 1',
+            submittedAt: null,
+            answers: null,
+            proctoring: null,
+          }
+        : current
+    ))
+
+    setExamMonitoringLogs((current) => current.filter((item) => item.activityId !== activityId))
+
+    setSelectedExamLogContext((current) => (
+      current?.evaluationRecord?.id === activityId
+        ? {
+            ...current,
+            student: current.student
+              ? {
+                  ...current.student,
+                  evaluationStatus: 'Pending',
+                  submission: current.student.submission
+                    ? {
+                        ...current.student.submission,
+                        submittedAt: null,
+                      }
+                    : current.student.submission,
+                }
+              : current.student,
+            obtainedMarks: 0,
+          }
+        : current
+    ))
+
+    showAlert({
+      tone: 'secondary',
+      message: 'Activity reset successfully. Returning to Start Evaluation.',
+      duration: 3600,
+    })
   }
 
   return (
@@ -487,6 +585,14 @@ function App() {
             <StartEvaluationPage
               evaluationRecord={selectedEvaluationRecord}
               onBackToEvaluation={() => navigateToPage(APP_PAGES.EVALUATION)}
+              onOpenExamLog={handleOpenExamLog}
+            />
+          ) : activePage === APP_PAGES.EXAM_LOG ? (
+            <ExamLogPage
+              examLogContext={selectedExamLogContext}
+              examMonitoringLogs={examMonitoringLogs}
+              onBackToEvaluation={() => navigateToPage(APP_PAGES.START_EVALUATION)}
+              onResetActivity={handleResetExamActivity}
             />
           ) : activePage === APP_PAGES.OSPE_ACTIVITY ? (
             <OspeActivityPage
@@ -528,6 +634,7 @@ function App() {
               onBackToActivities={() => navigateToPage(APP_PAGES.MY_SKILL_ACTIVITY)}
               onSubmitExam={handleSubmitStudentExam}
               onAlert={showAlert}
+              onRecordExamLog={handleRecordExamLog}
             />
           ) : activePage === APP_PAGES.PROGRESS_TRACKING ? (
             <ProgressTrackingPage />

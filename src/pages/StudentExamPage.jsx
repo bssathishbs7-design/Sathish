@@ -313,9 +313,10 @@ function StudentQuestionCard({
   )
 }
 
-export default function StudentExamPage({ assignment, onBackToActivities, onSubmitExam, onAlert }) {
+export default function StudentExamPage({ assignment, onBackToActivities, onSubmitExam, onAlert, onRecordExamLog }) {
   const sections = useMemo(() => getAssignedSections(assignment), [assignment])
   const { resolved, examData, examItems } = sections
+  const examContext = useMemo(() => getStudentExamContext(resolved, examItems), [resolved, examItems])
   const hasTimer = Boolean(examData.durationMinutes)
   const [phase, setPhase] = useState('prestart')
   const [answers, setAnswers] = useState(() => buildInitialAnswers(sections))
@@ -371,11 +372,26 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
 
   const isSubmissionReady = examItems.length > 0 && completedCount === examItems.length
 
-  const appendProctoringEvent = (message) => {
+  const appendProctoringEvent = ({ message, eventType = 'Info', severity = 'info', detail = message }) => {
+    const now = new Date()
+
     setProctoringLog((current) => [
-      { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message, time: new Date().toLocaleTimeString('en-GB') },
+      { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message, time: now.toLocaleTimeString('en-GB') },
       ...current,
     ].slice(0, 10))
+
+    onRecordExamLog?.({
+      activityId: resolved.id ?? assignment?.id ?? 'unknown-activity',
+      activityName: resolved.title ?? assignment?.title ?? 'Student Activity',
+      activityType: resolved.type ?? assignment?.type ?? 'Activity',
+      studentId: examContext.studentId,
+      studentName: examContext.studentName,
+      eventType,
+      detail,
+      severity,
+      timestamp: now.toISOString(),
+      status: phase === 'submitted' ? 'Completed' : 'Live',
+    })
   }
 
   useEffect(() => {
@@ -411,7 +427,12 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       setWarningCount((current) => current + 1)
       if (counter === 'tab') setTabSwitchCount((current) => current + 1)
       if (counter === 'fullscreen') setFullscreenExitCount((current) => current + 1)
-      appendProctoringEvent(message)
+      appendProctoringEvent({
+        message,
+        eventType: counter === 'fullscreen' ? 'Full Screen Exit' : 'Tab Switch',
+        severity: 'warning',
+        detail: message,
+      })
       setIsFocusPaused(true)
       onAlert?.({ tone: 'warning', message })
     }
@@ -430,12 +451,35 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       }
     }
 
+    const handleOffline = () => {
+      appendProctoringEvent({
+        message: 'Network connection was lost during the exam.',
+        eventType: 'Network Issue',
+        severity: 'warning',
+        detail: 'Device went offline during the monitored exam.',
+      })
+      onAlert?.({ tone: 'warning', message: 'Network connection lost. The event has been recorded.' })
+    }
+
+    const handleOnline = () => {
+      appendProctoringEvent({
+        message: 'Network connection was restored.',
+        eventType: 'Reconnected',
+        severity: 'info',
+        detail: 'Device reconnected to the network during the monitored exam.',
+      })
+    }
+
     window.addEventListener('blur', handleWindowBlur)
+    window.addEventListener('offline', handleOffline)
+    window.addEventListener('online', handleOnline)
     document.addEventListener('visibilitychange', handleVisibilityChange)
     document.addEventListener('fullscreenchange', handleFullscreenChange)
 
     return () => {
       window.removeEventListener('blur', handleWindowBlur)
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('online', handleOnline)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
@@ -450,7 +494,12 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       }
     }
 
-    appendProctoringEvent('Exam started with online monitoring active.')
+    appendProctoringEvent({
+      message: 'Exam started with online monitoring active.',
+      eventType: 'Exam Started',
+      severity: 'info',
+      detail: 'Student started the monitored exam session.',
+    })
     setIsFocusPaused(false)
     setPhase('active')
   }
@@ -464,6 +513,12 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       }
     }
 
+    appendProctoringEvent({
+      message: 'Exam resumed after monitoring interruption.',
+      eventType: 'Exam Resumed',
+      severity: 'info',
+      detail: 'Student resumed the exam after a monitoring pause.',
+    })
     setIsFocusPaused(false)
   }
 
@@ -508,6 +563,15 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
     setSubmittedAt(submittedTimestamp)
     setPhase('submitted')
 
+    appendProctoringEvent({
+      message: reason === 'timeout' ? 'Activity was auto-submitted.' : 'Activity submitted successfully.',
+      eventType: reason === 'timeout' ? 'Auto Submitted' : 'Exam Submitted',
+      severity: reason === 'timeout' ? 'warning' : 'success',
+      detail: reason === 'timeout'
+        ? 'Exam was automatically submitted when the timer ended.'
+        : 'Student completed and submitted the exam.',
+    })
+
     onSubmitExam?.({
       ...resolved,
       status: 'Completed',
@@ -532,7 +596,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   }
 
   const renderedReferenceImages = examData.modules?.referenceImages ?? []
-  const examContext = getStudentExamContext(resolved, examItems)
   const sessionTypeConfig = getItemTypeBadgeConfig(resolved.type ?? 'Activity')
   const summaryItems = [
     { label: 'Assessment Type', value: resolved.type ?? 'Activity', icon: Shapes },
