@@ -138,7 +138,9 @@ const buildAssignThresholdRows = (totalMarks) => {
   ]
 }
 const buildEmptyAssignThresholdRows = () => ([
-  { id: `threshold-${Date.now()}`, label: '', from: '0', to: '' },
+  { id: `threshold-${Date.now()}-1`, label: 'Below', from: '0', to: '' },
+  { id: `threshold-${Date.now()}-2`, label: 'Meets', from: '', to: '' },
+  { id: `threshold-${Date.now()}-3`, label: 'Exceeds', from: '', to: '' },
 ])
 const fallbackOspeActivitySeed = {
   activity: {
@@ -791,16 +793,16 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     const from = Number(row.from)
     const to = Number(row.to)
     const totalMarks = Math.max(1, Number(overallTotalMarks) || 10)
+    if (!row.label.trim()) return 'Enter a threshold label.'
     if (Number.isNaN(from) || Number.isNaN(to)) return 'Enter valid values.'
-    if (!row.label.trim()) return ''
     if (from > to) return '`From` must be less than or equal to `To`.'
     if (index === 0 && from !== 0) return 'First row must start at 0.'
     if (index > 0) {
       const previousTo = Number(assignThresholds[index - 1].to)
-      if (Math.abs(previousTo - from) > 0.001) return ''
+      if (Math.abs(previousTo - from) > 0.001) return 'Thresholds must continue without gaps or overlaps.'
     }
     if (index === assignThresholds.length - 1 && Math.abs(to - totalMarks) > 0.001) {
-      return ''
+      return 'Final threshold must end at the total marks value.'
     }
     return ''
   }), [assignThresholds, overallTotalMarks])
@@ -1409,16 +1411,27 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                       {assignThresholds.map((row, index) => (
                         <div key={row.id} className="ospe-threshold-row">
                           <input
+                            className="ospe-threshold-label"
                             value={row.label}
                             onChange={(event) => updateAssignThreshold(row.id, 'label', event.target.value)}
                             placeholder="Create label"
                           />
                           <input
+                            className="ospe-threshold-from"
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            step="0.01"
                             value={row.from}
                             onChange={(event) => updateAssignThreshold(row.id, 'from', event.target.value)}
                             placeholder="From"
                           />
                           <input
+                            className="ospe-threshold-to"
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            step="0.01"
                             value={row.to}
                             onChange={(event) => updateAssignThreshold(row.id, 'to', event.target.value)}
                             placeholder="To"
