@@ -13,11 +13,14 @@ import {
   FileText,
   Image as ImageIcon,
   Microscope,
+  Pencil,
+  Plus,
   Search,
   Shapes,
   Stethoscope,
   Tag,
   Users,
+  X,
 } from 'lucide-react'
 import '../styles/evaluation.css'
 import '../styles/start-evaluation.css'
@@ -32,6 +35,39 @@ const CHECKLIST_FALLBACK_PROMPTS = [
 
 const formatDate = (value) => (value ? String(value).split(',')[0].trim() : 'Not set')
 const normalizeValue = (value, fallback = 'Not Applicable') => value ?? fallback
+const formatMarksValue = (value) => {
+  const numericValue = Number(value ?? 0)
+
+  if (Number.isNaN(numericValue)) return '0'
+  if (Number.isInteger(numericValue)) return String(numericValue)
+
+  return numericValue.toFixed(2).replace(/\.?0+$/, '')
+}
+
+const resolveThresholdResult = (thresholds, obtainedMarks) => {
+  const normalizedThresholds = (thresholds ?? [])
+    .map((threshold, index) => ({
+      id: threshold.id ?? `threshold-${index + 1}`,
+      label: threshold.label ?? `Threshold ${index + 1}`,
+      from: Number(threshold.from),
+      to: Number(threshold.to),
+    }))
+    .filter((threshold) => !Number.isNaN(threshold.from) && !Number.isNaN(threshold.to))
+    .sort((left, right) => left.from - right.from)
+
+  const matchedThreshold = normalizedThresholds.find((threshold) => (
+    obtainedMarks >= threshold.from - 0.001
+    && obtainedMarks <= threshold.to + 0.001
+  ))
+
+  return matchedThreshold ?? null
+}
+
+const buildDefaultDecisionOptions = () => ([
+  { id: 'decision-completed', label: 'C', title: 'Completed' },
+  { id: 'decision-repeat', label: 'R', title: 'Repeat' },
+  { id: 'decision-remedial', label: 'Re', title: 'Remedial' },
+])
 
 const getActivityTypeTone = (value) => {
   const normalized = String(value ?? '').trim().toLowerCase()
@@ -310,7 +346,7 @@ const buildStudentRoster = (record, assignment, latestSubmission) => {
   })
 }
 
-function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
+function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvaluationStateChange }) {
   const activityType = String(record?.activityType ?? '').toLowerCase()
   const Icon = getActivityTypeIcon(record?.activityType)
   const submission = student?.submission
@@ -386,6 +422,12 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
       setManualQuestionMarks({})
       setOpenReferenceAnswers({})
       onObtainedMarksChange?.(0)
+      onEvaluationStateChange?.({
+        groupedSections: [],
+        requiredSections: [],
+        isReadyToSubmit: false,
+        completedSectionCount: 0,
+      })
       return
     }
 
@@ -473,6 +515,73 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
     const obtainedMarks = checklistObtainedMarks + formObtainedMarks + scaffoldingObtainedMarks + imageObtainedMarks + manualQuestionObtainedMarks
     onObtainedMarksChange?.(obtainedMarks)
   }, [checklistMarks, formMarks, imageMarks, manualQuestionMarks, onObtainedMarksChange, scaffoldingMarks])
+
+  useEffect(() => {
+    const sectionSummaries = groupedItems.map((group) => {
+      const completedItems = group.items.reduce((count, item) => {
+        if (item.type === 'checklist') {
+          return count + (checklistDecisions[item.id] === 'right' || checklistDecisions[item.id] === 'wrong' ? 1 : 0)
+        }
+
+        if (item.type === 'form') {
+          return count + (formDecisions[item.id] === 'right' || formDecisions[item.id] === 'wrong' ? 1 : 0)
+        }
+
+        if (item.type === 'scaffolding') {
+          return count + (scaffoldingDecisions[item.id] === 'right' || scaffoldingDecisions[item.id] === 'wrong' ? 1 : 0)
+        }
+
+        if (item.type === 'image') {
+          return count + (imageDecisions[item.id] === 'right' || imageDecisions[item.id] === 'wrong' ? 1 : 0)
+        }
+
+        if (item.type === 'question') {
+          return count + (manualQuestionDecisions[item.id] === 'right' || manualQuestionDecisions[item.id] === 'wrong' ? 1 : 0)
+        }
+
+        return count
+      }, 0)
+
+      const obtainedSectionMarks = group.items.reduce((sum, item) => {
+        if (item.type === 'checklist') return sum + (Number(checklistMarks[item.id]) || 0)
+        if (item.type === 'form') return sum + (Number(formMarks[item.id]) || 0)
+        if (item.type === 'scaffolding') return sum + (Number(scaffoldingMarks[item.id]) || 0)
+        if (item.type === 'image') return sum + (Number(imageMarks[item.id]) || 0)
+        if (item.type === 'question') return sum + (Number(manualQuestionMarks[item.id]) || 0)
+        return sum
+      }, 0)
+
+      return {
+        key: group.label.toLowerCase().replace(/\s+/g, '-'),
+        label: group.label,
+        itemCount: group.items.length,
+        completedItems,
+        obtainedMarks: obtainedSectionMarks,
+        totalMarks: group.items.reduce((sum, item) => sum + (Number(item.marks) || 0), 0),
+        isComplete: group.items.length > 0 && completedItems === group.items.length,
+      }
+    })
+
+    onEvaluationStateChange?.({
+      groupedSections: sectionSummaries,
+      requiredSections: sectionSummaries.filter((section) => section.itemCount > 0),
+      isReadyToSubmit: sectionSummaries.length > 0 && sectionSummaries.every((section) => section.itemCount > 0 && section.isComplete),
+      completedSectionCount: sectionSummaries.filter((section) => section.isComplete).length,
+    })
+  }, [
+    checklistDecisions,
+    checklistMarks,
+    formDecisions,
+    formMarks,
+    groupedItems,
+    imageDecisions,
+    imageMarks,
+    manualQuestionDecisions,
+    manualQuestionMarks,
+    onEvaluationStateChange,
+    scaffoldingDecisions,
+    scaffoldingMarks,
+  ])
 
   if (!student) {
     return (
@@ -1062,11 +1171,36 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [isStudentPickerOpen, setIsStudentPickerOpen] = useState(false)
   const [obtainedMarks, setObtainedMarks] = useState(0)
+  const [evaluationState, setEvaluationState] = useState({
+    groupedSections: [],
+    requiredSections: [],
+    isReadyToSubmit: false,
+    completedSectionCount: 0,
+  })
+  const [isSubmitPopupOpen, setIsSubmitPopupOpen] = useState(false)
+  const [decisionOptions, setDecisionOptions] = useState(() => buildDefaultDecisionOptions())
+  const [selectedDecisionId, setSelectedDecisionId] = useState('decision-completed')
+  const [submittedEvaluations, setSubmittedEvaluations] = useState({})
 
-  const roster = useMemo(
+  const baseRoster = useMemo(
     () => buildStudentRoster(evaluationRecord, evaluationRecord?.assignment, evaluationRecord?.latestSubmission),
     [evaluationRecord],
   )
+
+  const roster = useMemo(() => (
+    baseRoster.map((student) => {
+      const submittedEvaluation = submittedEvaluations[student.id]
+
+      if (!submittedEvaluation) return student
+
+      return {
+        ...student,
+        evaluationStatus: 'Completed',
+        evaluationDecision: submittedEvaluation.decisionTitle,
+        evaluationResult: submittedEvaluation,
+      }
+    })
+  ), [baseRoster, submittedEvaluations])
 
   const filteredStudents = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
@@ -1106,6 +1240,15 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
 
     return items.reduce((sum, item) => sum + (Number(item.marks) || 0), 0)
   }, [selectedStudent])
+  const thresholdResult = useMemo(
+    () => resolveThresholdResult(evaluationRecord?.assignment?.thresholds, obtainedMarks),
+    [evaluationRecord?.assignment?.thresholds, obtainedMarks],
+  )
+  const readySections = evaluationState.requiredSections
+  const isReadyToSubmit = Boolean(selectedStudent?.id)
+    && selectedStudent?.submissionStatus === 'Submitted'
+    && evaluationState.isReadyToSubmit
+  const selectedDecision = decisionOptions.find((option) => option.id === selectedDecisionId) ?? decisionOptions[0] ?? null
   const studentFilterOptions = [
     { id: 'all', label: 'All', count: roster.length },
     { id: 'submitted', label: 'Submitted', count: submittedCount },
@@ -1129,6 +1272,84 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
       setSelectedStudentId(filteredStudents[selectedStudentIndex + 1].id)
     }
   }
+
+  const handleAddDecisionOption = () => {
+    const nextLabel = window.prompt('Enter the short button text.', '')
+
+    if (!nextLabel || !nextLabel.trim()) return
+
+    const nextTitle = window.prompt('Enter the full decision title.', nextLabel.trim()) ?? nextLabel.trim()
+    const nextOption = {
+      id: `decision-${Date.now()}`,
+      label: nextLabel.trim(),
+      title: nextTitle.trim() || nextLabel.trim(),
+    }
+
+    setDecisionOptions((current) => [...current, nextOption])
+    setSelectedDecisionId(nextOption.id)
+  }
+
+  const handleEditDecisionOption = (optionId) => {
+    const currentOption = decisionOptions.find((option) => option.id === optionId)
+
+    if (!currentOption) return
+
+    const nextLabel = window.prompt('Update the short button text.', currentOption.label)
+
+    if (!nextLabel || !nextLabel.trim()) return
+
+    const nextTitle = window.prompt('Update the full decision title.', currentOption.title) ?? currentOption.title
+
+    setDecisionOptions((current) => current.map((option) => (
+      option.id === optionId
+        ? { ...option, label: nextLabel.trim(), title: nextTitle.trim() || nextLabel.trim() }
+        : option
+    )))
+  }
+
+  const handleSubmitEvaluation = () => {
+    if (!selectedStudent || !selectedDecision) return
+
+    const submissionSummary = {
+      studentId: selectedStudent.id,
+      studentName: selectedStudent.name,
+      registerId: selectedStudent.registerId,
+      obtainedMarks,
+      totalMarks,
+      thresholdLabel: thresholdResult?.label ?? 'Not Matched',
+      decisionId: selectedDecision.id,
+      decisionLabel: selectedDecision.label,
+      decisionTitle: selectedDecision.title,
+      sections: readySections,
+      submittedAt: new Date().toISOString(),
+    }
+
+    setSubmittedEvaluations((current) => ({
+      ...current,
+      [selectedStudent.id]: submissionSummary,
+    }))
+    setIsSubmitPopupOpen(false)
+  }
+
+  useEffect(() => {
+    setEvaluationState({
+      groupedSections: [],
+      requiredSections: [],
+      isReadyToSubmit: false,
+      completedSectionCount: 0,
+    })
+  }, [selectedStudentId])
+
+  useEffect(() => {
+    if (!isSubmitPopupOpen) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isSubmitPopupOpen])
 
   return (
     <section className="vx-content forms-page start-evaluation-page">
@@ -1184,6 +1405,9 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                   <span className={`eval-status-pill ${selectedStudent?.evaluationStatus === 'Completed' ? 'is-complete' : 'is-pending'}`}>
                     {selectedStudent?.evaluationStatus ?? 'Pending'}
                   </span>
+                  {selectedStudent?.evaluationDecision ? (
+                    <span className="start-eval-student-decision-pill">{selectedStudent.evaluationDecision}</span>
+                  ) : null}
                   <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
                 </div>
               </div>
@@ -1235,7 +1459,35 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
               student={selectedStudent}
               record={evaluationRecord}
               onObtainedMarksChange={setObtainedMarks}
+              onEvaluationStateChange={setEvaluationState}
             />
+
+            {selectedStudent?.submissionStatus === 'Submitted' ? (
+              <section className={`start-eval-submit-card ${isReadyToSubmit ? 'is-ready' : ''}`}>
+                <div className="start-eval-submit-copy">
+                  <span className="start-eval-student-nav-kicker">Evaluation Status</span>
+                  <div className="start-eval-submit-meta">
+                    {readySections.map((section) => (
+                      <span key={section.key} className={`start-eval-submit-pill ${section.isComplete ? 'is-complete' : 'is-pending'}`}>
+                        {section.label} {formatMarksValue(section.obtainedMarks)}/{formatMarksValue(section.totalMarks)}
+                      </span>
+                    ))}
+                    <span className="start-eval-submit-pill is-threshold">
+                      Threshold {thresholdResult?.label ?? 'Not Matched'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="tool-btn green start-eval-submit-btn"
+                  onClick={() => setIsSubmitPopupOpen(true)}
+                  disabled={!isReadyToSubmit}
+                >
+                  Submit
+                </button>
+              </section>
+            ) : null}
           </div>
         </section>
 
@@ -1300,6 +1552,107 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                     </div>
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {isSubmitPopupOpen && selectedStudent ? (
+          <div className="start-eval-submit-overlay" role="dialog" aria-modal="true" aria-label="Submit evaluation">
+            <div className="start-eval-submit-modal">
+              <div className="start-eval-panel-head">
+                <div>
+                  <strong>Submit Evaluation</strong>
+                  <p>Review the student result, choose the final outcome, and confirm submission.</p>
+                </div>
+                <button type="button" className="ghost start-eval-back-btn" onClick={() => setIsSubmitPopupOpen(false)}>
+                  <X size={15} strokeWidth={2} />
+                  Close
+                </button>
+              </div>
+
+              <div className="start-eval-submit-summary">
+                <article className="start-eval-submit-summary-card">
+                  <span>Student</span>
+                  <strong>{selectedStudent.name}</strong>
+                  <small>{selectedStudent.registerId}</small>
+                </article>
+                <article className="start-eval-submit-summary-card">
+                  <span>Obtained Marks</span>
+                  <strong>{formatMarksValue(obtainedMarks)} / {formatMarksValue(totalMarks)}</strong>
+                  <small>{evaluationRecord?.activityType ?? 'Activity'}</small>
+                </article>
+                <article className="start-eval-submit-summary-card">
+                  <span>Threshold</span>
+                  <strong>{thresholdResult?.label ?? 'Not Matched'}</strong>
+                  <small>
+                    {thresholdResult
+                      ? `${formatMarksValue(thresholdResult.from)} to ${formatMarksValue(thresholdResult.to)}`
+                      : 'No threshold configured'}
+                  </small>
+                </article>
+              </div>
+
+              <div className="start-eval-submit-section-list">
+                {readySections.map((section) => (
+                  <article key={section.key} className="start-eval-submit-section-item">
+                    <div>
+                      <strong>{section.label}</strong>
+                      <p>{section.completedItems} of {section.itemCount} evaluated</p>
+                    </div>
+                    <span>{formatMarksValue(section.obtainedMarks)} / {formatMarksValue(section.totalMarks)}</span>
+                  </article>
+                ))}
+              </div>
+
+              <section className="start-eval-submit-decision-panel">
+                <div className="start-eval-submit-decision-head">
+                  <div>
+                    <strong>Outcome</strong>
+                    <p>Pick the final result for this student. You can also add or rename options.</p>
+                  </div>
+                  <button type="button" className="ghost start-eval-submit-action-btn" onClick={handleAddDecisionOption}>
+                    <Plus size={14} strokeWidth={2} />
+                    Add
+                  </button>
+                </div>
+
+                <div className="start-eval-submit-decision-list">
+                  {decisionOptions.map((option) => (
+                    <div key={option.id} className={`start-eval-submit-decision-item ${selectedDecisionId === option.id ? 'is-active' : ''}`}>
+                      <button
+                        type="button"
+                        className="start-eval-submit-decision-btn"
+                        onClick={() => setSelectedDecisionId(option.id)}
+                      >
+                        <strong>{option.label}</strong>
+                        <span>{option.title}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost start-eval-submit-icon-btn"
+                        aria-label={`Edit ${option.title}`}
+                        onClick={() => handleEditDecisionOption(option.id)}
+                      >
+                        <Pencil size={14} strokeWidth={2} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <div className="start-eval-submit-foot">
+                <button type="button" className="ghost start-eval-nav-btn" onClick={() => setIsSubmitPopupOpen(false)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="tool-btn green start-eval-submit-btn"
+                  onClick={handleSubmitEvaluation}
+                  disabled={!selectedDecision}
+                >
+                  Confirm Submit
+                </button>
               </div>
             </div>
           </div>

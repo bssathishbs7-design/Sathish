@@ -127,21 +127,29 @@ const formStationBlueprints = [
     ],
   },
 ]
-const buildAssignThresholdRows = (totalMarks) => {
-  const safeTotal = Math.max(1, Number(totalMarks) || 10)
-  const firstCut = Number((safeTotal / 3).toFixed(1))
-  const secondCut = Number(((safeTotal * 2) / 3).toFixed(1))
-  return [
-    { id: `threshold-a-${safeTotal}`, label: 'Below Expectation', from: '0', to: String(firstCut) },
-    { id: `threshold-b-${safeTotal}`, label: 'Competent', from: String(firstCut), to: String(secondCut) },
-    { id: `threshold-c-${safeTotal}`, label: 'Proficient', from: String(secondCut), to: String(safeTotal) },
-  ]
+const formatThresholdValue = (value) => {
+  const rounded = Number(value.toFixed(2))
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded)
 }
-const buildEmptyAssignThresholdRows = () => ([
-  { id: `threshold-${Date.now()}-1`, label: 'Below', from: '0', to: '' },
-  { id: `threshold-${Date.now()}-2`, label: 'Meets', from: '', to: '' },
-  { id: `threshold-${Date.now()}-3`, label: 'Exceeds', from: '', to: '' },
-])
+
+const DEFAULT_THRESHOLD_CONFIG = [
+  { label: 'Below', startPercent: 0, endPercent: 0.4 },
+  { label: 'Meets', startPercent: 0.4, endPercent: 0.75 },
+  { label: 'Exceeds', startPercent: 0.75, endPercent: 1 },
+]
+
+const isAutoThresholdLabel = (value) => DEFAULT_THRESHOLD_CONFIG.some((item) => item.label === String(value ?? '').trim())
+
+const buildEmptyAssignThresholdRows = (totalMarks = 10) => {
+  const safeTotal = Math.max(1, Number(totalMarks) || 10)
+
+  return DEFAULT_THRESHOLD_CONFIG.map((item, index) => ({
+    id: `threshold-${Date.now()}-${index + 1}`,
+    label: item.label,
+    from: formatThresholdValue(safeTotal * item.startPercent),
+    to: formatThresholdValue(safeTotal * item.endPercent),
+  }))
+}
 const fallbackOspeActivitySeed = {
   activity: {
     id: 'ospe-activity-seed',
@@ -690,17 +698,38 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const [isScaffoldingTooltipOpen, setIsScaffoldingTooltipOpen] = useState(false)
   const formCountInputRef = useRef(null)
   const firstScaffoldingOptionRef = useRef(null)
+  const reviewAssignOpenHandledRef = useRef(false)
   const [scaffoldingSelection, setScaffoldingSelection] = useState({
     MCQ: 0,
     Descriptive: 0,
     'True or False': 0,
     'Fill in the blanks': 0,
   })
+  const checklistCount = checklistItems.length
+  const formCount = formItems.length
+  const scaffoldingCount = scaffoldItems.length
+  const checklistTotalMarks = useMemo(() => sumItemMarks(checklistItems), [checklistItems])
+  const formTotalMarks = useMemo(() => sumItemMarks(formItems), [formItems])
+  const scaffoldingTotalMarks = useMemo(() => sumItemMarks(scaffoldItems), [scaffoldItems])
+  const overallTotalMarks = checklistTotalMarks + formTotalMarks + scaffoldingTotalMarks
+  const formValueOptions = formUnitOptions
+  const checklistReady = checklistItems.some((item) => item.text.trim())
+  const formReady = !formItems.length || formItems.some((item) => item.questionText.trim() || getVisibleFormResponses(item).some((response) => response.answerText.trim()))
+  const canSaveActivity = checklistReady && formReady
+  const hasMarks = marksEnabled
+  const isCertifiable = certifiableEnabled
+  const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
 
   useEffect(() => {
-    if (!resolvedActivityData?.openReviewAssign) return
+    if (!resolvedActivityData?.openReviewAssign) {
+      reviewAssignOpenHandledRef.current = false
+      return
+    }
+    if (reviewAssignOpenHandledRef.current) return
+    reviewAssignOpenHandledRef.current = true
+    setAssignThresholds(buildEmptyAssignThresholdRows(overallTotalMarks))
     setIsReviewAssignPopupOpen(true)
-  }, [resolvedActivityData])
+  }, [overallTotalMarks, resolvedActivityData?.openReviewAssign])
 
   useEffect(() => {
     if (!activeEditorId) return undefined
@@ -752,21 +781,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [isScaffoldingTooltipOpen])
-
-  const checklistCount = checklistItems.length
-  const formCount = formItems.length
-  const scaffoldingCount = scaffoldItems.length
-  const checklistTotalMarks = useMemo(() => sumItemMarks(checklistItems), [checklistItems])
-  const formTotalMarks = useMemo(() => sumItemMarks(formItems), [formItems])
-  const scaffoldingTotalMarks = useMemo(() => sumItemMarks(scaffoldItems), [scaffoldItems])
-  const overallTotalMarks = checklistTotalMarks + formTotalMarks + scaffoldingTotalMarks
-  const formValueOptions = formUnitOptions
-  const checklistReady = checklistItems.some((item) => item.text.trim())
-  const formReady = !formItems.length || formItems.some((item) => item.questionText.trim() || getVisibleFormResponses(item).some((response) => response.answerText.trim()))
-  const canSaveActivity = checklistReady && formReady
-  const hasMarks = marksEnabled
-  const isCertifiable = certifiableEnabled
-  const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
   useEffect(() => {
     if (!assignYear) {
       if (assignSgt) {
@@ -838,7 +852,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       onAlert?.({ tone: 'secondary', message: 'OSPE activity saved successfully.' })
       return
     }
-    setAssignThresholds(buildEmptyAssignThresholdRows())
+    setAssignThresholds(buildEmptyAssignThresholdRows(overallTotalMarks))
     setAssignYear(assignDefaultYear)
     setAssignSgt('')
     setIsAssignScheduleEnabled(false)
@@ -866,6 +880,20 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const deleteAssignThreshold = (id) => {
     setAssignThresholds((current) => current.filter((row) => row.id !== id))
   }
+
+  useEffect(() => {
+    setAssignThresholds((current) => current.map((row) => {
+      const matchingThreshold = DEFAULT_THRESHOLD_CONFIG.find((item) => item.label === String(row.label ?? '').trim())
+
+      if (!matchingThreshold) return row
+
+      return {
+        ...row,
+        from: formatThresholdValue(overallTotalMarks * matchingThreshold.startPercent),
+        to: formatThresholdValue(overallTotalMarks * matchingThreshold.endPercent),
+      }
+    }))
+  }, [overallTotalMarks])
 
   const handleProceedAssign = () => {
     if (!canProceedAssign) {
