@@ -334,6 +334,7 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
   const [openManualQuestionRemarks, setOpenManualQuestionRemarks] = useState({})
   const [manualQuestionDecisions, setManualQuestionDecisions] = useState({})
   const [manualQuestionMarks, setManualQuestionMarks] = useState({})
+  const [openReferenceAnswers, setOpenReferenceAnswers] = useState({})
   const groupedItems = useMemo(() => {
     const groups = (submission?.items ?? []).reduce((accumulator, item) => {
       const key = item.sectionLabel ?? 'Questions'
@@ -383,6 +384,7 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
       setOpenManualQuestionRemarks({})
       setManualQuestionDecisions({})
       setManualQuestionMarks({})
+      setOpenReferenceAnswers({})
       onObtainedMarksChange?.(0)
       return
     }
@@ -458,6 +460,7 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
     setOpenManualQuestionRemarks({})
     setManualQuestionDecisions(nextManualQuestionDecisions)
     setManualQuestionMarks(nextManualQuestionMarks)
+    setOpenReferenceAnswers({})
     onObtainedMarksChange?.(0)
   }, [student?.id, submission])
 
@@ -514,6 +517,17 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
     return count
   }, 0)
 
+  const activeSectionObtainedMarks = activeItems.reduce((sum, item) => {
+    if (item.type === 'checklist') return sum + (Number(checklistMarks[item.id]) || 0)
+    if (item.type === 'form') return sum + (Number(formMarks[item.id]) || 0)
+    if (item.type === 'scaffolding') return sum + (Number(scaffoldingMarks[item.id]) || 0)
+    if (item.type === 'image') return sum + (Number(imageMarks[item.id]) || 0)
+    if (item.type === 'question') return sum + (Number(manualQuestionMarks[item.id]) || 0)
+    return sum
+  }, 0)
+
+  const activeSectionTotalMarks = activeItems.reduce((sum, item) => sum + (Number(item.marks) || 0), 0)
+
   return (
     <section className="start-eval-detail-card">
       {groupedItems.length ? (
@@ -534,9 +548,14 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
             ))}
           </div>
 
-          <span className="start-eval-section-progress-badge">
-            Evaluated {evaluatedCount} / {activeItems.length}
-          </span>
+          <div className="start-eval-section-progress-group">
+            <span className="start-eval-section-obtained-badge">
+              Marks {activeSectionObtainedMarks} / {activeSectionTotalMarks}
+            </span>
+            <span className="start-eval-section-progress-badge">
+              Evaluated {evaluatedCount} / {activeItems.length}
+            </span>
+          </div>
         </div>
       ) : null}
 
@@ -583,11 +602,11 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
             <article key={item.id} className={`start-eval-response-item ${item.isCritical ? 'is-critical' : ''} ${cardState}`.trim()}>
             <div className={`start-eval-response-top ${item.type === 'checklist' ? 'is-checklist' : ''}`}>
               <div className="start-eval-response-label">
-                {item.type !== 'checklist' && item.type !== 'scaffolding' ? <strong>{item.label}</strong> : null}
+                {item.type !== 'checklist' && item.type !== 'scaffolding' && item.type !== 'question' ? <strong>{item.label}</strong> : null}
               </div>
 
               <div className="start-eval-badge-row">
-                {item.type !== 'checklist' && item.type !== 'scaffolding' ? <span className="start-eval-meta-badge is-section">{item.sectionLabel}</span> : null}
+                {item.type !== 'checklist' && item.type !== 'scaffolding' && item.type !== 'question' ? <span className="start-eval-meta-badge is-section">{item.sectionLabel}</span> : null}
                 <span className="start-eval-meta-badge is-marks"><BadgeCheck size={12} strokeWidth={2} /> {item.marks} mark{String(item.marks) === '1' ? '' : 's'}</span>
                 {item.isCritical ? <span className="start-eval-meta-badge is-critical"><AlertTriangle size={12} strokeWidth={2} /> Criticality</span> : null}
                 {item.domains?.map((domain) => <span key={`${item.id}-${domain.label}`} className={`start-eval-meta-badge ${domain.tone}`}>{domain.label}</span>)}
@@ -777,13 +796,22 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
 
                 {item.type === 'scaffolding' ? (
                   <div className="start-eval-checklist-actions">
-                    <button
-                      type="button"
-                      className={`start-eval-remarks-toggle ${openScaffoldingRemarks[item.id] ? 'is-open' : ''}`}
-                      onClick={() => setOpenScaffoldingRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
-                    >
-                      Remarks
-                    </button>
+                    <div className="start-eval-reference-actions">
+                      <button
+                        type="button"
+                        className={`start-eval-remarks-toggle ${openScaffoldingRemarks[item.id] ? 'is-open' : ''}`}
+                        onClick={() => setOpenScaffoldingRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                      >
+                        Remarks
+                      </button>
+                      <button
+                        type="button"
+                        className={`start-eval-reference-toggle ${openReferenceAnswers[item.id] ? 'is-open' : ''}`}
+                        onClick={() => setOpenReferenceAnswers((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                      >
+                        {openReferenceAnswers[item.id] ? 'Hide Answer Key' : 'View Answer Key'}
+                      </button>
+                    </div>
 
                     <div className="start-eval-checklist-actions-end">
                       <label className="start-eval-checklist-marks-field">
@@ -846,13 +874,22 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
                   </div>
                 ) : item.type === 'image' ? (
                   <div className="start-eval-checklist-actions">
-                    <button
-                      type="button"
-                      className={`start-eval-remarks-toggle ${openImageRemarks[item.id] ? 'is-open' : ''}`}
-                      onClick={() => setOpenImageRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
-                    >
-                      Remarks
-                    </button>
+                    <div className="start-eval-reference-actions">
+                      <button
+                        type="button"
+                        className={`start-eval-remarks-toggle ${openImageRemarks[item.id] ? 'is-open' : ''}`}
+                        onClick={() => setOpenImageRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                      >
+                        Remarks
+                      </button>
+                      <button
+                        type="button"
+                        className={`start-eval-reference-toggle ${openReferenceAnswers[item.id] ? 'is-open' : ''}`}
+                        onClick={() => setOpenReferenceAnswers((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                      >
+                        {openReferenceAnswers[item.id] ? 'Hide Answer Key' : 'View Answer Key'}
+                      </button>
+                    </div>
 
                     <div className="start-eval-checklist-actions-end">
                       <label className="start-eval-checklist-marks-field">
@@ -915,13 +952,22 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
                   </div>
                 ) : item.type === 'question' ? (
                   <div className="start-eval-checklist-actions">
-                    <button
-                      type="button"
-                      className={`start-eval-remarks-toggle ${openManualQuestionRemarks[item.id] ? 'is-open' : ''}`}
-                      onClick={() => setOpenManualQuestionRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
-                    >
-                      Remarks
-                    </button>
+                    <div className="start-eval-reference-actions">
+                      <button
+                        type="button"
+                        className={`start-eval-remarks-toggle ${openManualQuestionRemarks[item.id] ? 'is-open' : ''}`}
+                        onClick={() => setOpenManualQuestionRemarks((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                      >
+                        Remarks
+                      </button>
+                      <button
+                        type="button"
+                        className={`start-eval-reference-toggle ${openReferenceAnswers[item.id] ? 'is-open' : ''}`}
+                        onClick={() => setOpenReferenceAnswers((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                      >
+                        {openReferenceAnswers[item.id] ? 'Hide Answer Key' : 'View Answer Key'}
+                      </button>
+                    </div>
 
                     <div className="start-eval-checklist-actions-end">
                       <label className="start-eval-checklist-marks-field">
@@ -986,18 +1032,20 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange }) {
               </>
             )}
 
-            {item.type !== 'checklist' && item.type !== 'form' ? (
-              <div className="start-eval-evaluator-grid">
-                <div className="start-eval-answer-box is-answer-key">
-                  <span>Answer Key</span>
-                  <strong>{item.answerKey}</strong>
-                </div>
-                {item.type !== 'scaffolding' ? (
-                  <div className="start-eval-answer-box is-explanation">
-                    <span>Explanation Answer</span>
-                    <strong>{item.explanation}</strong>
+            {item.type !== 'checklist' && item.type !== 'form' && openReferenceAnswers[item.id] ? (
+              <div className="start-eval-reference-answer">
+                <div className="start-eval-evaluator-grid">
+                  <div className="start-eval-answer-box is-answer-key">
+                    <span>Answer Key</span>
+                    <strong>{item.answerKey}</strong>
                   </div>
-                ) : null}
+                  {item.type !== 'scaffolding' ? (
+                    <div className="start-eval-answer-box is-explanation">
+                      <span>Explanation Answer</span>
+                      <strong>{item.explanation}</strong>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </article>

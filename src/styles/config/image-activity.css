@@ -1921,6 +1921,10 @@
   margin-top: 0;
 }
 
+.image-activity-threshold-row .image-activity-assign-error {
+  grid-column: 1 / -1;
+}
+
 .image-activity-threshold-actions {
   display: inline-flex;
   align-items: center;
@@ -5374,9 +5378,21 @@
   }
 
   .image-activity-assign-grid,
-  .image-activity-assign-schedule-row,
-  .image-activity-threshold-row {
+  .image-activity-assign-schedule-row {
     grid-template-columns: 1fr;
+  }
+
+  .image-activity-threshold-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .image-activity-threshold-label {
+    grid-column: 1 / -1;
+  }
+
+  .image-activity-threshold-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 
   .image-activity-upload-row {
@@ -5389,6 +5405,17 @@
     min-width: 56px;
     min-height: 56px;
     border-radius: 999px;
+  }
+}
+
+@media (max-width: 560px) {
+  .image-activity-threshold-row {
+    grid-template-columns: 1fr;
+  }
+
+  .image-activity-threshold-label,
+  .image-activity-threshold-actions {
+    grid-column: auto;
   }
 }
 

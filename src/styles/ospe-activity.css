@@ -1927,6 +1927,10 @@
   margin-top: 0;
 }
 
+.ospe-threshold-row .ospe-assign-error {
+  grid-column: 1 / -1;
+}
+
 .ospe-threshold-actions {
   display: inline-flex;
   align-items: center;
@@ -2915,9 +2919,21 @@
 
 @media (max-width: 1024px) {
   .ospe-assign-grid,
-  .ospe-assign-schedule-row,
-  .ospe-threshold-row {
+  .ospe-assign-schedule-row {
     grid-template-columns: 1fr;
+  }
+
+  .ospe-threshold-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ospe-threshold-label {
+    grid-column: 1 / -1;
+  }
+
+  .ospe-threshold-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 
   .ospe-header-main {
@@ -2958,6 +2974,17 @@
   .ospe-header-generator--scaffolding {
     width: min(100%, 360px);
     margin-left: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .ospe-threshold-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ospe-threshold-label,
+  .ospe-threshold-actions {
+    grid-column: auto;
   }
 }
 
