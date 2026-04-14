@@ -55,21 +55,29 @@ const scaffoldingTypeOptions = [
   { value: 'Fill in the blanks', label: 'Fill in the blanks', helper: 'Short completion prompt' },
 ]
 
-const buildAssignThresholdRows = (totalMarks) => {
-  const safeTotal = Math.max(1, Number(totalMarks) || 10)
-  const firstCut = Number((safeTotal / 3).toFixed(1))
-  const secondCut = Number(((safeTotal * 2) / 3).toFixed(1))
-  return [
-    { id: `threshold-a-${safeTotal}`, label: 'Below Expectation', from: '0', to: String(firstCut) },
-    { id: `threshold-b-${safeTotal}`, label: 'Competent', from: String(firstCut), to: String(secondCut) },
-    { id: `threshold-c-${safeTotal}`, label: 'Proficient', from: String(secondCut), to: String(safeTotal) },
-  ]
+const formatThresholdValue = (value) => {
+  const rounded = Number(value.toFixed(2))
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded)
 }
-const buildEmptyAssignThresholdRows = () => ([
-  { id: `threshold-${Date.now()}-1`, label: 'Below', from: '0', to: '' },
-  { id: `threshold-${Date.now()}-2`, label: 'Meets', from: '', to: '' },
-  { id: `threshold-${Date.now()}-3`, label: 'Exceeds', from: '', to: '' },
-])
+
+const DEFAULT_THRESHOLD_CONFIG = [
+  { label: 'Below', startPercent: 0, endPercent: 0.4 },
+  { label: 'Meets', startPercent: 0.4, endPercent: 0.75 },
+  { label: 'Exceeds', startPercent: 0.75, endPercent: 1 },
+]
+
+const isAutoThresholdLabel = (value) => DEFAULT_THRESHOLD_CONFIG.some((item) => item.label === String(value ?? '').trim())
+
+const buildEmptyAssignThresholdRows = (totalMarks = 10) => {
+  const safeTotal = Math.max(1, Number(totalMarks) || 10)
+
+  return DEFAULT_THRESHOLD_CONFIG.map((item, index) => ({
+    id: `threshold-${Date.now()}-${index + 1}`,
+    label: item.label,
+    from: formatThresholdValue(safeTotal * item.startPercent),
+    to: formatThresholdValue(safeTotal * item.endPercent),
+  }))
+}
 const createImageSlot = (existing = {}, index = 0) => ({
   key: existing?.key ?? `image-slot-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
   file: existing?.file ?? null,
@@ -262,6 +270,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const manualSectionRef = useRef(null)
   const generatedSectionRef = useRef(null)
   const footerSectionRef = useRef(null)
+  const reviewAssignOpenHandledRef = useRef(false)
 
   const certifiableLabel = isCertifiable ? 'Yes' : 'No'
   const totalGeneratedMarks = hasMarks
@@ -269,9 +278,15 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     : 0
 
   useEffect(() => {
-    if (!activityData?.openReviewAssign) return
+    if (!activityData?.openReviewAssign) {
+      reviewAssignOpenHandledRef.current = false
+      return
+    }
+    if (reviewAssignOpenHandledRef.current) return
+    reviewAssignOpenHandledRef.current = true
+    setAssignThresholds(buildEmptyAssignThresholdRows(totalGeneratedMarks))
     setIsReviewAssignPopupOpen(true)
-  }, [activityData])
+  }, [activityData?.openReviewAssign, totalGeneratedMarks])
 
   useEffect(() => {
     imageUrlsRef.current = images.map((image) => image.previewUrl).filter(Boolean)
@@ -852,7 +867,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   }
 
   const handleReviewAssign = () => {
-    setAssignThresholds(buildEmptyAssignThresholdRows())
+    setAssignThresholds(buildEmptyAssignThresholdRows(totalGeneratedMarks))
     setAssignYear(assignDefaultYear)
     setAssignSgt('')
     setIsAssignScheduleEnabled(false)
@@ -879,6 +894,20 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const deleteAssignThreshold = (id) => {
     setAssignThresholds((current) => current.filter((row) => row.id !== id))
   }
+
+  useEffect(() => {
+    setAssignThresholds((current) => current.map((row) => {
+      const matchingThreshold = DEFAULT_THRESHOLD_CONFIG.find((item) => item.label === String(row.label ?? '').trim())
+
+      if (!matchingThreshold) return row
+
+      return {
+        ...row,
+        from: formatThresholdValue(totalGeneratedMarks * matchingThreshold.startPercent),
+        to: formatThresholdValue(totalGeneratedMarks * matchingThreshold.endPercent),
+      }
+    }))
+  }, [totalGeneratedMarks])
 
   const handleProceedAssign = async () => {
     if (!canProceedAssign) {
