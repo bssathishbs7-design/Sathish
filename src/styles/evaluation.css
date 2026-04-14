@@ -679,6 +679,53 @@
   cursor: pointer;
 }
 
+.eval-table-completed {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.eval-table-completed thead th,
+.eval-table-completed tbody td {
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.eval-table-completed thead th {
+  font-size: 0.62rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.eval-table-completed tbody td {
+  font-size: 0.78rem;
+}
+
+.eval-table-completed thead th:first-child,
+.eval-table-completed thead th:nth-child(2),
+.eval-table-completed tbody td:first-child,
+.eval-table-completed tbody td:nth-child(2) {
+  text-align: left;
+}
+
+.eval-table-completed thead th:first-child,
+.eval-table-completed tbody td:first-child {
+  width: 130px;
+}
+
+.eval-table-completed thead th:nth-child(2),
+.eval-table-completed tbody td:nth-child(2) {
+  width: 86px;
+}
+
+.eval-table-completed .eval-table-title {
+  min-width: 0;
+}
+
+.eval-table-completed .eval-table-title strong {
+  font-size: 0.8rem;
+  word-break: break-word;
+}
+
 .eval-table-footer {
   display: flex;
   align-items: center;
@@ -1003,6 +1050,10 @@
 .theme-dark .eval-table tbody tr:hover {
   background: rgba(95, 232, 177, 0.09);
   cursor: pointer;
+}
+
+.theme-dark .eval-table-completed thead th {
+  color: #a8beb5;
 }
 
 .theme-dark .eval-table-footer {

@@ -11,6 +11,7 @@ export const APP_PAGES = {
   DASHBOARD: 'Dashboard',
   CONFIGURATION: 'Configuration',
   EVALUATION: 'Evaluation',
+  COMPLETED_EVALUATION: 'Completed Evaluation',
   START_EVALUATION: 'Start Evaluation',
   EXAM_LOG: 'Exam Log',
   OSPE_ACTIVITY: 'OSPE Activity',
@@ -30,6 +31,7 @@ export const SKILL_PAGES = [
   APP_PAGES.DASHBOARD,
   APP_PAGES.CONFIGURATION,
   APP_PAGES.EVALUATION,
+  APP_PAGES.COMPLETED_EVALUATION,
   APP_PAGES.START_EVALUATION,
   APP_PAGES.EXAM_LOG,
   APP_PAGES.OSPE_ACTIVITY,
@@ -53,7 +55,6 @@ export const SIDEBAR_MENU = [
         children: [
           { label: APP_PAGES.CONFIGURATION, icon: SlidersHorizontal },
           { label: APP_PAGES.EVALUATION, icon: ClipboardCheck },
-          { label: APP_PAGES.START_EVALUATION, icon: ClipboardCheck },
           { label: APP_PAGES.DASHBOARD, icon: BarChart3 },
         ],
       },

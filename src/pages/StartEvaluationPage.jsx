@@ -32,8 +32,14 @@ const CHECKLIST_FALLBACK_PROMPTS = [
   'Communicates findings clearly and maintains professional behaviour.',
 ]
 
+
 const formatDate = (value) => (value ? String(value).split(',')[0].trim() : 'Not set')
 const normalizeValue = (value, fallback = 'Not Applicable') => value ?? fallback
+const calculatePercentage = (obtained, total) => {
+  const safeTotal = Number(total) || 0
+  if (safeTotal <= 0) return 0
+  return (Number(obtained) || 0) / safeTotal * 100
+}
 const formatMarksValue = (value) => {
   const numericValue = Number(value ?? 0)
 
@@ -96,6 +102,117 @@ const getActivityTypeIcon = (value) => {
   return Shapes
 }
 
+const getReviewSectionIcon = (label = '') => {
+  const normalized = String(label).trim().toLowerCase()
+
+  if (normalized.includes('checklist')) return ClipboardCheck
+  if (normalized.includes('form')) return Shapes
+  if (normalized.includes('scaffolding')) return FileText
+  if (normalized.includes('image')) return ImageIcon
+  if (normalized.includes('question')) return FileText
+
+  return BadgeCheck
+}
+
+const getReviewSectionTone = (label = '') => {
+  const normalized = String(label).trim().toLowerCase()
+
+  if (normalized.includes('checklist')) return 'is-checklist'
+  if (normalized.includes('form')) return 'is-form'
+  if (normalized.includes('scaffolding')) return 'is-scaffolding'
+  if (normalized.includes('image')) return 'is-image'
+  if (normalized.includes('question')) return 'is-question'
+
+  return 'is-default'
+}
+
+const getDecisionOptionMeta = (decisionId = '') => {
+  if (decisionId === 'decision-completed') {
+    return {
+      icon: CheckCircle2,
+      tone: 'is-completed',
+    }
+  }
+
+  if (decisionId === 'decision-repeat') {
+    return {
+      icon: History,
+      tone: 'is-repeat',
+    }
+  }
+
+  if (decisionId === 'decision-remedial') {
+    return {
+      icon: AlertTriangle,
+      tone: 'is-remedial',
+    }
+  }
+
+  return {
+    icon: BadgeCheck,
+    tone: 'is-default',
+  }
+}
+
+const buildCompletedSectionStats = (items = [], type) => {
+  const sectionItems = items.filter((item) => item.type === type)
+  const criticalItems = sectionItems.filter((item) => item.isCritical)
+  const obtainedMarks = sectionItems.reduce((sum, item) => sum + (Number(item.obtainedMarks) || 0), 0)
+  const totalMarks = sectionItems.reduce((sum, item) => sum + (Number(item.totalMarks) || 0), 0)
+  const criticalObtainedMarks = criticalItems.reduce((sum, item) => sum + (Number(item.obtainedMarks) || 0), 0)
+  const criticalTotalMarks = criticalItems.reduce((sum, item) => sum + (Number(item.totalMarks) || 0), 0)
+
+  return {
+    itemCount: sectionItems.length,
+    obtainedMarks,
+    criticalObtainedMarks,
+    percentage: calculatePercentage(obtainedMarks, totalMarks),
+    criticalPercentage: calculatePercentage(criticalObtainedMarks, criticalTotalMarks),
+  }
+}
+
+const buildCompletedEvaluationRow = ({
+  evaluationRecord,
+  student,
+  itemSummaries,
+  obtainedMarks,
+  totalMarks,
+  thresholdResult,
+  decision,
+}) => {
+  const checklist = buildCompletedSectionStats(itemSummaries, 'checklist')
+  const form = buildCompletedSectionStats(itemSummaries, 'form')
+  const scaffolding = buildCompletedSectionStats(itemSummaries, 'scaffolding')
+  const question = buildCompletedSectionStats(itemSummaries, 'question')
+  const image = buildCompletedSectionStats(itemSummaries, 'image')
+  const criticalItems = itemSummaries.filter((item) => item.isCritical)
+  const overallCriticalMarks = criticalItems.reduce((sum, item) => sum + (Number(item.obtainedMarks) || 0), 0)
+  const overallCriticalTotalMarks = criticalItems.reduce((sum, item) => sum + (Number(item.totalMarks) || 0), 0)
+
+  return {
+    activityId: evaluationRecord?.id ?? 'unknown-activity',
+    activityName: evaluationRecord?.activityName ?? 'Untitled Activity',
+    activityType: evaluationRecord?.activityType ?? 'Activity',
+    activityRecord: evaluationRecord,
+    studentId: student?.id ?? 'unknown-student',
+    studentName: student?.name ?? 'Student',
+    registerId: student?.registerId ?? 'Not set',
+    submittedAt: new Date().toISOString(),
+    thresholdLabel: thresholdResult?.label ?? 'Not Matched',
+    decisionTitle: decision?.title ?? 'Completed',
+    checklist,
+    form,
+    scaffolding,
+    question,
+    image,
+    overallCriticalMarks,
+    overallCriticalPercentage: calculatePercentage(overallCriticalMarks, overallCriticalTotalMarks),
+    totalMarks: Number(totalMarks) || 0,
+    totalObtainedMarks: Number(obtainedMarks) || 0,
+    totalPercentage: calculatePercentage(obtainedMarks, totalMarks),
+  }
+}
+
 const getChecklistMarksState = (value, maxMarks) => {
   if (value === '' || value === null || value === undefined) return ''
 
@@ -145,6 +262,22 @@ const getChecklistItemStatus = (decisionState, marksValue) => {
   if (decisionState === 'right' || decisionState === 'wrong') return 'Completed'
   if (marksValue !== '' && marksValue !== null && marksValue !== undefined) return 'Completed'
   return 'Pending'
+}
+
+const getStudentEvaluationBadge = (student) => {
+  if (!student) {
+    return { label: 'Pending', tone: 'is-pending' }
+  }
+
+  if (student.submissionStatus !== 'Submitted') {
+    return { label: 'Not Submitted', tone: 'is-pending' }
+  }
+
+  if (student.evaluationStatus === 'Completed') {
+    return { label: 'Completed', tone: 'is-complete' }
+  }
+
+  return { label: 'Pending', tone: 'is-pending' }
 }
 
 const buildStudentName = (index, sgt = 'SGT') => {
@@ -228,9 +361,9 @@ const buildEvaluationItems = (assignment, record) => {
   const orderedGroups = [
     ...checklistItems,
     ...formItems,
-    ...scaffoldItems,
     ...imageItems,
     ...questionItems,
+    ...scaffoldItems,
   ]
 
   if (orderedGroups.length) return orderedGroups
@@ -282,6 +415,7 @@ const buildEvaluationItems = (assignment, record) => {
 const buildStudentSubmission = (student, items, record, latestSubmission) => {
   const hasRealSubmission = Boolean(latestSubmission?.answers) && student.id === 'student-1'
   const answers = latestSubmission?.answers ?? { questions: {}, forms: {}, scaffolding: {} }
+
   const normalizedType = String(record?.activityType ?? '').toLowerCase()
 
   const mappedItems = items.map((item, index) => {
@@ -340,7 +474,7 @@ const buildStudentRoster = (record, assignment, latestSubmission) => {
           : buildStudentName(index, record?.sgt),
       registerId: index === 0 && latestSubmission?.studentId ? latestSubmission.studentId : `MC25${String(index + 101).padStart(3, '0')}`,
       submissionStatus: index === 0 ? 'Submitted' : index < Math.min(count, 4) ? 'Submitted' : 'Pending',
-      evaluationStatus: index === 0 ? 'Pending' : index % 4 === 0 ? 'Completed' : 'Pending',
+      evaluationStatus: 'Pending',
       submittedAt: index === 0 && latestSubmission?.submittedAt ? latestSubmission.submittedAt : index < Math.min(count, 4) ? `0${index + 1}/04/2026, 09:1${index} ` : null,
     }
 
@@ -351,10 +485,18 @@ const buildStudentRoster = (record, assignment, latestSubmission) => {
   })
 }
 
-function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvaluationStateChange }) {
+function StudentResponsePanel({
+  student,
+  record,
+  savedDraft,
+  marksDisabled,
+  onObtainedMarksChange,
+  onEvaluationStateChange,
+  onRegisterActions,
+}) {
   const activityType = String(record?.activityType ?? '').toLowerCase()
-  const Icon = getActivityTypeIcon(record?.activityType)
   const submission = student?.submission
+  const isSubmittedStudent = student?.submissionStatus === 'Submitted'
   const [checklistRemarks, setChecklistRemarks] = useState({})
   const [openChecklistRemarks, setOpenChecklistRemarks] = useState({})
   const [checklistDecisions, setChecklistDecisions] = useState({})
@@ -376,8 +518,15 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
   const [manualQuestionDecisions, setManualQuestionDecisions] = useState({})
   const [manualQuestionMarks, setManualQuestionMarks] = useState({})
   const [openReferenceAnswers, setOpenReferenceAnswers] = useState({})
+  const visibleSubmissionItems = useMemo(() => {
+    const items = submission?.items ?? []
+
+    if (isSubmittedStudent) return items
+
+    return items.filter((item) => item.type === 'checklist')
+  }, [isSubmittedStudent, submission])
   const groupedItems = useMemo(() => {
-    const groups = (submission?.items ?? []).reduce((accumulator, item) => {
+    const groups = visibleSubmissionItems.reduce((accumulator, item) => {
       const key = item.sectionLabel ?? 'Questions'
 
       if (!accumulator[key]) {
@@ -389,7 +538,7 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
     }, {})
 
     return Object.entries(groups).map(([label, items]) => ({ label, items }))
-  }, [submission])
+  }, [visibleSubmissionItems])
   const [activeSection, setActiveSection] = useState('')
 
   useEffect(() => {
@@ -404,114 +553,192 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
   }, [activeSection, groupedItems])
 
   useEffect(() => {
-    if (!student?.id) {
-      setChecklistRemarks({})
+    const buildInitialDraft = () => {
+      const checklistItems = visibleSubmissionItems.filter((item) => item.type === 'checklist')
+      const formItems = visibleSubmissionItems.filter((item) => item.type === 'form')
+      const scaffoldingItems = visibleSubmissionItems.filter((item) => item.type === 'scaffolding')
+      const imageItems = visibleSubmissionItems.filter((item) => item.type === 'image')
+      const manualQuestionItems = visibleSubmissionItems.filter((item) => item.type === 'question')
+
+      return {
+        checklistRemarks: Object.fromEntries(
+          checklistItems.map((item) => [item.id, item.remarks ?? '']),
+        ),
+        checklistDecisions: Object.fromEntries(
+          checklistItems.map((item) => [item.id, '']),
+        ),
+        checklistMarks: Object.fromEntries(
+          checklistItems.map((item) => [item.id, '']),
+        ),
+        formRemarks: Object.fromEntries(
+          formItems.map((item) => [item.id, '']),
+        ),
+        formDecisions: Object.fromEntries(
+          formItems.map((item) => [item.id, '']),
+        ),
+        formMarks: Object.fromEntries(
+          formItems.map((item) => [item.id, '']),
+        ),
+        scaffoldingRemarks: Object.fromEntries(
+          scaffoldingItems.map((item) => [item.id, '']),
+        ),
+        scaffoldingDecisions: Object.fromEntries(
+          scaffoldingItems.map((item) => [item.id, '']),
+        ),
+        scaffoldingMarks: Object.fromEntries(
+          scaffoldingItems.map((item) => [item.id, '']),
+        ),
+        imageRemarks: Object.fromEntries(
+          imageItems.map((item) => [item.id, '']),
+        ),
+        imageDecisions: Object.fromEntries(
+          imageItems.map((item) => [item.id, '']),
+        ),
+        imageMarks: Object.fromEntries(
+          imageItems.map((item) => [item.id, '']),
+        ),
+        manualQuestionRemarks: Object.fromEntries(
+          manualQuestionItems.map((item) => [item.id, '']),
+        ),
+        manualQuestionDecisions: Object.fromEntries(
+          manualQuestionItems.map((item) => [item.id, '']),
+        ),
+        manualQuestionMarks: Object.fromEntries(
+          manualQuestionItems.map((item) => [item.id, '']),
+        ),
+        activeSection: groupedItems[0]?.label ?? '',
+      }
+    }
+
+    const applyDraft = (draft) => {
+      setChecklistRemarks(draft?.checklistRemarks ?? {})
       setOpenChecklistRemarks({})
-      setChecklistDecisions({})
-      setChecklistMarks({})
-      setFormRemarks({})
+      setChecklistDecisions(draft?.checklistDecisions ?? {})
+      setChecklistMarks(draft?.checklistMarks ?? {})
+      setFormRemarks(draft?.formRemarks ?? {})
       setOpenFormRemarks({})
-      setFormDecisions({})
-      setFormMarks({})
-      setScaffoldingRemarks({})
+      setFormDecisions(draft?.formDecisions ?? {})
+      setFormMarks(draft?.formMarks ?? {})
+      setScaffoldingRemarks(draft?.scaffoldingRemarks ?? {})
       setOpenScaffoldingRemarks({})
-      setScaffoldingDecisions({})
-      setScaffoldingMarks({})
-      setImageRemarks({})
+      setScaffoldingDecisions(draft?.scaffoldingDecisions ?? {})
+      setScaffoldingMarks(draft?.scaffoldingMarks ?? {})
+      setImageRemarks(draft?.imageRemarks ?? {})
       setOpenImageRemarks({})
-      setImageDecisions({})
-      setImageMarks({})
-      setManualQuestionRemarks({})
+      setImageDecisions(draft?.imageDecisions ?? {})
+      setImageMarks(draft?.imageMarks ?? {})
+      setManualQuestionRemarks(draft?.manualQuestionRemarks ?? {})
       setOpenManualQuestionRemarks({})
-      setManualQuestionDecisions({})
-      setManualQuestionMarks({})
+      setManualQuestionDecisions(draft?.manualQuestionDecisions ?? {})
+      setManualQuestionMarks(draft?.manualQuestionMarks ?? {})
       setOpenReferenceAnswers({})
+      setActiveSection(draft?.activeSection ?? groupedItems[0]?.label ?? '')
+    }
+
+    if (!student?.id) {
+      applyDraft(null)
       onObtainedMarksChange?.(0)
       onEvaluationStateChange?.({
         groupedSections: [],
         requiredSections: [],
+        itemSummaries: [],
         isReadyToSubmit: false,
         completedSectionCount: 0,
       })
       return
     }
 
-    const checklistItems = (submission?.items ?? []).filter((item) => item.type === 'checklist')
-    const formItems = (submission?.items ?? []).filter((item) => item.type === 'form')
-    const scaffoldingItems = (submission?.items ?? []).filter((item) => item.type === 'scaffolding')
-    const imageItems = (submission?.items ?? []).filter((item) => item.type === 'image')
-    const manualQuestionItems = (submission?.items ?? []).filter((item) => item.type === 'question')
-    const nextRemarks = Object.fromEntries(
-      checklistItems.map((item) => [item.id, item.remarks ?? '']),
-    )
-    const nextDecisions = Object.fromEntries(
-      checklistItems.map((item) => [item.id, '']),
-    )
-    const nextMarks = Object.fromEntries(
-      checklistItems.map((item) => [item.id, '']),
-    )
-    const nextFormRemarks = Object.fromEntries(
-      formItems.map((item) => [item.id, '']),
-    )
-    const nextFormDecisions = Object.fromEntries(
-      formItems.map((item) => [item.id, '']),
-    )
-    const nextFormMarks = Object.fromEntries(
-      formItems.map((item) => [item.id, '']),
-    )
-    const nextScaffoldingRemarks = Object.fromEntries(
-      scaffoldingItems.map((item) => [item.id, '']),
-    )
-    const nextScaffoldingDecisions = Object.fromEntries(
-      scaffoldingItems.map((item) => [item.id, '']),
-    )
-    const nextScaffoldingMarks = Object.fromEntries(
-      scaffoldingItems.map((item) => [item.id, '']),
-    )
-    const nextImageRemarks = Object.fromEntries(
-      imageItems.map((item) => [item.id, '']),
-    )
-    const nextImageDecisions = Object.fromEntries(
-      imageItems.map((item) => [item.id, '']),
-    )
-    const nextImageMarks = Object.fromEntries(
-      imageItems.map((item) => [item.id, '']),
-    )
-    const nextManualQuestionRemarks = Object.fromEntries(
-      manualQuestionItems.map((item) => [item.id, '']),
-    )
-    const nextManualQuestionDecisions = Object.fromEntries(
-      manualQuestionItems.map((item) => [item.id, '']),
-    )
-    const nextManualQuestionMarks = Object.fromEntries(
-      manualQuestionItems.map((item) => [item.id, '']),
-    )
-
-    setChecklistRemarks(nextRemarks)
-    setOpenChecklistRemarks({})
-    setChecklistDecisions(nextDecisions)
-    setChecklistMarks(nextMarks)
-    setFormRemarks(nextFormRemarks)
-    setOpenFormRemarks({})
-    setFormDecisions(nextFormDecisions)
-    setFormMarks(nextFormMarks)
-    setScaffoldingRemarks(nextScaffoldingRemarks)
-    setOpenScaffoldingRemarks({})
-    setScaffoldingDecisions(nextScaffoldingDecisions)
-    setScaffoldingMarks(nextScaffoldingMarks)
-    setImageRemarks(nextImageRemarks)
-    setOpenImageRemarks({})
-    setImageDecisions(nextImageDecisions)
-    setImageMarks(nextImageMarks)
-    setManualQuestionRemarks(nextManualQuestionRemarks)
-    setOpenManualQuestionRemarks({})
-    setManualQuestionDecisions(nextManualQuestionDecisions)
-    setManualQuestionMarks(nextManualQuestionMarks)
-    setOpenReferenceAnswers({})
+    applyDraft(savedDraft ?? buildInitialDraft())
     onObtainedMarksChange?.(0)
-  }, [student?.id, submission])
+  }, [groupedItems, onEvaluationStateChange, onObtainedMarksChange, savedDraft, student?.id, visibleSubmissionItems])
 
   useEffect(() => {
+    if (marksDisabled) {
+      onRegisterActions?.(null)
+      return undefined
+    }
+
+    onRegisterActions?.({
+      buildDraft: () => ({
+        checklistRemarks,
+        checklistDecisions,
+        checklistMarks,
+        formRemarks,
+        formDecisions,
+        formMarks,
+        scaffoldingRemarks,
+        scaffoldingDecisions,
+        scaffoldingMarks,
+        imageRemarks,
+        imageDecisions,
+        imageMarks,
+        manualQuestionRemarks,
+        manualQuestionDecisions,
+        manualQuestionMarks,
+        activeSection: activeSection || groupedItems[0]?.label || '',
+      }),
+      resetDraft: () => {
+        const checklistItems = visibleSubmissionItems.filter((item) => item.type === 'checklist')
+        const formItems = visibleSubmissionItems.filter((item) => item.type === 'form')
+        const scaffoldingItems = visibleSubmissionItems.filter((item) => item.type === 'scaffolding')
+        const imageItems = visibleSubmissionItems.filter((item) => item.type === 'image')
+        const manualQuestionItems = visibleSubmissionItems.filter((item) => item.type === 'question')
+
+        setChecklistRemarks(Object.fromEntries(checklistItems.map((item) => [item.id, item.remarks ?? ''])))
+        setOpenChecklistRemarks({})
+        setChecklistDecisions(Object.fromEntries(checklistItems.map((item) => [item.id, ''])))
+        setChecklistMarks(Object.fromEntries(checklistItems.map((item) => [item.id, ''])))
+        setFormRemarks(Object.fromEntries(formItems.map((item) => [item.id, ''])))
+        setOpenFormRemarks({})
+        setFormDecisions(Object.fromEntries(formItems.map((item) => [item.id, ''])))
+        setFormMarks(Object.fromEntries(formItems.map((item) => [item.id, ''])))
+        setScaffoldingRemarks(Object.fromEntries(scaffoldingItems.map((item) => [item.id, ''])))
+        setOpenScaffoldingRemarks({})
+        setScaffoldingDecisions(Object.fromEntries(scaffoldingItems.map((item) => [item.id, ''])))
+        setScaffoldingMarks(Object.fromEntries(scaffoldingItems.map((item) => [item.id, ''])))
+        setImageRemarks(Object.fromEntries(imageItems.map((item) => [item.id, ''])))
+        setOpenImageRemarks({})
+        setImageDecisions(Object.fromEntries(imageItems.map((item) => [item.id, ''])))
+        setImageMarks(Object.fromEntries(imageItems.map((item) => [item.id, ''])))
+        setManualQuestionRemarks(Object.fromEntries(manualQuestionItems.map((item) => [item.id, ''])))
+        setOpenManualQuestionRemarks({})
+        setManualQuestionDecisions(Object.fromEntries(manualQuestionItems.map((item) => [item.id, ''])))
+        setManualQuestionMarks(Object.fromEntries(manualQuestionItems.map((item) => [item.id, ''])))
+        setOpenReferenceAnswers({})
+        setActiveSection(groupedItems[0]?.label ?? '')
+      },
+    })
+
+    return () => onRegisterActions?.(null)
+  }, [
+    activeSection,
+    checklistDecisions,
+    checklistMarks,
+    checklistRemarks,
+    formDecisions,
+    formMarks,
+    formRemarks,
+    groupedItems,
+    imageDecisions,
+    imageMarks,
+    imageRemarks,
+    manualQuestionDecisions,
+    manualQuestionMarks,
+    manualQuestionRemarks,
+    marksDisabled,
+    onRegisterActions,
+    scaffoldingDecisions,
+    scaffoldingMarks,
+    scaffoldingRemarks,
+    visibleSubmissionItems,
+  ])
+
+  useEffect(() => {
+    if (marksDisabled) {
+      onObtainedMarksChange?.(0)
+      return
+    }
+
     const checklistObtainedMarks = Object.values(checklistMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
     const formObtainedMarks = Object.values(formMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
     const scaffoldingObtainedMarks = Object.values(scaffoldingMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
@@ -519,10 +746,56 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
     const manualQuestionObtainedMarks = Object.values(manualQuestionMarks).reduce((sum, value) => sum + (Number(value) || 0), 0)
     const obtainedMarks = checklistObtainedMarks + formObtainedMarks + scaffoldingObtainedMarks + imageObtainedMarks + manualQuestionObtainedMarks
     onObtainedMarksChange?.(obtainedMarks)
-  }, [checklistMarks, formMarks, imageMarks, manualQuestionMarks, onObtainedMarksChange, scaffoldingMarks])
+  }, [checklistMarks, formMarks, imageMarks, manualQuestionMarks, marksDisabled, onObtainedMarksChange, scaffoldingMarks])
 
   useEffect(() => {
+    if (marksDisabled) {
+      onEvaluationStateChange?.({
+        groupedSections: [],
+        requiredSections: [],
+        itemSummaries: [],
+        isReadyToSubmit: false,
+        completedSectionCount: 0,
+      })
+      return
+    }
+
     const sectionSummaries = groupedItems.map((group) => {
+      const itemSummaries = group.items.map((item) => {
+        const isCompleted = item.type === 'checklist'
+          ? (checklistDecisions[item.id] === 'right' || checklistDecisions[item.id] === 'wrong')
+          : item.type === 'form'
+            ? (formDecisions[item.id] === 'right' || formDecisions[item.id] === 'wrong')
+            : item.type === 'scaffolding'
+              ? (scaffoldingDecisions[item.id] === 'right' || scaffoldingDecisions[item.id] === 'wrong')
+              : item.type === 'image'
+                ? (imageDecisions[item.id] === 'right' || imageDecisions[item.id] === 'wrong')
+                : item.type === 'question'
+                  ? (manualQuestionDecisions[item.id] === 'right' || manualQuestionDecisions[item.id] === 'wrong')
+                  : false
+        const obtainedMarks = item.type === 'checklist'
+          ? (Number(checklistMarks[item.id]) || 0)
+          : item.type === 'form'
+            ? (Number(formMarks[item.id]) || 0)
+            : item.type === 'scaffolding'
+              ? (Number(scaffoldingMarks[item.id]) || 0)
+              : item.type === 'image'
+                ? (Number(imageMarks[item.id]) || 0)
+                : item.type === 'question'
+                  ? (Number(manualQuestionMarks[item.id]) || 0)
+                  : 0
+
+        return {
+          id: item.id,
+          label: item.label,
+          type: item.type,
+          sectionLabel: group.label,
+          isCritical: Boolean(item.isCritical),
+          isCompleted,
+          obtainedMarks,
+          totalMarks: Number(item.marks) || 0,
+        }
+      })
       const completedItems = group.items.reduce((count, item) => {
         if (item.type === 'checklist') {
           return count + (checklistDecisions[item.id] === 'right' || checklistDecisions[item.id] === 'wrong' ? 1 : 0)
@@ -560,6 +833,7 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
         key: group.label.toLowerCase().replace(/\s+/g, '-'),
         label: group.label,
         itemCount: group.items.length,
+        itemSummaries,
         completedItems,
         obtainedMarks: obtainedSectionMarks,
         totalMarks: group.items.reduce((sum, item) => sum + (Number(item.marks) || 0), 0),
@@ -570,6 +844,7 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
     onEvaluationStateChange?.({
       groupedSections: sectionSummaries,
       requiredSections: sectionSummaries.filter((section) => section.itemCount > 0),
+      itemSummaries: sectionSummaries.flatMap((section) => section.itemSummaries),
       isReadyToSubmit: sectionSummaries.length > 0 && sectionSummaries.every((section) => section.itemCount > 0 && section.isComplete),
       completedSectionCount: sectionSummaries.filter((section) => section.isComplete).length,
     })
@@ -581,6 +856,7 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
     groupedItems,
     imageDecisions,
     imageMarks,
+    marksDisabled,
     manualQuestionDecisions,
     manualQuestionMarks,
     onEvaluationStateChange,
@@ -596,7 +872,16 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
     )
   }
 
-  if (student.submissionStatus !== 'Submitted') {
+  if (marksDisabled) {
+    return (
+      <section className="start-eval-detail-card start-eval-empty-state">
+        <strong>Evaluation unavailable</strong>
+        <p>This activity cannot be evaluated because marks were disabled during activity creation.</p>
+      </section>
+    )
+  }
+
+  if (student.submissionStatus !== 'Submitted' && !groupedItems.length) {
     return (
       <section className="start-eval-detail-card start-eval-empty-state">
         <strong>No submission available</strong>
@@ -644,6 +929,12 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
 
   return (
     <section className="start-eval-detail-card">
+      {!isSubmittedStudent ? (
+        <div className="start-eval-faculty-note">
+          <strong>Faculty checklist review only.</strong>
+          <p>No student submission is available, so only checklist evaluation is shown.</p>
+        </div>
+      ) : null}
       {groupedItems.length ? (
         <div className="start-eval-section-head">
           <div className="start-eval-section-tabs" role="tablist" aria-label="Student response sections">
@@ -716,11 +1007,11 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
             <article key={item.id} className={`start-eval-response-item ${item.isCritical ? 'is-critical' : ''} ${cardState}`.trim()}>
             <div className={`start-eval-response-top ${item.type === 'checklist' ? 'is-checklist' : ''}`}>
               <div className="start-eval-response-label">
-                {item.type !== 'checklist' && item.type !== 'scaffolding' && item.type !== 'question' ? <strong>{item.label}</strong> : null}
+                {item.type !== 'checklist' && item.type !== 'scaffolding' && item.type !== 'question' && item.type !== 'form' ? <strong>{item.label}</strong> : null}
               </div>
 
               <div className="start-eval-badge-row">
-                {item.type !== 'checklist' && item.type !== 'scaffolding' && item.type !== 'question' ? <span className="start-eval-meta-badge is-section">{item.sectionLabel}</span> : null}
+                {item.type !== 'checklist' && item.type !== 'scaffolding' && item.type !== 'question' && item.type !== 'form' ? <span className="start-eval-meta-badge is-section">{item.sectionLabel}</span> : null}
                 <span className="start-eval-meta-badge is-marks"><BadgeCheck size={12} strokeWidth={2} /> {item.marks} mark{String(item.marks) === '1' ? '' : 's'}</span>
                 {item.isCritical ? <span className="start-eval-meta-badge is-critical"><AlertTriangle size={12} strokeWidth={2} /> Criticality</span> : null}
                 {item.domains?.map((domain) => <span key={`${item.id}-${domain.label}`} className={`start-eval-meta-badge ${domain.tone}`}>{domain.label}</span>)}
@@ -1170,7 +1461,14 @@ function StudentResponsePanel({ student, record, onObtainedMarksChange, onEvalua
   )
 }
 
-export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluation, onOpenExamLog }) {
+export default function StartEvaluationPage({
+  evaluationRecord,
+  onBackToEvaluation,
+  onOpenCompletedEvaluation,
+  onOpenExamLog,
+  onSaveCompletedEvaluation,
+  onAlert,
+}) {
   const [studentSearch, setStudentSearch] = useState('')
   const [studentFilter, setStudentFilter] = useState('all')
   const [selectedStudentId, setSelectedStudentId] = useState('')
@@ -1179,6 +1477,7 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
   const [evaluationState, setEvaluationState] = useState({
     groupedSections: [],
     requiredSections: [],
+    itemSummaries: [],
     isReadyToSubmit: false,
     completedSectionCount: 0,
   })
@@ -1186,6 +1485,14 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
   const [decisionOptions, setDecisionOptions] = useState(() => buildDefaultDecisionOptions())
   const [selectedDecisionId, setSelectedDecisionId] = useState('')
   const [submittedEvaluations, setSubmittedEvaluations] = useState({})
+  const [savedEvaluationDrafts, setSavedEvaluationDrafts] = useState({})
+  const [panelActions, setPanelActions] = useState(null)
+  const isMarksDisabled = String(
+    evaluationRecord?.assignment?.marks
+    ?? evaluationRecord?.marks
+    ?? evaluationRecord?.activityData?.marks
+    ?? '',
+  ).trim().toLowerCase() === 'nil'
 
   const baseRoster = useMemo(
     () => buildStudentRoster(evaluationRecord, evaluationRecord?.assignment, evaluationRecord?.latestSubmission),
@@ -1213,8 +1520,7 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
     return roster.filter((student) => (
       (studentFilter === 'all'
         || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')
-        || (studentFilter === 'pending' && student.submissionStatus !== 'Submitted')
-        || (studentFilter === 'evaluated' && student.evaluationStatus === 'Completed'))
+        || (studentFilter === 'not-submitted' && student.evaluationStatus !== 'Completed'))
       && (
         !needle
         || student.name.toLowerCase().includes(needle)
@@ -1236,10 +1542,11 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
   }, [filteredStudents, selectedStudentId])
 
   const selectedStudent = filteredStudents.find((student) => student.id === selectedStudentId) ?? null
+  const selectedStudentBadge = getStudentEvaluationBadge(selectedStudent)
   const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
   const submittedCount = roster.filter((student) => student.submissionStatus === 'Submitted').length
   const completedCount = roster.filter((student) => student.evaluationStatus === 'Completed').length
-  const pendingCount = roster.filter((student) => student.submissionStatus !== 'Submitted').length
+  const pendingCount = roster.filter((student) => student.evaluationStatus !== 'Completed').length
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
 
@@ -1257,6 +1564,56 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
     [thresholdRows, obtainedMarks, totalMarks],
   )
   const readySections = evaluationState.requiredSections
+  const groupedReviewSummaries = useMemo(() => {
+    const summaries = evaluationState.itemSummaries ?? []
+    const sectionDefinitions = [
+      { key: 'checklist', label: 'Checklist' },
+      { key: 'form', label: 'Form' },
+      { key: 'question', label: 'Questions' },
+      { key: 'scaffolding', label: 'Scaffolding' },
+      { key: 'image', label: 'Image Review' },
+    ]
+    const buildPart = (items, label) => ({
+      key: label.toLowerCase().replace(/\s+/g, '-'),
+      label,
+      itemCount: items.length,
+      completedItems: items.filter((item) => item.isCompleted).length,
+      obtainedMarks: items.reduce((sum, item) => sum + (Number(item.obtainedMarks) || 0), 0),
+      totalMarks: items.reduce((sum, item) => sum + (Number(item.totalMarks) || 0), 0),
+    })
+    const buildRow = (key, label, items) => {
+      const normalItems = items.filter((item) => !item.isCritical)
+      const criticalItems = items.filter((item) => item.isCritical)
+      const parts = []
+
+      if (normalItems.length && criticalItems.length) {
+        parts.push(buildPart(normalItems, 'Normal'))
+        parts.push(buildPart(criticalItems, 'Critical'))
+      } else if (criticalItems.length) {
+        parts.push(buildPart(criticalItems, 'Critical'))
+      } else {
+        parts.push(buildPart(items, 'Normal'))
+      }
+
+      return {
+        key,
+        label,
+        parts,
+        itemCount: items.length,
+        completedItems: items.filter((item) => item.isCompleted).length,
+      }
+    }
+
+    return sectionDefinitions
+      .map((section) => {
+        const items = summaries.filter((item) => item.type === section.key)
+
+        if (!items.length) return null
+
+        return buildRow(section.key, section.label, items)
+      })
+      .filter(Boolean)
+  }, [evaluationState.itemSummaries])
   const isReadyToSubmit = Boolean(selectedStudent?.id)
     && selectedStudent?.submissionStatus === 'Submitted'
     && evaluationState.isReadyToSubmit
@@ -1264,13 +1621,16 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
   const studentFilterOptions = [
     { id: 'all', label: 'All', count: roster.length },
     { id: 'submitted', label: 'Submitted', count: submittedCount },
-    { id: 'pending', label: 'Pending', count: pendingCount },
-    { id: 'evaluated', label: 'Evaluated', count: completedCount },
+    { id: 'not-submitted', label: 'Evaluation Not Submit', count: pendingCount },
   ]
 
   const handleSelectStudent = (studentId) => {
     setSelectedStudentId(studentId)
     setIsStudentPickerOpen(false)
+  }
+
+  const handleOpenCompletedEvaluation = () => {
+    onOpenCompletedEvaluation?.(evaluationRecord)
   }
 
   const handlePreviousStudent = () => {
@@ -1286,6 +1646,7 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
   }
 
   const handleSubmitEvaluation = () => {
+    if (isMarksDisabled) return
     if (!selectedStudent || !selectedDecision) return
 
     const submissionSummary = {
@@ -1301,23 +1662,83 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
       sections: readySections,
       submittedAt: new Date().toISOString(),
     }
+    const completedEvaluationRow = buildCompletedEvaluationRow({
+      evaluationRecord,
+      student: selectedStudent,
+      itemSummaries: evaluationState.itemSummaries,
+      obtainedMarks,
+      totalMarks,
+      thresholdResult,
+      decision: selectedDecision,
+    })
 
     setSubmittedEvaluations((current) => ({
       ...current,
       [selectedStudent.id]: submissionSummary,
     }))
+    onSaveCompletedEvaluation?.(completedEvaluationRow)
+    setSavedEvaluationDrafts((current) => {
+      const nextDrafts = { ...current }
+      delete nextDrafts[selectedStudent.id]
+      return nextDrafts
+    })
     setIsSubmitPopupOpen(false)
+  }
+
+  const handleSaveEvaluation = () => {
+    if (isMarksDisabled) return
+    if (!selectedStudent?.id || !panelActions?.buildDraft) return
+
+    setSavedEvaluationDrafts((current) => ({
+      ...current,
+      [selectedStudent.id]: panelActions.buildDraft(),
+    }))
+
+    const hasNextStudent = selectedStudentIndex > -1 && selectedStudentIndex < filteredStudents.length - 1
+    onAlert?.({
+      tone: 'secondary',
+      message: hasNextStudent
+        ? `${selectedStudent.name} evaluation saved. Moving to the next student.`
+        : `${selectedStudent.name} evaluation saved.`,
+      duration: 2600,
+    })
+
+    if (hasNextStudent) {
+      setSelectedStudentId(filteredStudents[selectedStudentIndex + 1].id)
+    }
+  }
+
+  const handleResetEvaluation = () => {
+    if (isMarksDisabled) return
+    if (!selectedStudent?.id || !panelActions?.resetDraft) return
+
+    panelActions.resetDraft()
+    setSavedEvaluationDrafts((current) => {
+      const nextDrafts = { ...current }
+      delete nextDrafts[selectedStudent.id]
+      return nextDrafts
+    })
   }
 
   useEffect(() => {
     setEvaluationState({
       groupedSections: [],
       requiredSections: [],
+      itemSummaries: [],
       isReadyToSubmit: false,
       completedSectionCount: 0,
     })
     setSelectedDecisionId('')
   }, [selectedStudentId])
+
+  useEffect(() => {
+    if (!isMarksDisabled) return
+
+    setIsSubmitPopupOpen(false)
+    setSelectedDecisionId('')
+    setPanelActions(null)
+    setObtainedMarks(0)
+  }, [isMarksDisabled, selectedStudentId])
 
   useEffect(() => {
     if (!isSubmitPopupOpen) return undefined
@@ -1361,10 +1782,14 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
               <span><CheckCircle2 size={13} strokeWidth={2} /> Submitted</span>
               <strong>{submittedCount}</strong>
             </article>
-            <article className="start-eval-summary-tile">
-              <span><ClipboardCheck size={13} strokeWidth={2} /> Evaluated</span>
+            <button
+              type="button"
+              className="start-eval-summary-tile start-eval-summary-action start-eval-summary-action-completed"
+              onClick={handleOpenCompletedEvaluation}
+            >
+              <span><ClipboardCheck size={13} strokeWidth={2} /> Evaluation Completed</span>
               <strong>{completedCount}</strong>
-            </article>
+            </button>
           </div>
           </div>
         </section>
@@ -1381,12 +1806,9 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                   {filteredStudents.length ? `${Math.max(selectedStudentIndex + 1, 1)} of ${filteredStudents.length}` : '0 of 0'}
                 </p>
                 <div className="start-eval-student-nav-meta">
-                  <span className={`eval-status-pill ${selectedStudent?.evaluationStatus === 'Completed' ? 'is-complete' : 'is-pending'}`}>
-                    {selectedStudent?.evaluationStatus ?? 'Pending'}
+                  <span className={`eval-status-pill ${selectedStudentBadge.tone}`}>
+                    {selectedStudentBadge.label}
                   </span>
-                  {selectedStudent?.evaluationDecision ? (
-                    <span className="start-eval-student-decision-pill">{selectedStudent.evaluationDecision}</span>
-                  ) : null}
                   <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
                 </div>
               </div>
@@ -1437,15 +1859,28 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
             <StudentResponsePanel
               student={selectedStudent}
               record={evaluationRecord}
+              savedDraft={selectedStudent?.id ? savedEvaluationDrafts[selectedStudent.id] ?? null : null}
+              marksDisabled={isMarksDisabled}
               onObtainedMarksChange={setObtainedMarks}
               onEvaluationStateChange={setEvaluationState}
+              onRegisterActions={setPanelActions}
             />
 
-            {selectedStudent?.submissionStatus === 'Submitted' ? (
+            {selectedStudent ? (
               <section className={`start-eval-submit-card ${isReadyToSubmit ? 'is-ready' : ''}`}>
                 <div className="start-eval-submit-copy">
                   <span className="start-eval-student-nav-kicker">Evaluation Status</span>
                   <div className="start-eval-submit-meta">
+                    {isMarksDisabled ? (
+                      <span className="start-eval-submit-pill is-pending">
+                        Evaluation disabled because marks are off
+                      </span>
+                    ) : null}
+                    {selectedStudent.submissionStatus !== 'Submitted' ? (
+                      <span className="start-eval-submit-pill is-pending">
+                        No submission available
+                      </span>
+                    ) : null}
                     {readySections.map((section) => (
                       <span key={section.key} className={`start-eval-submit-pill ${section.isComplete ? 'is-complete' : 'is-pending'}`}>
                         {section.label} {formatMarksValue(section.obtainedMarks)}/{formatMarksValue(section.totalMarks)}
@@ -1457,22 +1892,46 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  className="tool-btn green start-eval-submit-btn"
-                  onClick={() => setIsSubmitPopupOpen(true)}
-                  disabled={!isReadyToSubmit}
-                >
-                  Submit
-                </button>
+                <div className="start-eval-submit-actions">
+                  <button
+                    type="button"
+                    className="ghost start-eval-submit-secondary"
+                    onClick={handleSaveEvaluation}
+                    disabled={!selectedStudent?.id || isMarksDisabled}
+                  >
+                    Save & Next
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost start-eval-submit-secondary"
+                    onClick={handleResetEvaluation}
+                    disabled={!selectedStudent?.id || isMarksDisabled}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    className="tool-btn green start-eval-submit-btn"
+                    onClick={() => setIsSubmitPopupOpen(true)}
+                    disabled={!isReadyToSubmit || isMarksDisabled}
+                  >
+                    Submit
+                  </button>
+                </div>
               </section>
             ) : null}
           </div>
         </section>
 
         {isStudentPickerOpen ? (
-          <div className="start-eval-student-picker-overlay" role="dialog" aria-modal="true" aria-label="Student list">
-            <div className="start-eval-student-picker">
+          <div
+            className="start-eval-student-picker-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Student list"
+            onClick={() => setIsStudentPickerOpen(false)}
+          >
+            <div className="start-eval-student-picker" onClick={(event) => event.stopPropagation()}>
               <div className="start-eval-panel-head">
                 <div>
                   <strong>Students</strong>
@@ -1510,27 +1969,31 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
               </div>
 
               <div className="start-eval-student-list is-picker">
-                {filteredStudents.map((student) => (
-                  <button
-                    key={student.id}
-                    type="button"
-                    className={`start-eval-student-item ${student.id === selectedStudentId ? 'is-active' : ''}`}
-                    onClick={() => handleSelectStudent(student.id)}
-                  >
-                    <div className="start-eval-student-main">
-                      <span className="start-eval-student-avatar">{student.name.slice(0, 2).toUpperCase()}</span>
-                      <div>
-                        <strong>{student.name}</strong>
-                        <p>{student.registerId}</p>
+                {filteredStudents.map((student) => {
+                  const studentBadge = getStudentEvaluationBadge(student)
+
+                  return (
+                    <button
+                      key={student.id}
+                      type="button"
+                      className={`start-eval-student-item ${student.id === selectedStudentId ? 'is-active' : ''}`}
+                      onClick={() => handleSelectStudent(student.id)}
+                    >
+                      <div className="start-eval-student-main">
+                        <span className="start-eval-student-avatar">{student.name.slice(0, 2).toUpperCase()}</span>
+                        <div>
+                          <strong>{student.name}</strong>
+                          <p>{student.registerId}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="start-eval-student-meta">
-                      <span className={`eval-status-pill ${student.submissionStatus === 'Submitted' ? 'is-complete' : 'is-pending'}`}>
-                        {student.submissionStatus}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+                      <div className="start-eval-student-meta">
+                        <span className={`eval-status-pill ${studentBadge.tone}`}>
+                          {studentBadge.label}
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -1541,70 +2004,120 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
             <div className="start-eval-submit-modal">
               <div className="start-eval-submit-topbar">
                 <div className="start-eval-submit-title-block">
-                  <span className="start-eval-submit-kicker">Final Review</span>
                   <strong>Submit Evaluation</strong>
-                  <p>Review the student result, choose the final outcome, and confirm submission.</p>
+                  <p>Review the summary, choose the outcome, and confirm.</p>
                 </div>
                 <button type="button" className="ghost start-eval-back-btn" onClick={() => setIsSubmitPopupOpen(false)}>
                   <X size={15} strokeWidth={2} />
                 </button>
               </div>
 
-              <div className="start-eval-submit-summary">
-                <article className="start-eval-submit-summary-card">
-                  <span>Student</span>
+              <section className="start-eval-submit-review">
+                <div className="start-eval-submit-review-row">
+                  <span className="start-eval-submit-review-icon" aria-hidden="true">
+                    <Users size={14} strokeWidth={2} />
+                  </span>
+                  <span className="start-eval-submit-review-label">Student</span>
                   <strong>{selectedStudent.name}</strong>
                   <small>{selectedStudent.registerId}</small>
-                </article>
-                <article className="start-eval-submit-summary-card">
-                  <span>Obtained Marks</span>
+                </div>
+                <div className="start-eval-submit-review-row">
+                  <span className="start-eval-submit-review-icon" aria-hidden="true">
+                    <BadgeCheck size={14} strokeWidth={2} />
+                  </span>
+                  <span className="start-eval-submit-review-label">Score</span>
                   <strong>{formatMarksValue(obtainedMarks)} / {formatMarksValue(totalMarks)}</strong>
                   <small>{evaluationRecord?.activityType ?? 'Activity'}</small>
-                </article>
-                <article className="start-eval-submit-summary-card">
-                  <span>Threshold</span>
+                </div>
+                <div className="start-eval-submit-review-row">
+                  <span className="start-eval-submit-review-icon" aria-hidden="true">
+                    <ClipboardCheck size={14} strokeWidth={2} />
+                  </span>
+                  <span className="start-eval-submit-review-label">Threshold</span>
                   <strong>{thresholdResult?.label ?? (thresholdRows.length ? 'Not Matched' : 'Not Configured')}</strong>
                   <small>
                     {thresholdResult
                       ? `${formatMarksValue(thresholdResult.from)} to ${formatMarksValue(thresholdResult.to)}`
-                      : thresholdRows.length ? 'Threshold available but no range matched.' : 'No threshold configured'}
+                      : thresholdRows.length ? 'Threshold range available' : 'No threshold configured'}
                   </small>
-                </article>
-              </div>
+                </div>
+              </section>
 
-              <div className="start-eval-submit-section-list">
-                {readySections.map((section) => (
-                  <article key={section.key} className="start-eval-submit-section-item">
-                    <div>
-                      <strong>{section.label}</strong>
-                      <p>{section.completedItems} of {section.itemCount} evaluated</p>
-                    </div>
-                    <span>{formatMarksValue(section.obtainedMarks)} / {formatMarksValue(section.totalMarks)}</span>
-                  </article>
-                ))}
-              </div>
+              {groupedReviewSummaries.length ? (
+                <section className="start-eval-submit-breakdown-panel">
+                  <div className="start-eval-submit-activity-chips" aria-label="Included evaluation sections">
+                    {readySections.map((section) => {
+                      const SectionIcon = getReviewSectionIcon(section.label)
+                      const sectionTone = getReviewSectionTone(section.label)
+
+                      return (
+                        <span key={`chip-${section.key}`} className={`start-eval-submit-activity-chip ${sectionTone}`}>
+                          <SectionIcon size={12} strokeWidth={2} />
+                          {section.label}
+                        </span>
+                      )
+                    })}
+                  </div>
+                  <div className="start-eval-submit-breakdown-list">
+                    {groupedReviewSummaries.map((section) => {
+                      const SectionIcon = getReviewSectionIcon(section.label)
+                      const sectionTone = getReviewSectionTone(section.label)
+
+                      return (
+                      <article key={section.key} className="start-eval-submit-breakdown-row">
+                        <div className="start-eval-submit-breakdown-copy">
+                          <span className={`start-eval-submit-breakdown-icon ${sectionTone}`} aria-hidden="true">
+                            <SectionIcon size={13} strokeWidth={2} />
+                          </span>
+                          <strong>{section.label}</strong>
+                          <p>{section.completedItems} of {section.itemCount} evaluated</p>
+                        </div>
+                        <div className="start-eval-submit-breakdown-parts">
+                          {section.parts.map((part) => (
+                            <div
+                              key={`${section.key}-${part.key}`}
+                              className={`start-eval-submit-breakdown-part ${part.label === 'Critical' ? 'is-critical' : ''}`.trim()}
+                            >
+                              <small>{part.label}</small>
+                              <strong>{formatMarksValue(part.obtainedMarks)} / {formatMarksValue(part.totalMarks)}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
+                    )})}
+                  </div>
+                </section>
+              ) : null}
 
               <section className="start-eval-submit-decision-panel">
                 <div className="start-eval-submit-decision-head">
                   <div>
-                    <strong>Outcome</strong>
+                    <strong>Select Your Outcome Result</strong>
                     <p>Select the final result for this student.</p>
                   </div>
                 </div>
 
                 <div className="start-eval-submit-decision-list">
-                  {decisionOptions.map((option) => (
-                    <div key={option.id} className={`start-eval-submit-decision-item ${selectedDecisionId === option.id ? 'is-active' : ''}`}>
+                  {decisionOptions.map((option) => {
+                    const decisionMeta = getDecisionOptionMeta(option.id)
+                    const DecisionIcon = decisionMeta.icon
+
+                    return (
+                    <div key={option.id} className={`start-eval-submit-decision-item ${decisionMeta.tone} ${selectedDecisionId === option.id ? 'is-active' : ''}`}>
                       <button
                         type="button"
                         className="start-eval-submit-decision-btn"
                         onClick={() => setSelectedDecisionId(option.id)}
                       >
-                        <strong>{option.label}</strong>
-                        <span>{option.title}</span>
+                        <span className="start-eval-submit-decision-icon" aria-hidden="true">
+                          <DecisionIcon size={14} strokeWidth={2} />
+                        </span>
+                        <div className="start-eval-submit-decision-copy">
+                          <strong>{option.title}</strong>
+                        </div>
                       </button>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </section>
 

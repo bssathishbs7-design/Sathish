@@ -317,6 +317,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   const sections = useMemo(() => getAssignedSections(assignment), [assignment])
   const { resolved, examData, examItems } = sections
   const examContext = useMemo(() => getStudentExamContext(resolved, examItems), [resolved, examItems])
+  const isMarksDisabled = String(resolved?.marks ?? assignment?.marks ?? '').trim().toLowerCase() === 'nil'
   const hasTimer = Boolean(examData.durationMinutes)
   const [phase, setPhase] = useState('prestart')
   const [answers, setAnswers] = useState(() => buildInitialAnswers(sections))
@@ -486,6 +487,11 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   }, [examData.proctoring?.fullscreenRequired, onAlert, phase])
 
   const startExam = async () => {
+    if (isMarksDisabled) {
+      onAlert?.({ tone: 'warning', message: 'This activity is unavailable because marks are disabled.' })
+      return
+    }
+
     if (examData.proctoring?.fullscreenRequired && document.documentElement.requestFullscreen) {
       try {
         await document.documentElement.requestFullscreen()
@@ -550,6 +556,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   }
 
   const handleSubmit = (reason = 'manual') => {
+    if (isMarksDisabled) return
     if (hasSubmittedRef.current) return
     if (reason === 'manual' && !isSubmissionReady) {
       onAlert?.({ tone: 'warning', message: 'Complete every mandatory question before final submission.' })
@@ -618,6 +625,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
     ...(sections.formSections.length
       ? [{ label: `${sections.formSections.length} Forms`, tone: 'is-form', icon: Shapes }]
       : []),
+    ...(isMarksDisabled ? [{ label: 'Marks Disabled', tone: 'is-critical', icon: AlertTriangle }] : []),
     { label: examData.proctoring?.mode ?? 'Online Proctoring', tone: 'is-proctoring', icon: ShieldCheck },
     ...(hasTimer ? [{ label: `${examData.durationMinutes} min`, tone: 'is-duration', icon: Clock3 }] : []),
   ]
@@ -680,17 +688,25 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                   <AlertTriangle size={18} strokeWidth={2.1} />
                   <span>Tab switches and fullscreen exits are recorded.</span>
                 </div>
+                {isMarksDisabled ? (
+                  <div className="student-exam-entry-rule">
+                    <AlertTriangle size={18} strokeWidth={2.1} />
+                    <span>This activity is disabled because marks were turned off during activity creation.</span>
+                  </div>
+                ) : null}
                 <div className="student-exam-instruction-list">
-                  {instructionItems.map((instruction) => (
+                  {(isMarksDisabled
+                    ? ['This activity is locked for students until marks are enabled for the assigned activity.']
+                    : instructionItems).map((instruction) => (
                     <div key={instruction} className="student-exam-instruction-item">
                       <span className="student-exam-instruction-dot" aria-hidden="true" />
                       <span>{instruction}</span>
                     </div>
                   ))}
                 </div>
-                <button type="button" className="student-exam-primary-btn" onClick={startExam}>
+                <button type="button" className="student-exam-primary-btn" onClick={startExam} disabled={isMarksDisabled}>
                   <Play size={16} strokeWidth={2.2} />
-                  Start Activity
+                  {isMarksDisabled ? 'Activity Disabled' : 'Start Activity'}
                 </button>
               </div>
             </div>
