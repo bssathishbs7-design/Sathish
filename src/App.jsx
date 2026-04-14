@@ -85,6 +85,9 @@ const buildEvaluationRecordFromAssignment = (assignment) => {
     createdDate: assignment.createdDate ?? new Date().toLocaleDateString('en-GB'),
     evaluationStatus: assignment.evaluationStatus ?? 'Pending Evaluation',
     questionCount: assignment.questionCount ?? getAssignmentQuestionCount(assignment),
+    thresholds: assignment.thresholds ?? assignment.examData?.thresholds ?? [],
+    examData: assignment.examData ?? null,
+    activityData: assignment.activityData ?? null,
   }
 }
 
@@ -369,7 +372,7 @@ function App() {
 
     setSelectedEvaluationRecord({
       ...record,
-      assignment: linkedAssignment ?? null,
+      assignment: linkedAssignment ?? record.assignment ?? record ?? null,
       latestSubmission: linkedSubmission,
     })
     navigateToPage(APP_PAGES.START_EVALUATION)

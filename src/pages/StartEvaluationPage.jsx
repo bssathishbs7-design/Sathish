@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   AlertTriangle,
   BadgeCheck,
@@ -13,8 +14,6 @@ import {
   FileText,
   Image as ImageIcon,
   Microscope,
-  Pencil,
-  Plus,
   Search,
   Shapes,
   Stethoscope,
@@ -44,7 +43,7 @@ const formatMarksValue = (value) => {
   return numericValue.toFixed(2).replace(/\.?0+$/, '')
 }
 
-const resolveThresholdResult = (thresholds, obtainedMarks) => {
+const resolveThresholdResult = (thresholds, obtainedMarks, totalMarks) => {
   const normalizedThresholds = (thresholds ?? [])
     .map((threshold, index) => ({
       id: threshold.id ?? `threshold-${index + 1}`,
@@ -55,9 +54,15 @@ const resolveThresholdResult = (thresholds, obtainedMarks) => {
     .filter((threshold) => !Number.isNaN(threshold.from) && !Number.isNaN(threshold.to))
     .sort((left, right) => left.from - right.from)
 
+  const looksLikePercentageScale = normalizedThresholds.length > 0
+    && normalizedThresholds.every((threshold) => threshold.to <= 100)
+
+  const comparableValue = looksLikePercentageScale
+    ? ((Number(totalMarks) || 0) > 0 ? (obtainedMarks / totalMarks) * 100 : 0)
+    : obtainedMarks
   const matchedThreshold = normalizedThresholds.find((threshold) => (
-    obtainedMarks >= threshold.from - 0.001
-    && obtainedMarks <= threshold.to + 0.001
+    comparableValue >= threshold.from - 0.001
+    && comparableValue <= threshold.to + 0.001
   ))
 
   return matchedThreshold ?? null
@@ -1179,7 +1184,7 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
   })
   const [isSubmitPopupOpen, setIsSubmitPopupOpen] = useState(false)
   const [decisionOptions, setDecisionOptions] = useState(() => buildDefaultDecisionOptions())
-  const [selectedDecisionId, setSelectedDecisionId] = useState('decision-completed')
+  const [selectedDecisionId, setSelectedDecisionId] = useState('')
   const [submittedEvaluations, setSubmittedEvaluations] = useState({})
 
   const baseRoster = useMemo(
@@ -1240,9 +1245,16 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
 
     return items.reduce((sum, item) => sum + (Number(item.marks) || 0), 0)
   }, [selectedStudent])
+  const thresholdRows = useMemo(() => (
+    evaluationRecord?.assignment?.thresholds
+    ?? evaluationRecord?.assignment?.examData?.thresholds
+    ?? evaluationRecord?.thresholds
+    ?? evaluationRecord?.examData?.thresholds
+    ?? []
+  ), [evaluationRecord])
   const thresholdResult = useMemo(
-    () => resolveThresholdResult(evaluationRecord?.assignment?.thresholds, obtainedMarks),
-    [evaluationRecord?.assignment?.thresholds, obtainedMarks],
+    () => resolveThresholdResult(thresholdRows, obtainedMarks, totalMarks),
+    [thresholdRows, obtainedMarks, totalMarks],
   )
   const readySections = evaluationState.requiredSections
   const isReadyToSubmit = Boolean(selectedStudent?.id)
@@ -1271,40 +1283,6 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
     if (selectedStudentIndex > -1 && selectedStudentIndex < filteredStudents.length - 1) {
       setSelectedStudentId(filteredStudents[selectedStudentIndex + 1].id)
     }
-  }
-
-  const handleAddDecisionOption = () => {
-    const nextLabel = window.prompt('Enter the short button text.', '')
-
-    if (!nextLabel || !nextLabel.trim()) return
-
-    const nextTitle = window.prompt('Enter the full decision title.', nextLabel.trim()) ?? nextLabel.trim()
-    const nextOption = {
-      id: `decision-${Date.now()}`,
-      label: nextLabel.trim(),
-      title: nextTitle.trim() || nextLabel.trim(),
-    }
-
-    setDecisionOptions((current) => [...current, nextOption])
-    setSelectedDecisionId(nextOption.id)
-  }
-
-  const handleEditDecisionOption = (optionId) => {
-    const currentOption = decisionOptions.find((option) => option.id === optionId)
-
-    if (!currentOption) return
-
-    const nextLabel = window.prompt('Update the short button text.', currentOption.label)
-
-    if (!nextLabel || !nextLabel.trim()) return
-
-    const nextTitle = window.prompt('Update the full decision title.', currentOption.title) ?? currentOption.title
-
-    setDecisionOptions((current) => current.map((option) => (
-      option.id === optionId
-        ? { ...option, label: nextLabel.trim(), title: nextTitle.trim() || nextLabel.trim() }
-        : option
-    )))
   }
 
   const handleSubmitEvaluation = () => {
@@ -1338,6 +1316,7 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
       isReadyToSubmit: false,
       completedSectionCount: 0,
     })
+    setSelectedDecisionId('')
   }, [selectedStudentId])
 
   useEffect(() => {
@@ -1473,7 +1452,7 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                       </span>
                     ))}
                     <span className="start-eval-submit-pill is-threshold">
-                      Threshold {thresholdResult?.label ?? 'Not Matched'}
+                      Threshold {thresholdResult?.label ?? (thresholdRows.length ? 'Not Matched' : 'Not Configured')}
                     </span>
                   </div>
                 </div>
@@ -1557,17 +1536,17 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
           </div>
         ) : null}
 
-        {isSubmitPopupOpen && selectedStudent ? (
+        {isSubmitPopupOpen && selectedStudent ? createPortal(
           <div className="start-eval-submit-overlay" role="dialog" aria-modal="true" aria-label="Submit evaluation">
             <div className="start-eval-submit-modal">
-              <div className="start-eval-panel-head">
-                <div>
+              <div className="start-eval-submit-topbar">
+                <div className="start-eval-submit-title-block">
+                  <span className="start-eval-submit-kicker">Final Review</span>
                   <strong>Submit Evaluation</strong>
                   <p>Review the student result, choose the final outcome, and confirm submission.</p>
                 </div>
                 <button type="button" className="ghost start-eval-back-btn" onClick={() => setIsSubmitPopupOpen(false)}>
                   <X size={15} strokeWidth={2} />
-                  Close
                 </button>
               </div>
 
@@ -1584,11 +1563,11 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                 </article>
                 <article className="start-eval-submit-summary-card">
                   <span>Threshold</span>
-                  <strong>{thresholdResult?.label ?? 'Not Matched'}</strong>
+                  <strong>{thresholdResult?.label ?? (thresholdRows.length ? 'Not Matched' : 'Not Configured')}</strong>
                   <small>
                     {thresholdResult
                       ? `${formatMarksValue(thresholdResult.from)} to ${formatMarksValue(thresholdResult.to)}`
-                      : 'No threshold configured'}
+                      : thresholdRows.length ? 'Threshold available but no range matched.' : 'No threshold configured'}
                   </small>
                 </article>
               </div>
@@ -1609,12 +1588,8 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                 <div className="start-eval-submit-decision-head">
                   <div>
                     <strong>Outcome</strong>
-                    <p>Pick the final result for this student. You can also add or rename options.</p>
+                    <p>Select the final result for this student.</p>
                   </div>
-                  <button type="button" className="ghost start-eval-submit-action-btn" onClick={handleAddDecisionOption}>
-                    <Plus size={14} strokeWidth={2} />
-                    Add
-                  </button>
                 </div>
 
                 <div className="start-eval-submit-decision-list">
@@ -1627,14 +1602,6 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                       >
                         <strong>{option.label}</strong>
                         <span>{option.title}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="ghost start-eval-submit-icon-btn"
-                        aria-label={`Edit ${option.title}`}
-                        onClick={() => handleEditDecisionOption(option.id)}
-                      >
-                        <Pencil size={14} strokeWidth={2} />
                       </button>
                     </div>
                   ))}
@@ -1655,7 +1622,8 @@ export default function StartEvaluationPage({ evaluationRecord, onBackToEvaluati
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body,
         ) : null}
       </div>
     </section>
