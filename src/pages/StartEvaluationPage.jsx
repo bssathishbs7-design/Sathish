@@ -179,6 +179,8 @@ const buildCompletedEvaluationRow = ({
   totalMarks,
   thresholdResult,
   decision,
+  rowStatus = 'Completed',
+  evaluationDraft = null,
 }) => {
   const checklist = buildCompletedSectionStats(itemSummaries, 'checklist')
   const form = buildCompletedSectionStats(itemSummaries, 'form')
@@ -197,9 +199,13 @@ const buildCompletedEvaluationRow = ({
     studentId: student?.id ?? 'unknown-student',
     studentName: student?.name ?? 'Student',
     registerId: student?.registerId ?? 'Not set',
+    rowStatus,
+    resultStatus: decision?.title ?? '',
+    decisionId: decision?.id ?? '',
+    evaluationDraft,
     submittedAt: new Date().toISOString(),
     thresholdLabel: thresholdResult?.label ?? 'Not Matched',
-    decisionTitle: decision?.title ?? 'Completed',
+    decisionTitle: decision?.title ?? '',
     checklist,
     form,
     scaffolding,
@@ -1463,6 +1469,8 @@ function StudentResponsePanel({
 
 export default function StartEvaluationPage({
   evaluationRecord,
+  initialSelectedStudentId,
+  completedEvaluationRows = [],
   onBackToEvaluation,
   onOpenCompletedEvaluation,
   onOpenExamLog,
@@ -1541,11 +1549,25 @@ export default function StartEvaluationPage({
     }
   }, [filteredStudents, selectedStudentId])
 
+  useEffect(() => {
+    if (!initialSelectedStudentId) return
+    if (!filteredStudents.some((student) => student.id === initialSelectedStudentId)) return
+
+    setSelectedStudentId(initialSelectedStudentId)
+  }, [filteredStudents, initialSelectedStudentId])
+
   const selectedStudent = filteredStudents.find((student) => student.id === selectedStudentId) ?? null
+  const editingStudentDraft = selectedStudent?.id && selectedStudent.id === initialSelectedStudentId
+    ? evaluationRecord?.editingStudentDraft ?? null
+    : null
   const selectedStudentBadge = getStudentEvaluationBadge(selectedStudent)
   const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
+  const activityCompletedRows = completedEvaluationRows.filter((row) => (
+    row.activityId === evaluationRecord?.id && row.rowStatus === 'Completed'
+  ))
   const submittedCount = roster.filter((student) => student.submissionStatus === 'Submitted').length
-  const completedCount = roster.filter((student) => student.evaluationStatus === 'Completed').length
+  const notSubmittedCount = roster.filter((student) => student.submissionStatus !== 'Submitted').length
+  const completedCount = activityCompletedRows.length
   const pendingCount = roster.filter((student) => student.evaluationStatus !== 'Completed').length
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
@@ -1645,9 +1667,10 @@ export default function StartEvaluationPage({
     }
   }
 
-  const handleSubmitEvaluation = () => {
+  const handleSubmitEvaluation = (decisionOverride = null) => {
     if (isMarksDisabled) return
-    if (!selectedStudent || !selectedDecision) return
+    const decisionToSubmit = decisionOverride ?? selectedDecision
+    if (!selectedStudent || !decisionToSubmit) return
 
     const submissionSummary = {
       studentId: selectedStudent.id,
@@ -1656,9 +1679,9 @@ export default function StartEvaluationPage({
       obtainedMarks,
       totalMarks,
       thresholdLabel: thresholdResult?.label ?? 'Not Matched',
-      decisionId: selectedDecision.id,
-      decisionLabel: selectedDecision.label,
-      decisionTitle: selectedDecision.title,
+      decisionId: decisionToSubmit.id,
+      decisionLabel: decisionToSubmit.label,
+      decisionTitle: decisionToSubmit.title,
       sections: readySections,
       submittedAt: new Date().toISOString(),
     }
@@ -1669,8 +1692,11 @@ export default function StartEvaluationPage({
       obtainedMarks,
       totalMarks,
       thresholdResult,
-      decision: selectedDecision,
+      decision: decisionToSubmit,
+      rowStatus: 'Completed',
+      evaluationDraft: panelActions?.buildDraft?.() ?? null,
     })
+    const hasNextStudent = selectedStudentIndex > -1 && selectedStudentIndex < filteredStudents.length - 1
 
     setSubmittedEvaluations((current) => ({
       ...current,
@@ -1683,6 +1709,18 @@ export default function StartEvaluationPage({
       return nextDrafts
     })
     setIsSubmitPopupOpen(false)
+    setSelectedDecisionId(decisionToSubmit.id)
+    onAlert?.({
+      tone: 'success',
+      message: hasNextStudent
+        ? `${selectedStudent.name} marked as ${decisionToSubmit.title}. Moving to the next student.`
+        : `${selectedStudent.name} marked as ${decisionToSubmit.title}.`,
+      duration: 2600,
+    })
+
+    if (hasNextStudent) {
+      setSelectedStudentId(filteredStudents[selectedStudentIndex + 1].id)
+    }
   }
 
   const handleSaveEvaluation = () => {
@@ -1692,6 +1730,17 @@ export default function StartEvaluationPage({
     setSavedEvaluationDrafts((current) => ({
       ...current,
       [selectedStudent.id]: panelActions.buildDraft(),
+    }))
+    onSaveCompletedEvaluation?.(buildCompletedEvaluationRow({
+      evaluationRecord,
+      student: selectedStudent,
+      itemSummaries: evaluationState.itemSummaries,
+      obtainedMarks,
+      totalMarks,
+      thresholdResult,
+      decision: null,
+      rowStatus: 'Pending',
+      evaluationDraft: panelActions.buildDraft(),
     }))
 
     const hasNextStudent = selectedStudentIndex > -1 && selectedStudentIndex < filteredStudents.length - 1
@@ -1728,8 +1777,14 @@ export default function StartEvaluationPage({
       isReadyToSubmit: false,
       completedSectionCount: 0,
     })
-    setSelectedDecisionId('')
   }, [selectedStudentId])
+
+  useEffect(() => {
+    if (!selectedStudent?.id || selectedStudent.id !== initialSelectedStudentId) return
+    if (!evaluationRecord?.editingDecisionId) return
+
+    setSelectedDecisionId(evaluationRecord.editingDecisionId)
+  }, [evaluationRecord?.editingDecisionId, initialSelectedStudentId, selectedStudent?.id])
 
   useEffect(() => {
     if (!isMarksDisabled) return
@@ -1774,21 +1829,31 @@ export default function StartEvaluationPage({
           </div>
 
           <div className="start-eval-summary-grid">
-            <article className="start-eval-summary-tile">
+            <article className="start-eval-summary-tile start-eval-summary-tile-secondary">
               <span><Users size={13} strokeWidth={2} /> Students</span>
               <strong>{evaluationRecord?.studentCount ?? roster.length}</strong>
             </article>
-            <article className="start-eval-summary-tile">
-              <span><CheckCircle2 size={13} strokeWidth={2} /> Submitted</span>
+            <article className="start-eval-summary-tile start-eval-summary-tile-secondary">
+              <span><CheckCircle2 size={13} strokeWidth={2} /> Activity Submitted</span>
               <strong>{submittedCount}</strong>
+            </article>
+            <article className="start-eval-summary-tile start-eval-summary-tile-secondary start-eval-summary-tile-saved">
+              <span><FileText size={13} strokeWidth={2} /> Activity Not Submitted</span>
+              <strong>{notSubmittedCount}</strong>
             </article>
             <button
               type="button"
-              className="start-eval-summary-tile start-eval-summary-action start-eval-summary-action-completed"
+              className="start-eval-summary-tile start-eval-summary-tile-primary start-eval-summary-action start-eval-summary-action-completed"
               onClick={handleOpenCompletedEvaluation}
             >
-              <span><ClipboardCheck size={13} strokeWidth={2} /> Evaluation Completed</span>
-              <strong>{completedCount}</strong>
+              <span><ClipboardCheck size={13} strokeWidth={2} /> Evaluation Status</span>
+              <div className="start-eval-summary-action-body">
+                <strong>{completedCount}</strong>
+                <small>
+                  View evaluations status
+                  <ChevronRight size={14} strokeWidth={2} />
+                </small>
+              </div>
             </button>
           </div>
           </div>
@@ -1797,69 +1862,53 @@ export default function StartEvaluationPage({
         <section className="start-eval-board">
           <div className="start-eval-main-panel">
             <section className="start-eval-student-nav-card">
-              <div className="start-eval-student-nav-copy">
-                <span className="start-eval-student-nav-kicker">Student Review</span>
-                <strong>{selectedStudent?.name ?? 'No student selected'}</strong>
-                <p>
-                  {selectedStudent?.registerId ?? 'No register number'}
-                  {' • '}
-                  {filteredStudents.length ? `${Math.max(selectedStudentIndex + 1, 1)} of ${filteredStudents.length}` : '0 of 0'}
-                </p>
-                <div className="start-eval-student-nav-meta">
-                  <span className={`eval-status-pill ${selectedStudentBadge.tone}`}>
-                    {selectedStudentBadge.label}
-                  </span>
-                  <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
+              <div className="start-eval-student-nav-main">
+                <div className="start-eval-student-nav-copy">
+                  <span className="start-eval-student-nav-kicker">Student Review</span>
+                  <strong>{selectedStudent?.name ?? 'No student selected'}</strong>
+                  <p>{selectedStudent?.registerId ?? 'No register number'}</p>
+                  <div className="start-eval-student-nav-meta">
+                    <span className={`eval-status-pill ${selectedStudentBadge.tone}`}>
+                      {selectedStudentBadge.label}
+                    </span>
+                    <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
+                    <span className="start-eval-student-nav-position">
+                      Student {filteredStudents.length ? Math.max(selectedStudentIndex + 1, 1) : 0} of {filteredStudents.length}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="start-eval-student-nav-actions">
-                <button
-                  type="button"
-                  className="ghost start-eval-nav-btn"
-                  onClick={() => onOpenExamLog?.({
-                    evaluationRecord,
-                    student: selectedStudent,
-                    totalMarks,
-                    obtainedMarks,
-                  })}
-                >
-                  <History size={15} strokeWidth={2} />
-                  Exam Logs
-                </button>
-                <button
-                  type="button"
-                  className="ghost start-eval-nav-btn"
-                  onClick={handlePreviousStudent}
-                  disabled={selectedStudentIndex <= 0}
-                >
-                  <ChevronLeft size={15} strokeWidth={2} />
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  className="ghost start-eval-nav-btn"
-                  onClick={handleNextStudent}
-                  disabled={selectedStudentIndex === -1 || selectedStudentIndex >= filteredStudents.length - 1}
-                >
-                  Next
-                  <ChevronRight size={15} strokeWidth={2} />
-                </button>
-                <button
-                  type="button"
-                  className="ghost start-eval-picker-btn"
-                  onClick={() => setIsStudentPickerOpen(true)}
-                >
-                  <Users size={15} strokeWidth={2} />
-                  Students
-                </button>
+                <div className="start-eval-student-nav-quick-actions">
+                  <button
+                    type="button"
+                    className="ghost start-eval-nav-btn"
+                    onClick={() => setIsStudentPickerOpen(true)}
+                  >
+                    <Users size={15} strokeWidth={2} />
+                    Students
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost start-eval-nav-btn"
+                    onClick={() => onOpenExamLog?.({
+                      evaluationRecord,
+                      student: selectedStudent,
+                      totalMarks,
+                      obtainedMarks,
+                    })}
+                  >
+                    <History size={15} strokeWidth={2} />
+                    Exam Logs
+                  </button>
+                </div>
               </div>
             </section>
 
             <StudentResponsePanel
+              key={selectedStudent?.id ?? 'no-student'}
               student={selectedStudent}
               record={evaluationRecord}
-              savedDraft={selectedStudent?.id ? savedEvaluationDrafts[selectedStudent.id] ?? null : null}
+              savedDraft={selectedStudent?.id ? (savedEvaluationDrafts[selectedStudent.id] ?? editingStudentDraft ?? null) : null}
               marksDisabled={isMarksDisabled}
               onObtainedMarksChange={setObtainedMarks}
               onEvaluationStateChange={setEvaluationState}
@@ -1867,32 +1916,47 @@ export default function StartEvaluationPage({
             />
 
             {selectedStudent ? (
-              <section className={`start-eval-submit-card ${isReadyToSubmit ? 'is-ready' : ''}`}>
-                <div className="start-eval-submit-copy">
-                  <span className="start-eval-student-nav-kicker">Evaluation Status</span>
-                  <div className="start-eval-submit-meta">
-                    {isMarksDisabled ? (
-                      <span className="start-eval-submit-pill is-pending">
-                        Evaluation disabled because marks are off
-                      </span>
-                    ) : null}
-                    {selectedStudent.submissionStatus !== 'Submitted' ? (
-                      <span className="start-eval-submit-pill is-pending">
-                        No submission available
-                      </span>
-                    ) : null}
-                    {readySections.map((section) => (
-                      <span key={section.key} className={`start-eval-submit-pill ${section.isComplete ? 'is-complete' : 'is-pending'}`}>
-                        {section.label} {formatMarksValue(section.obtainedMarks)}/{formatMarksValue(section.totalMarks)}
-                      </span>
-                    ))}
-                    <span className="start-eval-submit-pill is-threshold">
-                      Threshold {thresholdResult?.label ?? (thresholdRows.length ? 'Not Matched' : 'Not Configured')}
+              <section className={`start-eval-workspace-footer ${isReadyToSubmit ? 'is-ready' : ''}`}>
+                <div className="start-eval-workspace-status">
+                  {isMarksDisabled ? (
+                    <span className="start-eval-submit-pill is-pending">
+                      Evaluation disabled because marks are off
                     </span>
-                  </div>
+                  ) : null}
+                  {selectedStudent.submissionStatus !== 'Submitted' ? (
+                    <span className="start-eval-submit-pill is-pending">
+                      No submission available
+                    </span>
+                  ) : null}
+                  {readySections.map((section) => (
+                    <span key={section.key} className={`start-eval-submit-pill ${section.isComplete ? 'is-complete' : 'is-pending'}`}>
+                      {section.label} {formatMarksValue(section.obtainedMarks)}/{formatMarksValue(section.totalMarks)}
+                    </span>
+                  ))}
+                  <span className="start-eval-submit-pill is-threshold">
+                    Threshold {thresholdResult?.label ?? (thresholdRows.length ? 'Not Matched' : 'Not Configured')}
+                  </span>
                 </div>
 
-                <div className="start-eval-submit-actions">
+                <div className="start-eval-workspace-actions">
+                  <button
+                    type="button"
+                    className="ghost start-eval-nav-btn is-stepper"
+                    onClick={handlePreviousStudent}
+                    disabled={selectedStudentIndex <= 0}
+                  >
+                    <ChevronLeft size={15} strokeWidth={2} />
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost start-eval-nav-btn is-stepper"
+                    onClick={handleNextStudent}
+                    disabled={selectedStudentIndex === -1 || selectedStudentIndex >= filteredStudents.length - 1}
+                  >
+                    Next
+                    <ChevronRight size={15} strokeWidth={2} />
+                  </button>
                   <button
                     type="button"
                     className="ghost start-eval-submit-secondary"
@@ -1900,14 +1964,6 @@ export default function StartEvaluationPage({
                     disabled={!selectedStudent?.id || isMarksDisabled}
                   >
                     Save & Next
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost start-eval-submit-secondary"
-                    onClick={handleResetEvaluation}
-                    disabled={!selectedStudent?.id || isMarksDisabled}
-                  >
-                    Reset
                   </button>
                   <button
                     type="button"
@@ -2103,15 +2159,18 @@ export default function StartEvaluationPage({
                     const DecisionIcon = decisionMeta.icon
 
                     return (
-                    <div key={option.id} className={`start-eval-submit-decision-item ${decisionMeta.tone} ${selectedDecisionId === option.id ? 'is-active' : ''}`}>
-                      <button
-                        type="button"
-                        className="start-eval-submit-decision-btn"
-                        onClick={() => setSelectedDecisionId(option.id)}
-                      >
-                        <span className="start-eval-submit-decision-icon" aria-hidden="true">
-                          <DecisionIcon size={14} strokeWidth={2} />
-                        </span>
+                      <div key={option.id} className={`start-eval-submit-decision-item ${decisionMeta.tone} ${selectedDecisionId === option.id ? 'is-active' : ''}`}>
+                        <button
+                          type="button"
+                          className="start-eval-submit-decision-btn"
+                          onClick={() => {
+                            setSelectedDecisionId(option.id)
+                            handleSubmitEvaluation(option)
+                          }}
+                        >
+                          <span className="start-eval-submit-decision-icon" aria-hidden="true">
+                            <DecisionIcon size={14} strokeWidth={2} />
+                          </span>
                         <div className="start-eval-submit-decision-copy">
                           <strong>{option.title}</strong>
                         </div>
@@ -2121,19 +2180,11 @@ export default function StartEvaluationPage({
                 </div>
               </section>
 
-              <div className="start-eval-submit-foot">
-                <button type="button" className="ghost start-eval-nav-btn" onClick={() => setIsSubmitPopupOpen(false)}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="tool-btn green start-eval-submit-btn"
-                  onClick={handleSubmitEvaluation}
-                  disabled={!selectedDecision}
-                >
-                  Confirm Submit
-                </button>
-              </div>
+                <div className="start-eval-submit-foot">
+                  <button type="button" className="ghost start-eval-nav-btn" onClick={() => setIsSubmitPopupOpen(false)}>
+                    Cancel
+                  </button>
+                </div>
             </div>
           </div>,
           document.body,

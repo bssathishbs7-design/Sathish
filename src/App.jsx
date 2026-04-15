@@ -196,6 +196,7 @@ function App() {
   const [examMonitoringLogs, setExamMonitoringLogs] = useState([])
   const [selectedStudentExamAssignment, setSelectedStudentExamAssignment] = useState(null)
   const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(null)
+  const [selectedEvaluationStudentId, setSelectedEvaluationStudentId] = useState('')
   const [selectedCompletedEvaluationActivityId, setSelectedCompletedEvaluationActivityId] = useState(null)
   const [completedEvaluationRows, setCompletedEvaluationRows] = useState([])
   const [selectedExamLogContext, setSelectedExamLogContext] = useState(null)
@@ -368,16 +369,26 @@ function App() {
     ])
   }
 
-  const handleOpenStartEvaluation = (record) => {
+  const handleOpenStartEvaluation = (record, options = {}) => {
     if (!record) return
+    const { studentId = '' } = options
+    const recordId = record.id ?? record.activityId
+    if (!recordId) return
 
-    const linkedAssignment = assignedSkillActivities.find((item) => item.id === record.id)
+    const linkedAssignment = assignedSkillActivities.find((item) => item.id === recordId)
     const linkedSubmission = linkedAssignment?.answers ? linkedAssignment : null
+    const linkedCompletedRow = studentId
+      ? completedEvaluationRows.find((row) => row.activityId === recordId && row.studentId === studentId)
+      : null
 
+    setSelectedEvaluationStudentId(studentId)
     setSelectedEvaluationRecord({
       ...record,
+      id: recordId,
       assignment: linkedAssignment ?? record.assignment ?? record ?? null,
       latestSubmission: linkedSubmission,
+      editingStudentDraft: linkedCompletedRow?.evaluationDraft ?? null,
+      editingDecisionId: linkedCompletedRow?.decisionId ?? '',
     })
     navigateToPage(APP_PAGES.START_EVALUATION)
   }
@@ -400,6 +411,7 @@ function App() {
 
   const handleBackToEvaluationList = () => {
     setSelectedEvaluationRecord(null)
+    setSelectedEvaluationStudentId('')
     navigateToPage(APP_PAGES.EVALUATION, { replace: true })
   }
 
@@ -564,10 +576,13 @@ function App() {
               activityId={selectedCompletedEvaluationActivityId}
               activityRecord={evaluationRecords.find((record) => record.id === selectedCompletedEvaluationActivityId) ?? selectedEvaluationRecord}
               onBackToEvaluation={() => navigateToPage(APP_PAGES.START_EVALUATION, { replace: true })}
+              onOpenEvaluation={handleOpenStartEvaluation}
             />
           ) : activePage === APP_PAGES.START_EVALUATION ? (
             <StartEvaluationPage
               evaluationRecord={selectedEvaluationRecord}
+              initialSelectedStudentId={selectedEvaluationStudentId}
+              completedEvaluationRows={completedEvaluationRows}
               onBackToEvaluation={handleBackToEvaluationList}
               onOpenCompletedEvaluation={(record) => {
                 setSelectedCompletedEvaluationActivityId(record?.id ?? selectedEvaluationRecord?.id ?? null)
