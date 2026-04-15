@@ -364,13 +364,6 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], o
       <div className="eval-shell">
         <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Evaluation' }]} />
 
-        <div className="vx-page-intro">
-          <div className="vx-page-intro-title">
-            <ClipboardCheck size={18} strokeWidth={2} className="vx-page-intro-icon" aria-hidden="true" />
-            <h1>Evaluation</h1>
-          </div>
-        </div>
-
         <section className="eval-stats">
           {metricItems.map((item) => {
             const Icon = item.icon

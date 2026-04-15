@@ -60,6 +60,13 @@ const formatThresholdValue = (value) => {
   return Number.isInteger(rounded) ? String(rounded) : String(rounded)
 }
 
+const formatThresholdPercentageInput = (value) => {
+  if (value === '' || value === null || value === undefined) return ''
+  return `${value}%`
+}
+
+const parseThresholdPercentageInput = (value) => value.replace(/%/g, '').trim()
+
 const DEFAULT_THRESHOLD_CONFIG = [
   { label: 'Below', startPercent: 0, endPercent: 0.4 },
   { label: 'Meets', startPercent: 0.4, endPercent: 0.75 },
@@ -69,13 +76,11 @@ const DEFAULT_THRESHOLD_CONFIG = [
 const isAutoThresholdLabel = (value) => DEFAULT_THRESHOLD_CONFIG.some((item) => item.label === String(value ?? '').trim())
 
 const buildEmptyAssignThresholdRows = (totalMarks = 10) => {
-  const safeTotal = Math.max(1, Number(totalMarks) || 10)
-
   return DEFAULT_THRESHOLD_CONFIG.map((item, index) => ({
     id: `threshold-${Date.now()}-${index + 1}`,
     label: item.label,
-    from: formatThresholdValue(safeTotal * item.startPercent),
-    to: formatThresholdValue(safeTotal * item.endPercent),
+    from: formatThresholdValue(item.startPercent * 100),
+    to: formatThresholdValue(item.endPercent * 100),
   }))
 }
 const createImageSlot = (existing = {}, index = 0) => ({
@@ -508,7 +513,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const assignThresholdErrors = useMemo(() => assignThresholds.map((row, index) => {
     const from = Number(row.from)
     const to = Number(row.to)
-    const totalMarks = Math.max(1, Number(totalGeneratedMarks) || 10)
     if (!row.label.trim()) return 'Enter a threshold label.'
     if (Number.isNaN(from) || Number.isNaN(to)) return 'Enter valid values.'
     if (from > to) return '`From` must be less than or equal to `To`.'
@@ -517,11 +521,11 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       const previousTo = Number(assignThresholds[index - 1].to)
       if (Math.abs(previousTo - from) > 0.001) return 'Thresholds must continue without gaps or overlaps.'
     }
-    if (index === assignThresholds.length - 1 && Math.abs(to - totalMarks) > 0.001) {
-      return 'Final threshold must end at the total marks value.'
+    if (index === assignThresholds.length - 1 && Math.abs(to - 100) > 0.001) {
+      return 'Final threshold must end at 100%.'
     }
     return ''
-  }), [assignThresholds, totalGeneratedMarks])
+  }), [assignThresholds])
   const canProceedAssign = assignThresholdErrors.every((error) => !error)
     && Boolean(assignYear)
     && Boolean(assignSgt)
@@ -881,7 +885,11 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   }
 
   const updateAssignThreshold = (id, field, value) => {
-    setAssignThresholds((current) => current.map((row) => (row.id === id ? { ...row, [field]: value } : row)))
+    const nextValue = field === 'from' || field === 'to'
+      ? parseThresholdPercentageInput(value)
+      : value
+
+    setAssignThresholds((current) => current.map((row) => (row.id === id ? { ...row, [field]: nextValue } : row)))
   }
 
   const addAssignThreshold = () => {
@@ -903,8 +911,8 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
 
       return {
         ...row,
-        from: formatThresholdValue(totalGeneratedMarks * matchingThreshold.startPercent),
-        to: formatThresholdValue(totalGeneratedMarks * matchingThreshold.endPercent),
+        from: formatThresholdValue(matchingThreshold.startPercent * 100),
+        to: formatThresholdValue(matchingThreshold.endPercent * 100),
       }
     }))
   }, [totalGeneratedMarks])
@@ -1941,21 +1949,17 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                         />
                         <input
                           className="image-activity-threshold-from"
-                          type="number"
+                          type="text"
                           inputMode="decimal"
-                          min="0"
-                          step="0.01"
-                          value={row.from}
+                          value={formatThresholdPercentageInput(row.from)}
                           onChange={(event) => updateAssignThreshold(row.id, 'from', event.target.value)}
                           placeholder="From"
                         />
                         <input
                           className="image-activity-threshold-to"
-                          type="number"
+                          type="text"
                           inputMode="decimal"
-                          min="0"
-                          step="0.01"
-                          value={row.to}
+                          value={formatThresholdPercentageInput(row.to)}
                           onChange={(event) => updateAssignThreshold(row.id, 'to', event.target.value)}
                           placeholder="To"
                         />

@@ -5,6 +5,7 @@ import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
+import CompletedEvaluationPage from './pages/CompletedEvaluationPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import StartEvaluationPage from './pages/StartEvaluationPage'
 import ExamLogPage from './pages/ExamLogPage'
@@ -22,6 +23,7 @@ const PAGE_PATHS = {
   [APP_PAGES.DASHBOARD]: '/',
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
+  [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
   [APP_PAGES.START_EVALUATION]: '/skills/start-evaluation',
   [APP_PAGES.EXAM_LOG]: '/skills/exam-log',
   [APP_PAGES.OSPE_ACTIVITY]: '/skills/ospe-activity',
@@ -85,6 +87,9 @@ const buildEvaluationRecordFromAssignment = (assignment) => {
     createdDate: assignment.createdDate ?? new Date().toLocaleDateString('en-GB'),
     evaluationStatus: assignment.evaluationStatus ?? 'Pending Evaluation',
     questionCount: assignment.questionCount ?? getAssignmentQuestionCount(assignment),
+    thresholds: assignment.thresholds ?? assignment.examData?.thresholds ?? [],
+    examData: assignment.examData ?? null,
+    activityData: assignment.activityData ?? null,
   }
 }
 
@@ -191,6 +196,9 @@ function App() {
   const [examMonitoringLogs, setExamMonitoringLogs] = useState([])
   const [selectedStudentExamAssignment, setSelectedStudentExamAssignment] = useState(null)
   const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(null)
+  const [selectedEvaluationStudentId, setSelectedEvaluationStudentId] = useState('')
+  const [selectedCompletedEvaluationActivityId, setSelectedCompletedEvaluationActivityId] = useState(null)
+  const [completedEvaluationRows, setCompletedEvaluationRows] = useState([])
   const [selectedExamLogContext, setSelectedExamLogContext] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
@@ -305,7 +313,7 @@ function App() {
     if (!message) return
 
     const id = `alert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    setAlerts((current) => [...current, { id, tone, message, duration }])
+    setAlerts([{ id, tone, message, duration }])
   }
 
   const toggleFullscreen = async () => {
@@ -407,16 +415,26 @@ function App() {
     ])
   }
 
-  const handleOpenStartEvaluation = (record) => {
+  const handleOpenStartEvaluation = (record, options = {}) => {
     if (!record) return
+    const { studentId = '' } = options
+    const recordId = record.id ?? record.activityId
+    if (!recordId) return
 
-    const linkedAssignment = assignedSkillActivities.find((item) => item.id === record.id)
+    const linkedAssignment = assignedSkillActivities.find((item) => item.id === recordId)
     const linkedSubmission = linkedAssignment?.answers ? linkedAssignment : null
+    const linkedCompletedRow = studentId
+      ? completedEvaluationRows.find((row) => row.activityId === recordId && row.studentId === studentId)
+      : null
 
+    setSelectedEvaluationStudentId(studentId)
     setSelectedEvaluationRecord({
       ...record,
-      assignment: linkedAssignment ?? null,
+      id: recordId,
+      assignment: linkedAssignment ?? record.assignment ?? record ?? null,
       latestSubmission: linkedSubmission,
+      editingStudentDraft: linkedCompletedRow?.evaluationDraft ?? null,
+      editingDecisionId: linkedCompletedRow?.decisionId ?? '',
     })
     navigateToPage(APP_PAGES.START_EVALUATION)
   }
@@ -425,6 +443,22 @@ function App() {
     if (!context) return
     setSelectedExamLogContext(context)
     navigateToPage(APP_PAGES.EXAM_LOG)
+  }
+
+  const handleSaveCompletedEvaluation = (row) => {
+    if (!row?.activityId || !row?.studentId) return
+
+    const compositeId = `${row.activityId}:${row.studentId}`
+    setCompletedEvaluationRows((current) => [
+      { ...row, id: compositeId },
+      ...current.filter((item) => item.id !== compositeId),
+    ])
+  }
+
+  const handleBackToEvaluationList = () => {
+    setSelectedEvaluationRecord(null)
+    setSelectedEvaluationStudentId('')
+    navigateToPage(APP_PAGES.EVALUATION, { replace: true })
   }
 
   const handleResetExamActivity = (context) => {
@@ -472,6 +506,7 @@ function App() {
     ))
 
     setExamMonitoringLogs((current) => current.filter((item) => item.activityId !== activityId))
+    setCompletedEvaluationRows((current) => current.filter((item) => item.activityId !== activityId))
 
     setSelectedExamLogContext((current) => (
       current?.evaluationRecord?.id === activityId
@@ -581,11 +616,27 @@ function App() {
               evaluationRecords={evaluationRecords}
               onStartEvaluation={handleOpenStartEvaluation}
             />
+          ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (
+            <CompletedEvaluationPage
+              completedEvaluationRows={completedEvaluationRows}
+              activityId={selectedCompletedEvaluationActivityId}
+              activityRecord={evaluationRecords.find((record) => record.id === selectedCompletedEvaluationActivityId) ?? selectedEvaluationRecord}
+              onBackToEvaluation={() => navigateToPage(APP_PAGES.START_EVALUATION, { replace: true })}
+              onOpenEvaluation={handleOpenStartEvaluation}
+            />
           ) : activePage === APP_PAGES.START_EVALUATION ? (
             <StartEvaluationPage
               evaluationRecord={selectedEvaluationRecord}
-              onBackToEvaluation={() => navigateToPage(APP_PAGES.EVALUATION)}
+              initialSelectedStudentId={selectedEvaluationStudentId}
+              completedEvaluationRows={completedEvaluationRows}
+              onBackToEvaluation={handleBackToEvaluationList}
+              onOpenCompletedEvaluation={(record) => {
+                setSelectedCompletedEvaluationActivityId(record?.id ?? selectedEvaluationRecord?.id ?? null)
+                navigateToPage(APP_PAGES.COMPLETED_EVALUATION)
+              }}
               onOpenExamLog={handleOpenExamLog}
+              onSaveCompletedEvaluation={handleSaveCompletedEvaluation}
+              onAlert={showAlert}
             />
           ) : activePage === APP_PAGES.EXAM_LOG ? (
             <ExamLogPage
