@@ -120,6 +120,12 @@
   color: #4f57b7;
 }
 
+.student-exam-badge.is-certifiable {
+  border-color: rgba(45, 212, 191, 0.24);
+  background: rgba(236, 253, 245, 0.98);
+  color: #0f766e;
+}
+
 .student-exam-badge.is-progress,
 .student-exam-badge.is-marks,
 .student-exam-badge.is-tag {
@@ -782,6 +788,12 @@
   border-color: rgba(129, 140, 248, 0.24);
   background: rgba(29, 29, 63, 0.92);
   color: #c0c7ff;
+}
+
+.theme-dark .student-exam-badge.is-certifiable {
+  border-color: rgba(45, 212, 191, 0.28);
+  background: rgba(9, 47, 42, 0.92);
+  color: #99f6e4;
 }
 
 .theme-dark .student-exam-badge.is-progress,

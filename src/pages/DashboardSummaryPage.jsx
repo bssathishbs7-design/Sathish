@@ -559,7 +559,6 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Cognitive Domain</strong>
-                  <span>{domainMetrics[0]?.itemCount ?? 0} mapped items • {domainMetrics[0]?.criticalCount ?? 0} critical</span>
                 </div>
               </div>
               <CognitiveRadarChart data={graphSeries.cognitive} />
@@ -572,7 +571,6 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Affective Domain</strong>
-                  <span>{domainMetrics[1]?.itemCount ?? 0} mapped items • {domainMetrics[1]?.criticalCount ?? 0} critical</span>
                 </div>
               </div>
               <AffectiveRingChart data={graphSeries.affective} />
@@ -585,7 +583,6 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Psychomotor Domain</strong>
-                  <span>{domainMetrics[2]?.itemCount ?? 0} mapped items • {domainMetrics[2]?.criticalCount ?? 0} critical</span>
                 </div>
               </div>
               <PsychomotorBarChart data={graphSeries.psychomotor} />

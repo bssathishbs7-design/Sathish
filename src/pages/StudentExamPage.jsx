@@ -101,6 +101,15 @@ const getItemTypeBadgeConfig = (label) => {
   return { tone: 'is-type-question', icon: FileText }
 }
 
+const isActivityCertifiable = (activity) => Boolean(
+  activity?.certifiable
+  ?? activity?.isCertifiable
+  ?? activity?.examData?.certifiable
+  ?? activity?.examData?.isCertifiable
+  ?? activity?.activityData?.activity?.certifiable
+  ?? activity?.activityData?.activity?.isCertifiable
+)
+
 const getStudentExamContext = (resolved, examItems) => ({
   studentName:
     resolved.studentName
@@ -318,6 +327,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   const { resolved, examData, examItems } = sections
   const examContext = useMemo(() => getStudentExamContext(resolved, examItems), [resolved, examItems])
   const isMarksDisabled = String(resolved?.marks ?? assignment?.marks ?? '').trim().toLowerCase() === 'nil'
+  const isCertifiableActivity = isActivityCertifiable(resolved) || isActivityCertifiable(assignment)
   const hasTimer = Boolean(examData.durationMinutes)
   const [phase, setPhase] = useState('prestart')
   const [answers, setAnswers] = useState(() => buildInitialAnswers(sections))
@@ -626,6 +636,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       ? [{ label: `${sections.formSections.length} Forms`, tone: 'is-form', icon: Shapes }]
       : []),
     ...(isMarksDisabled ? [{ label: 'Marks Disabled', tone: 'is-critical', icon: AlertTriangle }] : []),
+    ...(isCertifiableActivity ? [{ label: 'Certifiable', tone: 'is-certifiable', icon: BadgeCheck }] : []),
     { label: examData.proctoring?.mode ?? 'Online Proctoring', tone: 'is-proctoring', icon: ShieldCheck },
     ...(hasTimer ? [{ label: `${examData.durationMinutes} min`, tone: 'is-duration', icon: Clock3 }] : []),
   ]
@@ -729,6 +740,12 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                     <FileText size={12} strokeWidth={2} />
                     {examContext.questionCount} Questions
                   </span>
+                  {isCertifiableActivity ? (
+                    <span className="student-exam-badge is-certifiable">
+                      <BadgeCheck size={12} strokeWidth={2} />
+                      Certifiable
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
