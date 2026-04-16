@@ -206,6 +206,7 @@ const buildCompletedEvaluationRow = ({
     submittedAt: new Date().toISOString(),
     thresholdLabel: thresholdResult?.label ?? 'Not Matched',
     decisionTitle: decision?.title ?? '',
+    itemSummaries,
     checklist,
     form,
     scaffolding,

@@ -22,6 +22,13 @@ const formatMarks = (value) => {
   return numericValue.toFixed(2).replace(/\.?0+$/, '')
 }
 
+const escapeHtml = (value) => String(value ?? '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#39;')
+
 const SECTION_CONFIGS = [
   { key: 'checklist', scoreHeader: 'Checklist' },
   { key: 'form', scoreHeader: 'Form' },
@@ -165,29 +172,108 @@ export default function CompletedEvaluationPage({
   }
 
   const handleDownloadRow = (row) => {
-    const lines = [
+    const summaryRows = [
       ['Activity', row.activityName],
       ['Type', row.activityType],
       ['Student', row.studentName],
       ['ID', row.registerId],
       ...visibleSections.map((section) => [section.scoreHeader, formatMarks(row[section.key]?.obtainedMarks)]),
       ['Critical', formatMarks(row.overallCriticalMarks)],
-      ['Status', row.rowStatus ?? 'Pending'],
       ['Threshold', row.thresholdLabel ?? 'Not Matched'],
       ['Result', row.resultStatus || '-'],
+      ['Status', row.rowStatus ?? 'Pending'],
       ['Score', `${formatMarks(row.totalObtainedMarks)} / ${formatMarks(row.totalMarks)}`],
       ['Total %', formatPercent(row.totalPercentage)],
     ]
-    const fileContent = lines.map(([label, value]) => `${label},${value}`).join('\n')
-    const blob = new Blob([fileContent], { type: 'text/csv;charset=utf-8' })
-    const downloadUrl = window.URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = downloadUrl
-    anchor.download = `${row.studentName.replace(/\s+/g, '-').toLowerCase()}-completed-evaluation.csv`
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
-    window.URL.revokeObjectURL(downloadUrl)
+
+    const safeTitle = escapeHtml(`${row.studentName} Evaluation Result`)
+    const bodyRows = summaryRows.map(([label, value]) => (
+      `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`
+    )).join('')
+
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.setAttribute('aria-hidden', 'true')
+
+    iframe.onload = () => {
+      const frameWindow = iframe.contentWindow
+      if (!frameWindow) {
+        document.body.removeChild(iframe)
+        return
+      }
+
+      frameWindow.focus()
+      frameWindow.print()
+
+      window.setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe)
+        }
+      }, 1000)
+    }
+
+    iframe.srcdoc = `
+      <!doctype html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <title>${safeTitle}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 32px;
+              color: #173126;
+            }
+            h1 {
+              margin: 0 0 8px;
+              font-size: 24px;
+            }
+            p {
+              margin: 0 0 24px;
+              color: #5d7569;
+              font-size: 14px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            th, td {
+              padding: 12px 14px;
+              border: 1px solid #dbe7e1;
+              text-align: left;
+              font-size: 14px;
+            }
+            th {
+              width: 32%;
+              background: #f5fbf8;
+              color: #48695c;
+            }
+            td {
+              background: #ffffff;
+            }
+            @media print {
+              body {
+                margin: 16px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${safeTitle}</h1>
+          <p>Use your browser's Save as PDF option to download this result.</p>
+          <table>
+            <tbody>${bodyRows}</tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    document.body.appendChild(iframe)
   }
 
   return (
@@ -195,16 +281,15 @@ export default function CompletedEvaluationPage({
       <div className="eval-shell">
         <section className="eval-header">
           <div className="eval-header-copy">
-            <span className="eval-kicker">
-              <ClipboardCheck size={12} strokeWidth={2} />
-              Completed Evaluations
-            </span>
-            <h1>{activityRecord?.activityName ?? 'Completed Evaluation'}</h1>
-            <p>Review submitted evaluation results for this activity in one clear table.</p>
-            <div className="eval-header-inline">
-              <span><Shapes size={13} strokeWidth={2} /> {activityRecord?.activityType ?? 'Activity'}</span>
-              <span><ClipboardCheck size={13} strokeWidth={2} /> Records <strong>{sourceRows.length}</strong></span>
-            </div>
+              <span className="eval-kicker">
+                <ClipboardCheck size={12} strokeWidth={2} />
+                Completed Evaluations
+              </span>
+              <h1>{activityRecord?.activityName ?? 'Completed Evaluation'}</h1>
+              <div className="eval-header-inline">
+                <span><Shapes size={13} strokeWidth={2} /> {activityRecord?.activityType ?? 'Activity'}</span>
+                <span><ClipboardCheck size={13} strokeWidth={2} /> Records <strong>{sourceRows.length}</strong></span>
+              </div>
           </div>
 
           <div className="eval-header-side-grid">
@@ -262,7 +347,6 @@ export default function CompletedEvaluationPage({
                           onClick={() => handleSort(header.key)}
                         >
                           <span>{header.label}</span>
-                          <small>{sortKey === header.key ? sortDirection : 'sort'}</small>
                           <ArrowUpDown size={12} strokeWidth={2} />
                         </button>
                       ) : header.label}
@@ -329,8 +413,8 @@ export default function CompletedEvaluationPage({
                         <button
                           type="button"
                           className="tool-btn eval-table-action eval-completed-icon-btn"
-                          title="Download result"
-                          aria-label="Download result"
+                          title="Download PDF"
+                          aria-label="Download PDF"
                           onClick={() => handleDownloadRow(row)}
                         >
                           <Download size={14} strokeWidth={2} />

@@ -588,7 +588,12 @@ function App() {
 
         <div key={activePage} className={`vx-page-surface vx-page-dissolve ${isExamMode ? 'is-exam-surface' : ''}`}>
           {activePage === APP_PAGES.DASHBOARD ? (
-            <DashboardSummaryPage onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)} />
+            <DashboardSummaryPage
+              onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}
+              assignedActivities={assignedSkillActivities}
+              evaluationRecords={evaluationRecords}
+              completedEvaluationRows={completedEvaluationRows}
+            />
           ) : activePage === APP_PAGES.CONFIGURATION ? (
             <SkillManagementPage
               onGenerateComplete={navigateToPage}
@@ -697,6 +702,9 @@ function App() {
             <DashboardSummaryPage
               dashboardData={selectedDashboardData}
               onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}
+              assignedActivities={assignedSkillActivities}
+              evaluationRecords={evaluationRecords}
+              completedEvaluationRows={completedEvaluationRows}
             />
           ) : activePage === APP_PAGES.PROFILE_SETTINGS ? (
             <section className="vx-content profile-settings-page">
