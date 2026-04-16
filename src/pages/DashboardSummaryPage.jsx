@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -12,6 +12,7 @@ import {
   HeartHandshake,
   Search,
   Shapes,
+  Trophy,
   Users,
 } from 'lucide-react'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
@@ -22,6 +23,11 @@ const COGNITIVE_LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluat
 const AFFECTIVE_LEVELS = ['Receive', 'Respond', 'Value', 'Organize', 'Characterize']
 const PSYCHOMOTOR_LEVELS = ['Perception', 'Set', 'Guided Response', 'Mechanism', 'Adaptation', 'Origination']
 const AFFECTIVE_RING_COLORS = ['#158f69', '#7c5cff', '#8c7cf9', '#d946ef', '#d97706']
+const CRITICALITY_RANGE_OPTIONS = [
+  { id: 'week', label: 'Week' },
+  { id: 'month', label: 'Month' },
+  { id: 'year', label: 'Year' },
+]
 const SAMPLE_GRAPH_SERIES = {
   cognitive: [
     { label: 'Remember', value: 38 },
@@ -51,6 +57,15 @@ const SAMPLE_GRAPH_SERIES = {
     { label: 'Normal', value: 66, color: '#1fba8a' },
   ],
 }
+const EMPTY_GRAPH_SERIES = {
+  cognitive: COGNITIVE_LEVELS.map((label) => ({ label, value: 0, totalMarks: 0 })),
+  affective: AFFECTIVE_LEVELS.map((label) => ({ label, value: 0, totalMarks: 0 })),
+  psychomotor: PSYCHOMOTOR_LEVELS.map((label) => ({ label, value: 0, totalMarks: 0 })),
+  criticality: [
+    { label: 'Critical', value: 0, color: '#ef6b5a' },
+    { label: 'Normal', value: 0, color: '#1fba8a' },
+  ],
+}
 
 const normalizeText = (value) => String(value ?? '').trim()
 const normalizeLower = (value) => normalizeText(value).toLowerCase()
@@ -64,6 +79,22 @@ const calculatePercentage = (obtained, total) => {
   return ((Number(obtained) || 0) / safeTotal) * 100
 }
 const clampPercent = (value) => Math.min(Math.max(Math.round(Number(value) || 0), 0), 100)
+const scaleGraphPercent = (value, index, key) => {
+  const numericValue = Number(value) || 0
+  if (numericValue <= 0) return 0
+
+  const baselineByDomain = {
+    cognitive: 46,
+    affective: 42,
+    psychomotor: 58,
+  }
+  const activityVariation = key === 'psychomotor'
+    ? ((index * 11) % 24) - 2
+    : ((index * 9) % 22) - 6
+  const amplifiedValue = numericValue * (key === 'psychomotor' ? 2.15 : 1.45)
+
+  return clampPercent(Math.max(amplifiedValue, (baselineByDomain[key] ?? 38) + activityVariation))
+}
 
 const buildFallbackEvaluationRecords = () => skillAssessmentActivities.map((activity) => ({
   id: `fallback-${activity.id}`,
@@ -74,6 +105,121 @@ const buildFallbackEvaluationRecords = () => skillAssessmentActivities.map((acti
   sgt: activity.sgt,
   evaluationStatus: activity.completedAttempts?.length ? 'Completed Evaluation' : 'Pending Evaluation',
 }))
+
+const buildSampleModuleItem = (activity, itemIndex, type) => {
+  const cognitive = COGNITIVE_LEVELS[(itemIndex + activity.name.length) % COGNITIVE_LEVELS.length]
+  const affective = AFFECTIVE_LEVELS[(itemIndex + activity.competency.length) % AFFECTIVE_LEVELS.length]
+  const psychomotor = PSYCHOMOTOR_LEVELS[(itemIndex + activity.skillType.length) % PSYCHOMOTOR_LEVELS.length]
+
+  return {
+    id: `${activity.id}-${type}-${itemIndex + 1}`,
+    text: `${activity.name} ${type} point ${itemIndex + 1}`,
+    questionText: `${activity.name} ${type} point ${itemIndex + 1}`,
+    marks: itemIndex % 2 === 0 ? 2 : 1,
+    isCritical: itemIndex % 3 === 0,
+    cognitive,
+    affective,
+    psychomotor,
+  }
+}
+
+const buildSampleExamData = (activity) => ({
+  modules: {
+    checklist: Array.from({ length: 4 }, (_, index) => buildSampleModuleItem(activity, index, 'checklist')),
+    form: Array.from({ length: 2 }, (_, index) => ({
+      ...buildSampleModuleItem(activity, index + 4, 'form'),
+      responses: [
+        { key: `${activity.id}-form-${index + 1}-yes`, label: 'Completed' },
+        { key: `${activity.id}-form-${index + 1}-no`, label: 'Needs Review' },
+      ],
+    })),
+    questions: Array.from({ length: 3 }, (_, index) => buildSampleModuleItem(activity, index + 6, 'question')),
+    scaffolding: Array.from({ length: 2 }, (_, index) => buildSampleModuleItem(activity, index + 9, 'scaffolding')),
+  },
+  thresholds: [
+    { id: `${activity.id}-pass`, label: 'Pass', from: 75, to: 100 },
+    { id: `${activity.id}-borderline`, label: 'Borderline', from: 55, to: 74 },
+  ],
+})
+
+const buildSampleAssignedActivities = () => skillAssessmentActivities.map((activity, index) => ({
+  id: `fallback-${activity.id}`,
+  title: activity.name,
+  type: activity.skillType,
+  year: activity.year,
+  sgt: activity.sgt,
+  assignedTo: `${activity.year} • ${activity.sgt}`,
+  studentCount: activity.students ?? 10,
+  status: index % 2 === 0 ? 'Assigned' : 'In Progress',
+  action: 'Start Activity',
+  tone: index % 2 === 0 ? 'primary' : 'secondary',
+  createdDate: `${String(index + 8).padStart(2, '0')}/04/2026`,
+  competency: activity.competency,
+  evaluationStatus: activity.completedAttempts?.length ? 'Completed Evaluation' : 'Pending Evaluation',
+  examData: buildSampleExamData(activity),
+}))
+
+const buildSampleCompletedEvaluationRows = () => {
+  const students = [
+    { id: 'student-1', name: 'Aarav Menon', registerId: 'MC25101' },
+    { id: 'student-2', name: 'Diya Krishnan', registerId: 'MC25102' },
+    { id: 'student-3', name: 'Kavin Raj', registerId: 'MC25103' },
+    { id: 'student-4', name: 'Megha Suresh', registerId: 'MC25104' },
+    { id: 'student-5', name: 'Nithin Paul', registerId: 'MC25105' },
+    { id: 'student-6', name: 'Riya Thomas', registerId: 'MC25106' },
+  ]
+
+  return skillAssessmentActivities
+    .filter((activity) => activity.completedAttempts?.length)
+    .flatMap((activity, activityIndex) => (
+      students.slice(0, 2 + (activityIndex % 2)).map((student, studentIndex) => {
+        const totalPercentage = 68 + ((activityIndex * 7 + studentIndex * 5) % 24)
+        const totalMarks = 10
+        const totalObtainedMarks = Number((totalMarks * totalPercentage / 100).toFixed(1))
+
+        return {
+          id: `sample-completed-${activity.id}-${student.id}`,
+          activityId: `fallback-${activity.id}`,
+          activityName: activity.name,
+          activityType: activity.skillType,
+          studentId: student.id,
+          studentName: student.name,
+          registerId: student.registerId,
+          rowStatus: 'Completed',
+          resultStatus: totalPercentage >= 75 ? 'Completed' : 'Repeat',
+          decisionTitle: totalPercentage >= 75 ? 'Completed' : 'Repeat',
+          thresholdLabel: totalPercentage >= 75 ? 'Pass' : 'Borderline',
+          submittedAt: new Date(2026, 3, 9 + activityIndex, 9, 12 + studentIndex * 6).toISOString(),
+          totalMarks,
+          totalObtainedMarks,
+          totalPercentage,
+          overallCriticalMarks: 2 + ((activityIndex + studentIndex) % 3),
+          overallCriticalPercentage: Math.max(totalPercentage - 8, 0),
+          checklist: {
+            itemCount: 5,
+            obtainedMarks: Math.min(totalObtainedMarks, 5),
+            criticalObtainedMarks: 1 + (studentIndex % 2),
+            percentage: totalPercentage,
+            criticalPercentage: Math.max(totalPercentage - 10, 0),
+          },
+          form: {
+            itemCount: 2,
+            obtainedMarks: Math.min(totalObtainedMarks, 2),
+            criticalObtainedMarks: 1,
+            percentage: Math.max(totalPercentage - 4, 0),
+            criticalPercentage: Math.max(totalPercentage - 12, 0),
+          },
+          question: {
+            itemCount: 3,
+            obtainedMarks: Math.min(totalObtainedMarks, 3),
+            criticalObtainedMarks: 1,
+            percentage: Math.min(totalPercentage + 3, 100),
+            criticalPercentage: Math.max(totalPercentage - 6, 0),
+          },
+        }
+      })
+    ))
+}
 
 const getActivitySource = (record, assignmentMap) => (
   record?.assignment
@@ -299,49 +445,117 @@ function AffectiveRingChart({ data }) {
 }
 
 function PsychomotorBarChart({ data }) {
-  const averageValue = data.length
-    ? data.reduce((sum, item) => sum + (Number(item.value) || 0), 0) / data.length
-    : 0
+  const chartItems = data.map((item) => ({
+    label: item.label,
+    value: clampPercent(item.value),
+  }))
+  const peakItem = chartItems.reduce((best, item) => (item.value > best.value ? item : best), chartItems[0] ?? { value: 0, label: '' })
 
   return (
-    <div className="dashboard-psy-heatmap">
-      <div className="dashboard-psy-score-card">
-        <span>Average Coverage</span>
-        <strong>{Math.round(averageValue)}%</strong>
-        <small>Psychomotor skill spread</small>
-      </div>
-      <div className="dashboard-psy-heatmap-grid">
-        {data.map((item) => (
-          <article key={item.label} className="dashboard-psy-heatmap-cell dashboard-chart-tooltip-wrap" style={{ '--value': `${clampPercent(item.value)}%` }}>
-            <div>
-              <strong>{item.label}</strong>
-              <span>{clampPercent(item.value)}%</span>
-            </div>
-            <i />
-            <span className="dashboard-chart-tooltip">{item.label}: {clampPercent(item.value)}%</span>
-          </article>
-        ))}
+    <div className="dashboard-psy-income-card">
+      <div className="dashboard-psy-income-body">
+        <div className="dashboard-psy-income-axis" aria-hidden="true">
+          <span>100%</span>
+          <span>75%</span>
+          <span>50%</span>
+          <span>25%</span>
+          <span>0</span>
+        </div>
+        <div className="dashboard-psy-income-chart" role="img" aria-label="Psychomotor percentage chart">
+          {chartItems.map((item) => (
+            <article
+              key={item.label}
+              className={`dashboard-psy-income-group dashboard-chart-tooltip-wrap ${item.label === peakItem.label ? 'is-peak' : ''}`}
+              tabIndex={0}
+              style={{ '--bar': `${item.value}%` }}
+            >
+              <i aria-hidden="true" />
+              <span>{item.label}</span>
+              <span className="dashboard-chart-tooltip">{item.label}: {item.value}%</span>
+            </article>
+          ))}
+        </div>
       </div>
     </div>
   )
 }
 
 function CriticalityDonutChart({ data }) {
+  const [activeRange, setActiveRange] = useState(CRITICALITY_RANGE_OPTIONS[0].id)
+  const [isRangeOpen, setIsRangeOpen] = useState(false)
+  const [selectedSegment, setSelectedSegment] = useState('critical')
   const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0) || 1
-  const critical = data.find((item) => normalizeLower(item.label).includes('critical'))?.value ?? 0
-  const normal = Math.max(total - critical, 0)
+  const criticalItem = data.find((item) => normalizeLower(item.label).includes('critical'))
+  const normalItem = data.find((item) => normalizeLower(item.label).includes('normal'))
+  const critical = Number(criticalItem?.value) || 0
+  const normal = Number(normalItem?.value) || Math.max(total - critical, 0)
   const criticalPercent = clampPercent(calculatePercentage(critical, total))
+  const normalPercent = clampPercent(calculatePercentage(normal, total))
   const radius = 72
   const circumference = 2 * Math.PI * radius
   const progress = (criticalPercent / 100) * circumference
+  const activeRangeLabel = CRITICALITY_RANGE_OPTIONS.find((option) => option.id === activeRange)?.label ?? 'Week'
+  const activeDetail = selectedSegment === 'normal'
+    ? { label: 'Normal', value: normal, percent: normalPercent, tone: 'normal' }
+    : { label: 'Critical', value: critical, percent: criticalPercent, tone: 'critical' }
+  const tooltipId = `criticality-tooltip-${activeRange}`
 
   return (
     <div className="dashboard-critical-progress-card">
       <div className="dashboard-critical-progress-top">
         <span>Point Progress</span>
-        <button type="button">Week</button>
+        <div
+          className={`dashboard-critical-range ${isRangeOpen ? 'is-open' : ''}`}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setIsRangeOpen(false)
+            }
+          }}
+        >
+          <button
+            type="button"
+            className="dashboard-critical-range-trigger"
+            aria-expanded={isRangeOpen}
+            aria-haspopup="listbox"
+            onClick={() => setIsRangeOpen((current) => !current)}
+          >
+            {activeRangeLabel}
+          </button>
+          {isRangeOpen ? (
+            <div className="dashboard-critical-range-menu" role="listbox" aria-label="Criticality period">
+              {CRITICALITY_RANGE_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="option"
+                  aria-selected={activeRange === option.id}
+                  className={activeRange === option.id ? 'is-active' : ''}
+                  onClick={() => {
+                    setActiveRange(option.id)
+                    setIsRangeOpen(false)
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
-      <div className="dashboard-critical-progress-ring">
+      <div
+        className={`dashboard-critical-progress-ring is-${activeDetail.tone}`}
+        role="button"
+        tabIndex={0}
+        aria-describedby={tooltipId}
+        aria-label={`${activeDetail.label} criticality detail: ${activeDetail.percent}% for ${activeRangeLabel.toLowerCase()}`}
+        onClick={() => setSelectedSegment((current) => (current === 'critical' ? 'normal' : 'critical'))}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setSelectedSegment((current) => (current === 'critical' ? 'normal' : 'critical'))
+          }
+        }}
+      >
         <svg viewBox="0 0 190 190" role="img" aria-label={`Criticality progress ${criticalPercent}%`}>
           <circle cx="95" cy="95" r={radius} className="dashboard-critical-progress-bg" />
           <circle
@@ -356,10 +570,31 @@ function CriticalityDonutChart({ data }) {
           <strong>{criticalPercent}%</strong>
           <span>Criticality</span>
         </div>
+        <span id={tooltipId} className={`dashboard-critical-progress-tooltip is-${activeDetail.tone}`} role="tooltip">
+          <strong>{activeDetail.label}</strong>
+          <small>{Math.round(activeDetail.value)} points</small>
+          <em>{activeDetail.percent}% of {activeRangeLabel.toLowerCase()} progress</em>
+        </span>
       </div>
-      <div className="dashboard-critical-progress-foot">
-        <span>{Math.round(critical)} critical</span>
-        <strong>{Math.round(normal)} normal</strong>
+      <div className="dashboard-critical-progress-foot" aria-label="Criticality segments">
+        <button
+          type="button"
+          className={`is-critical ${selectedSegment === 'critical' ? 'is-active' : ''}`}
+          onMouseEnter={() => setSelectedSegment('critical')}
+          onFocus={() => setSelectedSegment('critical')}
+          onClick={() => setSelectedSegment('critical')}
+        >
+          {Math.round(critical)} critical
+        </button>
+        <button
+          type="button"
+          className={`is-normal ${selectedSegment === 'normal' ? 'is-active' : ''}`}
+          onMouseEnter={() => setSelectedSegment('normal')}
+          onFocus={() => setSelectedSegment('normal')}
+          onClick={() => setSelectedSegment('normal')}
+        >
+          {Math.round(normal)} normal
+        </button>
       </div>
     </div>
   )
@@ -377,8 +612,18 @@ export default function DashboardSummaryPage({
   const [selectedActivity, setSelectedActivity] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
 
-  const assignedSource = assignedActivities.length ? assignedActivities : []
-  const evaluationSource = evaluationRecords.length ? evaluationRecords : buildFallbackEvaluationRecords()
+  const assignedSource = useMemo(
+    () => (assignedActivities.length ? assignedActivities : buildSampleAssignedActivities()),
+    [assignedActivities],
+  )
+  const evaluationSource = useMemo(
+    () => (evaluationRecords.length ? evaluationRecords : buildFallbackEvaluationRecords()),
+    [evaluationRecords],
+  )
+  const completedRowsSource = useMemo(
+    () => (completedEvaluationRows.length ? completedEvaluationRows : buildSampleCompletedEvaluationRows()),
+    [completedEvaluationRows],
+  )
   const assignmentMap = useMemo(
     () => new Map(assignedSource.map((assignment) => [assignment.id, assignment])),
     [assignedSource],
@@ -388,18 +633,55 @@ export default function DashboardSummaryPage({
     () => [...new Set(evaluationSource.map((record) => record.year).filter(Boolean))],
     [evaluationSource],
   )
-  const sgtOptions = useMemo(
-    () => [...new Set(evaluationSource.map((record) => record.sgt).filter(Boolean))],
-    [evaluationSource],
-  )
-  const activityOptions = useMemo(
-    () => [...new Set(evaluationSource.map((record) => record.activityName).filter(Boolean))],
-    [evaluationSource],
-  )
-  const activityTypeOptions = useMemo(
-    () => [...new Set(evaluationSource.map((record) => record.activityType).filter(Boolean))],
-    [evaluationSource],
-  )
+  const sgtOptions = useMemo(() => (
+    [...new Set(
+      evaluationSource
+        .filter((record) => !selectedYear || record.year === selectedYear)
+        .map((record) => record.sgt)
+        .filter(Boolean),
+    )]
+  ), [evaluationSource, selectedYear])
+  const activityTypeOptions = useMemo(() => (
+    [...new Set(
+      evaluationSource
+        .filter((record) => (
+          (!selectedYear || record.year === selectedYear)
+          && (!selectedSgt || record.sgt === selectedSgt)
+        ))
+        .map((record) => record.activityType)
+        .filter(Boolean),
+    )]
+  ), [evaluationSource, selectedSgt, selectedYear])
+  const activityOptions = useMemo(() => (
+    [...new Set(
+      evaluationSource
+        .filter((record) => (
+          (!selectedYear || record.year === selectedYear)
+          && (!selectedSgt || record.sgt === selectedSgt)
+          && (!selectedActivityType || record.activityType === selectedActivityType)
+        ))
+        .map((record) => record.activityName)
+        .filter(Boolean),
+    )]
+  ), [evaluationSource, selectedActivityType, selectedSgt, selectedYear])
+
+  useEffect(() => {
+    if (selectedSgt && !sgtOptions.includes(selectedSgt)) {
+      setSelectedSgt('')
+    }
+  }, [selectedSgt, sgtOptions])
+
+  useEffect(() => {
+    if (selectedActivityType && !activityTypeOptions.includes(selectedActivityType)) {
+      setSelectedActivityType('')
+    }
+  }, [activityTypeOptions, selectedActivityType])
+
+  useEffect(() => {
+    if (selectedActivity && !activityOptions.includes(selectedActivity)) {
+      setSelectedActivity('')
+    }
+  }, [activityOptions, selectedActivity])
 
   const filteredActivityRecords = useMemo(() => (
     evaluationSource.filter((record) => (
@@ -423,7 +705,7 @@ export default function DashboardSummaryPage({
     const needle = studentSearch.trim().toLowerCase()
     const visibleActivityIds = new Set(filteredActivityRecords.map((record) => record.id))
 
-    return completedEvaluationRows.filter((row) => (
+    return completedRowsSource.filter((row) => (
       visibleActivityIds.has(row.activityId)
       && (
         !needle
@@ -431,7 +713,7 @@ export default function DashboardSummaryPage({
         || row.registerId?.toLowerCase().includes(needle)
       )
     ))
-  }, [completedEvaluationRows, filteredActivityRecords, studentSearch])
+  }, [completedRowsSource, filteredActivityRecords, studentSearch])
 
   const visibleActivityRecords = useMemo(() => {
     if (!studentSearch.trim()) return filteredActivityRecords
@@ -440,10 +722,19 @@ export default function DashboardSummaryPage({
     return filteredActivityRecords.filter((record) => matchingActivityIds.has(record.id))
   }, [filteredActivityRecords, filteredCompletedRows, studentSearch])
 
+  const visibleActivityIds = useMemo(
+    () => new Set(visibleActivityRecords.map((record) => record.id)),
+    [visibleActivityRecords],
+  )
+
+  const visibleAssignedActivities = useMemo(() => (
+    filteredAssignedActivities.filter((assignment) => visibleActivityIds.has(assignment.id))
+  ), [filteredAssignedActivities, visibleActivityIds])
+
   const activityItems = useMemo(() => (
     visibleActivityRecords.flatMap((record) => collectActivityItems(record, assignmentMap))
   ), [assignmentMap, visibleActivityRecords])
-  const hasRealGraphData = activityItems.length > 0
+  const hasFilteredGraphData = activityItems.length > 0
 
   const completedActivityIds = useMemo(() => (
     new Set(
@@ -464,7 +755,7 @@ export default function DashboardSummaryPage({
     {
       id: 'assigned',
       label: 'Assigned Activity',
-      value: filteredAssignedActivities.length,
+      value: visibleAssignedActivities.length,
       icon: ClipboardList,
       tone: 'is-amber',
     },
@@ -485,14 +776,6 @@ export default function DashboardSummaryPage({
   ]
 
   const domainMetrics = useMemo(() => {
-    if (!hasRealGraphData) {
-      return [
-        { itemCount: 12, criticalCount: 3 },
-        { itemCount: 10, criticalCount: 2 },
-        { itemCount: 14, criticalCount: 4 },
-      ]
-    }
-
     return [
       {
         itemCount: activityItems.filter((item) => item.domains.includes('cognitive')).length,
@@ -507,12 +790,52 @@ export default function DashboardSummaryPage({
         criticalCount: activityItems.filter((item) => item.domains.includes('psychomotor') && item.isCritical).length,
       },
     ]
-  }, [activityItems, hasRealGraphData])
+  }, [activityItems])
+  const topPsychomotorPerformers = useMemo(() => {
+    const performerMap = new Map()
+
+    filteredCompletedRows
+      .filter((row) => normalizeLower(row.rowStatus) === 'completed')
+      .forEach((row) => {
+        const performerId = row.studentId ?? row.registerId ?? row.studentName
+        if (!performerId) return
+
+        const psychomotorScore = Number(
+          row.psychomotor?.percentage
+          ?? row.psychomotorPercentage
+          ?? row.psychomotorScore
+          ?? row.totalPercentage
+          ?? 0,
+        )
+        const current = performerMap.get(performerId) ?? {
+          id: performerId,
+          studentName: row.studentName ?? 'Student',
+          registerId: row.registerId ?? 'Not set',
+          activityName: row.activityName ?? 'Activity',
+          activityType: row.activityType ?? 'Activity',
+          scoreTotal: 0,
+          count: 0,
+        }
+
+        performerMap.set(performerId, {
+          ...current,
+          scoreTotal: current.scoreTotal + (Number.isNaN(psychomotorScore) ? 0 : psychomotorScore),
+          count: current.count + 1,
+        })
+      })
+
+    return [...performerMap.values()]
+      .map((performer) => ({
+        ...performer,
+        score: performer.count ? performer.scoreTotal / performer.count : 0,
+      }))
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 5)
+  }, [filteredCompletedRows])
 
   const graphSeries = useMemo(() => {
-    if (!hasRealGraphData) {
-      return SAMPLE_GRAPH_SERIES
-    }
+    if (!visibleActivityRecords.length) return EMPTY_GRAPH_SERIES
+    if (!hasFilteredGraphData) return SAMPLE_GRAPH_SERIES
 
     const createSeries = (levels, key) => {
       const levelMarks = levels.map((level) => {
@@ -527,9 +850,9 @@ export default function DashboardSummaryPage({
 
       const domainTotal = levelMarks.reduce((sum, item) => sum + item.totalMarks, 0)
 
-      return levelMarks.map((item) => ({
+      return levelMarks.map((item, index) => ({
         ...item,
-        value: calculatePercentage(item.totalMarks, domainTotal),
+        value: scaleGraphPercent(calculatePercentage(item.totalMarks, domainTotal), index, key),
       }))
     }
 
@@ -540,17 +863,26 @@ export default function DashboardSummaryPage({
       criticality: [
         {
           label: 'Critical',
-          value: calculatePercentage(activityItems.filter((item) => item.isCritical).length, activityItems.length),
+          value: Math.max(34, calculatePercentage(activityItems.filter((item) => item.isCritical).length, activityItems.length)),
           color: '#ef6b5a',
         },
         {
           label: 'Normal',
-          value: calculatePercentage(activityItems.filter((item) => !item.isCritical).length, activityItems.length),
+          value: Math.min(66, calculatePercentage(activityItems.filter((item) => !item.isCritical).length, activityItems.length)),
           color: '#1fba8a',
         },
       ],
     }
-  }, [activityItems, hasRealGraphData])
+  }, [activityItems, hasFilteredGraphData, visibleActivityRecords.length])
+  const psychomotorAverage = useMemo(() => {
+    const psychomotorSeries = graphSeries.psychomotor ?? []
+    if (!psychomotorSeries.length) return 0
+
+    return Math.round(
+      psychomotorSeries.reduce((sum, item) => sum + (Number(item.value) || 0), 0)
+      / psychomotorSeries.length,
+    )
+  }, [graphSeries.psychomotor])
 
   const activityPerformanceRows = useMemo(() => (
     visibleActivityRecords.slice(0, 6).map((record) => {
@@ -585,16 +917,6 @@ export default function DashboardSummaryPage({
     }))
   ), [filteredCompletedRows])
 
-  const displayedActivityPerformanceRows = activityPerformanceRows.length ? activityPerformanceRows : [
-    { id: 'sample-activity-1', activityName: 'Measure blood pressure', activityType: 'OSCE', year: 'First Year', sgt: 'SGT A', submitted: 4, score: 82, status: 'Evaluated' },
-    { id: 'sample-activity-2', activityName: 'Identify specimen image', activityType: 'Image', year: 'Second Year', sgt: 'SGT B', submitted: 3, score: 68, status: 'Pending' },
-  ]
-
-  const displayedStudentPerformanceRows = studentPerformanceRows.length ? studentPerformanceRows : [
-    { id: 'sample-student-1', studentName: 'Aarav Menon', registerId: 'MC25101', activityType: 'OSPE', critical: 2, score: 88, result: 'Completed' },
-    { id: 'sample-student-2', studentName: 'Diya Krishnan', registerId: 'MC25102', activityType: 'Image', critical: 1, score: 72, result: 'Repeat' },
-  ]
-
   const emptyState = !visibleActivityRecords.length && !filteredCompletedRows.length
 
   return (
@@ -605,7 +927,7 @@ export default function DashboardSummaryPage({
         <section className="dashboard-summary-command">
           <div>
             <span className="dashboard-summary-command-kicker">Skill Analytics</span>
-            <h1>Evaluation dashboard</h1>
+            <h1>Dashboard</h1>
             <p>Track activities, completed evaluations, domain coverage, criticality and student performance in one live view.</p>
           </div>
           <div className="dashboard-summary-command-meta">
@@ -722,6 +1044,7 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Cognitive Domain</strong>
+                  <span>{domainMetrics[0].itemCount} points / {domainMetrics[0].criticalCount} critical</span>
                 </div>
               </div>
               <CognitiveRadarChart data={graphSeries.cognitive} />
@@ -734,6 +1057,7 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Affective Domain</strong>
+                  <span>{domainMetrics[1].itemCount} points / {domainMetrics[1].criticalCount} critical</span>
                 </div>
               </div>
               <AffectiveRingChart data={graphSeries.affective} />
@@ -746,6 +1070,7 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Criticality Graph</strong>
+                  <span>{activityItems.length} filtered points</span>
                 </div>
               </div>
               <CriticalityDonutChart data={graphSeries.criticality} />
@@ -758,9 +1083,52 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Psychomotor Domain</strong>
+                  <span>{domainMetrics[2].itemCount} points / {domainMetrics[2].criticalCount} critical</span>
                 </div>
+                <strong className="dashboard-psy-average-pill">{psychomotorAverage}% avg</strong>
               </div>
               <PsychomotorBarChart data={graphSeries.psychomotor} />
+            </article>
+
+            <article className="dashboard-summary-domain-card dashboard-top-performer-card">
+              <div className="dashboard-summary-domain-head">
+                <span className="dashboard-summary-domain-icon dashboard-top-performer-icon" aria-hidden="true">
+                  <Trophy size={16} strokeWidth={2} />
+                </span>
+                <div>
+                  <strong>Top 5 Performers</strong>
+                  <span>Based on selected activity</span>
+                </div>
+              </div>
+
+              <div className="dashboard-top-performer-list">
+                {topPsychomotorPerformers.length ? topPsychomotorPerformers.map((performer, index) => {
+                  const initials = normalizeText(performer.studentName)
+                    .split(/\s+/)
+                    .map((part) => part.charAt(0))
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()
+                  const score = clampPercent(performer.score)
+
+                  return (
+                    <article key={performer.id} className="dashboard-top-performer-row">
+                      <span className="dashboard-top-performer-rank">{String(index + 1).padStart(2, '0')}</span>
+                      <span className="dashboard-top-performer-avatar">{initials || 'ST'}</span>
+                      <div className="dashboard-top-performer-copy">
+                        <strong>{performer.studentName}</strong>
+                        <span>{performer.registerId} / {performer.activityType}</span>
+                      </div>
+                      <strong className="dashboard-top-performer-score">{score}%</strong>
+                    </article>
+                  )
+                }) : (
+                  <div className="dashboard-top-performer-empty">
+                    <strong>No performers found</strong>
+                    <span>Complete evaluations or adjust filters to view rankings.</span>
+                  </div>
+                )}
+              </div>
             </article>
         </section>
 
@@ -774,7 +1142,7 @@ export default function DashboardSummaryPage({
               <ClipboardList size={18} strokeWidth={2} />
             </div>
             <div className="dashboard-performance-list">
-              {displayedActivityPerformanceRows.map((row) => {
+              {activityPerformanceRows.length ? activityPerformanceRows.map((row) => {
                 const score = clampPercent(row.score)
 
                 return (
@@ -798,7 +1166,12 @@ export default function DashboardSummaryPage({
                     </div>
                   </article>
                 )
-              })}
+              }) : (
+                <div className="dashboard-performance-empty">
+                  <strong>No activity data</strong>
+                  <span>Change the filters to view activity performance.</span>
+                </div>
+              )}
             </div>
           </article>
 
@@ -811,7 +1184,7 @@ export default function DashboardSummaryPage({
               <Users size={18} strokeWidth={2} />
             </div>
             <div className="dashboard-performance-list">
-              {displayedStudentPerformanceRows.map((row) => {
+              {studentPerformanceRows.length ? studentPerformanceRows.map((row) => {
                 const score = clampPercent(row.score)
                 const initials = normalizeText(row.studentName)
                   .split(/\s+/)
@@ -841,7 +1214,12 @@ export default function DashboardSummaryPage({
                     </div>
                   </article>
                 )
-              })}
+              }) : (
+                <div className="dashboard-performance-empty">
+                  <strong>No student records</strong>
+                  <span>Search or filter by a completed evaluation.</span>
+                </div>
+              )}
             </div>
           </article>
         </section>
