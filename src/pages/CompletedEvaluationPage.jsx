@@ -230,6 +230,10 @@ export default function CompletedEvaluationPage({
         || row.studentName?.toLowerCase().includes(needle)
         || row.registerId?.toLowerCase().includes(needle)
         || row.thresholdLabel?.toLowerCase().includes(needle)
+        || row.resultStatus?.toLowerCase().includes(needle)
+        || row.decisionTitle?.toLowerCase().includes(needle)
+        || String(getAttemptNumber(row)).includes(needle)
+        || `attempt ${getAttemptNumber(row)}`.includes(needle)
 
       return matchesFilter && matchesSearch
     })
@@ -506,7 +510,7 @@ export default function CompletedEvaluationPage({
                 <input
                   value={searchValue}
                   onChange={(event) => setSearchValue(event.target.value)}
-                  placeholder="Search student or threshold"
+                  placeholder="Search student, ID, result, or attempts"
                 />
               </label>
             </div>
@@ -550,19 +554,6 @@ export default function CompletedEvaluationPage({
                       >
                         <td>
                           <div className="eval-completed-student">
-                            <button
-                              type="button"
-                              className="tool-btn eval-table-action eval-completed-icon-btn eval-completed-expand-btn"
-                              title={isExpanded ? 'Hide attempts' : 'Show attempts'}
-                              aria-label={isExpanded ? 'Hide attempts' : 'Show attempts'}
-                              aria-expanded={isExpanded}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                toggleExpandedGroup(group.id)
-                              }}
-                            >
-                              {isExpanded ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
-                            </button>
                             <span className="eval-completed-avatar">{row.studentName.slice(0, 2).toUpperCase()}</span>
                             <div className="eval-table-title">
                               <strong>{row.studentName}</strong>
@@ -583,40 +574,55 @@ export default function CompletedEvaluationPage({
                           ) : '-'}
                         </td>
                         <td>
-                          {showParentActions ? (
-                            <div className="eval-completed-actions">
-                              <button
-                                type="button"
-                                className="tool-btn eval-table-action eval-completed-icon-btn"
-                                title="Edit latest evaluation"
-                                aria-label="Edit latest evaluation"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  onOpenEvaluation?.({
-                                    ...(row.activityRecord ?? activityRecord ?? {}),
-                                    id: row.activityId,
-                                    activityId: row.activityId,
-                                    activityName: row.activityName,
-                                    activityType: row.activityType,
-                                  }, { studentId: row.studentId, completedRowId: row.id })
-                                }}
-                              >
-                                <Pencil size={14} strokeWidth={2} />
-                              </button>
-                              <button
-                                type="button"
-                                className="tool-btn eval-table-action eval-completed-icon-btn"
-                                title="Download PDF"
-                                aria-label="Download PDF"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  handleDownloadRow(row)
-                                }}
-                              >
-                                <Download size={14} strokeWidth={2} />
-                              </button>
-                            </div>
-                          ) : null}
+                          <div className="eval-completed-actions">
+                            {showParentActions ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="tool-btn eval-table-action eval-completed-icon-btn"
+                                  title="Edit latest evaluation"
+                                  aria-label="Edit latest evaluation"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    onOpenEvaluation?.({
+                                      ...(row.activityRecord ?? activityRecord ?? {}),
+                                      id: row.activityId,
+                                      activityId: row.activityId,
+                                      activityName: row.activityName,
+                                      activityType: row.activityType,
+                                    }, { studentId: row.studentId, completedRowId: row.id })
+                                  }}
+                                >
+                                  <Pencil size={14} strokeWidth={2} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="tool-btn eval-table-action eval-completed-icon-btn"
+                                  title="Download PDF"
+                                  aria-label="Download PDF"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleDownloadRow(row)
+                                  }}
+                                >
+                                  <Download size={14} strokeWidth={2} />
+                                </button>
+                              </>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="tool-btn eval-table-action eval-completed-icon-btn eval-completed-expand-btn"
+                              title={isExpanded ? 'Hide attempts' : 'Show attempts'}
+                              aria-label={isExpanded ? 'Hide attempts' : 'Show attempts'}
+                              aria-expanded={isExpanded}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                toggleExpandedGroup(group.id)
+                              }}
+                            >
+                              {isExpanded ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {isExpanded ? (

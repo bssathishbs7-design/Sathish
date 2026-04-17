@@ -2956,7 +2956,8 @@
 }
 
 .eval-completed-results-panel .eval-completed-parent-row:hover td {
-  background: #f1f7fa;
+  border-color: #ffffff;
+  background: rgb(209 255 236 / 28%);
   box-shadow: none;
 }
 
@@ -2967,7 +2968,7 @@
 }
 
 .eval-completed-results-panel .eval-completed-parent-row:hover td:first-child {
-  box-shadow: inset 3px 0 0 #7fa5ba;
+  box-shadow: inset 3px 0 0 #0f8364;
 }
 
 .eval-completed-results-panel .eval-completed-parent-row.is-expanded td:first-child {
@@ -2991,7 +2992,7 @@
   gap: 9px;
 }
 
-.eval-completed-results-panel .eval-completed-student .eval-completed-expand-btn {
+.eval-completed-results-panel .eval-completed-expand-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3008,19 +3009,19 @@
   transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 180ms ease;
 }
 
-.eval-completed-results-panel .eval-completed-student .eval-completed-expand-btn svg {
+.eval-completed-results-panel .eval-completed-expand-btn svg {
   display: block;
 }
 
-.eval-completed-results-panel .eval-completed-parent-row:hover .eval-completed-student .eval-completed-expand-btn,
-.eval-completed-results-panel .eval-completed-student .eval-completed-expand-btn:hover,
-.eval-completed-results-panel .eval-completed-student .eval-completed-expand-btn:focus-visible {
+.eval-completed-results-panel .eval-completed-parent-row:hover .eval-completed-expand-btn,
+.eval-completed-results-panel .eval-completed-expand-btn:hover,
+.eval-completed-results-panel .eval-completed-expand-btn:focus-visible {
   border-color: #d3dee7;
   background: #ffffff;
   color: #36566e;
 }
 
-.eval-completed-results-panel .eval-completed-parent-row.is-expanded .eval-completed-student .eval-completed-expand-btn {
+.eval-completed-results-panel .eval-completed-parent-row.is-expanded .eval-completed-expand-btn {
   border-color: #c8d7e2;
   background: #ffffff;
   color: #36566e;
