@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   ArrowUpDown,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ClipboardCheck,
   Download,
   Pencil,
@@ -178,14 +180,7 @@ const getOutcomeTone = (value = '') => {
   return 'is-neutral'
 }
 
-const getEvaluationStatusTone = (value = '') => {
-  const normalized = String(value).trim().toLowerCase()
-
-  if (normalized.includes('completed')) return 'is-positive'
-  if (normalized.includes('pending')) return 'is-neutral'
-
-  return 'is-neutral'
-}
+const getAttemptNumber = (row) => Math.min(Math.max(Number(row?.attemptNumber) || 1, 1), 10)
 
 const isActivityCertifiable = (activity) => Boolean(
   activity?.certifiable
@@ -216,6 +211,7 @@ export default function CompletedEvaluationPage({
   const [sortKey, setSortKey] = useState('studentName')
   const [sortDirection, setSortDirection] = useState('asc')
   const [currentPage, setCurrentPage] = useState(1)
+  const [expandedGroups, setExpandedGroups] = useState({})
   const pageSize = 6
 
   const sourceRows = useMemo(() => (
@@ -229,7 +225,7 @@ export default function CompletedEvaluationPage({
 
     return sourceRows.filter((row) => {
       const matchesFilter = statusFilter === 'all'
-        || String(row.rowStatus ?? '').trim().toLowerCase() === statusFilter
+        || String(row.resultStatus ?? '').trim().toLowerCase() === statusFilter
       const matchesSearch = !needle
         || row.studentName?.toLowerCase().includes(needle)
         || row.registerId?.toLowerCase().includes(needle)
@@ -245,30 +241,39 @@ export default function CompletedEvaluationPage({
 
   const filterOptions = [
     { id: 'all', label: 'All', count: sourceRows.length },
-    { id: 'completed', label: 'Completed', count: sourceRows.filter((row) => String(row.rowStatus ?? '').trim().toLowerCase() === 'completed').length },
-    { id: 'pending', label: 'Pending', count: sourceRows.filter((row) => String(row.rowStatus ?? '').trim().toLowerCase() === 'pending').length },
+    { id: 'completed', label: 'Completed', count: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'completed').length },
+    { id: 'repeat', label: 'Repeat', count: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'repeat').length },
+    { id: 'remedial', label: 'Remedial', count: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'remedial').length },
   ]
 
   const tableHeaders = useMemo(() => ([
     { key: 'studentName', label: 'Student', sortable: true },
     { key: 'registerId', label: 'ID', sortable: true },
-    ...visibleSections.flatMap((section) => ([
-      { key: `${section.key}-score`, label: section.scoreHeader, sortable: true },
-    ])),
-    { key: 'overallCriticalMarks', label: 'Critical', sortable: true },
-    { key: 'thresholdLabel', label: 'Threshold', sortable: true },
-    { key: 'decisionTitle', label: 'Result', sortable: true },
+    { key: 'attemptNumber', label: 'Attempts', sortable: true },
     { key: 'scoreComparison', label: 'Score', sortable: true },
     { key: 'totalPercentage', label: 'Total %', sortable: true },
-    { key: 'rowStatus', label: 'Status', sortable: true },
+    { key: 'decisionTitle', label: 'Result', sortable: true },
     { key: 'actions', label: 'Actions', sortable: false },
+  ]), [])
+
+  const childHeaders = useMemo(() => ([
+    { key: 'attemptNumber', label: 'Attempt' },
+    ...visibleSections.flatMap((section) => ([
+      { key: `${section.key}-score`, label: section.scoreHeader },
+    ])),
+    { key: 'overallCriticalMarks', label: 'Critical' },
+    { key: 'thresholdLabel', label: 'Threshold' },
+    { key: 'scoreComparison', label: 'Score' },
+    { key: 'totalPercentage', label: 'Total %' },
+    { key: 'decisionTitle', label: 'Result' },
+    { key: 'actions', label: 'Actions' },
   ]), [visibleSections])
 
   useEffect(() => {
     setCurrentPage(1)
   }, [searchValue, sortDirection, sortKey, statusFilter])
 
-  const sortedRows = useMemo(() => {
+  const groupedRows = useMemo(() => {
     const getSortValue = (row, key) => {
       if (key.endsWith('-score')) {
         const sectionKey = key.replace(/-score$/, '')
@@ -278,13 +283,37 @@ export default function CompletedEvaluationPage({
       if (key === 'scoreComparison') return Number(row.totalObtainedMarks) || 0
       if (key === 'totalPercentage') return Number(row.totalPercentage) || 0
       if (key === 'overallCriticalMarks') return Number(row.overallCriticalMarks) || 0
+      if (key === 'attemptNumber') return getAttemptNumber(row)
 
       return row[key] ?? ''
     }
 
-    return [...filteredRows].sort((left, right) => {
-      const leftValue = getSortValue(left, sortKey)
-      const rightValue = getSortValue(right, sortKey)
+    const groups = new Map()
+
+    filteredRows.forEach((row) => {
+      const key = `${row.activityId}:${row.studentId}`
+      const current = groups.get(key) ?? {
+        id: key,
+        rows: [],
+      }
+
+      current.rows.push(row)
+      groups.set(key, current)
+    })
+
+    return [...groups.values()].map((group) => {
+      const attempts = [...group.rows].sort((left, right) => getAttemptNumber(left) - getAttemptNumber(right))
+      const latestRow = attempts.at(-1) ?? attempts[0]
+
+      return {
+        ...group,
+        attempts,
+        latestRow,
+        attemptCount: attempts.length,
+      }
+    }).sort((left, right) => {
+      const leftValue = sortKey === 'attemptNumber' ? left.attemptCount : getSortValue(left.latestRow, sortKey)
+      const rightValue = sortKey === 'attemptNumber' ? right.attemptCount : getSortValue(right.latestRow, sortKey)
 
       if (typeof leftValue === 'number' && typeof rightValue === 'number') {
         return sortDirection === 'asc' ? leftValue - rightValue : rightValue - leftValue
@@ -296,11 +325,15 @@ export default function CompletedEvaluationPage({
     })
   }, [filteredRows, sortDirection, sortKey])
 
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize))
-  const paginatedRows = useMemo(() => {
+  const totalPages = Math.max(1, Math.ceil(groupedRows.length / pageSize))
+  const paginatedGroups = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize
-    return sortedRows.slice(startIndex, startIndex + pageSize)
-  }, [currentPage, sortedRows])
+    return groupedRows.slice(startIndex, startIndex + pageSize)
+  }, [currentPage, groupedRows])
+
+  const sortedRows = useMemo(() => (
+    groupedRows.flatMap((group) => group.attempts)
+  ), [groupedRows])
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -310,6 +343,13 @@ export default function CompletedEvaluationPage({
 
     setSortKey(key)
     setSortDirection('asc')
+  }
+
+  const toggleExpandedGroup = (groupId) => {
+    setExpandedGroups((current) => ({
+      ...current,
+      [groupId]: !current[groupId],
+    }))
   }
 
   const handleDownloadRow = (row) => {
@@ -323,10 +363,10 @@ export default function CompletedEvaluationPage({
       ...visibleSections.map((section) => [section.scoreHeader, formatMarks(row[section.key]?.obtainedMarks)]),
       ['Critical', formatMarks(row.overallCriticalMarks)],
       ['Threshold', row.thresholdLabel ?? 'Not Matched'],
-      ['Result', row.resultStatus || '-'],
-      ['Status', row.rowStatus ?? 'Pending'],
+      ['Attempt', String(getAttemptNumber(row))],
       ['Score', `${formatMarks(row.totalObtainedMarks)} / ${formatMarks(row.totalMarks)}`],
       ['Total %', formatPercent(row.totalPercentage)],
+      ['Result', row.resultStatus || '-'],
     ]
 
     const title = `${row.studentName} Evaluation Result`
@@ -352,10 +392,10 @@ export default function CompletedEvaluationPage({
       ...visibleSections.map((section) => section.scoreHeader),
       'Critical',
       'Threshold',
-      'Result',
+      'Attempt',
       'Score',
       'Total %',
-      'Status',
+      'Result',
     ]
     const rows = sortedRows.map((row) => ([
       row.activityName ?? activityRecord?.activityName ?? 'Completed Evaluation',
@@ -368,10 +408,10 @@ export default function CompletedEvaluationPage({
       ...visibleSections.map((section) => formatMarks(row[section.key]?.obtainedMarks)),
       formatMarks(row.overallCriticalMarks),
       row.thresholdLabel ?? 'Not Matched',
-      row.resultStatus || '-',
+      String(getAttemptNumber(row)),
       excelTextValue(`${formatMarks(row.totalObtainedMarks)} / ${formatMarks(row.totalMarks)}`),
       formatPercent(row.totalPercentage),
-      row.rowStatus ?? 'Pending',
+      row.resultStatus || '-',
     ]))
 
     downloadCsv({
@@ -381,10 +421,33 @@ export default function CompletedEvaluationPage({
     })
   }
 
+  const headerActivityName = activityRecord?.activityName ?? 'Completed Evaluation'
+  const headerActivityType = activityRecord?.activityType ?? 'Activity'
+  const headerIsCertifiable = isActivityCertifiable(activityRecord)
+
   return (
     <section className="vx-content forms-page eval-page">
       <div className="eval-shell">
-        <section className="eval-header">
+        <section className="eval-header eval-completed-compact-header">
+          <button
+            type="button"
+            className="ghost eval-header-back eval-header-back-icon"
+            onClick={onBackToEvaluation}
+            title="Back to Evaluation"
+            aria-label="Back to Evaluation"
+          >
+            <ChevronLeft size={18} strokeWidth={2.4} />
+          </button>
+
+          <div className="eval-completed-header-main">
+            <strong>{headerActivityName}</strong>
+            <span><Shapes size={13} strokeWidth={2} /> {headerActivityType}</span>
+            <span className={headerIsCertifiable ? 'is-certifiable' : 'is-not-certifiable'}>
+              <CheckCircle2 size={13} strokeWidth={2} />
+              {headerIsCertifiable ? 'Certifiable' : 'Not Certifiable'}
+            </span>
+          </div>
+
           <div className="eval-header-copy">
               <span className="eval-kicker">
                 <ClipboardCheck size={12} strokeWidth={2} />
@@ -409,8 +472,9 @@ export default function CompletedEvaluationPage({
           </div>
         </section>
 
-        {sourceRows.length ? (
-          <section className="eval-completed-toolbar">
+        <section className="eval-completed-results-panel">
+          {sourceRows.length ? (
+            <div className="eval-completed-toolbar">
             <div className="eval-completed-filterbar" role="tablist" aria-label="Outcome filters">
               {filterOptions.map((option) => (
                 <button
@@ -446,11 +510,11 @@ export default function CompletedEvaluationPage({
                 />
               </label>
             </div>
-          </section>
-        ) : null}
+            </div>
+          ) : null}
 
-        {filteredRows.length ? (
-          <div className="eval-table-wrap">
+          {groupedRows.length ? (
+            <div className="eval-table-wrap eval-completed-group-wrap">
             <table className="eval-table eval-table-completed">
               <thead>
                 <tr>
@@ -471,82 +535,187 @@ export default function CompletedEvaluationPage({
                 </tr>
               </thead>
               <tbody>
-                {paginatedRows.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <div className="eval-completed-student">
-                        <span className="eval-completed-avatar">{row.studentName.slice(0, 2).toUpperCase()}</span>
-                        <div className="eval-table-title">
-                          <strong>{row.studentName}</strong>
-                        </div>
-                      </div>
-                    </td>
-                    <td>{row.registerId}</td>
-                    {visibleSections.flatMap((section) => {
-                      const sectionStats = row[section.key] ?? {}
+                {paginatedGroups.map((group) => {
+                  const row = group.latestRow
+                  const isExpanded = Boolean(expandedGroups[group.id])
+                  const showParentActions = group.attemptCount === 1
+                    && String(row.resultStatus ?? '').trim().toLowerCase() === 'completed'
 
-                      return [
-                        <td key={`${row.id}-${section.key}-score`}>{formatMarks(sectionStats.obtainedMarks)}</td>,
-                      ]
-                    })}
-                    <td>{formatMarks(row.overallCriticalMarks)}</td>
-                    <td>
-                      <span className={`eval-table-pill ${getThresholdTone(row.thresholdLabel)}`}>
-                        {row.thresholdLabel ?? 'Not Matched'}
-                      </span>
-                    </td>
-                    <td>
-                      {row.resultStatus ? (
-                        <span className={`eval-table-pill ${getOutcomeTone(row.resultStatus)}`}>
-                          {row.resultStatus}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td className="is-strong">{formatMarks(row.totalObtainedMarks)} / {formatMarks(row.totalMarks)}</td>
-                    <td className="is-strong">{formatPercent(row.totalPercentage)}</td>
-                    <td>
-                      <span className={`eval-table-pill ${getEvaluationStatusTone(row.rowStatus)}`}>
-                        {row.rowStatus ?? 'Pending'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="eval-completed-actions">
-                        <button
-                          type="button"
-                          className="tool-btn eval-table-action eval-completed-icon-btn"
-                          title="Edit evaluation"
-                          aria-label="Edit evaluation"
-                          onClick={() => onOpenEvaluation?.({
-                            ...(row.activityRecord ?? activityRecord ?? {}),
-                            id: row.activityId,
-                            activityId: row.activityId,
-                            activityName: row.activityName,
-                            activityType: row.activityType,
-                          }, { studentId: row.studentId })}
+                  return (
+                    <Fragment key={group.id}>
+                      <tr
+                        className={`eval-completed-parent-row ${isExpanded ? 'is-expanded' : ''}`}
+                        aria-expanded={isExpanded}
+                        onClick={() => toggleExpandedGroup(group.id)}
+                      >
+                        <td>
+                          <div className="eval-completed-student">
+                            <button
+                              type="button"
+                              className="tool-btn eval-table-action eval-completed-icon-btn eval-completed-expand-btn"
+                              title={isExpanded ? 'Hide attempts' : 'Show attempts'}
+                              aria-label={isExpanded ? 'Hide attempts' : 'Show attempts'}
+                              aria-expanded={isExpanded}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                toggleExpandedGroup(group.id)
+                              }}
+                            >
+                              {isExpanded ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
+                            </button>
+                            <span className="eval-completed-avatar">{row.studentName.slice(0, 2).toUpperCase()}</span>
+                            <div className="eval-table-title">
+                              <strong>{row.studentName}</strong>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{row.registerId}</td>
+                        <td>
+                          <span className="eval-table-pill is-neutral">{group.attemptCount}</span>
+                        </td>
+                        <td className="is-strong">{formatMarks(row.totalObtainedMarks)} / {formatMarks(row.totalMarks)}</td>
+                        <td className="is-strong">{formatPercent(row.totalPercentage)}</td>
+                        <td>
+                          {row.resultStatus ? (
+                            <span className={`eval-table-pill ${getOutcomeTone(row.resultStatus)}`}>
+                              {row.resultStatus}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td>
+                          {showParentActions ? (
+                            <div className="eval-completed-actions">
+                              <button
+                                type="button"
+                                className="tool-btn eval-table-action eval-completed-icon-btn"
+                                title="Edit latest evaluation"
+                                aria-label="Edit latest evaluation"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  onOpenEvaluation?.({
+                                    ...(row.activityRecord ?? activityRecord ?? {}),
+                                    id: row.activityId,
+                                    activityId: row.activityId,
+                                    activityName: row.activityName,
+                                    activityType: row.activityType,
+                                  }, { studentId: row.studentId, completedRowId: row.id })
+                                }}
+                              >
+                                <Pencil size={14} strokeWidth={2} />
+                              </button>
+                              <button
+                                type="button"
+                                className="tool-btn eval-table-action eval-completed-icon-btn"
+                                title="Download PDF"
+                                aria-label="Download PDF"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleDownloadRow(row)
+                                }}
+                              >
+                                <Download size={14} strokeWidth={2} />
+                              </button>
+                            </div>
+                          ) : null}
+                        </td>
+                      </tr>
+                      {isExpanded ? (
+                        <tr
+                          key={`${group.id}-attempts`}
+                          className="eval-completed-child-row"
+                          onClick={(event) => event.stopPropagation()}
                         >
-                          <Pencil size={14} strokeWidth={2} />
-                        </button>
-                        <button
-                          type="button"
-                          className="tool-btn eval-table-action eval-completed-icon-btn"
-                          title="Download PDF"
-                          aria-label="Download PDF"
-                          onClick={() => handleDownloadRow(row)}
-                        >
-                          <Download size={14} strokeWidth={2} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <td colSpan={tableHeaders.length}>
+                            <div className="eval-completed-attempts-panel">
+                              <table className="eval-completed-attempt-table">
+                                <thead>
+                                  <tr>
+                                    {childHeaders.map((header) => (
+                                      <th key={`${group.id}-${header.key}`}>{header.label}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {group.attempts.map((attemptRow) => {
+                                    const isLatestAttempt = getAttemptNumber(attemptRow) === getAttemptNumber(group.latestRow)
+
+                                    return (
+                                      <tr key={attemptRow.id}>
+                                        <td>{getAttemptNumber(attemptRow)}</td>
+                                        {visibleSections.map((section) => {
+                                          const sectionStats = attemptRow[section.key] ?? {}
+
+                                          return (
+                                            <td key={`${attemptRow.id}-${section.key}-score`}>
+                                              {formatMarks(sectionStats.obtainedMarks)}
+                                            </td>
+                                          )
+                                        })}
+                                        <td>{formatMarks(attemptRow.overallCriticalMarks)}</td>
+                                        <td>
+                                          <span className={`eval-table-pill ${getThresholdTone(attemptRow.thresholdLabel)}`}>
+                                            {attemptRow.thresholdLabel ?? 'Not Matched'}
+                                          </span>
+                                        </td>
+                                        <td className="is-strong">{formatMarks(attemptRow.totalObtainedMarks)} / {formatMarks(attemptRow.totalMarks)}</td>
+                                        <td className="is-strong">{formatPercent(attemptRow.totalPercentage)}</td>
+                                        <td>
+                                          {attemptRow.resultStatus ? (
+                                            <span className={`eval-table-pill ${getOutcomeTone(attemptRow.resultStatus)}`}>
+                                              {attemptRow.resultStatus}
+                                            </span>
+                                          ) : '-'}
+                                        </td>
+                                        <td>
+                                          <div className="eval-completed-actions">
+                                            {isLatestAttempt ? (
+                                              <button
+                                                type="button"
+                                                className="tool-btn eval-table-action eval-completed-icon-btn"
+                                                title="Edit latest evaluation"
+                                                aria-label="Edit latest evaluation"
+                                                onClick={() => onOpenEvaluation?.({
+                                                  ...(attemptRow.activityRecord ?? activityRecord ?? {}),
+                                                  id: attemptRow.activityId,
+                                                  activityId: attemptRow.activityId,
+                                                  activityName: attemptRow.activityName,
+                                                  activityType: attemptRow.activityType,
+                                                }, { studentId: attemptRow.studentId, completedRowId: attemptRow.id })}
+                                              >
+                                                <Pencil size={14} strokeWidth={2} />
+                                              </button>
+                                            ) : null}
+                                            <button
+                                              type="button"
+                                              className="tool-btn eval-table-action eval-completed-icon-btn"
+                                              title="Download PDF"
+                                              aria-label="Download PDF"
+                                              onClick={() => handleDownloadRow(attemptRow)}
+                                            >
+                                              <Download size={14} strokeWidth={2} />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
             <div className="eval-table-footer">
               <span>
-                Showing {paginatedRows.length ? (currentPage - 1) * pageSize + 1 : 0}
+                Showing {paginatedGroups.length ? (currentPage - 1) * pageSize + 1 : 0}
                 {' '}to{' '}
-                {(currentPage - 1) * pageSize + paginatedRows.length}
-                {' '}of {sortedRows.length}
+                {(currentPage - 1) * pageSize + paginatedGroups.length}
+                {' '}of {groupedRows.length}
               </span>
               <div className="eval-pagination">
                 <button
@@ -579,16 +748,17 @@ export default function CompletedEvaluationPage({
                 </button>
               </div>
             </div>
-          </div>
-        ) : (
-          <section className="eval-empty">
-            <div className="eval-empty-copy">
-              <Shapes size={18} strokeWidth={2} />
-              <strong>No completed evaluations yet.</strong>
-              <p>Once faculty confirm submit, the completed student records will appear here.</p>
             </div>
-          </section>
-        )}
+          ) : (
+            <section className="eval-empty">
+              <div className="eval-empty-copy">
+                <Shapes size={18} strokeWidth={2} />
+                <strong>No completed evaluations yet.</strong>
+                <p>Once faculty confirm submit, the completed student records will appear here.</p>
+              </div>
+            </section>
+          )}
+        </section>
       </div>
     </section>
   )

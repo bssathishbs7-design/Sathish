@@ -388,7 +388,10 @@ function App() {
     const linkedAssignment = assignedSkillActivities.find((item) => item.id === recordId)
     const linkedSubmission = linkedAssignment?.answers ? linkedAssignment : null
     const linkedCompletedRow = studentId
-      ? completedEvaluationRows.find((row) => row.activityId === recordId && row.studentId === studentId)
+      ? completedEvaluationRows.find((row) => row.id === options.completedRowId)
+        ?? [...completedEvaluationRows]
+          .filter((row) => row.activityId === recordId && row.studentId === studentId)
+          .sort((left, right) => (Number(right.attemptNumber) || 0) - (Number(left.attemptNumber) || 0))[0]
       : null
 
     setSelectedEvaluationStudentId(studentId)
@@ -399,6 +402,8 @@ function App() {
       latestSubmission: linkedSubmission,
       editingStudentDraft: linkedCompletedRow?.evaluationDraft ?? null,
       editingDecisionId: linkedCompletedRow?.decisionId ?? '',
+      editingAttemptNumber: linkedCompletedRow?.attemptNumber ?? null,
+      editingCompletedRowId: linkedCompletedRow?.id ?? '',
     })
     navigateToPage(APP_PAGES.START_EVALUATION)
   }
@@ -412,11 +417,36 @@ function App() {
   const handleSaveCompletedEvaluation = (row) => {
     if (!row?.activityId || !row?.studentId) return
 
-    const compositeId = `${row.activityId}:${row.studentId}`
-    setCompletedEvaluationRows((current) => [
-      { ...row, id: compositeId },
-      ...current.filter((item) => item.id !== compositeId),
-    ])
+    setCompletedEvaluationRows((current) => {
+      const sameStudentRows = current.filter((item) => (
+        item.activityId === row.activityId && item.studentId === row.studentId
+      ))
+      const isCompletedRow = String(row.rowStatus ?? '').trim().toLowerCase() === 'completed'
+      const completedAttempts = sameStudentRows
+        .filter((item) => String(item.rowStatus ?? '').trim().toLowerCase() === 'completed')
+        .map((item) => Number(item.attemptNumber) || 1)
+      const nextAttemptNumber = isCompletedRow
+        ? Math.min(Math.max(0, ...completedAttempts) + 1, 10)
+        : Number(row.attemptNumber) || Math.max(1, Math.max(0, ...completedAttempts) + 1)
+      const compositeId = `${row.activityId}:${row.studentId}:attempt-${nextAttemptNumber}`
+      const normalizedRow = {
+        ...row,
+        id: compositeId,
+        attemptNumber: nextAttemptNumber,
+        attemptLabel: `Attempt ${nextAttemptNumber}`,
+      }
+
+      return [
+        normalizedRow,
+        ...current.filter((item) => (
+          item.id !== compositeId
+          && !(isCompletedRow
+            && item.activityId === row.activityId
+            && item.studentId === row.studentId
+            && String(item.rowStatus ?? '').trim().toLowerCase() === 'pending')
+        )),
+      ]
+    })
   }
 
   const handleBackToEvaluationList = () => {
