@@ -73,6 +73,15 @@ const getAssignmentQuestionCount = (assignment) => (
   + (assignment.examData?.modules?.scaffolding?.length ?? 0)
 )
 
+const isAssignmentCertifiable = (assignment) => Boolean(
+  assignment?.certifiable
+  ?? assignment?.isCertifiable
+  ?? assignment?.examData?.certifiable
+  ?? assignment?.examData?.isCertifiable
+  ?? assignment?.activityData?.activity?.certifiable
+  ?? assignment?.activityData?.activity?.isCertifiable
+)
+
 const buildEvaluationRecordFromAssignment = (assignment) => {
   const { year, sgt } = parseAssignmentTarget(assignment.assignedTo)
 
@@ -87,6 +96,7 @@ const buildEvaluationRecordFromAssignment = (assignment) => {
     createdDate: assignment.createdDate ?? new Date().toLocaleDateString('en-GB'),
     evaluationStatus: assignment.evaluationStatus ?? 'Pending Evaluation',
     questionCount: assignment.questionCount ?? getAssignmentQuestionCount(assignment),
+    certifiable: isAssignmentCertifiable(assignment),
     thresholds: assignment.thresholds ?? assignment.examData?.thresholds ?? [],
     examData: assignment.examData ?? null,
     activityData: assignment.activityData ?? null,

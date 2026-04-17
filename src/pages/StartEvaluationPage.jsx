@@ -102,6 +102,21 @@ const getActivityTypeIcon = (value) => {
   return Shapes
 }
 
+const isActivityCertifiable = (activity) => Boolean(
+  activity?.certifiable
+  ?? activity?.isCertifiable
+  ?? activity?.assignment?.certifiable
+  ?? activity?.assignment?.isCertifiable
+  ?? activity?.assignment?.examData?.certifiable
+  ?? activity?.assignment?.examData?.isCertifiable
+  ?? activity?.assignment?.activityData?.activity?.certifiable
+  ?? activity?.assignment?.activityData?.activity?.isCertifiable
+  ?? activity?.examData?.certifiable
+  ?? activity?.examData?.isCertifiable
+  ?? activity?.activityData?.activity?.certifiable
+  ?? activity?.activityData?.activity?.isCertifiable
+)
+
 const getReviewSectionIcon = (label = '') => {
   const normalized = String(label).trim().toLowerCase()
 
@@ -195,6 +210,7 @@ const buildCompletedEvaluationRow = ({
     activityId: evaluationRecord?.id ?? 'unknown-activity',
     activityName: evaluationRecord?.activityName ?? 'Untitled Activity',
     activityType: evaluationRecord?.activityType ?? 'Activity',
+    certifiable: isActivityCertifiable(evaluationRecord),
     activityRecord: evaluationRecord,
     studentId: student?.id ?? 'unknown-student',
     studentName: student?.name ?? 'Student',
@@ -470,9 +486,15 @@ const buildStudentSubmission = (student, items, record, latestSubmission) => {
 
 const buildStudentRoster = (record, assignment, latestSubmission) => {
   const count = Math.max(1, Number(record?.studentCount ?? 6))
+  const visibleCount = Math.min(count, 17)
+  const notSubmittedSampleCount = visibleCount > 1
+    ? Math.min(2, Math.max(1, Math.floor(visibleCount * 0.12)))
+    : 0
+  const submittedSampleCount = visibleCount - notSubmittedSampleCount
   const items = buildEvaluationItems(assignment, record)
 
-  return Array.from({ length: count }, (_, index) => {
+  return Array.from({ length: visibleCount }, (_, index) => {
+    const hasSubmitted = index < submittedSampleCount
     const student = {
       id: `student-${index + 1}`,
       name:
@@ -480,9 +502,9 @@ const buildStudentRoster = (record, assignment, latestSubmission) => {
           ? latestSubmission.studentName
           : buildStudentName(index, record?.sgt),
       registerId: index === 0 && latestSubmission?.studentId ? latestSubmission.studentId : `MC25${String(index + 101).padStart(3, '0')}`,
-      submissionStatus: index === 0 ? 'Submitted' : index < Math.min(count, 4) ? 'Submitted' : 'Pending',
+      submissionStatus: hasSubmitted ? 'Submitted' : 'Pending',
       evaluationStatus: 'Pending',
-      submittedAt: index === 0 && latestSubmission?.submittedAt ? latestSubmission.submittedAt : index < Math.min(count, 4) ? `0${index + 1}/04/2026, 09:1${index} ` : null,
+      submittedAt: index === 0 && latestSubmission?.submittedAt ? latestSubmission.submittedAt : hasSubmitted ? `${String(index + 1).padStart(2, '0')}/04/2026, 09:${String(10 + index).padStart(2, '0')} ` : null,
     }
 
     return {
@@ -1502,6 +1524,7 @@ export default function StartEvaluationPage({
     ?? evaluationRecord?.activityData?.marks
     ?? '',
   ).trim().toLowerCase() === 'nil'
+  const isCertifiableActivity = isActivityCertifiable(evaluationRecord)
 
   const baseRoster = useMemo(
     () => buildStudentRoster(evaluationRecord, evaluationRecord?.assignment, evaluationRecord?.latestSubmission),
@@ -1818,6 +1841,9 @@ export default function StartEvaluationPage({
                 <span className={`eval-status-pill ${evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'is-complete' : 'is-pending'}`}>
                   {evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'Completed' : 'Pending'}
                 </span>
+                {isCertifiableActivity ? (
+                  <span className="eval-status-pill is-certifiable">Certifiable</span>
+                ) : null}
               </div>
               <span className="start-eval-summary-date">
                 <CalendarDays size={13} strokeWidth={2} />

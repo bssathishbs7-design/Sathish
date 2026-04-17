@@ -22,12 +22,136 @@ const formatMarks = (value) => {
   return numericValue.toFixed(2).replace(/\.?0+$/, '')
 }
 
-const escapeHtml = (value) => String(value ?? '')
-  .replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;')
-  .replaceAll("'", '&#39;')
+const normalizePdfText = (value) => String(value ?? '')
+  .normalize('NFKD')
+  .replace(/[^\x20-\x7E]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+const escapePdfText = (value) => normalizePdfText(value)
+  .replace(/\\/g, '\\\\')
+  .replace(/\(/g, '\\(')
+  .replace(/\)/g, '\\)')
+
+const sanitizeFileName = (value) => normalizePdfText(value)
+  .replace(/[^a-z0-9]+/gi, '-')
+  .replace(/^-+|-+$/g, '')
+  .toLowerCase()
+  || 'evaluation-result'
+
+const wrapPdfText = (value, maxLength = 58) => {
+  const words = normalizePdfText(value).split(' ').filter(Boolean)
+  const lines = []
+
+  words.forEach((word) => {
+    const currentLine = lines[lines.length - 1] ?? ''
+    const nextLine = currentLine ? `${currentLine} ${word}` : word
+
+    if (nextLine.length <= maxLength) {
+      if (lines.length) lines[lines.length - 1] = nextLine
+      else lines.push(nextLine)
+      return
+    }
+
+    lines.push(word.length > maxLength ? `${word.slice(0, maxLength - 1)}-` : word)
+  })
+
+  return lines.length ? lines : ['-']
+}
+
+const buildSimplePdf = ({ title, rows }) => {
+  const pageWidth = 595.28
+  const pageHeight = 841.89
+  const margin = 48
+  const tableWidth = pageWidth - margin * 2
+  const labelWidth = 150
+  const valueX = margin + labelWidth
+  const content = []
+  let y = pageHeight - margin
+
+  const addText = ({ text, x, y: textY, size = 10, color = '0.08 0.18 0.14' }) => {
+    content.push(`${color} rg BT /F1 ${size} Tf ${x} ${textY} Td (${escapePdfText(text)}) Tj ET`)
+  }
+
+  addText({ text: title, x: margin, y: y - 18, size: 18 })
+  y -= 48
+
+  rows.forEach(([label, value]) => {
+    const valueLines = wrapPdfText(value)
+    const rowHeight = Math.max(28, valueLines.length * 13 + 14)
+    const bottomY = y - rowHeight
+
+    content.push(`0.965 0.985 0.975 rg ${margin} ${bottomY} ${labelWidth} ${rowHeight} re f`)
+    content.push(`0.86 0.91 0.88 RG ${margin} ${bottomY} ${tableWidth} ${rowHeight} re S`)
+    content.push(`0.86 0.91 0.88 RG ${valueX} ${bottomY} m ${valueX} ${y} l S`)
+    addText({ text: label, x: margin + 12, y: y - 18, size: 10, color: '0.29 0.41 0.36' })
+    valueLines.forEach((line, index) => {
+      addText({ text: line, x: valueX + 12, y: y - 18 - (index * 13), size: 10, color: '0.08 0.18 0.14' })
+    })
+
+    y = bottomY
+  })
+
+  const stream = content.join('\n')
+  const objects = [
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n`,
+    `4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`,
+    '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+  ]
+  const header = '%PDF-1.4\n'
+  const offsets = []
+  let body = header
+
+  objects.forEach((object) => {
+    offsets.push(body.length)
+    body += object
+  })
+
+  const xrefOffset = body.length
+  const xrefRows = offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n `).join('\n')
+
+  return `${body}xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${xrefRows}\ntrailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
+}
+
+const downloadPdf = ({ fileName, title, rows }) => {
+  const pdf = buildSimplePdf({ title, rows })
+  const blob = new Blob([pdf], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+
+  link.href = url
+  link.download = `${sanitizeFileName(fileName)}.pdf`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+const escapeCsvCell = (value) => {
+  const normalizedValue = String(value ?? '').replace(/\r?\n|\r/g, ' ').trim()
+  return `"${normalizedValue.replace(/"/g, '""')}"`
+}
+
+const excelTextValue = (value) => `="${String(value ?? '').replace(/"/g, '""')}"`
+
+const downloadCsv = ({ fileName, headers, rows }) => {
+  const csvContent = [
+    headers.map(escapeCsvCell).join(','),
+    ...rows.map((row) => row.map(escapeCsvCell).join(',')),
+  ].join('\n')
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+
+  link.href = url
+  link.download = `${sanitizeFileName(fileName)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
 
 const SECTION_CONFIGS = [
   { key: 'checklist', scoreHeader: 'Checklist' },
@@ -62,6 +186,23 @@ const getEvaluationStatusTone = (value = '') => {
 
   return 'is-neutral'
 }
+
+const isActivityCertifiable = (activity) => Boolean(
+  activity?.certifiable
+  ?? activity?.isCertifiable
+  ?? activity?.activityRecord?.certifiable
+  ?? activity?.activityRecord?.isCertifiable
+  ?? activity?.activityRecord?.assignment?.certifiable
+  ?? activity?.activityRecord?.assignment?.isCertifiable
+  ?? activity?.activityRecord?.assignment?.examData?.certifiable
+  ?? activity?.activityRecord?.assignment?.examData?.isCertifiable
+  ?? activity?.activityRecord?.activityData?.activity?.certifiable
+  ?? activity?.activityRecord?.activityData?.activity?.isCertifiable
+  ?? activity?.examData?.certifiable
+  ?? activity?.examData?.isCertifiable
+  ?? activity?.activityData?.activity?.certifiable
+  ?? activity?.activityData?.activity?.isCertifiable
+)
 
 export default function CompletedEvaluationPage({
   completedEvaluationRows = [],
@@ -172,9 +313,11 @@ export default function CompletedEvaluationPage({
   }
 
   const handleDownloadRow = (row) => {
+    const isCertifiable = isActivityCertifiable(row) || isActivityCertifiable(activityRecord)
     const summaryRows = [
       ['Activity', row.activityName],
       ['Type', row.activityType],
+      ...(isCertifiable ? [['Certifiable', 'Yes']] : []),
       ['Student', row.studentName],
       ['ID', row.registerId],
       ...visibleSections.map((section) => [section.scoreHeader, formatMarks(row[section.key]?.obtainedMarks)]),
@@ -186,94 +329,56 @@ export default function CompletedEvaluationPage({
       ['Total %', formatPercent(row.totalPercentage)],
     ]
 
-    const safeTitle = escapeHtml(`${row.studentName} Evaluation Result`)
-    const bodyRows = summaryRows.map(([label, value]) => (
-      `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`
-    )).join('')
+    const title = `${row.studentName} Evaluation Result`
 
-    const iframe = document.createElement('iframe')
-    iframe.style.position = 'fixed'
-    iframe.style.right = '0'
-    iframe.style.bottom = '0'
-    iframe.style.width = '0'
-    iframe.style.height = '0'
-    iframe.style.border = '0'
-    iframe.setAttribute('aria-hidden', 'true')
+    downloadPdf({
+      fileName: title,
+      title,
+      rows: summaryRows,
+    })
+  }
 
-    iframe.onload = () => {
-      const frameWindow = iframe.contentWindow
-      if (!frameWindow) {
-        document.body.removeChild(iframe)
-        return
-      }
+  const handleDownloadAllExcel = () => {
+    if (!sortedRows.length) return
 
-      frameWindow.focus()
-      frameWindow.print()
+    const headers = [
+      'Activity Name',
+      'Activity Type',
+      'Certifiable',
+      'Year',
+      'SGT',
+      'Student',
+      'ID',
+      ...visibleSections.map((section) => section.scoreHeader),
+      'Critical',
+      'Threshold',
+      'Result',
+      'Score',
+      'Total %',
+      'Status',
+    ]
+    const rows = sortedRows.map((row) => ([
+      row.activityName ?? activityRecord?.activityName ?? 'Completed Evaluation',
+      row.activityType ?? activityRecord?.activityType ?? 'Activity',
+      isActivityCertifiable(row) || isActivityCertifiable(activityRecord) ? 'Yes' : 'No',
+      row.activityRecord?.year ?? activityRecord?.year ?? '',
+      row.activityRecord?.sgt ?? activityRecord?.sgt ?? '',
+      row.studentName,
+      row.registerId,
+      ...visibleSections.map((section) => formatMarks(row[section.key]?.obtainedMarks)),
+      formatMarks(row.overallCriticalMarks),
+      row.thresholdLabel ?? 'Not Matched',
+      row.resultStatus || '-',
+      excelTextValue(`${formatMarks(row.totalObtainedMarks)} / ${formatMarks(row.totalMarks)}`),
+      formatPercent(row.totalPercentage),
+      row.rowStatus ?? 'Pending',
+    ]))
 
-      window.setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe)
-        }
-      }, 1000)
-    }
-
-    iframe.srcdoc = `
-      <!doctype html>
-      <html lang="en">
-        <head>
-          <meta charset="utf-8" />
-          <title>${safeTitle}</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 32px;
-              color: #173126;
-            }
-            h1 {
-              margin: 0 0 8px;
-              font-size: 24px;
-            }
-            p {
-              margin: 0 0 24px;
-              color: #5d7569;
-              font-size: 14px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-            }
-            th, td {
-              padding: 12px 14px;
-              border: 1px solid #dbe7e1;
-              text-align: left;
-              font-size: 14px;
-            }
-            th {
-              width: 32%;
-              background: #f5fbf8;
-              color: #48695c;
-            }
-            td {
-              background: #ffffff;
-            }
-            @media print {
-              body {
-                margin: 16px;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <h1>${safeTitle}</h1>
-          <p>Use your browser's Save as PDF option to download this result.</p>
-          <table>
-            <tbody>${bodyRows}</tbody>
-          </table>
-        </body>
-      </html>
-    `
-
-    document.body.appendChild(iframe)
+    downloadCsv({
+      fileName: `${activityRecord?.activityName ?? 'completed-evaluations'} excel`,
+      headers,
+      rows,
+    })
   }
 
   return (
@@ -322,14 +427,25 @@ export default function CompletedEvaluationPage({
               ))}
             </div>
 
-            <label className="eval-completed-search">
-              <Search size={14} strokeWidth={2} />
-              <input
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="Search student or threshold"
-              />
-            </label>
+            <div className="eval-completed-toolbar-actions">
+              <button
+                type="button"
+                className="eval-completed-download"
+                onClick={handleDownloadAllExcel}
+                disabled={!sortedRows.length}
+              >
+                <Download size={14} strokeWidth={2} />
+                Download Excel
+              </button>
+              <label className="eval-completed-search">
+                <Search size={14} strokeWidth={2} />
+                <input
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  placeholder="Search student or threshold"
+                />
+              </label>
+            </div>
           </section>
         ) : null}
 
