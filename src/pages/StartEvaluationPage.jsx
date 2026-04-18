@@ -287,6 +287,19 @@ const getChecklistItemStatus = (decisionState, marksValue) => {
   return 'Pending'
 }
 
+const getNormalizedResultStatus = (value = '') => String(value ?? '').trim().toLowerCase()
+const getStudentResultStatus = (student) => getNormalizedResultStatus(
+  student?.evaluationDecision
+  ?? student?.evaluationResult?.decisionTitle
+  ?? student?.evaluationResult?.resultStatus
+  ?? '',
+)
+const hasStudentEvaluationResult = (student) => Boolean(student?.evaluationResult || student?.evaluationStatus === 'Completed')
+const isReevaluationResult = (value = '') => {
+  const normalized = getNormalizedResultStatus(value)
+  return normalized === 'repeat' || normalized === 'remedial'
+}
+
 const getStudentEvaluationBadge = (student) => {
   if (!student) {
     return { label: 'Pending', tone: 'is-pending' }
@@ -294,6 +307,16 @@ const getStudentEvaluationBadge = (student) => {
 
   if (student.submissionStatus !== 'Submitted') {
     return { label: 'Not Submitted', tone: 'is-pending' }
+  }
+
+  const normalizedDecision = getStudentResultStatus(student)
+
+  if (normalizedDecision === 'repeat') {
+    return { label: 'Repeat', tone: 'is-repeat' }
+  }
+
+  if (normalizedDecision === 'remedial') {
+    return { label: 'Remedial', tone: 'is-remedial' }
   }
 
   if (student.evaluationStatus === 'Completed') {
@@ -1531,35 +1554,89 @@ export default function StartEvaluationPage({
     [evaluationRecord],
   )
 
-  const roster = useMemo(() => (
-    baseRoster.map((student) => {
-      const submittedEvaluation = submittedEvaluations[student.id]
+  const activityCompletedRows = useMemo(() => (
+    completedEvaluationRows.filter((row) => (
+      row.activityId === evaluationRecord?.id && row.rowStatus === 'Completed'
+    ))
+  ), [completedEvaluationRows, evaluationRecord?.id])
+  const latestCompletedRowByStudent = useMemo(() => {
+    const latestRows = new Map()
 
-      if (!submittedEvaluation) return student
+    activityCompletedRows.forEach((row) => {
+      const studentId = row.studentId
+      if (!studentId) return
 
-      return {
-        ...student,
-        evaluationStatus: 'Completed',
-        evaluationDecision: submittedEvaluation.decisionTitle,
-        evaluationResult: submittedEvaluation,
+      const current = latestRows.get(studentId)
+      const rowAttempt = Number(row.attemptNumber) || 0
+      const currentAttempt = Number(current?.attemptNumber) || 0
+      const rowTime = Date.parse(row.submittedAt ?? '') || 0
+      const currentTime = Date.parse(current?.submittedAt ?? '') || 0
+
+      if (!current || rowAttempt > currentAttempt || (rowAttempt === currentAttempt && rowTime >= currentTime)) {
+        latestRows.set(studentId, row)
       }
     })
-  ), [baseRoster, submittedEvaluations])
+
+    return latestRows
+  }, [activityCompletedRows])
+  const hasCompletedEvaluationHistory = activityCompletedRows.length > 0
+
+  const roster = useMemo(() => (
+    baseRoster.map((student) => {
+      const latestCompletedRow = latestCompletedRowByStudent.get(student.id)
+      const submittedEvaluation = submittedEvaluations[student.id]
+
+      if (submittedEvaluation) {
+        return {
+          ...student,
+          evaluationStatus: 'Completed',
+          evaluationDecision: submittedEvaluation.decisionTitle,
+          evaluationResult: submittedEvaluation,
+        }
+      }
+
+      if (latestCompletedRow) {
+        return {
+          ...student,
+          evaluationStatus: 'Completed',
+          evaluationDecision: latestCompletedRow.resultStatus ?? latestCompletedRow.decisionTitle ?? '',
+          evaluationResult: latestCompletedRow,
+        }
+      }
+
+      return student
+    })
+  ), [baseRoster, latestCompletedRowByStudent, submittedEvaluations])
 
   const filteredStudents = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
+    const eligibleRoster = hasCompletedEvaluationHistory
+      ? roster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student)))
+      : roster
 
-    return roster.filter((student) => (
-      (studentFilter === 'all'
-        || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')
-        || (studentFilter === 'not-submitted' && student.evaluationStatus !== 'Completed'))
+    return eligibleRoster.filter((student) => (
+      ((hasCompletedEvaluationHistory
+        ? studentFilter === 'all' || getStudentResultStatus(student) === studentFilter
+        : studentFilter === 'all'
+          || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')
+          || (studentFilter === 'not-submitted' && student.evaluationStatus !== 'Completed')))
       && (
         !needle
         || student.name.toLowerCase().includes(needle)
         || student.registerId.toLowerCase().includes(needle)
       )
     ))
-  }, [roster, studentFilter, studentSearch])
+  }, [hasCompletedEvaluationHistory, roster, studentFilter, studentSearch])
+
+  useEffect(() => {
+    const allowedFilters = hasCompletedEvaluationHistory
+      ? ['all', 'repeat', 'remedial']
+      : ['all', 'submitted', 'not-submitted']
+
+    if (!allowedFilters.includes(studentFilter)) {
+      setStudentFilter('all')
+    }
+  }, [hasCompletedEvaluationHistory, studentFilter])
 
   useEffect(() => {
     if (!filteredStudents.length) {
@@ -1586,13 +1663,13 @@ export default function StartEvaluationPage({
     : null
   const selectedStudentBadge = getStudentEvaluationBadge(selectedStudent)
   const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
-  const activityCompletedRows = completedEvaluationRows.filter((row) => (
-    row.activityId === evaluationRecord?.id && row.rowStatus === 'Completed'
-  ))
   const submittedCount = roster.filter((student) => student.submissionStatus === 'Submitted').length
   const notSubmittedCount = roster.filter((student) => student.submissionStatus !== 'Submitted').length
   const completedCount = activityCompletedRows.length
   const pendingCount = roster.filter((student) => student.evaluationStatus !== 'Completed').length
+  const repeatCount = roster.filter((student) => getStudentResultStatus(student) === 'repeat').length
+  const remedialCount = roster.filter((student) => getStudentResultStatus(student) === 'remedial').length
+  const eligibleEvaluationCount = roster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student))).length
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
 
@@ -1664,11 +1741,17 @@ export default function StartEvaluationPage({
     && selectedStudent?.submissionStatus === 'Submitted'
     && evaluationState.isReadyToSubmit
   const selectedDecision = decisionOptions.find((option) => option.id === selectedDecisionId) ?? decisionOptions[0] ?? null
-  const studentFilterOptions = [
-    { id: 'all', label: 'All', count: roster.length },
-    { id: 'submitted', label: 'Submitted', count: submittedCount },
-    { id: 'not-submitted', label: 'Evaluation Not Submit', count: pendingCount },
-  ]
+  const studentFilterOptions = hasCompletedEvaluationHistory
+    ? [
+        { id: 'all', label: 'All', count: eligibleEvaluationCount },
+        { id: 'repeat', label: 'Repeat', count: repeatCount },
+        { id: 'remedial', label: 'Remedial', count: remedialCount },
+      ]
+    : [
+        { id: 'all', label: 'All', count: roster.length },
+        { id: 'submitted', label: 'Submitted', count: submittedCount },
+        { id: 'not-submitted', label: 'Evaluation Not Submit', count: pendingCount },
+      ]
 
   const handleSelectStudent = (studentId) => {
     setSelectedStudentId(studentId)
@@ -2052,7 +2135,7 @@ export default function StartEvaluationPage({
               </div>
 
               <div className="start-eval-student-list is-picker">
-                {filteredStudents.map((student) => {
+                {filteredStudents.length ? filteredStudents.map((student) => {
                   const studentBadge = getStudentEvaluationBadge(student)
 
                   return (
@@ -2076,7 +2159,16 @@ export default function StartEvaluationPage({
                       </div>
                     </button>
                   )
-                })}
+                }) : (
+                  <div className="start-eval-student-picker-empty">
+                    <strong>No students to evaluate</strong>
+                    <p>
+                      {hasCompletedEvaluationHistory
+                        ? 'Only Repeat and Remedial students appear here. Completed students are hidden.'
+                        : 'No students match the current search or filter.'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

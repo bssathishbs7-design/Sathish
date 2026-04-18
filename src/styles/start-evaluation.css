@@ -2464,6 +2464,40 @@
   max-height: calc(100vh - 170px);
 }
 
+.start-eval-student-picker-empty {
+  display: grid;
+  gap: 6px;
+  padding: 22px 18px;
+  border: 1px dashed #dce8e2;
+  border-radius: 18px;
+  background: #f8fbf9;
+  color: #60796d;
+  text-align: center;
+}
+
+.start-eval-student-picker-empty strong {
+  color: #17362d;
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.start-eval-student-picker-empty p {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.theme-dark .start-eval-student-picker-empty {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.42);
+  color: #9fb0ac;
+}
+
+.theme-dark .start-eval-student-picker-empty strong {
+  color: #edf7f3;
+}
+
 @media (max-width: 1080px) {
   .start-eval-summary-card,
   .start-eval-board {
