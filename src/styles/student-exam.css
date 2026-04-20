@@ -126,6 +126,10 @@
   color: #0f766e;
 }
 
+.student-exam-badge.is-activity-count {
+  min-width: 198px;
+}
+
 .student-exam-badge.is-progress,
 .student-exam-badge.is-marks,
 .student-exam-badge.is-tag {
@@ -1493,6 +1497,20 @@
 .student-exam-badge-row,
 .student-exam-topbar-meta {
   gap: 7px;
+}
+
+.student-exam-summary-badges {
+  align-items: stretch;
+}
+
+.student-exam-summary-badges .student-exam-badge {
+  flex: 0 0 196px;
+  width: 196px;
+  min-height: 34px;
+  height: 34px;
+  padding: 0 12px;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .student-exam-answer-area {

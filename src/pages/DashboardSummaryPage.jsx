@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  AlertTriangle,
   ArrowUpRight,
   BadgeCheck,
   Brain,
@@ -24,11 +23,6 @@ const COGNITIVE_LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluat
 const AFFECTIVE_LEVELS = ['Receive', 'Respond', 'Value', 'Organize', 'Characterize']
 const PSYCHOMOTOR_LEVELS = ['Perception', 'Set', 'Guided Response', 'Mechanism', 'Adaptation', 'Origination']
 const AFFECTIVE_RING_COLORS = ['#158f69', '#7c5cff', '#8c7cf9', '#d946ef', '#d97706']
-const CRITICALITY_RANGE_OPTIONS = [
-  { id: 'week', label: 'Week' },
-  { id: 'month', label: 'Month' },
-  { id: 'year', label: 'Year' },
-]
 const SAMPLE_GRAPH_SERIES = {
   cognitive: [
     { label: 'Remember', value: 38 },
@@ -438,9 +432,9 @@ function CognitiveRadarChart({ data }) {
 }
 
 function AffectiveRingChart({ data }) {
-  const chartWidth = 430
-  const chartHeight = 250
-  const padding = { top: 26, right: 24, bottom: 42, left: 42 }
+  const chartWidth = 920
+  const chartHeight = 310
+  const padding = { top: 30, right: 92, bottom: 48, left: 64 }
   const values = data.map((item) => clampPercent(item.value))
   const maxValue = Math.max(100, ...values)
   const points = data.map((item, index) => {
@@ -504,7 +498,7 @@ function AffectiveRingChart({ data }) {
         ) : null}
         {points.map((point) => (
           <text key={`label-${point.label}`} x={point.x} y={chartHeight - 10} textAnchor="middle" className="dashboard-affective-axis-text">
-            {point.label.slice(0, 3)}
+            {point.label}
           </text>
         ))}
       </svg>
@@ -543,86 +537,6 @@ function PsychomotorBarChart({ data }) {
             </article>
           ))}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function CriticalityDonutChart({ data }) {
-  const [selectedSegment, setSelectedSegment] = useState('critical')
-  const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0) || 1
-  const criticalItem = data.find((item) => normalizeLower(item.label).includes('critical'))
-  const normalItem = data.find((item) => normalizeLower(item.label).includes('normal'))
-  const critical = Number(criticalItem?.value) || 0
-  const normal = Number(normalItem?.value) || Math.max(total - critical, 0)
-  const criticalPercent = clampPercent(calculatePercentage(critical, total))
-  const normalPercent = clampPercent(calculatePercentage(normal, total))
-  const radius = 72
-  const circumference = 2 * Math.PI * radius
-  const progress = (criticalPercent / 100) * circumference
-  const activeDetail = selectedSegment === 'normal'
-    ? { label: 'Normal', value: normal, percent: normalPercent, tone: 'normal' }
-    : { label: 'Critical', value: critical, percent: criticalPercent, tone: 'critical' }
-  const tooltipId = 'criticality-tooltip'
-
-  return (
-    <div className="dashboard-critical-progress-card">
-      <div className="dashboard-critical-progress-top">
-        <span>Point Progress</span>
-      </div>
-      <div
-        className={`dashboard-critical-progress-ring is-${activeDetail.tone}`}
-        role="button"
-        tabIndex={0}
-        aria-describedby={tooltipId}
-        aria-label={`${activeDetail.label} criticality detail: ${activeDetail.percent}%`}
-        onClick={() => setSelectedSegment((current) => (current === 'critical' ? 'normal' : 'critical'))}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setSelectedSegment((current) => (current === 'critical' ? 'normal' : 'critical'))
-          }
-        }}
-      >
-        <svg viewBox="0 0 190 190" role="img" aria-label={`Criticality progress ${criticalPercent}%`}>
-          <circle cx="95" cy="95" r={radius} className="dashboard-critical-progress-bg" />
-          <circle
-            cx="95"
-            cy="95"
-            r={radius}
-            className="dashboard-critical-progress-value"
-            strokeDasharray={`${progress} ${circumference}`}
-          />
-        </svg>
-        <div>
-          <strong>{criticalPercent}%</strong>
-          <span>Criticality</span>
-        </div>
-        <span id={tooltipId} className={`dashboard-critical-progress-tooltip is-${activeDetail.tone}`} role="tooltip">
-          <strong>{activeDetail.label}</strong>
-          <small>{Math.round(activeDetail.value)} points</small>
-          <em>{activeDetail.percent}% of progress</em>
-        </span>
-      </div>
-      <div className="dashboard-critical-progress-foot" aria-label="Criticality segments">
-        <button
-          type="button"
-          className={`is-critical ${selectedSegment === 'critical' ? 'is-active' : ''}`}
-          onMouseEnter={() => setSelectedSegment('critical')}
-          onFocus={() => setSelectedSegment('critical')}
-          onClick={() => setSelectedSegment('critical')}
-        >
-          {Math.round(critical)} critical
-        </button>
-        <button
-          type="button"
-          className={`is-normal ${selectedSegment === 'normal' ? 'is-active' : ''}`}
-          onMouseEnter={() => setSelectedSegment('normal')}
-          onFocus={() => setSelectedSegment('normal')}
-          onClick={() => setSelectedSegment('normal')}
-        >
-          {Math.round(normal)} normal
-        </button>
       </div>
     </div>
   )
@@ -944,14 +858,6 @@ export default function DashboardSummaryPage({
 
     return `${strongest.label} peaks at ${clampPercent(strongest.value)}%`
   }, [graphSeries.affective])
-  const criticalitySummary = useMemo(() => {
-    const criticalitySeries = graphSeries.criticality ?? []
-    const critical = criticalitySeries.find((item) => normalizeLower(item.label).includes('critical'))
-    const normal = criticalitySeries.find((item) => normalizeLower(item.label).includes('normal'))
-
-    return `${clampPercent(critical?.value)}% critical / ${clampPercent(normal?.value)}% normal`
-  }, [graphSeries.criticality])
-
   const activityPerformanceRows = useMemo(() => (
     visibleActivityRecords.slice(0, 6).map((record) => {
       const rows = filteredCompletedRows.filter((row) => row.activityId === record.id)
@@ -1117,19 +1023,6 @@ export default function DashboardSummaryPage({
                 </div>
               </div>
               <AffectiveRingChart data={graphSeries.affective} />
-            </article>
-
-            <article className="dashboard-summary-domain-card is-red">
-              <div className="dashboard-summary-domain-head">
-                <span className="dashboard-summary-domain-icon" aria-hidden="true">
-                  <AlertTriangle size={16} strokeWidth={2} />
-                </span>
-                <div>
-                  <strong>Criticality</strong>
-                  <span>{criticalitySummary}</span>
-                </div>
-              </div>
-              <CriticalityDonutChart data={graphSeries.criticality} />
             </article>
 
             <article className="dashboard-summary-domain-card is-green">

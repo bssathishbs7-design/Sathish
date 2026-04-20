@@ -32,6 +32,7 @@ const CHECKLIST_FALLBACK_PROMPTS = [
   'Communicates findings clearly and maintains professional behaviour.',
 ]
 
+const isGeneratedQuestionLabel = (value) => /^Q\d+$/i.test(String(value ?? '').trim())
 
 const formatDate = (value) => (value ? String(value).split(',')[0].trim() : 'Not set')
 const normalizeValue = (value, fallback = 'Not Applicable') => value ?? fallback
@@ -844,6 +845,17 @@ function StudentResponsePanel({
           sectionLabel: group.label,
           isCritical: Boolean(item.isCritical),
           isCompleted,
+          decisionState: item.type === 'checklist'
+            ? (checklistDecisions[item.id] ?? '')
+            : item.type === 'form'
+              ? (formDecisions[item.id] ?? '')
+              : item.type === 'scaffolding'
+                ? (scaffoldingDecisions[item.id] ?? '')
+                : item.type === 'image'
+                  ? (imageDecisions[item.id] ?? '')
+                  : item.type === 'question'
+                    ? (manualQuestionDecisions[item.id] ?? '')
+                    : '',
           obtainedMarks,
           totalMarks: Number(item.marks) || 0,
         }
@@ -1167,7 +1179,7 @@ function StudentResponsePanel({
                 <div className="start-eval-form-response-list">
                   {item.answers.map((response) => (
                     <div key={response.label} className="start-eval-form-response">
-                      <span>{response.label}</span>
+                      {isGeneratedQuestionLabel(response.label) ? null : <span>{response.label}</span>}
                       <strong>{response.value}</strong>
                     </div>
                   ))}
@@ -1740,7 +1752,14 @@ export default function StartEvaluationPage({
   const isReadyToSubmit = Boolean(selectedStudent?.id)
     && selectedStudent?.submissionStatus === 'Submitted'
     && evaluationState.isReadyToSubmit
-  const selectedDecision = decisionOptions.find((option) => option.id === selectedDecisionId) ?? decisionOptions[0] ?? null
+  const selectedDecision = decisionOptions.find((option) => option.id === selectedDecisionId) ?? null
+  const hasCriticalityFailure = (evaluationState.itemSummaries ?? []).some((item) => (
+    item.isCritical
+    && (item.decisionState === 'wrong' || Number(item.obtainedMarks) <= 0)
+  ))
+  const criticalityRecommendationMessage = hasCriticalityFailure
+    ? 'Criticality not performed well. Repeat is recommended.'
+    : ''
   const studentFilterOptions = hasCompletedEvaluationHistory
     ? [
         { id: 'all', label: 'All', count: eligibleEvaluationCount },
@@ -1816,7 +1835,7 @@ export default function StartEvaluationPage({
       return nextDrafts
     })
     setIsSubmitPopupOpen(false)
-    setSelectedDecisionId(decisionToSubmit.id)
+    setSelectedDecisionId('')
     onAlert?.({
       tone: 'success',
       message: hasNextStudent
@@ -2078,7 +2097,10 @@ export default function StartEvaluationPage({
                   <button
                     type="button"
                     className="tool-btn green start-eval-submit-btn"
-                    onClick={() => setIsSubmitPopupOpen(true)}
+                    onClick={() => {
+                      setSelectedDecisionId(hasCriticalityFailure ? 'decision-repeat' : '')
+                      setIsSubmitPopupOpen(true)
+                    }}
                     disabled={!isReadyToSubmit || isMarksDisabled}
                   >
                     Submit
@@ -2271,7 +2293,12 @@ export default function StartEvaluationPage({
                     <p>Select the final result for this student.</p>
                   </div>
                 </div>
-
+                {criticalityRecommendationMessage ? (
+                  <div className="start-eval-submit-criticality-note">
+                    <AlertTriangle size={14} strokeWidth={2} />
+                    <span>{criticalityRecommendationMessage}</span>
+                  </div>
+                ) : null}
                 <div className="start-eval-submit-decision-list">
                   {decisionOptions.map((option) => {
                     const decisionMeta = getDecisionOptionMeta(option.id)
@@ -2284,7 +2311,6 @@ export default function StartEvaluationPage({
                           className="start-eval-submit-decision-btn"
                           onClick={() => {
                             setSelectedDecisionId(option.id)
-                            handleSubmitEvaluation(option)
                           }}
                         >
                           <span className="start-eval-submit-decision-icon" aria-hidden="true">
@@ -2303,6 +2329,16 @@ export default function StartEvaluationPage({
                   <button type="button" className="ghost start-eval-nav-btn" onClick={() => setIsSubmitPopupOpen(false)}>
                     Cancel
                   </button>
+                  {selectedDecisionId ? (
+                    <button
+                      type="button"
+                      className="tool-btn green start-eval-submit-btn"
+                      onClick={() => handleSubmitEvaluation()}
+                      disabled={!selectedDecision}
+                    >
+                      Confirm Submit
+                    </button>
+                  ) : null}
                 </div>
             </div>
           </div>,

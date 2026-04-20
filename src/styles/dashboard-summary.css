@@ -360,6 +360,10 @@
     linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(250, 255, 252, 0.74));
 }
 
+.dashboard-summary-domain-card.is-amber {
+  grid-column: span 2;
+}
+
 .dashboard-top-performer-card {
   min-height: 252px;
   background:
@@ -2406,6 +2410,7 @@
 .dashboard-affective-line-card {
   display: grid;
   gap: 8px;
+  width: 100%;
   min-height: 206px;
   padding: 2px 0 0;
 }
@@ -2437,6 +2442,7 @@
 }
 
 .dashboard-affective-line-chart {
+  display: block;
   width: 100%;
   height: 210px;
   overflow: visible;
@@ -2450,7 +2456,7 @@
 .dashboard-affective-axis-text {
   fill: #526672;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .dashboard-affective-area {
@@ -2466,8 +2472,8 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 8px 16px rgba(20, 184, 166, 0.18));
-  stroke-dasharray: 620;
-  stroke-dashoffset: 620;
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
   animation: dashboardLineDraw 900ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
 }
 
@@ -2498,7 +2504,7 @@
 
 .dashboard-affective-marker-text {
   fill: #92400e;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -2697,10 +2703,11 @@
 
 .dashboard-affective-line-card {
   min-height: 300px;
+  align-content: center;
 }
 
 .dashboard-affective-line-chart {
-  height: 292px;
+  height: 310px;
 }
 
 .dashboard-affective-line {

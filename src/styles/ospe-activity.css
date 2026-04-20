@@ -962,6 +962,7 @@
 .ospe-form-prompt-field input,
 .ospe-form-response-answer input,
 .ospe-form-response-answer textarea,
+.ospe-form-response-unit input,
 .ospe-form-response-unit select {
   min-height: 38px;
 }
@@ -979,24 +980,9 @@
 
 .ospe-form-response-row {
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr) minmax(140px, 180px) 38px;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) 38px;
   gap: 10px;
   align-items: end;
-}
-
-.ospe-form-response-label {
-  min-height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  border-radius: 12px;
-  background: #eef5f0;
-  color: #3d5748;
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .ospe-form-response-delete {
@@ -1921,8 +1907,9 @@
 
 .ospe-threshold-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) 88px 88px 88px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1.55fr) 88px 14px 88px 88px;
+  column-gap: 6px;
+  row-gap: 8px;
   align-items: start;
   margin-top: 0;
 }
@@ -1935,6 +1922,16 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.ospe-threshold-separator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  color: #557366;
+  font-size: 1rem;
+  font-weight: 800;
 }
 
 .ospe-threshold-add-placeholder {
@@ -2924,7 +2921,7 @@
   }
 
   .ospe-threshold-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);
   }
 
   .ospe-threshold-label {
@@ -2979,12 +2976,12 @@
 
 @media (max-width: 560px) {
   .ospe-threshold-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);
   }
 
   .ospe-threshold-label,
   .ospe-threshold-actions {
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 }
 
@@ -3066,10 +3063,6 @@
   .ospe-form-edit-layout,
   .ospe-form-response-row {
     grid-template-columns: 1fr;
-  }
-
-  .ospe-form-response-label {
-    justify-content: flex-start;
   }
 
   .ospe-scaffolding-tooltip {
