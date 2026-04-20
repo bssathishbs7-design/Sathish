@@ -27,6 +27,13 @@ import {
 } from 'lucide-react'
 import '../styles/student-exam.css'
 
+const ANSWER_PLACEHOLDER = 'Enter Response'
+const isGeneratedQuestionLabel = (value) => /^Q\d+$/i.test(String(value ?? '').trim())
+const formatQuestionCountLabel = (label, count) => `${label} - ${count} Questions`
+const getFormResponsePlaceholder = (responseIndex, responseCount) => (
+  responseCount > 1 ? `${ANSWER_PLACEHOLDER} ${responseIndex + 1}` : ANSWER_PLACEHOLDER
+)
+
 const fallbackExam = {
   id: 'fallback-student-exam',
   title: 'Student Activity',
@@ -49,7 +56,7 @@ const fallbackExam = {
           type: 'Descriptive',
           prompt: 'Review the clinical prompt and write the most appropriate interpretation.',
           marks: '5',
-          placeholder: 'Enter your answer here.',
+          placeholder: ANSWER_PLACEHOLDER,
           domain: 'Cognitive',
           isCritical: true,
         },
@@ -61,7 +68,7 @@ const fallbackExam = {
           type: 'Descriptive',
           prompt: 'State one supporting point for your interpretation.',
           marks: '1',
-          placeholder: 'Add one supporting point.',
+          placeholder: ANSWER_PLACEHOLDER,
           domain: 'Cognitive',
         },
       ],
@@ -149,10 +156,10 @@ const getAssignedSections = (assignment) => {
         id: question.id ?? `question-${index + 1}`,
         section: 'question',
         kind: question.type ?? 'Descriptive',
-        title: `Question ${index + 1}`,
+        title: question.title ?? '',
         prompt: normalizePrompt(question.questionText ?? question.prompt, 'Add the main question prompt here.'),
         marks: question.marks ?? '1',
-        placeholder: question.placeholder ?? 'Enter your answer here.',
+        placeholder: ANSWER_PLACEHOLDER,
         options: question.options ?? [],
         domain: question.domain ?? 'Cognitive',
         cognitive: normalizeDomainValue(question.cognitive ?? (question.domain === 'Cognitive' ? question.domain : undefined)),
@@ -168,13 +175,13 @@ const getAssignedSections = (assignment) => {
         id: item.id ?? `form-${index + 1}`,
         section: 'form',
         kind: item.formType ?? 'single',
-        title: `Question ${index + 1}`,
+        title: item.title ?? '',
         prompt: normalizePrompt(item.questionText ?? item.prompt, 'Add the form prompt here.'),
         marks: item.marks ?? '1',
-        responses: (item.responses ?? []).map((response, responseIndex) => ({
+        responses: (item.responses ?? []).map((response, responseIndex, responses) => ({
           id: response.key ?? `${item.id ?? 'form'}-response-${responseIndex + 1}`,
           label: response.label ?? `Response ${responseIndex + 1}`,
-          placeholder: `Enter ${response.label ?? `response ${responseIndex + 1}`.toLowerCase()}`,
+          placeholder: getFormResponsePlaceholder(responseIndex, responses.length),
         })),
         domain: item.domain ?? 'Psychomotor',
         cognitive: normalizeDomainValue(item.cognitive),
@@ -190,10 +197,10 @@ const getAssignedSections = (assignment) => {
         id: question.id ?? `scaffold-${index + 1}`,
         section: 'scaffolding',
         kind: question.type ?? 'Descriptive',
-        title: `Question ${questionSections.length + formSections.length + index + 1}`,
+        title: question.title ?? '',
         prompt: normalizePrompt(question.questionText ?? question.prompt, 'Add the scaffolding prompt here.'),
         marks: question.marks ?? '1',
-        placeholder: question.placeholder ?? 'Complete this mandatory scaffolding response.',
+        placeholder: ANSWER_PLACEHOLDER,
         options: question.options ?? [],
         domain: question.domain ?? 'Cognitive',
         cognitive: normalizeDomainValue(question.cognitive ?? (question.domain === 'Cognitive' ? question.domain : undefined)),
@@ -232,7 +239,6 @@ function StudentQuestionCard({
   onChangeQuestion,
   onChangeForm,
   referenceImages,
-  progressLabel,
 }) {
   const isChoice = item.kind === 'MCQ' || item.kind === 'True or False'
   const options = item.kind === 'True or False' && item.options.length === 0 ? ['True', 'False'] : item.options
@@ -279,8 +285,9 @@ function StudentQuestionCard({
         <div className="student-exam-form-stack">
           {item.responses.map((response) => (
             <label key={response.id} className="student-exam-field">
-              <span>{response.label}</span>
+              {isGeneratedQuestionLabel(response.label) ? null : <span>{response.label}</span>}
               <input
+                aria-label={response.label || ANSWER_PLACEHOLDER}
                 value={formValues[response.id] ?? ''}
                 onChange={(event) => onChangeForm(response.id, event.target.value)}
                 placeholder={response.placeholder}
@@ -289,7 +296,7 @@ function StudentQuestionCard({
           ))}
         </div>
       ) : isChoice && options.length ? (
-        <div className="student-exam-choice-grid" role="radiogroup" aria-label={item.title}>
+        <div className="student-exam-choice-grid" role="radiogroup" aria-label={item.prompt}>
           {options.map((option) => (
             <label key={option} className={`student-exam-choice-card ${value === option ? 'is-selected' : ''}`}>
               <input
@@ -328,7 +335,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   const examContext = useMemo(() => getStudentExamContext(resolved, examItems), [resolved, examItems])
   const isMarksDisabled = String(resolved?.marks ?? assignment?.marks ?? '').trim().toLowerCase() === 'nil'
   const isCertifiableActivity = isActivityCertifiable(resolved) || isActivityCertifiable(assignment)
-  const hasTimer = Boolean(examData.durationMinutes)
+  const hasTimer = false
   const [phase, setPhase] = useState('prestart')
   const [answers, setAnswers] = useState(() => buildInitialAnswers(sections))
   const [remainingSeconds, setRemainingSeconds] = useState((examData.durationMinutes ?? 0) * 60)
@@ -630,14 +637,21 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       ? 'Fullscreen is required for this monitored attempt.'
       : 'Keep the activity window active until submission.',
   ]
+  const activityQuestionCount = sections.questionSections.length || examItems.length
+  const activityQuestionBadge = formatQuestionCountLabel(resolved.type ?? 'Activity', activityQuestionCount)
+  const shouldShowActivityQuestionBadge = !['osce', 'ospe'].includes(String(resolved.type ?? '').trim().toLowerCase())
   const prestartBadges = [
-    { label: `${examItems.length} Questions`, tone: 'is-question', icon: FileText },
+    ...(activityQuestionCount && shouldShowActivityQuestionBadge
+      ? [{ label: activityQuestionBadge, tone: `${sessionTypeConfig.tone} is-activity-count`, icon: sessionTypeConfig.icon }]
+      : []),
     ...(sections.formSections.length
-      ? [{ label: `${sections.formSections.length} Forms`, tone: 'is-form', icon: Shapes }]
+      ? [{ label: formatQuestionCountLabel('Forms', sections.formSections.length), tone: 'is-form', icon: Shapes }]
+      : []),
+    ...(sections.scaffoldingSections.length
+      ? [{ label: formatQuestionCountLabel('Scaffolding', sections.scaffoldingSections.length), tone: 'is-scaffolding', icon: Activity }]
       : []),
     ...(isMarksDisabled ? [{ label: 'Marks Disabled', tone: 'is-critical', icon: AlertTriangle }] : []),
     ...(isCertifiableActivity ? [{ label: 'Certifiable', tone: 'is-certifiable', icon: BadgeCheck }] : []),
-    { label: examData.proctoring?.mode ?? 'Online Proctoring', tone: 'is-proctoring', icon: ShieldCheck },
     ...(hasTimer ? [{ label: `${examData.durationMinutes} min`, tone: 'is-duration', icon: Clock3 }] : []),
   ]
 
@@ -657,7 +671,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
               </span>
               <h1>{resolved.title}</h1>
               <p>Review the activity details, rules, and timing below before you begin this monitored student attempt.</p>
-              <div className="student-exam-badge-row">
+              <div className="student-exam-badge-row student-exam-summary-badges">
                 {prestartBadges.map((badge) => {
                   const BadgeIcon = badge.icon
                   return (
@@ -736,10 +750,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                     <sessionTypeConfig.icon size={12} strokeWidth={2} />
                     {resolved.type ?? 'Activity'}
                   </span>
-                  <span className="student-exam-badge is-marks">
-                    <FileText size={12} strokeWidth={2} />
-                    {examContext.questionCount} Questions
-                  </span>
                   {isCertifiableActivity ? (
                     <span className="student-exam-badge is-certifiable">
                       <BadgeCheck size={12} strokeWidth={2} />
@@ -785,10 +795,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                   <span className="student-exam-live-dot" aria-hidden="true" />
                   Live Monitoring
                 </span>
-                <span className="student-exam-status-pill">
-                  <Activity size={14} strokeWidth={2.1} />
-                  Question {currentIndex + 1} of {examItems.length}
-                </span>
                 {hasTimer ? (
                   <span className="student-exam-status-pill">
                     <Clock3 size={14} strokeWidth={2.1} />
@@ -828,7 +834,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                 onChangeQuestion={updateQuestionAnswer}
                 onChangeForm={updateFormAnswer}
                 referenceImages={currentIndex === 0 ? renderedReferenceImages : []}
-                progressLabel={`Question ${currentIndex + 1} of ${examItems.length}`}
               />
 
               <footer className="student-exam-stage-footer">

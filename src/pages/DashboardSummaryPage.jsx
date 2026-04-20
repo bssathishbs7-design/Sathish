@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  AlertTriangle,
   ArrowUpRight,
   BadgeCheck,
   Brain,
   ClipboardList,
   Clock3,
+  ChevronDown,
   FileSearch,
   Filter,
   FlaskConical,
@@ -23,11 +23,6 @@ const COGNITIVE_LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluat
 const AFFECTIVE_LEVELS = ['Receive', 'Respond', 'Value', 'Organize', 'Characterize']
 const PSYCHOMOTOR_LEVELS = ['Perception', 'Set', 'Guided Response', 'Mechanism', 'Adaptation', 'Origination']
 const AFFECTIVE_RING_COLORS = ['#158f69', '#7c5cff', '#8c7cf9', '#d946ef', '#d97706']
-const CRITICALITY_RANGE_OPTIONS = [
-  { id: 'week', label: 'Week' },
-  { id: 'month', label: 'Month' },
-  { id: 'year', label: 'Year' },
-]
 const SAMPLE_GRAPH_SERIES = {
   cognitive: [
     { label: 'Remember', value: 38 },
@@ -158,6 +153,71 @@ const buildSampleAssignedActivities = () => skillAssessmentActivities.map((activ
   evaluationStatus: activity.completedAttempts?.length ? 'Completed Evaluation' : 'Pending Evaluation',
   examData: buildSampleExamData(activity),
 }))
+
+function DashboardFilterDropdown({
+  label,
+  value,
+  placeholder,
+  options,
+  onChange,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const selectedLabel = value || placeholder
+
+  return (
+    <div
+      className={`dashboard-summary-toolbar-field dashboard-summary-filter ${isOpen ? 'is-open' : ''}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsOpen(false)
+        }
+      }}
+    >
+      <span>{label}</span>
+      <button
+        type="button"
+        className="dashboard-summary-filter-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <span>{selectedLabel}</span>
+        <ChevronDown size={16} strokeWidth={2.2} />
+      </button>
+      {isOpen ? (
+        <div className="dashboard-summary-filter-menu" role="listbox">
+          <button
+            type="button"
+            role="option"
+            aria-selected={!value}
+            className={!value ? 'is-selected' : ''}
+            onClick={() => {
+              onChange('')
+              setIsOpen(false)
+            }}
+          >
+            {placeholder}
+          </button>
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="option"
+              aria-selected={value === option}
+              className={value === option ? 'is-selected' : ''}
+              onClick={() => {
+                onChange(option)
+                setIsOpen(false)
+              }}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 const buildSampleCompletedEvaluationRows = () => {
   const students = [
@@ -340,8 +400,9 @@ function CognitiveRadarChart({ data }) {
             <circle cx={point.x} cy={point.y} r="13" className="dashboard-cognitive-radar-hotspot" />
             <circle cx={point.x} cy={point.y} r="4.8" className="dashboard-cognitive-radar-dot" />
             <g className="dashboard-radar-tooltip-card">
-              <rect x={point.x - 44} y={point.y - 48} width="88" height="34" rx="10" />
-              <text x={point.x} y={point.y - 29} textAnchor="middle">{point.label}: {point.value}%</text>
+              <rect x={point.x - 48} y={point.y - 56} width="96" height="44" rx="10" />
+              <text x={point.x} y={point.y - 38} textAnchor="middle" className="dashboard-tooltip-title">{point.label}</text>
+              <text x={point.x} y={point.y - 23} textAnchor="middle" className="dashboard-tooltip-value">{point.value}%</text>
             </g>
           </g>
         ))}
@@ -371,9 +432,9 @@ function CognitiveRadarChart({ data }) {
 }
 
 function AffectiveRingChart({ data }) {
-  const chartWidth = 430
-  const chartHeight = 250
-  const padding = { top: 26, right: 24, bottom: 42, left: 42 }
+  const chartWidth = 920
+  const chartHeight = 310
+  const padding = { top: 30, right: 92, bottom: 48, left: 64 }
   const values = data.map((item) => clampPercent(item.value))
   const maxValue = Math.max(100, ...values)
   const points = data.map((item, index) => {
@@ -422,8 +483,9 @@ function AffectiveRingChart({ data }) {
             <circle cx={point.x} cy={point.y} r="14" className="dashboard-affective-hotspot" />
             <circle cx={point.x} cy={point.y} r={point.label === peakPoint.label ? 5.5 : 4.2} className={point.label === peakPoint.label ? 'dashboard-affective-point is-peak' : 'dashboard-affective-point'} />
             <g className="dashboard-affective-tooltip-card">
-              <rect x={point.x - 48} y={point.y - 52} width="96" height="36" rx="10" />
-              <text x={point.x} y={point.y - 31} textAnchor="middle">{point.label}: {point.value}%</text>
+              <rect x={point.x - 58} y={point.y - 66} width="116" height="52" rx="12" />
+              <text x={point.x} y={point.y - 45} textAnchor="middle" className="dashboard-tooltip-title">{point.label}</text>
+              <text x={point.x} y={point.y - 27} textAnchor="middle" className="dashboard-tooltip-value">{point.value}%</text>
             </g>
           </g>
         ))}
@@ -436,7 +498,7 @@ function AffectiveRingChart({ data }) {
         ) : null}
         {points.map((point) => (
           <text key={`label-${point.label}`} x={point.x} y={chartHeight - 10} textAnchor="middle" className="dashboard-affective-axis-text">
-            {point.label.slice(0, 3)}
+            {point.label}
           </text>
         ))}
       </svg>
@@ -467,7 +529,7 @@ function PsychomotorBarChart({ data }) {
               key={item.label}
               className={`dashboard-psy-income-group dashboard-chart-tooltip-wrap ${item.label === peakItem.label ? 'is-peak' : ''}`}
               tabIndex={0}
-              style={{ '--bar': `${item.value}%` }}
+              style={{ '--bar': `${Math.max(8, item.value * 1.28)}px` }}
             >
               <i aria-hidden="true" />
               <span>{item.label}</span>
@@ -475,126 +537,6 @@ function PsychomotorBarChart({ data }) {
             </article>
           ))}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function CriticalityDonutChart({ data }) {
-  const [activeRange, setActiveRange] = useState(CRITICALITY_RANGE_OPTIONS[0].id)
-  const [isRangeOpen, setIsRangeOpen] = useState(false)
-  const [selectedSegment, setSelectedSegment] = useState('critical')
-  const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0) || 1
-  const criticalItem = data.find((item) => normalizeLower(item.label).includes('critical'))
-  const normalItem = data.find((item) => normalizeLower(item.label).includes('normal'))
-  const critical = Number(criticalItem?.value) || 0
-  const normal = Number(normalItem?.value) || Math.max(total - critical, 0)
-  const criticalPercent = clampPercent(calculatePercentage(critical, total))
-  const normalPercent = clampPercent(calculatePercentage(normal, total))
-  const radius = 72
-  const circumference = 2 * Math.PI * radius
-  const progress = (criticalPercent / 100) * circumference
-  const activeRangeLabel = CRITICALITY_RANGE_OPTIONS.find((option) => option.id === activeRange)?.label ?? 'Week'
-  const activeDetail = selectedSegment === 'normal'
-    ? { label: 'Normal', value: normal, percent: normalPercent, tone: 'normal' }
-    : { label: 'Critical', value: critical, percent: criticalPercent, tone: 'critical' }
-  const tooltipId = `criticality-tooltip-${activeRange}`
-
-  return (
-    <div className="dashboard-critical-progress-card">
-      <div className="dashboard-critical-progress-top">
-        <span>Point Progress</span>
-        <div
-          className={`dashboard-critical-range ${isRangeOpen ? 'is-open' : ''}`}
-          onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) {
-              setIsRangeOpen(false)
-            }
-          }}
-        >
-          <button
-            type="button"
-            className="dashboard-critical-range-trigger"
-            aria-expanded={isRangeOpen}
-            aria-haspopup="listbox"
-            onClick={() => setIsRangeOpen((current) => !current)}
-          >
-            {activeRangeLabel}
-          </button>
-          {isRangeOpen ? (
-            <div className="dashboard-critical-range-menu" role="listbox" aria-label="Criticality period">
-              {CRITICALITY_RANGE_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="option"
-                  aria-selected={activeRange === option.id}
-                  className={activeRange === option.id ? 'is-active' : ''}
-                  onClick={() => {
-                    setActiveRange(option.id)
-                    setIsRangeOpen(false)
-                  }}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </div>
-      <div
-        className={`dashboard-critical-progress-ring is-${activeDetail.tone}`}
-        role="button"
-        tabIndex={0}
-        aria-describedby={tooltipId}
-        aria-label={`${activeDetail.label} criticality detail: ${activeDetail.percent}% for ${activeRangeLabel.toLowerCase()}`}
-        onClick={() => setSelectedSegment((current) => (current === 'critical' ? 'normal' : 'critical'))}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setSelectedSegment((current) => (current === 'critical' ? 'normal' : 'critical'))
-          }
-        }}
-      >
-        <svg viewBox="0 0 190 190" role="img" aria-label={`Criticality progress ${criticalPercent}%`}>
-          <circle cx="95" cy="95" r={radius} className="dashboard-critical-progress-bg" />
-          <circle
-            cx="95"
-            cy="95"
-            r={radius}
-            className="dashboard-critical-progress-value"
-            strokeDasharray={`${progress} ${circumference}`}
-          />
-        </svg>
-        <div>
-          <strong>{criticalPercent}%</strong>
-          <span>Criticality</span>
-        </div>
-        <span id={tooltipId} className={`dashboard-critical-progress-tooltip is-${activeDetail.tone}`} role="tooltip">
-          <strong>{activeDetail.label}</strong>
-          <small>{Math.round(activeDetail.value)} points</small>
-          <em>{activeDetail.percent}% of {activeRangeLabel.toLowerCase()} progress</em>
-        </span>
-      </div>
-      <div className="dashboard-critical-progress-foot" aria-label="Criticality segments">
-        <button
-          type="button"
-          className={`is-critical ${selectedSegment === 'critical' ? 'is-active' : ''}`}
-          onMouseEnter={() => setSelectedSegment('critical')}
-          onFocus={() => setSelectedSegment('critical')}
-          onClick={() => setSelectedSegment('critical')}
-        >
-          {Math.round(critical)} critical
-        </button>
-        <button
-          type="button"
-          className={`is-normal ${selectedSegment === 'normal' ? 'is-active' : ''}`}
-          onMouseEnter={() => setSelectedSegment('normal')}
-          onFocus={() => setSelectedSegment('normal')}
-          onClick={() => setSelectedSegment('normal')}
-        >
-          {Math.round(normal)} normal
-        </button>
       </div>
     </div>
   )
@@ -883,7 +825,39 @@ export default function DashboardSummaryPage({
       / psychomotorSeries.length,
     )
   }, [graphSeries.psychomotor])
+  const psychomotorSummary = useMemo(() => {
+    const psychomotorSeries = graphSeries.psychomotor ?? []
+    const strongest = psychomotorSeries.reduce(
+      (best, item) => ((Number(item.value) || 0) > (Number(best?.value) || 0) ? item : best),
+      psychomotorSeries[0],
+    )
 
+    if (!strongest?.label) return 'No psychomotor trend yet'
+
+    return `${strongest.label} leads at ${clampPercent(strongest.value)}%`
+  }, [graphSeries.psychomotor])
+  const cognitiveSummary = useMemo(() => {
+    const cognitiveSeries = graphSeries.cognitive ?? []
+    const strongest = cognitiveSeries.reduce(
+      (best, item) => ((Number(item.value) || 0) > (Number(best?.value) || 0) ? item : best),
+      cognitiveSeries[0],
+    )
+
+    if (!strongest?.label) return 'No cognitive trend yet'
+
+    return `${strongest.label} is strongest at ${clampPercent(strongest.value)}%`
+  }, [graphSeries.cognitive])
+  const affectiveSummary = useMemo(() => {
+    const affectiveSeries = graphSeries.affective ?? []
+    const strongest = affectiveSeries.reduce(
+      (best, item) => ((Number(item.value) || 0) > (Number(best?.value) || 0) ? item : best),
+      affectiveSeries[0],
+    )
+
+    if (!strongest?.label) return 'No affective trend yet'
+
+    return `${strongest.label} peaks at ${clampPercent(strongest.value)}%`
+  }, [graphSeries.affective])
   const activityPerformanceRows = useMemo(() => (
     visibleActivityRecords.slice(0, 6).map((record) => {
       const rows = filteredCompletedRows.filter((row) => row.activityId === record.id)
@@ -930,10 +904,6 @@ export default function DashboardSummaryPage({
             <h1>Dashboard</h1>
             <p>Track activities, completed evaluations, domain coverage, criticality and student performance in one live view.</p>
           </div>
-          <div className="dashboard-summary-command-meta">
-            <span>{visibleActivityRecords.length} Activities</span>
-            <strong>{filteredCompletedRows.length} Records</strong>
-          </div>
         </section>
 
         <section className="vx-card dashboard-summary-toolbar dashboard-summary-toolbar-panel">
@@ -948,45 +918,37 @@ export default function DashboardSummaryPage({
           </div>
 
           <div className="dashboard-summary-toolbar-grid">
-            <label className="dashboard-summary-toolbar-field">
-              <span>Year</span>
-              <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
-                <option value="">All years</option>
-                {yearOptions.map((year) => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </label>
+            <DashboardFilterDropdown
+              label="Year"
+              value={selectedYear}
+              placeholder="All years"
+              options={yearOptions}
+              onChange={setSelectedYear}
+            />
 
-            <label className="dashboard-summary-toolbar-field">
-              <span>SGT</span>
-              <select value={selectedSgt} onChange={(event) => setSelectedSgt(event.target.value)}>
-                <option value="">All groups</option>
-                {sgtOptions.map((sgt) => (
-                  <option key={sgt} value={sgt}>{sgt}</option>
-                ))}
-              </select>
-            </label>
+            <DashboardFilterDropdown
+              label="SGT"
+              value={selectedSgt}
+              placeholder="All groups"
+              options={sgtOptions}
+              onChange={setSelectedSgt}
+            />
 
-            <label className="dashboard-summary-toolbar-field">
-              <span>Activity Type</span>
-              <select value={selectedActivityType} onChange={(event) => setSelectedActivityType(event.target.value)}>
-                <option value="">All types</option>
-                {activityTypeOptions.map((activityType) => (
-                  <option key={activityType} value={activityType}>{activityType}</option>
-                ))}
-              </select>
-            </label>
+            <DashboardFilterDropdown
+              label="Activity Type"
+              value={selectedActivityType}
+              placeholder="All types"
+              options={activityTypeOptions}
+              onChange={setSelectedActivityType}
+            />
 
-            <label className="dashboard-summary-toolbar-field">
-              <span>Activity</span>
-              <select value={selectedActivity} onChange={(event) => setSelectedActivity(event.target.value)}>
-                <option value="">All activities</option>
-                {activityOptions.map((activity) => (
-                  <option key={activity} value={activity}>{activity}</option>
-                ))}
-              </select>
-            </label>
+            <DashboardFilterDropdown
+              label="Activity"
+              value={selectedActivity}
+              placeholder="All activities"
+              options={activityOptions}
+              onChange={setSelectedActivity}
+            />
 
             <label className="dashboard-summary-toolbar-search">
               <span>Search Student</span>
@@ -1044,7 +1006,7 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Cognitive Domain</strong>
-                  <span>{domainMetrics[0].itemCount} points / {domainMetrics[0].criticalCount} critical</span>
+                  <span>{cognitiveSummary}</span>
                 </div>
               </div>
               <CognitiveRadarChart data={graphSeries.cognitive} />
@@ -1057,23 +1019,10 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Affective Domain</strong>
-                  <span>{domainMetrics[1].itemCount} points / {domainMetrics[1].criticalCount} critical</span>
+                  <span>{affectiveSummary}</span>
                 </div>
               </div>
               <AffectiveRingChart data={graphSeries.affective} />
-            </article>
-
-            <article className="dashboard-summary-domain-card is-red">
-              <div className="dashboard-summary-domain-head">
-                <span className="dashboard-summary-domain-icon" aria-hidden="true">
-                  <AlertTriangle size={16} strokeWidth={2} />
-                </span>
-                <div>
-                  <strong>Criticality Graph</strong>
-                  <span>{activityItems.length} filtered points</span>
-                </div>
-              </div>
-              <CriticalityDonutChart data={graphSeries.criticality} />
             </article>
 
             <article className="dashboard-summary-domain-card is-green">
@@ -1083,7 +1032,7 @@ export default function DashboardSummaryPage({
                 </span>
                 <div>
                   <strong>Psychomotor Domain</strong>
-                  <span>{domainMetrics[2].itemCount} points / {domainMetrics[2].criticalCount} critical</span>
+                  <span>{psychomotorSummary}</span>
                 </div>
                 <strong className="dashboard-psy-average-pill">{psychomotorAverage}% avg</strong>
               </div>

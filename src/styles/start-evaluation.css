@@ -2061,6 +2061,22 @@
   gap: 12px;
 }
 
+.start-eval-submit-criticality-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid rgba(224, 156, 66, 0.3);
+  border-radius: 12px;
+  background: rgba(255, 247, 237, 0.92);
+  color: #9a5a19;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .start-eval-submit-action-btn,
 .start-eval-submit-icon-btn {
   display: inline-flex;
@@ -2108,10 +2124,10 @@
   flex: 1;
   min-height: 36px;
   padding: 8px 10px;
-  border: 1px solid rgba(204, 221, 213, 0.96);
+  border: 1px solid rgba(203, 213, 225, 0.92);
   border-radius: 12px;
-  background: #ffffff;
-  color: #163229;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  color: #475569;
   text-align: left;
   cursor: pointer;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
@@ -2125,8 +2141,8 @@
   width: 28px;
   height: 28px;
   border-radius: 9px;
-  background: rgba(15, 131, 100, 0.08);
-  color: inherit;
+  background: rgba(148, 163, 184, 0.12);
+  color: #64748b;
 }
 
 .start-eval-submit-decision-copy {
@@ -2150,6 +2166,8 @@
 
 .start-eval-submit-decision-btn:hover {
   transform: translateY(-1px);
+  border-color: rgba(148, 163, 184, 0.72);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(241, 245, 249, 0.98));
   box-shadow: 0 8px 16px rgba(18, 42, 30, 0.06);
 }
 
@@ -2160,19 +2178,19 @@
 }
 
 .start-eval-submit-decision-item.is-completed .start-eval-submit-decision-btn {
-  border-color: rgba(128, 205, 161, 0.48);
-  background: linear-gradient(180deg, rgba(249, 254, 251, 0.98), rgba(241, 251, 245, 0.94));
-  color: #287354;
+  border-color: rgba(203, 213, 225, 0.92);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  color: #475569;
 }
 
 .start-eval-submit-decision-item.is-completed .start-eval-submit-decision-icon {
-  background: rgba(67, 167, 113, 0.12);
-  color: #2e8a5d;
+  background: rgba(148, 163, 184, 0.12);
+  color: #64748b;
 }
 
 .start-eval-submit-decision-item.is-completed .start-eval-submit-decision-btn:hover {
-  border-color: rgba(79, 179, 122, 0.58);
-  background: linear-gradient(180deg, rgba(241, 252, 246, 1), rgba(225, 246, 233, 0.98));
+  border-color: rgba(148, 163, 184, 0.72);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(241, 245, 249, 0.98));
 }
 
 .start-eval-submit-decision-item.is-completed.is-active .start-eval-submit-decision-btn {
@@ -2181,20 +2199,25 @@
   color: #195d40;
 }
 
+.start-eval-submit-decision-item.is-completed.is-active .start-eval-submit-decision-icon {
+  background: rgba(67, 167, 113, 0.16);
+  color: #2e8a5d;
+}
+
 .start-eval-submit-decision-item.is-repeat .start-eval-submit-decision-btn {
-  border-color: rgba(142, 179, 235, 0.54);
-  background: linear-gradient(180deg, rgba(249, 252, 255, 0.98), rgba(240, 246, 255, 0.94));
-  color: #3268b1;
+  border-color: rgba(203, 213, 225, 0.92);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  color: #475569;
 }
 
 .start-eval-submit-decision-item.is-repeat .start-eval-submit-decision-icon {
-  background: rgba(64, 120, 205, 0.12);
-  color: #3e78cc;
+  background: rgba(148, 163, 184, 0.12);
+  color: #64748b;
 }
 
 .start-eval-submit-decision-item.is-repeat .start-eval-submit-decision-btn:hover {
-  border-color: rgba(88, 141, 224, 0.62);
-  background: linear-gradient(180deg, rgba(242, 248, 255, 1), rgba(229, 239, 255, 0.98));
+  border-color: rgba(148, 163, 184, 0.72);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(241, 245, 249, 0.98));
 }
 
 .start-eval-submit-decision-item.is-repeat.is-active .start-eval-submit-decision-btn {
@@ -2203,26 +2226,36 @@
   color: #234f93;
 }
 
+.start-eval-submit-decision-item.is-repeat.is-active .start-eval-submit-decision-icon {
+  background: rgba(64, 120, 205, 0.16);
+  color: #3e78cc;
+}
+
 .start-eval-submit-decision-item.is-remedial .start-eval-submit-decision-btn {
-  border-color: rgba(237, 185, 120, 0.56);
-  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(255, 246, 234, 0.94));
-  color: #b06a1f;
+  border-color: rgba(203, 213, 225, 0.92);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  color: #475569;
 }
 
 .start-eval-submit-decision-item.is-remedial .start-eval-submit-decision-icon {
-  background: rgba(214, 144, 52, 0.13);
-  color: #c57922;
+  background: rgba(148, 163, 184, 0.12);
+  color: #64748b;
 }
 
 .start-eval-submit-decision-item.is-remedial .start-eval-submit-decision-btn:hover {
-  border-color: rgba(224, 156, 66, 0.66);
-  background: linear-gradient(180deg, rgba(255, 248, 239, 1), rgba(255, 238, 214, 0.98));
+  border-color: rgba(148, 163, 184, 0.72);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(241, 245, 249, 0.98));
 }
 
 .start-eval-submit-decision-item.is-remedial.is-active .start-eval-submit-decision-btn {
   border-color: rgba(209, 136, 40, 0.72);
   background: linear-gradient(180deg, rgba(255, 240, 216, 1), rgba(255, 228, 190, 0.98));
   color: #8f5212;
+}
+
+.start-eval-submit-decision-item.is-remedial.is-active .start-eval-submit-decision-icon {
+  background: rgba(214, 144, 52, 0.16);
+  color: #c57922;
 }
 
 .start-eval-submit-foot {
@@ -2386,6 +2419,12 @@
   background: rgba(78, 50, 12, 0.34);
 }
 
+.theme-dark .start-eval-submit-criticality-note {
+  border-color: rgba(242, 188, 92, 0.3);
+  background: rgba(78, 50, 12, 0.38);
+  color: #ffd493;
+}
+
 .theme-dark .start-eval-submit-breakdown-icon {
   background: rgba(95, 232, 177, 0.1);
   color: #8ee4ca;
@@ -2449,6 +2488,24 @@
   box-shadow: 0 10px 18px rgba(2, 6, 23, 0.18);
 }
 
+.theme-dark .start-eval-submit-decision-item.is-completed.is-active .start-eval-submit-decision-btn {
+  border-color: rgba(95, 232, 177, 0.3);
+  background: linear-gradient(135deg, rgba(16, 58, 46, 0.82), rgba(12, 37, 30, 0.8));
+  color: #9ff0d5;
+}
+
+.theme-dark .start-eval-submit-decision-item.is-repeat.is-active .start-eval-submit-decision-btn {
+  border-color: rgba(88, 141, 224, 0.38);
+  background: linear-gradient(135deg, rgba(20, 42, 78, 0.84), rgba(12, 20, 34, 0.8));
+  color: #a9c7ff;
+}
+
+.theme-dark .start-eval-submit-decision-item.is-remedial.is-active .start-eval-submit-decision-btn {
+  border-color: rgba(224, 156, 66, 0.42);
+  background: linear-gradient(135deg, rgba(80, 46, 12, 0.86), rgba(33, 25, 18, 0.82));
+  color: #ffd08f;
+}
+
 .theme-dark .start-eval-submit-decision-btn:hover {
   border-color: rgba(95, 232, 177, 0.24);
   background: linear-gradient(180deg, rgba(18, 38, 48, 0.9), rgba(13, 28, 39, 0.86));
@@ -2462,6 +2519,40 @@
 
 .start-eval-student-list.is-picker {
   max-height: calc(100vh - 170px);
+}
+
+.start-eval-student-picker-empty {
+  display: grid;
+  gap: 6px;
+  padding: 22px 18px;
+  border: 1px dashed #dce8e2;
+  border-radius: 18px;
+  background: #f8fbf9;
+  color: #60796d;
+  text-align: center;
+}
+
+.start-eval-student-picker-empty strong {
+  color: #17362d;
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.start-eval-student-picker-empty p {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.theme-dark .start-eval-student-picker-empty {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.42);
+  color: #9fb0ac;
+}
+
+.theme-dark .start-eval-student-picker-empty strong {
+  color: #edf7f3;
 }
 
 @media (max-width: 1080px) {

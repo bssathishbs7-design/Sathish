@@ -29,7 +29,6 @@ const domainOptionsMap = {
   affective: affectiveOptions,
   psychomotor: psychomotorOptions,
 }
-const defaultFormResponseTypes = ['Nil', 'Structure', 'Finding', 'Diagnosis', 'Significance', 'Function', 'Action', 'Nerve', 'Muscle', 'Ligament', 'Phase', 'Lesion']
 const scaffoldStarterTypes = ['MCQ', 'Descriptive', 'True or False', 'Fill in the blanks']
 const ASSIGN_YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year Part 1', 'Third Year Part 2', 'Final Year']
 const ASSIGN_SGT_OPTIONS = {
@@ -51,7 +50,6 @@ const scaffoldingTypeOptions = [
 ]
 const OSPE_SCAFFOLD_QUESTION_PLACEHOLDER = 'Enter your question here......'
 const tabs = ['Checklist', 'Form', 'Scaffolding']
-const addResponseTypeOptionValue = '__add_response_type__'
 const formTypeOrder = ['single', 'double', 'triple']
 const formTemplates = {
   single: {
@@ -183,7 +181,7 @@ const createChecklistItem = (index) => ({
   isEnabled: true,
 })
 
-const createFormResponse = (label, expectedResponse = 'Nil', keySeed = 'response') => ({
+const createFormResponse = (label, expectedResponse = '', keySeed = 'response') => ({
   key: `${keySeed}-${Math.random().toString(36).slice(2, 7)}`,
   label,
   answerText: '',
@@ -195,7 +193,7 @@ const createFormItem = (index) => {
   const fallbackType = formTypeOrder[index % formTypeOrder.length]
   const formType = blueprint?.formType ?? fallbackType
   const prompt = blueprint?.prompt ?? formTemplates[formType].prompt
-  const responses = blueprint?.responses ?? formTemplates[formType].responses.map((label) => ({ label, expectedResponse: 'Nil' }))
+  const responses = blueprint?.responses ?? formTemplates[formType].responses.map((label) => ({ label, expectedResponse: '' }))
 
   return ({
   formType,
@@ -203,7 +201,7 @@ const createFormItem = (index) => {
   questionText: prompt,
   responses: responses.map((response, responseIndex) => createFormResponse(
     response.label,
-    response.expectedResponse ?? 'Nil',
+    '',
     `${formType}-${responseIndex}`,
   )),
   marks: '1',
@@ -269,7 +267,7 @@ function getVisibleFormResponses(item) {
         key: `${item.id}-fallback-${index}`,
         label,
         answerText: '',
-        expectedResponse: 'Nil',
+        expectedResponse: '',
       }))
 }
 
@@ -280,24 +278,8 @@ function getExpectedResponseFieldType(expectedResponse) {
   return 'text'
 }
 
-function getExpectedResponsePlaceholder(response) {
-  const labelPrefix = response.label === 'Response' ? '' : `${response.label} `
-  if (response.expectedResponse === 'Significance') {
-    return `${labelPrefix}write the significance`
-  }
-  if (response.expectedResponse === 'Function') {
-    return `${labelPrefix}write the function or role`
-  }
-  if (response.expectedResponse === 'Diagnosis') {
-    return `${labelPrefix}enter the diagnosis`
-  }
-  if (response.expectedResponse === 'Finding') {
-    return `${labelPrefix}enter the finding`
-  }
-  if (response.expectedResponse === 'Structure') {
-    return `${labelPrefix}enter the structure`
-  }
-  return `${labelPrefix}write the answer`
+function getExpectedResponsePlaceholder(responseIndex, responseCount) {
+  return responseCount > 1 ? `Enter Response ${responseIndex + 1}` : 'Enter Response'
 }
 
 function InlineToggle({ checked, onChange, label }) {
@@ -405,11 +387,9 @@ function FormCard({
   index,
   isEditing,
   marksEnabled,
-  unitOptions,
   onActivate,
   onUpdate,
   onUpdateResponse,
-  onAddUnit,
   onAddResponse,
   onDeleteResponse,
   onDelete,
@@ -452,7 +432,6 @@ function FormCard({
               <div className="ospe-form-response-list">
                 {responses.map((response, responseIndex) => (
                   <div key={response.key} className="ospe-form-response-row">
-                    <span className="ospe-form-response-label">{response.label}</span>
                     <label className="forms-field ospe-form-response-answer">
                       <span>{responseIndex === 0 ? 'Answer' : ''}</span>
                       {getExpectedResponseFieldType(response.expectedResponse) === 'textarea' ? (
@@ -460,33 +439,23 @@ function FormCard({
                           rows={2}
                           value={response.answerText}
                           onChange={(event) => onUpdateResponse(item.id, response.key, 'answerText', event.target.value)}
-                          placeholder={getExpectedResponsePlaceholder(response)}
+                          placeholder={getExpectedResponsePlaceholder(responseIndex, responses.length)}
                         />
                       ) : (
                         <input
                           value={response.answerText}
                           onChange={(event) => onUpdateResponse(item.id, response.key, 'answerText', event.target.value)}
-                          placeholder={getExpectedResponsePlaceholder(response)}
+                          placeholder={getExpectedResponsePlaceholder(responseIndex, responses.length)}
                         />
                       )}
                     </label>
                     <label className="forms-field ospe-form-response-unit">
                       <span>{responseIndex === 0 ? 'Optional Input' : ''}</span>
-                      <div className="forms-select-wrap">
-                        <select
-                          value={response.expectedResponse}
-                          onChange={(event) => {
-                            if (event.target.value === addResponseTypeOptionValue) {
-                              onAddUnit(item.id, response.key)
-                              return
-                            }
-                            onUpdateResponse(item.id, response.key, 'expectedResponse', event.target.value)
-                          }}
-                        >
-                          {unitOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                          <option value={addResponseTypeOptionValue}>+ Add Input response</option>
-                        </select>
-                      </div>
+                      <input
+                        value={response.expectedResponse}
+                        onChange={(event) => onUpdateResponse(item.id, response.key, 'expectedResponse', event.target.value)}
+                        placeholder="Enter Your Input"
+                      />
                     </label>
                     {responses.length > 1 ? (
                       <button
@@ -697,7 +666,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const [hasCreatedChecklist, setHasCreatedChecklist] = useState(true)
   const [hasCreatedForm, setHasCreatedForm] = useState(() => generatedModules.form)
   const [hasCreatedScaffolding, setHasCreatedScaffolding] = useState(() => generatedModules.scaffolding)
-  const [formUnitOptions, setFormUnitOptions] = useState(defaultFormResponseTypes)
   const [isFormTooltipOpen, setIsFormTooltipOpen] = useState(false)
   const [formGenerationCount, setFormGenerationCount] = useState(7)
   const [isScaffoldingTooltipOpen, setIsScaffoldingTooltipOpen] = useState(false)
@@ -717,7 +685,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const formTotalMarks = useMemo(() => sumItemMarks(formItems), [formItems])
   const scaffoldingTotalMarks = useMemo(() => sumItemMarks(scaffoldItems), [scaffoldItems])
   const overallTotalMarks = checklistTotalMarks + formTotalMarks + scaffoldingTotalMarks
-  const formValueOptions = formUnitOptions
   const checklistReady = checklistItems.some((item) => item.text.trim())
   const formReady = !formItems.length || formItems.some((item) => item.questionText.trim() || getVisibleFormResponses(item).some((response) => response.answerText.trim()))
   const canSaveActivity = checklistReady && formReady
@@ -760,7 +727,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     setHasCreatedChecklist(true)
     setHasCreatedForm(generatedModules.form)
     setHasCreatedScaffolding(generatedModules.scaffolding)
-    setFormUnitOptions(defaultFormResponseTypes)
     setActiveEditorId('')
     setActiveTab('Checklist')
     setMarksEnabled(activity?.marks !== 'Nil')
@@ -1016,7 +982,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const nextLabel = `Q${responses.length + 1}`
     return {
       ...item,
-      responses: [...responses, createFormResponse(nextLabel, 'Nil', `${id}-${responses.length}`)],
+      responses: [...responses, createFormResponse(nextLabel, '', `${id}-${responses.length}`)],
     }
   }))
   const deleteFormResponse = (id, responseKey) => setFormItems((current) => current.map((item) => {
@@ -1033,13 +999,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
         })),
     }
   }))
-  const addFormUnitOption = (formId, responseKey) => {
-    const nextUnit = window.prompt('Enter a new expected response')
-    const normalizedUnit = nextUnit?.trim()
-    if (!normalizedUnit) return
-    setFormUnitOptions((current) => (current.includes(normalizedUnit) ? current : [...current, normalizedUnit]))
-    updateFormResponse(formId, responseKey, 'expectedResponse', normalizedUnit)
-  }
   const updateScaffold = (id, field, value) => setScaffoldItems((current) => current.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
   const addChecklist = () => { const next = createChecklistItem(checklistItems.length); setHasCreatedChecklist(true); setChecklistItems((current) => [...current, next]); setActiveEditorId(next.id) }
   const addFormQuestion = (formType = 'single') => {
@@ -1049,7 +1008,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       questionText: getFormTypeMeta(formType).prompt,
       responses: getFormTypeMeta(formType).responses.map((label, responseIndex) => createFormResponse(
         label,
-        'Nil',
+        '',
         `${formType}-${formItems.length}-${responseIndex}`,
       )),
     }
@@ -1304,7 +1263,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
               <div className="ospe-section-card ospe-section-card--embedded">
                 <div className="ospe-section-head"><div><h3>Generated Form</h3><p>Generated form items are ready to review, edit, and extend as needed.</p></div><MetaPill tone={hasMarks ? 'success' : 'default'}>{hasMarks ? `Total Marks: ${formTotalMarks}` : 'Marks Disabled'}</MetaPill></div>
               </div>
-              <div className="ospe-stage-list">{formItems.map((item, index) => <FormCard key={item.id} item={item} index={index} isEditing={activeEditorId === item.id} marksEnabled={hasMarks} unitOptions={formValueOptions} onActivate={setActiveEditorId} onUpdate={updateForm} onUpdateResponse={updateFormResponse} onAddUnit={addFormUnitOption} onAddResponse={addFormResponse} onDeleteResponse={deleteFormResponse} onDelete={deleteForm} />)}</div>
+              <div className="ospe-stage-list">{formItems.map((item, index) => <FormCard key={item.id} item={item} index={index} isEditing={activeEditorId === item.id} marksEnabled={hasMarks} onActivate={setActiveEditorId} onUpdate={updateForm} onUpdateResponse={updateFormResponse} onAddResponse={addFormResponse} onDeleteResponse={deleteFormResponse} onDelete={deleteForm} />)}</div>
               <div className="ospe-section-actions">
                 <button type="button" className="ghost ospe-section-action-btn" onClick={() => addFormQuestion('single')}><Plus size={16} strokeWidth={2} /><span>Add Form</span></button>
               </div>
@@ -1466,6 +1425,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                             onChange={(event) => updateAssignThreshold(row.id, 'from', event.target.value)}
                             placeholder="From"
                           />
+                          <span className="ospe-threshold-separator" aria-hidden="true">-</span>
                           <input
                             className="ospe-threshold-to"
                             type="text"

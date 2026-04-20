@@ -32,6 +32,7 @@ const CHECKLIST_FALLBACK_PROMPTS = [
   'Communicates findings clearly and maintains professional behaviour.',
 ]
 
+const isGeneratedQuestionLabel = (value) => /^Q\d+$/i.test(String(value ?? '').trim())
 
 const formatDate = (value) => (value ? String(value).split(',')[0].trim() : 'Not set')
 const normalizeValue = (value, fallback = 'Not Applicable') => value ?? fallback
@@ -287,6 +288,19 @@ const getChecklistItemStatus = (decisionState, marksValue) => {
   return 'Pending'
 }
 
+const getNormalizedResultStatus = (value = '') => String(value ?? '').trim().toLowerCase()
+const getStudentResultStatus = (student) => getNormalizedResultStatus(
+  student?.evaluationDecision
+  ?? student?.evaluationResult?.decisionTitle
+  ?? student?.evaluationResult?.resultStatus
+  ?? '',
+)
+const hasStudentEvaluationResult = (student) => Boolean(student?.evaluationResult || student?.evaluationStatus === 'Completed')
+const isReevaluationResult = (value = '') => {
+  const normalized = getNormalizedResultStatus(value)
+  return normalized === 'repeat' || normalized === 'remedial'
+}
+
 const getStudentEvaluationBadge = (student) => {
   if (!student) {
     return { label: 'Pending', tone: 'is-pending' }
@@ -294,6 +308,16 @@ const getStudentEvaluationBadge = (student) => {
 
   if (student.submissionStatus !== 'Submitted') {
     return { label: 'Not Submitted', tone: 'is-pending' }
+  }
+
+  const normalizedDecision = getStudentResultStatus(student)
+
+  if (normalizedDecision === 'repeat') {
+    return { label: 'Repeat', tone: 'is-repeat' }
+  }
+
+  if (normalizedDecision === 'remedial') {
+    return { label: 'Remedial', tone: 'is-remedial' }
   }
 
   if (student.evaluationStatus === 'Completed') {
@@ -821,6 +845,17 @@ function StudentResponsePanel({
           sectionLabel: group.label,
           isCritical: Boolean(item.isCritical),
           isCompleted,
+          decisionState: item.type === 'checklist'
+            ? (checklistDecisions[item.id] ?? '')
+            : item.type === 'form'
+              ? (formDecisions[item.id] ?? '')
+              : item.type === 'scaffolding'
+                ? (scaffoldingDecisions[item.id] ?? '')
+                : item.type === 'image'
+                  ? (imageDecisions[item.id] ?? '')
+                  : item.type === 'question'
+                    ? (manualQuestionDecisions[item.id] ?? '')
+                    : '',
           obtainedMarks,
           totalMarks: Number(item.marks) || 0,
         }
@@ -1144,7 +1179,7 @@ function StudentResponsePanel({
                 <div className="start-eval-form-response-list">
                   {item.answers.map((response) => (
                     <div key={response.label} className="start-eval-form-response">
-                      <span>{response.label}</span>
+                      {isGeneratedQuestionLabel(response.label) ? null : <span>{response.label}</span>}
                       <strong>{response.value}</strong>
                     </div>
                   ))}
@@ -1531,35 +1566,89 @@ export default function StartEvaluationPage({
     [evaluationRecord],
   )
 
-  const roster = useMemo(() => (
-    baseRoster.map((student) => {
-      const submittedEvaluation = submittedEvaluations[student.id]
+  const activityCompletedRows = useMemo(() => (
+    completedEvaluationRows.filter((row) => (
+      row.activityId === evaluationRecord?.id && row.rowStatus === 'Completed'
+    ))
+  ), [completedEvaluationRows, evaluationRecord?.id])
+  const latestCompletedRowByStudent = useMemo(() => {
+    const latestRows = new Map()
 
-      if (!submittedEvaluation) return student
+    activityCompletedRows.forEach((row) => {
+      const studentId = row.studentId
+      if (!studentId) return
 
-      return {
-        ...student,
-        evaluationStatus: 'Completed',
-        evaluationDecision: submittedEvaluation.decisionTitle,
-        evaluationResult: submittedEvaluation,
+      const current = latestRows.get(studentId)
+      const rowAttempt = Number(row.attemptNumber) || 0
+      const currentAttempt = Number(current?.attemptNumber) || 0
+      const rowTime = Date.parse(row.submittedAt ?? '') || 0
+      const currentTime = Date.parse(current?.submittedAt ?? '') || 0
+
+      if (!current || rowAttempt > currentAttempt || (rowAttempt === currentAttempt && rowTime >= currentTime)) {
+        latestRows.set(studentId, row)
       }
     })
-  ), [baseRoster, submittedEvaluations])
+
+    return latestRows
+  }, [activityCompletedRows])
+  const hasCompletedEvaluationHistory = activityCompletedRows.length > 0
+
+  const roster = useMemo(() => (
+    baseRoster.map((student) => {
+      const latestCompletedRow = latestCompletedRowByStudent.get(student.id)
+      const submittedEvaluation = submittedEvaluations[student.id]
+
+      if (submittedEvaluation) {
+        return {
+          ...student,
+          evaluationStatus: 'Completed',
+          evaluationDecision: submittedEvaluation.decisionTitle,
+          evaluationResult: submittedEvaluation,
+        }
+      }
+
+      if (latestCompletedRow) {
+        return {
+          ...student,
+          evaluationStatus: 'Completed',
+          evaluationDecision: latestCompletedRow.resultStatus ?? latestCompletedRow.decisionTitle ?? '',
+          evaluationResult: latestCompletedRow,
+        }
+      }
+
+      return student
+    })
+  ), [baseRoster, latestCompletedRowByStudent, submittedEvaluations])
 
   const filteredStudents = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
+    const submittedRoster = roster.filter((student) => student.submissionStatus === 'Submitted')
+    const eligibleRoster = hasCompletedEvaluationHistory
+      ? submittedRoster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student)))
+      : submittedRoster
 
-    return roster.filter((student) => (
-      (studentFilter === 'all'
-        || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')
-        || (studentFilter === 'not-submitted' && student.evaluationStatus !== 'Completed'))
+    return eligibleRoster.filter((student) => (
+      ((hasCompletedEvaluationHistory
+        ? studentFilter === 'all' || getStudentResultStatus(student) === studentFilter
+        : studentFilter === 'all'
+          || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')))
       && (
         !needle
         || student.name.toLowerCase().includes(needle)
         || student.registerId.toLowerCase().includes(needle)
       )
     ))
-  }, [roster, studentFilter, studentSearch])
+  }, [hasCompletedEvaluationHistory, roster, studentFilter, studentSearch])
+
+  useEffect(() => {
+    const allowedFilters = hasCompletedEvaluationHistory
+      ? ['all', 'repeat', 'remedial']
+      : ['all', 'submitted']
+
+    if (!allowedFilters.includes(studentFilter)) {
+      setStudentFilter('all')
+    }
+  }, [hasCompletedEvaluationHistory, studentFilter])
 
   useEffect(() => {
     if (!filteredStudents.length) {
@@ -1586,13 +1675,20 @@ export default function StartEvaluationPage({
     : null
   const selectedStudentBadge = getStudentEvaluationBadge(selectedStudent)
   const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
-  const activityCompletedRows = completedEvaluationRows.filter((row) => (
-    row.activityId === evaluationRecord?.id && row.rowStatus === 'Completed'
-  ))
   const submittedCount = roster.filter((student) => student.submissionStatus === 'Submitted').length
   const notSubmittedCount = roster.filter((student) => student.submissionStatus !== 'Submitted').length
   const completedCount = activityCompletedRows.length
   const pendingCount = roster.filter((student) => student.evaluationStatus !== 'Completed').length
+  const repeatCount = roster.filter((student) => getStudentResultStatus(student) === 'repeat').length
+  const remedialCount = roster.filter((student) => getStudentResultStatus(student) === 'remedial').length
+  const evaluationStatusCount = roster.filter((student) => {
+    const status = getStudentResultStatus(student)
+    return student.evaluationStatus === 'Completed'
+      || status === 'completed'
+      || status === 'repeat'
+      || status === 'remedial'
+  }).length
+  const eligibleEvaluationCount = roster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student))).length
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
 
@@ -1663,12 +1759,24 @@ export default function StartEvaluationPage({
   const isReadyToSubmit = Boolean(selectedStudent?.id)
     && selectedStudent?.submissionStatus === 'Submitted'
     && evaluationState.isReadyToSubmit
-  const selectedDecision = decisionOptions.find((option) => option.id === selectedDecisionId) ?? decisionOptions[0] ?? null
-  const studentFilterOptions = [
-    { id: 'all', label: 'All', count: roster.length },
-    { id: 'submitted', label: 'Submitted', count: submittedCount },
-    { id: 'not-submitted', label: 'Evaluation Not Submit', count: pendingCount },
-  ]
+  const selectedDecision = decisionOptions.find((option) => option.id === selectedDecisionId) ?? null
+  const hasCriticalityFailure = (evaluationState.itemSummaries ?? []).some((item) => (
+    item.isCritical
+    && (item.decisionState === 'wrong' || Number(item.obtainedMarks) <= 0)
+  ))
+  const criticalityRecommendationMessage = hasCriticalityFailure
+    ? 'Criticality not performed well. Repeat is recommended.'
+    : ''
+  const studentFilterOptions = hasCompletedEvaluationHistory
+    ? [
+        { id: 'all', label: 'All', count: eligibleEvaluationCount },
+        { id: 'repeat', label: 'Repeat', count: repeatCount },
+        { id: 'remedial', label: 'Remedial', count: remedialCount },
+      ]
+    : [
+        { id: 'all', label: 'All', count: submittedCount },
+        { id: 'submitted', label: 'Submitted', count: submittedCount },
+      ]
 
   const handleSelectStudent = (studentId) => {
     setSelectedStudentId(studentId)
@@ -1733,7 +1841,7 @@ export default function StartEvaluationPage({
       return nextDrafts
     })
     setIsSubmitPopupOpen(false)
-    setSelectedDecisionId(decisionToSubmit.id)
+    setSelectedDecisionId('')
     onAlert?.({
       tone: 'success',
       message: hasNextStudent
@@ -1858,7 +1966,7 @@ export default function StartEvaluationPage({
           <div className="start-eval-summary-grid">
             <article className="start-eval-summary-tile start-eval-summary-tile-secondary">
               <span><Users size={13} strokeWidth={2} /> Students</span>
-              <strong>{evaluationRecord?.studentCount ?? roster.length}</strong>
+              <strong>{submittedCount}</strong>
             </article>
             <article className="start-eval-summary-tile start-eval-summary-tile-secondary">
               <span><CheckCircle2 size={13} strokeWidth={2} /> Activity Submitted</span>
@@ -1866,7 +1974,7 @@ export default function StartEvaluationPage({
             </article>
             <article className="start-eval-summary-tile start-eval-summary-tile-secondary start-eval-summary-tile-saved">
               <span><FileText size={13} strokeWidth={2} /> Activity Not Submitted</span>
-              <strong>{notSubmittedCount}</strong>
+              <strong>0</strong>
             </article>
             <button
               type="button"
@@ -1875,7 +1983,7 @@ export default function StartEvaluationPage({
             >
               <span><ClipboardCheck size={13} strokeWidth={2} /> Evaluation Status</span>
               <div className="start-eval-summary-action-body">
-                <strong>{completedCount}</strong>
+                <strong>{evaluationStatusCount}</strong>
                 <small>
                   View evaluations status
                   <ChevronRight size={14} strokeWidth={2} />
@@ -1995,7 +2103,10 @@ export default function StartEvaluationPage({
                   <button
                     type="button"
                     className="tool-btn green start-eval-submit-btn"
-                    onClick={() => setIsSubmitPopupOpen(true)}
+                    onClick={() => {
+                      setSelectedDecisionId(hasCriticalityFailure ? 'decision-repeat' : '')
+                      setIsSubmitPopupOpen(true)
+                    }}
                     disabled={!isReadyToSubmit || isMarksDisabled}
                   >
                     Submit
@@ -2052,7 +2163,7 @@ export default function StartEvaluationPage({
               </div>
 
               <div className="start-eval-student-list is-picker">
-                {filteredStudents.map((student) => {
+                {filteredStudents.length ? filteredStudents.map((student) => {
                   const studentBadge = getStudentEvaluationBadge(student)
 
                   return (
@@ -2076,7 +2187,16 @@ export default function StartEvaluationPage({
                       </div>
                     </button>
                   )
-                })}
+                }) : (
+                  <div className="start-eval-student-picker-empty">
+                    <strong>No students to evaluate</strong>
+                    <p>
+                      {hasCompletedEvaluationHistory
+                        ? 'Only Repeat and Remedial students appear here. Completed students are hidden.'
+                        : 'No students match the current search or filter.'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2179,7 +2299,12 @@ export default function StartEvaluationPage({
                     <p>Select the final result for this student.</p>
                   </div>
                 </div>
-
+                {criticalityRecommendationMessage ? (
+                  <div className="start-eval-submit-criticality-note">
+                    <AlertTriangle size={14} strokeWidth={2} />
+                    <span>{criticalityRecommendationMessage}</span>
+                  </div>
+                ) : null}
                 <div className="start-eval-submit-decision-list">
                   {decisionOptions.map((option) => {
                     const decisionMeta = getDecisionOptionMeta(option.id)
@@ -2192,7 +2317,6 @@ export default function StartEvaluationPage({
                           className="start-eval-submit-decision-btn"
                           onClick={() => {
                             setSelectedDecisionId(option.id)
-                            handleSubmitEvaluation(option)
                           }}
                         >
                           <span className="start-eval-submit-decision-icon" aria-hidden="true">
@@ -2211,6 +2335,16 @@ export default function StartEvaluationPage({
                   <button type="button" className="ghost start-eval-nav-btn" onClick={() => setIsSubmitPopupOpen(false)}>
                     Cancel
                   </button>
+                  {selectedDecisionId ? (
+                    <button
+                      type="button"
+                      className="tool-btn green start-eval-submit-btn"
+                      onClick={() => handleSubmitEvaluation()}
+                      disabled={!selectedDecision}
+                    >
+                      Confirm Submit
+                    </button>
+                  ) : null}
                 </div>
             </div>
           </div>,

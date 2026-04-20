@@ -1961,6 +1961,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                           onChange={(event) => updateAssignThreshold(row.id, 'from', event.target.value)}
                           placeholder="From"
                         />
+                        <span className="image-activity-threshold-separator" aria-hidden="true">-</span>
                         <input
                           className="image-activity-threshold-to"
                           type="text"

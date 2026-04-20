@@ -1915,8 +1915,9 @@
 
 .image-activity-threshold-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) 88px 88px 88px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1.55fr) 88px 14px 88px 88px;
+  column-gap: 6px;
+  row-gap: 8px;
   align-items: start;
   margin-top: 0;
 }
@@ -1929,6 +1930,16 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.image-activity-threshold-separator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  color: #557366;
+  font-size: 1rem;
+  font-weight: 800;
 }
 
 .image-activity-threshold-add-placeholder {
@@ -5383,7 +5394,7 @@
   }
 
   .image-activity-threshold-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);
   }
 
   .image-activity-threshold-label {
@@ -5410,12 +5421,12 @@
 
 @media (max-width: 560px) {
   .image-activity-threshold-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);
   }
 
   .image-activity-threshold-label,
   .image-activity-threshold-actions {
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 }
 
