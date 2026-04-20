@@ -3,10 +3,8 @@ import {
   BadgeCheck,
   CheckCircle2,
   ClipboardCheck,
-  FileCheck2,
   RotateCcw,
   Search,
-  ShieldCheck,
   UserRoundCheck,
 } from 'lucide-react'
 import '../styles/review-approve.css'
@@ -64,11 +62,11 @@ const formatMarks = (obtained, total) => {
   return `${safeObtained} / ${safeTotal || 'Nil'}`
 }
 
-export default function ReviewApprovePage({ completedEvaluationRows = [], onAlert }) {
+export default function ReviewApprovePage({ approvalQueueRows = [], completedEvaluationRows = [], onAlert }) {
   const [search, setSearch] = useState('')
   const [approvedRows, setApprovedRows] = useState({})
 
-  const sourceRows = completedEvaluationRows.length ? completedEvaluationRows : sampleReviewRows
+  const sourceRows = approvalQueueRows.length ? approvalQueueRows : completedEvaluationRows.length ? completedEvaluationRows : sampleReviewRows
   const reviewRows = useMemo(() => {
     const needle = search.trim().toLowerCase()
 
@@ -80,6 +78,9 @@ export default function ReviewApprovePage({ completedEvaluationRows = [], onAler
         row.activityType,
         row.studentName,
         row.registerId,
+        row.facultyName,
+        row.employeeId,
+        row.designation,
         row.decisionTitle,
         row.resultStatus,
         row.thresholdLabel,
@@ -108,21 +109,6 @@ export default function ReviewApprovePage({ completedEvaluationRows = [], onAler
   return (
     <section className="vx-content review-approve-page">
       <div className="review-approve-shell">
-        <section className="review-approve-hero">
-          <div className="review-approve-copy">
-            <span className="review-approve-kicker">
-              <FileCheck2 size={14} strokeWidth={2.2} />
-              Review and Approve
-            </span>
-            <h1>Evaluation Approval Queue</h1>
-            <p>Review completed evaluation outcomes, confirm decisions, and return records that need another look.</p>
-          </div>
-          <div className="review-approve-search">
-            <Search size={16} strokeWidth={2} />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search activity, student, result" />
-          </div>
-        </section>
-
         <section className="review-approve-metrics">
           {metrics.map((item) => (
             <article key={item.label} className={`review-approve-metric ${item.tone}`}>
@@ -138,43 +124,48 @@ export default function ReviewApprovePage({ completedEvaluationRows = [], onAler
               <strong>Approval List</strong>
               <p>{reviewRows.length} record{reviewRows.length === 1 ? '' : 's'} ready for review.</p>
             </div>
-            <span className="review-approve-count-pill">
-              <ShieldCheck size={14} strokeWidth={2} />
-              Quality Check
-            </span>
+            <div className="review-approve-table-tools">
+              <label className="review-approve-search">
+                <Search size={16} strokeWidth={2} />
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search activity, student, result" />
+              </label>
+            </div>
           </div>
 
           <div className="review-approve-list">
             {reviewRows.length ? reviewRows.map((row) => {
               const rowStatus = approvedRows[row.id] ?? 'pending'
-              const decision = row.decisionTitle ?? row.resultStatus ?? 'Pending'
+      const isApprovalCard = Boolean(row.facultyName || row.employeeId || row.designation)
+      const decision = isApprovalCard ? 'Pending Approval' : row.decisionTitle ?? row.resultStatus ?? 'Pending'
+      const identityName = isApprovalCard ? row.senderName ?? 'Sender' : row.studentName ?? 'Student'
+      const identityId = isApprovalCard ? row.senderId ?? 'Sender ID not set' : row.registerId ?? 'Register ID not set'
 
-              return (
-                <article key={row.id} className={`review-approve-row ${rowStatus !== 'pending' ? `is-${rowStatus}` : ''}`}>
-                  <div className="review-approve-student">
-                    <span className="review-approve-avatar" aria-hidden="true">
-                      {(row.studentName ?? 'ST').slice(0, 2).toUpperCase()}
-                    </span>
-                    <div>
-                      <strong>{row.studentName ?? 'Student'}</strong>
-                      <p>{row.registerId ?? 'Register ID not set'}</p>
-                    </div>
-                  </div>
+      return (
+        <article key={row.id} className={`review-approve-row ${rowStatus !== 'pending' ? `is-${rowStatus}` : ''}`}>
+          <div className="review-approve-student">
+            <span className="review-approve-avatar" aria-hidden="true">
+              {identityName.slice(0, 2).toUpperCase()}
+            </span>
+            <div>
+              <strong>{identityName}</strong>
+              <p>{identityId}</p>
+            </div>
+          </div>
 
-                  <div className="review-approve-activity">
-                    <strong>{row.activityName ?? 'Untitled Activity'}</strong>
-                    <p>{row.activityType ?? 'Activity'}</p>
-                  </div>
+          <div className="review-approve-activity">
+            <strong>{row.activityName ?? 'Untitled Activity'}</strong>
+            <p>{isApprovalCard ? `${row.activityType ?? 'Activity'} • ${row.source ?? 'Approval'}` : row.activityType ?? 'Activity'}</p>
+          </div>
 
-                  <div className="review-approve-result">
-                    <span className={`review-approve-result-pill ${getDecisionTone(decision)}`}>{decision}</span>
-                    <small>{row.thresholdLabel ?? 'Threshold not set'}</small>
-                  </div>
+          <div className="review-approve-result">
+            <span className={`review-approve-result-pill ${getDecisionTone(decision)}`}>{decision}</span>
+            <small>{isApprovalCard ? row.designation : row.thresholdLabel ?? 'Threshold not set'}</small>
+          </div>
 
-                  <div className="review-approve-score">
-                    <span>Score</span>
-                    <strong>{formatMarks(row.totalObtainedMarks, row.totalMarks)}</strong>
-                  </div>
+          <div className="review-approve-score">
+            <span>{isApprovalCard ? 'Evaluated' : 'Score'}</span>
+            <strong>{isApprovalCard ? `${row.evaluatedCount ?? 0} / ${row.totalStudents ?? 0}` : formatMarks(row.totalObtainedMarks, row.totalMarks)}</strong>
+          </div>
 
                   <div className="review-approve-actions">
                     <button type="button" className="ghost review-approve-return-btn" onClick={() => setReviewStatus(row, 'returned')}>

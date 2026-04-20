@@ -7,30 +7,12 @@
   gap: 14px;
 }
 
-.review-approve-hero,
 .review-approve-table-card,
 .review-approve-metric {
   border: 1px solid #e5ede9;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 8px 24px rgba(18, 42, 30, 0.04);
-}
-
-.review-approve-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
-  gap: 18px;
-  align-items: end;
-  padding: 20px;
-  background:
-    radial-gradient(circle at top right, rgba(15, 131, 100, 0.12), transparent 25%),
-    linear-gradient(135deg, #ffffff 0%, #f5fbf8 60%, #f8fbff 100%);
-}
-
-.review-approve-copy {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
 }
 
 .review-approve-kicker,
@@ -51,14 +33,6 @@
   text-transform: uppercase;
 }
 
-.review-approve-copy h1 {
-  margin: 0;
-  color: #102a21;
-  font-size: clamp(1.65rem, 2.25vw, 2.45rem);
-  line-height: 1;
-}
-
-.review-approve-copy p,
 .review-approve-table-head p,
 .review-approve-activity p,
 .review-approve-student p,
@@ -137,6 +111,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.review-approve-table-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .review-approve-table-head strong {
@@ -271,7 +253,6 @@
   text-align: center;
 }
 
-.theme-dark .review-approve-hero,
 .theme-dark .review-approve-table-card,
 .theme-dark .review-approve-metric,
 .theme-dark .review-approve-row {
@@ -279,7 +260,6 @@
   background: rgba(12, 20, 34, 0.96);
 }
 
-.theme-dark .review-approve-copy h1,
 .theme-dark .review-approve-table-head strong,
 .theme-dark .review-approve-student strong,
 .theme-dark .review-approve-activity strong,
@@ -288,7 +268,6 @@
   color: #e6efeb;
 }
 
-.theme-dark .review-approve-copy p,
 .theme-dark .review-approve-table-head p,
 .theme-dark .review-approve-activity p,
 .theme-dark .review-approve-student p,
@@ -319,7 +298,6 @@
 }
 
 @media (max-width: 760px) {
-  .review-approve-hero,
   .review-approve-metrics,
   .review-approve-row {
     grid-template-columns: 1fr;
@@ -328,5 +306,10 @@
   .review-approve-table-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .review-approve-table-tools,
+  .review-approve-search {
+    width: 100%;
   }
 }

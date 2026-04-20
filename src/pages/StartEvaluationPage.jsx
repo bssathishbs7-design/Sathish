@@ -21,6 +21,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import SendApprovalModal from '../components/SendApprovalModal'
 import '../styles/evaluation.css'
 import '../styles/start-evaluation.css'
 
@@ -1533,6 +1534,7 @@ export default function StartEvaluationPage({
   onOpenCompletedEvaluation,
   onOpenExamLog,
   onSaveCompletedEvaluation,
+  onSendToApproval,
   onAlert,
 }) {
   const [studentSearch, setStudentSearch] = useState('')
@@ -1548,6 +1550,7 @@ export default function StartEvaluationPage({
     completedSectionCount: 0,
   })
   const [isSubmitPopupOpen, setIsSubmitPopupOpen] = useState(false)
+  const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false)
   const [decisionOptions, setDecisionOptions] = useState(() => buildDefaultDecisionOptions())
   const [selectedDecisionId, setSelectedDecisionId] = useState('')
   const [submittedEvaluations, setSubmittedEvaluations] = useState({})
@@ -1688,6 +1691,7 @@ export default function StartEvaluationPage({
       || status === 'repeat'
       || status === 'remedial'
   }).length
+  const canSendToApproval = submittedCount > 0 && evaluationStatusCount >= submittedCount
   const eligibleEvaluationCount = roster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student))).length
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
@@ -1785,6 +1789,25 @@ export default function StartEvaluationPage({
 
   const handleOpenCompletedEvaluation = () => {
     onOpenCompletedEvaluation?.(evaluationRecord)
+  }
+
+  const handleSendApproval = (approvalFaculty) => {
+    onSendToApproval?.({
+      activityId: evaluationRecord?.id ?? 'unknown-activity',
+      activityName: evaluationRecord?.activityName ?? 'Untitled Activity',
+      activityType: evaluationRecord?.activityType ?? 'Activity',
+      source: 'Start Evaluation',
+      totalStudents: submittedCount,
+      evaluatedCount: evaluationStatusCount,
+      completedCount: roster.filter((student) => getStudentResultStatus(student) === 'completed' || student.evaluationStatus === 'Completed').length,
+      repeatCount,
+      remedialCount,
+      facultyName: approvalFaculty.facultyName,
+      employeeId: approvalFaculty.employeeId,
+      designation: approvalFaculty.designation,
+      note: approvalFaculty.note,
+    })
+    setIsApprovalPopupOpen(false)
   }
 
   const handlePreviousStudent = () => {
@@ -1996,124 +2019,144 @@ export default function StartEvaluationPage({
 
         <section className="start-eval-board">
           <div className="start-eval-main-panel">
-            <section className="start-eval-student-nav-card">
-              <div className="start-eval-student-nav-main">
-                <div className="start-eval-student-nav-copy">
-                  <span className="start-eval-student-nav-kicker">Student Review</span>
-                  <strong>{selectedStudent?.name ?? 'No student selected'}</strong>
-                  <p>{selectedStudent?.registerId ?? 'No register number'}</p>
-                  <div className="start-eval-student-nav-meta">
-                    <span className={`eval-status-pill ${selectedStudentBadge.tone}`}>
-                      {selectedStudentBadge.label}
-                    </span>
-                    <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
-                    <span className="start-eval-student-nav-position">
-                      Student {filteredStudents.length ? Math.max(selectedStudentIndex + 1, 1) : 0} of {filteredStudents.length}
+            {canSendToApproval ? (
+              <section className="start-eval-approval-card">
+                <div className="start-eval-approval-copy">
+                  <span><BadgeCheck size={13} strokeWidth={2} /> Approval Ready</span>
+                  <strong>All submitted evaluations are complete.</strong>
+                  <p>{evaluationStatusCount} records can be sent to the approval queue.</p>
+                </div>
+                <button
+                  type="button"
+                  className="tool-btn green start-eval-approval-btn"
+                  onClick={() => setIsApprovalPopupOpen(true)}
+                >
+                  Send to Approval
+                  <ChevronRight size={15} strokeWidth={2} />
+                </button>
+              </section>
+            ) : (
+              <>
+                <section className="start-eval-student-nav-card">
+                  <div className="start-eval-student-nav-main">
+                    <div className="start-eval-student-nav-copy">
+                      <span className="start-eval-student-nav-kicker">Student Review</span>
+                      <strong>{selectedStudent?.name ?? 'No student selected'}</strong>
+                      <p>{selectedStudent?.registerId ?? 'No register number'}</p>
+                      <div className="start-eval-student-nav-meta">
+                        <span className={`eval-status-pill ${selectedStudentBadge.tone}`}>
+                          {selectedStudentBadge.label}
+                        </span>
+                        <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
+                        <span className="start-eval-student-nav-position">
+                          Student {filteredStudents.length ? Math.max(selectedStudentIndex + 1, 1) : 0} of {filteredStudents.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="start-eval-student-nav-quick-actions">
+                      <button
+                        type="button"
+                        className="ghost start-eval-nav-btn"
+                        onClick={() => setIsStudentPickerOpen(true)}
+                      >
+                        <Users size={15} strokeWidth={2} />
+                        Students
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost start-eval-nav-btn"
+                        onClick={() => onOpenExamLog?.({
+                          evaluationRecord,
+                          student: selectedStudent,
+                          totalMarks,
+                          obtainedMarks,
+                        })}
+                      >
+                        <History size={15} strokeWidth={2} />
+                        Exam Logs
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <StudentResponsePanel
+                  key={selectedStudent?.id ?? 'no-student'}
+                  student={selectedStudent}
+                  record={evaluationRecord}
+                  savedDraft={selectedStudent?.id ? (savedEvaluationDrafts[selectedStudent.id] ?? editingStudentDraft ?? null) : null}
+                  marksDisabled={isMarksDisabled}
+                  onObtainedMarksChange={setObtainedMarks}
+                  onEvaluationStateChange={setEvaluationState}
+                  onRegisterActions={setPanelActions}
+                />
+
+                {selectedStudent ? (
+                  <section className={`start-eval-workspace-footer ${isReadyToSubmit ? 'is-ready' : ''}`}>
+                  <div className="start-eval-workspace-status">
+                    {isMarksDisabled ? (
+                      <span className="start-eval-submit-pill is-pending">
+                        Evaluation disabled because marks are off
+                      </span>
+                    ) : null}
+                    {selectedStudent.submissionStatus !== 'Submitted' ? (
+                      <span className="start-eval-submit-pill is-pending">
+                        No submission available
+                      </span>
+                    ) : null}
+                    {readySections.map((section) => (
+                      <span key={section.key} className={`start-eval-submit-pill ${section.isComplete ? 'is-complete' : 'is-pending'}`}>
+                        {section.label} {formatMarksValue(section.obtainedMarks)}/{formatMarksValue(section.totalMarks)}
+                      </span>
+                    ))}
+                    <span className="start-eval-submit-pill is-threshold">
+                      Threshold {thresholdResult?.label ?? (thresholdRows.length ? 'Not Matched' : 'Not Configured')}
                     </span>
                   </div>
-                </div>
 
-                <div className="start-eval-student-nav-quick-actions">
-                  <button
-                    type="button"
-                    className="ghost start-eval-nav-btn"
-                    onClick={() => setIsStudentPickerOpen(true)}
-                  >
-                    <Users size={15} strokeWidth={2} />
-                    Students
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost start-eval-nav-btn"
-                    onClick={() => onOpenExamLog?.({
-                      evaluationRecord,
-                      student: selectedStudent,
-                      totalMarks,
-                      obtainedMarks,
-                    })}
-                  >
-                    <History size={15} strokeWidth={2} />
-                    Exam Logs
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <StudentResponsePanel
-              key={selectedStudent?.id ?? 'no-student'}
-              student={selectedStudent}
-              record={evaluationRecord}
-              savedDraft={selectedStudent?.id ? (savedEvaluationDrafts[selectedStudent.id] ?? editingStudentDraft ?? null) : null}
-              marksDisabled={isMarksDisabled}
-              onObtainedMarksChange={setObtainedMarks}
-              onEvaluationStateChange={setEvaluationState}
-              onRegisterActions={setPanelActions}
-            />
-
-            {selectedStudent ? (
-              <section className={`start-eval-workspace-footer ${isReadyToSubmit ? 'is-ready' : ''}`}>
-                <div className="start-eval-workspace-status">
-                  {isMarksDisabled ? (
-                    <span className="start-eval-submit-pill is-pending">
-                      Evaluation disabled because marks are off
-                    </span>
-                  ) : null}
-                  {selectedStudent.submissionStatus !== 'Submitted' ? (
-                    <span className="start-eval-submit-pill is-pending">
-                      No submission available
-                    </span>
-                  ) : null}
-                  {readySections.map((section) => (
-                    <span key={section.key} className={`start-eval-submit-pill ${section.isComplete ? 'is-complete' : 'is-pending'}`}>
-                      {section.label} {formatMarksValue(section.obtainedMarks)}/{formatMarksValue(section.totalMarks)}
-                    </span>
-                  ))}
-                  <span className="start-eval-submit-pill is-threshold">
-                    Threshold {thresholdResult?.label ?? (thresholdRows.length ? 'Not Matched' : 'Not Configured')}
-                  </span>
-                </div>
-
-                <div className="start-eval-workspace-actions">
-                  <button
-                    type="button"
-                    className="ghost start-eval-nav-btn is-stepper"
-                    onClick={handlePreviousStudent}
-                    disabled={selectedStudentIndex <= 0}
-                  >
-                    <ChevronLeft size={15} strokeWidth={2} />
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost start-eval-nav-btn is-stepper"
-                    onClick={handleNextStudent}
-                    disabled={selectedStudentIndex === -1 || selectedStudentIndex >= filteredStudents.length - 1}
-                  >
-                    Next
-                    <ChevronRight size={15} strokeWidth={2} />
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost start-eval-submit-secondary"
-                    onClick={handleSaveEvaluation}
-                    disabled={!selectedStudent?.id || isMarksDisabled}
-                  >
-                    Save & Next
-                  </button>
-                  <button
-                    type="button"
-                    className="tool-btn green start-eval-submit-btn"
-                    onClick={() => {
-                      setSelectedDecisionId(hasCriticalityFailure ? 'decision-repeat' : '')
-                      setIsSubmitPopupOpen(true)
-                    }}
-                    disabled={!isReadyToSubmit || isMarksDisabled}
-                  >
-                    Submit
-                  </button>
-                </div>
-              </section>
-            ) : null}
+                  <div className="start-eval-workspace-actions">
+                    <button
+                      type="button"
+                      className="ghost start-eval-nav-btn is-stepper"
+                      onClick={handlePreviousStudent}
+                      disabled={selectedStudentIndex <= 0}
+                    >
+                      <ChevronLeft size={15} strokeWidth={2} />
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost start-eval-nav-btn is-stepper"
+                      onClick={handleNextStudent}
+                      disabled={selectedStudentIndex === -1 || selectedStudentIndex >= filteredStudents.length - 1}
+                    >
+                      Next
+                      <ChevronRight size={15} strokeWidth={2} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost start-eval-submit-secondary"
+                      onClick={handleSaveEvaluation}
+                      disabled={!selectedStudent?.id || isMarksDisabled}
+                    >
+                      Save & Next
+                    </button>
+                    <button
+                      type="button"
+                      className="tool-btn green start-eval-submit-btn"
+                      onClick={() => {
+                        setSelectedDecisionId(hasCriticalityFailure ? 'decision-repeat' : '')
+                        setIsSubmitPopupOpen(true)
+                      }}
+                      disabled={!isReadyToSubmit || isMarksDisabled}
+                    >
+                      Submit
+                    </button>
+                  </div>
+                  </section>
+                ) : null}
+              </>
+            )}
           </div>
         </section>
 
@@ -2350,6 +2393,13 @@ export default function StartEvaluationPage({
           </div>,
           document.body,
         ) : null}
+        <SendApprovalModal
+          open={isApprovalPopupOpen}
+          title="Send to Approval"
+          contextLabel={evaluationRecord?.activityName ?? 'Evaluation activity'}
+          onClose={() => setIsApprovalPopupOpen(false)}
+          onSend={handleSendApproval}
+        />
       </div>
     </section>
   )

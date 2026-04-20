@@ -10,8 +10,10 @@ import {
   Download,
   Pencil,
   Search,
+  SendHorizonal,
   Shapes,
 } from 'lucide-react'
+import SendApprovalModal from '../components/SendApprovalModal'
 import '../styles/evaluation.css'
 
 const formatPercent = (value) => `${Number(value ?? 0).toFixed(1).replace(/\.0$/, '')}%`
@@ -205,6 +207,7 @@ export default function CompletedEvaluationPage({
   activityRecord,
   onBackToEvaluation,
   onOpenEvaluation,
+  onSendToApproval,
 }) {
   const [searchValue, setSearchValue] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -212,6 +215,7 @@ export default function CompletedEvaluationPage({
   const [sortDirection, setSortDirection] = useState('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedGroups, setExpandedGroups] = useState({})
+  const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false)
   const pageSize = 6
 
   const sourceRows = useMemo(() => (
@@ -249,6 +253,27 @@ export default function CompletedEvaluationPage({
     { id: 'repeat', label: 'Repeat', count: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'repeat').length },
     { id: 'remedial', label: 'Remedial', count: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'remedial').length },
   ]
+
+  const handleSendApproval = (approvalFaculty) => {
+    const activitySource = activityRecord ?? sourceRows[0] ?? {}
+
+    onSendToApproval?.({
+      activityId: activityId ?? activitySource.activityId ?? activitySource.id ?? 'completed-evaluation',
+      activityName: activitySource.activityName ?? 'Completed Evaluation',
+      activityType: activitySource.activityType ?? 'Activity',
+      source: 'Completed Evaluation',
+      totalStudents: sourceRows.length,
+      evaluatedCount: sourceRows.length,
+      completedCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'completed').length,
+      repeatCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'repeat').length,
+      remedialCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'remedial').length,
+      facultyName: approvalFaculty.facultyName,
+      employeeId: approvalFaculty.employeeId,
+      designation: approvalFaculty.designation,
+      note: approvalFaculty.note,
+    })
+    setIsApprovalPopupOpen(false)
+  }
 
   const tableHeaders = useMemo(() => ([
     { key: 'studentName', label: 'Student', sortable: true },
@@ -496,6 +521,15 @@ export default function CompletedEvaluationPage({
             </div>
 
             <div className="eval-completed-toolbar-actions">
+              <button
+                type="button"
+                className="tool-btn green eval-completed-send-approval"
+                onClick={() => setIsApprovalPopupOpen(true)}
+                disabled={!sourceRows.length}
+              >
+                <SendHorizonal size={14} strokeWidth={2} />
+                Send to Approval
+              </button>
               <button
                 type="button"
                 className="eval-completed-download"
@@ -765,6 +799,13 @@ export default function CompletedEvaluationPage({
             </section>
           )}
         </section>
+        <SendApprovalModal
+          open={isApprovalPopupOpen}
+          title="Send to Approval"
+          contextLabel={activityRecord?.activityName ?? sourceRows[0]?.activityName ?? 'Completed evaluations'}
+          onClose={() => setIsApprovalPopupOpen(false)}
+          onSend={handleSendApproval}
+        />
       </div>
     </section>
   )

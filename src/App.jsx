@@ -211,6 +211,7 @@ function App() {
   const [selectedEvaluationStudentId, setSelectedEvaluationStudentId] = useState('')
   const [selectedCompletedEvaluationActivityId, setSelectedCompletedEvaluationActivityId] = useState(null)
   const [completedEvaluationRows, setCompletedEvaluationRows] = useState([])
+  const [approvalQueueRows, setApprovalQueueRows] = useState([])
   const [selectedExamLogContext, setSelectedExamLogContext] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
@@ -451,6 +452,24 @@ function App() {
     })
   }
 
+  const handleSendToApproval = (payload) => {
+    if (!payload?.activityId) return
+
+    const approvalRow = {
+      ...payload,
+      id: `approval-${payload.activityId}`,
+      senderName: profileUser.name,
+      senderId: profileUser.registerId,
+      sentAt: new Date().toISOString(),
+    }
+
+    setApprovalQueueRows((current) => [
+      approvalRow,
+      ...current.filter((item) => item.activityId !== payload.activityId),
+    ])
+    showAlert({ tone: 'secondary', message: `${payload.activityName ?? 'Activity'} sent to approval.` })
+  }
+
   const handleBackToEvaluationList = () => {
     setSelectedEvaluationRecord(null)
     setSelectedEvaluationStudentId('')
@@ -624,9 +643,11 @@ function App() {
               activityRecord={evaluationRecords.find((record) => record.id === selectedCompletedEvaluationActivityId) ?? selectedEvaluationRecord}
               onBackToEvaluation={() => navigateToPage(APP_PAGES.START_EVALUATION, { replace: true })}
               onOpenEvaluation={handleOpenStartEvaluation}
+              onSendToApproval={handleSendToApproval}
             />
           ) : activePage === APP_PAGES.REVIEW_APPROVE ? (
             <ReviewApprovePage
+              approvalQueueRows={approvalQueueRows}
               completedEvaluationRows={completedEvaluationRows}
               onAlert={showAlert}
             />
@@ -642,6 +663,7 @@ function App() {
               }}
               onOpenExamLog={handleOpenExamLog}
               onSaveCompletedEvaluation={handleSaveCompletedEvaluation}
+              onSendToApproval={handleSendToApproval}
               onAlert={showAlert}
             />
           ) : activePage === APP_PAGES.EXAM_LOG ? (

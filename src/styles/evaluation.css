@@ -2833,9 +2833,9 @@
 }
 
 .eval-completed-results-panel .eval-completed-toolbar {
-  display: grid;
-  grid-template-columns: minmax(280px, 1fr) auto auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin: 0;
   padding: 14px 16px;
@@ -2846,17 +2846,27 @@
 }
 
 .eval-completed-results-panel .eval-completed-toolbar-actions {
-  display: contents;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
 }
 
 .eval-completed-results-panel .eval-completed-search {
-  grid-column: 1;
-  width: 100%;
-  max-width: none;
+  order: 1;
+  width: min(360px, 100%);
+  max-width: 360px;
+  min-width: 240px;
   min-height: 38px;
   border-color: #e1e8ee;
   border-radius: 12px;
   background: #f8fafb;
+}
+
+.eval-completed-results-panel .eval-completed-filterbar {
+  flex: 0 0 auto;
 }
 
 .eval-completed-results-panel .eval-completed-search input {
@@ -2866,8 +2876,8 @@
 }
 
 .eval-completed-results-panel .eval-completed-filterbar {
-  grid-column: 2;
   display: inline-flex;
+  flex: 0 0 auto;
   height: 38px;
   padding: 3px;
   border: 1px solid #e4eaef;
@@ -2892,15 +2902,35 @@
   box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08);
 }
 
-.eval-completed-results-panel .eval-completed-download {
-  grid-column: 3;
+.eval-completed-results-panel .eval-completed-download,
+.eval-completed-results-panel .eval-completed-send-approval {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 38px;
+  height: 38px;
+  width: auto;
+  min-width: max-content;
   padding: 0 14px;
-  border: 0;
   border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.eval-completed-results-panel .eval-completed-download {
+  order: 3;
+  border: 0;
   background: #0f766e;
   color: #ffffff;
   box-shadow: 0 10px 18px rgba(15, 118, 110, 0.18);
+}
+
+.eval-completed-results-panel .eval-completed-send-approval {
+  order: 2;
 }
 
 .eval-completed-results-panel .eval-completed-download:hover:not(:disabled),
@@ -3195,20 +3225,24 @@
 
 @media (max-width: 980px) {
   .eval-completed-results-panel .eval-completed-toolbar {
-    grid-template-columns: 1fr auto;
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .eval-completed-results-panel .eval-completed-search {
-    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
   }
 
   .eval-completed-results-panel .eval-completed-filterbar {
-    grid-column: 1;
     overflow-x: auto;
   }
 
-  .eval-completed-results-panel .eval-completed-download {
-    grid-column: 2;
+  .eval-completed-results-panel .eval-completed-toolbar-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 }
 

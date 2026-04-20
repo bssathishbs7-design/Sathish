@@ -1,0 +1,156 @@
+.approval-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top, rgba(15, 131, 100, 0.12), transparent 28%),
+    rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(10px);
+}
+
+.approval-modal {
+  width: min(660px, 100%);
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #dfeae5;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 34px 86px rgba(2, 8, 23, 0.32);
+}
+
+.approval-modal-head,
+.approval-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.approval-modal-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #e7efeb;
+  background: linear-gradient(180deg, #ffffff, #f8fcfa);
+}
+
+.approval-modal-head strong {
+  color: #102a21;
+  font-size: 1.08rem;
+  line-height: 1.15;
+}
+
+.approval-modal-head p {
+  margin: 3px 0 0;
+  color: #6d8177;
+  font-size: 0.86rem;
+}
+
+.approval-modal-close {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 12px;
+}
+
+.approval-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px 20px 16px;
+}
+
+.approval-modal-field {
+  display: grid;
+  gap: 7px;
+}
+
+.approval-modal-field-wide {
+  grid-column: 1 / -1;
+}
+
+.approval-modal-field span {
+  color: #5d7469;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.approval-modal-field input,
+.approval-modal-field textarea {
+  width: 100%;
+  border: 1px solid #dce8e2;
+  border-radius: 12px;
+  background: #fbfdfc;
+  color: #17332a;
+  font: inherit;
+  outline: 0;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.approval-modal-field input {
+  min-height: 46px;
+  padding: 0 13px;
+}
+
+.approval-modal-field textarea {
+  resize: vertical;
+  min-height: 96px;
+  padding: 13px;
+}
+
+.approval-modal-field input:focus,
+.approval-modal-field textarea:focus {
+  border-color: rgba(15, 131, 100, 0.38);
+  box-shadow: 0 0 0 3px rgba(15, 131, 100, 0.1);
+}
+
+.approval-modal-foot {
+  justify-content: flex-end;
+  padding: 14px 20px 18px;
+  border-top: 1px solid #e7efeb;
+  background: #fbfdfc;
+}
+
+.approval-modal-foot button {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+}
+
+.theme-dark .approval-modal {
+  border-color: #243652;
+  background: #0f172a;
+}
+
+.theme-dark .approval-modal-head,
+.theme-dark .approval-modal-foot {
+  border-color: #243652;
+  background: rgba(18, 26, 40, 0.96);
+}
+
+.theme-dark .approval-modal-head strong {
+  color: #e6efeb;
+}
+
+.theme-dark .approval-modal-head p,
+.theme-dark .approval-modal-field span {
+  color: #a8bdb4;
+}
+
+.theme-dark .approval-modal-field input,
+.theme-dark .approval-modal-field textarea {
+  border-color: #2a3d59;
+  background: rgba(18, 26, 40, 0.92);
+  color: #e6efeb;
+}
+
+@media (max-width: 720px) {
+  .approval-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}
