@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import CompletedEvaluationPage from './pages/CompletedEvaluationPage'
+import ReviewApprovePage from './pages/ReviewApprovePage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import StartEvaluationPage from './pages/StartEvaluationPage'
 import ExamLogPage from './pages/ExamLogPage'
@@ -24,6 +25,7 @@ const PAGE_PATHS = {
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
   [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
+  [APP_PAGES.REVIEW_APPROVE]: '/skills/review-approve',
   [APP_PAGES.START_EVALUATION]: '/skills/start-evaluation',
   [APP_PAGES.EXAM_LOG]: '/skills/exam-log',
   [APP_PAGES.OSPE_ACTIVITY]: '/skills/ospe-activity',
@@ -622,6 +624,11 @@ function App() {
               activityRecord={evaluationRecords.find((record) => record.id === selectedCompletedEvaluationActivityId) ?? selectedEvaluationRecord}
               onBackToEvaluation={() => navigateToPage(APP_PAGES.START_EVALUATION, { replace: true })}
               onOpenEvaluation={handleOpenStartEvaluation}
+            />
+          ) : activePage === APP_PAGES.REVIEW_APPROVE ? (
+            <ReviewApprovePage
+              completedEvaluationRows={completedEvaluationRows}
+              onAlert={showAlert}
             />
           ) : activePage === APP_PAGES.START_EVALUATION ? (
             <StartEvaluationPage

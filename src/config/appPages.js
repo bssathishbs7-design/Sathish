@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookOpenCheck,
   ClipboardCheck,
+  FileCheck2,
   FileText,
   SlidersHorizontal,
   TrendingUp,
@@ -12,6 +13,7 @@ export const APP_PAGES = {
   CONFIGURATION: 'Configuration',
   EVALUATION: 'Evaluation',
   COMPLETED_EVALUATION: 'Completed Evaluation',
+  REVIEW_APPROVE: 'Review and Approve',
   START_EVALUATION: 'Start Evaluation',
   EXAM_LOG: 'Exam Log',
   OSPE_ACTIVITY: 'OSPE Activity',
@@ -57,6 +59,10 @@ export const SIDEBAR_MENU = [
           { label: APP_PAGES.EVALUATION, icon: ClipboardCheck },
           { label: APP_PAGES.DASHBOARD, icon: BarChart3 },
         ],
+      },
+      {
+        label: APP_PAGES.REVIEW_APPROVE,
+        icon: FileCheck2,
       },
       {
         label: 'My Skills',
