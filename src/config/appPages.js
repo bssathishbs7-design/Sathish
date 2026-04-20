@@ -13,7 +13,7 @@ export const APP_PAGES = {
   CONFIGURATION: 'Configuration',
   EVALUATION: 'Evaluation',
   COMPLETED_EVALUATION: 'Completed Evaluation',
-  REVIEW_APPROVE: 'Review and Approve',
+  REVIEW_APPROVE: 'Approval Queue',
   START_EVALUATION: 'Start Evaluation',
   EXAM_LOG: 'Exam Log',
   OSPE_ACTIVITY: 'OSPE Activity',
