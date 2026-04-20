@@ -454,13 +454,15 @@ function App() {
 
   const handleSendToApproval = (payload) => {
     if (!payload?.activityId) return
+    const approvalTimestamp = new Date().toISOString()
 
     const approvalRow = {
       ...payload,
       id: `approval-${payload.activityId}`,
       senderName: profileUser.name,
       senderId: profileUser.registerId,
-      sentAt: new Date().toISOString(),
+      sentAt: approvalTimestamp,
+      receivedAt: approvalTimestamp,
     }
 
     setApprovalQueueRows((current) => [
@@ -634,6 +636,7 @@ function App() {
               onOpenDashboardSummary={() => navigateToPage(APP_PAGES.DASHBOARD_SUMMARY)}
               onAlert={showAlert}
               evaluationRecords={evaluationRecords}
+              completedEvaluationRows={completedEvaluationRows}
               onStartEvaluation={handleOpenStartEvaluation}
             />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (

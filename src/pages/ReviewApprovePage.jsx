@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   BadgeCheck,
+  CalendarClock,
   CheckCircle2,
   ClipboardCheck,
   RotateCcw,
@@ -60,6 +61,26 @@ const formatMarks = (obtained, total) => {
   const safeTotal = Number(total) || 0
 
   return `${safeObtained} / ${safeTotal || 'Nil'}`
+}
+
+const formatReceivedDateTime = (value) => {
+  if (!value) return { date: 'Not received', time: '' }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return { date: 'Not received', time: '' }
+
+  return {
+    date: new Intl.DateTimeFormat('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date),
+    time: new Intl.DateTimeFormat('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date),
+  }
 }
 
 export default function ReviewApprovePage({ approvalQueueRows = [], completedEvaluationRows = [], onAlert }) {
@@ -139,6 +160,7 @@ export default function ReviewApprovePage({ approvalQueueRows = [], completedEva
       const decision = isApprovalCard ? 'Pending Approval' : row.decisionTitle ?? row.resultStatus ?? 'Pending'
       const identityName = isApprovalCard ? row.senderName ?? 'Sender' : row.studentName ?? 'Student'
       const identityId = isApprovalCard ? row.senderId ?? 'Sender ID not set' : row.registerId ?? 'Register ID not set'
+      const receivedAt = formatReceivedDateTime(row.receivedAt ?? row.sentAt ?? row.submittedAt)
 
       return (
         <article key={row.id} className={`review-approve-row ${rowStatus !== 'pending' ? `is-${rowStatus}` : ''}`}>
@@ -160,6 +182,12 @@ export default function ReviewApprovePage({ approvalQueueRows = [], completedEva
           <div className="review-approve-result">
             <span className={`review-approve-result-pill ${getDecisionTone(decision)}`}>{decision}</span>
             <small>{isApprovalCard ? row.designation : row.thresholdLabel ?? 'Threshold not set'}</small>
+          </div>
+
+          <div className="review-approve-received">
+            <span><CalendarClock size={13} strokeWidth={2} /> Received</span>
+            <strong>{receivedAt.date}</strong>
+            {receivedAt.time ? <small>{receivedAt.time}</small> : null}
           </div>
 
           <div className="review-approve-score">

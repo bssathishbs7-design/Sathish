@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { SendHorizonal, X } from 'lucide-react'
+import { BriefcaseBusiness, Check, ChevronDown, IdCard, SendHorizonal, UserRound, X } from 'lucide-react'
 import '../styles/approval-modal.css'
 
 const FACULTY_OPTIONS = [
@@ -21,22 +21,66 @@ function uniqueValues(values) {
   return [...new Set(values.filter(Boolean))]
 }
 
-function ApprovalSearchField({ label, value, listId, options, onChange }) {
+function ApprovalSearchField({ label, value, listId, options, onChange, icon: Icon }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const filteredOptions = useMemo(() => {
+    const query = value.trim().toLowerCase()
+
+    if (!query) return options
+
+    return options.filter((option) => option.toLowerCase().includes(query))
+  }, [options, value])
+
   return (
-    <label className="approval-modal-field">
+    <div className="approval-modal-field">
       <span>{label}</span>
-      <input
-        value={value}
-        list={listId}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={`Search ${label.toLowerCase()}`}
-      />
-      <datalist id={listId}>
-        {options.map((option) => (
-          <option key={option} value={option} />
-        ))}
-      </datalist>
-    </label>
+      <div className={`approval-modal-search-control ${isOpen ? 'is-open' : ''}`}>
+        {Icon ? <Icon className="approval-modal-search-icon" size={17} strokeWidth={2} /> : null}
+        <input
+          value={value}
+          aria-label={label}
+          aria-controls={listId}
+          aria-expanded={isOpen}
+          autoComplete="off"
+          role="combobox"
+          onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
+          onChange={(event) => {
+            onChange(event.target.value)
+            setIsOpen(true)
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder={label}
+        />
+        <ChevronDown className="approval-modal-search-action" size={16} strokeWidth={2} aria-hidden="true" />
+        {isOpen ? (
+          <div id={listId} className="approval-modal-options" role="listbox">
+            {filteredOptions.length ? filteredOptions.map((option) => {
+              const isSelected = option.toLowerCase() === value.trim().toLowerCase()
+
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  className={`approval-modal-option ${isSelected ? 'is-selected' : ''}`}
+                  role="option"
+                  aria-selected={isSelected}
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                    onChange(option)
+                    setIsOpen(false)
+                  }}
+                >
+                  <span>{option}</span>
+                  {isSelected ? <Check size={14} strokeWidth={2.3} /> : null}
+                </button>
+              )
+            }) : (
+              <div className="approval-modal-option-empty">No matches</div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
@@ -109,6 +153,7 @@ export default function SendApprovalModal({ open, title = 'Send to Approval', co
             value={form.facultyName}
             options={optionLists.facultyName}
             onChange={(value) => syncField('facultyName', value)}
+            icon={UserRound}
           />
           <ApprovalSearchField
             label="Employee ID"
@@ -116,6 +161,7 @@ export default function SendApprovalModal({ open, title = 'Send to Approval', co
             value={form.employeeId}
             options={optionLists.employeeId}
             onChange={(value) => syncField('employeeId', value)}
+            icon={IdCard}
           />
           <ApprovalSearchField
             label="Designation"
@@ -123,6 +169,7 @@ export default function SendApprovalModal({ open, title = 'Send to Approval', co
             value={form.designation}
             options={optionLists.designation}
             onChange={(value) => syncField('designation', value)}
+            icon={BriefcaseBusiness}
           />
           <label className="approval-modal-field approval-modal-field-wide">
             <span>Note</span>

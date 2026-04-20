@@ -76,7 +76,8 @@
 }
 
 .review-approve-metric span,
-.review-approve-score span {
+.review-approve-score span,
+.review-approve-received span {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -133,7 +134,7 @@
 
 .review-approve-row {
   display: grid;
-  grid-template-columns: minmax(190px, 1.1fr) minmax(190px, 1.2fr) minmax(120px, 0.7fr) minmax(90px, 0.45fr) auto;
+  grid-template-columns: minmax(190px, 1.08fr) minmax(210px, 1.18fr) minmax(130px, 0.72fr) minmax(130px, 0.62fr) minmax(90px, 0.42fr) auto;
   gap: 12px;
   align-items: center;
   padding: 12px;
@@ -227,6 +228,26 @@
   gap: 5px;
 }
 
+.review-approve-received {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.review-approve-received strong {
+  color: #17332a;
+  font-size: 0.9rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.review-approve-received small {
+  color: #647a70;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .review-approve-actions {
   justify-content: flex-end;
   flex-wrap: wrap;
@@ -263,6 +284,7 @@
 .theme-dark .review-approve-table-head strong,
 .theme-dark .review-approve-student strong,
 .theme-dark .review-approve-activity strong,
+.theme-dark .review-approve-received strong,
 .theme-dark .review-approve-score strong,
 .theme-dark .review-approve-metric strong {
   color: #e6efeb;
@@ -271,6 +293,7 @@
 .theme-dark .review-approve-table-head p,
 .theme-dark .review-approve-activity p,
 .theme-dark .review-approve-student p,
+.theme-dark .review-approve-received small,
 .theme-dark .review-approve-empty p {
   color: #a8bdb4;
 }

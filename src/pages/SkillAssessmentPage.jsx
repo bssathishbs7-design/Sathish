@@ -36,6 +36,53 @@ const parseAttemptValue = (value) => {
   return Number.parseInt(first, 10) || 0
 }
 
+const getNormalizedResultStatus = (value = '') => String(value ?? '').trim().toLowerCase()
+
+const getAttemptNumber = (row) => Number(row?.attemptNumber) || 1
+
+const getCompletedRowStatus = (row) => getNormalizedResultStatus(
+  row?.resultStatus
+  ?? row?.decisionTitle
+  ?? row?.evaluationDecision
+  ?? row?.evaluationResult?.resultStatus,
+)
+
+const getLatestCompletedRowsByStudent = (rows = []) => {
+  const latestRows = new Map()
+
+  rows.forEach((row) => {
+    if (!row?.activityId || !row?.studentId) return
+    if (!getCompletedRowStatus(row)) return
+
+    const key = `${row.activityId}:${row.studentId}`
+    const current = latestRows.get(key)
+
+    if (!current || getAttemptNumber(row) >= getAttemptNumber(current)) {
+      latestRows.set(key, row)
+    }
+  })
+
+  return [...latestRows.values()]
+}
+
+const getReattemptAttemptCount = (record, completedRows = []) => {
+  const activityId = record?.id ?? record?.activityId
+  const totalStudents = Number(record?.studentCount) || 0
+
+  if (!activityId) return `0 / ${totalStudents}`
+
+  const latestActivityRows = getLatestCompletedRowsByStudent(
+    completedRows.filter((row) => row.activityId === activityId),
+  )
+  const reattemptCount = latestActivityRows.filter((row) => {
+    const status = getCompletedRowStatus(row)
+
+    return status === 'repeat' || status === 'remedial'
+  }).length
+
+  return `${reattemptCount} / ${totalStudents}`
+}
+
 const parseDateValue = (value) => {
   if (!value) return 0
   const normalized = String(value).split(',')[0].trim()
@@ -236,7 +283,7 @@ function EvaluationTable({
   )
 }
 
-export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], onStartEvaluation }) {
+export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], completedEvaluationRows = [], onStartEvaluation }) {
   const [viewMode, setViewMode] = useState('card')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedYear, setSelectedYear] = useState('')
@@ -247,7 +294,16 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], o
   const [sortDirection, setSortDirection] = useState('desc')
   const [currentPage, setCurrentPage] = useState(1)
 
-  const sourceRecords = evaluationRecords.length ? evaluationRecords : buildFallbackRecords()
+  const rawSourceRecords = evaluationRecords.length ? evaluationRecords : buildFallbackRecords()
+  const sourceRecords = useMemo(() => rawSourceRecords.map((record) => {
+    const reattemptAttemptCount = getReattemptAttemptCount(record, completedEvaluationRows)
+
+    return {
+      ...record,
+      attemptCount: reattemptAttemptCount,
+      reattemptStudentCount: parseAttemptValue(reattemptAttemptCount),
+    }
+  }), [completedEvaluationRows, rawSourceRecords])
 
   const yearOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.year).filter(Boolean))], [sourceRecords])
   const sgtOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.sgt).filter(Boolean))], [sourceRecords])
