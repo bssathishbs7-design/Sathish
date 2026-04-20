@@ -1622,16 +1622,16 @@ export default function StartEvaluationPage({
 
   const filteredStudents = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
+    const submittedRoster = roster.filter((student) => student.submissionStatus === 'Submitted')
     const eligibleRoster = hasCompletedEvaluationHistory
-      ? roster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student)))
-      : roster
+      ? submittedRoster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student)))
+      : submittedRoster
 
     return eligibleRoster.filter((student) => (
       ((hasCompletedEvaluationHistory
         ? studentFilter === 'all' || getStudentResultStatus(student) === studentFilter
         : studentFilter === 'all'
-          || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')
-          || (studentFilter === 'not-submitted' && student.evaluationStatus !== 'Completed')))
+          || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')))
       && (
         !needle
         || student.name.toLowerCase().includes(needle)
@@ -1643,7 +1643,7 @@ export default function StartEvaluationPage({
   useEffect(() => {
     const allowedFilters = hasCompletedEvaluationHistory
       ? ['all', 'repeat', 'remedial']
-      : ['all', 'submitted', 'not-submitted']
+      : ['all', 'submitted']
 
     if (!allowedFilters.includes(studentFilter)) {
       setStudentFilter('all')
@@ -1681,6 +1681,13 @@ export default function StartEvaluationPage({
   const pendingCount = roster.filter((student) => student.evaluationStatus !== 'Completed').length
   const repeatCount = roster.filter((student) => getStudentResultStatus(student) === 'repeat').length
   const remedialCount = roster.filter((student) => getStudentResultStatus(student) === 'remedial').length
+  const evaluationStatusCount = roster.filter((student) => {
+    const status = getStudentResultStatus(student)
+    return student.evaluationStatus === 'Completed'
+      || status === 'completed'
+      || status === 'repeat'
+      || status === 'remedial'
+  }).length
   const eligibleEvaluationCount = roster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student))).length
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
@@ -1767,9 +1774,8 @@ export default function StartEvaluationPage({
         { id: 'remedial', label: 'Remedial', count: remedialCount },
       ]
     : [
-        { id: 'all', label: 'All', count: roster.length },
+        { id: 'all', label: 'All', count: submittedCount },
         { id: 'submitted', label: 'Submitted', count: submittedCount },
-        { id: 'not-submitted', label: 'Evaluation Not Submit', count: pendingCount },
       ]
 
   const handleSelectStudent = (studentId) => {
@@ -1960,7 +1966,7 @@ export default function StartEvaluationPage({
           <div className="start-eval-summary-grid">
             <article className="start-eval-summary-tile start-eval-summary-tile-secondary">
               <span><Users size={13} strokeWidth={2} /> Students</span>
-              <strong>{evaluationRecord?.studentCount ?? roster.length}</strong>
+              <strong>{submittedCount}</strong>
             </article>
             <article className="start-eval-summary-tile start-eval-summary-tile-secondary">
               <span><CheckCircle2 size={13} strokeWidth={2} /> Activity Submitted</span>
@@ -1968,7 +1974,7 @@ export default function StartEvaluationPage({
             </article>
             <article className="start-eval-summary-tile start-eval-summary-tile-secondary start-eval-summary-tile-saved">
               <span><FileText size={13} strokeWidth={2} /> Activity Not Submitted</span>
-              <strong>{notSubmittedCount}</strong>
+              <strong>0</strong>
             </article>
             <button
               type="button"
@@ -1977,7 +1983,7 @@ export default function StartEvaluationPage({
             >
               <span><ClipboardCheck size={13} strokeWidth={2} /> Evaluation Status</span>
               <div className="start-eval-summary-action-body">
-                <strong>{completedCount}</strong>
+                <strong>{evaluationStatusCount}</strong>
                 <small>
                   View evaluations status
                   <ChevronRight size={14} strokeWidth={2} />
