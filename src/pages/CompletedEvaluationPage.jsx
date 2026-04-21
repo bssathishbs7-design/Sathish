@@ -184,6 +184,14 @@ const getOutcomeTone = (value = '') => {
 
 const getAttemptNumber = (row) => Math.min(Math.max(Number(row?.attemptNumber) || 1, 1), 10)
 
+const getStudentKey = (row) => row?.studentId ?? row?.registerId ?? row?.studentName ?? row?.id
+
+const isEvaluatedResultRow = (row) => {
+  const status = String(row?.resultStatus ?? row?.decisionTitle ?? row?.decisionLabel ?? '').trim().toLowerCase()
+
+  return ['completed', 'repeat', 'remedial'].includes(status)
+}
+
 const isActivityCertifiable = (activity) => Boolean(
   activity?.certifiable
   ?? activity?.isCertifiable
@@ -216,13 +224,41 @@ export default function CompletedEvaluationPage({
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedGroups, setExpandedGroups] = useState({})
   const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false)
-  const pageSize = 6
+  const pageSize = 10
 
   const sourceRows = useMemo(() => (
     activityId
       ? completedEvaluationRows.filter((row) => row.activityId === activityId)
       : completedEvaluationRows
   ), [activityId, completedEvaluationRows])
+
+  const evaluatedStudentCount = useMemo(() => {
+    const evaluatedStudentKeys = new Set()
+
+    sourceRows.forEach((row) => {
+      if (!isEvaluatedResultRow(row)) return
+
+      const studentKey = getStudentKey(row)
+      if (studentKey) evaluatedStudentKeys.add(studentKey)
+    })
+
+    return evaluatedStudentKeys.size
+  }, [sourceRows])
+
+  const completedTableStudentCount = useMemo(() => {
+    const studentKeys = new Set()
+
+    sourceRows.forEach((row) => {
+      const studentKey = getStudentKey(row)
+      if (studentKey) studentKeys.add(studentKey)
+    })
+
+    return studentKeys.size
+  }, [sourceRows])
+
+  const assignedStudentCount = completedTableStudentCount || evaluatedStudentCount
+
+  const canSendApproval = assignedStudentCount > 0 && evaluatedStudentCount >= assignedStudentCount
 
   const filteredRows = useMemo(() => {
     const needle = searchValue.trim().toLowerCase()
@@ -255,6 +291,8 @@ export default function CompletedEvaluationPage({
   ]
 
   const handleSendApproval = (approvalFaculty) => {
+    if (!canSendApproval) return
+
     const activitySource = activityRecord ?? sourceRows[0] ?? {}
 
     onSendToApproval?.({
@@ -262,8 +300,8 @@ export default function CompletedEvaluationPage({
       activityName: activitySource.activityName ?? 'Completed Evaluation',
       activityType: activitySource.activityType ?? 'Activity',
       source: 'Completed Evaluation',
-      totalStudents: sourceRows.length,
-      evaluatedCount: sourceRows.length,
+      totalStudents: assignedStudentCount,
+      evaluatedCount: evaluatedStudentCount,
       completedCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'completed').length,
       repeatCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'repeat').length,
       remedialCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'remedial').length,
@@ -533,15 +571,16 @@ export default function CompletedEvaluationPage({
             </div>
 
             <div className="eval-completed-toolbar-actions">
-              <button
-                type="button"
-                className="tool-btn green eval-completed-send-approval"
-                onClick={() => setIsApprovalPopupOpen(true)}
-                disabled={!sourceRows.length}
-              >
-                <SendHorizonal size={14} strokeWidth={2} />
-                Send to Approval
-              </button>
+              {canSendApproval ? (
+                <button
+                  type="button"
+                  className="tool-btn green eval-completed-send-approval"
+                  onClick={() => setIsApprovalPopupOpen(true)}
+                >
+                  <SendHorizonal size={14} strokeWidth={2} />
+                  Send to Approval
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="eval-completed-download"

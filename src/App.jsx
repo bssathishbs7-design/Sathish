@@ -47,6 +47,37 @@ const PATH_PAGES = Object.fromEntries(
 
 const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? APP_PAGES.DASHBOARD
 
+const START_EVALUATION_STORAGE_KEY = 'vx-start-evaluation-record'
+const COMPLETED_EVALUATIONS_STORAGE_KEY = 'vx-completed-evaluation-rows'
+const APPROVAL_QUEUE_STORAGE_KEY = 'vx-approval-queue-rows'
+
+const readStoredStartEvaluationRecord = () => {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(START_EVALUATION_STORAGE_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
+
+const storeStartEvaluationRecord = (record) => {
+  if (!record) return
+
+  window.sessionStorage.setItem(START_EVALUATION_STORAGE_KEY, JSON.stringify(record))
+}
+
+const readStoredRows = (key) => {
+  try {
+    const rows = JSON.parse(window.sessionStorage.getItem(key) || '[]')
+    return Array.isArray(rows) ? rows : []
+  } catch {
+    return []
+  }
+}
+
+const storeRows = (key, rows) => {
+  window.sessionStorage.setItem(key, JSON.stringify(Array.isArray(rows) ? rows : []))
+}
+
 const STUDENT_COUNT_BY_YEAR_AND_SGT = {
   'First Year': { 'SGT A': 42, 'SGT B': 38, 'SGT C': 40 },
   'Second Year': { 'SGT A': 36, 'SGT B': 34, 'SGT C': 32 },
@@ -207,16 +238,21 @@ function App() {
   const [evaluationRecords, setEvaluationRecords] = useState([])
   const [examMonitoringLogs, setExamMonitoringLogs] = useState([])
   const [selectedStudentExamAssignment, setSelectedStudentExamAssignment] = useState(null)
-  const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(null)
+  const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(() => readStoredStartEvaluationRecord())
   const [selectedEvaluationStudentId, setSelectedEvaluationStudentId] = useState('')
   const [selectedCompletedEvaluationActivityId, setSelectedCompletedEvaluationActivityId] = useState(null)
-  const [completedEvaluationRows, setCompletedEvaluationRows] = useState([])
-  const [approvalQueueRows, setApprovalQueueRows] = useState([])
+  const [completedEvaluationRows, setCompletedEvaluationRows] = useState(() => readStoredRows(COMPLETED_EVALUATIONS_STORAGE_KEY))
+  const [approvalQueueRows, setApprovalQueueRows] = useState(() => readStoredRows(APPROVAL_QUEUE_STORAGE_KEY))
   const [selectedExamLogContext, setSelectedExamLogContext] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
   const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
+  const activeEvaluationRecord = selectedEvaluationRecord
+    ?? evaluationRecords.find((record) => record.id === selectedCompletedEvaluationActivityId)
+    ?? readStoredStartEvaluationRecord()
+    ?? completedEvaluationRows.find((row) => row.activityRecord)?.activityRecord
+    ?? null
   const profileUser = {
     name: 'Karthik Subramanian',
     registerId: 'MC2568',
@@ -250,6 +286,19 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem('vx-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    if (!selectedEvaluationRecord) return
+    storeStartEvaluationRecord(selectedEvaluationRecord)
+  }, [selectedEvaluationRecord])
+
+  useEffect(() => {
+    storeRows(COMPLETED_EVALUATIONS_STORAGE_KEY, completedEvaluationRows)
+  }, [completedEvaluationRows])
+
+  useEffect(() => {
+    storeRows(APPROVAL_QUEUE_STORAGE_KEY, approvalQueueRows)
+  }, [approvalQueueRows])
 
   useEffect(() => {
     const resolvedPage = getPageFromPath(window.location.pathname)
@@ -398,8 +447,7 @@ function App() {
           .sort((left, right) => (Number(right.attemptNumber) || 0) - (Number(left.attemptNumber) || 0))[0]
       : null
 
-    setSelectedEvaluationStudentId(studentId)
-    setSelectedEvaluationRecord({
+    const nextEvaluationRecord = {
       ...record,
       id: recordId,
       assignment: linkedAssignment ?? record.assignment ?? record ?? null,
@@ -408,7 +456,11 @@ function App() {
       editingDecisionId: linkedCompletedRow?.decisionId ?? '',
       editingAttemptNumber: linkedCompletedRow?.attemptNumber ?? null,
       editingCompletedRowId: linkedCompletedRow?.id ?? '',
-    })
+    }
+
+    setSelectedEvaluationStudentId(studentId)
+    setSelectedEvaluationRecord(nextEvaluationRecord)
+    storeStartEvaluationRecord(nextEvaluationRecord)
     navigateToPage(APP_PAGES.START_EVALUATION)
   }
 
@@ -674,20 +726,34 @@ function App() {
               onAlert={showAlert}
             />
           ) : activePage === APP_PAGES.START_EVALUATION ? (
-            <StartEvaluationPage
-              evaluationRecord={selectedEvaluationRecord}
-              initialSelectedStudentId={selectedEvaluationStudentId}
-              completedEvaluationRows={completedEvaluationRows}
-              onBackToEvaluation={handleBackToEvaluationList}
-              onOpenCompletedEvaluation={(record) => {
-                setSelectedCompletedEvaluationActivityId(record?.id ?? selectedEvaluationRecord?.id ?? null)
-                navigateToPage(APP_PAGES.COMPLETED_EVALUATION)
-              }}
-              onOpenExamLog={handleOpenExamLog}
-              onSaveCompletedEvaluation={handleSaveCompletedEvaluation}
-              onSendToApproval={handleSendToApproval}
-              onAlert={showAlert}
-            />
+            activeEvaluationRecord ? (
+              <StartEvaluationPage
+                evaluationRecord={activeEvaluationRecord}
+                initialSelectedStudentId={selectedEvaluationStudentId}
+                completedEvaluationRows={completedEvaluationRows}
+                onBackToEvaluation={handleBackToEvaluationList}
+                onOpenCompletedEvaluation={(record) => {
+                  setSelectedCompletedEvaluationActivityId(record?.id ?? activeEvaluationRecord?.id ?? null)
+                  navigateToPage(APP_PAGES.COMPLETED_EVALUATION)
+                }}
+                onOpenExamLog={handleOpenExamLog}
+                onSaveCompletedEvaluation={handleSaveCompletedEvaluation}
+                onSendToApproval={handleSendToApproval}
+                onAlert={showAlert}
+              />
+            ) : (
+              <section className="vx-content forms-page start-evaluation-page">
+                <div className="start-eval-shell">
+                  <section className="start-eval-empty-state">
+                    <strong>No evaluation selected</strong>
+                    <p>Open an activity from the evaluation list to start or review evaluations.</p>
+                    <button type="button" className="tool-btn green" onClick={handleBackToEvaluationList}>
+                      Back to Evaluation
+                    </button>
+                  </section>
+                </div>
+              </section>
+            )
           ) : activePage === APP_PAGES.EXAM_LOG ? (
             <ExamLogPage
               examLogContext={selectedExamLogContext}

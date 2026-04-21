@@ -290,13 +290,17 @@ const getChecklistItemStatus = (decisionState, marksValue) => {
 }
 
 const getNormalizedResultStatus = (value = '') => String(value ?? '').trim().toLowerCase()
+const isCompletedRowStatus = (value = '') => getNormalizedResultStatus(value) === 'completed'
 const getStudentResultStatus = (student) => getNormalizedResultStatus(
   student?.evaluationDecision
   ?? student?.evaluationResult?.decisionTitle
   ?? student?.evaluationResult?.resultStatus
   ?? '',
 )
-const hasStudentEvaluationResult = (student) => Boolean(student?.evaluationResult || student?.evaluationStatus === 'Completed')
+const hasStudentEvaluationResult = (student) => Boolean(
+  student?.evaluationResult
+  || isCompletedRowStatus(student?.evaluationStatus),
+)
 const isReevaluationResult = (value = '') => {
   const normalized = getNormalizedResultStatus(value)
   return normalized === 'repeat' || normalized === 'remedial'
@@ -1097,12 +1101,23 @@ function StudentResponsePanel({
 
             {item.referenceImages?.length ? (
               <div className="start-eval-image-strip">
-                {item.referenceImages.map((image, imageIndex) => (
-                  <div key={image.id ?? `${item.id}-${imageIndex + 1}`} className="start-eval-image-card">
-                    <ImageIcon size={16} strokeWidth={2} />
-                    <span>{image.title ?? `Reference Image ${imageIndex + 1}`}</span>
-                  </div>
-                ))}
+                {item.referenceImages.map((image, imageIndex) => {
+                  const imageSource = image.src ?? image.previewUrl ?? image.url ?? ''
+                  const imageLabel = image.title ?? image.label ?? `Reference Image ${imageIndex + 1}`
+
+                  return (
+                    <figure key={image.id ?? `${item.id}-${imageIndex + 1}`} className={`start-eval-image-card ${imageSource ? 'has-image' : ''}`.trim()}>
+                      {imageSource ? (
+                        <img src={imageSource} alt={imageLabel} />
+                      ) : (
+                        <span className="start-eval-image-card-icon">
+                          <ImageIcon size={16} strokeWidth={2} />
+                        </span>
+                      )}
+                      <figcaption>{imageLabel}</figcaption>
+                    </figure>
+                  )
+                })}
               </div>
             ) : null}
 
@@ -1572,9 +1587,22 @@ export default function StartEvaluationPage({
 
   const activityCompletedRows = useMemo(() => (
     completedEvaluationRows.filter((row) => (
-      row.activityId === evaluationRecord?.id && row.rowStatus === 'Completed'
+      String(row.activityId ?? '') === String(evaluationRecord?.id ?? '') && isCompletedRowStatus(row.rowStatus)
     ))
   ), [completedEvaluationRows, evaluationRecord?.id])
+  const finishedStudentIds = useMemo(() => {
+    const ids = new Set()
+
+    activityCompletedRows.forEach((row) => {
+      if (row.studentId) ids.add(row.studentId)
+    })
+
+    Object.keys(submittedEvaluations).forEach((studentId) => {
+      if (studentId) ids.add(studentId)
+    })
+
+    return ids
+  }, [activityCompletedRows, submittedEvaluations])
   const latestCompletedRowByStudent = useMemo(() => {
     const latestRows = new Map()
 
@@ -1627,36 +1655,28 @@ export default function StartEvaluationPage({
   const filteredStudents = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
     const submittedRoster = roster.filter((student) => student.submissionStatus === 'Submitted')
-    const eligibleRoster = hasCompletedEvaluationHistory
-      ? submittedRoster.filter((student) => (
-          !hasStudentEvaluationResult(student)
-          || isReevaluationResult(getStudentResultStatus(student))
-          || (isEditingCompletedEvaluation && student.id === initialSelectedStudentId)
-        ))
-      : submittedRoster
+    const eligibleRoster = isEditingCompletedEvaluation
+      ? submittedRoster.filter((student) => student.id === initialSelectedStudentId)
+      : submittedRoster.filter((student) => !finishedStudentIds.has(student.id))
 
     return eligibleRoster.filter((student) => (
-      ((hasCompletedEvaluationHistory
-        ? studentFilter === 'all' || getStudentResultStatus(student) === studentFilter
-        : studentFilter === 'all'
-          || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')))
+      ((studentFilter === 'all'
+        || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')))
       && (
         !needle
         || student.name.toLowerCase().includes(needle)
         || student.registerId.toLowerCase().includes(needle)
       )
     ))
-  }, [hasCompletedEvaluationHistory, initialSelectedStudentId, isEditingCompletedEvaluation, roster, studentFilter, studentSearch])
+  }, [finishedStudentIds, initialSelectedStudentId, isEditingCompletedEvaluation, roster, studentFilter, studentSearch])
 
   useEffect(() => {
-    const allowedFilters = hasCompletedEvaluationHistory
-      ? ['all', 'repeat', 'remedial']
-      : ['all', 'submitted']
+    const allowedFilters = ['all', 'submitted']
 
     if (!allowedFilters.includes(studentFilter)) {
       setStudentFilter('all')
     }
-  }, [hasCompletedEvaluationHistory, studentFilter])
+  }, [studentFilter])
 
   useEffect(() => {
     if (!filteredStudents.length) {
@@ -1689,6 +1709,9 @@ export default function StartEvaluationPage({
   const pendingCount = roster.filter((student) => student.evaluationStatus !== 'Completed').length
   const repeatCount = roster.filter((student) => getStudentResultStatus(student) === 'repeat').length
   const remedialCount = roster.filter((student) => getStudentResultStatus(student) === 'remedial').length
+  const remainingEvaluationCount = roster.filter((student) => (
+    student.submissionStatus === 'Submitted' && !finishedStudentIds.has(student.id)
+  )).length
   const evaluationStatusCount = roster.filter((student) => {
     const status = getStudentResultStatus(student)
     return student.evaluationStatus === 'Completed'
@@ -1696,8 +1719,8 @@ export default function StartEvaluationPage({
       || status === 'repeat'
       || status === 'remedial'
   }).length
-  const canSendToApproval = !isEditingCompletedEvaluation && submittedCount > 0 && evaluationStatusCount >= submittedCount
-  const eligibleEvaluationCount = roster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student))).length
+  const canSendToApproval = !isEditingCompletedEvaluation && submittedCount > 0 && remainingEvaluationCount === 0
+  const eligibleEvaluationCount = remainingEvaluationCount
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
 
@@ -1776,16 +1799,10 @@ export default function StartEvaluationPage({
   const criticalityRecommendationMessage = hasCriticalityFailure
     ? 'Criticality not performed well. Repeat is recommended.'
     : ''
-  const studentFilterOptions = hasCompletedEvaluationHistory
-    ? [
-        { id: 'all', label: 'All', count: eligibleEvaluationCount },
-        { id: 'repeat', label: 'Repeat', count: repeatCount },
-        { id: 'remedial', label: 'Remedial', count: remedialCount },
-      ]
-    : [
-        { id: 'all', label: 'All', count: submittedCount },
-        { id: 'submitted', label: 'Submitted', count: submittedCount },
-      ]
+  const studentFilterOptions = [
+    { id: 'all', label: 'All', count: isEditingCompletedEvaluation ? filteredStudents.length : eligibleEvaluationCount },
+    { id: 'submitted', label: 'Submitted', count: isEditingCompletedEvaluation ? filteredStudents.length : eligibleEvaluationCount },
+  ]
 
   const handleSelectStudent = (studentId) => {
     setSelectedStudentId(studentId)
@@ -1907,6 +1924,15 @@ export default function StartEvaluationPage({
   const handleSaveEvaluation = () => {
     if (isMarksDisabled) return
     if (!selectedStudent?.id || !panelActions?.buildDraft) return
+
+    if (isEditingCompletedEvaluation) {
+      onAlert?.({
+        tone: 'warning',
+        message: 'Use Submit to update this edited evaluation.',
+        duration: 2400,
+      })
+      return
+    }
 
     setSavedEvaluationDrafts((current) => ({
       ...current,

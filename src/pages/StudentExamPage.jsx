@@ -289,19 +289,23 @@ function StudentQuestionCard({
 
       {isImageQuestion && referenceImages.length ? (
         <div className="student-exam-stage-media">
-          {referenceImages.map((image, imageIndex) => (
-            <figure key={image.id ?? image.src} className="student-exam-stage-media-card">
-              {image.previewUrl || image.src ? (
-                <img src={image.previewUrl ?? image.src} alt={image.label ?? 'Assigned reference'} />
+          {referenceImages.map((image, imageIndex) => {
+            const imageSource = image.previewUrl ?? image.src ?? image.url ?? ''
+            const imageLabel = image.label ?? image.title ?? `Reference Image ${imageIndex + 1}`
+
+            return (
+            <figure key={image.id ?? imageSource ?? `${item.id}-${imageIndex + 1}`} className="student-exam-stage-media-card">
+              {imageSource ? (
+                <img src={imageSource} alt={imageLabel} />
               ) : (
                 <ImageIcon size={24} strokeWidth={2} />
               )}
               <figcaption>
                 <span>{image.tag ?? getAlphabetTag(imageIndex)}</span>
-                {image.label ?? `Image ${getAlphabetTag(imageIndex)}`}
+                {imageLabel}
               </figcaption>
             </figure>
-          ))}
+          )})}
         </div>
       ) : null}
 

@@ -1681,3 +1681,78 @@
     padding: 16px;
   }
 }
+
+/* Final image activity media alignment */
+.student-exam-stage-media {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.student-exam-stage-media-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  flex: 0 0 220px;
+  width: 220px;
+  min-height: 0;
+  height: auto;
+  aspect-ratio: auto;
+  margin: 0;
+  padding: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.student-exam-stage-media-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: contain;
+  padding: 0;
+  border-radius: 10px;
+  background: #eef5f1;
+}
+
+.student-exam-stage-media-card figcaption {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #4f665d;
+  box-shadow: none;
+}
+
+.student-exam-stage-media-card figcaption span {
+  flex: 0 0 auto;
+}
+
+.theme-dark .student-exam-stage-media-card img {
+  background: #0b1422;
+}
+
+.theme-dark .student-exam-stage-media-card figcaption {
+  background: transparent;
+  color: #b8ccc3;
+}
+
+@media (max-width: 760px) {
+  .student-exam-stage-media-card {
+    flex-basis: 200px;
+    width: 200px;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .student-exam-stage-media-card img {
+    height: 136px;
+  }
+}
