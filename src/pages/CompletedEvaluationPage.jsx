@@ -381,6 +381,18 @@ export default function CompletedEvaluationPage({
     }))
   }
 
+  const openEvaluationForRow = (row) => {
+    if (!row) return
+
+    onOpenEvaluation?.({
+      ...(row.activityRecord ?? activityRecord ?? {}),
+      id: row.activityId,
+      activityId: row.activityId,
+      activityName: row.activityName,
+      activityType: row.activityType,
+    }, { studentId: row.studentId, completedRowId: row.id })
+  }
+
   const handleDownloadRow = (row) => {
     const isCertifiable = isActivityCertifiable(row) || isActivityCertifiable(activityRecord)
     const summaryRows = [
@@ -576,7 +588,7 @@ export default function CompletedEvaluationPage({
                 {paginatedGroups.map((group) => {
                   const row = group.latestRow
                   const isExpanded = Boolean(expandedGroups[group.id])
-                  const showParentActions = group.attemptCount === 1
+                  const showParentDownload = group.attemptCount === 1
                     && String(row.resultStatus ?? '').trim().toLowerCase() === 'completed'
 
                   return (
@@ -609,26 +621,20 @@ export default function CompletedEvaluationPage({
                         </td>
                         <td>
                           <div className="eval-completed-actions">
-                            {showParentActions ? (
+                            <button
+                              type="button"
+                              className="tool-btn eval-table-action eval-completed-icon-btn"
+                              title="Edit latest evaluation"
+                              aria-label="Edit latest evaluation"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openEvaluationForRow(row)
+                              }}
+                            >
+                              <Pencil size={14} strokeWidth={2} />
+                            </button>
+                            {showParentDownload ? (
                               <>
-                                <button
-                                  type="button"
-                                  className="tool-btn eval-table-action eval-completed-icon-btn"
-                                  title="Edit latest evaluation"
-                                  aria-label="Edit latest evaluation"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    onOpenEvaluation?.({
-                                      ...(row.activityRecord ?? activityRecord ?? {}),
-                                      id: row.activityId,
-                                      activityId: row.activityId,
-                                      activityName: row.activityName,
-                                      activityType: row.activityType,
-                                    }, { studentId: row.studentId, completedRowId: row.id })
-                                  }}
-                                >
-                                  <Pencil size={14} strokeWidth={2} />
-                                </button>
                                 <button
                                   type="button"
                                   className="tool-btn eval-table-action eval-completed-icon-btn"
@@ -677,7 +683,7 @@ export default function CompletedEvaluationPage({
                                 </thead>
                                 <tbody>
                                   {group.attempts.map((attemptRow) => {
-                                    const isLatestAttempt = getAttemptNumber(attemptRow) === getAttemptNumber(group.latestRow)
+                                    const isLatestAttempt = attemptRow.id === group.latestRow?.id
 
                                     return (
                                       <tr key={attemptRow.id}>
@@ -714,13 +720,7 @@ export default function CompletedEvaluationPage({
                                                 className="tool-btn eval-table-action eval-completed-icon-btn"
                                                 title="Edit latest evaluation"
                                                 aria-label="Edit latest evaluation"
-                                                onClick={() => onOpenEvaluation?.({
-                                                  ...(attemptRow.activityRecord ?? activityRecord ?? {}),
-                                                  id: attemptRow.activityId,
-                                                  activityId: attemptRow.activityId,
-                                                  activityName: attemptRow.activityName,
-                                                  activityType: attemptRow.activityType,
-                                                }, { studentId: attemptRow.studentId, completedRowId: attemptRow.id })}
+                                                onClick={() => openEvaluationForRow(attemptRow)}
                                               >
                                                 <Pencil size={14} strokeWidth={2} />
                                               </button>

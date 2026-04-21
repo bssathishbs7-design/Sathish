@@ -1563,6 +1563,7 @@ export default function StartEvaluationPage({
     ?? '',
   ).trim().toLowerCase() === 'nil'
   const isCertifiableActivity = isActivityCertifiable(evaluationRecord)
+  const isEditingCompletedEvaluation = Boolean(evaluationRecord?.editingCompletedRowId && initialSelectedStudentId)
 
   const baseRoster = useMemo(
     () => buildStudentRoster(evaluationRecord, evaluationRecord?.assignment, evaluationRecord?.latestSubmission),
@@ -1627,7 +1628,11 @@ export default function StartEvaluationPage({
     const needle = studentSearch.trim().toLowerCase()
     const submittedRoster = roster.filter((student) => student.submissionStatus === 'Submitted')
     const eligibleRoster = hasCompletedEvaluationHistory
-      ? submittedRoster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student)))
+      ? submittedRoster.filter((student) => (
+          !hasStudentEvaluationResult(student)
+          || isReevaluationResult(getStudentResultStatus(student))
+          || (isEditingCompletedEvaluation && student.id === initialSelectedStudentId)
+        ))
       : submittedRoster
 
     return eligibleRoster.filter((student) => (
@@ -1641,7 +1646,7 @@ export default function StartEvaluationPage({
         || student.registerId.toLowerCase().includes(needle)
       )
     ))
-  }, [hasCompletedEvaluationHistory, roster, studentFilter, studentSearch])
+  }, [hasCompletedEvaluationHistory, initialSelectedStudentId, isEditingCompletedEvaluation, roster, studentFilter, studentSearch])
 
   useEffect(() => {
     const allowedFilters = hasCompletedEvaluationHistory
@@ -1691,7 +1696,7 @@ export default function StartEvaluationPage({
       || status === 'repeat'
       || status === 'remedial'
   }).length
-  const canSendToApproval = submittedCount > 0 && evaluationStatusCount >= submittedCount
+  const canSendToApproval = !isEditingCompletedEvaluation && submittedCount > 0 && evaluationStatusCount >= submittedCount
   const eligibleEvaluationCount = roster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student))).length
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
@@ -1851,13 +1856,23 @@ export default function StartEvaluationPage({
       rowStatus: 'Completed',
       evaluationDraft: panelActions?.buildDraft?.() ?? null,
     })
+    const normalizedCompletedEvaluationRow = isEditingCompletedEvaluation
+      ? {
+          ...completedEvaluationRow,
+          id: evaluationRecord.editingCompletedRowId,
+          attemptNumber: evaluationRecord.editingAttemptNumber ?? completedEvaluationRow.attemptNumber,
+          attemptLabel: evaluationRecord.editingAttemptNumber
+            ? `Attempt ${evaluationRecord.editingAttemptNumber}`
+            : completedEvaluationRow.attemptLabel,
+        }
+      : completedEvaluationRow
     const hasNextStudent = selectedStudentIndex > -1 && selectedStudentIndex < filteredStudents.length - 1
 
     setSubmittedEvaluations((current) => ({
       ...current,
       [selectedStudent.id]: submissionSummary,
     }))
-    onSaveCompletedEvaluation?.(completedEvaluationRow)
+    onSaveCompletedEvaluation?.(normalizedCompletedEvaluationRow)
     setSavedEvaluationDrafts((current) => {
       const nextDrafts = { ...current }
       delete nextDrafts[selectedStudent.id]
@@ -1865,6 +1880,17 @@ export default function StartEvaluationPage({
     })
     setIsSubmitPopupOpen(false)
     setSelectedDecisionId('')
+
+    if (isEditingCompletedEvaluation) {
+      onAlert?.({
+        tone: 'success',
+        message: `${selectedStudent.name} evaluation updated.`,
+        duration: 2600,
+      })
+      onOpenCompletedEvaluation?.(evaluationRecord)
+      return
+    }
+
     onAlert?.({
       tone: 'success',
       message: hasNextStudent

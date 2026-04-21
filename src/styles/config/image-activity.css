@@ -7360,43 +7360,60 @@
 }
 
 .image-activity-page .image-activity-upload-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 300px));
   align-items: flex-start;
-  gap: 12px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
+  gap: 16px;
+  justify-content: start;
+  overflow: visible;
+  padding-bottom: 0;
+  width: 100%;
 }
 
 .image-activity-page .image-activity-upload-row .image-activity-assets-grid {
-  display: flex;
-  gap: 12px;
-  flex-wrap: nowrap;
-  flex: 0 0 auto;
+  display: contents;
 }
 
 .image-activity-page .image-activity-upload-row .image-activity-asset {
-  flex: 0 0 264px;
-  min-width: 264px;
+  width: 100%;
+  max-width: 300px;
+  min-width: 0;
 }
 
 .image-activity-page .image-activity-add-image-btn {
   align-self: center;
-  flex: 0 0 56px;
+  justify-self: start;
   width: 56px;
   min-width: 56px;
   min-height: 56px;
   margin-top: 0;
+  border-radius: 999px;
+  border-style: solid;
+  background: #f6fcf9;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
 .image-activity-page .image-activity-asset--enhanced {
-  min-height: 224px;
+  min-height: 0;
   padding: 12px;
   border-radius: 16px;
   border: 1px solid #dfe9e2;
   background: linear-gradient(180deg, #fcfefd, #f6fbf8);
   box-shadow: none;
+}
+
+.image-activity-page .image-activity-assets-card--enhanced .image-activity-upload-preview {
+  min-height: 0;
+  height: auto;
+}
+
+.image-activity-page .image-activity-upload-preview img {
+  aspect-ratio: 4 / 3;
+  height: auto;
+  min-height: 0;
+  max-height: 180px;
+  object-fit: contain;
+  padding: 8px;
 }
 
 .image-activity-page .image-activity-asset--enhanced.is-filled,

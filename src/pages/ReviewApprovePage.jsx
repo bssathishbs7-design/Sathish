@@ -2,49 +2,10 @@ import { useMemo, useState } from 'react'
 import {
   BadgeCheck,
   CalendarClock,
-  CheckCircle2,
-  ClipboardCheck,
-  RotateCcw,
-  Search,
-  UserRoundCheck,
+  Eye,
+  Info,
 } from 'lucide-react'
 import '../styles/review-approve.css'
-
-const sampleReviewRows = [
-  {
-    id: 'review-sample-1',
-    activityName: 'OSPE Station Review',
-    activityType: 'OSPE',
-    studentName: 'Aarav Menon',
-    registerId: 'MC25101',
-    decisionTitle: 'Completed',
-    thresholdLabel: 'Meets',
-    totalObtainedMarks: 8,
-    totalMarks: 10,
-  },
-  {
-    id: 'review-sample-2',
-    activityName: 'Image Interpretation',
-    activityType: 'Image',
-    studentName: 'Diya Krishnan',
-    registerId: 'MC25102',
-    decisionTitle: 'Repeat',
-    thresholdLabel: 'Below',
-    totalObtainedMarks: 4,
-    totalMarks: 10,
-  },
-  {
-    id: 'review-sample-3',
-    activityName: 'Clinical Form Assessment',
-    activityType: 'OSCE',
-    studentName: 'Kavin Raj',
-    registerId: 'MC25103',
-    decisionTitle: 'Remedial',
-    thresholdLabel: 'Needs Review',
-    totalObtainedMarks: 5,
-    totalMarks: 10,
-  },
-]
 
 const getDecisionTone = (value = '') => {
   const normalized = String(value).trim().toLowerCase()
@@ -54,13 +15,6 @@ const getDecisionTone = (value = '') => {
   if (normalized === 'remedial') return 'is-remedial'
 
   return 'is-pending'
-}
-
-const formatMarks = (obtained, total) => {
-  const safeObtained = Number(obtained) || 0
-  const safeTotal = Number(total) || 0
-
-  return `${safeObtained} / ${safeTotal || 'Nil'}`
 }
 
 const formatReceivedDateTime = (value) => {
@@ -83,126 +37,86 @@ const formatReceivedDateTime = (value) => {
   }
 }
 
-export default function ReviewApprovePage({ approvalQueueRows = [], completedEvaluationRows = [], onAlert }) {
-  const [search, setSearch] = useState('')
-  const [approvedRows, setApprovedRows] = useState({})
+const getActivityToneClass = (value = '') => String(value).trim().toLowerCase().replace(/\s+/g, '-')
 
-  const sourceRows = approvalQueueRows.length ? approvalQueueRows : completedEvaluationRows.length ? completedEvaluationRows : sampleReviewRows
+export default function ReviewApprovePage({ approvalQueueRows = [], onAlert }) {
+  const [activeSenderInfoId, setActiveSenderInfoId] = useState('')
+  const sourceRows = approvalQueueRows
   const reviewRows = useMemo(() => {
-    const needle = search.trim().toLowerCase()
+    const activityRows = new Map()
 
-    return sourceRows.filter((row) => {
-      if (!needle) return true
-
-      return [
-        row.activityName,
-        row.activityType,
-        row.studentName,
-        row.registerId,
-        row.facultyName,
-        row.employeeId,
-        row.designation,
-        row.decisionTitle,
-        row.resultStatus,
-        row.thresholdLabel,
-      ].some((value) => String(value ?? '').toLowerCase().includes(needle))
+    sourceRows.forEach((row) => {
+      const activityKey = row.activityId ?? row.id
+      if (!activityKey || activityRows.has(activityKey)) return
+      activityRows.set(activityKey, row)
     })
-  }, [search, sourceRows])
 
-  const approvedCount = Object.values(approvedRows).filter((status) => status === 'approved').length
-  const returnedCount = Object.values(approvedRows).filter((status) => status === 'returned').length
-  const pendingCount = Math.max(sourceRows.length - approvedCount - returnedCount, 0)
+    return [...activityRows.values()]
+  }, [sourceRows])
 
-  const setReviewStatus = (row, status) => {
-    setApprovedRows((current) => ({ ...current, [row.id]: status }))
+  const handleViewApproval = (row) => {
     onAlert?.({
-      tone: status === 'approved' ? 'secondary' : 'warning',
-      message: `${row.studentName ?? 'Student'} ${status === 'approved' ? 'approved' : 'returned for review'}.`,
+      tone: 'secondary',
+      message: `Viewing ${row.activityName ?? 'approval record'}.`,
     })
   }
-
-  const metrics = [
-    { label: 'Pending Review', value: pendingCount, icon: ClipboardCheck, tone: 'is-pending' },
-    { label: 'Approved', value: approvedCount, icon: CheckCircle2, tone: 'is-approved' },
-    { label: 'Returned', value: returnedCount, icon: RotateCcw, tone: 'is-returned' },
-  ]
 
   return (
     <section className="vx-content review-approve-page">
       <div className="review-approve-shell">
-        <section className="review-approve-metrics">
-          {metrics.map((item) => (
-            <article key={item.label} className={`review-approve-metric ${item.tone}`}>
-              <span><item.icon size={15} strokeWidth={2} /> {item.label}</span>
-              <strong>{item.value}</strong>
-            </article>
-          ))}
-        </section>
-
         <section className="review-approve-table-card">
-          <div className="review-approve-table-head">
-            <div>
-              <strong>Approval List</strong>
-              <p>{reviewRows.length} record{reviewRows.length === 1 ? '' : 's'} ready for review.</p>
-            </div>
-            <div className="review-approve-table-tools">
-              <label className="review-approve-search">
-                <Search size={16} strokeWidth={2} />
-                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search activity, student, result" />
-              </label>
-            </div>
-          </div>
-
           <div className="review-approve-list">
             {reviewRows.length ? reviewRows.map((row) => {
-              const rowStatus = approvedRows[row.id] ?? 'pending'
-      const isApprovalCard = Boolean(row.facultyName || row.employeeId || row.designation)
-      const decision = isApprovalCard ? 'Pending Approval' : row.decisionTitle ?? row.resultStatus ?? 'Pending'
-      const identityName = isApprovalCard ? row.senderName ?? 'Sender' : row.studentName ?? 'Student'
-      const identityId = isApprovalCard ? row.senderId ?? 'Sender ID not set' : row.registerId ?? 'Register ID not set'
-      const receivedAt = formatReceivedDateTime(row.receivedAt ?? row.sentAt ?? row.submittedAt)
+              const isApprovalCard = Boolean(row.facultyName || row.employeeId || row.designation)
+              const decision = isApprovalCard ? 'Pending Approval' : row.decisionTitle ?? row.resultStatus ?? 'Pending'
+              const senderName = row.senderName ?? row.studentName ?? 'Sender name not set'
+              const senderId = row.senderId ?? row.registerId ?? 'Sender ID not set'
+              const senderDesignation = row.senderDesignation ?? row.senderRole ?? row.role ?? ''
+              const receivedAt = formatReceivedDateTime(row.receivedAt ?? row.sentAt ?? row.submittedAt)
+              const isSenderInfoOpen = activeSenderInfoId === row.id
+              const activityType = row.activityType ?? 'Activity'
 
-      return (
-        <article key={row.id} className={`review-approve-row ${rowStatus !== 'pending' ? `is-${rowStatus}` : ''}`}>
-          <div className="review-approve-student">
-            <span className="review-approve-avatar" aria-hidden="true">
-              {identityName.slice(0, 2).toUpperCase()}
-            </span>
-            <div>
-              <strong>{identityName}</strong>
-              <p>{identityId}</p>
-            </div>
-          </div>
+              return (
+                <article key={row.id} className="review-approve-row">
+                  <div className="review-approve-profile-head">
+                    <div className="review-approve-header-badges">
+                      <span className={`review-approve-activity-pill ${getActivityToneClass(activityType)}`}>{activityType}</span>
+                      <span className={`review-approve-result-pill ${getDecisionTone(decision)}`}>{decision}</span>
+                    </div>
+                    <div className="review-approve-sender-info-wrap">
+                      <button
+                        type="button"
+                        className={`review-approve-info-btn ${isSenderInfoOpen ? 'is-open' : ''}`}
+                        onClick={() => setActiveSenderInfoId(isSenderInfoOpen ? '' : row.id)}
+                        aria-expanded={isSenderInfoOpen}
+                        aria-label="View sender details"
+                      >
+                        <Info size={15} strokeWidth={2.2} />
+                      </button>
+                      {isSenderInfoOpen ? (
+                        <div className="review-approve-info-tooltip" role="tooltip">
+                          <strong>{senderName}</strong>
+                          <span>{senderId}</span>
+                          {senderDesignation ? <span>{senderDesignation}</span> : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
 
-          <div className="review-approve-activity">
-            <strong>{row.activityName ?? 'Untitled Activity'}</strong>
-            <p>{isApprovalCard ? `${row.activityType ?? 'Activity'} • ${row.source ?? 'Approval'}` : row.activityType ?? 'Activity'}</p>
-          </div>
+                  <div className="review-approve-profile-stats">
+                    <div className="review-approve-profile-activity-name">
+                      <strong>{row.activityName ?? 'Untitled Activity'}</strong>
+                    </div>
+                  </div>
 
-          <div className="review-approve-result">
-            <span className={`review-approve-result-pill ${getDecisionTone(decision)}`}>{decision}</span>
-            <small>{isApprovalCard ? row.designation : row.thresholdLabel ?? 'Threshold not set'}</small>
-          </div>
-
-          <div className="review-approve-received">
-            <span><CalendarClock size={13} strokeWidth={2} /> Received</span>
-            <strong>{receivedAt.date}</strong>
-            {receivedAt.time ? <small>{receivedAt.time}</small> : null}
-          </div>
-
-          <div className="review-approve-score">
-            <span>{isApprovalCard ? 'Evaluated' : 'Score'}</span>
-            <strong>{isApprovalCard ? `${row.evaluatedCount ?? 0} / ${row.totalStudents ?? 0}` : formatMarks(row.totalObtainedMarks, row.totalMarks)}</strong>
-          </div>
-
-                  <div className="review-approve-actions">
-                    <button type="button" className="ghost review-approve-return-btn" onClick={() => setReviewStatus(row, 'returned')}>
-                      <RotateCcw size={14} strokeWidth={2} />
-                      Return
-                    </button>
-                    <button type="button" className="tool-btn green review-approve-approve-btn" onClick={() => setReviewStatus(row, 'approved')}>
-                      <UserRoundCheck size={14} strokeWidth={2} />
-                      Approve
+                  <div className="review-approve-profile-foot">
+                    <span>
+                      <CalendarClock size={15} strokeWidth={2} />
+                      {receivedAt.date}{receivedAt.time ? `, ${receivedAt.time}` : ''}
+                    </span>
+                    <button type="button" className="ghost review-approve-view-btn" onClick={() => handleViewApproval(row)}>
+                      <Eye size={14} strokeWidth={2} />
+                      View
                     </button>
                   </div>
                 </article>
@@ -211,7 +125,7 @@ export default function ReviewApprovePage({ approvalQueueRows = [], completedEva
               <div className="review-approve-empty">
                 <BadgeCheck size={24} strokeWidth={2} />
                 <strong>No records found</strong>
-                <p>Try another search term or complete evaluations to populate this queue.</p>
+                <p>Send an activity result to approval to populate this queue.</p>
               </div>
             )}
           </div>

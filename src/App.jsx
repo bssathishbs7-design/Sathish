@@ -220,6 +220,7 @@ function App() {
   const profileUser = {
     name: 'Karthik Subramanian',
     registerId: 'MC2568',
+    designation: 'Admin',
     role: 'Admin',
   }
 
@@ -421,6 +422,23 @@ function App() {
     if (!row?.activityId || !row?.studentId) return
 
     setCompletedEvaluationRows((current) => {
+      const isEditingExistingCompletedRow = Boolean(row.id)
+        && current.some((item) => item.id === row.id)
+
+      if (isEditingExistingCompletedRow) {
+        const attemptNumber = Number(row.attemptNumber) || Number(current.find((item) => item.id === row.id)?.attemptNumber) || 1
+        const normalizedRow = {
+          ...row,
+          attemptNumber,
+          attemptLabel: row.attemptLabel ?? `Attempt ${attemptNumber}`,
+        }
+
+        return [
+          normalizedRow,
+          ...current.filter((item) => item.id !== row.id),
+        ]
+      }
+
       const sameStudentRows = current.filter((item) => (
         item.activityId === row.activityId && item.studentId === row.studentId
       ))
@@ -461,6 +479,7 @@ function App() {
       id: `approval-${payload.activityId}`,
       senderName: profileUser.name,
       senderId: profileUser.registerId,
+      senderDesignation: profileUser.designation ?? profileUser.role,
       sentAt: approvalTimestamp,
       receivedAt: approvalTimestamp,
     }

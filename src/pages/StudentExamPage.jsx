@@ -87,6 +87,16 @@ const normalizePrompt = (value, fallback) => value?.trim() || fallback
 
 const normalizeDomainValue = (value) => value ?? 'Not Applicable'
 
+const getAlphabetTag = (index) => String.fromCharCode(65 + (index % 26))
+
+const normalizeReferenceImage = (image, index) => ({
+  ...image,
+  id: image?.id ?? image?.key ?? image?.src ?? image?.previewUrl ?? `reference-${index + 1}`,
+  src: image?.src ?? image?.previewUrl ?? image?.url ?? '',
+  label: image?.label ?? image?.title ?? `Image ${getAlphabetTag(index)}`,
+  tag: image?.tag ?? getAlphabetTag(index),
+})
+
 const getItemTypeBadge = (section, item, activityType) => {
   if (section === 'form') return 'Form'
   if (section === 'scaffolding') return 'Scaffolding'
@@ -150,6 +160,8 @@ const getAssignedSections = (assignment) => {
   const examData = resolved.examData ?? fallbackExam.examData
   const assignContent = examData.assignContent ?? { question: true, form: false, scaffolding: false }
   const modules = examData.modules ?? {}
+  const normalizedReferenceImages = (modules.referenceImages ?? []).map(normalizeReferenceImage)
+  const isImageActivity = String(resolved.type ?? '').trim().toLowerCase() === 'image'
 
   const questionSections = assignContent.question
     ? (modules.questions ?? []).map((question, index) => ({
@@ -167,6 +179,12 @@ const getAssignedSections = (assignment) => {
         psychomotor: normalizeDomainValue(question.psychomotor),
         isCritical: Boolean(question.isCritical),
         tags: question.tags ?? [],
+        imageQuestionTag: isImageActivity ? getAlphabetTag(index) : '',
+        referenceImages: isImageActivity
+          ? ((question.referenceImages ?? question.images ?? []).length
+              ? (question.referenceImages ?? question.images).map(normalizeReferenceImage)
+              : normalizedReferenceImages)
+          : [],
       }))
     : []
 
@@ -214,6 +232,7 @@ const getAssignedSections = (assignment) => {
   return {
     resolved,
     examData,
+    referenceImages: normalizedReferenceImages,
     questionSections,
     formSections,
     scaffoldingSections,
@@ -242,6 +261,7 @@ function StudentQuestionCard({
 }) {
   const isChoice = item.kind === 'MCQ' || item.kind === 'True or False'
   const options = item.kind === 'True or False' && item.options.length === 0 ? ['True', 'False'] : item.options
+  const isImageQuestion = String(activityType ?? '').trim().toLowerCase() === 'image' && item.section === 'question'
   const badges = [
     { label: `COG ${item.cognitive ?? 'Not Applicable'}`, tone: 'is-domain-cognitive' },
     { label: `AFF ${item.affective ?? 'Not Applicable'}`, tone: 'is-domain-affective' },
@@ -267,15 +287,19 @@ function StudentQuestionCard({
         </div>
       </div>
 
-      {referenceImages.length ? (
+      {isImageQuestion && referenceImages.length ? (
         <div className="student-exam-stage-media">
-          {referenceImages.map((image) => (
+          {referenceImages.map((image, imageIndex) => (
             <figure key={image.id ?? image.src} className="student-exam-stage-media-card">
               {image.previewUrl || image.src ? (
                 <img src={image.previewUrl ?? image.src} alt={image.label ?? 'Assigned reference'} />
               ) : (
                 <ImageIcon size={24} strokeWidth={2} />
               )}
+              <figcaption>
+                <span>{image.tag ?? getAlphabetTag(imageIndex)}</span>
+                {image.label ?? `Image ${getAlphabetTag(imageIndex)}`}
+              </figcaption>
             </figure>
           ))}
         </div>
@@ -619,7 +643,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
     onBackToActivities?.()
   }
 
-  const renderedReferenceImages = examData.modules?.referenceImages ?? []
   const sessionTypeConfig = getItemTypeBadgeConfig(resolved.type ?? 'Activity')
   const summaryItems = [
     { label: 'Assessment Type', value: resolved.type ?? 'Activity', icon: Shapes },
@@ -833,7 +856,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                 formValues={answers.forms}
                 onChangeQuestion={updateQuestionAnswer}
                 onChangeForm={updateFormAnswer}
-                referenceImages={currentIndex === 0 ? renderedReferenceImages : []}
+                referenceImages={currentItem.referenceImages ?? []}
               />
 
               <footer className="student-exam-stage-footer">
