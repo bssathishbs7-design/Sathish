@@ -7,6 +7,66 @@
     linear-gradient(180deg, #fcfdfc 0%, #f6f8f7 100%);
 }
 
+/* Final completed-evaluation dark toolbar normalization */
+.theme-dark .eval-completed-results-panel .eval-completed-toolbar {
+  border-color: #1f3448;
+  background: #0b1726;
+  box-shadow: none;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-search {
+  border-color: #2a4055;
+  background: #111f31;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-search svg {
+  color: #7f98a8;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-search input {
+  color: #dce7ee;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-search input::placeholder {
+  color: #8799a6;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-filterbar {
+  border-color: #26384c;
+  background: #111f31;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-filter {
+  color: #94a8b4;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-filter small {
+  color: #7f929f;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-filter.is-active {
+  background: #eaf4f1;
+  color: #0f766e;
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.22);
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-download {
+  background: #0f766e;
+  color: #f4fbf8;
+  box-shadow: 0 10px 18px rgba(2, 6, 23, 0.18);
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-download:hover:not(:disabled),
+.theme-dark .eval-completed-results-panel .eval-completed-download:focus-visible:not(:disabled) {
+  background: #0b655f;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-send-approval {
+  background: #0f8364;
+  color: #f4fbf8;
+  box-shadow: 0 10px 18px rgba(2, 6, 23, 0.18);
+}
+
 .eval-shell {
   display: grid;
   gap: 14px;
@@ -3449,5 +3509,106 @@
 
   .eval-pagination {
     justify-content: space-between;
+  }
+}
+
+/* Final completed-evaluation toolbar spacing */
+.eval-completed-results-panel .eval-completed-toolbar {
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.eval-completed-results-panel .eval-completed-toolbar-actions {
+  flex: 0 0 auto;
+  gap: 12px;
+}
+
+.eval-completed-results-panel .eval-completed-search {
+  flex: 0 0 450px;
+  width: 450px;
+  max-width: 450px;
+  min-width: 320px;
+}
+
+.eval-completed-results-panel .eval-completed-filterbar {
+  flex: 0 0 auto;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-toolbar {
+  border-color: #1f3448;
+  background: #0b1726;
+  box-shadow: none;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-search {
+  border-color: #2a4055;
+  background: #111f31;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-search svg {
+  color: #7f98a8;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-search input {
+  color: #dce7ee;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-search input::placeholder {
+  color: #8799a6;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-filterbar {
+  border-color: #26384c;
+  background: #111f31;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-filter {
+  color: #94a8b4;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-filter small {
+  color: #7f929f;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-filter.is-active {
+  background: #eaf4f1;
+  color: #0f766e;
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.22);
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-download {
+  background: #0f766e;
+  color: #f4fbf8;
+  box-shadow: 0 10px 18px rgba(2, 6, 23, 0.18);
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-download:hover:not(:disabled),
+.theme-dark .eval-completed-results-panel .eval-completed-download:focus-visible:not(:disabled) {
+  background: #0b655f;
+}
+
+.theme-dark .eval-completed-results-panel .eval-completed-send-approval {
+  background: #0f8364;
+  color: #f4fbf8;
+  box-shadow: 0 10px 18px rgba(2, 6, 23, 0.18);
+}
+
+@media (max-width: 1180px) {
+  .eval-completed-results-panel .eval-completed-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .eval-completed-results-panel .eval-completed-toolbar-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .eval-completed-results-panel .eval-completed-search {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
   }
 }

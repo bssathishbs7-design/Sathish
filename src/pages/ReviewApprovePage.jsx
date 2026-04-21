@@ -39,7 +39,7 @@ const formatReceivedDateTime = (value) => {
 
 const getActivityToneClass = (value = '') => String(value).trim().toLowerCase().replace(/\s+/g, '-')
 
-export default function ReviewApprovePage({ approvalQueueRows = [], onAlert }) {
+export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onViewApproval }) {
   const [activeSenderInfoId, setActiveSenderInfoId] = useState('')
   const sourceRows = approvalQueueRows
   const reviewRows = useMemo(() => {
@@ -55,6 +55,7 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert }) {
   }, [sourceRows])
 
   const handleViewApproval = (row) => {
+    onViewApproval?.(row)
     onAlert?.({
       tone: 'secondary',
       message: `Viewing ${row.activityName ?? 'approval record'}.`,

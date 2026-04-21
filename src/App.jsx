@@ -7,6 +7,7 @@ import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import CompletedEvaluationPage from './pages/CompletedEvaluationPage'
 import ReviewApprovePage from './pages/ReviewApprovePage'
+import ApprovalViewPage from './pages/ApprovalViewPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import StartEvaluationPage from './pages/StartEvaluationPage'
 import ExamLogPage from './pages/ExamLogPage'
@@ -26,6 +27,7 @@ const PAGE_PATHS = {
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
   [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
   [APP_PAGES.REVIEW_APPROVE]: '/skills/review-approve',
+  [APP_PAGES.APPROVAL_VIEW]: '/skills/approvalview',
   [APP_PAGES.START_EVALUATION]: '/skills/start-evaluation',
   [APP_PAGES.EXAM_LOG]: '/skills/exam-log',
   [APP_PAGES.OSPE_ACTIVITY]: '/skills/ospe-activity',
@@ -50,6 +52,7 @@ const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? APP_PAGES.DASHBOAR
 const START_EVALUATION_STORAGE_KEY = 'vx-start-evaluation-record'
 const COMPLETED_EVALUATIONS_STORAGE_KEY = 'vx-completed-evaluation-rows'
 const APPROVAL_QUEUE_STORAGE_KEY = 'vx-approval-queue-rows'
+const APPROVAL_VIEW_STORAGE_KEY = 'vx-approval-view-record'
 
 const readStoredStartEvaluationRecord = () => {
   try {
@@ -63,6 +66,20 @@ const storeStartEvaluationRecord = (record) => {
   if (!record) return
 
   window.sessionStorage.setItem(START_EVALUATION_STORAGE_KEY, JSON.stringify(record))
+}
+
+const readStoredApprovalViewRecord = () => {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(APPROVAL_VIEW_STORAGE_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
+
+const storeApprovalViewRecord = (record) => {
+  if (!record) return
+
+  window.sessionStorage.setItem(APPROVAL_VIEW_STORAGE_KEY, JSON.stringify(record))
 }
 
 const readStoredRows = (key) => {
@@ -243,6 +260,7 @@ function App() {
   const [selectedCompletedEvaluationActivityId, setSelectedCompletedEvaluationActivityId] = useState(null)
   const [completedEvaluationRows, setCompletedEvaluationRows] = useState(() => readStoredRows(COMPLETED_EVALUATIONS_STORAGE_KEY))
   const [approvalQueueRows, setApprovalQueueRows] = useState(() => readStoredRows(APPROVAL_QUEUE_STORAGE_KEY))
+  const [selectedApprovalViewRecord, setSelectedApprovalViewRecord] = useState(() => readStoredApprovalViewRecord())
   const [selectedExamLogContext, setSelectedExamLogContext] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
@@ -299,6 +317,11 @@ function App() {
   useEffect(() => {
     storeRows(APPROVAL_QUEUE_STORAGE_KEY, approvalQueueRows)
   }, [approvalQueueRows])
+
+  useEffect(() => {
+    if (!selectedApprovalViewRecord) return
+    storeApprovalViewRecord(selectedApprovalViewRecord)
+  }, [selectedApprovalViewRecord])
 
   useEffect(() => {
     const resolvedPage = getPageFromPath(window.location.pathname)
@@ -543,6 +566,13 @@ function App() {
     showAlert({ tone: 'secondary', message: `${payload.activityName ?? 'Activity'} sent to approval.` })
   }
 
+  const handleOpenApprovalView = (record) => {
+    if (!record) return
+    setSelectedApprovalViewRecord(record)
+    storeApprovalViewRecord(record)
+    navigateToPage(APP_PAGES.APPROVAL_VIEW)
+  }
+
   const handleBackToEvaluationList = () => {
     setSelectedEvaluationRecord(null)
     setSelectedEvaluationStudentId('')
@@ -724,6 +754,14 @@ function App() {
               approvalQueueRows={approvalQueueRows}
               completedEvaluationRows={completedEvaluationRows}
               onAlert={showAlert}
+              onViewApproval={handleOpenApprovalView}
+            />
+          ) : activePage === APP_PAGES.APPROVAL_VIEW ? (
+            <ApprovalViewPage
+              approvalRecord={selectedApprovalViewRecord ?? readStoredApprovalViewRecord()}
+              completedEvaluationRows={completedEvaluationRows}
+              onBack={() => navigateToPage(APP_PAGES.REVIEW_APPROVE)}
+              onAlert={showAlert}
             />
           ) : activePage === APP_PAGES.START_EVALUATION ? (
             activeEvaluationRecord ? (
@@ -731,6 +769,7 @@ function App() {
                 evaluationRecord={activeEvaluationRecord}
                 initialSelectedStudentId={selectedEvaluationStudentId}
                 completedEvaluationRows={completedEvaluationRows}
+                approvalQueueRows={approvalQueueRows}
                 onBackToEvaluation={handleBackToEvaluationList}
                 onOpenCompletedEvaluation={(record) => {
                   setSelectedCompletedEvaluationActivityId(record?.id ?? activeEvaluationRecord?.id ?? null)

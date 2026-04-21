@@ -94,6 +94,8 @@ export default function SendApprovalModal({ open, title = 'Send to Approval', co
 
   if (!open) return null
 
+  const isDarkMode = typeof document !== 'undefined' && Boolean(document.querySelector('.vx-shell.theme-dark'))
+
   const syncField = (field, value) => {
     const exactMatch = FACULTY_OPTIONS.find((item) => String(item[field]).toLowerCase() === String(value).toLowerCase())
 
@@ -134,7 +136,7 @@ export default function SendApprovalModal({ open, title = 'Send to Approval', co
   }
 
   return createPortal(
-    <div className="approval-modal-backdrop" role="dialog" aria-modal="true" aria-label={title} onClick={handleClose}>
+    <div className={`approval-modal-backdrop ${isDarkMode ? 'theme-dark' : ''}`.trim()} role="dialog" aria-modal="true" aria-label={title} onClick={handleClose}>
       <div className="approval-modal" onClick={(event) => event.stopPropagation()}>
         <div className="approval-modal-head">
           <div>

@@ -342,9 +342,25 @@ const buildStudentName = (index, sgt = 'SGT') => {
     'Riya Thomas',
     'Sanjay Iyer',
     'Tanvi Patel',
+    'Ananya Rao',
+    'Rahul Nair',
+    'Priya Shah',
+    'Vikram Das',
+    'Isha Verma',
+    'Arjun Pillai',
+    'Neha Kapoor',
+    'Manoj Reddy',
+    'Farah Khan',
+    'Dev Patel',
+    'Sneha George',
+    'Aditya Bose',
+    'Lakshmi Menon',
+    'Rohan Mathew',
+    'Pooja Iyer',
+    'Harish Kumar',
   ]
 
-  return names[index % names.length]
+  return names[index] ?? `Student ${index + 1}`
 }
 
 const buildEvaluationItems = (assignment, record) => {
@@ -1545,6 +1561,7 @@ export default function StartEvaluationPage({
   evaluationRecord,
   initialSelectedStudentId,
   completedEvaluationRows = [],
+  approvalQueueRows = [],
   onBackToEvaluation,
   onOpenCompletedEvaluation,
   onOpenExamLog,
@@ -1590,19 +1607,46 @@ export default function StartEvaluationPage({
       String(row.activityId ?? '') === String(evaluationRecord?.id ?? '') && isCompletedRowStatus(row.rowStatus)
     ))
   ), [completedEvaluationRows, evaluationRecord?.id])
-  const finishedStudentIds = useMemo(() => {
-    const ids = new Set()
+  const activeApprovalRecord = useMemo(() => (
+    approvalQueueRows.find((row) => String(row.activityId ?? '') === String(evaluationRecord?.id ?? '')) ?? null
+  ), [approvalQueueRows, evaluationRecord?.id])
+  const reevaluationStudentMap = useMemo(() => {
+    const nextMap = new Map()
+    const approvalRows = Array.isArray(activeApprovalRecord?.studentRows) ? activeApprovalRecord.studentRows : []
 
-    activityCompletedRows.forEach((row) => {
-      if (row.studentId) ids.add(row.studentId)
+    approvalRows.forEach((row) => {
+      const resultStatus = getNormalizedResultStatus(row.resultStatus ?? row.evaluationStatus)
+      const studentId = row.studentId ?? row.id
+
+      if (!studentId || !isReevaluationResult(resultStatus)) return
+
+      nextMap.set(studentId, {
+        previousAttemptNumber: Number(row.attemptCount ?? row.attemptNumber) || 1,
+        previousResultStatus: resultStatus,
+      })
     })
 
-    Object.keys(submittedEvaluations).forEach((studentId) => {
-      if (studentId) ids.add(studentId)
-    })
+    if (!nextMap.size && activeApprovalRecord) {
+      activityCompletedRows.forEach((row) => {
+        const resultStatus = getNormalizedResultStatus(row.resultStatus ?? row.decisionTitle)
+        if (!row.studentId || !isReevaluationResult(resultStatus)) return
 
-    return ids
-  }, [activityCompletedRows, submittedEvaluations])
+        const current = nextMap.get(row.studentId)
+        const rowAttempt = Number(row.attemptNumber) || 1
+        const currentAttempt = Number(current?.previousAttemptNumber) || 0
+
+        if (!current || rowAttempt > currentAttempt) {
+          nextMap.set(row.studentId, {
+            previousAttemptNumber: rowAttempt,
+            previousResultStatus: resultStatus,
+          })
+        }
+      })
+    }
+
+    return nextMap
+  }, [activeApprovalRecord, activityCompletedRows])
+  const isSecondAttemptMode = reevaluationStudentMap.size > 0
   const latestCompletedRowByStudent = useMemo(() => {
     const latestRows = new Map()
 
@@ -1623,19 +1667,89 @@ export default function StartEvaluationPage({
 
     return latestRows
   }, [activityCompletedRows])
+  const targetAttemptRowByStudent = useMemo(() => {
+    const targetRows = new Map()
+
+    if (!isSecondAttemptMode) return targetRows
+
+    activityCompletedRows.forEach((row) => {
+      const targetAttemptNumber = (reevaluationStudentMap.get(row.studentId)?.previousAttemptNumber ?? 0) + 1
+      if (!row.studentId || Number(row.attemptNumber) !== targetAttemptNumber) return
+
+      targetRows.set(row.studentId, row)
+    })
+
+    return targetRows
+  }, [activityCompletedRows, isSecondAttemptMode, reevaluationStudentMap])
+  const finishedStudentIds = useMemo(() => {
+    const ids = new Set()
+
+    if (isSecondAttemptMode) {
+      targetAttemptRowByStudent.forEach((row) => {
+        if (row.studentId) ids.add(row.studentId)
+      })
+    } else {
+      activityCompletedRows.forEach((row) => {
+        if (row.studentId) ids.add(row.studentId)
+      })
+    }
+
+    Object.keys(submittedEvaluations).forEach((studentId) => {
+      if (studentId) ids.add(studentId)
+    })
+
+    return ids
+  }, [activityCompletedRows, isSecondAttemptMode, submittedEvaluations, targetAttemptRowByStudent])
   const hasCompletedEvaluationHistory = activityCompletedRows.length > 0
 
-  const roster = useMemo(() => (
-    baseRoster.map((student) => {
+  const roster = useMemo(() => {
+    const mappedRoster = baseRoster.map((student) => {
       const latestCompletedRow = latestCompletedRowByStudent.get(student.id)
+      const targetAttemptRow = targetAttemptRowByStudent.get(student.id)
+      const reevaluationInfo = reevaluationStudentMap.get(student.id)
       const submittedEvaluation = submittedEvaluations[student.id]
 
       if (submittedEvaluation) {
+        const targetAttemptNumber = reevaluationInfo ? reevaluationInfo.previousAttemptNumber + 1 : Number(student.attemptNumber) || 1
+
         return {
           ...student,
+          attemptNumber: targetAttemptNumber,
+          attemptLabel: `Attempt ${targetAttemptNumber}`,
+          previousResultStatus: reevaluationInfo?.previousResultStatus,
+          previousAttemptNumber: reevaluationInfo?.previousAttemptNumber,
           evaluationStatus: 'Completed',
           evaluationDecision: submittedEvaluation.decisionTitle,
           evaluationResult: submittedEvaluation,
+        }
+      }
+
+      if (isSecondAttemptMode && reevaluationInfo) {
+        const targetAttemptNumber = reevaluationInfo.previousAttemptNumber + 1
+
+        if (targetAttemptRow) {
+          return {
+            ...student,
+            attemptNumber: targetAttemptNumber,
+            attemptLabel: `Attempt ${targetAttemptNumber}`,
+            previousResultStatus: reevaluationInfo.previousResultStatus,
+            previousAttemptNumber: reevaluationInfo.previousAttemptNumber,
+            evaluationStatus: 'Completed',
+            evaluationDecision: targetAttemptRow.resultStatus ?? targetAttemptRow.decisionTitle ?? '',
+            evaluationResult: targetAttemptRow,
+          }
+        }
+
+        return {
+          ...student,
+          attemptNumber: targetAttemptNumber,
+          attemptLabel: `Attempt ${targetAttemptNumber}`,
+          previousResultStatus: reevaluationInfo.previousResultStatus,
+          previousAttemptNumber: reevaluationInfo.previousAttemptNumber,
+          evaluationStatus: 'Pending',
+          evaluationDecision: '',
+          evaluationResult: null,
+          submissionStatus: 'Submitted',
         }
       }
 
@@ -1650,7 +1764,11 @@ export default function StartEvaluationPage({
 
       return student
     })
-  ), [baseRoster, latestCompletedRowByStudent, submittedEvaluations])
+
+    return isSecondAttemptMode
+      ? mappedRoster.filter((student) => reevaluationStudentMap.has(student.id))
+      : mappedRoster
+  }, [baseRoster, isSecondAttemptMode, latestCompletedRowByStudent, reevaluationStudentMap, submittedEvaluations, targetAttemptRowByStudent])
 
   const filteredStudents = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
@@ -1821,6 +1939,34 @@ export default function StartEvaluationPage({
       source: 'Start Evaluation',
       totalStudents: submittedCount,
       evaluatedCount: evaluationStatusCount,
+      attemptCount: roster.reduce((maxAttempt, student) => Math.max(maxAttempt, Number(student.attemptNumber) || 1), 0),
+      activitySections: sectionRows.map((section) => ({
+        key: section.key,
+        label: section.label,
+      })),
+      studentRows: roster.map((student) => {
+        const totalMarks = Number(student.totalMarks ?? student.maxMarks ?? 1) || 1
+        const obtainedMarks = Number(student.totalObtainedMarks ?? student.obtainedMarks ?? student.score ?? 0) || 0
+        const totalPercentage = student.totalPercentage ?? Math.round((obtainedMarks / totalMarks) * 100)
+
+        return {
+          id: student.id,
+          studentId: student.id,
+          studentName: student.name ?? student.studentName,
+          registerId: student.registerId ?? student.id,
+          attemptCount: Number(student.attemptNumber) || 1,
+          checklist: student.checklist,
+          form: student.form,
+          question: student.question,
+          scaffolding: student.scaffolding,
+          overallCriticalMarks: student.overallCriticalMarks ?? student.criticalMarks ?? 0,
+          thresholdLabel: student.thresholdLabel ?? student.threshold ?? 'Not Matched',
+          totalObtainedMarks: obtainedMarks,
+          totalMarks,
+          totalPercentage,
+          resultStatus: getStudentResultStatus(student) || student.evaluationStatus,
+        }
+      }),
       completedCount: roster.filter((student) => getStudentResultStatus(student) === 'completed' || student.evaluationStatus === 'Completed').length,
       repeatCount,
       remedialCount,

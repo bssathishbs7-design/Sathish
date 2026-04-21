@@ -382,3 +382,99 @@
     padding: 18px;
   }
 }
+
+/* Final dark-mode approval modal normalization */
+.theme-dark .approval-modal-backdrop,
+.approval-modal-backdrop.theme-dark {
+  background: rgba(2, 8, 20, 0.76);
+}
+
+.theme-dark .approval-modal {
+  border-color: #26384c;
+  background: #0f1a2b;
+  box-shadow: 0 34px 86px rgba(0, 0, 0, 0.42);
+}
+
+.theme-dark .approval-modal-head {
+  border-bottom-color: #26384c;
+  background: linear-gradient(180deg, #132033, #101b2c);
+}
+
+.theme-dark .approval-modal-grid {
+  background: #0f1a2b;
+}
+
+.theme-dark .approval-modal-foot {
+  border-top-color: #26384c;
+  background: #111d2f;
+}
+
+.theme-dark .approval-modal-close,
+.theme-dark .approval-modal-foot .ghost {
+  border-color: #2d4054;
+  background: #142235;
+  color: #d8e4ea;
+}
+
+.theme-dark .approval-modal-close:hover,
+.theme-dark .approval-modal-foot .ghost:hover {
+  border-color: #3a5268;
+  background: #192a40;
+  color: #ffffff;
+}
+
+.theme-dark .approval-modal-field span {
+  color: #9fb5ad;
+}
+
+.theme-dark .approval-modal-search-control {
+  border-color: #2d4054;
+  background: #111f31;
+  box-shadow: none;
+}
+
+.theme-dark .approval-modal-search-control::before {
+  background: #2d4054;
+}
+
+.theme-dark .approval-modal-search-control:hover,
+.theme-dark .approval-modal-search-control:focus-within {
+  border-color: rgba(95, 232, 177, 0.36);
+  background: #132438;
+}
+
+.theme-dark .approval-modal-field input,
+.theme-dark .approval-modal-field textarea {
+  color: #e6eef3;
+}
+
+.theme-dark .approval-modal-field input::placeholder,
+.theme-dark .approval-modal-field textarea::placeholder {
+  color: #8398a5;
+}
+
+.theme-dark .approval-modal-field textarea {
+  border-color: #2d4054;
+  background: #111f31;
+}
+
+.theme-dark .approval-modal-field textarea:focus {
+  border-color: rgba(95, 232, 177, 0.36);
+  box-shadow: 0 0 0 3px rgba(95, 232, 177, 0.1);
+}
+
+.theme-dark .approval-modal-options {
+  border-color: #2d4054;
+  background: #111f31;
+  box-shadow: 0 20px 42px rgba(0, 0, 0, 0.42);
+}
+
+.theme-dark .approval-modal-option {
+  color: #dbe7ed;
+}
+
+.theme-dark .approval-modal-option:hover,
+.theme-dark .approval-modal-option.is-selected {
+  background: rgba(95, 232, 177, 0.1);
+  color: #8ee4ca;
+}

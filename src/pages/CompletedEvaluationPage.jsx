@@ -160,6 +160,7 @@ const downloadCsv = ({ fileName, headers, rows }) => {
 const SECTION_CONFIGS = [
   { key: 'checklist', scoreHeader: 'Checklist' },
   { key: 'form', scoreHeader: 'Form' },
+  { key: 'question', scoreHeader: 'Question' },
   { key: 'scaffolding', scoreHeader: 'Scaffold' },
 ]
 
@@ -185,6 +186,41 @@ const getOutcomeTone = (value = '') => {
 const getAttemptNumber = (row) => Math.min(Math.max(Number(row?.attemptNumber) || 1, 1), 10)
 
 const getStudentKey = (row) => row?.studentId ?? row?.registerId ?? row?.studentName ?? row?.id
+
+const uniqueDisplayStudentNames = [
+  'Aarav Menon',
+  'Diya Krishnan',
+  'Kavin Raj',
+  'Megha Suresh',
+  'Nithin Paul',
+  'Riya Thomas',
+  'Sanjay Iyer',
+  'Tanvi Patel',
+  'Ananya Rao',
+  'Rahul Nair',
+  'Priya Shah',
+  'Vikram Das',
+  'Isha Verma',
+  'Arjun Pillai',
+  'Neha Kapoor',
+  'Manoj Reddy',
+  'Farah Khan',
+  'Dev Patel',
+  'Sneha George',
+  'Aditya Bose',
+]
+
+const normalizeDuplicateStudentNames = (rows = []) => {
+  const keys = [...new Set(rows.map(getStudentKey).filter(Boolean))]
+  const nameByKey = new Map(keys.map((key, index) => [key, uniqueDisplayStudentNames[index] ?? `Student ${index + 1}`]))
+
+  return rows.map((row) => {
+    const studentKey = getStudentKey(row)
+    const studentName = nameByKey.get(studentKey)
+
+    return studentName ? { ...row, studentName } : row
+  })
+}
 
 const isEvaluatedResultRow = (row) => {
   const status = String(row?.resultStatus ?? row?.decisionTitle ?? row?.decisionLabel ?? '').trim().toLowerCase()
@@ -227,9 +263,9 @@ export default function CompletedEvaluationPage({
   const pageSize = 10
 
   const sourceRows = useMemo(() => (
-    activityId
+    normalizeDuplicateStudentNames(activityId
       ? completedEvaluationRows.filter((row) => row.activityId === activityId)
-      : completedEvaluationRows
+      : completedEvaluationRows)
   ), [activityId, completedEvaluationRows])
 
   const evaluatedStudentCount = useMemo(() => {
@@ -282,6 +318,9 @@ export default function CompletedEvaluationPage({
   const visibleSections = useMemo(() => (
     SECTION_CONFIGS.filter((section) => filteredRows.some((row) => (row[section.key]?.itemCount ?? 0) > 0))
   ), [filteredRows])
+  const approvalSections = useMemo(() => (
+    SECTION_CONFIGS.filter((section) => sourceRows.some((row) => (row[section.key]?.itemCount ?? 0) > 0))
+  ), [sourceRows])
 
   const filterOptions = [
     { id: 'all', label: 'All', count: sourceRows.length },
@@ -302,6 +341,28 @@ export default function CompletedEvaluationPage({
       source: 'Completed Evaluation',
       totalStudents: assignedStudentCount,
       evaluatedCount: evaluatedStudentCount,
+      attemptCount: sourceRows.reduce((maxAttempt, row) => Math.max(maxAttempt, getAttemptNumber(row)), 0),
+      activitySections: approvalSections.map((section) => ({
+        key: section.key,
+        label: section.scoreHeader,
+      })),
+      studentRows: sourceRows.map((row) => ({
+        id: row.id,
+        studentId: row.studentId,
+        studentName: row.studentName,
+        registerId: row.registerId,
+        attemptCount: getAttemptNumber(row),
+        checklist: row.checklist,
+        form: row.form,
+        question: row.question,
+        scaffolding: row.scaffolding,
+        overallCriticalMarks: row.overallCriticalMarks,
+        thresholdLabel: row.thresholdLabel,
+        totalObtainedMarks: row.totalObtainedMarks,
+        totalMarks: row.totalMarks,
+        totalPercentage: row.totalPercentage,
+        resultStatus: row.resultStatus,
+      })),
       completedCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'completed').length,
       repeatCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'repeat').length,
       remedialCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'remedial').length,
@@ -673,20 +734,18 @@ export default function CompletedEvaluationPage({
                               <Pencil size={14} strokeWidth={2} />
                             </button>
                             {showParentDownload ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="tool-btn eval-table-action eval-completed-icon-btn"
-                                  title="Download PDF"
-                                  aria-label="Download PDF"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    handleDownloadRow(row)
-                                  }}
-                                >
-                                  <Download size={14} strokeWidth={2} />
-                                </button>
-                              </>
+                              <button
+                                type="button"
+                                className="tool-btn eval-table-action eval-completed-icon-btn"
+                                title="Download PDF"
+                                aria-label="Download PDF"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleDownloadRow(row)
+                                }}
+                              >
+                                <Download size={14} strokeWidth={2} />
+                              </button>
                             ) : null}
                             <button
                               type="button"
