@@ -573,6 +573,30 @@ function App() {
     navigateToPage(APP_PAGES.APPROVAL_VIEW)
   }
 
+  const handleApprovalReviewAction = (reviewedRecord) => {
+    if (!reviewedRecord?.activityId) return
+
+    const existingApprovalRow = approvalQueueRows.find((item) => item.activityId === reviewedRecord.activityId)
+    const nextReviewedRecord = {
+      ...(existingApprovalRow ?? {}),
+      ...reviewedRecord,
+      attemptCount: existingApprovalRow?.attemptCount ?? reviewedRecord.attemptCount,
+      attemptNumber: existingApprovalRow?.attemptNumber ?? reviewedRecord.attemptNumber,
+      attemptLabel: existingApprovalRow?.attemptLabel ?? reviewedRecord.attemptLabel,
+    }
+
+    setApprovalQueueRows((current) => current.map((item) => (
+      item.activityId === reviewedRecord.activityId ? nextReviewedRecord : item
+    )))
+    setSelectedApprovalViewRecord(nextReviewedRecord)
+    storeApprovalViewRecord(nextReviewedRecord)
+    showAlert({
+      tone: nextReviewedRecord.approvalStatus === 'Approved' ? 'secondary' : 'warning',
+      message: `${nextReviewedRecord.activityName ?? 'Activity'} ${nextReviewedRecord.approvalStatus === 'Approved' ? 'approved' : 'rejected'}${nextReviewedRecord.reviewRemarks ? ' with remarks' : ''}.`,
+    })
+    navigateToPage(APP_PAGES.EVALUATION)
+  }
+
   const handleBackToEvaluationList = () => {
     setSelectedEvaluationRecord(null)
     setSelectedEvaluationStudentId('')
@@ -738,6 +762,7 @@ function App() {
               onAlert={showAlert}
               evaluationRecords={evaluationRecords}
               completedEvaluationRows={completedEvaluationRows}
+              approvalQueueRows={approvalQueueRows}
               onStartEvaluation={handleOpenStartEvaluation}
             />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (
@@ -762,6 +787,7 @@ function App() {
               completedEvaluationRows={completedEvaluationRows}
               onBack={() => navigateToPage(APP_PAGES.REVIEW_APPROVE)}
               onAlert={showAlert}
+              onApprovalAction={handleApprovalReviewAction}
             />
           ) : activePage === APP_PAGES.START_EVALUATION ? (
             activeEvaluationRecord ? (

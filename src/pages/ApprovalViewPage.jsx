@@ -172,7 +172,7 @@ const InfoTooltipButton = ({ id, icon: Icon, label, title, items, activeTooltipI
   )
 }
 
-export default function ApprovalViewPage({ approvalRecord, completedEvaluationRows = [], onBack, onAlert }) {
+export default function ApprovalViewPage({ approvalRecord, completedEvaluationRows = [], onBack, onAlert, onApprovalAction }) {
   const [activeTooltipId, setActiveTooltipId] = useState('')
   const [reviewRemarks, setReviewRemarks] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
@@ -345,9 +345,24 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
   const attemptCount = approvalRecord.attemptCount ?? approvalRecord.attempts ?? approvalRecord.attemptNumber ?? 1
 
   const handleApprovalAction = (action) => {
+    const nextStatus = action === 'approve' ? 'Approved' : 'Approval Rejected'
+    const reviewPayload = {
+      ...approvalRecord,
+      status: nextStatus,
+      approvalStatus: nextStatus,
+      reviewStatus: nextStatus,
+      reviewRemarks: reviewRemarks.trim(),
+      reviewedAt: new Date().toISOString(),
+    }
+
+    if (onApprovalAction) {
+      onApprovalAction(reviewPayload)
+      return
+    }
+
     onAlert?.({
       tone: action === 'approve' ? 'secondary' : 'warning',
-      message: `${approvalRecord.activityName ?? 'Activity'} ${action === 'approve' ? 'approved' : 'returned'}${reviewRemarks.trim() ? ' with remarks' : ''}.`,
+      message: `${approvalRecord.activityName ?? 'Activity'} ${action === 'approve' ? 'approved' : 'rejected'}${reviewRemarks.trim() ? ' with remarks' : ''}.`,
     })
   }
 
@@ -473,9 +488,9 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
                 />
               </label>
               <div className="approval-view-review-actions">
-                <button type="button" className="ghost approval-view-return-btn" onClick={() => handleApprovalAction('return')}>
+                <button type="button" className="ghost approval-view-return-btn" onClick={() => handleApprovalAction('reject')}>
                   <RotateCcw size={16} strokeWidth={2.1} />
-                  Return
+                  Reject
                 </button>
                 <button type="button" className="tool-btn green approval-view-approve-btn" onClick={() => handleApprovalAction('approve')}>
                   <BadgeCheck size={16} strokeWidth={2.1} />

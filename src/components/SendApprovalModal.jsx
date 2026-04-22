@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BriefcaseBusiness, Check, ChevronDown, IdCard, SendHorizonal, UserRound, X } from 'lucide-react'
 import '../styles/approval-modal.css'
@@ -14,6 +14,11 @@ const emptyForm = {
   facultyName: '',
   employeeId: '',
   designation: '',
+  note: '',
+}
+
+const defaultForm = {
+  ...FACULTY_OPTIONS[0],
   note: '',
 }
 
@@ -85,12 +90,18 @@ function ApprovalSearchField({ label, value, listId, options, onChange, icon: Ic
 }
 
 export default function SendApprovalModal({ open, title = 'Send to Approval', contextLabel = '', onClose, onSend }) {
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState(defaultForm)
   const optionLists = useMemo(() => ({
     facultyName: uniqueValues(FACULTY_OPTIONS.map((item) => item.facultyName)),
     employeeId: uniqueValues(FACULTY_OPTIONS.map((item) => item.employeeId)),
     designation: uniqueValues(FACULTY_OPTIONS.map((item) => item.designation)),
   }), [])
+
+  useEffect(() => {
+    if (open) {
+      setForm(defaultForm)
+    }
+  }, [open])
 
   if (!open) return null
 
@@ -127,11 +138,11 @@ export default function SendApprovalModal({ open, title = 'Send to Approval', co
       designation: form.designation.trim(),
       note: form.note.trim(),
     })
-    setForm(emptyForm)
+    setForm(defaultForm)
   }
 
   const handleClose = () => {
-    setForm(emptyForm)
+    setForm(defaultForm)
     onClose?.()
   }
 

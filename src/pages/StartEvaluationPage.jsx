@@ -35,7 +35,18 @@ const CHECKLIST_FALLBACK_PROMPTS = [
 
 const isGeneratedQuestionLabel = (value) => /^Q\d+$/i.test(String(value ?? '').trim())
 
-const formatDate = (value) => (value ? String(value).split(',')[0].trim() : 'Not set')
+const formatDate = (value) => {
+  const normalized = value ? String(value).split(',')[0].trim() : ''
+  const [day, month, year] = normalized.split('/').map((part) => Number.parseInt(part, 10))
+
+  if (!day || !month || !year) return normalized || 'Not set'
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: '2-digit',
+  }).format(new Date(year, month - 1, day))
+}
 const normalizeValue = (value, fallback = 'Not Applicable') => value ?? fallback
 const calculatePercentage = (obtained, total) => {
   const safeTotal = Number(total) || 0
@@ -1701,6 +1712,14 @@ export default function StartEvaluationPage({
     return ids
   }, [activityCompletedRows, isSecondAttemptMode, submittedEvaluations, targetAttemptRowByStudent])
   const hasCompletedEvaluationHistory = activityCompletedRows.length > 0
+  const activeApprovalStatus = getNormalizedResultStatus(
+    activeApprovalRecord?.approvalStatus
+    ?? activeApprovalRecord?.reviewStatus
+    ?? activeApprovalRecord?.status
+    ?? '',
+  )
+  const isApprovalRejected = activeApprovalStatus === 'approval rejected'
+  const isApprovalApproved = activeApprovalStatus === 'approved'
 
   const roster = useMemo(() => {
     const mappedRoster = baseRoster.map((student) => {
@@ -1775,6 +1794,8 @@ export default function StartEvaluationPage({
     const submittedRoster = roster.filter((student) => student.submissionStatus === 'Submitted')
     const eligibleRoster = isEditingCompletedEvaluation
       ? submittedRoster.filter((student) => student.id === initialSelectedStudentId)
+      : isApprovalRejected
+        ? submittedRoster
       : submittedRoster.filter((student) => !finishedStudentIds.has(student.id))
 
     return eligibleRoster.filter((student) => (
@@ -1786,7 +1807,7 @@ export default function StartEvaluationPage({
         || student.registerId.toLowerCase().includes(needle)
       )
     ))
-  }, [finishedStudentIds, initialSelectedStudentId, isEditingCompletedEvaluation, roster, studentFilter, studentSearch])
+  }, [finishedStudentIds, initialSelectedStudentId, isApprovalRejected, isEditingCompletedEvaluation, roster, studentFilter, studentSearch])
 
   useEffect(() => {
     const allowedFilters = ['all', 'submitted']
@@ -1819,12 +1840,12 @@ export default function StartEvaluationPage({
   const editingStudentDraft = selectedStudent?.id && selectedStudent.id === initialSelectedStudentId
     ? evaluationRecord?.editingStudentDraft ?? null
     : null
+  const rejectedRevisionDraft = isApprovalRejected
+    ? selectedStudent?.evaluationResult?.evaluationDraft ?? null
+    : null
   const selectedStudentBadge = getStudentEvaluationBadge(selectedStudent)
   const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
   const submittedCount = roster.filter((student) => student.submissionStatus === 'Submitted').length
-  const notSubmittedCount = roster.filter((student) => student.submissionStatus !== 'Submitted').length
-  const completedCount = activityCompletedRows.length
-  const pendingCount = roster.filter((student) => student.evaluationStatus !== 'Completed').length
   const repeatCount = roster.filter((student) => getStudentResultStatus(student) === 'repeat').length
   const remedialCount = roster.filter((student) => getStudentResultStatus(student) === 'remedial').length
   const remainingEvaluationCount = roster.filter((student) => (
@@ -1837,8 +1858,17 @@ export default function StartEvaluationPage({
       || status === 'repeat'
       || status === 'remedial'
   }).length
-  const canSendToApproval = !isEditingCompletedEvaluation && submittedCount > 0 && remainingEvaluationCount === 0
-  const eligibleEvaluationCount = remainingEvaluationCount
+  const evaluationRecordStatusMeta = activeApprovalRecord
+    ? isApprovalRejected
+      ? { label: 'Approval Rejected', tone: 'is-approval-rejected' }
+      : isApprovalApproved
+        ? { label: 'Approved', tone: 'is-approved' }
+        : { label: 'Sent to Approval', tone: 'is-sent-approval' }
+    : evaluationRecord?.evaluationStatus === 'Completed Evaluation'
+      ? { label: 'Completed', tone: 'is-complete' }
+      : { label: 'Pending', tone: 'is-pending' }
+  const canSendToApproval = !activeApprovalRecord && !isEditingCompletedEvaluation && submittedCount > 0 && remainingEvaluationCount === 0
+  const eligibleEvaluationCount = isApprovalRejected ? submittedCount : remainingEvaluationCount
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
 
@@ -1932,6 +1962,10 @@ export default function StartEvaluationPage({
   }
 
   const handleSendApproval = (approvalFaculty) => {
+    const approvalSections = groupedReviewSummaries.length
+      ? groupedReviewSummaries
+      : readySections
+
     onSendToApproval?.({
       activityId: evaluationRecord?.id ?? 'unknown-activity',
       activityName: evaluationRecord?.activityName ?? 'Untitled Activity',
@@ -1940,7 +1974,7 @@ export default function StartEvaluationPage({
       totalStudents: submittedCount,
       evaluatedCount: evaluationStatusCount,
       attemptCount: roster.reduce((maxAttempt, student) => Math.max(maxAttempt, Number(student.attemptNumber) || 1), 0),
-      activitySections: sectionRows.map((section) => ({
+      activitySections: approvalSections.map((section) => ({
         key: section.key,
         label: section.label,
       })),
@@ -2167,8 +2201,8 @@ export default function StartEvaluationPage({
             <div className="start-eval-summary-topline">
               <div className="start-eval-summary-badges">
                 <span className={`eval-type-chip ${getActivityTypeTone(evaluationRecord?.activityType)}`}>{evaluationRecord?.activityType ?? 'Activity'}</span>
-                <span className={`eval-status-pill ${evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'is-complete' : 'is-pending'}`}>
-                  {evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'Completed' : 'Pending'}
+                <span className={`eval-status-pill ${evaluationRecordStatusMeta.tone}`}>
+                  {evaluationRecordStatusMeta.label}
                 </span>
                 {isCertifiableActivity ? (
                   <span className="eval-status-pill is-certifiable">Certifiable</span>
@@ -2217,7 +2251,15 @@ export default function StartEvaluationPage({
 
         <section className="start-eval-board">
           <div className="start-eval-main-panel">
-            {canSendToApproval ? (
+            {activeApprovalRecord && !isApprovalRejected ? (
+              <section className="start-eval-approval-card">
+                <div className="start-eval-approval-copy">
+                  <span><BadgeCheck size={13} strokeWidth={2} /> {isApprovalApproved ? 'Approved' : 'Sent to Approval'}</span>
+                  <strong>{isApprovalApproved ? 'This activity has been approved.' : 'This activity is in the approval queue.'}</strong>
+                  <p>{evaluationStatusCount} evaluated records {isApprovalApproved ? 'are ready for publishing.' : 'were sent for approval.'}</p>
+                </div>
+              </section>
+            ) : canSendToApproval ? (
               <section className="start-eval-approval-card">
                 <div className="start-eval-approval-copy">
                   <span><BadgeCheck size={13} strokeWidth={2} /> Approval Ready</span>
@@ -2282,7 +2324,7 @@ export default function StartEvaluationPage({
                   key={selectedStudent?.id ?? 'no-student'}
                   student={selectedStudent}
                   record={evaluationRecord}
-                  savedDraft={selectedStudent?.id ? (savedEvaluationDrafts[selectedStudent.id] ?? editingStudentDraft ?? null) : null}
+                  savedDraft={selectedStudent?.id ? (savedEvaluationDrafts[selectedStudent.id] ?? editingStudentDraft ?? rejectedRevisionDraft ?? null) : null}
                   marksDisabled={isMarksDisabled}
                   onObtainedMarksChange={setObtainedMarks}
                   onEvaluationStateChange={setEvaluationState}
