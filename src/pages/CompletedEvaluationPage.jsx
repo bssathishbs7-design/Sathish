@@ -1,11 +1,9 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowUpDown,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   ClipboardCheck,
   Download,
   Pencil,
@@ -258,7 +256,6 @@ export default function CompletedEvaluationPage({
   const [sortKey, setSortKey] = useState('studentName')
   const [sortDirection, setSortDirection] = useState('asc')
   const [currentPage, setCurrentPage] = useState(1)
-  const [expandedGroups, setExpandedGroups] = useState({})
   const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false)
   const pageSize = 10
 
@@ -321,6 +318,9 @@ export default function CompletedEvaluationPage({
   const approvalSections = useMemo(() => (
     SECTION_CONFIGS.filter((section) => sourceRows.some((row) => (row[section.key]?.itemCount ?? 0) > 0))
   ), [sourceRows])
+  const currentAttemptNumber = useMemo(() => (
+    sourceRows.reduce((maxAttempt, row) => Math.max(maxAttempt, getAttemptNumber(row)), 1)
+  ), [sourceRows])
 
   const filterOptions = [
     { id: 'all', label: 'All', count: sourceRows.length },
@@ -377,31 +377,23 @@ export default function CompletedEvaluationPage({
   const tableHeaders = useMemo(() => ([
     { key: 'studentName', label: 'Student', sortable: true },
     { key: 'registerId', label: 'ID', sortable: true },
-    { key: 'attemptNumber', label: 'Attempts', sortable: true },
+    { key: 'attemptNumber', label: 'Attempt', sortable: true },
+    ...visibleSections.flatMap((section) => ([
+      { key: `${section.key}-score`, label: section.scoreHeader, sortable: true },
+    ])),
+    { key: 'overallCriticalMarks', label: 'Critical', sortable: true },
+    { key: 'thresholdLabel', label: 'Threshold', sortable: true },
     { key: 'scoreComparison', label: 'Score', sortable: true },
     { key: 'totalPercentage', label: 'Total %', sortable: true },
     { key: 'decisionTitle', label: 'Result', sortable: true },
     { key: 'actions', label: 'Actions', sortable: false },
-  ]), [])
-
-  const childHeaders = useMemo(() => ([
-    { key: 'attemptNumber', label: 'Attempt' },
-    ...visibleSections.flatMap((section) => ([
-      { key: `${section.key}-score`, label: section.scoreHeader },
-    ])),
-    { key: 'overallCriticalMarks', label: 'Critical' },
-    { key: 'thresholdLabel', label: 'Threshold' },
-    { key: 'scoreComparison', label: 'Score' },
-    { key: 'totalPercentage', label: 'Total %' },
-    { key: 'decisionTitle', label: 'Result' },
-    { key: 'actions', label: 'Actions' },
   ]), [visibleSections])
 
   useEffect(() => {
     setCurrentPage(1)
   }, [searchValue, sortDirection, sortKey, statusFilter])
 
-  const groupedRows = useMemo(() => {
+  const sortedRows = useMemo(() => {
     const getSortValue = (row, key) => {
       if (key.endsWith('-score')) {
         const sectionKey = key.replace(/-score$/, '')
@@ -416,32 +408,9 @@ export default function CompletedEvaluationPage({
       return row[key] ?? ''
     }
 
-    const groups = new Map()
-
-    filteredRows.forEach((row) => {
-      const key = `${row.activityId}:${row.studentId}`
-      const current = groups.get(key) ?? {
-        id: key,
-        rows: [],
-      }
-
-      current.rows.push(row)
-      groups.set(key, current)
-    })
-
-    return [...groups.values()].map((group) => {
-      const attempts = [...group.rows].sort((left, right) => getAttemptNumber(left) - getAttemptNumber(right))
-      const latestRow = attempts.at(-1) ?? attempts[0]
-
-      return {
-        ...group,
-        attempts,
-        latestRow,
-        attemptCount: attempts.length,
-      }
-    }).sort((left, right) => {
-      const leftValue = sortKey === 'attemptNumber' ? left.attemptCount : getSortValue(left.latestRow, sortKey)
-      const rightValue = sortKey === 'attemptNumber' ? right.attemptCount : getSortValue(right.latestRow, sortKey)
+    return [...filteredRows].sort((left, right) => {
+      const leftValue = getSortValue(left, sortKey)
+      const rightValue = getSortValue(right, sortKey)
 
       if (typeof leftValue === 'number' && typeof rightValue === 'number') {
         return sortDirection === 'asc' ? leftValue - rightValue : rightValue - leftValue
@@ -453,15 +422,11 @@ export default function CompletedEvaluationPage({
     })
   }, [filteredRows, sortDirection, sortKey])
 
-  const totalPages = Math.max(1, Math.ceil(groupedRows.length / pageSize))
-  const paginatedGroups = useMemo(() => {
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize))
+  const paginatedRows = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize
-    return groupedRows.slice(startIndex, startIndex + pageSize)
-  }, [currentPage, groupedRows])
-
-  const sortedRows = useMemo(() => (
-    groupedRows.flatMap((group) => group.attempts)
-  ), [groupedRows])
+    return sortedRows.slice(startIndex, startIndex + pageSize)
+  }, [currentPage, sortedRows])
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -471,13 +436,6 @@ export default function CompletedEvaluationPage({
 
     setSortKey(key)
     setSortDirection('asc')
-  }
-
-  const toggleExpandedGroup = (groupId) => {
-    setExpandedGroups((current) => ({
-      ...current,
-      [groupId]: !current[groupId],
-    }))
   }
 
   const openEvaluationForRow = (row) => {
@@ -596,6 +554,7 @@ export default function CompletedEvaluationPage({
               <h1>{activityRecord?.activityName ?? 'Completed Evaluation'}</h1>
               <div className="eval-header-inline">
                 <span><Shapes size={13} strokeWidth={2} /> {activityRecord?.activityType ?? 'Activity'}</span>
+                <span className="eval-status-pill is-attempt">Attempt {currentAttemptNumber}</span>
                 <span><ClipboardCheck size={13} strokeWidth={2} /> Records <strong>{sourceRows.length}</strong></span>
               </div>
           </div>
@@ -664,7 +623,7 @@ export default function CompletedEvaluationPage({
             </div>
           ) : null}
 
-          {groupedRows.length ? (
+          {sortedRows.length ? (
             <div className="eval-table-wrap eval-completed-group-wrap">
             <table className="eval-table eval-table-completed">
               <thead>
@@ -686,175 +645,76 @@ export default function CompletedEvaluationPage({
                 </tr>
               </thead>
               <tbody>
-                {paginatedGroups.map((group) => {
-                  const row = group.latestRow
-                  const isExpanded = Boolean(expandedGroups[group.id])
-                  const showParentDownload = group.attemptCount === 1
-                    && String(row.resultStatus ?? '').trim().toLowerCase() === 'completed'
+                {paginatedRows.map((row) => (
+                  <tr key={row.id} className="eval-completed-parent-row">
+                    <td>
+                      <div className="eval-completed-student">
+                        <span className="eval-completed-avatar">{row.studentName.slice(0, 2).toUpperCase()}</span>
+                        <div className="eval-table-title">
+                          <strong>{row.studentName}</strong>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{row.registerId}</td>
+                    <td>
+                      <span className="eval-table-pill is-neutral">{getAttemptNumber(row)}</span>
+                    </td>
+                    {visibleSections.map((section) => {
+                      const sectionStats = row[section.key] ?? {}
 
-                  return (
-                    <Fragment key={group.id}>
-                      <tr
-                        className={`eval-completed-parent-row ${isExpanded ? 'is-expanded' : ''}`}
-                        aria-expanded={isExpanded}
-                        onClick={() => toggleExpandedGroup(group.id)}
-                      >
-                        <td>
-                          <div className="eval-completed-student">
-                            <span className="eval-completed-avatar">{row.studentName.slice(0, 2).toUpperCase()}</span>
-                            <div className="eval-table-title">
-                              <strong>{row.studentName}</strong>
-                            </div>
-                          </div>
+                      return (
+                        <td key={`${row.id}-${section.key}-score`}>
+                          {formatMarks(sectionStats.obtainedMarks)}
                         </td>
-                        <td>{row.registerId}</td>
-                        <td>
-                          <span className="eval-table-pill is-neutral">{group.attemptCount}</span>
-                        </td>
-                        <td className="is-strong">{formatMarks(row.totalObtainedMarks)} / {formatMarks(row.totalMarks)}</td>
-                        <td className="is-strong">{formatPercent(row.totalPercentage)}</td>
-                        <td>
-                          {row.resultStatus ? (
-                            <span className={`eval-table-pill ${getOutcomeTone(row.resultStatus)}`}>
-                              {row.resultStatus}
-                            </span>
-                          ) : '-'}
-                        </td>
-                        <td>
-                          <div className="eval-completed-actions">
-                            <button
-                              type="button"
-                              className="tool-btn eval-table-action eval-completed-icon-btn"
-                              title="Edit latest evaluation"
-                              aria-label="Edit latest evaluation"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                openEvaluationForRow(row)
-                              }}
-                            >
-                              <Pencil size={14} strokeWidth={2} />
-                            </button>
-                            {showParentDownload ? (
-                              <button
-                                type="button"
-                                className="tool-btn eval-table-action eval-completed-icon-btn"
-                                title="Download PDF"
-                                aria-label="Download PDF"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  handleDownloadRow(row)
-                                }}
-                              >
-                                <Download size={14} strokeWidth={2} />
-                              </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              className="tool-btn eval-table-action eval-completed-icon-btn eval-completed-expand-btn"
-                              title={isExpanded ? 'Hide attempts' : 'Show attempts'}
-                              aria-label={isExpanded ? 'Hide attempts' : 'Show attempts'}
-                              aria-expanded={isExpanded}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                toggleExpandedGroup(group.id)
-                              }}
-                            >
-                              {isExpanded ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {isExpanded ? (
-                        <tr
-                          key={`${group.id}-attempts`}
-                          className="eval-completed-child-row"
-                          onClick={(event) => event.stopPropagation()}
+                      )
+                    })}
+                    <td>{formatMarks(row.overallCriticalMarks)}</td>
+                    <td>
+                      <span className={`eval-table-pill ${getThresholdTone(row.thresholdLabel)}`}>
+                        {row.thresholdLabel ?? 'Not Matched'}
+                      </span>
+                    </td>
+                    <td className="is-strong">{formatMarks(row.totalObtainedMarks)} / {formatMarks(row.totalMarks)}</td>
+                    <td className="is-strong">{formatPercent(row.totalPercentage)}</td>
+                    <td>
+                      {row.resultStatus ? (
+                        <span className={`eval-table-pill ${getOutcomeTone(row.resultStatus)}`}>
+                          {row.resultStatus}
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td>
+                      <div className="eval-completed-actions">
+                        <button
+                          type="button"
+                          className="tool-btn eval-table-action eval-completed-icon-btn"
+                          title="Edit evaluation"
+                          aria-label="Edit evaluation"
+                          onClick={() => openEvaluationForRow(row)}
                         >
-                          <td colSpan={tableHeaders.length}>
-                            <div className="eval-completed-attempts-panel">
-                              <table className="eval-completed-attempt-table">
-                                <thead>
-                                  <tr>
-                                    {childHeaders.map((header) => (
-                                      <th key={`${group.id}-${header.key}`}>{header.label}</th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {group.attempts.map((attemptRow) => {
-                                    const isLatestAttempt = attemptRow.id === group.latestRow?.id
-
-                                    return (
-                                      <tr key={attemptRow.id}>
-                                        <td>{getAttemptNumber(attemptRow)}</td>
-                                        {visibleSections.map((section) => {
-                                          const sectionStats = attemptRow[section.key] ?? {}
-
-                                          return (
-                                            <td key={`${attemptRow.id}-${section.key}-score`}>
-                                              {formatMarks(sectionStats.obtainedMarks)}
-                                            </td>
-                                          )
-                                        })}
-                                        <td>{formatMarks(attemptRow.overallCriticalMarks)}</td>
-                                        <td>
-                                          <span className={`eval-table-pill ${getThresholdTone(attemptRow.thresholdLabel)}`}>
-                                            {attemptRow.thresholdLabel ?? 'Not Matched'}
-                                          </span>
-                                        </td>
-                                        <td className="is-strong">{formatMarks(attemptRow.totalObtainedMarks)} / {formatMarks(attemptRow.totalMarks)}</td>
-                                        <td className="is-strong">{formatPercent(attemptRow.totalPercentage)}</td>
-                                        <td>
-                                          {attemptRow.resultStatus ? (
-                                            <span className={`eval-table-pill ${getOutcomeTone(attemptRow.resultStatus)}`}>
-                                              {attemptRow.resultStatus}
-                                            </span>
-                                          ) : '-'}
-                                        </td>
-                                        <td>
-                                          <div className="eval-completed-actions">
-                                            {isLatestAttempt ? (
-                                              <button
-                                                type="button"
-                                                className="tool-btn eval-table-action eval-completed-icon-btn"
-                                                title="Edit latest evaluation"
-                                                aria-label="Edit latest evaluation"
-                                                onClick={() => openEvaluationForRow(attemptRow)}
-                                              >
-                                                <Pencil size={14} strokeWidth={2} />
-                                              </button>
-                                            ) : null}
-                                            <button
-                                              type="button"
-                                              className="tool-btn eval-table-action eval-completed-icon-btn"
-                                              title="Download PDF"
-                                              aria-label="Download PDF"
-                                              onClick={() => handleDownloadRow(attemptRow)}
-                                            >
-                                              <Download size={14} strokeWidth={2} />
-                                            </button>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    )
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : null}
-                    </Fragment>
-                  )
-                })}
+                          <Pencil size={14} strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          className="tool-btn eval-table-action eval-completed-icon-btn"
+                          title="Download PDF"
+                          aria-label="Download PDF"
+                          onClick={() => handleDownloadRow(row)}
+                        >
+                          <Download size={14} strokeWidth={2} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
             <div className="eval-table-footer">
               <span>
-                Showing {paginatedGroups.length ? (currentPage - 1) * pageSize + 1 : 0}
+                Showing {paginatedRows.length ? (currentPage - 1) * pageSize + 1 : 0}
                 {' '}to{' '}
-                {(currentPage - 1) * pageSize + paginatedGroups.length}
-                {' '}of {groupedRows.length}
+                {(currentPage - 1) * pageSize + paginatedRows.length}
+                {' '}of {sortedRows.length}
               </span>
               <div className="eval-pagination">
                 <button
