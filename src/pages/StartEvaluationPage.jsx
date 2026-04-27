@@ -228,6 +228,8 @@ const buildCompletedEvaluationRow = ({
     studentId: student?.id ?? 'unknown-student',
     studentName: student?.name ?? 'Student',
     registerId: student?.registerId ?? 'Not set',
+    attemptNumber: Number(student?.attemptNumber) || 1,
+    attemptLabel: student?.attemptLabel ?? `Attempt ${Number(student?.attemptNumber) || 1}`,
     rowStatus,
     resultStatus: decision?.title ?? '',
     decisionId: decision?.id ?? '',
@@ -558,6 +560,8 @@ const buildStudentRoster = (record, assignment, latestSubmission) => {
           ? latestSubmission.studentName
           : buildStudentName(index, record?.sgt),
       registerId: index === 0 && latestSubmission?.studentId ? latestSubmission.studentId : `MC25${String(index + 101).padStart(3, '0')}`,
+      attemptNumber: 1,
+      attemptLabel: 'Attempt 1',
       submissionStatus: hasSubmitted ? 'Submitted' : 'Pending',
       evaluationStatus: 'Pending',
       submittedAt: index === 0 && latestSubmission?.submittedAt ? latestSubmission.submittedAt : hasSubmitted ? `${String(index + 1).padStart(2, '0')}/04/2026, 09:${String(10 + index).padStart(2, '0')} ` : null,
@@ -1729,12 +1733,10 @@ export default function StartEvaluationPage({
       const submittedEvaluation = submittedEvaluations[student.id]
 
       if (submittedEvaluation) {
-        const targetAttemptNumber = reevaluationInfo ? reevaluationInfo.previousAttemptNumber + 1 : Number(student.attemptNumber) || 1
-
         return {
           ...student,
-          attemptNumber: targetAttemptNumber,
-          attemptLabel: `Attempt ${targetAttemptNumber}`,
+          attemptNumber: reevaluationInfo ? reevaluationInfo.previousAttemptNumber + 1 : Number(student.attemptNumber) || 1,
+          attemptLabel: `Attempt ${reevaluationInfo ? reevaluationInfo.previousAttemptNumber + 1 : Number(student.attemptNumber) || 1}`,
           previousResultStatus: reevaluationInfo?.previousResultStatus,
           previousAttemptNumber: reevaluationInfo?.previousAttemptNumber,
           evaluationStatus: 'Completed',
@@ -1744,13 +1746,11 @@ export default function StartEvaluationPage({
       }
 
       if (isSecondAttemptMode && reevaluationInfo) {
-        const targetAttemptNumber = reevaluationInfo.previousAttemptNumber + 1
-
         if (targetAttemptRow) {
           return {
             ...student,
-            attemptNumber: targetAttemptNumber,
-            attemptLabel: `Attempt ${targetAttemptNumber}`,
+            attemptNumber: reevaluationInfo.previousAttemptNumber + 1,
+            attemptLabel: `Attempt ${reevaluationInfo.previousAttemptNumber + 1}`,
             previousResultStatus: reevaluationInfo.previousResultStatus,
             previousAttemptNumber: reevaluationInfo.previousAttemptNumber,
             evaluationStatus: 'Completed',
@@ -1761,8 +1761,8 @@ export default function StartEvaluationPage({
 
         return {
           ...student,
-          attemptNumber: targetAttemptNumber,
-          attemptLabel: `Attempt ${targetAttemptNumber}`,
+          attemptNumber: reevaluationInfo.previousAttemptNumber + 1,
+          attemptLabel: `Attempt ${reevaluationInfo.previousAttemptNumber + 1}`,
           previousResultStatus: reevaluationInfo.previousResultStatus,
           previousAttemptNumber: reevaluationInfo.previousAttemptNumber,
           evaluationStatus: 'Pending',
@@ -1845,19 +1845,26 @@ export default function StartEvaluationPage({
     : null
   const selectedStudentBadge = getStudentEvaluationBadge(selectedStudent)
   const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
-  const submittedCount = roster.filter((student) => student.submissionStatus === 'Submitted').length
+  const approvalStudentRows = Array.isArray(activeApprovalRecord?.studentRows) ? activeApprovalRecord.studentRows : []
+  const approvalTotalStudents = Number(activeApprovalRecord?.totalStudents) || approvalStudentRows.length || 0
+  const approvalEvaluatedCount = Number(activeApprovalRecord?.evaluatedCount) || approvalStudentRows.length || 0
+  const submittedCount = activeApprovalRecord
+    ? approvalTotalStudents
+    : roster.filter((student) => student.submissionStatus === 'Submitted').length
   const repeatCount = roster.filter((student) => getStudentResultStatus(student) === 'repeat').length
   const remedialCount = roster.filter((student) => getStudentResultStatus(student) === 'remedial').length
   const remainingEvaluationCount = roster.filter((student) => (
     student.submissionStatus === 'Submitted' && !finishedStudentIds.has(student.id)
   )).length
-  const evaluationStatusCount = roster.filter((student) => {
-    const status = getStudentResultStatus(student)
-    return student.evaluationStatus === 'Completed'
-      || status === 'completed'
-      || status === 'repeat'
-      || status === 'remedial'
-  }).length
+  const evaluationStatusCount = activeApprovalRecord
+    ? approvalEvaluatedCount
+    : roster.filter((student) => {
+      const status = getStudentResultStatus(student)
+      return student.evaluationStatus === 'Completed'
+        || status === 'completed'
+        || status === 'repeat'
+        || status === 'remedial'
+    }).length
   const evaluationRecordStatusMeta = activeApprovalRecord
     ? isApprovalRejected
       ? { label: 'Approval Rejected', tone: 'is-approval-rejected' }
@@ -1867,7 +1874,13 @@ export default function StartEvaluationPage({
     : evaluationRecord?.evaluationStatus === 'Completed Evaluation'
       ? { label: 'Completed', tone: 'is-complete' }
       : { label: 'Pending', tone: 'is-pending' }
-  const canSendToApproval = !activeApprovalRecord && !isEditingCompletedEvaluation && submittedCount > 0 && remainingEvaluationCount === 0
+  const currentAttemptNumber = isEditingCompletedEvaluation
+    ? Number(evaluationRecord?.editingAttemptNumber) || 1
+    : roster.reduce((maxAttempt, student) => Math.max(maxAttempt, Number(student.attemptNumber) || 1), 1)
+  const canSendToApproval = !activeApprovalRecord
+    && !isEditingCompletedEvaluation
+    && submittedCount > 0
+    && remainingEvaluationCount === 0
   const eligibleEvaluationCount = isApprovalRejected ? submittedCount : remainingEvaluationCount
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
@@ -2203,6 +2216,9 @@ export default function StartEvaluationPage({
                 <span className={`eval-type-chip ${getActivityTypeTone(evaluationRecord?.activityType)}`}>{evaluationRecord?.activityType ?? 'Activity'}</span>
                 <span className={`eval-status-pill ${evaluationRecordStatusMeta.tone}`}>
                   {evaluationRecordStatusMeta.label}
+                </span>
+                <span className="eval-status-pill start-eval-attempt-pill">
+                  Attempt {currentAttemptNumber}
                 </span>
                 {isCertifiableActivity ? (
                   <span className="eval-status-pill is-certifiable">Certifiable</span>

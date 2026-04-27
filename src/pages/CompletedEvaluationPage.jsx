@@ -615,42 +615,6 @@ export default function CompletedEvaluationPage({
         <section className="eval-completed-results-panel">
           {sourceRows.length ? (
             <div className="eval-completed-toolbar">
-            <div className="eval-completed-filterbar" role="tablist" aria-label="Outcome filters">
-              {filterOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={statusFilter === option.id}
-                  className={`eval-completed-filter ${statusFilter === option.id ? 'is-active' : ''}`}
-                  onClick={() => setStatusFilter(option.id)}
-                >
-                  <span>{option.label}</span>
-                  <small>{option.count}</small>
-                </button>
-              ))}
-            </div>
-
-            <div className="eval-completed-toolbar-actions">
-              {canSendApproval ? (
-                <button
-                  type="button"
-                  className="tool-btn green eval-completed-send-approval"
-                  onClick={() => setIsApprovalPopupOpen(true)}
-                >
-                  <SendHorizonal size={14} strokeWidth={2} />
-                  Send to Approval
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="eval-completed-download"
-                onClick={handleDownloadAllExcel}
-                disabled={!sortedRows.length}
-              >
-                <Download size={14} strokeWidth={2} />
-                Download Excel
-              </button>
               <label className="eval-completed-search">
                 <Search size={14} strokeWidth={2} />
                 <input
@@ -659,7 +623,44 @@ export default function CompletedEvaluationPage({
                   placeholder="Search student, ID, result, or attempts"
                 />
               </label>
-            </div>
+
+              <div className="eval-completed-toolbar-actions">
+                {canSendApproval ? (
+                  <button
+                    type="button"
+                    className="tool-btn green eval-completed-send-approval"
+                    onClick={() => setIsApprovalPopupOpen(true)}
+                  >
+                    <SendHorizonal size={14} strokeWidth={2} />
+                    Send to Approval
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="eval-completed-download"
+                  onClick={handleDownloadAllExcel}
+                  disabled={!sortedRows.length}
+                >
+                  <Download size={14} strokeWidth={2} />
+                  Download Excel
+                </button>
+              </div>
+
+              <div className="eval-completed-filterbar" role="tablist" aria-label="Outcome filters">
+                {filterOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={statusFilter === option.id}
+                    className={`eval-completed-filter ${statusFilter === option.id ? 'is-active' : ''}`}
+                    onClick={() => setStatusFilter(option.id)}
+                  >
+                    <span>{option.label}</span>
+                    <small>{option.count}</small>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : null}
 

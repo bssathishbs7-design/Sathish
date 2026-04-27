@@ -3784,25 +3784,33 @@
 
 /* Final completed-evaluation toolbar spacing */
 .eval-completed-results-panel .eval-completed-toolbar {
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto auto;
+  align-items: center;
+  justify-content: initial;
   gap: 12px;
-  flex-wrap: nowrap;
+  flex-wrap: initial;
 }
 
 .eval-completed-results-panel .eval-completed-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
   gap: 12px;
 }
 
 .eval-completed-results-panel .eval-completed-search {
-  flex: 0 0 450px;
-  width: 450px;
-  max-width: 450px;
-  min-width: 320px;
+  order: initial;
+  flex: initial;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
 }
 
 .eval-completed-results-panel .eval-completed-filterbar {
   flex: 0 0 auto;
+  justify-self: end;
 }
 
 .theme-dark .eval-completed-results-panel .eval-completed-toolbar {
@@ -3866,6 +3874,7 @@
 
 @media (max-width: 1180px) {
   .eval-completed-results-panel .eval-completed-toolbar {
+    display: flex;
     align-items: stretch;
     flex-direction: column;
   }
@@ -3873,12 +3882,16 @@
   .eval-completed-results-panel .eval-completed-toolbar-actions {
     width: 100%;
     flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .eval-completed-results-panel .eval-completed-search {
-    flex: 1 1 100%;
     width: 100%;
     max-width: none;
     min-width: 0;
+  }
+
+  .eval-completed-results-panel .eval-completed-filterbar {
+    justify-self: auto;
   }
 }
