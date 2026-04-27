@@ -7,17 +7,28 @@ import {
   ClipboardCheck,
   FolderKanban,
   GraduationCap,
+  Info,
   LayoutGrid,
   Rows3,
   Search,
-  Shapes,
   Users,
 } from 'lucide-react'
 import PageBreadcrumbs from '../components/PageBreadcrumbs'
 import '../styles/evaluation.css'
 import { skillAssessmentActivities } from './skillAssessmentData'
 
-const normalizeDate = (value) => (value ? String(value).split(',')[0].trim() : '')
+const formatDisplayDate = (value) => {
+  const normalized = value ? String(value).split(',')[0].trim() : ''
+  const [day, month, year] = normalized.split('/').map((part) => Number.parseInt(part, 10))
+
+  if (!day || !month || !year) return normalized
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: '2-digit',
+  }).format(new Date(year, month - 1, day))
+}
 
 const getActivityTypeTone = (value) => {
   const normalized = String(value ?? '').trim().toLowerCase()
@@ -34,6 +45,134 @@ const parseAttemptValue = (value) => {
   if (!value) return 0
   const [first] = String(value).split('/')
   return Number.parseInt(first, 10) || 0
+}
+
+const getNormalizedResultStatus = (value = '') => String(value ?? '').trim().toLowerCase()
+
+const getAttemptNumber = (row) => Number(row?.attemptNumber) || 1
+
+const getCompletedRowStatus = (row) => getNormalizedResultStatus(
+  row?.resultStatus
+  ?? row?.decisionTitle
+  ?? row?.evaluationDecision
+  ?? row?.evaluationResult?.resultStatus,
+)
+
+const getLatestCompletedRowsByStudent = (rows = []) => {
+  const latestRows = new Map()
+
+  rows.forEach((row) => {
+    if (!row?.activityId || !row?.studentId) return
+    if (!getCompletedRowStatus(row)) return
+
+    const key = `${row.activityId}:${row.studentId}`
+    const current = latestRows.get(key)
+
+    if (!current || getAttemptNumber(row) >= getAttemptNumber(current)) {
+      latestRows.set(key, row)
+    }
+  })
+
+  return [...latestRows.values()]
+}
+
+const getReattemptAttemptCount = (record, completedRows = []) => {
+  const activityId = record?.id ?? record?.activityId
+  const totalStudents = Number(record?.studentCount) || 0
+
+  if (!activityId) return `0 / ${totalStudents}`
+
+  const latestActivityRows = getLatestCompletedRowsByStudent(
+    completedRows.filter((row) => row.activityId === activityId),
+  )
+  const reattemptCount = latestActivityRows.filter((row) => {
+    const status = getCompletedRowStatus(row)
+
+    return status === 'repeat' || status === 'remedial'
+  }).length
+
+  return `${reattemptCount} / ${totalStudents}`
+}
+
+const getApprovalRecord = (record, approvalQueueRows = []) => {
+  const activityId = record?.id ?? record?.activityId
+
+  if (!activityId) return null
+
+  return approvalQueueRows.find((row) => String(row.activityId ?? '') === String(activityId)) ?? null
+}
+
+const getApprovalStatus = (record) => String(
+  record?.approvalStatus
+  ?? record?.reviewStatus
+  ?? record?.status
+  ?? '',
+).trim().toLowerCase()
+
+const getApprovalAttemptLabel = (record) => {
+  const attemptCount = Number(record.approvalRecord?.attemptCount ?? record.approvalRecord?.attemptNumber ?? 1) || 1
+
+  return `Attempt ${attemptCount}`
+}
+
+const getEvaluationStatusMeta = (record) => {
+  const approvalStatus = getApprovalStatus(record.approvalRecord)
+
+  if (approvalStatus === 'approved') {
+    return {
+      label: 'Approved',
+      tone: 'is-approved',
+      actionLabel: 'Publish',
+      actionTone: 'green',
+      isSentToApproval: false,
+      isApprovalPending: false,
+      isApproved: true,
+      isRejected: false,
+      isCompleted: false,
+    }
+  }
+
+  if (approvalStatus === 'approval rejected') {
+    return {
+      label: 'Approval Rejected',
+      tone: 'is-approval-rejected',
+      actionLabel: 'Start',
+      actionTone: 'green',
+      isSentToApproval: false,
+      isApprovalPending: false,
+      isApproved: false,
+      isRejected: true,
+      isCompleted: false,
+    }
+  }
+
+  if (record.approvalRecord) {
+    return {
+      label: 'Sent to Approval',
+      tone: 'is-sent-approval',
+      actionLabel: '',
+      actionTone: 'green',
+      isSentToApproval: true,
+      isApprovalPending: true,
+      isApproved: false,
+      isRejected: false,
+      isCompleted: false,
+    }
+  }
+
+  const isCompleted = record.evaluationStatus === 'Completed Evaluation'
+
+  return {
+    label: isCompleted ? 'Completed' : 'Pending',
+    tone: isCompleted ? 'is-complete' : 'is-pending',
+    actionLabel: isCompleted ? 'View' : 'Start',
+    actionTone: isCompleted ? 'eval-view-btn' : 'green',
+    isSentToApproval: false,
+    isApprovalPending: false,
+    isApproved: false,
+    isRejected: false,
+    isCompleted,
+  }
 }
 
 const parseDateValue = (value) => {
@@ -58,16 +197,18 @@ const buildFallbackRecords = () => skillAssessmentActivities.slice(0, 8).map((ac
 }))
 
 function EvaluationCard({ record, onOpenEvaluation }) {
-  const isCompleted = record.evaluationStatus === 'Completed Evaluation'
-  const statusLabel = isCompleted ? 'Completed' : 'Pending'
+  const statusMeta = getEvaluationStatusMeta(record)
+  const showApprovalAttempt = statusMeta.isApproved || statusMeta.isRejected
+  const approvalRemarks = String(record.approvalRecord?.reviewRemarks ?? '').trim()
+  const remarksTitle = statusMeta.isRejected ? 'Rejection remarks' : 'Approval remarks'
 
   return (
     <article className="eval-card">
       <div className="eval-card-top">
         <div className="eval-card-topline">
           <span className={`eval-type-chip ${getActivityTypeTone(record.activityType)}`}>{record.activityType}</span>
-          <span className={`eval-status-pill ${isCompleted ? 'is-complete' : 'is-pending'}`}>
-            {statusLabel}
+          <span className={`eval-status-pill ${statusMeta.tone}`}>
+            {statusMeta.label}
           </span>
         </div>
 
@@ -89,23 +230,50 @@ function EvaluationCard({ record, onOpenEvaluation }) {
           <span><FolderKanban size={12} strokeWidth={2} /> SGT</span>
           <strong>{record.sgt || 'Not set'}</strong>
         </div>
-        <div className="eval-card-meta-item">
-          <span><Shapes size={12} strokeWidth={2} /> Attempt</span>
-          <strong>{record.attemptCount || 'Not set'}</strong>
+      </div>
+
+      <div className="eval-card-action-panel">
+        <div className="eval-card-action-cell">
+          <span>Attempt</span>
+          <strong>{showApprovalAttempt ? getApprovalAttemptLabel(record) : '-'}</strong>
+        </div>
+        <div className="eval-card-action-cell is-remarks">
+          <span>Remarks</span>
+          {approvalRemarks ? (
+            <span className="eval-remarks-tooltip-wrap">
+              <button
+                type="button"
+                className="eval-remarks-tooltip-btn"
+                aria-label="View approval remarks"
+              >
+                <Info size={12} strokeWidth={2.2} />
+              </button>
+              <span className="eval-remarks-tooltip" role="tooltip">
+                <strong>{remarksTitle}</strong>
+                <span>{approvalRemarks}</span>
+              </span>
+            </span>
+          ) : <strong>-</strong>}
+        </div>
+        <div className="eval-card-action-cell is-action">
+          <span>Actions</span>
+          {statusMeta.isApprovalPending ? (
+            <strong>-</strong>
+          ) : (
+            <button
+              type="button"
+              className={`tool-btn ${statusMeta.actionTone} eval-action-btn`}
+              onClick={() => onOpenEvaluation(record)}
+            >
+              {statusMeta.actionLabel}
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="eval-card-foot">
-        <div className="eval-card-foot-copy">
-          <span><CalendarDays size={12} strokeWidth={2} /> {normalizeDate(record.createdDate) || 'Not set'}</span>
-        </div>
-        <button
-          type="button"
-          className={`tool-btn ${isCompleted ? 'eval-view-btn' : 'green'} eval-action-btn`}
-          onClick={() => onOpenEvaluation(record)}
-        >
-          {isCompleted ? 'View' : 'Start'}
-        </button>
+      <div className="eval-card-date">
+        <CalendarDays size={12} strokeWidth={2} />
+        {formatDisplayDate(record.createdDate) || 'Not set'}
       </div>
     </article>
   )
@@ -130,13 +298,22 @@ function EvaluationTable({
     >
       <span>{label}</span>
       <ArrowUpDown size={13} strokeWidth={2} />
-      {sortKey === key ? <small>{sortDirection === 'asc' ? 'Asc' : 'Desc'}</small> : null}
     </button>
   )
 
   return (
     <div className="eval-table-wrap">
       <table className="eval-table">
+        <colgroup>
+          <col className="eval-table-col-activity" />
+          <col className="eval-table-col-type" />
+          <col className="eval-table-col-year" />
+          <col className="eval-table-col-sgt" />
+          <col className="eval-table-col-students" />
+          <col className="eval-table-col-created" />
+          <col className="eval-table-col-status" />
+          <col className="eval-table-col-action" />
+        </colgroup>
         <thead>
           <tr>
             <th>{renderSortableHeader('Activity', 'activityName')}</th>
@@ -144,7 +321,6 @@ function EvaluationTable({
             <th>{renderSortableHeader('Year', 'year')}</th>
             <th>{renderSortableHeader('SGT', 'sgt')}</th>
             <th>{renderSortableHeader('Students', 'studentCount')}</th>
-            <th>{renderSortableHeader('Attempt', 'attemptCount')}</th>
             <th>{renderSortableHeader('Created', 'createdDate')}</th>
             <th>{renderSortableHeader('Status', 'evaluationStatus')}</th>
             <th />
@@ -152,7 +328,7 @@ function EvaluationTable({
         </thead>
         <tbody>
           {records.map((record) => {
-            const isCompleted = record.evaluationStatus === 'Completed Evaluation'
+            const statusMeta = getEvaluationStatusMeta(record)
 
             return (
               <tr key={record.id}>
@@ -177,21 +353,22 @@ function EvaluationTable({
                   </span>
                 </td>
                 <td>{record.studentCount ?? 0}</td>
-                <td>{record.attemptCount || 'Not set'}</td>
-                <td>{normalizeDate(record.createdDate) || 'Not set'}</td>
+                <td>{formatDisplayDate(record.createdDate) || 'Not set'}</td>
                 <td>
-                  <span className={`eval-status-pill ${isCompleted ? 'is-complete' : 'is-pending'}`}>
-                    {isCompleted ? 'Completed' : 'Pending'}
+                  <span className={`eval-status-pill ${statusMeta.tone}`}>
+                    {statusMeta.label}
                   </span>
                 </td>
                 <td>
-                  <button
-                    type="button"
-                    className={`tool-btn ${isCompleted ? 'eval-view-btn' : 'green'} eval-table-action`}
-                    onClick={() => onOpenEvaluation(record)}
-                  >
-                    {isCompleted ? 'View' : 'Start'}
-                  </button>
+                  {statusMeta.isApprovalPending ? null : (
+                    <button
+                      type="button"
+                      className={`tool-btn ${statusMeta.actionTone} eval-table-action`}
+                      onClick={() => onOpenEvaluation(record)}
+                    >
+                      {statusMeta.actionLabel}
+                    </button>
+                  )}
                 </td>
               </tr>
             )
@@ -236,7 +413,7 @@ function EvaluationTable({
   )
 }
 
-export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], onStartEvaluation }) {
+export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], completedEvaluationRows = [], approvalQueueRows = [], onStartEvaluation }) {
   const [viewMode, setViewMode] = useState('card')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedYear, setSelectedYear] = useState('')
@@ -247,7 +424,19 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], o
   const [sortDirection, setSortDirection] = useState('desc')
   const [currentPage, setCurrentPage] = useState(1)
 
-  const sourceRecords = evaluationRecords.length ? evaluationRecords : buildFallbackRecords()
+  const rawSourceRecords = evaluationRecords.length ? evaluationRecords : buildFallbackRecords()
+  const sourceRecords = useMemo(() => rawSourceRecords.map((record) => {
+    const reattemptAttemptCount = getReattemptAttemptCount(record, completedEvaluationRows)
+    const approvalRecord = getApprovalRecord(record, approvalQueueRows)
+
+    return {
+      ...record,
+      attemptCount: reattemptAttemptCount,
+      reattemptStudentCount: parseAttemptValue(reattemptAttemptCount),
+      approvalRecord,
+      isSentToApproval: Boolean(approvalRecord),
+    }
+  }), [approvalQueueRows, completedEvaluationRows, rawSourceRecords])
 
   const yearOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.year).filter(Boolean))], [sourceRecords])
   const sgtOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.sgt).filter(Boolean))], [sourceRecords])
@@ -323,8 +512,8 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], o
 
   const metrics = useMemo(() => ({
     total: filteredRecords.length,
-    pending: filteredRecords.filter((record) => record.evaluationStatus === 'Pending Evaluation').length,
-    completed: filteredRecords.filter((record) => record.evaluationStatus === 'Completed Evaluation').length,
+    pending: filteredRecords.filter((record) => !record.isSentToApproval && record.evaluationStatus === 'Pending Evaluation').length,
+    completed: filteredRecords.filter((record) => !record.isSentToApproval && record.evaluationStatus === 'Completed Evaluation').length,
     years: new Set(filteredRecords.map((record) => record.year).filter(Boolean)).size,
     sgts: new Set(filteredRecords.map((record) => `${record.year}-${record.sgt}`).filter(Boolean)).size,
   }), [filteredRecords])
@@ -348,6 +537,18 @@ export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], o
   }
 
   const handleOpenEvaluation = (record) => {
+    const statusMeta = getEvaluationStatusMeta(record)
+
+    if (statusMeta.isApprovalPending) return
+
+    if (statusMeta.isApproved) {
+      onAlert?.({
+        tone: 'secondary',
+        message: `${record.activityName ?? 'Activity'} is ready to publish.`,
+      })
+      return
+    }
+
     if (onStartEvaluation) {
       onStartEvaluation(record)
       return

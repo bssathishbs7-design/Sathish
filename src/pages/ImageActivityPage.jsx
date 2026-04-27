@@ -86,7 +86,7 @@ const buildEmptyAssignThresholdRows = (totalMarks = 10) => {
 const createImageSlot = (existing = {}, index = 0) => ({
   key: existing?.key ?? `image-slot-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
   file: existing?.file ?? null,
-  previewUrl: existing?.previewUrl ?? '',
+  previewUrl: existing?.previewUrl ?? existing?.src ?? existing?.url ?? '',
   error: existing?.error ?? '',
 })
 
@@ -384,7 +384,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   }, [activeEditableQuestionId])
 
   const uploadedImageCount = useMemo(
-    () => images.filter((image) => image.file || image.previewUrl).length,
+    () => images.filter((image) => image.file || image.previewUrl || image.src || image.url).length,
     [images],
   )
 
@@ -392,11 +392,11 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const canAddAnotherImage = !isInterpretationWorkflow && uploadedImageCount >= 1
   const uploadedPreviewImages = useMemo(
     () => images
-      .filter((image) => image.previewUrl)
+      .filter((image) => image.previewUrl || image.src || image.url)
       .map((image) => ({
         slotKey: image.key,
         title: `Image ${getImageSlotLabel(images.findIndex((entry) => entry.key === image.key))}`,
-        url: image.previewUrl,
+        url: image.previewUrl || image.src || image.url,
       })),
     [images],
   )
@@ -837,10 +837,11 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
 
   const persistSkillActivityDraft = useCallback(async () => {
     const savedImages = await Promise.all(
-      images.map(async (image) => ({
+      images.map(async (image, index) => ({
         key: image.key,
         file: null,
-        previewUrl: image.file ? await fileToDataUrl(image.file) : image.previewUrl,
+        previewUrl: image.file ? await fileToDataUrl(image.file) : (image.previewUrl || image.src || image.url || ''),
+        label: `Reference Image ${index + 1}`,
         error: image.error,
       })),
     )
@@ -925,11 +926,11 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
 
     const referenceImages = (await Promise.all(
       images
-        .filter((image) => image.previewUrl)
+        .filter((image) => image.file || image.previewUrl || image.src || image.url)
         .map(async (image, index) => ({
         id: image.key ?? `reference-${index + 1}`,
-        src: image.file ? await fileToDataUrl(image.file) : image.previewUrl,
-        label: `Reference ${index + 1}`,
+        src: image.file ? await fileToDataUrl(image.file) : (image.previewUrl || image.src || image.url),
+        label: `Reference Image ${index + 1}`,
         })),
     ))
 
@@ -1352,7 +1353,8 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                   <div className="image-activity-upload-row">
                     <div className="image-activity-assets-grid">
                       {visibleImageSlots.map((image, index) => {
-                        const isFilled = Boolean(image.file || image.previewUrl)
+                        const imageSource = image.previewUrl || image.src || image.url || ''
+                        const isFilled = Boolean(image.file || imageSource)
                         const slotLabel = getImageSlotLabel(index)
 
                         return (
@@ -1367,8 +1369,9 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                   <button
                                     type="button"
                                     className="image-activity-asset-btn"
-                                    onClick={() => setPreviewImage({ slotKey: image.key, title: `Image ${slotLabel}`, url: image.previewUrl })}
+                                    onClick={() => setPreviewImage({ slotKey: image.key, title: `Image ${slotLabel}`, url: imageSource })}
                                     aria-label="Preview image"
+                                    disabled={!imageSource}
                                   >
                                     <Eye size={15} strokeWidth={2} />
                                   </button>
@@ -1383,9 +1386,9 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                 </div>
                               ) : null}
                             </div>
-                            {isFilled ? (
+                            {imageSource ? (
                               <div className="image-activity-upload-preview">
-                                <img src={image.previewUrl} alt={`Image ${slotLabel}`} />
+                                <img src={imageSource} alt={`Image ${slotLabel}`} />
                               </div>
                             ) : null}
                             {!isFilled ? (
@@ -1407,17 +1410,17 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                           </article>
                         )
                       })}
+                      {canAddAnotherImage ? (
+                        <label
+                          className="image-activity-add-image-btn"
+                          htmlFor="image-upload-add"
+                          aria-label="Add another image"
+                          data-tooltip="Upload Image"
+                        >
+                          <Plus size={18} strokeWidth={2.2} />
+                        </label>
+                      ) : null}
                     </div>
-                  {canAddAnotherImage ? (
-                    <label
-                      className="image-activity-add-image-btn"
-                      htmlFor="image-upload-add"
-                      aria-label="Add another image"
-                      data-tooltip="Upload Image"
-                    >
-                      <Plus size={18} strokeWidth={2.2} />
-                    </label>
-                  ) : null}
                   {canAddAnotherImage ? (
                     <input
                       id="image-upload-add"

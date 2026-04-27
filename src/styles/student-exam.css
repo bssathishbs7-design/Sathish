@@ -986,6 +986,104 @@
   }
 }
 
+.student-exam-badge.is-image-question {
+  border-color: rgba(99, 102, 241, 0.22);
+  background: rgba(238, 242, 255, 0.98);
+  color: #4f46e5;
+}
+
+.student-exam-stage-media {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.student-exam-stage-media-card {
+  position: relative;
+  min-height: 0;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  max-height: 260px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff, #edf4f7);
+}
+
+.student-exam-stage-media-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 10px;
+}
+
+.student-exam-stage-media-card figcaption {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100% - 20px);
+  min-height: 28px;
+  padding: 0 10px 0 6px;
+  border: 1px solid rgba(15, 104, 68, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #315246;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  backdrop-filter: blur(10px);
+}
+
+.student-exam-stage-media-card figcaption span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #0f8364;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.theme-dark .student-exam-badge.is-image-question {
+  border-color: rgba(129, 140, 248, 0.3);
+  background: rgba(35, 39, 76, 0.94);
+  color: #c7d2fe;
+}
+
+.theme-dark .student-exam-stage-media-card {
+  background:
+    radial-gradient(circle at top right, rgba(129, 140, 248, 0.1), transparent 28%),
+    linear-gradient(180deg, #121d24 0%, #0e171d 100%);
+}
+
+.theme-dark .student-exam-stage-media-card figcaption {
+  border-color: rgba(95, 232, 177, 0.16);
+  background: rgba(12, 22, 31, 0.86);
+  color: #dbe8e2;
+}
+
+.theme-dark .student-exam-stage-media-card figcaption span {
+  background: #5fe8b1;
+  color: #07231a;
+}
+
+@media (max-width: 760px) {
+  .student-exam-stage-media {
+    grid-template-columns: 1fr;
+  }
+
+  .student-exam-stage-media-card {
+    max-height: 220px;
+  }
+}
+
 @keyframes student-exam-live-pulse {
   0% {
     transform: scale(0.96);
@@ -1581,5 +1679,80 @@
   .student-exam-stage-card,
   .student-exam-question-stage {
     padding: 16px;
+  }
+}
+
+/* Final image activity media alignment */
+.student-exam-stage-media {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.student-exam-stage-media-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  flex: 0 0 220px;
+  width: 220px;
+  min-height: 0;
+  height: auto;
+  aspect-ratio: auto;
+  margin: 0;
+  padding: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.student-exam-stage-media-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: contain;
+  padding: 0;
+  border-radius: 10px;
+  background: #eef5f1;
+}
+
+.student-exam-stage-media-card figcaption {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #4f665d;
+  box-shadow: none;
+}
+
+.student-exam-stage-media-card figcaption span {
+  flex: 0 0 auto;
+}
+
+.theme-dark .student-exam-stage-media-card img {
+  background: #0b1422;
+}
+
+.theme-dark .student-exam-stage-media-card figcaption {
+  background: transparent;
+  color: #b8ccc3;
+}
+
+@media (max-width: 760px) {
+  .student-exam-stage-media-card {
+    flex-basis: 200px;
+    width: 200px;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .student-exam-stage-media-card img {
+    height: 136px;
   }
 }

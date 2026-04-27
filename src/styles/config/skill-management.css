@@ -319,6 +319,93 @@
   border-top-color: #243652;
 }
 
+.configuration-page .forms-child-head > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.configuration-page .forms-child-head span {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.configuration-page .forms-activity-summary {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.configuration-page .forms-activity-text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.configuration-page .forms-activity-summary.is-truncated::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 9px);
+  width: max-content;
+  max-width: min(340px, calc(100vw - 64px));
+  padding: 8px 10px;
+  border: 1px solid rgba(15, 131, 100, 0.18);
+  border-radius: 10px;
+  background: #17332a;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 90;
+}
+
+.configuration-page .forms-activity-summary.is-truncated::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  bottom: calc(100% + 3px);
+  border: 6px solid transparent;
+  border-top-color: #17332a;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 91;
+}
+
+.configuration-page .forms-activity-summary.is-truncated:hover::after,
+.configuration-page .forms-activity-summary.is-truncated:hover::before,
+.configuration-page .forms-activity-summary.is-truncated:focus-within::after,
+.configuration-page .forms-activity-summary.is-truncated:focus-within::before {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.theme-dark .configuration-page .forms-activity-summary.is-truncated::after {
+  border-color: rgba(95, 232, 177, 0.22);
+  background: #0f1828;
+  color: #e2ecf5;
+}
+
+.theme-dark .configuration-page .forms-activity-summary.is-truncated::before {
+  border-top-color: #0f1828;
+}
+
 @media (max-width: 759px) {
   .configuration-page .forms-flow-shell {
     gap: 8px;

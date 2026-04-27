@@ -2741,19 +2741,66 @@
 
 .theme-dark .ospe-checklist-question-panel,
 .theme-dark .ospe-form-content-panel,
+.theme-dark .ospe-scaffold-content-panel,
 .theme-dark .ospe-assessment-card {
   border-color: #243652;
-  background: linear-gradient(180deg, rgba(17, 28, 48, 0.98), rgba(15, 24, 40, 0.98));
+  background: linear-gradient(180deg, rgba(17, 28, 48, 0.98), rgba(12, 22, 37, 0.98));
   box-shadow: none;
 }
 
 .theme-dark .ospe-checklist-question-panel textarea,
-.theme-dark .ospe-form-question-panel textarea {
+.theme-dark .ospe-form-question-panel textarea,
+.theme-dark .ospe-scaffold-content-panel input,
+.theme-dark .ospe-scaffold-content-panel textarea,
+.theme-dark .ospe-form-content-panel input,
+.theme-dark .ospe-form-content-panel textarea,
+.theme-dark .ospe-checklist-question-panel textarea {
+  border-color: #2c415f;
   background: #0f1828;
   color: #e2ecf5;
 }
 
+.theme-dark .ospe-scaffold-content-panel input::placeholder,
+.theme-dark .ospe-scaffold-content-panel textarea::placeholder,
+.theme-dark .ospe-form-content-panel input::placeholder,
+.theme-dark .ospe-form-content-panel textarea::placeholder,
+.theme-dark .ospe-checklist-question-panel textarea::placeholder {
+  color: #8ea0b5;
+}
+
+.theme-dark .ospe-scaffold-content-panel input:hover,
+.theme-dark .ospe-scaffold-content-panel textarea:hover,
+.theme-dark .ospe-form-content-panel input:hover,
+.theme-dark .ospe-form-content-panel textarea:hover,
+.theme-dark .ospe-checklist-question-panel textarea:hover {
+  border-color: #3a5374;
+  background: #111d30;
+}
+
+.theme-dark .ospe-scaffold-content-panel input:focus,
+.theme-dark .ospe-scaffold-content-panel input:focus-visible,
+.theme-dark .ospe-scaffold-content-panel textarea:focus,
+.theme-dark .ospe-scaffold-content-panel textarea:focus-visible,
+.theme-dark .ospe-form-content-panel input:focus,
+.theme-dark .ospe-form-content-panel input:focus-visible,
+.theme-dark .ospe-form-content-panel textarea:focus,
+.theme-dark .ospe-form-content-panel textarea:focus-visible,
+.theme-dark .ospe-checklist-question-panel textarea:focus,
+.theme-dark .ospe-checklist-question-panel textarea:focus-visible {
+  border-color: rgba(95, 232, 177, 0.3);
+  background: #111d30;
+  box-shadow: 0 0 0 3px rgba(95, 232, 177, 0.12);
+}
+
 .theme-dark .ospe-assessment-card-title {
+  color: #9ab0c4;
+}
+
+.theme-dark .ospe-assessment-card-taxonomy-label,
+.theme-dark .ospe-assessment-card .forms-field > span,
+.theme-dark .ospe-scaffold-content-panel .forms-field > span,
+.theme-dark .ospe-form-content-panel .forms-field > span,
+.theme-dark .ospe-checklist-question-panel > span {
   color: #9ab0c4;
 }
 

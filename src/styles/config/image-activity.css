@@ -7360,43 +7360,64 @@
 }
 
 .image-activity-page .image-activity-upload-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
+  display: block;
+  overflow: visible;
+  padding-bottom: 0;
+  width: 100%;
 }
 
 .image-activity-page .image-activity-upload-row .image-activity-assets-grid {
   display: flex;
-  gap: 12px;
-  flex-wrap: nowrap;
-  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: 16px;
+  justify-content: flex-start;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
 }
 
 .image-activity-page .image-activity-upload-row .image-activity-asset {
-  flex: 0 0 264px;
-  min-width: 264px;
+  flex: 0 0 300px;
+  width: 100%;
+  min-width: 0;
 }
 
 .image-activity-page .image-activity-add-image-btn {
   align-self: center;
-  flex: 0 0 56px;
+  justify-self: center;
   width: 56px;
   min-width: 56px;
   min-height: 56px;
   margin-top: 0;
+  border-radius: 999px;
+  border-style: solid;
+  background: #f6fcf9;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
 .image-activity-page .image-activity-asset--enhanced {
-  min-height: 224px;
+  min-height: 0;
   padding: 12px;
   border-radius: 16px;
   border: 1px solid #dfe9e2;
   background: linear-gradient(180deg, #fcfefd, #f6fbf8);
   box-shadow: none;
+}
+
+.image-activity-page .image-activity-assets-card--enhanced .image-activity-upload-preview {
+  min-height: 0;
+  height: auto;
+}
+
+.image-activity-page .image-activity-upload-preview img {
+  aspect-ratio: 4 / 3;
+  height: auto;
+  min-height: 0;
+  max-height: 180px;
+  object-fit: contain;
+  padding: 8px;
 }
 
 .image-activity-page .image-activity-asset--enhanced.is-filled,
@@ -7408,6 +7429,76 @@
   transform: none;
   border-color: rgba(15, 104, 68, 0.16);
   box-shadow: 0 10px 20px rgba(18, 63, 47, 0.04);
+}
+
+.image-activity-reference-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0 4px;
+  scrollbar-width: thin;
+}
+
+.image-activity-reference-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px dashed rgba(15, 104, 68, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #53665e;
+  font-size: 0.94rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.image-activity-reference-chip svg {
+  color: #657a71;
+}
+
+.image-activity-reference-chip:hover,
+.image-activity-reference-chip:focus-visible {
+  border-color: rgba(15, 131, 100, 0.42);
+  background: #f5fbf8;
+  color: #0f6f58;
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.image-activity-reference-chip:disabled {
+  cursor: default;
+  opacity: 0.72;
+  transform: none;
+}
+
+.image-activity-reference-chip:hover svg,
+.image-activity-reference-chip:focus-visible svg {
+  color: #0f8364;
+}
+
+@media (max-width: 980px) {
+  .image-activity-page .image-activity-upload-row .image-activity-assets-grid {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .image-activity-page .image-activity-upload-row .image-activity-assets-grid {
+    display: flex;
+  }
+
+  .image-activity-page .image-activity-add-image-btn {
+    justify-self: center;
+    margin-top: 0;
+  }
 }
 
 .image-activity-page .image-activity-skill-card--stacked {
@@ -7737,6 +7828,23 @@
 .theme-dark .image-activity-page .image-activity-created-skill-card:hover {
   border-color: #243652;
   box-shadow: 0 12px 24px rgba(2, 6, 23, 0.18);
+}
+
+.theme-dark .image-activity-reference-chip {
+  border-color: rgba(95, 232, 177, 0.22);
+  background: rgba(17, 28, 48, 0.86);
+  color: #b8c8c0;
+}
+
+.theme-dark .image-activity-reference-chip svg {
+  color: #9db0a8;
+}
+
+.theme-dark .image-activity-reference-chip:hover,
+.theme-dark .image-activity-reference-chip:focus-visible {
+  border-color: rgba(95, 232, 177, 0.42);
+  background: rgba(95, 232, 177, 0.08);
+  color: #dffcf0;
 }
 
 @media (max-width: 1024px) {

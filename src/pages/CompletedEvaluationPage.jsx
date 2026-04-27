@@ -10,8 +10,10 @@ import {
   Download,
   Pencil,
   Search,
+  SendHorizonal,
   Shapes,
 } from 'lucide-react'
+import SendApprovalModal from '../components/SendApprovalModal'
 import '../styles/evaluation.css'
 
 const formatPercent = (value) => `${Number(value ?? 0).toFixed(1).replace(/\.0$/, '')}%`
@@ -158,6 +160,7 @@ const downloadCsv = ({ fileName, headers, rows }) => {
 const SECTION_CONFIGS = [
   { key: 'checklist', scoreHeader: 'Checklist' },
   { key: 'form', scoreHeader: 'Form' },
+  { key: 'question', scoreHeader: 'Question' },
   { key: 'scaffolding', scoreHeader: 'Scaffold' },
 ]
 
@@ -182,6 +185,49 @@ const getOutcomeTone = (value = '') => {
 
 const getAttemptNumber = (row) => Math.min(Math.max(Number(row?.attemptNumber) || 1, 1), 10)
 
+const getStudentKey = (row) => row?.studentId ?? row?.registerId ?? row?.studentName ?? row?.id
+
+const uniqueDisplayStudentNames = [
+  'Aarav Menon',
+  'Diya Krishnan',
+  'Kavin Raj',
+  'Megha Suresh',
+  'Nithin Paul',
+  'Riya Thomas',
+  'Sanjay Iyer',
+  'Tanvi Patel',
+  'Ananya Rao',
+  'Rahul Nair',
+  'Priya Shah',
+  'Vikram Das',
+  'Isha Verma',
+  'Arjun Pillai',
+  'Neha Kapoor',
+  'Manoj Reddy',
+  'Farah Khan',
+  'Dev Patel',
+  'Sneha George',
+  'Aditya Bose',
+]
+
+const normalizeDuplicateStudentNames = (rows = []) => {
+  const keys = [...new Set(rows.map(getStudentKey).filter(Boolean))]
+  const nameByKey = new Map(keys.map((key, index) => [key, uniqueDisplayStudentNames[index] ?? `Student ${index + 1}`]))
+
+  return rows.map((row) => {
+    const studentKey = getStudentKey(row)
+    const studentName = nameByKey.get(studentKey)
+
+    return studentName ? { ...row, studentName } : row
+  })
+}
+
+const isEvaluatedResultRow = (row) => {
+  const status = String(row?.resultStatus ?? row?.decisionTitle ?? row?.decisionLabel ?? '').trim().toLowerCase()
+
+  return ['completed', 'repeat', 'remedial'].includes(status)
+}
+
 const isActivityCertifiable = (activity) => Boolean(
   activity?.certifiable
   ?? activity?.isCertifiable
@@ -205,6 +251,7 @@ export default function CompletedEvaluationPage({
   activityRecord,
   onBackToEvaluation,
   onOpenEvaluation,
+  onSendToApproval,
 }) {
   const [searchValue, setSearchValue] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -212,13 +259,42 @@ export default function CompletedEvaluationPage({
   const [sortDirection, setSortDirection] = useState('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedGroups, setExpandedGroups] = useState({})
-  const pageSize = 6
+  const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false)
+  const pageSize = 10
 
   const sourceRows = useMemo(() => (
-    activityId
+    normalizeDuplicateStudentNames(activityId
       ? completedEvaluationRows.filter((row) => row.activityId === activityId)
-      : completedEvaluationRows
+      : completedEvaluationRows)
   ), [activityId, completedEvaluationRows])
+
+  const evaluatedStudentCount = useMemo(() => {
+    const evaluatedStudentKeys = new Set()
+
+    sourceRows.forEach((row) => {
+      if (!isEvaluatedResultRow(row)) return
+
+      const studentKey = getStudentKey(row)
+      if (studentKey) evaluatedStudentKeys.add(studentKey)
+    })
+
+    return evaluatedStudentKeys.size
+  }, [sourceRows])
+
+  const completedTableStudentCount = useMemo(() => {
+    const studentKeys = new Set()
+
+    sourceRows.forEach((row) => {
+      const studentKey = getStudentKey(row)
+      if (studentKey) studentKeys.add(studentKey)
+    })
+
+    return studentKeys.size
+  }, [sourceRows])
+
+  const assignedStudentCount = completedTableStudentCount || evaluatedStudentCount
+
+  const canSendApproval = assignedStudentCount > 0 && evaluatedStudentCount >= assignedStudentCount
 
   const filteredRows = useMemo(() => {
     const needle = searchValue.trim().toLowerCase()
@@ -242,6 +318,9 @@ export default function CompletedEvaluationPage({
   const visibleSections = useMemo(() => (
     SECTION_CONFIGS.filter((section) => filteredRows.some((row) => (row[section.key]?.itemCount ?? 0) > 0))
   ), [filteredRows])
+  const approvalSections = useMemo(() => (
+    SECTION_CONFIGS.filter((section) => sourceRows.some((row) => (row[section.key]?.itemCount ?? 0) > 0))
+  ), [sourceRows])
 
   const filterOptions = [
     { id: 'all', label: 'All', count: sourceRows.length },
@@ -249,6 +328,51 @@ export default function CompletedEvaluationPage({
     { id: 'repeat', label: 'Repeat', count: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'repeat').length },
     { id: 'remedial', label: 'Remedial', count: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'remedial').length },
   ]
+
+  const handleSendApproval = (approvalFaculty) => {
+    if (!canSendApproval) return
+
+    const activitySource = activityRecord ?? sourceRows[0] ?? {}
+
+    onSendToApproval?.({
+      activityId: activityId ?? activitySource.activityId ?? activitySource.id ?? 'completed-evaluation',
+      activityName: activitySource.activityName ?? 'Completed Evaluation',
+      activityType: activitySource.activityType ?? 'Activity',
+      source: 'Completed Evaluation',
+      totalStudents: assignedStudentCount,
+      evaluatedCount: evaluatedStudentCount,
+      attemptCount: sourceRows.reduce((maxAttempt, row) => Math.max(maxAttempt, getAttemptNumber(row)), 0),
+      activitySections: approvalSections.map((section) => ({
+        key: section.key,
+        label: section.scoreHeader,
+      })),
+      studentRows: sourceRows.map((row) => ({
+        id: row.id,
+        studentId: row.studentId,
+        studentName: row.studentName,
+        registerId: row.registerId,
+        attemptCount: getAttemptNumber(row),
+        checklist: row.checklist,
+        form: row.form,
+        question: row.question,
+        scaffolding: row.scaffolding,
+        overallCriticalMarks: row.overallCriticalMarks,
+        thresholdLabel: row.thresholdLabel,
+        totalObtainedMarks: row.totalObtainedMarks,
+        totalMarks: row.totalMarks,
+        totalPercentage: row.totalPercentage,
+        resultStatus: row.resultStatus,
+      })),
+      completedCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'completed').length,
+      repeatCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'repeat').length,
+      remedialCount: sourceRows.filter((row) => String(row.resultStatus ?? '').trim().toLowerCase() === 'remedial').length,
+      facultyName: approvalFaculty.facultyName,
+      employeeId: approvalFaculty.employeeId,
+      designation: approvalFaculty.designation,
+      note: approvalFaculty.note,
+    })
+    setIsApprovalPopupOpen(false)
+  }
 
   const tableHeaders = useMemo(() => ([
     { key: 'studentName', label: 'Student', sortable: true },
@@ -354,6 +478,18 @@ export default function CompletedEvaluationPage({
       ...current,
       [groupId]: !current[groupId],
     }))
+  }
+
+  const openEvaluationForRow = (row) => {
+    if (!row) return
+
+    onOpenEvaluation?.({
+      ...(row.activityRecord ?? activityRecord ?? {}),
+      id: row.activityId,
+      activityId: row.activityId,
+      activityName: row.activityName,
+      activityType: row.activityType,
+    }, { studentId: row.studentId, completedRowId: row.id })
   }
 
   const handleDownloadRow = (row) => {
@@ -496,6 +632,16 @@ export default function CompletedEvaluationPage({
             </div>
 
             <div className="eval-completed-toolbar-actions">
+              {canSendApproval ? (
+                <button
+                  type="button"
+                  className="tool-btn green eval-completed-send-approval"
+                  onClick={() => setIsApprovalPopupOpen(true)}
+                >
+                  <SendHorizonal size={14} strokeWidth={2} />
+                  Send to Approval
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="eval-completed-download"
@@ -542,7 +688,7 @@ export default function CompletedEvaluationPage({
                 {paginatedGroups.map((group) => {
                   const row = group.latestRow
                   const isExpanded = Boolean(expandedGroups[group.id])
-                  const showParentActions = group.attemptCount === 1
+                  const showParentDownload = group.attemptCount === 1
                     && String(row.resultStatus ?? '').trim().toLowerCase() === 'completed'
 
                   return (
@@ -575,39 +721,31 @@ export default function CompletedEvaluationPage({
                         </td>
                         <td>
                           <div className="eval-completed-actions">
-                            {showParentActions ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="tool-btn eval-table-action eval-completed-icon-btn"
-                                  title="Edit latest evaluation"
-                                  aria-label="Edit latest evaluation"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    onOpenEvaluation?.({
-                                      ...(row.activityRecord ?? activityRecord ?? {}),
-                                      id: row.activityId,
-                                      activityId: row.activityId,
-                                      activityName: row.activityName,
-                                      activityType: row.activityType,
-                                    }, { studentId: row.studentId, completedRowId: row.id })
-                                  }}
-                                >
-                                  <Pencil size={14} strokeWidth={2} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="tool-btn eval-table-action eval-completed-icon-btn"
-                                  title="Download PDF"
-                                  aria-label="Download PDF"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    handleDownloadRow(row)
-                                  }}
-                                >
-                                  <Download size={14} strokeWidth={2} />
-                                </button>
-                              </>
+                            <button
+                              type="button"
+                              className="tool-btn eval-table-action eval-completed-icon-btn"
+                              title="Edit latest evaluation"
+                              aria-label="Edit latest evaluation"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openEvaluationForRow(row)
+                              }}
+                            >
+                              <Pencil size={14} strokeWidth={2} />
+                            </button>
+                            {showParentDownload ? (
+                              <button
+                                type="button"
+                                className="tool-btn eval-table-action eval-completed-icon-btn"
+                                title="Download PDF"
+                                aria-label="Download PDF"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleDownloadRow(row)
+                                }}
+                              >
+                                <Download size={14} strokeWidth={2} />
+                              </button>
                             ) : null}
                             <button
                               type="button"
@@ -643,7 +781,7 @@ export default function CompletedEvaluationPage({
                                 </thead>
                                 <tbody>
                                   {group.attempts.map((attemptRow) => {
-                                    const isLatestAttempt = getAttemptNumber(attemptRow) === getAttemptNumber(group.latestRow)
+                                    const isLatestAttempt = attemptRow.id === group.latestRow?.id
 
                                     return (
                                       <tr key={attemptRow.id}>
@@ -680,13 +818,7 @@ export default function CompletedEvaluationPage({
                                                 className="tool-btn eval-table-action eval-completed-icon-btn"
                                                 title="Edit latest evaluation"
                                                 aria-label="Edit latest evaluation"
-                                                onClick={() => onOpenEvaluation?.({
-                                                  ...(attemptRow.activityRecord ?? activityRecord ?? {}),
-                                                  id: attemptRow.activityId,
-                                                  activityId: attemptRow.activityId,
-                                                  activityName: attemptRow.activityName,
-                                                  activityType: attemptRow.activityType,
-                                                }, { studentId: attemptRow.studentId, completedRowId: attemptRow.id })}
+                                                onClick={() => openEvaluationForRow(attemptRow)}
                                               >
                                                 <Pencil size={14} strokeWidth={2} />
                                               </button>
@@ -765,6 +897,13 @@ export default function CompletedEvaluationPage({
             </section>
           )}
         </section>
+        <SendApprovalModal
+          open={isApprovalPopupOpen}
+          title="Send to Approval"
+          contextLabel={activityRecord?.activityName ?? sourceRows[0]?.activityName ?? 'Completed evaluations'}
+          onClose={() => setIsApprovalPopupOpen(false)}
+          onSend={handleSendApproval}
+        />
       </div>
     </section>
   )

@@ -21,6 +21,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import SendApprovalModal from '../components/SendApprovalModal'
 import '../styles/evaluation.css'
 import '../styles/start-evaluation.css'
 
@@ -34,7 +35,18 @@ const CHECKLIST_FALLBACK_PROMPTS = [
 
 const isGeneratedQuestionLabel = (value) => /^Q\d+$/i.test(String(value ?? '').trim())
 
-const formatDate = (value) => (value ? String(value).split(',')[0].trim() : 'Not set')
+const formatDate = (value) => {
+  const normalized = value ? String(value).split(',')[0].trim() : ''
+  const [day, month, year] = normalized.split('/').map((part) => Number.parseInt(part, 10))
+
+  if (!day || !month || !year) return normalized || 'Not set'
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: '2-digit',
+  }).format(new Date(year, month - 1, day))
+}
 const normalizeValue = (value, fallback = 'Not Applicable') => value ?? fallback
 const calculatePercentage = (obtained, total) => {
   const safeTotal = Number(total) || 0
@@ -289,13 +301,17 @@ const getChecklistItemStatus = (decisionState, marksValue) => {
 }
 
 const getNormalizedResultStatus = (value = '') => String(value ?? '').trim().toLowerCase()
+const isCompletedRowStatus = (value = '') => getNormalizedResultStatus(value) === 'completed'
 const getStudentResultStatus = (student) => getNormalizedResultStatus(
   student?.evaluationDecision
   ?? student?.evaluationResult?.decisionTitle
   ?? student?.evaluationResult?.resultStatus
   ?? '',
 )
-const hasStudentEvaluationResult = (student) => Boolean(student?.evaluationResult || student?.evaluationStatus === 'Completed')
+const hasStudentEvaluationResult = (student) => Boolean(
+  student?.evaluationResult
+  || isCompletedRowStatus(student?.evaluationStatus),
+)
 const isReevaluationResult = (value = '') => {
   const normalized = getNormalizedResultStatus(value)
   return normalized === 'repeat' || normalized === 'remedial'
@@ -337,9 +353,25 @@ const buildStudentName = (index, sgt = 'SGT') => {
     'Riya Thomas',
     'Sanjay Iyer',
     'Tanvi Patel',
+    'Ananya Rao',
+    'Rahul Nair',
+    'Priya Shah',
+    'Vikram Das',
+    'Isha Verma',
+    'Arjun Pillai',
+    'Neha Kapoor',
+    'Manoj Reddy',
+    'Farah Khan',
+    'Dev Patel',
+    'Sneha George',
+    'Aditya Bose',
+    'Lakshmi Menon',
+    'Rohan Mathew',
+    'Pooja Iyer',
+    'Harish Kumar',
   ]
 
-  return names[index % names.length]
+  return names[index] ?? `Student ${index + 1}`
 }
 
 const buildEvaluationItems = (assignment, record) => {
@@ -1096,12 +1128,23 @@ function StudentResponsePanel({
 
             {item.referenceImages?.length ? (
               <div className="start-eval-image-strip">
-                {item.referenceImages.map((image, imageIndex) => (
-                  <div key={image.id ?? `${item.id}-${imageIndex + 1}`} className="start-eval-image-card">
-                    <ImageIcon size={16} strokeWidth={2} />
-                    <span>{image.title ?? `Reference Image ${imageIndex + 1}`}</span>
-                  </div>
-                ))}
+                {item.referenceImages.map((image, imageIndex) => {
+                  const imageSource = image.src ?? image.previewUrl ?? image.url ?? ''
+                  const imageLabel = image.title ?? image.label ?? `Reference Image ${imageIndex + 1}`
+
+                  return (
+                    <figure key={image.id ?? `${item.id}-${imageIndex + 1}`} className={`start-eval-image-card ${imageSource ? 'has-image' : ''}`.trim()}>
+                      {imageSource ? (
+                        <img src={imageSource} alt={imageLabel} />
+                      ) : (
+                        <span className="start-eval-image-card-icon">
+                          <ImageIcon size={16} strokeWidth={2} />
+                        </span>
+                      )}
+                      <figcaption>{imageLabel}</figcaption>
+                    </figure>
+                  )
+                })}
               </div>
             ) : null}
 
@@ -1529,10 +1572,12 @@ export default function StartEvaluationPage({
   evaluationRecord,
   initialSelectedStudentId,
   completedEvaluationRows = [],
+  approvalQueueRows = [],
   onBackToEvaluation,
   onOpenCompletedEvaluation,
   onOpenExamLog,
   onSaveCompletedEvaluation,
+  onSendToApproval,
   onAlert,
 }) {
   const [studentSearch, setStudentSearch] = useState('')
@@ -1548,6 +1593,7 @@ export default function StartEvaluationPage({
     completedSectionCount: 0,
   })
   const [isSubmitPopupOpen, setIsSubmitPopupOpen] = useState(false)
+  const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false)
   const [decisionOptions, setDecisionOptions] = useState(() => buildDefaultDecisionOptions())
   const [selectedDecisionId, setSelectedDecisionId] = useState('')
   const [submittedEvaluations, setSubmittedEvaluations] = useState({})
@@ -1560,6 +1606,7 @@ export default function StartEvaluationPage({
     ?? '',
   ).trim().toLowerCase() === 'nil'
   const isCertifiableActivity = isActivityCertifiable(evaluationRecord)
+  const isEditingCompletedEvaluation = Boolean(evaluationRecord?.editingCompletedRowId && initialSelectedStudentId)
 
   const baseRoster = useMemo(
     () => buildStudentRoster(evaluationRecord, evaluationRecord?.assignment, evaluationRecord?.latestSubmission),
@@ -1568,9 +1615,49 @@ export default function StartEvaluationPage({
 
   const activityCompletedRows = useMemo(() => (
     completedEvaluationRows.filter((row) => (
-      row.activityId === evaluationRecord?.id && row.rowStatus === 'Completed'
+      String(row.activityId ?? '') === String(evaluationRecord?.id ?? '') && isCompletedRowStatus(row.rowStatus)
     ))
   ), [completedEvaluationRows, evaluationRecord?.id])
+  const activeApprovalRecord = useMemo(() => (
+    approvalQueueRows.find((row) => String(row.activityId ?? '') === String(evaluationRecord?.id ?? '')) ?? null
+  ), [approvalQueueRows, evaluationRecord?.id])
+  const reevaluationStudentMap = useMemo(() => {
+    const nextMap = new Map()
+    const approvalRows = Array.isArray(activeApprovalRecord?.studentRows) ? activeApprovalRecord.studentRows : []
+
+    approvalRows.forEach((row) => {
+      const resultStatus = getNormalizedResultStatus(row.resultStatus ?? row.evaluationStatus)
+      const studentId = row.studentId ?? row.id
+
+      if (!studentId || !isReevaluationResult(resultStatus)) return
+
+      nextMap.set(studentId, {
+        previousAttemptNumber: Number(row.attemptCount ?? row.attemptNumber) || 1,
+        previousResultStatus: resultStatus,
+      })
+    })
+
+    if (!nextMap.size && activeApprovalRecord) {
+      activityCompletedRows.forEach((row) => {
+        const resultStatus = getNormalizedResultStatus(row.resultStatus ?? row.decisionTitle)
+        if (!row.studentId || !isReevaluationResult(resultStatus)) return
+
+        const current = nextMap.get(row.studentId)
+        const rowAttempt = Number(row.attemptNumber) || 1
+        const currentAttempt = Number(current?.previousAttemptNumber) || 0
+
+        if (!current || rowAttempt > currentAttempt) {
+          nextMap.set(row.studentId, {
+            previousAttemptNumber: rowAttempt,
+            previousResultStatus: resultStatus,
+          })
+        }
+      })
+    }
+
+    return nextMap
+  }, [activeApprovalRecord, activityCompletedRows])
+  const isSecondAttemptMode = reevaluationStudentMap.size > 0
   const latestCompletedRowByStudent = useMemo(() => {
     const latestRows = new Map()
 
@@ -1591,19 +1678,97 @@ export default function StartEvaluationPage({
 
     return latestRows
   }, [activityCompletedRows])
-  const hasCompletedEvaluationHistory = activityCompletedRows.length > 0
+  const targetAttemptRowByStudent = useMemo(() => {
+    const targetRows = new Map()
 
-  const roster = useMemo(() => (
-    baseRoster.map((student) => {
+    if (!isSecondAttemptMode) return targetRows
+
+    activityCompletedRows.forEach((row) => {
+      const targetAttemptNumber = (reevaluationStudentMap.get(row.studentId)?.previousAttemptNumber ?? 0) + 1
+      if (!row.studentId || Number(row.attemptNumber) !== targetAttemptNumber) return
+
+      targetRows.set(row.studentId, row)
+    })
+
+    return targetRows
+  }, [activityCompletedRows, isSecondAttemptMode, reevaluationStudentMap])
+  const finishedStudentIds = useMemo(() => {
+    const ids = new Set()
+
+    if (isSecondAttemptMode) {
+      targetAttemptRowByStudent.forEach((row) => {
+        if (row.studentId) ids.add(row.studentId)
+      })
+    } else {
+      activityCompletedRows.forEach((row) => {
+        if (row.studentId) ids.add(row.studentId)
+      })
+    }
+
+    Object.keys(submittedEvaluations).forEach((studentId) => {
+      if (studentId) ids.add(studentId)
+    })
+
+    return ids
+  }, [activityCompletedRows, isSecondAttemptMode, submittedEvaluations, targetAttemptRowByStudent])
+  const hasCompletedEvaluationHistory = activityCompletedRows.length > 0
+  const activeApprovalStatus = getNormalizedResultStatus(
+    activeApprovalRecord?.approvalStatus
+    ?? activeApprovalRecord?.reviewStatus
+    ?? activeApprovalRecord?.status
+    ?? '',
+  )
+  const isApprovalRejected = activeApprovalStatus === 'approval rejected'
+  const isApprovalApproved = activeApprovalStatus === 'approved'
+
+  const roster = useMemo(() => {
+    const mappedRoster = baseRoster.map((student) => {
       const latestCompletedRow = latestCompletedRowByStudent.get(student.id)
+      const targetAttemptRow = targetAttemptRowByStudent.get(student.id)
+      const reevaluationInfo = reevaluationStudentMap.get(student.id)
       const submittedEvaluation = submittedEvaluations[student.id]
 
       if (submittedEvaluation) {
+        const targetAttemptNumber = reevaluationInfo ? reevaluationInfo.previousAttemptNumber + 1 : Number(student.attemptNumber) || 1
+
         return {
           ...student,
+          attemptNumber: targetAttemptNumber,
+          attemptLabel: `Attempt ${targetAttemptNumber}`,
+          previousResultStatus: reevaluationInfo?.previousResultStatus,
+          previousAttemptNumber: reevaluationInfo?.previousAttemptNumber,
           evaluationStatus: 'Completed',
           evaluationDecision: submittedEvaluation.decisionTitle,
           evaluationResult: submittedEvaluation,
+        }
+      }
+
+      if (isSecondAttemptMode && reevaluationInfo) {
+        const targetAttemptNumber = reevaluationInfo.previousAttemptNumber + 1
+
+        if (targetAttemptRow) {
+          return {
+            ...student,
+            attemptNumber: targetAttemptNumber,
+            attemptLabel: `Attempt ${targetAttemptNumber}`,
+            previousResultStatus: reevaluationInfo.previousResultStatus,
+            previousAttemptNumber: reevaluationInfo.previousAttemptNumber,
+            evaluationStatus: 'Completed',
+            evaluationDecision: targetAttemptRow.resultStatus ?? targetAttemptRow.decisionTitle ?? '',
+            evaluationResult: targetAttemptRow,
+          }
+        }
+
+        return {
+          ...student,
+          attemptNumber: targetAttemptNumber,
+          attemptLabel: `Attempt ${targetAttemptNumber}`,
+          previousResultStatus: reevaluationInfo.previousResultStatus,
+          previousAttemptNumber: reevaluationInfo.previousAttemptNumber,
+          evaluationStatus: 'Pending',
+          evaluationDecision: '',
+          evaluationResult: null,
+          submissionStatus: 'Submitted',
         }
       }
 
@@ -1618,37 +1783,39 @@ export default function StartEvaluationPage({
 
       return student
     })
-  ), [baseRoster, latestCompletedRowByStudent, submittedEvaluations])
+
+    return isSecondAttemptMode
+      ? mappedRoster.filter((student) => reevaluationStudentMap.has(student.id))
+      : mappedRoster
+  }, [baseRoster, isSecondAttemptMode, latestCompletedRowByStudent, reevaluationStudentMap, submittedEvaluations, targetAttemptRowByStudent])
 
   const filteredStudents = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
     const submittedRoster = roster.filter((student) => student.submissionStatus === 'Submitted')
-    const eligibleRoster = hasCompletedEvaluationHistory
-      ? submittedRoster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student)))
-      : submittedRoster
+    const eligibleRoster = isEditingCompletedEvaluation
+      ? submittedRoster.filter((student) => student.id === initialSelectedStudentId)
+      : isApprovalRejected
+        ? submittedRoster
+      : submittedRoster.filter((student) => !finishedStudentIds.has(student.id))
 
     return eligibleRoster.filter((student) => (
-      ((hasCompletedEvaluationHistory
-        ? studentFilter === 'all' || getStudentResultStatus(student) === studentFilter
-        : studentFilter === 'all'
-          || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')))
+      ((studentFilter === 'all'
+        || (studentFilter === 'submitted' && student.submissionStatus === 'Submitted')))
       && (
         !needle
         || student.name.toLowerCase().includes(needle)
         || student.registerId.toLowerCase().includes(needle)
       )
     ))
-  }, [hasCompletedEvaluationHistory, roster, studentFilter, studentSearch])
+  }, [finishedStudentIds, initialSelectedStudentId, isApprovalRejected, isEditingCompletedEvaluation, roster, studentFilter, studentSearch])
 
   useEffect(() => {
-    const allowedFilters = hasCompletedEvaluationHistory
-      ? ['all', 'repeat', 'remedial']
-      : ['all', 'submitted']
+    const allowedFilters = ['all', 'submitted']
 
     if (!allowedFilters.includes(studentFilter)) {
       setStudentFilter('all')
     }
-  }, [hasCompletedEvaluationHistory, studentFilter])
+  }, [studentFilter])
 
   useEffect(() => {
     if (!filteredStudents.length) {
@@ -1673,14 +1840,17 @@ export default function StartEvaluationPage({
   const editingStudentDraft = selectedStudent?.id && selectedStudent.id === initialSelectedStudentId
     ? evaluationRecord?.editingStudentDraft ?? null
     : null
+  const rejectedRevisionDraft = isApprovalRejected
+    ? selectedStudent?.evaluationResult?.evaluationDraft ?? null
+    : null
   const selectedStudentBadge = getStudentEvaluationBadge(selectedStudent)
   const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
   const submittedCount = roster.filter((student) => student.submissionStatus === 'Submitted').length
-  const notSubmittedCount = roster.filter((student) => student.submissionStatus !== 'Submitted').length
-  const completedCount = activityCompletedRows.length
-  const pendingCount = roster.filter((student) => student.evaluationStatus !== 'Completed').length
   const repeatCount = roster.filter((student) => getStudentResultStatus(student) === 'repeat').length
   const remedialCount = roster.filter((student) => getStudentResultStatus(student) === 'remedial').length
+  const remainingEvaluationCount = roster.filter((student) => (
+    student.submissionStatus === 'Submitted' && !finishedStudentIds.has(student.id)
+  )).length
   const evaluationStatusCount = roster.filter((student) => {
     const status = getStudentResultStatus(student)
     return student.evaluationStatus === 'Completed'
@@ -1688,7 +1858,17 @@ export default function StartEvaluationPage({
       || status === 'repeat'
       || status === 'remedial'
   }).length
-  const eligibleEvaluationCount = roster.filter((student) => !hasStudentEvaluationResult(student) || isReevaluationResult(getStudentResultStatus(student))).length
+  const evaluationRecordStatusMeta = activeApprovalRecord
+    ? isApprovalRejected
+      ? { label: 'Approval Rejected', tone: 'is-approval-rejected' }
+      : isApprovalApproved
+        ? { label: 'Approved', tone: 'is-approved' }
+        : { label: 'Sent to Approval', tone: 'is-sent-approval' }
+    : evaluationRecord?.evaluationStatus === 'Completed Evaluation'
+      ? { label: 'Completed', tone: 'is-complete' }
+      : { label: 'Pending', tone: 'is-pending' }
+  const canSendToApproval = !activeApprovalRecord && !isEditingCompletedEvaluation && submittedCount > 0 && remainingEvaluationCount === 0
+  const eligibleEvaluationCount = isApprovalRejected ? submittedCount : remainingEvaluationCount
   const totalMarks = useMemo(() => {
     const items = selectedStudent?.submission?.items ?? []
 
@@ -1767,16 +1947,10 @@ export default function StartEvaluationPage({
   const criticalityRecommendationMessage = hasCriticalityFailure
     ? 'Criticality not performed well. Repeat is recommended.'
     : ''
-  const studentFilterOptions = hasCompletedEvaluationHistory
-    ? [
-        { id: 'all', label: 'All', count: eligibleEvaluationCount },
-        { id: 'repeat', label: 'Repeat', count: repeatCount },
-        { id: 'remedial', label: 'Remedial', count: remedialCount },
-      ]
-    : [
-        { id: 'all', label: 'All', count: submittedCount },
-        { id: 'submitted', label: 'Submitted', count: submittedCount },
-      ]
+  const studentFilterOptions = [
+    { id: 'all', label: 'All', count: isEditingCompletedEvaluation ? filteredStudents.length : eligibleEvaluationCount },
+    { id: 'submitted', label: 'Submitted', count: isEditingCompletedEvaluation ? filteredStudents.length : eligibleEvaluationCount },
+  ]
 
   const handleSelectStudent = (studentId) => {
     setSelectedStudentId(studentId)
@@ -1785,6 +1959,57 @@ export default function StartEvaluationPage({
 
   const handleOpenCompletedEvaluation = () => {
     onOpenCompletedEvaluation?.(evaluationRecord)
+  }
+
+  const handleSendApproval = (approvalFaculty) => {
+    const approvalSections = groupedReviewSummaries.length
+      ? groupedReviewSummaries
+      : readySections
+
+    onSendToApproval?.({
+      activityId: evaluationRecord?.id ?? 'unknown-activity',
+      activityName: evaluationRecord?.activityName ?? 'Untitled Activity',
+      activityType: evaluationRecord?.activityType ?? 'Activity',
+      source: 'Start Evaluation',
+      totalStudents: submittedCount,
+      evaluatedCount: evaluationStatusCount,
+      attemptCount: roster.reduce((maxAttempt, student) => Math.max(maxAttempt, Number(student.attemptNumber) || 1), 0),
+      activitySections: approvalSections.map((section) => ({
+        key: section.key,
+        label: section.label,
+      })),
+      studentRows: roster.map((student) => {
+        const totalMarks = Number(student.totalMarks ?? student.maxMarks ?? 1) || 1
+        const obtainedMarks = Number(student.totalObtainedMarks ?? student.obtainedMarks ?? student.score ?? 0) || 0
+        const totalPercentage = student.totalPercentage ?? Math.round((obtainedMarks / totalMarks) * 100)
+
+        return {
+          id: student.id,
+          studentId: student.id,
+          studentName: student.name ?? student.studentName,
+          registerId: student.registerId ?? student.id,
+          attemptCount: Number(student.attemptNumber) || 1,
+          checklist: student.checklist,
+          form: student.form,
+          question: student.question,
+          scaffolding: student.scaffolding,
+          overallCriticalMarks: student.overallCriticalMarks ?? student.criticalMarks ?? 0,
+          thresholdLabel: student.thresholdLabel ?? student.threshold ?? 'Not Matched',
+          totalObtainedMarks: obtainedMarks,
+          totalMarks,
+          totalPercentage,
+          resultStatus: getStudentResultStatus(student) || student.evaluationStatus,
+        }
+      }),
+      completedCount: roster.filter((student) => getStudentResultStatus(student) === 'completed' || student.evaluationStatus === 'Completed').length,
+      repeatCount,
+      remedialCount,
+      facultyName: approvalFaculty.facultyName,
+      employeeId: approvalFaculty.employeeId,
+      designation: approvalFaculty.designation,
+      note: approvalFaculty.note,
+    })
+    setIsApprovalPopupOpen(false)
   }
 
   const handlePreviousStudent = () => {
@@ -1828,13 +2053,23 @@ export default function StartEvaluationPage({
       rowStatus: 'Completed',
       evaluationDraft: panelActions?.buildDraft?.() ?? null,
     })
+    const normalizedCompletedEvaluationRow = isEditingCompletedEvaluation
+      ? {
+          ...completedEvaluationRow,
+          id: evaluationRecord.editingCompletedRowId,
+          attemptNumber: evaluationRecord.editingAttemptNumber ?? completedEvaluationRow.attemptNumber,
+          attemptLabel: evaluationRecord.editingAttemptNumber
+            ? `Attempt ${evaluationRecord.editingAttemptNumber}`
+            : completedEvaluationRow.attemptLabel,
+        }
+      : completedEvaluationRow
     const hasNextStudent = selectedStudentIndex > -1 && selectedStudentIndex < filteredStudents.length - 1
 
     setSubmittedEvaluations((current) => ({
       ...current,
       [selectedStudent.id]: submissionSummary,
     }))
-    onSaveCompletedEvaluation?.(completedEvaluationRow)
+    onSaveCompletedEvaluation?.(normalizedCompletedEvaluationRow)
     setSavedEvaluationDrafts((current) => {
       const nextDrafts = { ...current }
       delete nextDrafts[selectedStudent.id]
@@ -1842,6 +2077,17 @@ export default function StartEvaluationPage({
     })
     setIsSubmitPopupOpen(false)
     setSelectedDecisionId('')
+
+    if (isEditingCompletedEvaluation) {
+      onAlert?.({
+        tone: 'success',
+        message: `${selectedStudent.name} evaluation updated.`,
+        duration: 2600,
+      })
+      onOpenCompletedEvaluation?.(evaluationRecord)
+      return
+    }
+
     onAlert?.({
       tone: 'success',
       message: hasNextStudent
@@ -1858,6 +2104,15 @@ export default function StartEvaluationPage({
   const handleSaveEvaluation = () => {
     if (isMarksDisabled) return
     if (!selectedStudent?.id || !panelActions?.buildDraft) return
+
+    if (isEditingCompletedEvaluation) {
+      onAlert?.({
+        tone: 'warning',
+        message: 'Use Submit to update this edited evaluation.',
+        duration: 2400,
+      })
+      return
+    }
 
     setSavedEvaluationDrafts((current) => ({
       ...current,
@@ -1946,8 +2201,8 @@ export default function StartEvaluationPage({
             <div className="start-eval-summary-topline">
               <div className="start-eval-summary-badges">
                 <span className={`eval-type-chip ${getActivityTypeTone(evaluationRecord?.activityType)}`}>{evaluationRecord?.activityType ?? 'Activity'}</span>
-                <span className={`eval-status-pill ${evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'is-complete' : 'is-pending'}`}>
-                  {evaluationRecord?.evaluationStatus === 'Completed Evaluation' ? 'Completed' : 'Pending'}
+                <span className={`eval-status-pill ${evaluationRecordStatusMeta.tone}`}>
+                  {evaluationRecordStatusMeta.label}
                 </span>
                 {isCertifiableActivity ? (
                   <span className="eval-status-pill is-certifiable">Certifiable</span>
@@ -1996,124 +2251,152 @@ export default function StartEvaluationPage({
 
         <section className="start-eval-board">
           <div className="start-eval-main-panel">
-            <section className="start-eval-student-nav-card">
-              <div className="start-eval-student-nav-main">
-                <div className="start-eval-student-nav-copy">
-                  <span className="start-eval-student-nav-kicker">Student Review</span>
-                  <strong>{selectedStudent?.name ?? 'No student selected'}</strong>
-                  <p>{selectedStudent?.registerId ?? 'No register number'}</p>
-                  <div className="start-eval-student-nav-meta">
-                    <span className={`eval-status-pill ${selectedStudentBadge.tone}`}>
-                      {selectedStudentBadge.label}
-                    </span>
-                    <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
-                    <span className="start-eval-student-nav-position">
-                      Student {filteredStudents.length ? Math.max(selectedStudentIndex + 1, 1) : 0} of {filteredStudents.length}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="start-eval-student-nav-quick-actions">
-                  <button
-                    type="button"
-                    className="ghost start-eval-nav-btn"
-                    onClick={() => setIsStudentPickerOpen(true)}
-                  >
-                    <Users size={15} strokeWidth={2} />
-                    Students
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost start-eval-nav-btn"
-                    onClick={() => onOpenExamLog?.({
-                      evaluationRecord,
-                      student: selectedStudent,
-                      totalMarks,
-                      obtainedMarks,
-                    })}
-                  >
-                    <History size={15} strokeWidth={2} />
-                    Exam Logs
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <StudentResponsePanel
-              key={selectedStudent?.id ?? 'no-student'}
-              student={selectedStudent}
-              record={evaluationRecord}
-              savedDraft={selectedStudent?.id ? (savedEvaluationDrafts[selectedStudent.id] ?? editingStudentDraft ?? null) : null}
-              marksDisabled={isMarksDisabled}
-              onObtainedMarksChange={setObtainedMarks}
-              onEvaluationStateChange={setEvaluationState}
-              onRegisterActions={setPanelActions}
-            />
-
-            {selectedStudent ? (
-              <section className={`start-eval-workspace-footer ${isReadyToSubmit ? 'is-ready' : ''}`}>
-                <div className="start-eval-workspace-status">
-                  {isMarksDisabled ? (
-                    <span className="start-eval-submit-pill is-pending">
-                      Evaluation disabled because marks are off
-                    </span>
-                  ) : null}
-                  {selectedStudent.submissionStatus !== 'Submitted' ? (
-                    <span className="start-eval-submit-pill is-pending">
-                      No submission available
-                    </span>
-                  ) : null}
-                  {readySections.map((section) => (
-                    <span key={section.key} className={`start-eval-submit-pill ${section.isComplete ? 'is-complete' : 'is-pending'}`}>
-                      {section.label} {formatMarksValue(section.obtainedMarks)}/{formatMarksValue(section.totalMarks)}
-                    </span>
-                  ))}
-                  <span className="start-eval-submit-pill is-threshold">
-                    Threshold {thresholdResult?.label ?? (thresholdRows.length ? 'Not Matched' : 'Not Configured')}
-                  </span>
-                </div>
-
-                <div className="start-eval-workspace-actions">
-                  <button
-                    type="button"
-                    className="ghost start-eval-nav-btn is-stepper"
-                    onClick={handlePreviousStudent}
-                    disabled={selectedStudentIndex <= 0}
-                  >
-                    <ChevronLeft size={15} strokeWidth={2} />
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost start-eval-nav-btn is-stepper"
-                    onClick={handleNextStudent}
-                    disabled={selectedStudentIndex === -1 || selectedStudentIndex >= filteredStudents.length - 1}
-                  >
-                    Next
-                    <ChevronRight size={15} strokeWidth={2} />
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost start-eval-submit-secondary"
-                    onClick={handleSaveEvaluation}
-                    disabled={!selectedStudent?.id || isMarksDisabled}
-                  >
-                    Save & Next
-                  </button>
-                  <button
-                    type="button"
-                    className="tool-btn green start-eval-submit-btn"
-                    onClick={() => {
-                      setSelectedDecisionId(hasCriticalityFailure ? 'decision-repeat' : '')
-                      setIsSubmitPopupOpen(true)
-                    }}
-                    disabled={!isReadyToSubmit || isMarksDisabled}
-                  >
-                    Submit
-                  </button>
+            {activeApprovalRecord && !isApprovalRejected ? (
+              <section className="start-eval-approval-card">
+                <div className="start-eval-approval-copy">
+                  <span><BadgeCheck size={13} strokeWidth={2} /> {isApprovalApproved ? 'Approved' : 'Sent to Approval'}</span>
+                  <strong>{isApprovalApproved ? 'This activity has been approved.' : 'This activity is in the approval queue.'}</strong>
+                  <p>{evaluationStatusCount} evaluated records {isApprovalApproved ? 'are ready for publishing.' : 'were sent for approval.'}</p>
                 </div>
               </section>
-            ) : null}
+            ) : canSendToApproval ? (
+              <section className="start-eval-approval-card">
+                <div className="start-eval-approval-copy">
+                  <span><BadgeCheck size={13} strokeWidth={2} /> Approval Ready</span>
+                  <strong>All submitted evaluations are complete.</strong>
+                  <p>{evaluationStatusCount} records can be sent to the approval queue.</p>
+                </div>
+                <button
+                  type="button"
+                  className="tool-btn green start-eval-approval-btn"
+                  onClick={() => setIsApprovalPopupOpen(true)}
+                >
+                  Send to Approval
+                  <ChevronRight size={15} strokeWidth={2} />
+                </button>
+              </section>
+            ) : (
+              <>
+                <section className="start-eval-student-nav-card">
+                  <div className="start-eval-student-nav-main">
+                    <div className="start-eval-student-nav-copy">
+                      <span className="start-eval-student-nav-kicker">Student Review</span>
+                      <strong>{selectedStudent?.name ?? 'No student selected'}</strong>
+                      <p>{selectedStudent?.registerId ?? 'No register number'}</p>
+                      <div className="start-eval-student-nav-meta">
+                        <span className={`eval-status-pill ${selectedStudentBadge.tone}`}>
+                          {selectedStudentBadge.label}
+                        </span>
+                        <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
+                        <span className="start-eval-student-nav-position">
+                          Student {filteredStudents.length ? Math.max(selectedStudentIndex + 1, 1) : 0} of {filteredStudents.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="start-eval-student-nav-quick-actions">
+                      <button
+                        type="button"
+                        className="ghost start-eval-nav-btn"
+                        onClick={() => setIsStudentPickerOpen(true)}
+                      >
+                        <Users size={15} strokeWidth={2} />
+                        Students
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost start-eval-nav-btn"
+                        onClick={() => onOpenExamLog?.({
+                          evaluationRecord,
+                          student: selectedStudent,
+                          totalMarks,
+                          obtainedMarks,
+                        })}
+                      >
+                        <History size={15} strokeWidth={2} />
+                        Exam Logs
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <StudentResponsePanel
+                  key={selectedStudent?.id ?? 'no-student'}
+                  student={selectedStudent}
+                  record={evaluationRecord}
+                  savedDraft={selectedStudent?.id ? (savedEvaluationDrafts[selectedStudent.id] ?? editingStudentDraft ?? rejectedRevisionDraft ?? null) : null}
+                  marksDisabled={isMarksDisabled}
+                  onObtainedMarksChange={setObtainedMarks}
+                  onEvaluationStateChange={setEvaluationState}
+                  onRegisterActions={setPanelActions}
+                />
+
+                {selectedStudent ? (
+                  <section className={`start-eval-workspace-footer ${isReadyToSubmit ? 'is-ready' : ''}`}>
+                  <div className="start-eval-workspace-status">
+                    {isMarksDisabled ? (
+                      <span className="start-eval-submit-pill is-pending">
+                        Evaluation disabled because marks are off
+                      </span>
+                    ) : null}
+                    {selectedStudent.submissionStatus !== 'Submitted' ? (
+                      <span className="start-eval-submit-pill is-pending">
+                        No submission available
+                      </span>
+                    ) : null}
+                    {readySections.map((section) => (
+                      <span key={section.key} className={`start-eval-submit-pill ${section.isComplete ? 'is-complete' : 'is-pending'}`}>
+                        {section.label} {formatMarksValue(section.obtainedMarks)}/{formatMarksValue(section.totalMarks)}
+                      </span>
+                    ))}
+                    <span className="start-eval-submit-pill is-threshold">
+                      Threshold {thresholdResult?.label ?? (thresholdRows.length ? 'Not Matched' : 'Not Configured')}
+                    </span>
+                  </div>
+
+                  <div className="start-eval-workspace-actions">
+                    <button
+                      type="button"
+                      className="ghost start-eval-nav-btn is-stepper"
+                      onClick={handlePreviousStudent}
+                      disabled={selectedStudentIndex <= 0}
+                    >
+                      <ChevronLeft size={15} strokeWidth={2} />
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost start-eval-nav-btn is-stepper"
+                      onClick={handleNextStudent}
+                      disabled={selectedStudentIndex === -1 || selectedStudentIndex >= filteredStudents.length - 1}
+                    >
+                      Next
+                      <ChevronRight size={15} strokeWidth={2} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost start-eval-submit-secondary"
+                      onClick={handleSaveEvaluation}
+                      disabled={!selectedStudent?.id || isMarksDisabled}
+                    >
+                      Save & Next
+                    </button>
+                    <button
+                      type="button"
+                      className="tool-btn green start-eval-submit-btn"
+                      onClick={() => {
+                        setSelectedDecisionId(hasCriticalityFailure ? 'decision-repeat' : '')
+                        setIsSubmitPopupOpen(true)
+                      }}
+                      disabled={!isReadyToSubmit || isMarksDisabled}
+                    >
+                      Submit
+                    </button>
+                  </div>
+                  </section>
+                ) : null}
+              </>
+            )}
           </div>
         </section>
 
@@ -2350,6 +2633,13 @@ export default function StartEvaluationPage({
           </div>,
           document.body,
         ) : null}
+        <SendApprovalModal
+          open={isApprovalPopupOpen}
+          title="Send to Approval"
+          contextLabel={evaluationRecord?.activityName ?? 'Evaluation activity'}
+          onClose={() => setIsApprovalPopupOpen(false)}
+          onSend={handleSendApproval}
+        />
       </div>
     </section>
   )

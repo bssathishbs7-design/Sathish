@@ -7,6 +7,7 @@ import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import CompletedEvaluationPage from './pages/CompletedEvaluationPage'
 import ReviewApprovePage from './pages/ReviewApprovePage'
+import ApprovalViewPage from './pages/ApprovalViewPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import StartEvaluationPage from './pages/StartEvaluationPage'
 import ExamLogPage from './pages/ExamLogPage'
@@ -26,6 +27,7 @@ const PAGE_PATHS = {
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
   [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
   [APP_PAGES.REVIEW_APPROVE]: '/skills/review-approve',
+  [APP_PAGES.APPROVAL_VIEW]: '/skills/approvalview',
   [APP_PAGES.START_EVALUATION]: '/skills/start-evaluation',
   [APP_PAGES.EXAM_LOG]: '/skills/exam-log',
   [APP_PAGES.OSPE_ACTIVITY]: '/skills/ospe-activity',
@@ -46,6 +48,52 @@ const PATH_PAGES = Object.fromEntries(
 )
 
 const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? APP_PAGES.DASHBOARD
+
+const START_EVALUATION_STORAGE_KEY = 'vx-start-evaluation-record'
+const COMPLETED_EVALUATIONS_STORAGE_KEY = 'vx-completed-evaluation-rows'
+const APPROVAL_QUEUE_STORAGE_KEY = 'vx-approval-queue-rows'
+const APPROVAL_VIEW_STORAGE_KEY = 'vx-approval-view-record'
+
+const readStoredStartEvaluationRecord = () => {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(START_EVALUATION_STORAGE_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
+
+const storeStartEvaluationRecord = (record) => {
+  if (!record) return
+
+  window.sessionStorage.setItem(START_EVALUATION_STORAGE_KEY, JSON.stringify(record))
+}
+
+const readStoredApprovalViewRecord = () => {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(APPROVAL_VIEW_STORAGE_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
+
+const storeApprovalViewRecord = (record) => {
+  if (!record) return
+
+  window.sessionStorage.setItem(APPROVAL_VIEW_STORAGE_KEY, JSON.stringify(record))
+}
+
+const readStoredRows = (key) => {
+  try {
+    const rows = JSON.parse(window.sessionStorage.getItem(key) || '[]')
+    return Array.isArray(rows) ? rows : []
+  } catch {
+    return []
+  }
+}
+
+const storeRows = (key, rows) => {
+  window.sessionStorage.setItem(key, JSON.stringify(Array.isArray(rows) ? rows : []))
+}
 
 const STUDENT_COUNT_BY_YEAR_AND_SGT = {
   'First Year': { 'SGT A': 42, 'SGT B': 38, 'SGT C': 40 },
@@ -207,18 +255,26 @@ function App() {
   const [evaluationRecords, setEvaluationRecords] = useState([])
   const [examMonitoringLogs, setExamMonitoringLogs] = useState([])
   const [selectedStudentExamAssignment, setSelectedStudentExamAssignment] = useState(null)
-  const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(null)
+  const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(() => readStoredStartEvaluationRecord())
   const [selectedEvaluationStudentId, setSelectedEvaluationStudentId] = useState('')
   const [selectedCompletedEvaluationActivityId, setSelectedCompletedEvaluationActivityId] = useState(null)
-  const [completedEvaluationRows, setCompletedEvaluationRows] = useState([])
+  const [completedEvaluationRows, setCompletedEvaluationRows] = useState(() => readStoredRows(COMPLETED_EVALUATIONS_STORAGE_KEY))
+  const [approvalQueueRows, setApprovalQueueRows] = useState(() => readStoredRows(APPROVAL_QUEUE_STORAGE_KEY))
+  const [selectedApprovalViewRecord, setSelectedApprovalViewRecord] = useState(() => readStoredApprovalViewRecord())
   const [selectedExamLogContext, setSelectedExamLogContext] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
   const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
+  const activeEvaluationRecord = selectedEvaluationRecord
+    ?? evaluationRecords.find((record) => record.id === selectedCompletedEvaluationActivityId)
+    ?? readStoredStartEvaluationRecord()
+    ?? completedEvaluationRows.find((row) => row.activityRecord)?.activityRecord
+    ?? null
   const profileUser = {
     name: 'Karthik Subramanian',
     registerId: 'MC2568',
+    designation: 'Admin',
     role: 'Admin',
   }
 
@@ -294,6 +350,24 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem('vx-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    if (!selectedEvaluationRecord) return
+    storeStartEvaluationRecord(selectedEvaluationRecord)
+  }, [selectedEvaluationRecord])
+
+  useEffect(() => {
+    storeRows(COMPLETED_EVALUATIONS_STORAGE_KEY, completedEvaluationRows)
+  }, [completedEvaluationRows])
+
+  useEffect(() => {
+    storeRows(APPROVAL_QUEUE_STORAGE_KEY, approvalQueueRows)
+  }, [approvalQueueRows])
+
+  useEffect(() => {
+    if (!selectedApprovalViewRecord) return
+    storeApprovalViewRecord(selectedApprovalViewRecord)
+  }, [selectedApprovalViewRecord])
 
   useEffect(() => {
     const resolvedPage = getPageFromPath(window.location.pathname)
@@ -442,8 +516,7 @@ function App() {
           .sort((left, right) => (Number(right.attemptNumber) || 0) - (Number(left.attemptNumber) || 0))[0]
       : null
 
-    setSelectedEvaluationStudentId(studentId)
-    setSelectedEvaluationRecord({
+    const nextEvaluationRecord = {
       ...record,
       id: recordId,
       assignment: linkedAssignment ?? record.assignment ?? record ?? null,
@@ -452,7 +525,11 @@ function App() {
       editingDecisionId: linkedCompletedRow?.decisionId ?? '',
       editingAttemptNumber: linkedCompletedRow?.attemptNumber ?? null,
       editingCompletedRowId: linkedCompletedRow?.id ?? '',
-    })
+    }
+
+    setSelectedEvaluationStudentId(studentId)
+    setSelectedEvaluationRecord(nextEvaluationRecord)
+    storeStartEvaluationRecord(nextEvaluationRecord)
     navigateToPage(APP_PAGES.START_EVALUATION)
   }
 
@@ -466,6 +543,23 @@ function App() {
     if (!row?.activityId || !row?.studentId) return
 
     setCompletedEvaluationRows((current) => {
+      const isEditingExistingCompletedRow = Boolean(row.id)
+        && current.some((item) => item.id === row.id)
+
+      if (isEditingExistingCompletedRow) {
+        const attemptNumber = Number(row.attemptNumber) || Number(current.find((item) => item.id === row.id)?.attemptNumber) || 1
+        const normalizedRow = {
+          ...row,
+          attemptNumber,
+          attemptLabel: row.attemptLabel ?? `Attempt ${attemptNumber}`,
+        }
+
+        return [
+          normalizedRow,
+          ...current.filter((item) => item.id !== row.id),
+        ]
+      }
+
       const sameStudentRows = current.filter((item) => (
         item.activityId === row.activityId && item.studentId === row.studentId
       ))
@@ -495,6 +589,58 @@ function App() {
         )),
       ]
     })
+  }
+
+  const handleSendToApproval = (payload) => {
+    if (!payload?.activityId) return
+    const approvalTimestamp = new Date().toISOString()
+
+    const approvalRow = {
+      ...payload,
+      id: `approval-${payload.activityId}`,
+      senderName: profileUser.name,
+      senderId: profileUser.registerId,
+      senderDesignation: profileUser.designation ?? profileUser.role,
+      sentAt: approvalTimestamp,
+      receivedAt: approvalTimestamp,
+    }
+
+    setApprovalQueueRows((current) => [
+      approvalRow,
+      ...current.filter((item) => item.activityId !== payload.activityId),
+    ])
+    showAlert({ tone: 'secondary', message: `${payload.activityName ?? 'Activity'} sent to approval.` })
+  }
+
+  const handleOpenApprovalView = (record) => {
+    if (!record) return
+    setSelectedApprovalViewRecord(record)
+    storeApprovalViewRecord(record)
+    navigateToPage(APP_PAGES.APPROVAL_VIEW)
+  }
+
+  const handleApprovalReviewAction = (reviewedRecord) => {
+    if (!reviewedRecord?.activityId) return
+
+    const existingApprovalRow = approvalQueueRows.find((item) => item.activityId === reviewedRecord.activityId)
+    const nextReviewedRecord = {
+      ...(existingApprovalRow ?? {}),
+      ...reviewedRecord,
+      attemptCount: existingApprovalRow?.attemptCount ?? reviewedRecord.attemptCount,
+      attemptNumber: existingApprovalRow?.attemptNumber ?? reviewedRecord.attemptNumber,
+      attemptLabel: existingApprovalRow?.attemptLabel ?? reviewedRecord.attemptLabel,
+    }
+
+    setApprovalQueueRows((current) => current.map((item) => (
+      item.activityId === reviewedRecord.activityId ? nextReviewedRecord : item
+    )))
+    setSelectedApprovalViewRecord(nextReviewedRecord)
+    storeApprovalViewRecord(nextReviewedRecord)
+    showAlert({
+      tone: nextReviewedRecord.approvalStatus === 'Approved' ? 'secondary' : 'warning',
+      message: `${nextReviewedRecord.activityName ?? 'Activity'} ${nextReviewedRecord.approvalStatus === 'Approved' ? 'approved' : 'rejected'}${nextReviewedRecord.reviewRemarks ? ' with remarks' : ''}.`,
+    })
+    navigateToPage(APP_PAGES.EVALUATION)
   }
 
   const handleBackToEvaluationList = () => {
@@ -661,6 +807,8 @@ function App() {
               onOpenDashboardSummary={() => navigateToPage(APP_PAGES.DASHBOARD_SUMMARY)}
               onAlert={showAlert}
               evaluationRecords={evaluationRecords}
+              completedEvaluationRows={completedEvaluationRows}
+              approvalQueueRows={approvalQueueRows}
               onStartEvaluation={handleOpenStartEvaluation}
             />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (
@@ -670,26 +818,53 @@ function App() {
               activityRecord={evaluationRecords.find((record) => record.id === selectedCompletedEvaluationActivityId) ?? selectedEvaluationRecord}
               onBackToEvaluation={() => navigateToPage(APP_PAGES.START_EVALUATION, { replace: true })}
               onOpenEvaluation={handleOpenStartEvaluation}
+              onSendToApproval={handleSendToApproval}
             />
           ) : activePage === APP_PAGES.REVIEW_APPROVE ? (
             <ReviewApprovePage
+              approvalQueueRows={approvalQueueRows}
               completedEvaluationRows={completedEvaluationRows}
               onAlert={showAlert}
+              onViewApproval={handleOpenApprovalView}
+            />
+          ) : activePage === APP_PAGES.APPROVAL_VIEW ? (
+            <ApprovalViewPage
+              approvalRecord={selectedApprovalViewRecord ?? readStoredApprovalViewRecord()}
+              completedEvaluationRows={completedEvaluationRows}
+              onBack={() => navigateToPage(APP_PAGES.REVIEW_APPROVE)}
+              onAlert={showAlert}
+              onApprovalAction={handleApprovalReviewAction}
             />
           ) : activePage === APP_PAGES.START_EVALUATION ? (
-            <StartEvaluationPage
-              evaluationRecord={selectedEvaluationRecord}
-              initialSelectedStudentId={selectedEvaluationStudentId}
-              completedEvaluationRows={completedEvaluationRows}
-              onBackToEvaluation={handleBackToEvaluationList}
-              onOpenCompletedEvaluation={(record) => {
-                setSelectedCompletedEvaluationActivityId(record?.id ?? selectedEvaluationRecord?.id ?? null)
-                navigateToPage(APP_PAGES.COMPLETED_EVALUATION)
-              }}
-              onOpenExamLog={handleOpenExamLog}
-              onSaveCompletedEvaluation={handleSaveCompletedEvaluation}
-              onAlert={showAlert}
-            />
+            activeEvaluationRecord ? (
+              <StartEvaluationPage
+                evaluationRecord={activeEvaluationRecord}
+                initialSelectedStudentId={selectedEvaluationStudentId}
+                completedEvaluationRows={completedEvaluationRows}
+                approvalQueueRows={approvalQueueRows}
+                onBackToEvaluation={handleBackToEvaluationList}
+                onOpenCompletedEvaluation={(record) => {
+                  setSelectedCompletedEvaluationActivityId(record?.id ?? activeEvaluationRecord?.id ?? null)
+                  navigateToPage(APP_PAGES.COMPLETED_EVALUATION)
+                }}
+                onOpenExamLog={handleOpenExamLog}
+                onSaveCompletedEvaluation={handleSaveCompletedEvaluation}
+                onSendToApproval={handleSendToApproval}
+                onAlert={showAlert}
+              />
+            ) : (
+              <section className="vx-content forms-page start-evaluation-page">
+                <div className="start-eval-shell">
+                  <section className="start-eval-empty-state">
+                    <strong>No evaluation selected</strong>
+                    <p>Open an activity from the evaluation list to start or review evaluations.</p>
+                    <button type="button" className="tool-btn green" onClick={handleBackToEvaluationList}>
+                      Back to Evaluation
+                    </button>
+                  </section>
+                </div>
+              </section>
+            )
           ) : activePage === APP_PAGES.EXAM_LOG ? (
             <ExamLogPage
               examLogContext={selectedExamLogContext}

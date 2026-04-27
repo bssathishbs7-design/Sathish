@@ -1295,6 +1295,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                           const isProcessing = generationFlow?.recordId === record.id
                             && generationFlow?.activityId === activity.id
                             && generationFlow.phase === 'processing'
+                          const isActivityNameTruncated = activity.name.length > 35
 
                           return (
                             <article
@@ -1320,9 +1321,9 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
                             >
                               <div className="forms-flow-activity" data-label="Activity Name">
                                 <div
-                                  className={`forms-activity-tooltip ${isSelected ? 'has-tooltip' : ''}`}
-                                  data-tooltip={isSelected ? `${activity.name}\n${getActivityPreviewText(activity, record.id)}` : undefined}
-                                  tabIndex={isSelected ? 0 : undefined}
+                                  className={`forms-activity-summary ${isActivityNameTruncated ? 'is-truncated' : ''}`}
+                                  data-tooltip={isActivityNameTruncated ? activity.name : undefined}
+                                  aria-label={activity.name}
                                 >
                                   <strong className="forms-activity-text">
                                     {getTruncatedActivityName(activity.name)}

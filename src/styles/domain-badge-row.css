@@ -248,68 +248,83 @@
   }
 }
 
-body.dark-mode .domain-badge-trigger {
+body.dark-mode .domain-badge-trigger,
+.theme-dark .domain-badge-trigger {
   border-color: rgba(97, 130, 117, 0.44);
-  background: rgba(16, 30, 26, 0.9);
+  background: rgba(15, 24, 40, 0.94);
   color: #d7ebe1;
 }
 
 body.dark-mode .domain-badge-trigger:hover:not(:disabled),
-body.dark-mode .domain-badge-dropdown.is-open .domain-badge-trigger {
+.theme-dark .domain-badge-trigger:hover:not(:disabled),
+body.dark-mode .domain-badge-dropdown.is-open .domain-badge-trigger,
+.theme-dark .domain-badge-dropdown.is-open .domain-badge-trigger {
   border-color: rgba(74, 194, 152, 0.62);
-  background: rgba(18, 46, 37, 0.96);
+  background: rgba(18, 35, 54, 0.98);
   box-shadow: 0 18px 34px rgba(0, 0, 0, 0.28);
 }
 
-body.dark-mode .domain-badge-trigger.is-selected {
-  background: rgba(18, 52, 41, 0.94);
+body.dark-mode .domain-badge-trigger.is-selected,
+.theme-dark .domain-badge-trigger.is-selected {
+  background: rgba(18, 45, 42, 0.94);
   color: #8bf1c2;
 }
 
-body.dark-mode .domain-badge-trigger.is-neutral {
+body.dark-mode .domain-badge-trigger.is-neutral,
+.theme-dark .domain-badge-trigger.is-neutral {
   color: #a9c0b6;
 }
 
-body.dark-mode .domain-badge-dropdown.is-cognitive .domain-badge-trigger {
+body.dark-mode .domain-badge-dropdown.is-cognitive .domain-badge-trigger,
+.theme-dark .domain-badge-dropdown.is-cognitive .domain-badge-trigger {
   border-color: rgba(58, 176, 143, 0.54);
-  background: rgba(10, 40, 31, 0.94);
+  background: rgba(9, 46, 36, 0.94);
   color: #88f0c5;
 }
 
-body.dark-mode .domain-badge-dropdown.is-affective .domain-badge-trigger {
+body.dark-mode .domain-badge-dropdown.is-affective .domain-badge-trigger,
+.theme-dark .domain-badge-dropdown.is-affective .domain-badge-trigger {
   border-color: rgba(72, 161, 200, 0.56);
-  background: rgba(9, 33, 41, 0.94);
+  background: rgba(9, 38, 52, 0.94);
   color: #8cdcff;
 }
 
-body.dark-mode .domain-badge-dropdown.is-psychomotor .domain-badge-trigger {
+body.dark-mode .domain-badge-dropdown.is-psychomotor .domain-badge-trigger,
+.theme-dark .domain-badge-dropdown.is-psychomotor .domain-badge-trigger {
   border-color: rgba(129, 118, 145, 0.58);
-  background: rgba(28, 24, 34, 0.94);
+  background: rgba(34, 29, 44, 0.94);
   color: #d7c8e7;
 }
 
-body.dark-mode .domain-badge-trigger-icon {
+body.dark-mode .domain-badge-trigger-icon,
+.theme-dark .domain-badge-trigger-icon {
   color: rgba(176, 214, 199, 0.78);
 }
 
-body.dark-mode .domain-badge-menu {
+body.dark-mode .domain-badge-menu,
+.theme-dark .domain-badge-menu {
   border-color: rgba(90, 123, 111, 0.5);
-  background: rgba(9, 20, 17, 0.96);
+  background: rgba(10, 20, 34, 0.98);
   box-shadow: 0 28px 60px rgba(0, 0, 0, 0.45);
 }
 
-body.dark-mode .domain-badge-option {
+body.dark-mode .domain-badge-option,
+.theme-dark .domain-badge-option {
   color: #d2e6dd;
 }
 
 body.dark-mode .domain-badge-option:hover,
-body.dark-mode .domain-badge-option.is-selected {
+body.dark-mode .domain-badge-option.is-selected,
+.theme-dark .domain-badge-option:hover,
+.theme-dark .domain-badge-option.is-selected {
   background: rgba(18, 51, 41, 0.94);
   color: #8ef0c3;
 }
 
 body.dark-mode .domain-badge-trigger[data-tooltip]::after,
-body.dark-mode .domain-badge-trigger[data-tooltip]::before {
+.theme-dark .domain-badge-trigger[data-tooltip]::after,
+body.dark-mode .domain-badge-trigger[data-tooltip]::before,
+.theme-dark .domain-badge-trigger[data-tooltip]::before {
   background: rgba(238, 248, 242, 0.96);
   color: #173328;
 }
