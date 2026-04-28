@@ -413,7 +413,13 @@ function EvaluationTable({
   )
 }
 
-export default function SkillAssessmentPage({ onAlert, evaluationRecords = [], completedEvaluationRows = [], approvalQueueRows = [], onStartEvaluation }) {
+export default function SkillAssessmentPage({
+  onAlert,
+  evaluationRecords = [],
+  completedEvaluationRows = [],
+  approvalQueueRows = [],
+  onStartEvaluation,
+}) {
   const [viewMode, setViewMode] = useState('card')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedYear, setSelectedYear] = useState('')

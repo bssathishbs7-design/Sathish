@@ -94,6 +94,12 @@
   flex-wrap: wrap;
 }
 
+.start-eval-attempt-pill {
+  border-color: #bfe4f2;
+  background: #eef9ff;
+  color: #0c7aa6;
+}
+
 .start-eval-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

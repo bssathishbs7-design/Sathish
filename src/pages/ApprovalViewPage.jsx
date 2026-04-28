@@ -102,6 +102,16 @@ const getThresholdTone = (value = '') => {
   return 'is-neutral'
 }
 
+const getDisplayApprovalStatus = (value = '') => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+
+  if (normalized === 'scheduled' || normalized === 'flow completed') {
+    return 'Pending Approval'
+  }
+
+  return value || 'Pending Approval'
+}
+
 const questionColumnOptions = [
   { key: 'checklist', label: 'Checklist' },
   { key: 'form', label: 'Form' },
@@ -337,12 +347,15 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
   }
 
   const activityType = approvalRecord.activityType ?? 'Activity'
-  const status = approvalRecord.status ?? approvalRecord.approvalStatus ?? 'Pending Approval'
+  const status = getDisplayApprovalStatus(
+    approvalRecord.status ?? approvalRecord.approvalStatus ?? approvalRecord.reviewStatus ?? 'Pending Approval',
+  )
   const receivedAt = formatDateTime(approvalRecord.receivedAt ?? approvalRecord.sentAt ?? approvalRecord.submittedAt)
   const senderName = approvalRecord.senderName ?? 'Sender name not set'
   const senderId = approvalRecord.senderId ?? 'Sender ID not set'
   const senderDesignation = approvalRecord.senderDesignation ?? ''
   const attemptCount = approvalRecord.attemptCount ?? approvalRecord.attempts ?? approvalRecord.attemptNumber ?? 1
+  const showDecisionPanel = String(status).trim().toLowerCase() !== 'published'
 
   const handleApprovalAction = (action) => {
     const nextStatus = action === 'approve' ? 'Approved' : 'Approval Rejected'
@@ -363,13 +376,6 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
     onAlert?.({
       tone: action === 'approve' ? 'secondary' : 'warning',
       message: `${approvalRecord.activityName ?? 'Activity'} ${action === 'approve' ? 'approved' : 'rejected'}${reviewRemarks.trim() ? ' with remarks' : ''}.`,
-    })
-  }
-
-  const handleViewStudent = (row) => {
-    onAlert?.({
-      tone: 'primary',
-      message: `Viewing ${row.studentName ?? 'student'} result.`,
     })
   }
 
@@ -405,6 +411,13 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
           getStudentResult(row),
         ]
       }),
+    })
+  }
+
+  const handleViewStudent = (row) => {
+    onAlert?.({
+      tone: 'primary',
+      message: `Viewing ${row.studentName ?? 'student'} result.`,
     })
   }
 
@@ -469,36 +482,38 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
             </div>
           </section>
 
-          <section className="approval-view-panel approval-view-decision-panel">
-            <div className="approval-view-decision-column">
-              <span className="approval-view-decision-label">Approval note</span>
-              <p className="approval-view-note-text">{approvalRecord.note || 'No approval note added.'}</p>
-            </div>
-
-            <div className="approval-view-decision-divider" aria-hidden="true" />
-
-            <div className="approval-view-decision-column">
-              <span className="approval-view-decision-label">Approval review</span>
-              <label className="approval-view-remarks-field">
-                <textarea
-                  value={reviewRemarks}
-                  onChange={(event) => setReviewRemarks(event.target.value)}
-                  placeholder="Add review remarks"
-                  rows={4}
-                />
-              </label>
-              <div className="approval-view-review-actions">
-                <button type="button" className="ghost approval-view-return-btn" onClick={() => handleApprovalAction('reject')}>
-                  <RotateCcw size={16} strokeWidth={2.1} />
-                  Reject
-                </button>
-                <button type="button" className="tool-btn green approval-view-approve-btn" onClick={() => handleApprovalAction('approve')}>
-                  <BadgeCheck size={16} strokeWidth={2.1} />
-                  Approve
-                </button>
+          {showDecisionPanel ? (
+            <section className="approval-view-panel approval-view-decision-panel">
+              <div className="approval-view-decision-column">
+                <span className="approval-view-decision-label">Approval note</span>
+                <p className="approval-view-note-text">{approvalRecord.note || 'No approval note added.'}</p>
               </div>
-            </div>
-          </section>
+
+              <div className="approval-view-decision-divider" aria-hidden="true" />
+
+              <div className="approval-view-decision-column">
+                <span className="approval-view-decision-label">Approval review</span>
+                <label className="approval-view-remarks-field">
+                  <textarea
+                    value={reviewRemarks}
+                    onChange={(event) => setReviewRemarks(event.target.value)}
+                    placeholder="Add review remarks"
+                    rows={4}
+                  />
+                </label>
+                <div className="approval-view-review-actions">
+                  <button type="button" className="ghost approval-view-return-btn" onClick={() => handleApprovalAction('reject')}>
+                    <RotateCcw size={16} strokeWidth={2.1} />
+                    Reject
+                  </button>
+                  <button type="button" className="tool-btn green approval-view-approve-btn" onClick={() => handleApprovalAction('approve')}>
+                    <BadgeCheck size={16} strokeWidth={2.1} />
+                    Approve
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           <section className="approval-view-panel approval-view-student-panel">
             <div className="approval-view-student-toolbar">
