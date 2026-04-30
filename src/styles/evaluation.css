@@ -1746,11 +1746,39 @@
 
 .eval-table-action {
   min-width: 0;
-  width: 100%;
-  max-width: 76px;
-  min-height: 32px;
+  width: 84px;
+  max-width: 84px;
+  min-height: 34px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
+}
+
+.eval-table td .eval-action-btn {
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  min-height: 34px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+}
+
+.eval-table td .eval-schedule-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.eval-table td .eval-schedule-wrap .eval-table-action {
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  min-height: 34px;
 }
 
 .eval-empty {

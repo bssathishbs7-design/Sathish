@@ -288,7 +288,7 @@ const buildFallbackRecords = () => skillAssessmentActivities.slice(0, 8).map((ac
   questionCount: 2 + (index % 4),
 }))
 
-function ScheduleAttemptControl({ record, onAssign, onClear }) {
+function ScheduleAttemptControl({ record, onAssign, onClear, buttonClassName = 'eval-action-btn' }) {
   const [isOpen, setIsOpen] = useState(false)
   const [scheduleDate, setScheduleDate] = useState(record.scheduledDate ?? '')
   const [scheduleTime, setScheduleTime] = useState(record.scheduledTime ?? '')
@@ -297,7 +297,7 @@ function ScheduleAttemptControl({ record, onAssign, onClear }) {
     <div className={`eval-schedule-wrap${isOpen ? ' is-open' : ''}`}>
       <button
         type="button"
-        className="tool-btn eval-view-btn eval-action-btn"
+        className={`tool-btn eval-view-btn ${buttonClassName}`}
         onClick={() => setIsOpen((open) => !open)}
       >
         Schedule
@@ -418,7 +418,12 @@ function EvaluationCard({ record, onOpenEvaluation, onOpenActivityResult, onSche
         <div className="eval-card-action-cell is-action">
           <span>Actions</span>
           {statusMeta.actionKind === 'schedule' ? (
-            <ScheduleAttemptControl record={record} onAssign={onScheduleAttempt} onClear={onClearAttemptSchedule} />
+            <ScheduleAttemptControl
+              record={record}
+              onAssign={onScheduleAttempt}
+              onClear={onClearAttemptSchedule}
+              buttonClassName="eval-action-btn"
+            />
           ) : statusMeta.isApprovalPending || !statusMeta.actionLabel ? (
             <strong>-</strong>
           ) : (
@@ -525,7 +530,12 @@ function EvaluationTable({
                 </td>
                 <td>
                   {statusMeta.actionKind === 'schedule' ? (
-                    <ScheduleAttemptControl record={record} onAssign={onScheduleAttempt} onClear={onClearAttemptSchedule} />
+                    <ScheduleAttemptControl
+                      record={record}
+                      onAssign={onScheduleAttempt}
+                      onClear={onClearAttemptSchedule}
+                      buttonClassName="eval-table-action"
+                    />
                   ) : statusMeta.isApprovalPending || !statusMeta.actionLabel ? null : (
                     <button
                       type="button"
