@@ -115,8 +115,63 @@ const getApprovalAttemptLabel = (record) => {
   return `Attempt ${attemptCount}`
 }
 
+const getCurrentAttemptStudentCount = (record, approvalRecord) => {
+  const approvalTotalStudents = Number(approvalRecord?.totalStudents) || 0
+
+  if (approvalTotalStudents > 0) return approvalTotalStudents
+
+  const totalStudents = Math.max(1, Number(record?.studentCount) || 0)
+  const visibleCount = Math.min(totalStudents, 17)
+  const notSubmittedSampleCount = visibleCount > 1
+    ? Math.min(2, Math.max(1, Math.floor(visibleCount * 0.12)))
+    : 0
+
+  return visibleCount - notSubmittedSampleCount
+}
+
 const getEvaluationStatusMeta = (record) => {
   const approvalStatus = getApprovalStatus(record.approvalRecord)
+  const nextAttemptCount = Number(record?.nextAttemptCount ?? record?.approvalRecord?.nextAttemptCount ?? 0) || 0
+  const nextAttemptNumber = Number(record?.nextAttemptNumber ?? record?.approvalRecord?.nextAttemptNumber ?? 0) || 0
+  const nextAttemptStatus = String(record?.nextAttemptStatus ?? record?.approvalRecord?.nextAttemptStatus ?? '').trim().toLowerCase()
+
+  if (approvalStatus === 'published') {
+    if (nextAttemptCount > 0) {
+      return {
+        label: 'Published',
+        tone: 'is-complete',
+        actionLabel: nextAttemptStatus === 'scheduled' ? 'Start' : 'Schedule',
+        actionTone: nextAttemptStatus === 'scheduled' ? 'green' : 'eval-view-btn',
+        actionKind: nextAttemptStatus === 'scheduled' ? 'start' : 'schedule',
+        isSentToApproval: false,
+        isApprovalPending: false,
+        isApproved: false,
+        isRejected: false,
+        isCompleted: true,
+        isPublished: true,
+        nextAttemptCount,
+        nextAttemptNumber,
+        nextAttemptStatus,
+      }
+    }
+
+    return {
+      label: 'Completed',
+      tone: 'is-complete',
+      actionLabel: '',
+      actionTone: 'green',
+      actionKind: '',
+      isSentToApproval: false,
+      isApprovalPending: false,
+      isApproved: false,
+      isRejected: false,
+      isCompleted: true,
+      isPublished: true,
+      nextAttemptCount: 0,
+      nextAttemptNumber: 0,
+      nextAttemptStatus: '',
+    }
+  }
 
   if (approvalStatus === 'approved') {
     return {
@@ -124,11 +179,16 @@ const getEvaluationStatusMeta = (record) => {
       tone: 'is-approved',
       actionLabel: 'Publish',
       actionTone: 'green',
+      actionKind: 'publish',
       isSentToApproval: false,
       isApprovalPending: false,
       isApproved: true,
       isRejected: false,
       isCompleted: false,
+      isPublished: false,
+      nextAttemptCount: 0,
+      nextAttemptNumber: 0,
+      nextAttemptStatus: '',
     }
   }
 
@@ -138,11 +198,16 @@ const getEvaluationStatusMeta = (record) => {
       tone: 'is-approval-rejected',
       actionLabel: 'Start',
       actionTone: 'green',
+      actionKind: 'start',
       isSentToApproval: false,
       isApprovalPending: false,
       isApproved: false,
       isRejected: true,
       isCompleted: false,
+      isPublished: false,
+      nextAttemptCount: 0,
+      nextAttemptNumber: 0,
+      nextAttemptStatus: '',
     }
   }
 
@@ -152,11 +217,16 @@ const getEvaluationStatusMeta = (record) => {
       tone: 'is-sent-approval',
       actionLabel: '',
       actionTone: 'green',
+      actionKind: '',
       isSentToApproval: true,
       isApprovalPending: true,
       isApproved: false,
       isRejected: false,
       isCompleted: false,
+      isPublished: false,
+      nextAttemptCount: 0,
+      nextAttemptNumber: 0,
+      nextAttemptStatus: '',
     }
   }
 
@@ -167,13 +237,20 @@ const getEvaluationStatusMeta = (record) => {
     tone: isCompleted ? 'is-complete' : 'is-pending',
     actionLabel: isCompleted ? 'View' : 'Start',
     actionTone: isCompleted ? 'eval-view-btn' : 'green',
+    actionKind: isCompleted ? 'view' : 'start',
     isSentToApproval: false,
     isApprovalPending: false,
     isApproved: false,
     isRejected: false,
     isCompleted,
+    isPublished: false,
+    nextAttemptCount: 0,
+    nextAttemptNumber: 0,
+    nextAttemptStatus: '',
   }
 }
+
+const getResolvedStatusValue = (record) => getEvaluationStatusMeta(record).label
 
 const parseDateValue = (value) => {
   if (!value) return 0
@@ -196,7 +273,62 @@ const buildFallbackRecords = () => skillAssessmentActivities.slice(0, 8).map((ac
   questionCount: 2 + (index % 4),
 }))
 
-function EvaluationCard({ record, onOpenEvaluation }) {
+function ScheduleAttemptControl({ record, onAssign, onClear }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [scheduleDate, setScheduleDate] = useState(record.scheduledDate ?? '')
+  const [scheduleTime, setScheduleTime] = useState(record.scheduledTime ?? '')
+
+  return (
+    <div className={`eval-schedule-wrap${isOpen ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className="tool-btn eval-view-btn eval-action-btn"
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        Schedule
+      </button>
+      {isOpen ? (
+        <div className="eval-schedule-popover">
+          <label>
+            <span>Date</span>
+            <input type="date" value={scheduleDate} onChange={(event) => setScheduleDate(event.target.value)} />
+          </label>
+          <label>
+            <span>Time</span>
+            <input type="time" value={scheduleTime} onChange={(event) => setScheduleTime(event.target.value)} />
+          </label>
+          <div className="eval-schedule-actions">
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setScheduleDate('')
+                setScheduleTime('')
+                onClear?.(record)
+                setIsOpen(false)
+              }}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              className="tool-btn green"
+              onClick={() => {
+                if (!scheduleDate || !scheduleTime) return
+                onAssign?.(record, { date: scheduleDate, time: scheduleTime })
+                setIsOpen(false)
+              }}
+            >
+              Assign
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function EvaluationCard({ record, onOpenEvaluation, onScheduleAttempt, onClearAttemptSchedule }) {
   const statusMeta = getEvaluationStatusMeta(record)
   const showApprovalAttempt = statusMeta.isApproved || statusMeta.isRejected
   const approvalRemarks = String(record.approvalRecord?.reviewRemarks ?? '').trim()
@@ -220,7 +352,7 @@ function EvaluationCard({ record, onOpenEvaluation }) {
       <div className="eval-card-meta">
         <div className="eval-card-meta-item">
           <span><Users size={12} strokeWidth={2} /> Students</span>
-          <strong>{record.studentCount ?? 0}</strong>
+          <strong>{record.displayStudentCount ?? record.studentCount ?? 0}</strong>
         </div>
         <div className="eval-card-meta-item">
           <span><GraduationCap size={12} strokeWidth={2} /> Year</span>
@@ -235,11 +367,13 @@ function EvaluationCard({ record, onOpenEvaluation }) {
       <div className="eval-card-action-panel">
         <div className="eval-card-action-cell">
           <span>Attempt</span>
-          <strong>{showApprovalAttempt ? getApprovalAttemptLabel(record) : '-'}</strong>
+          <strong>{statusMeta.nextAttemptNumber ? `Attempt ${statusMeta.nextAttemptNumber}` : (showApprovalAttempt ? getApprovalAttemptLabel(record) : '-')}</strong>
         </div>
         <div className="eval-card-action-cell is-remarks">
-          <span>Remarks</span>
-          {approvalRemarks ? (
+          <span>{statusMeta.nextAttemptCount ? 'Count' : 'Remarks'}</span>
+          {statusMeta.nextAttemptCount ? (
+            <strong>{statusMeta.nextAttemptCount} students</strong>
+          ) : approvalRemarks ? (
             <span className="eval-remarks-tooltip-wrap">
               <button
                 type="button"
@@ -257,7 +391,9 @@ function EvaluationCard({ record, onOpenEvaluation }) {
         </div>
         <div className="eval-card-action-cell is-action">
           <span>Actions</span>
-          {statusMeta.isApprovalPending ? (
+          {statusMeta.actionKind === 'schedule' ? (
+            <ScheduleAttemptControl record={record} onAssign={onScheduleAttempt} onClear={onClearAttemptSchedule} />
+          ) : statusMeta.isApprovalPending || !statusMeta.actionLabel ? (
             <strong>-</strong>
           ) : (
             <button
@@ -282,6 +418,8 @@ function EvaluationCard({ record, onOpenEvaluation }) {
 function EvaluationTable({
   records,
   onOpenEvaluation,
+  onScheduleAttempt,
+  onClearAttemptSchedule,
   sortKey,
   sortDirection,
   onSort,
@@ -322,13 +460,13 @@ function EvaluationTable({
             <th>{renderSortableHeader('SGT', 'sgt')}</th>
             <th>{renderSortableHeader('Students', 'studentCount')}</th>
             <th>{renderSortableHeader('Created', 'createdDate')}</th>
-            <th>{renderSortableHeader('Status', 'evaluationStatus')}</th>
+            <th>{renderSortableHeader('Status', 'resolvedStatus')}</th>
             <th />
           </tr>
         </thead>
         <tbody>
           {records.map((record) => {
-            const statusMeta = getEvaluationStatusMeta(record)
+            const statusMeta = record.statusMeta ?? getEvaluationStatusMeta(record)
 
             return (
               <tr key={record.id}>
@@ -352,7 +490,7 @@ function EvaluationTable({
                     {record.sgt || 'Not set'}
                   </span>
                 </td>
-                <td>{record.studentCount ?? 0}</td>
+                <td>{record.displayStudentCount ?? record.studentCount ?? 0}</td>
                 <td>{formatDisplayDate(record.createdDate) || 'Not set'}</td>
                 <td>
                   <span className={`eval-status-pill ${statusMeta.tone}`}>
@@ -360,7 +498,9 @@ function EvaluationTable({
                   </span>
                 </td>
                 <td>
-                  {statusMeta.isApprovalPending ? null : (
+                  {statusMeta.actionKind === 'schedule' ? (
+                    <ScheduleAttemptControl record={record} onAssign={onScheduleAttempt} onClear={onClearAttemptSchedule} />
+                  ) : statusMeta.isApprovalPending || !statusMeta.actionLabel ? null : (
                     <button
                       type="button"
                       className={`tool-btn ${statusMeta.actionTone} eval-table-action`}
@@ -419,6 +559,9 @@ export default function SkillAssessmentPage({
   completedEvaluationRows = [],
   approvalQueueRows = [],
   onStartEvaluation,
+  onPublishEvaluation,
+  onScheduleAttempt,
+  onClearAttemptSchedule,
 }) {
   const [viewMode, setViewMode] = useState('card')
   const [searchQuery, setSearchQuery] = useState('')
@@ -434,13 +577,23 @@ export default function SkillAssessmentPage({
   const sourceRecords = useMemo(() => rawSourceRecords.map((record) => {
     const reattemptAttemptCount = getReattemptAttemptCount(record, completedEvaluationRows)
     const approvalRecord = getApprovalRecord(record, approvalQueueRows)
+    const statusMeta = getEvaluationStatusMeta({
+      ...record,
+      approvalRecord,
+    })
 
     return {
       ...record,
       attemptCount: reattemptAttemptCount,
       reattemptStudentCount: parseAttemptValue(reattemptAttemptCount),
       approvalRecord,
-      isSentToApproval: Boolean(approvalRecord),
+      displayStudentCount: getCurrentAttemptStudentCount(record, approvalRecord),
+      resolvedStatus: statusMeta.label,
+      isSentToApproval: statusMeta.isApprovalPending,
+      isApproved: statusMeta.isApproved,
+      isPublished: statusMeta.isPublished,
+      isRejected: statusMeta.isRejected,
+      statusMeta,
     }
   }), [approvalQueueRows, completedEvaluationRows, rawSourceRecords])
 
@@ -463,7 +616,7 @@ export default function SkillAssessmentPage({
         matchesSearch
         && (!selectedYear || record.year === selectedYear)
         && (!selectedSgt || record.sgt === selectedSgt)
-        && (!selectedStatus || record.evaluationStatus === selectedStatus)
+        && (!selectedStatus || record.resolvedStatus === selectedStatus)
         && (!selectedActivityType || record.activityType === selectedActivityType)
       )
     })
@@ -478,14 +631,17 @@ export default function SkillAssessmentPage({
       let rightValue = right[sortKey]
 
       if (sortKey === 'studentCount') {
-        leftValue = Number(left.studentCount ?? 0)
-        rightValue = Number(right.studentCount ?? 0)
+        leftValue = Number(left.displayStudentCount ?? left.studentCount ?? 0)
+        rightValue = Number(right.displayStudentCount ?? right.studentCount ?? 0)
       } else if (sortKey === 'attemptCount') {
         leftValue = parseAttemptValue(left.attemptCount)
         rightValue = parseAttemptValue(right.attemptCount)
       } else if (sortKey === 'createdDate') {
         leftValue = parseDateValue(left.createdDate)
         rightValue = parseDateValue(right.createdDate)
+      } else if (sortKey === 'resolvedStatus') {
+        leftValue = String(left.resolvedStatus ?? '').toLowerCase()
+        rightValue = String(right.resolvedStatus ?? '').toLowerCase()
       } else {
         leftValue = String(leftValue ?? '').toLowerCase()
         rightValue = String(rightValue ?? '').toLowerCase()
@@ -518,8 +674,8 @@ export default function SkillAssessmentPage({
 
   const metrics = useMemo(() => ({
     total: filteredRecords.length,
-    pending: filteredRecords.filter((record) => !record.isSentToApproval && record.evaluationStatus === 'Pending Evaluation').length,
-    completed: filteredRecords.filter((record) => !record.isSentToApproval && record.evaluationStatus === 'Completed Evaluation').length,
+    pending: filteredRecords.filter((record) => record.resolvedStatus === 'Pending').length,
+    completed: filteredRecords.filter((record) => ['Completed', 'Published'].includes(record.resolvedStatus)).length,
     years: new Set(filteredRecords.map((record) => record.year).filter(Boolean)).size,
     sgts: new Set(filteredRecords.map((record) => `${record.year}-${record.sgt}`).filter(Boolean)).size,
   }), [filteredRecords])
@@ -543,15 +699,14 @@ export default function SkillAssessmentPage({
   }
 
   const handleOpenEvaluation = (record) => {
-    const statusMeta = getEvaluationStatusMeta(record)
+    const statusMeta = record.statusMeta ?? getEvaluationStatusMeta(record)
 
     if (statusMeta.isApprovalPending) return
 
+    if (statusMeta.actionKind === 'schedule') return
+
     if (statusMeta.isApproved) {
-      onAlert?.({
-        tone: 'secondary',
-        message: `${record.activityName ?? 'Activity'} is ready to publish.`,
-      })
+      onPublishEvaluation?.(record)
       return
     }
 
@@ -647,13 +802,21 @@ export default function SkillAssessmentPage({
             {viewMode === 'card' ? (
               <div className="eval-card-grid">
                 {sortedRecords.map((record) => (
-                  <EvaluationCard key={record.id} record={record} onOpenEvaluation={handleOpenEvaluation} />
+                  <EvaluationCard
+                    key={record.id}
+                    record={record}
+                    onOpenEvaluation={handleOpenEvaluation}
+                    onScheduleAttempt={onScheduleAttempt}
+                    onClearAttemptSchedule={onClearAttemptSchedule}
+                  />
                 ))}
               </div>
             ) : (
               <EvaluationTable
                 records={paginatedRecords}
                 onOpenEvaluation={handleOpenEvaluation}
+                onScheduleAttempt={onScheduleAttempt}
+                onClearAttemptSchedule={onClearAttemptSchedule}
                 sortKey={sortKey}
                 sortDirection={sortDirection}
                 onSort={handleSort}

@@ -543,15 +543,27 @@ const buildStudentSubmission = (student, items, record, latestSubmission) => {
 }
 
 const buildStudentRoster = (record, assignment, latestSubmission) => {
+  const items = buildEvaluationItems(assignment, record)
   const count = Math.max(1, Number(record?.studentCount ?? 6))
   const visibleCount = Math.min(count, 17)
   const notSubmittedSampleCount = visibleCount > 1
     ? Math.min(2, Math.max(1, Math.floor(visibleCount * 0.12)))
     : 0
   const submittedSampleCount = visibleCount - notSubmittedSampleCount
-  const items = buildEvaluationItems(assignment, record)
+  const reattemptStudentIds = [
+    ...(Array.isArray(record?.nextAttemptStudentIds) ? record.nextAttemptStudentIds : []),
+    ...(Array.isArray(record?.approvalRecord?.nextAttemptStudentIds) ? record.approvalRecord.nextAttemptStudentIds : []),
+  ].filter(Boolean)
+  const reattemptStudentIdSet = new Set(reattemptStudentIds.map((value) => String(value)))
+  const reattemptAttemptNumber = Number(
+    record?.nextAttemptNumber
+    ?? record?.approvalRecord?.nextAttemptNumber
+    ?? 1,
+  ) || 1
+  const reattemptStudents = Array.isArray(record?.nextAttemptStudents) ? record.nextAttemptStudents : []
+  const isReattemptRoster = reattemptStudentIdSet.size > 0 && reattemptAttemptNumber > 1
 
-  return Array.from({ length: visibleCount }, (_, index) => {
+  const baseRoster = Array.from({ length: visibleCount }, (_, index) => {
     const hasSubmitted = index < submittedSampleCount
     const student = {
       id: `student-${index + 1}`,
@@ -572,6 +584,45 @@ const buildStudentRoster = (record, assignment, latestSubmission) => {
       submission: buildStudentSubmission(student, items, record, latestSubmission),
     }
   })
+
+  if (!isReattemptRoster) {
+    return baseRoster
+  }
+
+  if (reattemptStudents.length) {
+    return reattemptStudents.map((student, index) => {
+      const normalizedStudent = {
+        id: student.id ?? `student-${index + 1}`,
+        name: student.name ?? buildStudentName(index, record?.sgt),
+        registerId: student.registerId ?? `MC25${String(index + 101).padStart(3, '0')}`,
+        attemptNumber: reattemptAttemptNumber,
+        attemptLabel: `Attempt ${reattemptAttemptNumber}`,
+        submissionStatus: 'Submitted',
+        evaluationStatus: 'Pending',
+        submittedAt: `${String(index + 1).padStart(2, '0')}/04/2026, 09:${String(10 + index).padStart(2, '0')} `,
+      }
+
+      return {
+        ...normalizedStudent,
+        submission: buildStudentSubmission(normalizedStudent, items, record, latestSubmission),
+      }
+    })
+  }
+
+  const filteredRoster = baseRoster
+    .filter((student) => (
+      reattemptStudentIdSet.has(String(student.id))
+      || reattemptStudentIdSet.has(String(student.registerId))
+    ))
+    .map((student) => ({
+      ...student,
+      attemptNumber: reattemptAttemptNumber,
+      attemptLabel: `Attempt ${reattemptAttemptNumber}`,
+      submissionStatus: 'Submitted',
+      evaluationStatus: 'Pending',
+    }))
+
+  return filteredRoster.length ? filteredRoster : baseRoster
 }
 
 function StudentResponsePanel({
@@ -1625,9 +1676,50 @@ export default function StartEvaluationPage({
   const activeApprovalRecord = useMemo(() => (
     approvalQueueRows.find((row) => String(row.activityId ?? '') === String(evaluationRecord?.id ?? '')) ?? null
   ), [approvalQueueRows, evaluationRecord?.id])
+  const activeNextAttemptStudentIds = useMemo(() => (
+    [
+      ...(Array.isArray(evaluationRecord?.nextAttemptStudentIds) ? evaluationRecord.nextAttemptStudentIds : []),
+      ...(Array.isArray(evaluationRecord?.approvalRecord?.nextAttemptStudentIds) ? evaluationRecord.approvalRecord.nextAttemptStudentIds : []),
+      ...(Array.isArray(activeApprovalRecord?.nextAttemptStudentIds) ? activeApprovalRecord.nextAttemptStudentIds : []),
+    ]
+      .filter(Boolean)
+      .map((value) => String(value))
+  ), [activeApprovalRecord?.nextAttemptStudentIds, evaluationRecord?.approvalRecord?.nextAttemptStudentIds, evaluationRecord?.nextAttemptStudentIds])
+  const activeNextAttemptNumber = Number(
+    evaluationRecord?.nextAttemptNumber
+    ?? evaluationRecord?.approvalRecord?.nextAttemptNumber
+    ?? activeApprovalRecord?.nextAttemptNumber
+    ?? 0,
+  ) || 0
   const reevaluationStudentMap = useMemo(() => {
     const nextMap = new Map()
+    const nextAttemptStudentIdSet = new Set(activeNextAttemptStudentIds)
     const approvalRows = Array.isArray(activeApprovalRecord?.studentRows) ? activeApprovalRecord.studentRows : []
+
+    if (nextAttemptStudentIdSet.size > 0 && activeNextAttemptNumber > 1) {
+      baseRoster.forEach((student) => {
+        const matchesNextAttempt = nextAttemptStudentIdSet.has(String(student.id))
+          || nextAttemptStudentIdSet.has(String(student.registerId))
+
+        if (!matchesNextAttempt) return
+
+        const latestStudentRow = [...activityCompletedRows]
+          .filter((row) => (
+            String(row.studentId ?? '') === String(student.id)
+            || String(row.registerId ?? '') === String(student.registerId)
+          ))
+          .sort((left, right) => (Number(right.attemptNumber) || 0) - (Number(left.attemptNumber) || 0))[0]
+
+        nextMap.set(student.id, {
+          previousAttemptNumber: Math.max(1, activeNextAttemptNumber - 1),
+          previousResultStatus: getNormalizedResultStatus(
+            latestStudentRow?.resultStatus ?? latestStudentRow?.decisionTitle ?? '',
+          ),
+        })
+      })
+
+      return nextMap
+    }
 
     approvalRows.forEach((row) => {
       const resultStatus = getNormalizedResultStatus(row.resultStatus ?? row.evaluationStatus)
@@ -1660,7 +1752,7 @@ export default function StartEvaluationPage({
     }
 
     return nextMap
-  }, [activeApprovalRecord, activityCompletedRows])
+  }, [activeApprovalRecord, activeNextAttemptNumber, activeNextAttemptStudentIds, activityCompletedRows, baseRoster])
   const isSecondAttemptMode = reevaluationStudentMap.size > 0
   const latestCompletedRowByStudent = useMemo(() => {
     const latestRows = new Map()
@@ -1722,8 +1814,16 @@ export default function StartEvaluationPage({
     ?? activeApprovalRecord?.status
     ?? '',
   )
-  const isApprovalRejected = activeApprovalStatus === 'approval rejected'
-  const isApprovalApproved = activeApprovalStatus === 'approved'
+  const currentAttemptSeed = Number(
+    evaluationRecord?.nextAttemptNumber
+    ?? evaluationRecord?.approvalRecord?.nextAttemptNumber
+    ?? activeApprovalRecord?.nextAttemptNumber
+    ?? 0,
+  ) || 0
+  const isPublishedAttemptCarryOver = activeApprovalStatus === 'published' && currentAttemptSeed > 1
+  const hasActiveApprovalGate = Boolean(activeApprovalRecord) && !isPublishedAttemptCarryOver
+  const isApprovalRejected = hasActiveApprovalGate && activeApprovalStatus === 'approval rejected'
+  const isApprovalApproved = hasActiveApprovalGate && activeApprovalStatus === 'approved'
 
   const roster = useMemo(() => {
     const mappedRoster = baseRoster.map((student) => {
@@ -1845,10 +1945,14 @@ export default function StartEvaluationPage({
     : null
   const selectedStudentBadge = getStudentEvaluationBadge(selectedStudent)
   const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
-  const approvalStudentRows = Array.isArray(activeApprovalRecord?.studentRows) ? activeApprovalRecord.studentRows : []
-  const approvalTotalStudents = Number(activeApprovalRecord?.totalStudents) || approvalStudentRows.length || 0
-  const approvalEvaluatedCount = Number(activeApprovalRecord?.evaluatedCount) || approvalStudentRows.length || 0
-  const submittedCount = activeApprovalRecord
+  const approvalStudentRows = hasActiveApprovalGate && Array.isArray(activeApprovalRecord?.studentRows) ? activeApprovalRecord.studentRows : []
+  const approvalTotalStudents = hasActiveApprovalGate
+    ? (Number(activeApprovalRecord?.totalStudents) || approvalStudentRows.length || 0)
+    : 0
+  const approvalEvaluatedCount = hasActiveApprovalGate
+    ? (Number(activeApprovalRecord?.evaluatedCount) || approvalStudentRows.length || 0)
+    : 0
+  const submittedCount = hasActiveApprovalGate
     ? approvalTotalStudents
     : roster.filter((student) => student.submissionStatus === 'Submitted').length
   const repeatCount = roster.filter((student) => getStudentResultStatus(student) === 'repeat').length
@@ -1856,7 +1960,7 @@ export default function StartEvaluationPage({
   const remainingEvaluationCount = roster.filter((student) => (
     student.submissionStatus === 'Submitted' && !finishedStudentIds.has(student.id)
   )).length
-  const evaluationStatusCount = activeApprovalRecord
+  const evaluationStatusCount = hasActiveApprovalGate
     ? approvalEvaluatedCount
     : roster.filter((student) => {
       const status = getStudentResultStatus(student)
@@ -1865,7 +1969,7 @@ export default function StartEvaluationPage({
         || status === 'repeat'
         || status === 'remedial'
     }).length
-  const evaluationRecordStatusMeta = activeApprovalRecord
+  const evaluationRecordStatusMeta = hasActiveApprovalGate
     ? isApprovalRejected
       ? { label: 'Approval Rejected', tone: 'is-approval-rejected' }
       : isApprovalApproved
@@ -1877,7 +1981,7 @@ export default function StartEvaluationPage({
   const currentAttemptNumber = isEditingCompletedEvaluation
     ? Number(evaluationRecord?.editingAttemptNumber) || 1
     : roster.reduce((maxAttempt, student) => Math.max(maxAttempt, Number(student.attemptNumber) || 1), 1)
-  const canSendToApproval = !activeApprovalRecord
+  const canSendToApproval = !hasActiveApprovalGate
     && !isEditingCompletedEvaluation
     && submittedCount > 0
     && remainingEvaluationCount === 0
@@ -2097,7 +2201,6 @@ export default function StartEvaluationPage({
         message: `${selectedStudent.name} evaluation updated.`,
         duration: 2600,
       })
-      onOpenCompletedEvaluation?.(evaluationRecord)
       return
     }
 
@@ -2108,10 +2211,6 @@ export default function StartEvaluationPage({
         : `${selectedStudent.name} marked as ${decisionToSubmit.title}.`,
       duration: 2600,
     })
-
-    if (hasNextStudent) {
-      setSelectedStudentId(filteredStudents[selectedStudentIndex + 1].id)
-    }
   }
 
   const handleSaveEvaluation = () => {
@@ -2206,6 +2305,20 @@ export default function StartEvaluationPage({
     }
   }, [isSubmitPopupOpen])
 
+  useEffect(() => {
+    if (isEditingCompletedEvaluation) return
+    if (hasActiveApprovalGate) return
+    if (submittedCount <= 0) return
+    if (remainingEvaluationCount !== 0) return
+    if (isSubmitPopupOpen) return
+  }, [
+    hasActiveApprovalGate,
+    isEditingCompletedEvaluation,
+    isSubmitPopupOpen,
+    remainingEvaluationCount,
+    submittedCount,
+  ])
+
   return (
     <section className="vx-content forms-page start-evaluation-page">
       <div className="start-eval-shell">
@@ -2267,7 +2380,7 @@ export default function StartEvaluationPage({
 
         <section className="start-eval-board">
           <div className="start-eval-main-panel">
-            {activeApprovalRecord && !isApprovalRejected ? (
+            {hasActiveApprovalGate && !isApprovalRejected ? (
               <section className="start-eval-approval-card">
                 <div className="start-eval-approval-copy">
                   <span><BadgeCheck size={13} strokeWidth={2} /> {isApprovalApproved ? 'Approved' : 'Sent to Approval'}</span>

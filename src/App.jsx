@@ -50,9 +50,12 @@ const PATH_PAGES = Object.fromEntries(
 const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? APP_PAGES.DASHBOARD
 
 const START_EVALUATION_STORAGE_KEY = 'vx-start-evaluation-record'
+const ASSIGNED_SKILL_ACTIVITIES_STORAGE_KEY = 'vx-assigned-skill-activities'
+const EVALUATION_RECORDS_STORAGE_KEY = 'vx-evaluation-records'
 const COMPLETED_EVALUATIONS_STORAGE_KEY = 'vx-completed-evaluation-rows'
 const APPROVAL_QUEUE_STORAGE_KEY = 'vx-approval-queue-rows'
 const APPROVAL_VIEW_STORAGE_KEY = 'vx-approval-view-record'
+const PROGRESS_RESULT_STORAGE_KEY = 'vx-progress-result-record'
 
 const readStoredStartEvaluationRecord = () => {
   try {
@@ -65,7 +68,11 @@ const readStoredStartEvaluationRecord = () => {
 const storeStartEvaluationRecord = (record) => {
   if (!record) return
 
-  window.sessionStorage.setItem(START_EVALUATION_STORAGE_KEY, JSON.stringify(record))
+  try {
+    window.sessionStorage.setItem(START_EVALUATION_STORAGE_KEY, JSON.stringify(record))
+  } catch (error) {
+    console.warn('Unable to persist start evaluation record in session storage.', error)
+  }
 }
 
 const readStoredApprovalViewRecord = () => {
@@ -79,7 +86,29 @@ const readStoredApprovalViewRecord = () => {
 const storeApprovalViewRecord = (record) => {
   if (!record) return
 
-  window.sessionStorage.setItem(APPROVAL_VIEW_STORAGE_KEY, JSON.stringify(record))
+  try {
+    window.sessionStorage.setItem(APPROVAL_VIEW_STORAGE_KEY, JSON.stringify(record))
+  } catch (error) {
+    console.warn('Unable to persist approval view record in session storage.', error)
+  }
+}
+
+const readStoredProgressResultRecord = () => {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(PROGRESS_RESULT_STORAGE_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
+
+const storeProgressResultRecord = (record) => {
+  if (!record) return
+
+  try {
+    window.sessionStorage.setItem(PROGRESS_RESULT_STORAGE_KEY, JSON.stringify(record))
+  } catch (error) {
+    console.warn('Unable to persist progress result record in session storage.', error)
+  }
 }
 
 const readStoredRows = (key) => {
@@ -92,7 +121,11 @@ const readStoredRows = (key) => {
 }
 
 const storeRows = (key, rows) => {
-  window.sessionStorage.setItem(key, JSON.stringify(Array.isArray(rows) ? rows : []))
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(Array.isArray(rows) ? rows : []))
+  } catch (error) {
+    console.warn(`Unable to persist session rows for ${key}.`, error)
+  }
 }
 
 const STUDENT_COUNT_BY_YEAR_AND_SGT = {
@@ -137,12 +170,13 @@ const buildEvaluationRecordFromAssignment = (assignment) => {
 
   return {
     id: assignment.id,
+    sourceActivityId: assignment.sourceActivityId ?? assignment.id,
     activityName: assignment.title ?? 'Untitled Activity',
     activityType: assignment.type ?? 'Activity',
     studentCount: assignment.studentCount ?? estimateStudentCount(year, sgt),
     year,
     sgt,
-    attemptCount: assignment.attemptCount ?? '0 / 1',
+    attemptCount: assignment.attemptCount ?? '1 / 1',
     createdDate: assignment.createdDate ?? new Date().toLocaleDateString('en-GB'),
     evaluationStatus: assignment.evaluationStatus ?? 'Pending Evaluation',
     questionCount: assignment.questionCount ?? getAssignmentQuestionCount(assignment),
@@ -152,6 +186,32 @@ const buildEvaluationRecordFromAssignment = (assignment) => {
     activityData: assignment.activityData ?? null,
   }
 }
+
+const getLatestActivityResultRows = (activityId, rows = []) => {
+  const latestRows = new Map()
+
+  rows
+    .filter((row) => String(row.activityId ?? '') === String(activityId ?? ''))
+    .forEach((row) => {
+      const key = row.studentId ?? row.registerId ?? row.id
+      if (!key) return
+
+      const current = latestRows.get(key)
+      const rowAttempt = Number(row.attemptNumber) || 1
+      const currentAttempt = Number(current?.attemptNumber) || 0
+
+      if (!current || rowAttempt >= currentAttempt) {
+        latestRows.set(key, row)
+      }
+    })
+
+  return [...latestRows.values()]
+}
+
+const getReattemptRows = (activityId, rows = []) => getLatestActivityResultRows(activityId, rows)
+  .filter((row) => ['repeat', 'remedial'].includes(String(row.resultStatus ?? '').trim().toLowerCase()))
+
+const idsMatch = (left, right) => String(left ?? '') === String(right ?? '')
 
 const baseRows = [
   ['1', 'Mark', 'Otto', '@mdo'],
@@ -251,8 +311,8 @@ function App() {
   const [selectedOspeActivity, setSelectedOspeActivity] = useState(null)
   const [selectedDashboardData, setSelectedDashboardData] = useState(null)
   const [savedImageActivities, setSavedImageActivities] = useState({})
-  const [assignedSkillActivities, setAssignedSkillActivities] = useState([])
-  const [evaluationRecords, setEvaluationRecords] = useState([])
+  const [assignedSkillActivities, setAssignedSkillActivities] = useState(() => readStoredRows(ASSIGNED_SKILL_ACTIVITIES_STORAGE_KEY))
+  const [evaluationRecords, setEvaluationRecords] = useState(() => readStoredRows(EVALUATION_RECORDS_STORAGE_KEY))
   const [examMonitoringLogs, setExamMonitoringLogs] = useState([])
   const [selectedStudentExamAssignment, setSelectedStudentExamAssignment] = useState(null)
   const [selectedEvaluationRecord, setSelectedEvaluationRecord] = useState(() => readStoredStartEvaluationRecord())
@@ -261,13 +321,14 @@ function App() {
   const [completedEvaluationRows, setCompletedEvaluationRows] = useState(() => readStoredRows(COMPLETED_EVALUATIONS_STORAGE_KEY))
   const [approvalQueueRows, setApprovalQueueRows] = useState(() => readStoredRows(APPROVAL_QUEUE_STORAGE_KEY))
   const [selectedApprovalViewRecord, setSelectedApprovalViewRecord] = useState(() => readStoredApprovalViewRecord())
+  const [selectedProgressResultRecord, setSelectedProgressResultRecord] = useState(() => readStoredProgressResultRecord())
   const [selectedExamLogContext, setSelectedExamLogContext] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
   const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
   const activeEvaluationRecord = selectedEvaluationRecord
-    ?? evaluationRecords.find((record) => record.id === selectedCompletedEvaluationActivityId)
+    ?? evaluationRecords.find((record) => idsMatch(record.id, selectedCompletedEvaluationActivityId))
     ?? readStoredStartEvaluationRecord()
     ?? completedEvaluationRows.find((row) => row.activityRecord)?.activityRecord
     ?? null
@@ -311,6 +372,14 @@ function App() {
   }, [selectedEvaluationRecord])
 
   useEffect(() => {
+    storeRows(ASSIGNED_SKILL_ACTIVITIES_STORAGE_KEY, assignedSkillActivities)
+  }, [assignedSkillActivities])
+
+  useEffect(() => {
+    storeRows(EVALUATION_RECORDS_STORAGE_KEY, evaluationRecords)
+  }, [evaluationRecords])
+
+  useEffect(() => {
     storeRows(COMPLETED_EVALUATIONS_STORAGE_KEY, completedEvaluationRows)
   }, [completedEvaluationRows])
 
@@ -322,6 +391,11 @@ function App() {
     if (!selectedApprovalViewRecord) return
     storeApprovalViewRecord(selectedApprovalViewRecord)
   }, [selectedApprovalViewRecord])
+
+  useEffect(() => {
+    if (!selectedProgressResultRecord) return
+    storeProgressResultRecord(selectedProgressResultRecord)
+  }, [selectedProgressResultRecord])
 
   useEffect(() => {
     const resolvedPage = getPageFromPath(window.location.pathname)
@@ -398,12 +472,26 @@ function App() {
   const handleAssignSkillActivity = (assignment) => {
     if (!assignment?.id) return
     const { year, sgt } = parseAssignmentTarget(assignment.assignedTo)
+    const assignmentInstanceId = assignment.assignmentInstanceId
+      ?? `${assignment.id}-assigned-${Date.now()}`
     const normalizedAssignment = {
       ...assignment,
+      id: assignmentInstanceId,
+      sourceActivityId: assignment.id,
       year,
       sgt,
       studentCount: assignment.studentCount ?? estimateStudentCount(year, sgt),
+      status: 'Assigned',
+      action: 'Start Activity',
+      tone: 'primary',
+      evaluationStatus: 'Pending Evaluation',
     }
+
+    setApprovalQueueRows((current) => current.filter((item) => String(item.activityId ?? '') !== String(assignmentInstanceId)))
+    setCompletedEvaluationRows((current) => current.filter((item) => String(item.activityId ?? '') !== String(assignmentInstanceId)))
+    setSelectedApprovalViewRecord((current) => (
+      String(current?.activityId ?? '') === String(assignmentInstanceId) ? null : current
+    ))
 
     setAssignedSkillActivities((current) => {
       const next = current.filter((item) => item.id !== assignment.id)
@@ -419,6 +507,39 @@ function App() {
 
   const handleStartAssignedSkillActivity = (assignment) => {
     if (!assignment) return
+    const actionLabel = String(assignment.action ?? '').trim().toLowerCase()
+
+    if (actionLabel === 'view results' || String(assignment.status ?? '').trim().toLowerCase() === 'completed') {
+      const activityId = assignment.id ?? assignment.activityId
+      const linkedEvaluationRecord = evaluationRecords.find((item) => String(item.id ?? item.activityId) === String(activityId))
+      const activityRows = completedEvaluationRows
+        .filter((row) => String(row.activityId ?? '') === String(activityId ?? ''))
+        .sort((left, right) => {
+          const leftAttempt = Number(left.attemptNumber) || 0
+          const rightAttempt = Number(right.attemptNumber) || 0
+          const attemptDiff = rightAttempt - leftAttempt
+
+          if (attemptDiff !== 0) return attemptDiff
+
+          return (Date.parse(right.submittedAt ?? '') || 0) - (Date.parse(left.submittedAt ?? '') || 0)
+        })
+      const matchedRow = activityRows.find((row) => (
+        String(row.studentId ?? row.registerId ?? '').trim().toLowerCase() === String(assignment.studentId ?? '').trim().toLowerCase()
+        || String(row.studentName ?? '').trim().toLowerCase() === String(assignment.studentName ?? '').trim().toLowerCase()
+      )) ?? activityRows[0] ?? null
+
+      const progressContext = {
+        ...assignment,
+        activityId,
+        evaluationRecord: linkedEvaluationRecord ?? null,
+        latestCompletedRow: matchedRow,
+      }
+
+      setSelectedProgressResultRecord(progressContext)
+      navigateToPage(APP_PAGES.PROGRESS_TRACKING)
+      return
+    }
+
     setSelectedStudentExamAssignment(assignment)
     navigateToPage(APP_PAGES.STUDENT_EXAM)
   }
@@ -462,6 +583,7 @@ function App() {
     if (!recordId) return
 
     const linkedAssignment = assignedSkillActivities.find((item) => item.id === recordId)
+    const linkedApprovalRow = approvalQueueRows.find((item) => String(item.activityId ?? '') === String(recordId))
     const linkedSubmission = linkedAssignment?.answers ? linkedAssignment : null
     const linkedCompletedRow = studentId
       ? completedEvaluationRows.find((row) => row.id === options.completedRowId)
@@ -469,12 +591,48 @@ function App() {
           .filter((row) => row.activityId === recordId && row.studentId === studentId)
           .sort((left, right) => (Number(right.attemptNumber) || 0) - (Number(left.attemptNumber) || 0))[0]
       : null
+    const nextAttemptStudentIds = linkedApprovalRow?.nextAttemptStudentIds
+      ?? record.nextAttemptStudentIds
+      ?? record.approvalRecord?.nextAttemptStudentIds
+      ?? []
+    const nextAttemptNumber = linkedApprovalRow?.nextAttemptNumber
+      ?? record.nextAttemptNumber
+      ?? record.approvalRecord?.nextAttemptNumber
+      ?? null
+    const nextAttemptStatus = linkedApprovalRow?.nextAttemptStatus
+      ?? record.nextAttemptStatus
+      ?? record.approvalRecord?.nextAttemptStatus
+      ?? ''
+    const nextAttemptStudents = nextAttemptStudentIds.map((studentKey) => {
+      const matchedCompletedRow = [...completedEvaluationRows]
+        .filter((row) => (
+          String(row.activityId ?? '') === String(recordId)
+          && (
+            String(row.studentId ?? '') === String(studentKey)
+            || String(row.registerId ?? '') === String(studentKey)
+          )
+        ))
+        .sort((left, right) => (Number(right.attemptNumber) || 0) - (Number(left.attemptNumber) || 0))[0]
+
+      return matchedCompletedRow
+        ? {
+            id: matchedCompletedRow.studentId ?? studentKey,
+            name: matchedCompletedRow.studentName ?? 'Student',
+            registerId: matchedCompletedRow.registerId ?? String(studentKey),
+          }
+        : null
+    }).filter(Boolean)
 
     const nextEvaluationRecord = {
       ...record,
       id: recordId,
       assignment: linkedAssignment ?? record.assignment ?? record ?? null,
+      approvalRecord: linkedApprovalRow ?? record.approvalRecord ?? null,
       latestSubmission: linkedSubmission,
+      nextAttemptStudentIds,
+      nextAttemptStudents,
+      nextAttemptNumber,
+      nextAttemptStatus,
       editingStudentDraft: linkedCompletedRow?.evaluationDraft ?? null,
       editingDecisionId: linkedCompletedRow?.decisionId ?? '',
       editingAttemptNumber: linkedCompletedRow?.attemptNumber ?? null,
@@ -597,6 +755,202 @@ function App() {
     navigateToPage(APP_PAGES.EVALUATION)
   }
 
+  const handlePublishEvaluation = (record) => {
+    const activityId = record?.id ?? record?.activityId
+    if (!activityId) return
+
+    const publishedAt = new Date().toISOString()
+    const reattemptRows = getReattemptRows(activityId, completedEvaluationRows)
+    const nextAttemptCount = reattemptRows.length
+    const nextAttemptNumber = nextAttemptCount
+      ? Math.max(
+        1,
+        ...getLatestActivityResultRows(activityId, completedEvaluationRows).map((row) => Number(row.attemptNumber) || 1),
+      ) + 1
+      : null
+    const existingApprovalRow = approvalQueueRows.find((item) => item.activityId === activityId)
+    const nextPublishedRecord = {
+      ...(existingApprovalRow ?? {}),
+      ...record,
+      activityId,
+      status: 'Published',
+      approvalStatus: 'Published',
+      reviewStatus: 'Published',
+      publishedAt,
+      nextAttemptCount,
+      nextAttemptNumber,
+      nextAttemptStudentIds: reattemptRows.map((row) => row.studentId ?? row.registerId).filter(Boolean),
+      nextAttemptStatus: nextAttemptCount ? 'needs_schedule' : 'completed',
+      scheduledAt: null,
+      scheduledDate: '',
+      scheduledTime: '',
+    }
+
+    setApprovalQueueRows((current) => current.map((item) => (
+      item.activityId === activityId ? nextPublishedRecord : item
+    )))
+
+    if (nextAttemptCount && nextAttemptNumber) {
+      setCompletedEvaluationRows((current) => current.filter((row) => !(
+        String(row.activityId ?? '') === String(activityId)
+        && (Number(row.attemptNumber) || 0) === nextAttemptNumber
+      )))
+    }
+
+    setAssignedSkillActivities((current) => {
+      const existingActivity = current.find((item) => item.id === activityId)
+      const publishedActivity = {
+        ...(existingActivity ?? {}),
+        id: activityId,
+        title: existingActivity?.title ?? record?.activityName ?? 'Untitled Activity',
+        type: existingActivity?.type ?? record?.activityType ?? 'Activity',
+        year: existingActivity?.year ?? record?.year ?? 'Not set',
+        sgt: existingActivity?.sgt ?? record?.sgt ?? 'Not set',
+        studentCount: existingActivity?.studentCount ?? record?.studentCount ?? 0,
+        attemptCount: nextAttemptCount && nextAttemptNumber ? `${nextAttemptNumber} / ${nextAttemptNumber}` : (existingActivity?.attemptCount ?? record?.attemptCount ?? '1 / 1'),
+        createdDate: existingActivity?.createdDate ?? record?.createdDate ?? new Date().toLocaleDateString('en-GB'),
+        status: nextAttemptCount ? 'Assigned' : 'Completed',
+        action: nextAttemptCount ? 'Yet to Start' : 'View Results',
+        tone: nextAttemptCount ? 'secondary' : 'secondary',
+        publishedAt,
+        nextAttemptCount,
+        nextAttemptNumber,
+        nextAttemptStatus: nextAttemptCount ? 'needs_schedule' : 'completed',
+        scheduledAt: null,
+        scheduledDate: '',
+        scheduledTime: '',
+      }
+
+      if (existingActivity) {
+        return current.map((item) => (item.id === activityId ? publishedActivity : item))
+      }
+
+      return [publishedActivity, ...current]
+    })
+
+    setEvaluationRecords((current) => current.map((item) => (
+      String(item.id ?? item.activityId) === String(activityId)
+        ? {
+            ...item,
+            nextAttemptCount,
+            nextAttemptNumber,
+            nextAttemptStatus: nextAttemptCount ? 'needs_schedule' : 'completed',
+            publishedAt,
+            evaluationStatus: nextAttemptCount ? 'Completed Evaluation' : 'Completed Evaluation',
+          }
+        : item
+    )))
+
+    setSelectedApprovalViewRecord((current) => (
+      current?.activityId === activityId ? nextPublishedRecord : current
+    ))
+
+    showAlert({
+      tone: 'secondary',
+      message: nextAttemptCount
+        ? `${nextPublishedRecord.activityName ?? 'Activity'} published. Attempt ${nextAttemptNumber} is ready to schedule for ${nextAttemptCount} repeat/remedial students.`
+        : `${nextPublishedRecord.activityName ?? 'Activity'} published successfully. View Results is now enabled in My Skill Activity.`,
+    })
+  }
+
+  const handleSchedulePublishedAttempt = (record, schedule) => {
+    const activityId = record?.id ?? record?.activityId
+    if (!activityId) return
+
+    const date = String(schedule?.date ?? '').trim()
+    const time = String(schedule?.time ?? '').trim()
+    if (!date || !time) return
+
+    const scheduledAt = new Date(`${date}T${time}`).toISOString()
+
+    setApprovalQueueRows((current) => current.map((item) => (
+      String(item.activityId ?? '') === String(activityId)
+        ? {
+            ...item,
+            nextAttemptStatus: 'scheduled',
+            scheduledDate: date,
+            scheduledTime: time,
+            scheduledAt,
+          }
+        : item
+    )))
+
+    setEvaluationRecords((current) => current.map((item) => (
+      String(item.id ?? item.activityId) === String(activityId)
+        ? {
+            ...item,
+            nextAttemptStatus: 'scheduled',
+            scheduledDate: date,
+            scheduledTime: time,
+            scheduledAt,
+          }
+        : item
+    )))
+
+    setAssignedSkillActivities((current) => current.map((item) => (
+      String(item.id ?? '') === String(activityId)
+        ? {
+            ...item,
+            nextAttemptStatus: 'scheduled',
+            scheduledDate: date,
+            scheduledTime: time,
+            scheduledAt,
+            action: 'Yet to Start',
+            tone: 'secondary',
+            status: 'Assigned',
+          }
+        : item
+    )))
+
+    showAlert({
+      tone: 'secondary',
+      message: `${record?.activityName ?? 'Activity'} Attempt ${record?.nextAttemptNumber ?? 2} scheduled for ${date} ${time}.`,
+    })
+  }
+
+  const handleClearPublishedAttemptSchedule = (record) => {
+    const activityId = record?.id ?? record?.activityId
+    if (!activityId) return
+
+    setApprovalQueueRows((current) => current.map((item) => (
+      String(item.activityId ?? '') === String(activityId)
+        ? {
+            ...item,
+            nextAttemptStatus: 'needs_schedule',
+            scheduledDate: '',
+            scheduledTime: '',
+            scheduledAt: null,
+          }
+        : item
+    )))
+
+    setEvaluationRecords((current) => current.map((item) => (
+      String(item.id ?? item.activityId) === String(activityId)
+        ? {
+            ...item,
+            nextAttemptStatus: 'needs_schedule',
+            scheduledDate: '',
+            scheduledTime: '',
+            scheduledAt: null,
+          }
+        : item
+    )))
+
+    setAssignedSkillActivities((current) => current.map((item) => (
+      String(item.id ?? '') === String(activityId)
+        ? {
+            ...item,
+            nextAttemptStatus: 'needs_schedule',
+            scheduledDate: '',
+            scheduledTime: '',
+            scheduledAt: null,
+            action: 'Yet to Start',
+            tone: 'secondary',
+          }
+        : item
+    )))
+  }
+
   const handleBackToEvaluationList = () => {
     setSelectedEvaluationRecord(null)
     setSelectedEvaluationStudentId('')
@@ -614,7 +968,7 @@ function App() {
             status: 'Assigned',
             action: 'Start Activity',
             tone: 'primary',
-            attemptCount: '0 / 1',
+            attemptCount: '1 / 1',
             submittedAt: null,
             answers: null,
             proctoring: null,
@@ -627,7 +981,7 @@ function App() {
         ? {
             ...item,
             evaluationStatus: 'Pending Evaluation',
-            attemptCount: '0 / 1',
+            attemptCount: '1 / 1',
           }
         : item
     )))
@@ -639,7 +993,7 @@ function App() {
             status: 'Assigned',
             action: 'Start Activity',
             tone: 'primary',
-            attemptCount: '0 / 1',
+            attemptCount: '1 / 1',
             submittedAt: null,
             answers: null,
             proctoring: null,
@@ -764,12 +1118,15 @@ function App() {
               completedEvaluationRows={completedEvaluationRows}
               approvalQueueRows={approvalQueueRows}
               onStartEvaluation={handleOpenStartEvaluation}
+              onPublishEvaluation={handlePublishEvaluation}
+              onScheduleAttempt={handleSchedulePublishedAttempt}
+              onClearAttemptSchedule={handleClearPublishedAttemptSchedule}
             />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (
             <CompletedEvaluationPage
               completedEvaluationRows={completedEvaluationRows}
               activityId={selectedCompletedEvaluationActivityId}
-              activityRecord={evaluationRecords.find((record) => record.id === selectedCompletedEvaluationActivityId) ?? selectedEvaluationRecord}
+              activityRecord={evaluationRecords.find((record) => idsMatch(record.id, selectedCompletedEvaluationActivityId)) ?? selectedEvaluationRecord}
               onBackToEvaluation={() => navigateToPage(APP_PAGES.START_EVALUATION, { replace: true })}
               onOpenEvaluation={handleOpenStartEvaluation}
               onSendToApproval={handleSendToApproval}
@@ -869,7 +1226,11 @@ function App() {
               onRecordExamLog={handleRecordExamLog}
             />
           ) : activePage === APP_PAGES.PROGRESS_TRACKING ? (
-            <ProgressTrackingPage />
+            <ProgressTrackingPage
+              resultRecord={selectedProgressResultRecord ?? readStoredProgressResultRecord()}
+              completedEvaluationRows={completedEvaluationRows}
+              onBackToActivities={() => navigateToPage(APP_PAGES.MY_SKILL_ACTIVITY)}
+            />
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
             <FacultyManagementPageV2 onAlert={showAlert} />
           ) : activePage === APP_PAGES.STUDENT_MANAGEMENT ? (

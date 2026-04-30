@@ -21,7 +21,7 @@ const defaultActivities = [
     status: 'Assigned',
     action: 'Start Activity',
     tone: 'primary',
-    attemptCount: '0 / 1',
+    attemptCount: '1 / 1',
     createdDate: '06/04/2026',
   },
   {
@@ -30,7 +30,7 @@ const defaultActivities = [
     status: 'Assigned',
     action: 'Yet to Start',
     tone: 'secondary',
-    attemptCount: '0 / 1',
+    attemptCount: '1 / 1',
     createdDate: '05/04/2026',
   },
   {
@@ -61,33 +61,48 @@ const metricToFilter = {
 }
 
 function ActivityCard({ item, onStartActivity }) {
-  const attemptValue = item.attemptCount?.split('/')?.[0]?.trim() ?? '0'
+  const attemptValue = item.attemptCount?.split('/')?.[0]?.trim() ?? '1'
+  const normalizedAttemptValue = Number.parseInt(attemptValue, 10) > 0 ? attemptValue : '1'
   const typeToneClass = `is-${String(item.type).toLowerCase().replace(/\s+/g, '-')}`
-  const isReadyAction = item.tone === 'primary'
+  const statusToneClass = `is-${String(item.status ?? 'assigned').toLowerCase().replace(/\s+/g, '-')}`
+  const normalizedAction = String(item.action ?? '').trim().toLowerCase()
+  const isViewAction = normalizedAction === 'view results'
+  const scheduledAt = item.scheduledAt ? Date.parse(item.scheduledAt) : 0
+  const isScheduleLocked = item.nextAttemptStatus === 'scheduled' && scheduledAt && Date.now() < scheduledAt
+  const isReadyAction = (!isScheduleLocked && item.tone === 'primary') || isViewAction
+  const buttonLabel = isScheduleLocked ? 'Yet to Start' : (isReadyAction ? item.action ?? 'Start Activity' : item.action ?? 'Yet to Start')
+  const displayDate = item.scheduledDate || item.createdDate || 'Not set'
+  const displayTime = item.scheduledTime || item.createdTime || 'Not set'
 
   return (
     <article className="my-skills-activity-card">
       <div className="my-skills-activity-card-head">
-        <span className="my-skills-attempt-pill">Attempt {attemptValue}</span>
         <span className={`my-skills-activity-type ${typeToneClass}`}>{item.type}</span>
+        <span className={`my-skills-status-pill ${statusToneClass}`}>{item.status}</span>
       </div>
 
       <strong className="my-skills-activity-title">{item.title}</strong>
 
-      <div className="my-skills-activity-foot">
+      <div className="my-skills-activity-info-row">
+        <span className="my-skills-attempt-pill">Attempt {normalizedAttemptValue}</span>
         <span className="my-skills-date-pill">
           <CalendarDays size={12} strokeWidth={2} />
-          {item.createdDate ?? 'DD-MM-YYYY'}
+          {displayDate}
         </span>
+        <span className="my-skills-time-pill">
+          {displayTime}
+        </span>
+      </div>
 
+      <div className="my-skills-activity-foot">
         <button
           type="button"
-          className={`tool-btn ${isReadyAction ? 'green' : 'ghost'} my-skills-activity-cta ${!isReadyAction ? 'is-muted' : ''}`}
+          className={`tool-btn ${isViewAction ? 'ghost' : isReadyAction ? 'green' : 'ghost'} my-skills-activity-cta ${!isReadyAction ? 'is-muted' : ''}`}
           onClick={() => isReadyAction && onStartActivity?.(item)}
           disabled={!isReadyAction}
         >
-          {isReadyAction ? <Play size={12} strokeWidth={2.2} /> : null}
-          {isReadyAction ? item.action ?? 'Start Activity' : item.action ?? 'Yet to Start'}
+          {isReadyAction && !isViewAction ? <Play size={12} strokeWidth={2.2} /> : null}
+          {buttonLabel}
         </button>
       </div>
     </article>
@@ -148,7 +163,7 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
             <span className="ospe-kicker">My Skills</span>
             <div className="my-skills-overview-copy">
               <h1>My Skill Activity</h1>
-              <p>Track what is active, start what is ready, and review assigned work in one clean flow.</p>
+              <p>Track active assessments, jump into what is ready, and review published results without digging through bulky screens.</p>
             </div>
             <div className="my-skills-overview-inline">
               <span><strong>{activityItems.length}</strong> Overall</span>
@@ -166,7 +181,7 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
               <span className="my-skills-live-card-date">{liveActivity?.createdDate ?? 'No date'}</span>
             </div>
             <strong>{liveActivity?.title ?? 'No live activity right now'}</strong>
-            <p>{liveActivity ? `${liveActivity.type} is ready for the next student attempt.` : 'New active assignments will appear here when they are available.'}</p>
+            <p>{liveActivity ? `${liveActivity.type} is ready to launch now.` : 'New active assignments will appear here when they are available.'}</p>
             {liveActivity ? (
               <button type="button" className="tool-btn green my-skills-live-card-cta" onClick={() => onStartActivity?.(liveActivity)}>
                 <Play size={13} strokeWidth={2.2} />
@@ -228,7 +243,7 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
 
           <div className="my-skills-board-head">
             <h3>Activity Board</h3>
-            <span className="ospe-topic-pill">{filteredItems.length} Results</span>
+            <span className="ospe-topic-pill">{filteredItems.length} Activities</span>
           </div>
 
           <div className="my-skills-activity-list">

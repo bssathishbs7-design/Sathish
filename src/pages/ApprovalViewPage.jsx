@@ -13,6 +13,7 @@ import {
   RotateCcw,
   Search,
   Users,
+  X,
 } from 'lucide-react'
 import '../styles/approval-view.css'
 
@@ -100,6 +101,141 @@ const getThresholdTone = (value = '') => {
   if (normalized.includes('below') || normalized.includes('not matched')) return 'is-remedial'
 
   return 'is-neutral'
+}
+
+const buildDomainBadges = (item = {}) => {
+  const badges = []
+
+  if (item.cognitive || item.domain === 'Cognitive') {
+    badges.push({ label: `COG ${item.cognitive ?? 'Yes'}`, tone: 'is-domain-cognitive' })
+  }
+
+  if (item.affective) {
+    badges.push({ label: `AFF ${item.affective}`, tone: 'is-domain-affective' })
+  }
+
+  if (item.psychomotor || item.domain === 'Psychomotor') {
+    badges.push({ label: `PSY ${item.psychomotor ?? 'Yes'}`, tone: 'is-domain-psychomotor' })
+  }
+
+  return badges
+}
+
+const buildPerformanceItems = (record, row) => {
+  const activitySource = row?.activityRecord?.assignment
+    ?? row?.activityRecord
+    ?? record?.assignment
+    ?? record
+    ?? {}
+  const modules = activitySource?.examData?.modules ?? {}
+  const answers = row?.answers ?? row?.submissionAnswers ?? row?.activityRecord?.latestSubmission?.answers ?? {}
+  const evaluationDraft = row?.evaluationDraft ?? {}
+
+  const getItemState = (type, itemId) => {
+    if (type === 'checklist') {
+      return {
+        decision: evaluationDraft.checklistDecisions?.[itemId] ?? '',
+        marks: evaluationDraft.checklistMarks?.[itemId] ?? 0,
+        remarks: evaluationDraft.checklistRemarks?.[itemId] ?? '',
+      }
+    }
+
+    if (type === 'form') {
+      return {
+        decision: evaluationDraft.formDecisions?.[itemId] ?? '',
+        marks: evaluationDraft.formMarks?.[itemId] ?? 0,
+        remarks: evaluationDraft.formRemarks?.[itemId] ?? '',
+      }
+    }
+
+    if (type === 'scaffolding') {
+      return {
+        decision: evaluationDraft.scaffoldingDecisions?.[itemId] ?? '',
+        marks: evaluationDraft.scaffoldingMarks?.[itemId] ?? 0,
+        remarks: evaluationDraft.scaffoldingRemarks?.[itemId] ?? '',
+      }
+    }
+
+    if (type === 'image') {
+      return {
+        decision: evaluationDraft.imageDecisions?.[itemId] ?? '',
+        marks: evaluationDraft.imageMarks?.[itemId] ?? 0,
+        remarks: evaluationDraft.imageRemarks?.[itemId] ?? '',
+      }
+    }
+
+    return {
+      decision: evaluationDraft.manualQuestionDecisions?.[itemId] ?? '',
+      marks: evaluationDraft.manualQuestionMarks?.[itemId] ?? 0,
+      remarks: evaluationDraft.manualQuestionRemarks?.[itemId] ?? '',
+    }
+  }
+
+  const resolveAnswer = (type, item) => {
+    if (type === 'form') {
+      const responses = (item.responses ?? []).map((response) => ({
+        label: response.label ?? response.key ?? 'Response',
+        value: answers.forms?.[response.id ?? response.key ?? ''] ?? 'Not answered',
+      }))
+
+      return responses.length
+        ? responses.map((response) => `${response.label}: ${response.value}`).join(' | ')
+        : 'Not answered'
+    }
+
+    if (type === 'scaffolding') return answers.scaffolding?.[item.id] ?? 'Not answered'
+    if (type === 'checklist') return answers.questions?.[item.id] ?? answers.scaffolding?.[item.id] ?? 'Checklist review'
+
+    return answers.questions?.[item.id] ?? 'Not answered'
+  }
+
+  const buildItems = (items = [], type, fallbackLabel) => items.map((item, index) => {
+    const itemId = item.id ?? `${type}-${index + 1}`
+    const state = getItemState(type, itemId)
+
+    return {
+      id: itemId,
+      label: item.label ?? item.text ?? item.questionText ?? `${fallbackLabel} ${index + 1}`,
+      prompt: item.prompt ?? item.questionText ?? item.text ?? `${fallbackLabel} ${index + 1}`,
+      answer: resolveAnswer(type, { ...item, id: itemId }),
+      marks: Number(item.marks) || 0,
+      obtainedMarks: Number(state.marks) || 0,
+      decision: state.decision || 'Not evaluated',
+      remarks: state.remarks || '',
+      isCritical: Boolean(item.isCritical),
+      tags: item.tags ?? [],
+      domains: buildDomainBadges(item),
+      sectionLabel: type,
+    }
+  })
+
+  const moduleItems = [
+    ...buildItems(modules.checklist ?? [], 'checklist', 'Checklist Item'),
+    ...buildItems(modules.form ?? [], 'form', 'Form'),
+    ...buildItems(modules.questions ?? [], String(record?.activityType ?? '').toLowerCase() === 'image' ? 'image' : 'question', 'Question'),
+    ...buildItems(modules.scaffolding ?? [], 'scaffolding', 'Scaffolding'),
+  ]
+
+  if (moduleItems.length) return moduleItems
+
+  if (Array.isArray(row?.itemSummaries) && row.itemSummaries.length) {
+    return row.itemSummaries.map((item, index) => ({
+      id: item.id ?? `summary-${index + 1}`,
+      label: item.label ?? `${item.type ?? 'Item'} ${index + 1}`,
+      prompt: item.sectionLabel ?? item.label ?? `${item.type ?? 'Item'} ${index + 1}`,
+      answer: 'Detailed answer not available',
+      marks: Number(item.totalMarks) || 0,
+      obtainedMarks: Number(item.obtainedMarks) || 0,
+      decision: item.decisionState || (item.isCompleted ? 'Completed' : 'Not evaluated'),
+      remarks: '',
+      isCritical: Boolean(item.isCritical),
+      tags: [],
+      domains: [],
+      sectionLabel: item.sectionLabel ?? item.type ?? 'section',
+    }))
+  }
+
+  return []
 }
 
 const getDisplayApprovalStatus = (value = '') => {
@@ -190,6 +326,7 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
   const [studentSortKey, setStudentSortKey] = useState('studentName')
   const [studentSortDirection, setStudentSortDirection] = useState('asc')
   const [studentPage, setStudentPage] = useState(1)
+  const [selectedPerformanceRow, setSelectedPerformanceRow] = useState(null)
   const studentPageSize = 10
   const approvalStudentRows = useMemo(() => {
     if (!approvalRecord) return []
@@ -241,10 +378,13 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
 
     return [...latestRows.values()]
   }, [approvalRecord, completedEvaluationRows])
+  const evaluatedStudentRows = useMemo(() => (
+    approvalStudentRows.filter((row) => ['completed', 'repeat', 'remedial'].includes(String(getStudentResult(row)).trim().toLowerCase()))
+  ), [approvalStudentRows])
   const filteredStudentRows = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
 
-    return approvalStudentRows.filter((row) => {
+    return evaluatedStudentRows.filter((row) => {
       const result = String(getStudentResult(row)).trim().toLowerCase()
       const matchesStatus = studentStatusFilter === 'all' || result === studentStatusFilter
       const matchesSearch = !needle
@@ -256,7 +396,7 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
 
       return matchesStatus && matchesSearch
     })
-  }, [approvalStudentRows, studentSearch, studentStatusFilter])
+  }, [evaluatedStudentRows, studentSearch, studentStatusFilter])
   const sortedStudentRows = useMemo(() => {
     const getSortValue = (row) => {
       if (studentSortKey === 'studentName') return getStudentName(row)
@@ -290,9 +430,6 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
     const startIndex = (studentPage - 1) * studentPageSize
     return sortedStudentRows.slice(startIndex, startIndex + studentPageSize)
   }, [sortedStudentRows, studentPage])
-  const evaluatedStudentRows = useMemo(() => (
-    approvalStudentRows.filter((row) => ['completed', 'repeat', 'remedial'].includes(String(getStudentResult(row)).trim().toLowerCase()))
-  ), [approvalStudentRows])
   const studentFilterOptions = useMemo(() => ([
     { id: 'all', label: 'All', count: evaluatedStudentRows.length },
     { id: 'completed', label: 'Completed', count: evaluatedStudentRows.filter((row) => String(getStudentResult(row)).trim().toLowerCase() === 'completed').length },
@@ -326,6 +463,21 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
     repeat: evaluatedStudentRows.filter((row) => String(getStudentResult(row)).trim().toLowerCase() === 'repeat').length,
     remedial: evaluatedStudentRows.filter((row) => String(getStudentResult(row)).trim().toLowerCase() === 'remedial').length,
   }), [evaluatedStudentRows])
+  const performanceItems = useMemo(() => (
+    selectedPerformanceRow ? buildPerformanceItems(approvalRecord, selectedPerformanceRow) : []
+  ), [approvalRecord, selectedPerformanceRow])
+  const performanceSections = useMemo(() => {
+    const groups = new Map()
+
+    performanceItems.forEach((item) => {
+      const key = item.sectionLabel
+      const current = groups.get(key) ?? []
+      current.push(item)
+      groups.set(key, current)
+    })
+
+    return [...groups.entries()]
+  }, [performanceItems])
 
   useEffect(() => {
     setStudentPage(1)
@@ -415,10 +567,16 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
   }
 
   const handleViewStudent = (row) => {
-    onAlert?.({
-      tone: 'primary',
-      message: `Viewing ${row.studentName ?? 'student'} result.`,
-    })
+    const matchedCompletedRow = completedEvaluationRows.find((item) => (
+      String(item.activityId ?? '') === String(approvalRecord?.activityId ?? '')
+      && String(item.studentId ?? item.registerId ?? '') === String(row.studentId ?? row.registerId ?? '')
+      && (Number(item.attemptNumber) || 1) === (Number(row.attemptCount ?? row.attemptNumber) || 1)
+    )) ?? completedEvaluationRows.find((item) => (
+      String(item.activityId ?? '') === String(approvalRecord?.activityId ?? '')
+      && String(item.studentId ?? item.registerId ?? '') === String(row.studentId ?? row.registerId ?? '')
+    )) ?? null
+
+    setSelectedPerformanceRow(matchedCompletedRow ? { ...row, ...matchedCompletedRow } : row)
   }
 
   const studentTableHeaders = [
@@ -662,6 +820,97 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
           </section>
         </div>
       </div>
+      {selectedPerformanceRow ? (
+        <>
+          <button
+            type="button"
+            className="approval-view-drawer-overlay"
+            aria-label="Close student performance panel"
+            onClick={() => setSelectedPerformanceRow(null)}
+          />
+          <aside className="approval-view-drawer" aria-label="Student performance details">
+            <div className="approval-view-drawer-head">
+              <div className="approval-view-drawer-identity">
+                <small>Student Performance</small>
+                <h3>{getStudentName(selectedPerformanceRow) || 'Student'}</h3>
+                <div className="approval-view-drawer-inline-meta">
+                  <span>{getStudentId(selectedPerformanceRow) || 'Not set'}</span>
+                  <span>Attempt {getStudentAttempt(selectedPerformanceRow)}</span>
+                  <span>{approvalRecord.activityType ?? 'Activity'}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="approval-view-drawer-close"
+                onClick={() => setSelectedPerformanceRow(null)}
+                aria-label="Close student performance"
+              >
+                <X size={16} strokeWidth={2.2} />
+              </button>
+            </div>
+
+            <div className="approval-view-drawer-statusbar">
+              <span>{getStudentResult(selectedPerformanceRow)}</span>
+              <span>{formatMarks(getStudentObtainedMarks(selectedPerformanceRow))} / {formatMarks(getStudentTotalMarks(selectedPerformanceRow))}</span>
+              <span>{formatPercent(getStudentPercentage(selectedPerformanceRow))}</span>
+              <span>{getThresholdLabel(selectedPerformanceRow)}</span>
+            </div>
+
+            <div className="approval-view-drawer-body">
+              {performanceSections.length ? (
+                performanceSections.map(([sectionLabel, items]) => (
+                  <section key={sectionLabel} className="approval-view-drawer-section">
+                    <div className="approval-view-drawer-section-head">
+                      <h4>{sectionLabel.charAt(0).toUpperCase() + sectionLabel.slice(1)}</h4>
+                      <span>{items.length} items</span>
+                    </div>
+
+                    <div className="approval-view-drawer-list">
+                      {items.map((item) => (
+                        <article key={item.id} className={`approval-view-drawer-item ${item.isCritical ? 'is-critical' : ''}`}>
+                          <div className="approval-view-drawer-item-head">
+                            <div>
+                              <small className="approval-view-drawer-item-kicker">{item.sectionLabel ?? 'Question'}</small>
+                              <strong>{item.label}</strong>
+                              <p>{item.prompt}</p>
+                            </div>
+                            <span className="approval-view-drawer-score">{formatMarks(item.obtainedMarks)} / {formatMarks(item.marks)}</span>
+                          </div>
+
+                          <div className="approval-view-drawer-answer">
+                            <span>Answer</span>
+                            <p>{item.answer}</p>
+                          </div>
+
+                          <div className="approval-view-drawer-tags">
+                            <span className="approval-view-table-pill is-neutral">{item.decision}</span>
+                            {item.isCritical ? <span className="approval-view-table-pill is-remedial">Critical</span> : null}
+                            {item.tags.map((tag) => (
+                              <span key={`${item.id}-${tag}`} className="approval-view-table-pill is-neutral">{tag}</span>
+                            ))}
+                            {item.domains.map((domain) => (
+                              <span key={`${item.id}-${domain.label}`} className="approval-view-table-pill is-neutral">{domain.label}</span>
+                            ))}
+                          </div>
+
+                          {item.remarks ? (
+                            <div className="approval-view-drawer-answer is-remark">
+                              <span>Faculty Remark</span>
+                              <p>{item.remarks}</p>
+                            </div>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                ))
+              ) : (
+                <div className="approval-view-drawer-empty">No detailed performance data found for this student.</div>
+              )}
+            </div>
+          </aside>
+        </>
+      ) : null}
     </section>
   )
 }
