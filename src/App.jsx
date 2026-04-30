@@ -13,6 +13,7 @@ import StartEvaluationPage from './pages/StartEvaluationPage'
 import ExamLogPage from './pages/ExamLogPage'
 import MySkillActivityPage from './pages/MySkillActivityPage'
 import ProgressTrackingPage from './pages/ProgressTrackingPage'
+import ActivityResultPage from './pages/ActivityResultPage'
 import StudentExamPage from './pages/StudentExamPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import StudentManagementPage from './pages/StudentManagementPage'
@@ -25,6 +26,7 @@ const PAGE_PATHS = {
   [APP_PAGES.DASHBOARD]: '/',
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
+  [APP_PAGES.ACTIVITY_RESULT]: '/skills/activity-result',
   [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
   [APP_PAGES.REVIEW_APPROVE]: '/skills/review-approve',
   [APP_PAGES.APPROVAL_VIEW]: '/skills/approvalview',
@@ -56,6 +58,7 @@ const COMPLETED_EVALUATIONS_STORAGE_KEY = 'vx-completed-evaluation-rows'
 const APPROVAL_QUEUE_STORAGE_KEY = 'vx-approval-queue-rows'
 const APPROVAL_VIEW_STORAGE_KEY = 'vx-approval-view-record'
 const PROGRESS_RESULT_STORAGE_KEY = 'vx-progress-result-record'
+const ACTIVITY_RESULT_STORAGE_KEY = 'vx-activity-result-record'
 
 const readStoredStartEvaluationRecord = () => {
   try {
@@ -108,6 +111,24 @@ const storeProgressResultRecord = (record) => {
     window.sessionStorage.setItem(PROGRESS_RESULT_STORAGE_KEY, JSON.stringify(record))
   } catch (error) {
     console.warn('Unable to persist progress result record in session storage.', error)
+  }
+}
+
+const readStoredActivityResultRecord = () => {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(ACTIVITY_RESULT_STORAGE_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
+
+const storeActivityResultRecord = (record) => {
+  if (!record) return
+
+  try {
+    window.sessionStorage.setItem(ACTIVITY_RESULT_STORAGE_KEY, JSON.stringify(record))
+  } catch (error) {
+    console.warn('Unable to persist activity result record in session storage.', error)
   }
 }
 
@@ -322,6 +343,7 @@ function App() {
   const [approvalQueueRows, setApprovalQueueRows] = useState(() => readStoredRows(APPROVAL_QUEUE_STORAGE_KEY))
   const [selectedApprovalViewRecord, setSelectedApprovalViewRecord] = useState(() => readStoredApprovalViewRecord())
   const [selectedProgressResultRecord, setSelectedProgressResultRecord] = useState(() => readStoredProgressResultRecord())
+  const [selectedActivityResultRecord, setSelectedActivityResultRecord] = useState(() => readStoredActivityResultRecord())
   const [selectedExamLogContext, setSelectedExamLogContext] = useState(null)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
@@ -396,6 +418,11 @@ function App() {
     if (!selectedProgressResultRecord) return
     storeProgressResultRecord(selectedProgressResultRecord)
   }, [selectedProgressResultRecord])
+
+  useEffect(() => {
+    if (!selectedActivityResultRecord) return
+    storeActivityResultRecord(selectedActivityResultRecord)
+  }, [selectedActivityResultRecord])
 
   useEffect(() => {
     const resolvedPage = getPageFromPath(window.location.pathname)
@@ -542,6 +569,13 @@ function App() {
 
     setSelectedStudentExamAssignment(assignment)
     navigateToPage(APP_PAGES.STUDENT_EXAM)
+  }
+
+  const handleOpenActivityResult = (record) => {
+    if (!record) return
+
+    setSelectedActivityResultRecord(record)
+    navigateToPage(APP_PAGES.ACTIVITY_RESULT)
   }
 
   const handleSubmitStudentExam = (submission) => {
@@ -1118,6 +1152,7 @@ function App() {
               completedEvaluationRows={completedEvaluationRows}
               approvalQueueRows={approvalQueueRows}
               onStartEvaluation={handleOpenStartEvaluation}
+              onOpenActivityResult={handleOpenActivityResult}
               onPublishEvaluation={handlePublishEvaluation}
               onScheduleAttempt={handleSchedulePublishedAttempt}
               onClearAttemptSchedule={handleClearPublishedAttemptSchedule}
@@ -1217,6 +1252,12 @@ function App() {
             />
           ) : activePage === APP_PAGES.MY_SKILL_ACTIVITY ? (
             <MySkillActivityPage assignedActivities={assignedSkillActivities} onStartActivity={handleStartAssignedSkillActivity} />
+          ) : activePage === APP_PAGES.ACTIVITY_RESULT ? (
+            <ActivityResultPage
+              resultRecord={selectedActivityResultRecord ?? readStoredActivityResultRecord()}
+              completedEvaluationRows={completedEvaluationRows}
+              onBack={() => navigateToPage(APP_PAGES.EVALUATION)}
+            />
           ) : activePage === APP_PAGES.STUDENT_EXAM ? (
             <StudentExamPage
               assignment={selectedStudentExamAssignment}

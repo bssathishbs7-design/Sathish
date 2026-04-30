@@ -389,9 +389,231 @@
   color: #6c8277;
 }
 
+.activity-result-attempt-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-result-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.activity-result-download-menu {
+  position: relative;
+}
+
+.activity-result-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid #dbe8e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #173428;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.activity-result-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.activity-result-download-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 4;
+  display: grid;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid #dbe8e1;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+}
+
+.activity-result-download-panel button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #173428;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.activity-result-download-panel button:hover,
+.activity-result-download-panel button:focus-visible {
+  background: #f3fbf7;
+  color: #10775a;
+  outline: none;
+}
+
+.activity-result-attempt-chip {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid #dbe8e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #61796d;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.activity-result-attempt-chip:hover,
+.activity-result-attempt-chip:focus-visible {
+  border-color: #9dddc3;
+  color: #117f5d;
+  outline: none;
+}
+
+.activity-result-attempt-chip.is-active {
+  border-color: #95e2c2;
+  background: #effcf5;
+  color: #10775a;
+  box-shadow: 0 6px 16px rgba(21, 146, 103, 0.1);
+}
+
+.activity-result-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.activity-result-stat-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid #e2ebe5;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfb 100%);
+}
+
+.activity-result-stat-card span {
+  color: #789186;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.activity-result-stat-card strong {
+  color: #173428;
+  font-size: 1.18rem;
+}
+
+.activity-result-stat-card.is-positive strong {
+  color: #10775a;
+}
+
+.activity-result-stat-card.is-info strong {
+  color: #2f6db1;
+}
+
+.activity-result-stat-card.is-warning strong {
+  color: #c56b15;
+}
+
+.activity-result-table-wrap {
+  overflow: auto;
+  border: 1px solid #e2ebe5;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.activity-result-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+}
+
+.activity-result-table th,
+.activity-result-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eef3f0;
+  text-align: left;
+}
+
+.activity-result-table th {
+  color: #738a80;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  background: #fbfdfc;
+}
+
+.activity-result-table td {
+  color: #173428;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.activity-result-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.activity-result-result-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #dbe8e1;
+  border-radius: 999px;
+  background: #f8fbf9;
+  color: #5f786d;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.activity-result-result-pill.is-completed {
+  border-color: #caead7;
+  background: #edf9f2;
+  color: #228455;
+}
+
+.activity-result-result-pill.is-repeat {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.activity-result-result-pill.is-remedial {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.activity-result-result-pill.is-neutral {
+  border-color: #dbe8e1;
+  background: #f8fbf9;
+  color: #5f786d;
+}
+
 @media (max-width: 1100px) {
   .my-skills-progress-summary-strip {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .activity-result-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .my-skills-progress-table-head,
@@ -427,6 +649,10 @@
 
   .my-skills-progress-summary-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .activity-result-stat-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1109,6 +1335,55 @@
   border-color: #243652;
   background: #152236;
   color: #9db3aa;
+}
+
+.theme-dark .activity-result-attempt-chip,
+.theme-dark .activity-result-stat-card,
+.theme-dark .activity-result-table-wrap,
+.theme-dark .activity-result-table th {
+  border-color: #243652;
+  background: rgba(15, 24, 40, 0.96);
+}
+
+.theme-dark .activity-result-download-btn,
+.theme-dark .activity-result-download-panel {
+  border-color: #243652;
+  background: rgba(15, 24, 40, 0.96);
+}
+
+.theme-dark .activity-result-attempt-chip {
+  color: #a7bbb3;
+}
+
+.theme-dark .activity-result-download-btn,
+.theme-dark .activity-result-download-panel button {
+  color: #e6efeb;
+}
+
+.theme-dark .activity-result-attempt-chip.is-active {
+  border-color: rgba(95, 232, 177, 0.28);
+  background: rgba(20, 40, 34, 0.98);
+  color: #8ee4ca;
+}
+
+.theme-dark .activity-result-stat-card strong,
+.theme-dark .activity-result-table td {
+  color: #e6efeb;
+}
+
+.theme-dark .activity-result-stat-card span,
+.theme-dark .activity-result-table th {
+  color: #9db3aa;
+}
+
+.theme-dark .activity-result-table td {
+  border-bottom-color: #243652;
+}
+
+.theme-dark .activity-result-download-panel button:hover,
+.theme-dark .activity-result-download-panel button:focus-visible {
+  background: rgba(20, 40, 34, 0.98);
+  color: #8ee4ca;
 }
 
 .theme-dark .my-skills-filter-chip.is-active,
