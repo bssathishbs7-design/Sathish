@@ -39,6 +39,12 @@ const getDisplayDecision = (row) => {
   return rawDecision
 }
 
+const shouldShowDecisionBadge = (value = '') => {
+  const normalized = String(value).trim().toLowerCase()
+
+  return normalized === 'approved' || normalized === 'approval rejected'
+}
+
 const getActivityToneClass = (value = '') => String(value).trim().toLowerCase().replace(/\s+/g, '-')
 
 const formatReceivedDateTime = (value) => {
@@ -81,14 +87,15 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
   const receivedAt = formatReceivedDateTime(row.receivedAt ?? row.sentAt ?? row.submittedAt)
   const activityType = row.activityType ?? 'Activity'
   const hasInfo = Boolean(sender.name || sender.id || sender.designation)
-  const cardToneClass = String(decision).trim().toLowerCase() === 'published' ? 'is-published-card' : ''
 
   return (
-    <article className={`review-approve-card ${cardToneClass}`}>
+    <article className="review-approve-card">
       <div className="review-approve-card-top">
         <div className="review-approve-card-topline">
           <span className={`review-approve-type-chip ${getActivityToneClass(activityType)}`}>{activityType}</span>
-          <span className={`review-approve-status-pill ${getDecisionTone(decision)}`}>{decision}</span>
+          {shouldShowDecisionBadge(decision) ? (
+            <span className={`review-approve-status-pill ${getDecisionTone(decision)}`}>{decision}</span>
+          ) : null}
         </div>
       </div>
 
@@ -392,7 +399,9 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
                             </div>
                           </td>
                           <td>
-                            <span className={`review-approve-status-pill ${getDecisionTone(decision)}`}>{decision}</span>
+                            {shouldShowDecisionBadge(decision) ? (
+                              <span className={`review-approve-status-pill ${getDecisionTone(decision)}`}>{decision}</span>
+                            ) : null}
                           </td>
                           <td>{meta.students}</td>
                           <td>{meta.year}</td>

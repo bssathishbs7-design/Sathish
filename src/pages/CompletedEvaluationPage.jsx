@@ -184,6 +184,7 @@ const getOutcomeTone = (value = '') => {
 const getAttemptNumber = (row) => Math.min(Math.max(Number(row?.attemptNumber) || 1, 1), 10)
 
 const getStudentKey = (row) => row?.studentId ?? row?.registerId ?? row?.studentName ?? row?.id
+const idsMatch = (left, right) => String(left ?? '') === String(right ?? '')
 
 const uniqueDisplayStudentNames = [
   'Aarav Menon',
@@ -243,6 +244,19 @@ const isActivityCertifiable = (activity) => Boolean(
   ?? activity?.activityData?.activity?.isCertifiable
 )
 
+const getExpectedActivityStudentCount = (activity) => {
+  const totalStudents = Number(activity?.studentCount ?? activity?.activityRecord?.studentCount) || 0
+
+  if (totalStudents <= 0) return 0
+
+  const visibleCount = Math.min(totalStudents, 17)
+  const notSubmittedSampleCount = visibleCount > 1
+    ? Math.min(2, Math.max(1, Math.floor(visibleCount * 0.12)))
+    : 0
+
+  return visibleCount - notSubmittedSampleCount
+}
+
 export default function CompletedEvaluationPage({
   completedEvaluationRows = [],
   activityId,
@@ -261,7 +275,7 @@ export default function CompletedEvaluationPage({
 
   const sourceRows = useMemo(() => (
     normalizeDuplicateStudentNames(activityId
-      ? completedEvaluationRows.filter((row) => row.activityId === activityId)
+      ? completedEvaluationRows.filter((row) => idsMatch(row.activityId, activityId))
       : completedEvaluationRows)
   ), [activityId, completedEvaluationRows])
 
@@ -289,9 +303,19 @@ export default function CompletedEvaluationPage({
     return studentKeys.size
   }, [sourceRows])
 
-  const assignedStudentCount = completedTableStudentCount || evaluatedStudentCount
+  const assignedStudentCount = useMemo(() => {
+    const currentAttemptNumber = sourceRows.reduce((maxAttempt, row) => Math.max(maxAttempt, getAttemptNumber(row)), 1)
 
-  const canSendApproval = assignedStudentCount > 0 && evaluatedStudentCount >= assignedStudentCount
+    if (currentAttemptNumber > 1) {
+      return completedTableStudentCount || evaluatedStudentCount
+    }
+
+    const configuredStudentCount = getExpectedActivityStudentCount(activityRecord ?? sourceRows[0])
+
+    return configuredStudentCount || completedTableStudentCount || evaluatedStudentCount
+  }, [activityRecord, completedTableStudentCount, evaluatedStudentCount, sourceRows])
+
+  const canSendApproval = assignedStudentCount > 0 && evaluatedStudentCount === assignedStudentCount
 
   const filteredRows = useMemo(() => {
     const needle = searchValue.trim().toLowerCase()
