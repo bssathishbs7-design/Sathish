@@ -42,9 +42,9 @@ const getActivityTypeTone = (value) => {
 }
 
 const parseAttemptValue = (value) => {
-  if (!value) return 0
-  const [first] = String(value).split('/')
-  return Number.parseInt(first, 10) || 0
+  if (value === null || value === undefined || value === '') return 0
+  const match = String(value).match(/\d+/)
+  return Number.parseInt(match?.[0] ?? '0', 10) || 0
 }
 
 const getNormalizedResultStatus = (value = '') => String(value ?? '').trim().toLowerCase()
@@ -76,22 +76,29 @@ const getLatestCompletedRowsByStudent = (rows = []) => {
   return [...latestRows.values()]
 }
 
-const getReattemptAttemptCount = (record, completedRows = []) => {
-  const activityId = record?.id ?? record?.activityId
-  const totalStudents = Number(record?.studentCount) || 0
+const getRecordAttemptNumber = (record, completedRows = []) => {
+  const nextAttemptNumber = Number(record?.nextAttemptNumber ?? record?.approvalRecord?.nextAttemptNumber ?? 0) || 0
 
-  if (!activityId) return `0 / ${totalStudents}`
+  if (nextAttemptNumber > 0) return nextAttemptNumber
 
-  const latestActivityRows = getLatestCompletedRowsByStudent(
-    completedRows.filter((row) => row.activityId === activityId),
+  const storedAttemptNumber = parseAttemptValue(
+    record?.approvalRecord?.attemptNumber
+    ?? record?.approvalRecord?.attemptCount
+    ?? record?.attemptNumber
+    ?? record?.attemptCount,
   )
-  const reattemptCount = latestActivityRows.filter((row) => {
-    const status = getCompletedRowStatus(row)
 
-    return status === 'repeat' || status === 'remedial'
-  }).length
+  if (storedAttemptNumber > 0) return storedAttemptNumber
 
-  return `${reattemptCount} / ${totalStudents}`
+  const activityId = record?.id ?? record?.activityId
+
+  if (!activityId) return 1
+
+  const latestAttemptNumber = getLatestCompletedRowsByStudent(
+    completedRows.filter((row) => row.activityId === activityId),
+  ).reduce((maxAttempt, row) => Math.max(maxAttempt, getAttemptNumber(row)), 0)
+
+  return latestAttemptNumber || 1
 }
 
 const getApprovalRecord = (record, approvalQueueRows = []) => {
@@ -109,11 +116,7 @@ const getApprovalStatus = (record) => String(
   ?? '',
 ).trim().toLowerCase()
 
-const getApprovalAttemptLabel = (record) => {
-  const attemptCount = Number(record.approvalRecord?.attemptCount ?? record.approvalRecord?.attemptNumber ?? 1) || 1
-
-  return `Attempt ${attemptCount}`
-}
+const getApprovalAttemptLabel = (record) => `Attempt ${getRecordAttemptNumber(record)}`
 
 const getCurrentAttemptStudentCount = (record, approvalRecord) => {
   const approvalTotalStudents = Number(approvalRecord?.totalStudents) || 0
@@ -330,7 +333,6 @@ function ScheduleAttemptControl({ record, onAssign, onClear }) {
 
 function EvaluationCard({ record, onOpenEvaluation, onScheduleAttempt, onClearAttemptSchedule }) {
   const statusMeta = getEvaluationStatusMeta(record)
-  const showApprovalAttempt = statusMeta.isApproved || statusMeta.isRejected
   const approvalRemarks = String(record.approvalRecord?.reviewRemarks ?? '').trim()
   const remarksTitle = statusMeta.isRejected ? 'Rejection remarks' : 'Approval remarks'
 
@@ -362,17 +364,17 @@ function EvaluationCard({ record, onOpenEvaluation, onScheduleAttempt, onClearAt
           <span><FolderKanban size={12} strokeWidth={2} /> SGT</span>
           <strong>{record.sgt || 'Not set'}</strong>
         </div>
-      </div>
+        </div>
 
       <div className="eval-card-action-panel">
         <div className="eval-card-action-cell">
           <span>Attempt</span>
-          <strong>{statusMeta.nextAttemptNumber ? `Attempt ${statusMeta.nextAttemptNumber}` : (showApprovalAttempt ? getApprovalAttemptLabel(record) : '-')}</strong>
+          <strong>{record.attemptCount ?? getApprovalAttemptLabel(record)}</strong>
         </div>
         <div className="eval-card-action-cell is-remarks">
           <span>{statusMeta.nextAttemptCount ? 'Count' : 'Remarks'}</span>
           {statusMeta.nextAttemptCount ? (
-            <strong>{statusMeta.nextAttemptCount} students</strong>
+            <strong>{statusMeta.nextAttemptCount} Students</strong>
           ) : approvalRemarks ? (
             <span className="eval-remarks-tooltip-wrap">
               <button
@@ -575,8 +577,8 @@ export default function SkillAssessmentPage({
 
   const rawSourceRecords = evaluationRecords.length ? evaluationRecords : buildFallbackRecords()
   const sourceRecords = useMemo(() => rawSourceRecords.map((record) => {
-    const reattemptAttemptCount = getReattemptAttemptCount(record, completedEvaluationRows)
     const approvalRecord = getApprovalRecord(record, approvalQueueRows)
+    const resolvedAttemptNumber = getRecordAttemptNumber({ ...record, approvalRecord }, completedEvaluationRows)
     const statusMeta = getEvaluationStatusMeta({
       ...record,
       approvalRecord,
@@ -584,8 +586,8 @@ export default function SkillAssessmentPage({
 
     return {
       ...record,
-      attemptCount: reattemptAttemptCount,
-      reattemptStudentCount: parseAttemptValue(reattemptAttemptCount),
+      attemptCount: `Attempt ${resolvedAttemptNumber}`,
+      reattemptStudentCount: resolvedAttemptNumber,
       approvalRecord,
       displayStudentCount: getCurrentAttemptStudentCount(record, approvalRecord),
       resolvedStatus: statusMeta.label,
