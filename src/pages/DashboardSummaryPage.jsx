@@ -65,18 +65,27 @@ const EMPTY_GRAPH_SERIES = {
 const normalizeText = (value) => String(value ?? '').trim()
 const normalizeLower = (value) => normalizeText(value).toLowerCase()
 const idsMatch = (left, right) => normalizeText(left) === normalizeText(right)
-const formatThresholdLabel = (value) => {
-  const normalized = normalizeText(value)
-  return normalized && normalized !== 'Not Matched' ? normalized : 'No threshold'
-}
-const formatResultLabel = (value) => {
+const normalizePerformanceLabel = (value) => {
   const normalized = normalizeLower(value)
-  if (normalized === 'repeat') return 'Repeat'
-  if (normalized === 'remedial') return 'Remedial'
-  if (normalized === 'completed') return 'Completed'
-  if (normalized === 'evaluated') return 'Evaluated'
-  if (normalized === 'pending') return 'Pending'
-  return normalizeText(value) || 'Pending'
+
+  if (!normalized || normalized === '-' || normalized === 'not matched' || normalized === 'no threshold') return ''
+  if (normalized.includes('exceed')) return 'Exceeds'
+  if (normalized.includes('meet') || normalized.includes('pass') || normalized.includes('complete')) return 'Meets'
+  if (normalized.includes('below') || normalized.includes('repeat') || normalized.includes('remedial') || normalized.includes('borderline')) return 'Below'
+
+  return ''
+}
+const formatThresholdLabel = (value) => normalizePerformanceLabel(value) || '-'
+const formatResultLabel = (value) => normalizePerformanceLabel(value) || '-'
+const getPerformanceToneClass = (value) => {
+  const normalized = normalizeLower(value)
+
+  if (normalized === 'exceeds') return 'is-good'
+  if (normalized === 'meets') return 'is-soft'
+  if (normalized === 'below') return 'is-warn'
+  if (normalized === 'pending') return 'is-warn'
+
+  return 'is-soft'
 }
 const escapeCsvCell = (value) => {
   const normalizedValue = String(value ?? '').replace(/\r?\n|\r/g, ' ').trim()
@@ -1080,7 +1089,7 @@ export default function DashboardSummaryPage({
         sgt: row.sgt,
         attemptLabel: '-',
         score: clampPercent(row.score),
-        thresholdLabel: formatThresholdLabel(row.thresholdLabel),
+        thresholdLabel: '-',
         resultLabel: '-',
         statusLabel: 'Pending',
       }))
@@ -1317,7 +1326,6 @@ export default function DashboardSummaryPage({
                 <span>Evaluation Performance</span>
                 <strong>Track student evaluation status by activity</strong>
               </div>
-              <button type="button" className="dashboard-performance-viewall">View all</button>
             </div>
 
             <div className="dashboard-performance-chipbar">
@@ -1335,7 +1343,6 @@ export default function DashboardSummaryPage({
                     <span>Pending Evaluation</span>
                     <strong>{pendingPerformanceRows.length}</strong>
                   </div>
-                  <button type="button" className="dashboard-performance-group-link">View all</button>
                 </div>
                 <div className="dashboard-performance-table-head is-pending">
                   <span>Student / Activity</span>
@@ -1368,10 +1375,10 @@ export default function DashboardSummaryPage({
                             <strong>{row.score}%</strong>
                           </div>
                           <div className="dashboard-performance-cell">
-                            <strong>{row.thresholdLabel}</strong>
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.thresholdLabel)}`}>{row.thresholdLabel}</span>
                           </div>
                           <div className="dashboard-performance-cell">
-                            <strong>{row.resultLabel}</strong>
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.resultLabel)}`}>{row.resultLabel}</span>
                           </div>
                           <div className="dashboard-performance-outcome">
                             <span className="dashboard-performance-pill is-warn">{row.statusLabel}</span>
@@ -1394,7 +1401,6 @@ export default function DashboardSummaryPage({
                     <span>Completed Evaluation</span>
                     <strong>{completedPerformanceRows.length}</strong>
                   </div>
-                  <button type="button" className="dashboard-performance-group-link">View all</button>
                 </div>
                 <div className="dashboard-performance-table-head">
                   <span>Student / Activity</span>
@@ -1427,10 +1433,10 @@ export default function DashboardSummaryPage({
                             <strong>{row.score}%</strong>
                           </div>
                           <div className="dashboard-performance-cell">
-                            <strong>{row.thresholdLabel}</strong>
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.thresholdLabel)}`}>{row.thresholdLabel}</span>
                           </div>
                           <div className="dashboard-performance-cell">
-                            <strong>{row.resultLabel}</strong>
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.resultLabel)}`}>{row.resultLabel}</span>
                           </div>
                           <div className="dashboard-performance-outcome">
                             <span className="dashboard-performance-pill is-good">{row.statusLabel}</span>
@@ -1453,7 +1459,6 @@ export default function DashboardSummaryPage({
                     <span>Repeat / Remedial</span>
                     <strong>{repeatRemedialPerformanceRows.length}</strong>
                   </div>
-                  <button type="button" className="dashboard-performance-group-link">View all</button>
                 </div>
                 <div className="dashboard-performance-table-head">
                   <span>Student / Activity</span>
@@ -1468,8 +1473,6 @@ export default function DashboardSummaryPage({
                 </div>
                 <div className="dashboard-performance-list">
                   {repeatRemedialPerformanceRows.length ? repeatRemedialPerformanceRows.map((row) => {
-                    const isRepeat = normalizeLower(row.resultLabel) === 'repeat'
-
                     return (
                       <article key={row.id} className="dashboard-performance-row dashboard-performance-row--board">
                         <div className="dashboard-performance-identity">
@@ -1488,13 +1491,13 @@ export default function DashboardSummaryPage({
                             <strong>{row.score}%</strong>
                           </div>
                           <div className="dashboard-performance-cell">
-                            <strong>{row.thresholdLabel}</strong>
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.thresholdLabel)}`}>{row.thresholdLabel}</span>
                           </div>
                           <div className="dashboard-performance-cell">
-                            <strong>{row.resultLabel}</strong>
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.resultLabel)}`}>{row.resultLabel}</span>
                           </div>
                           <div className="dashboard-performance-outcome">
-                            <span className={`dashboard-performance-pill ${isRepeat ? 'is-soft' : 'is-warn'}`}>{row.statusLabel}</span>
+                            <span className={`dashboard-performance-pill ${normalizeLower(row.resultLabel) === 'meets' ? 'is-soft' : 'is-warn'}`}>{row.statusLabel}</span>
                           </div>
                         </div>
                       </article>

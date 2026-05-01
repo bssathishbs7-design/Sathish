@@ -797,14 +797,17 @@
 .dashboard-performance-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
+  gap: 12px;
 }
 
 .dashboard-performance-card {
   overflow: hidden;
-  border-radius: 22px;
+  border: 1px solid rgba(20, 36, 31, 0.08);
+  border-radius: 28px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.72));
+    radial-gradient(circle at top right, rgba(110, 225, 183, 0.12), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(252, 253, 252, 0.86));
+  box-shadow: 0 22px 50px rgba(18, 31, 27, 0.07);
 }
 
 .dashboard-performance-head {
@@ -812,8 +815,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--dash-line);
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(20, 36, 31, 0.08);
 }
 
 .dashboard-performance-head div {
@@ -823,8 +826,9 @@
 
 .dashboard-performance-head strong {
   color: var(--dash-ink);
-  font-size: 0.9rem;
+  font-size: 1.06rem;
   font-weight: 950;
+  letter-spacing: -0.02em;
 }
 
 .dashboard-performance-head svg {
@@ -832,16 +836,24 @@
 }
 
 .dashboard-performance-viewall {
-  min-height: 28px;
-  padding: 0 10px;
-  border: 1px solid rgba(18, 31, 27, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(18, 31, 27, 0.09);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
   color: var(--dash-muted);
   font: inherit;
-  font-size: 0.64rem;
+  font-size: 0.66rem;
   font-weight: 900;
   cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.dashboard-performance-viewall:hover,
+.dashboard-performance-group-link:hover {
+  border-color: rgba(19, 167, 123, 0.22);
+  box-shadow: 0 10px 24px rgba(19, 167, 123, 0.1);
+  transform: translateY(-1px);
 }
 
 .dashboard-performance-list {
@@ -856,26 +868,25 @@
 }
 
 .dashboard-performance-chipbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 16px 6px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 20px 10px;
 }
 
 .dashboard-performance-chipbar article {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 0 10px;
+  display: grid;
+  gap: 4px;
+  min-height: 62px;
+  padding: 12px 14px;
   border: 1px solid rgba(18, 31, 27, 0.06);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.84);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(246, 249, 247, 0.84));
 }
 
 .dashboard-performance-chipbar small {
   color: var(--dash-muted);
-  font-size: 0.58rem;
+  font-size: 0.61rem;
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -883,21 +894,22 @@
 
 .dashboard-performance-chipbar strong {
   color: var(--dash-ink);
-  font-size: 0.7rem;
+  font-size: 1rem;
   font-weight: 950;
+  letter-spacing: -0.03em;
 }
 
 .dashboard-performance-board {
   display: grid;
-  gap: 8px;
-  padding: 6px 10px 12px;
+  gap: 12px;
+  padding: 2px 16px 16px;
 }
 
 .dashboard-performance-group {
   min-width: 0;
-  border: 1px solid rgba(18, 31, 27, 0.05);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(18, 31, 27, 0.06);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(249, 251, 250, 0.74));
   overflow: hidden;
 }
 
@@ -906,7 +918,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 10px 12px 8px;
+  padding: 12px 14px 10px;
   border-bottom: 1px solid rgba(18, 31, 27, 0.05);
 }
 
@@ -918,7 +930,7 @@
 
 .dashboard-performance-group-title span {
   color: var(--dash-muted);
-  font-size: 0.58rem;
+  font-size: 0.62rem;
   font-weight: 950;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -928,25 +940,25 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  height: 20px;
-  padding: 0 7px;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
   border-radius: 999px;
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   font-weight: 950;
   color: var(--dash-ink);
   background: rgba(18, 31, 27, 0.06);
 }
 
 .dashboard-performance-group-link {
-  min-height: 24px;
-  padding: 0 8px;
+  min-height: 28px;
+  padding: 0 10px;
   border: 1px solid rgba(18, 31, 27, 0.06);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
   color: var(--dash-muted);
   font: inherit;
-  font-size: 0.6rem;
+  font-size: 0.64rem;
   font-weight: 900;
   cursor: pointer;
 }
@@ -968,10 +980,10 @@
 
 .dashboard-performance-table-head {
   display: grid;
-  grid-template-columns: minmax(240px, 1.15fr) minmax(560px, 1.45fr);
-  gap: 16px;
-  padding: 8px 14px 6px;
-  background: rgba(18, 31, 27, 0.025);
+  grid-template-columns: minmax(250px, 1.15fr) minmax(560px, 1.6fr);
+  gap: 12px;
+  padding: 7px 14px 8px;
+  background: linear-gradient(180deg, rgba(18, 31, 27, 0.045), rgba(18, 31, 27, 0.02));
 }
 
 .dashboard-performance-table-head > span {
@@ -984,8 +996,8 @@
 
 .dashboard-performance-meta-head {
   display: grid;
-  grid-template-columns: minmax(92px, 1fr) minmax(64px, 0.72fr) minmax(64px, 0.72fr) minmax(88px, 0.9fr) minmax(74px, 0.82fr) auto;
-  gap: 12px;
+  grid-template-columns: minmax(102px, 0.95fr) minmax(70px, 0.62fr) minmax(78px, 0.72fr) minmax(112px, 0.94fr) minmax(98px, 0.86fr) minmax(84px, 0.82fr);
+  gap: 10px;
 }
 
 .dashboard-performance-meta-head span {
@@ -999,26 +1011,25 @@
 
 .dashboard-performance-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1.15fr) minmax(560px, 1.45fr);
+  grid-template-columns: minmax(250px, 1.15fr) minmax(560px, 1.6fr);
   align-items: center;
-  gap: 16px;
-  min-height: 64px;
-  padding: 10px 14px;
+  gap: 12px;
+  min-height: 56px;
+  padding: 9px 14px;
   border-top: 1px solid rgba(18, 31, 27, 0.05);
   background: transparent;
-  transition: background 140ms ease, border-color 140ms ease;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
 
 .dashboard-performance-row:hover {
   border-color: rgba(19, 167, 123, 0.12);
-  box-shadow: none;
-  transform: none;
-  background: rgba(19, 167, 123, 0.035);
+  transform: translateY(-1px);
+  background: rgba(19, 167, 123, 0.045);
 }
 
 .dashboard-performance-identity {
   display: grid;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 
@@ -1026,9 +1037,9 @@
   display: block;
   overflow: hidden;
   color: var(--dash-ink);
-  font-size: 0.82rem;
-  font-weight: 950;
-  line-height: 1.15;
+  font-size: 0.88rem;
+  font-weight: 930;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: normal;
 }
@@ -1036,9 +1047,9 @@
 .dashboard-performance-identity small {
   display: block;
   overflow: hidden;
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--dash-muted);
-  font-size: 0.62rem;
+  font-size: 0.66rem;
   font-weight: 820;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1046,27 +1057,28 @@
 
 .dashboard-performance-meta-grid {
   display: grid;
-  grid-template-columns: minmax(92px, 1fr) minmax(64px, 0.72fr) minmax(64px, 0.72fr) minmax(88px, 0.9fr) minmax(74px, 0.82fr) auto;
-  gap: 12px;
+  grid-template-columns: minmax(102px, 0.95fr) minmax(70px, 0.62fr) minmax(78px, 0.72fr) minmax(112px, 0.94fr) minmax(98px, 0.86fr) minmax(84px, 0.82fr);
+  gap: 10px;
   align-items: center;
 }
 
 .dashboard-performance-cell {
   display: grid;
   justify-items: start;
-  gap: 3px;
+  gap: 2px;
   text-align: left;
 }
 
 .dashboard-performance-cell strong {
   color: var(--dash-ink);
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   font-weight: 950;
+  line-height: 1.1;
 }
 
 .dashboard-performance-cell small {
   color: var(--dash-muted);
-  font-size: 0.52rem;
+  font-size: 0.6rem;
   font-weight: 820;
 }
 
@@ -1151,6 +1163,7 @@
 
 .dashboard-performance-cell--score strong {
   color: var(--dash-green);
+  font-size: 0.86rem;
 }
 
 .dashboard-performance-badges {
@@ -1176,14 +1189,17 @@
 .dashboard-performance-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 18px;
-  padding: 0 6px;
+  justify-content: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 0 10px;
   border: 1px solid var(--dash-line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.9);
   color: #5b6b65;
-  font-size: 0.48rem;
+  font-size: 0.6rem;
   font-weight: 950;
+  letter-spacing: 0.03em;
   text-transform: capitalize;
   white-space: nowrap;
 }
@@ -1210,8 +1226,8 @@
   display: grid;
   place-items: center;
   gap: 5px;
-  min-height: 92px;
-  padding: 16px;
+  min-height: 84px;
+  padding: 18px;
   background: rgba(255, 255, 255, 0.4);
   text-align: center;
 }
@@ -1946,22 +1962,22 @@
 
 /* Keep the board rows on the real table layout instead of the later compact card layout. */
 .dashboard-performance-table-head {
-  grid-template-columns: minmax(240px, 1.05fr) minmax(620px, 1.95fr);
-  gap: 16px;
-  padding: 8px 14px 6px;
+  grid-template-columns: minmax(250px, 1.08fr) minmax(620px, 1.72fr);
+  gap: 12px;
+  padding: 7px 14px 8px;
 }
 
 .dashboard-performance-meta-head,
 .dashboard-performance-meta-grid {
-  grid-template-columns: minmax(106px, 1fr) minmax(96px, 0.9fr) minmax(92px, 0.72fr) minmax(132px, 1fr) minmax(110px, 0.9fr) minmax(96px, 0.86fr);
-  gap: 12px;
+  grid-template-columns: minmax(102px, 0.95fr) minmax(70px, 0.62fr) minmax(78px, 0.72fr) minmax(112px, 0.94fr) minmax(98px, 0.86fr) minmax(84px, 0.82fr);
+  gap: 10px;
 }
 
 .dashboard-performance-row.dashboard-performance-row--board {
-  grid-template-columns: minmax(240px, 1.05fr) minmax(620px, 1.95fr);
-  gap: 16px;
-  min-height: 72px;
-  padding: 12px 14px;
+  grid-template-columns: minmax(250px, 1.08fr) minmax(620px, 1.72fr);
+  gap: 12px;
+  min-height: 58px;
+  padding: 9px 14px;
 }
 
 .dashboard-performance-row.dashboard-performance-row--board .dashboard-performance-identity {
@@ -1969,13 +1985,13 @@
 }
 
 .dashboard-performance-row.dashboard-performance-row--board .dashboard-performance-identity strong {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   white-space: normal;
 }
 
 .dashboard-performance-row.dashboard-performance-row--board .dashboard-performance-identity small {
-  margin-top: 4px;
-  font-size: 0.64rem;
+  margin-top: 2px;
+  font-size: 0.66rem;
 }
 
 .dashboard-performance-row.dashboard-performance-row--board .dashboard-performance-cell,
