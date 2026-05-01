@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
+  ExternalLink,
   FolderKanban,
   GraduationCap,
   Info,
@@ -42,9 +43,20 @@ const getActivityTypeTone = (value) => {
 }
 
 const parseAttemptValue = (value) => {
-  if (!value) return 0
-  const [first] = String(value).split('/')
-  return Number.parseInt(first, 10) || 0
+  if (value === null || value === undefined || value === '') return 0
+  const match = String(value).match(/\d+/)
+  return Number.parseInt(match?.[0] ?? '0', 10) || 0
+}
+
+const ACTIVITY_NAME_CHARACTER_LIMIT = 54
+
+const truncateActivityName = (value, limit = ACTIVITY_NAME_CHARACTER_LIMIT) => {
+  const normalized = String(value ?? '').trim()
+
+  if (!normalized) return 'Untitled Activity'
+  if (normalized.length <= limit) return normalized
+
+  return `${normalized.slice(0, Math.max(limit - 1, 1)).trimEnd()}...`
 }
 
 const getNormalizedResultStatus = (value = '') => String(value ?? '').trim().toLowerCase()
@@ -76,22 +88,29 @@ const getLatestCompletedRowsByStudent = (rows = []) => {
   return [...latestRows.values()]
 }
 
-const getReattemptAttemptCount = (record, completedRows = []) => {
-  const activityId = record?.id ?? record?.activityId
-  const totalStudents = Number(record?.studentCount) || 0
+const getRecordAttemptNumber = (record, completedRows = []) => {
+  const nextAttemptNumber = Number(record?.nextAttemptNumber ?? record?.approvalRecord?.nextAttemptNumber ?? 0) || 0
 
-  if (!activityId) return `0 / ${totalStudents}`
+  if (nextAttemptNumber > 0) return nextAttemptNumber
 
-  const latestActivityRows = getLatestCompletedRowsByStudent(
-    completedRows.filter((row) => row.activityId === activityId),
+  const storedAttemptNumber = parseAttemptValue(
+    record?.approvalRecord?.attemptNumber
+    ?? record?.approvalRecord?.attemptCount
+    ?? record?.attemptNumber
+    ?? record?.attemptCount,
   )
-  const reattemptCount = latestActivityRows.filter((row) => {
-    const status = getCompletedRowStatus(row)
 
-    return status === 'repeat' || status === 'remedial'
-  }).length
+  if (storedAttemptNumber > 0) return storedAttemptNumber
 
-  return `${reattemptCount} / ${totalStudents}`
+  const activityId = record?.id ?? record?.activityId
+
+  if (!activityId) return 1
+
+  const latestAttemptNumber = getLatestCompletedRowsByStudent(
+    completedRows.filter((row) => row.activityId === activityId),
+  ).reduce((maxAttempt, row) => Math.max(maxAttempt, getAttemptNumber(row)), 0)
+
+  return latestAttemptNumber || 1
 }
 
 const getApprovalRecord = (record, approvalQueueRows = []) => {
@@ -109,11 +128,7 @@ const getApprovalStatus = (record) => String(
   ?? '',
 ).trim().toLowerCase()
 
-const getApprovalAttemptLabel = (record) => {
-  const attemptCount = Number(record.approvalRecord?.attemptCount ?? record.approvalRecord?.attemptNumber ?? 1) || 1
-
-  return `Attempt ${attemptCount}`
-}
+const getApprovalAttemptLabel = (record) => `Attempt ${getRecordAttemptNumber(record)}`
 
 const getCurrentAttemptStudentCount = (record, approvalRecord) => {
   const approvalTotalStudents = Number(approvalRecord?.totalStudents) || 0
@@ -273,7 +288,7 @@ const buildFallbackRecords = () => skillAssessmentActivities.slice(0, 8).map((ac
   questionCount: 2 + (index % 4),
 }))
 
-function ScheduleAttemptControl({ record, onAssign, onClear }) {
+function ScheduleAttemptControl({ record, onAssign, onClear, buttonClassName = 'eval-action-btn' }) {
   const [isOpen, setIsOpen] = useState(false)
   const [scheduleDate, setScheduleDate] = useState(record.scheduledDate ?? '')
   const [scheduleTime, setScheduleTime] = useState(record.scheduledTime ?? '')
@@ -282,7 +297,7 @@ function ScheduleAttemptControl({ record, onAssign, onClear }) {
     <div className={`eval-schedule-wrap${isOpen ? ' is-open' : ''}`}>
       <button
         type="button"
-        className="tool-btn eval-view-btn eval-action-btn"
+        className={`tool-btn eval-view-btn ${buttonClassName}`}
         onClick={() => setIsOpen((open) => !open)}
       >
         Schedule
@@ -328,24 +343,35 @@ function ScheduleAttemptControl({ record, onAssign, onClear }) {
   )
 }
 
-function EvaluationCard({ record, onOpenEvaluation, onScheduleAttempt, onClearAttemptSchedule }) {
+function EvaluationCard({ record, onOpenEvaluation, onOpenActivityResult, onScheduleAttempt, onClearAttemptSchedule }) {
   const statusMeta = getEvaluationStatusMeta(record)
-  const showApprovalAttempt = statusMeta.isApproved || statusMeta.isRejected
   const approvalRemarks = String(record.approvalRecord?.reviewRemarks ?? '').trim()
   const remarksTitle = statusMeta.isRejected ? 'Rejection remarks' : 'Approval remarks'
+  const activityName = record.activityName ?? 'Untitled Activity'
+  const truncatedActivityName = truncateActivityName(activityName)
 
   return (
     <article className="eval-card">
       <div className="eval-card-top">
         <div className="eval-card-topline">
           <span className={`eval-type-chip ${getActivityTypeTone(record.activityType)}`}>{record.activityType}</span>
-          <span className={`eval-status-pill ${statusMeta.tone}`}>
-            {statusMeta.label}
-          </span>
+          <div className="eval-card-corner-actions">
+            <span className={`eval-status-pill ${statusMeta.tone}`}>
+              {statusMeta.label}
+            </span>
+            <button
+              type="button"
+              className="eval-card-corner-btn"
+              aria-label={`Open ${activityName}`}
+              onClick={() => onOpenActivityResult?.(record)}
+            >
+              <ExternalLink size={13} strokeWidth={2.1} />
+            </button>
+          </div>
         </div>
 
         <div className="eval-card-title">
-          <h3>{record.activityName}</h3>
+          <h3 title={activityName}>{truncatedActivityName}</h3>
         </div>
       </div>
 
@@ -362,17 +388,17 @@ function EvaluationCard({ record, onOpenEvaluation, onScheduleAttempt, onClearAt
           <span><FolderKanban size={12} strokeWidth={2} /> SGT</span>
           <strong>{record.sgt || 'Not set'}</strong>
         </div>
-      </div>
+        </div>
 
       <div className="eval-card-action-panel">
         <div className="eval-card-action-cell">
           <span>Attempt</span>
-          <strong>{statusMeta.nextAttemptNumber ? `Attempt ${statusMeta.nextAttemptNumber}` : (showApprovalAttempt ? getApprovalAttemptLabel(record) : '-')}</strong>
+          <strong>{record.attemptCount ?? getApprovalAttemptLabel(record)}</strong>
         </div>
         <div className="eval-card-action-cell is-remarks">
           <span>{statusMeta.nextAttemptCount ? 'Count' : 'Remarks'}</span>
           {statusMeta.nextAttemptCount ? (
-            <strong>{statusMeta.nextAttemptCount} students</strong>
+            <strong>{statusMeta.nextAttemptCount} Students</strong>
           ) : approvalRemarks ? (
             <span className="eval-remarks-tooltip-wrap">
               <button
@@ -392,7 +418,12 @@ function EvaluationCard({ record, onOpenEvaluation, onScheduleAttempt, onClearAt
         <div className="eval-card-action-cell is-action">
           <span>Actions</span>
           {statusMeta.actionKind === 'schedule' ? (
-            <ScheduleAttemptControl record={record} onAssign={onScheduleAttempt} onClear={onClearAttemptSchedule} />
+            <ScheduleAttemptControl
+              record={record}
+              onAssign={onScheduleAttempt}
+              onClear={onClearAttemptSchedule}
+              buttonClassName="eval-action-btn"
+            />
           ) : statusMeta.isApprovalPending || !statusMeta.actionLabel ? (
             <strong>-</strong>
           ) : (
@@ -499,7 +530,12 @@ function EvaluationTable({
                 </td>
                 <td>
                   {statusMeta.actionKind === 'schedule' ? (
-                    <ScheduleAttemptControl record={record} onAssign={onScheduleAttempt} onClear={onClearAttemptSchedule} />
+                    <ScheduleAttemptControl
+                      record={record}
+                      onAssign={onScheduleAttempt}
+                      onClear={onClearAttemptSchedule}
+                      buttonClassName="eval-table-action"
+                    />
                   ) : statusMeta.isApprovalPending || !statusMeta.actionLabel ? null : (
                     <button
                       type="button"
@@ -559,6 +595,7 @@ export default function SkillAssessmentPage({
   completedEvaluationRows = [],
   approvalQueueRows = [],
   onStartEvaluation,
+  onOpenActivityResult,
   onPublishEvaluation,
   onScheduleAttempt,
   onClearAttemptSchedule,
@@ -568,6 +605,7 @@ export default function SkillAssessmentPage({
   const [selectedYear, setSelectedYear] = useState('')
   const [selectedSgt, setSelectedSgt] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedAttempt, setSelectedAttempt] = useState('')
   const [selectedActivityType, setSelectedActivityType] = useState('')
   const [sortKey, setSortKey] = useState('createdDate')
   const [sortDirection, setSortDirection] = useState('desc')
@@ -575,8 +613,8 @@ export default function SkillAssessmentPage({
 
   const rawSourceRecords = evaluationRecords.length ? evaluationRecords : buildFallbackRecords()
   const sourceRecords = useMemo(() => rawSourceRecords.map((record) => {
-    const reattemptAttemptCount = getReattemptAttemptCount(record, completedEvaluationRows)
     const approvalRecord = getApprovalRecord(record, approvalQueueRows)
+    const resolvedAttemptNumber = getRecordAttemptNumber({ ...record, approvalRecord }, completedEvaluationRows)
     const statusMeta = getEvaluationStatusMeta({
       ...record,
       approvalRecord,
@@ -584,8 +622,8 @@ export default function SkillAssessmentPage({
 
     return {
       ...record,
-      attemptCount: reattemptAttemptCount,
-      reattemptStudentCount: parseAttemptValue(reattemptAttemptCount),
+      attemptCount: `Attempt ${resolvedAttemptNumber}`,
+      reattemptStudentCount: resolvedAttemptNumber,
       approvalRecord,
       displayStudentCount: getCurrentAttemptStudentCount(record, approvalRecord),
       resolvedStatus: statusMeta.label,
@@ -599,6 +637,11 @@ export default function SkillAssessmentPage({
 
   const yearOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.year).filter(Boolean))], [sourceRecords])
   const sgtOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.sgt).filter(Boolean))], [sourceRecords])
+  const statusOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.resolvedStatus).filter(Boolean))], [sourceRecords])
+  const attemptOptions = useMemo(() => (
+    [...new Set(sourceRecords.map((record) => parseAttemptValue(record.attemptCount)).filter((value) => value > 0))]
+      .sort((left, right) => left - right)
+  ), [sourceRecords])
   const activityTypeOptions = useMemo(() => [...new Set(sourceRecords.map((record) => record.activityType).filter(Boolean))], [sourceRecords])
 
   const filteredRecords = useMemo(() => {
@@ -617,10 +660,11 @@ export default function SkillAssessmentPage({
         && (!selectedYear || record.year === selectedYear)
         && (!selectedSgt || record.sgt === selectedSgt)
         && (!selectedStatus || record.resolvedStatus === selectedStatus)
+        && (!selectedAttempt || parseAttemptValue(record.attemptCount) === Number(selectedAttempt))
         && (!selectedActivityType || record.activityType === selectedActivityType)
       )
     })
-  }, [sourceRecords, searchQuery, selectedYear, selectedSgt, selectedStatus, selectedActivityType])
+  }, [sourceRecords, searchQuery, selectedYear, selectedSgt, selectedStatus, selectedAttempt, selectedActivityType])
 
   const sortedRecords = useMemo(() => {
     const records = [...filteredRecords]
@@ -664,7 +708,7 @@ export default function SkillAssessmentPage({
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedYear, selectedSgt, selectedStatus, selectedActivityType, sortKey, sortDirection, viewMode])
+  }, [searchQuery, selectedYear, selectedSgt, selectedStatus, selectedAttempt, selectedActivityType, sortKey, sortDirection, viewMode])
 
   useEffect(() => {
     if (currentPage > pageCount) {
@@ -751,35 +795,59 @@ export default function SkillAssessmentPage({
                 placeholder="Search activity, year, SGT"
               />
             </label>
-
             <div className="eval-filters">
               <label className="eval-filter-chip">
-                <span>Year</span>
-                <div className="forms-select-wrap">
-                  <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
-                    <option value="">All years</option>
-                    {yearOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                  </select>
+                <div className="eval-filter-chip-field">
+                  <div className="forms-select-wrap">
+                    <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+                      <option value="">All years</option>
+                      {yearOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </div>
                 </div>
               </label>
 
               <label className="eval-filter-chip">
-                <span>SGT</span>
-                <div className="forms-select-wrap">
-                  <select value={selectedSgt} onChange={(event) => setSelectedSgt(event.target.value)}>
-                    <option value="">All SGTs</option>
-                    {sgtOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                  </select>
+                <div className="eval-filter-chip-field">
+                  <div className="forms-select-wrap">
+                    <select value={selectedSgt} onChange={(event) => setSelectedSgt(event.target.value)}>
+                      <option value="">All SGTs</option>
+                      {sgtOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </label>
+
+              <label className="eval-filter-chip is-compact">
+                <div className="eval-filter-chip-field">
+                  <div className="forms-select-wrap">
+                    <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}>
+                      <option value="">All statuses</option>
+                      {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </label>
+
+              <label className="eval-filter-chip is-compact">
+                <div className="eval-filter-chip-field">
+                  <div className="forms-select-wrap">
+                    <select value={selectedAttempt} onChange={(event) => setSelectedAttempt(event.target.value)}>
+                      <option value="">All attempts</option>
+                      {attemptOptions.map((option) => <option key={option} value={String(option)}>{`Attempt ${option}`}</option>)}
+                    </select>
+                  </div>
                 </div>
               </label>
 
               <label className="eval-filter-chip">
-                <span>Type</span>
-                <div className="forms-select-wrap">
-                  <select value={selectedActivityType} onChange={(event) => setSelectedActivityType(event.target.value)}>
-                    <option value="">All types</option>
-                    {activityTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                  </select>
+                <div className="eval-filter-chip-field">
+                  <div className="forms-select-wrap">
+                    <select value={selectedActivityType} onChange={(event) => setSelectedActivityType(event.target.value)}>
+                      <option value="">All types</option>
+                      {activityTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </div>
                 </div>
               </label>
             </div>
@@ -806,6 +874,7 @@ export default function SkillAssessmentPage({
                     key={record.id}
                     record={record}
                     onOpenEvaluation={handleOpenEvaluation}
+                    onOpenActivityResult={onOpenActivityResult}
                     onScheduleAttempt={onScheduleAttempt}
                     onClearAttemptSchedule={onClearAttemptSchedule}
                   />

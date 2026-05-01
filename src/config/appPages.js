@@ -12,6 +12,7 @@ export const APP_PAGES = {
   DASHBOARD: 'Dashboard',
   CONFIGURATION: 'Configuration',
   EVALUATION: 'Evaluation',
+  ACTIVITY_RESULT: 'Activity Result',
   COMPLETED_EVALUATION: 'Completed Evaluation',
   REVIEW_APPROVE: 'Approval Queue',
   APPROVAL_VIEW: 'Approval View',
@@ -45,7 +46,6 @@ export const SKILL_PAGES = [
 export const MY_SKILL_PAGES = [
   APP_PAGES.MY_SKILL_ACTIVITY,
   APP_PAGES.STUDENT_EXAM,
-  APP_PAGES.PROGRESS_TRACKING,
 ]
 
 export const SIDEBAR_MENU = [
@@ -70,7 +70,6 @@ export const SIDEBAR_MENU = [
         icon: BookOpenCheck,
         children: [
           { label: APP_PAGES.MY_SKILL_ACTIVITY, icon: BookOpenCheck },
-          { label: APP_PAGES.PROGRESS_TRACKING, icon: TrendingUp },
         ],
       },
     ],
