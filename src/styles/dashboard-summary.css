@@ -6,6 +6,7 @@
   --dash-line: rgba(18, 31, 27, 0.1);
   --dash-card: rgba(255, 255, 255, 0.82);
   --dash-card-solid: #ffffff;
+  --dash-card-radius: 15px;
   --dash-navy: #111827;
   --dash-green: #13a77b;
   --dash-mint: #64e6b5;
@@ -3705,4 +3706,21 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+.dashboard-summary-command,
+.dashboard-summary-command-meta,
+.dashboard-summary-toolbar-panel,
+.dashboard-summary-metric-card,
+.dashboard-summary-domain-card,
+.dashboard-performance-card,
+.dashboard-performance-empty,
+.dashboard-summary-page .eval-empty,
+.dashboard-psy-header,
+.dashboard-affective-line-card,
+.dashboard-cognitive-radar-card,
+.dashboard-critical-progress-card,
+.dashboard-psy-income-card,
+.dashboard-psy-volume-card {
+  border-radius: var(--dash-card-radius);
 }
