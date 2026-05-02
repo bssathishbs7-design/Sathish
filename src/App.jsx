@@ -1251,7 +1251,12 @@ function App() {
               }}
             />
           ) : activePage === APP_PAGES.MY_SKILL_ACTIVITY ? (
-            <MySkillActivityPage assignedActivities={assignedSkillActivities} onStartActivity={handleStartAssignedSkillActivity} />
+            <MySkillActivityPage
+              assignedActivities={assignedSkillActivities}
+              evaluationRecords={evaluationRecords}
+              completedEvaluationRows={completedEvaluationRows}
+              onStartActivity={handleStartAssignedSkillActivity}
+            />
           ) : activePage === APP_PAGES.ACTIVITY_RESULT ? (
             <ActivityResultPage
               resultRecord={selectedActivityResultRecord ?? readStoredActivityResultRecord()}

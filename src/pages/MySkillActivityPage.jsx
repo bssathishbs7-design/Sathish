@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   CalendarDays,
@@ -9,6 +9,7 @@ import {
   Play,
   Search,
 } from 'lucide-react'
+import DashboardSummaryPage from './DashboardSummaryPage'
 import '../styles/ospe-activity.css'
 import '../styles/my-skills.css'
 
@@ -60,7 +61,11 @@ const metricToFilter = {
   'Activity Results': 'Completed',
 }
 
-function ActivityCard({ item, onStartActivity }) {
+const normalizeText = (value) => String(value ?? '').trim()
+const normalizeLower = (value) => normalizeText(value).toLowerCase()
+const buildAnalyticsKey = (item) => [item?.id, item?.title, item?.type, item?.studentId, item?.studentName].map(normalizeText).join('::')
+
+function ActivityCard({ item, onStartActivity, onSelectAnalytics, isSelected = false }) {
   const attemptValue = item.attemptCount?.split('/')?.[0]?.trim() ?? '1'
   const normalizedAttemptValue = Number.parseInt(attemptValue, 10) > 0 ? attemptValue : '1'
   const typeToneClass = `is-${String(item.type).toLowerCase().replace(/\s+/g, '-')}`
@@ -75,7 +80,10 @@ function ActivityCard({ item, onStartActivity }) {
   const displayTime = item.scheduledTime || item.createdTime || 'Not set'
 
   return (
-    <article className="my-skills-activity-card">
+    <article
+      className={`my-skills-activity-card${isSelected ? ' is-selected' : ''}`}
+      onClick={() => isViewAction && onSelectAnalytics?.(item)}
+    >
       <div className="my-skills-activity-card-head">
         <span className={`my-skills-activity-type ${typeToneClass}`}>{item.type}</span>
         <span className={`my-skills-status-pill ${statusToneClass}`}>{item.status}</span>
@@ -98,7 +106,10 @@ function ActivityCard({ item, onStartActivity }) {
         <button
           type="button"
           className={`tool-btn ${isViewAction ? 'ghost' : isReadyAction ? 'green' : 'ghost'} my-skills-activity-cta ${!isReadyAction ? 'is-muted' : ''}`}
-          onClick={() => isReadyAction && onStartActivity?.(item)}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (isReadyAction) onStartActivity?.(item)
+          }}
           disabled={!isReadyAction}
         >
           {isReadyAction && !isViewAction ? <Play size={12} strokeWidth={2.2} /> : null}
@@ -109,20 +120,35 @@ function ActivityCard({ item, onStartActivity }) {
   )
 }
 
-export default function MySkillActivityPage({ assignedActivities = [], onStartActivity }) {
+export default function MySkillActivityPage({
+  assignedActivities = [],
+  evaluationRecords = [],
+  completedEvaluationRows = [],
+  onStartActivity,
+}) {
   const [activeFilter, setActiveFilter] = useState('All')
   const [activeMetric, setActiveMetric] = useState('Overall Activity')
   const [query, setQuery] = useState('')
+  const [selectedAnalyticsKey, setSelectedAnalyticsKey] = useState('')
+  const analyticsSectionRef = useRef(null)
 
   const activityItems = useMemo(() => ([
-      ...assignedActivities.map((item) => ({
+    ...assignedActivities.map((item) => ({
       ...item,
       action: item.action ?? (item.status === 'Completed' ? 'View Results' : 'Start Activity'),
       tone: item.tone ?? (item.status === 'Completed' ? 'secondary' : 'primary'),
       status: item.status ?? 'Assigned',
     })),
-    ...defaultActivities,
+    ...(assignedActivities.length ? [] : defaultActivities),
   ]), [assignedActivities])
+
+  const analyticReadyItems = useMemo(() => (
+    activityItems.filter((item) => {
+      const normalizedAction = normalizeLower(item.action)
+      const normalizedStatus = normalizeLower(item.status)
+      return normalizedAction === 'view results' || normalizedStatus === 'completed'
+    })
+  ), [activityItems])
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -134,6 +160,78 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
       return matchesFilter && matchesQuery
     })
   }, [activityItems, activeFilter, query])
+
+  const selectedAnalyticsActivity = useMemo(() => {
+    const explicitMatch = analyticReadyItems.find((item) => buildAnalyticsKey(item) === selectedAnalyticsKey)
+    if (explicitMatch) return explicitMatch
+
+    const visibleCompletedMatch = filteredItems.find((item) => (
+      analyticReadyItems.some((candidate) => buildAnalyticsKey(candidate) === buildAnalyticsKey(item))
+    ))
+
+    return visibleCompletedMatch ?? analyticReadyItems[0] ?? null
+  }, [analyticReadyItems, filteredItems, selectedAnalyticsKey])
+
+  const selectedActivityEvaluationRecords = useMemo(() => {
+    if (!selectedAnalyticsActivity) return []
+
+    const selectedTitle = normalizeLower(selectedAnalyticsActivity.title)
+    const selectedType = normalizeLower(selectedAnalyticsActivity.type)
+
+    return evaluationRecords.filter((record) => (
+      normalizeLower(record.activityName) === selectedTitle
+      && normalizeLower(record.activityType) === selectedType
+    ))
+  }, [evaluationRecords, selectedAnalyticsActivity])
+
+  const selectedActivityCompletedRows = useMemo(() => {
+    if (!selectedAnalyticsActivity) return []
+
+    const selectedId = normalizeText(selectedAnalyticsActivity.id)
+    const selectedTitle = normalizeLower(selectedAnalyticsActivity.title)
+    const selectedType = normalizeLower(selectedAnalyticsActivity.type)
+    const selectedStudentId = normalizeLower(selectedAnalyticsActivity.studentId)
+    const selectedStudentName = normalizeLower(selectedAnalyticsActivity.studentName)
+    const selectedRegisterId = normalizeLower(selectedAnalyticsActivity.registerId)
+
+    const matchingRows = completedEvaluationRows.filter((row) => {
+      const activityMatches = (
+        normalizeText(row.activityId) === selectedId
+        || (
+          normalizeLower(row.activityName) === selectedTitle
+          && normalizeLower(row.activityType) === selectedType
+        )
+      )
+      if (!activityMatches) return false
+
+      if (!(selectedStudentId || selectedStudentName || selectedRegisterId)) return true
+
+      return (
+        normalizeLower(row.studentId) === selectedStudentId
+        || normalizeLower(row.studentName) === selectedStudentName
+        || normalizeLower(row.registerId) === selectedRegisterId
+      )
+    })
+
+    return matchingRows.sort((left, right) => {
+      const attemptDiff = (Number(right.attemptNumber) || 0) - (Number(left.attemptNumber) || 0)
+      if (attemptDiff !== 0) return attemptDiff
+      return (Date.parse(right.submittedAt ?? '') || 0) - (Date.parse(left.submittedAt ?? '') || 0)
+    })
+  }, [completedEvaluationRows, selectedAnalyticsActivity])
+
+  const selectedActivityAssignedRows = useMemo(() => (
+    selectedAnalyticsActivity ? [selectedAnalyticsActivity] : []
+  ), [selectedAnalyticsActivity])
+
+  useEffect(() => {
+    if (!selectedAnalyticsKey || !analyticsSectionRef.current) return
+
+    analyticsSectionRef.current.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }, [selectedAnalyticsKey])
 
   const kpiItems = [
     { label: 'Assigned', value: activityItems.filter((item) => item.status === 'Assigned').length, icon: ClipboardList, tone: 'is-assigned' },
@@ -153,6 +251,14 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
   const handleFilterClick = (filter) => {
     setActiveFilter(filter)
     setActiveMetric(filter === 'All' ? 'Overall Activity' : filter)
+  }
+
+  const handleActivityAction = (item) => {
+    onStartActivity?.(item)
+  }
+
+  const handleSelectAnalytics = (item) => {
+    setSelectedAnalyticsKey(buildAnalyticsKey(item))
   }
 
   return (
@@ -215,6 +321,20 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
           })}
         </div>
 
+        {selectedAnalyticsActivity ? (
+          <section ref={analyticsSectionRef} className="my-skills-analytics-shell">
+            <DashboardSummaryPage
+              embedded
+              useSampleFallback={false}
+              heading={`${selectedAnalyticsActivity.title} Dashboard`}
+              description={`Analytics for ${selectedAnalyticsActivity.type} based on the selected student activity record.`}
+              assignedActivities={selectedActivityAssignedRows}
+              evaluationRecords={selectedActivityEvaluationRecords}
+              completedEvaluationRows={selectedActivityCompletedRows}
+            />
+          </section>
+        ) : null}
+
         <section className="my-skills-board-shell">
           <div className="my-skills-toolbar">
             <div className="my-skills-filter-row">
@@ -248,7 +368,13 @@ export default function MySkillActivityPage({ assignedActivities = [], onStartAc
 
           <div className="my-skills-activity-list">
             {filteredItems.map((item) => (
-              <ActivityCard key={`${item.status}-${item.title}-${item.type}`} item={item} onStartActivity={onStartActivity} />
+              <ActivityCard
+                key={`${item.status}-${item.title}-${item.type}-${item.studentId ?? item.id ?? ''}`}
+                item={item}
+                onStartActivity={handleActivityAction}
+                onSelectAnalytics={handleSelectAnalytics}
+                isSelected={buildAnalyticsKey(item) === buildAnalyticsKey(selectedAnalyticsActivity)}
+              />
             ))}
           </div>
         </section>

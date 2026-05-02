@@ -4,6 +4,29 @@
   padding-top: 16px;
 }
 
+.my-skills-page .dashboard-summary-page {
+  margin-top: 2px;
+}
+
+.my-skills-analytics-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.my-skills-activity-card.is-selected {
+  border-color: rgba(20, 184, 166, 0.36);
+  box-shadow: 0 18px 40px rgba(20, 184, 166, 0.12);
+}
+
+.my-skills-activity-card.is-selected::before {
+  opacity: 1;
+}
+
+.theme-dark .my-skills-activity-card.is-selected {
+  border-color: rgba(94, 234, 212, 0.34);
+  box-shadow: 0 18px 40px rgba(8, 145, 178, 0.18);
+}
+
 .my-skills-progress-shell {
   display: grid;
   gap: 14px;

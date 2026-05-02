@@ -699,6 +699,10 @@ export default function DashboardSummaryPage({
   assignedActivities = [],
   evaluationRecords = [],
   completedEvaluationRows = [],
+  embedded = false,
+  useSampleFallback = true,
+  heading = 'Dashboard',
+  description = 'Track activities, completed evaluations, domain coverage, criticality and student performance in one live view.',
 }) {
   const [selectedYear, setSelectedYear] = useState('')
   const [selectedSgt, setSelectedSgt] = useState('')
@@ -707,16 +711,16 @@ export default function DashboardSummaryPage({
   const [studentSearch, setStudentSearch] = useState('')
 
   const assignedSource = useMemo(
-    () => (assignedActivities.length ? assignedActivities : buildSampleAssignedActivities()),
-    [assignedActivities],
+    () => (assignedActivities.length || !useSampleFallback ? assignedActivities : buildSampleAssignedActivities()),
+    [assignedActivities, useSampleFallback],
   )
   const evaluationSource = useMemo(
-    () => (evaluationRecords.length ? evaluationRecords : buildFallbackEvaluationRecords()),
-    [evaluationRecords],
+    () => (evaluationRecords.length || !useSampleFallback ? evaluationRecords : buildFallbackEvaluationRecords()),
+    [evaluationRecords, useSampleFallback],
   )
   const completedRowsSource = useMemo(
-    () => (completedEvaluationRows.length ? completedEvaluationRows : buildSampleCompletedEvaluationRows()),
-    [completedEvaluationRows],
+    () => (completedEvaluationRows.length || !useSampleFallback ? completedEvaluationRows : buildSampleCompletedEvaluationRows()),
+    [completedEvaluationRows, useSampleFallback],
   )
   const assignmentMap = useMemo(
     () => new Map(assignedSource.map((assignment) => [assignment.id, assignment])),
@@ -1130,19 +1134,26 @@ export default function DashboardSummaryPage({
   ), [studentPerformanceRows])
 
   const emptyState = !visibleActivityRecords.length && !filteredCompletedRows.length
+  const hasPerformanceContent = (
+    pendingPerformanceRows.length > 0
+    || completedPerformanceRows.length > 0
+    || repeatRemedialPerformanceRows.length > 0
+  )
 
   return (
-    <section className="vx-content forms-page dashboard-summary-page">
+    <section className={`vx-content forms-page dashboard-summary-page${embedded ? ' is-embedded-dashboard' : ''}`}>
       <div className="dashboard-summary-shell">
-        <PageBreadcrumbs items={[{ label: 'Evaluation' }, { label: 'Dashboard Summary' }]} />
+        {!embedded ? <PageBreadcrumbs items={[{ label: 'Evaluation' }, { label: 'Dashboard Summary' }]} /> : null}
 
-        <section className="dashboard-summary-command">
-          <div>
-            <span className="dashboard-summary-command-kicker">Skill Analytics</span>
-            <h1>Dashboard</h1>
-            <p>Track activities, completed evaluations, domain coverage, criticality and student performance in one live view.</p>
-          </div>
-        </section>
+        {!embedded ? (
+          <section className="dashboard-summary-command">
+            <div>
+              <span className="dashboard-summary-command-kicker">{embedded ? 'Activity Analytics' : 'Skill Analytics'}</span>
+              <h1>{heading}</h1>
+              <p>{description}</p>
+            </div>
+          </section>
+        ) : null}
 
         <section className="vx-card dashboard-summary-toolbar dashboard-summary-toolbar-panel">
           <div className="dashboard-summary-toolbar-head">
@@ -1156,21 +1167,25 @@ export default function DashboardSummaryPage({
           </div>
 
           <div className="dashboard-summary-toolbar-grid">
-            <DashboardFilterDropdown
-              label="Year"
-              value={selectedYear}
-              placeholder="All years"
-              options={yearOptions}
-              onChange={setSelectedYear}
-            />
+            {!embedded ? (
+              <DashboardFilterDropdown
+                label="Year"
+                value={selectedYear}
+                placeholder="All years"
+                options={yearOptions}
+                onChange={setSelectedYear}
+              />
+            ) : null}
 
-            <DashboardFilterDropdown
-              label="SGT"
-              value={selectedSgt}
-              placeholder="All groups"
-              options={sgtOptions}
-              onChange={setSelectedSgt}
-            />
+            {!embedded ? (
+              <DashboardFilterDropdown
+                label="SGT"
+                value={selectedSgt}
+                placeholder="All groups"
+                options={sgtOptions}
+                onChange={setSelectedSgt}
+              />
+            ) : null}
 
             <DashboardFilterDropdown
               label="Activity Type"
@@ -1203,30 +1218,32 @@ export default function DashboardSummaryPage({
           </div>
         </section>
 
-        <section className="dashboard-summary-metrics" aria-label="Dashboard metrics">
-          {metricCards.map((card) => {
-            const Icon = card.icon
+        {!((embedded && emptyState)) ? (
+          <section className="dashboard-summary-metrics" aria-label="Dashboard metrics">
+            {metricCards.map((card) => {
+              const Icon = card.icon
 
-            return (
-              <article key={card.id} className={`dashboard-summary-metric-card ${card.tone}`}>
-                <div className="dashboard-summary-metric-icon-wrap">
-                  <span className="dashboard-summary-metric-icon" aria-hidden="true">
-                    <Icon size={18} strokeWidth={2} />
-                  </span>
-                  <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" />
-                </div>
-                <div className="dashboard-summary-metric-copy">
-                  <div className="dashboard-summary-metric-topline">
-                    <span>{card.label}</span>
+              return (
+                <article key={card.id} className={`dashboard-summary-metric-card ${card.tone}`}>
+                  <div className="dashboard-summary-metric-icon-wrap">
+                    <span className="dashboard-summary-metric-icon" aria-hidden="true">
+                      <Icon size={18} strokeWidth={2} />
+                    </span>
+                    <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" />
                   </div>
-                  <strong>{String(card.value).padStart(2, '0')}</strong>
-                </div>
-              </article>
-            )
-          })}
-        </section>
+                  <div className="dashboard-summary-metric-copy">
+                    <div className="dashboard-summary-metric-topline">
+                      <span>{card.label}</span>
+                    </div>
+                    <strong>{String(card.value).padStart(2, '0')}</strong>
+                  </div>
+                </article>
+              )
+            })}
+          </section>
+        ) : null}
 
-        {emptyState ? (
+        {emptyState && !embedded ? (
           <section className="eval-empty dashboard-summary-empty-note">
             <div className="eval-empty-copy">
               <FileSearch size={18} strokeWidth={2} />
@@ -1319,25 +1336,26 @@ export default function DashboardSummaryPage({
             </article>
         </section>
 
-        <section className="dashboard-performance-grid">
-          <article className="dashboard-performance-card dashboard-performance-card--combined">
-            <div className="dashboard-performance-head">
-              <div>
-                <span>Evaluation Performance</span>
-                <strong>Track student evaluation status by activity</strong>
+        {!((embedded && !hasPerformanceContent)) ? (
+          <section className="dashboard-performance-grid">
+            <article className="dashboard-performance-card dashboard-performance-card--combined">
+              <div className="dashboard-performance-head">
+                <div>
+                  <span>Evaluation Performance</span>
+                  <strong>Track student evaluation status by activity</strong>
+                </div>
               </div>
-            </div>
 
-            <div className="dashboard-performance-chipbar">
-              <article><small>Total</small><strong>{performanceSummary.totalEvaluations}</strong></article>
-              <article><small>Pending</small><strong>{performanceSummary.pendingCount}</strong></article>
-              <article><small>Completed</small><strong>{performanceSummary.completedCount}</strong></article>
-              <article><small>Repeat</small><strong>{performanceSummary.repeatCount + performanceSummary.remedialCount}</strong></article>
-              <article><small>Avg Score</small><strong>{clampPercent(performanceSummary.averageScore)}%</strong></article>
-            </div>
+              <div className="dashboard-performance-chipbar">
+                <article><small>Total</small><strong>{performanceSummary.totalEvaluations}</strong></article>
+                <article><small>Pending</small><strong>{performanceSummary.pendingCount}</strong></article>
+                <article><small>Completed</small><strong>{performanceSummary.completedCount}</strong></article>
+                <article><small>Repeat</small><strong>{performanceSummary.repeatCount + performanceSummary.remedialCount}</strong></article>
+                <article><small>Avg Score</small><strong>{clampPercent(performanceSummary.averageScore)}%</strong></article>
+              </div>
 
-            <div className="dashboard-performance-board">
-              <section className="dashboard-performance-group">
+              <div className="dashboard-performance-board">
+                <section className="dashboard-performance-group">
                 <div className="dashboard-performance-group-head">
                   <div className="dashboard-performance-group-title is-pending">
                     <span>Pending Evaluation</span>
@@ -1393,9 +1411,9 @@ export default function DashboardSummaryPage({
                     </div>
                   )}
                 </div>
-              </section>
+                </section>
 
-              <section className="dashboard-performance-group">
+                <section className="dashboard-performance-group">
                 <div className="dashboard-performance-group-head">
                   <div className="dashboard-performance-group-title is-completed">
                     <span>Completed Evaluation</span>
@@ -1451,9 +1469,9 @@ export default function DashboardSummaryPage({
                     </div>
                   )}
                 </div>
-              </section>
+                </section>
 
-              <section className="dashboard-performance-group">
+                <section className="dashboard-performance-group">
                 <div className="dashboard-performance-group-head">
                   <div className="dashboard-performance-group-title is-repeat">
                     <span>Repeat / Remedial</span>
@@ -1509,10 +1527,11 @@ export default function DashboardSummaryPage({
                     </div>
                   )}
                 </div>
-              </section>
-            </div>
-          </article>
-        </section>
+                </section>
+              </div>
+            </article>
+          </section>
+        ) : null}
 
         {false ? (
         <section className="dashboard-summary-table-grid">

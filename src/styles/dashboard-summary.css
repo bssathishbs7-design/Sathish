@@ -28,6 +28,12 @@
   font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
+.dashboard-summary-page.is-embedded-dashboard {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
 .dashboard-summary-page .vx-breadcrumbs {
   display: none;
 }
