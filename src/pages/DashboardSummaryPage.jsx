@@ -64,6 +64,68 @@ const EMPTY_GRAPH_SERIES = {
 
 const normalizeText = (value) => String(value ?? '').trim()
 const normalizeLower = (value) => normalizeText(value).toLowerCase()
+const idsMatch = (left, right) => normalizeText(left) === normalizeText(right)
+const normalizePerformanceLabel = (value) => {
+  const normalized = normalizeLower(value)
+
+  if (!normalized || normalized === '-' || normalized === 'not matched' || normalized === 'no threshold') return ''
+  if (normalized.includes('exceed')) return 'Exceeds'
+  if (normalized.includes('meet') || normalized.includes('pass') || normalized.includes('complete')) return 'Meets'
+  if (normalized.includes('below') || normalized.includes('repeat') || normalized.includes('remedial') || normalized.includes('borderline')) return 'Below'
+
+  return ''
+}
+const formatThresholdLabel = (value) => normalizePerformanceLabel(value) || '-'
+const formatResultLabel = (value) => normalizePerformanceLabel(value) || '-'
+const getPerformanceToneClass = (value) => {
+  const normalized = normalizeLower(value)
+
+  if (normalized === 'exceeds') return 'is-good'
+  if (normalized === 'meets') return 'is-soft'
+  if (normalized === 'below') return 'is-warn'
+  if (normalized === 'pending') return 'is-warn'
+
+  return 'is-soft'
+}
+const escapeCsvCell = (value) => {
+  const normalizedValue = String(value ?? '').replace(/\r?\n|\r/g, ' ').trim()
+  return `"${normalizedValue.replace(/"/g, '""')}"`
+}
+const sanitizeFileName = (value) => normalizeText(value)
+  .normalize('NFKD')
+  .replace(/[^\x20-\x7E]/g, ' ')
+  .replace(/[^a-z0-9]+/gi, '-')
+  .replace(/^-+|-+$/g, '')
+  .toLowerCase()
+  || 'dashboard-report'
+const downloadCsv = ({ fileName, headers, rows }) => {
+  const csvContent = [
+    headers.map(escapeCsvCell).join(','),
+    ...rows.map((row) => row.map(escapeCsvCell).join(',')),
+  ].join('\n')
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+
+  link.href = url
+  link.download = `${sanitizeFileName(fileName)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+const formatDateTime = (value) => {
+  const timestamp = Date.parse(value ?? '')
+  if (!timestamp) return 'Not available'
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(timestamp))
+}
 const isApplicableDomain = (value) => {
   const normalized = normalizeLower(value)
   return normalized && normalized !== 'not applicable'
@@ -280,6 +342,96 @@ const buildSampleCompletedEvaluationRows = () => {
       })
     ))
 }
+
+const getLatestRowsByStudent = (rows = []) => {
+  const latestRows = new Map()
+
+  rows.forEach((row) => {
+    const key = String(row.studentId ?? row.registerId ?? row.studentName ?? '')
+    if (!key) return
+
+    const current = latestRows.get(key)
+    const rowAttempt = Number(row.attemptNumber) || 1
+    const currentAttempt = Number(current?.attemptNumber) || 0
+
+    if (!current || rowAttempt >= currentAttempt) {
+      latestRows.set(key, row)
+    }
+  })
+
+  return [...latestRows.values()]
+}
+
+const buildCompletedRowContext = (row, recordMap) => {
+  const activityRecord = recordMap.get(row.activityId) ?? {}
+
+  return {
+    ...row,
+    activityName: row.activityName ?? activityRecord.activityName ?? 'Activity',
+    activityType: row.activityType ?? activityRecord.activityType ?? 'Activity',
+    year: row.year ?? activityRecord.year ?? 'Not set',
+    sgt: row.sgt ?? activityRecord.sgt ?? 'Not set',
+    result: row.resultStatus ?? row.decisionTitle ?? row.evaluationStatus ?? '-',
+    attemptNumber: Number(row.attemptNumber ?? row.attemptCount ?? 1) || 1,
+    totalPercentage: Number(row.totalPercentage) || 0,
+    totalObtainedMarks: Number(row.totalObtainedMarks) || 0,
+    totalMarks: Number(row.totalMarks) || 0,
+    critical: Number(row.overallCriticalMarks) || 0,
+  }
+}
+
+const resolveRecordIdCandidates = (row = {}) => ([
+  row.activityId,
+  row.activityRecord?.id,
+  row.assignment?.id,
+])
+
+const rowMatchesActivityRecord = (row, record) => {
+  if (!row || !record) return false
+
+  const hasMatchingId = resolveRecordIdCandidates(row).some((candidate) => idsMatch(candidate, record.id))
+  if (hasMatchingId) return true
+
+  return (
+    idsMatch(row.activityName, record.activityName)
+    && idsMatch(row.activityType, record.activityType)
+    && idsMatch(row.year ?? row.activityRecord?.year, record.year)
+    && idsMatch(row.sgt ?? row.activityRecord?.sgt, record.sgt)
+  )
+}
+
+const getActivityPerformanceRows = (activityRecords = [], completedRows = [], limit = 6) => (
+  activityRecords.slice(0, limit).map((record) => {
+    const activityRows = completedRows.filter((row) => row.activityId === record.id)
+    const latestRows = getLatestRowsByStudent(activityRows)
+    const evaluatedStudents = latestRows.length
+    const totalStudents = Number(record.studentCount) || 0
+    const progressPercent = totalStudents > 0 ? calculatePercentage(evaluatedStudents, totalStudents) : 0
+    const averageScore = latestRows.length
+      ? latestRows.reduce((sum, row) => sum + (Number(row.totalPercentage) || 0), 0) / latestRows.length
+      : 0
+
+    return {
+      id: record.id,
+      activityName: record.activityName,
+      activityType: record.activityType,
+      year: record.year,
+      sgt: record.sgt,
+      totalStudents,
+      evaluatedStudents,
+      submitted: evaluatedStudents,
+      progressPercent,
+      averageScore,
+      status: evaluatedStudents ? 'Evaluated' : 'Pending',
+    }
+  })
+)
+
+const getRecentStudentPerformanceRows = (completedRows = [], limit = 6) => (
+  [...completedRows]
+    .sort((left, right) => (Date.parse(right.submittedAt ?? '') || 0) - (Date.parse(left.submittedAt ?? '') || 0))
+    .slice(0, limit)
+)
 
 const getActivitySource = (record, assignmentMap) => (
   record?.assignment
@@ -547,6 +699,10 @@ export default function DashboardSummaryPage({
   assignedActivities = [],
   evaluationRecords = [],
   completedEvaluationRows = [],
+  embedded = false,
+  useSampleFallback = true,
+  heading = 'Dashboard',
+  description = 'Track activities, completed evaluations, domain coverage, criticality and student performance in one live view.',
 }) {
   const [selectedYear, setSelectedYear] = useState('')
   const [selectedSgt, setSelectedSgt] = useState('')
@@ -555,16 +711,16 @@ export default function DashboardSummaryPage({
   const [studentSearch, setStudentSearch] = useState('')
 
   const assignedSource = useMemo(
-    () => (assignedActivities.length ? assignedActivities : buildSampleAssignedActivities()),
-    [assignedActivities],
+    () => (assignedActivities.length || !useSampleFallback ? assignedActivities : buildSampleAssignedActivities()),
+    [assignedActivities, useSampleFallback],
   )
   const evaluationSource = useMemo(
-    () => (evaluationRecords.length ? evaluationRecords : buildFallbackEvaluationRecords()),
-    [evaluationRecords],
+    () => (evaluationRecords.length || !useSampleFallback ? evaluationRecords : buildFallbackEvaluationRecords()),
+    [evaluationRecords, useSampleFallback],
   )
   const completedRowsSource = useMemo(
-    () => (completedEvaluationRows.length ? completedEvaluationRows : buildSampleCompletedEvaluationRows()),
-    [completedEvaluationRows],
+    () => (completedEvaluationRows.length || !useSampleFallback ? completedEvaluationRows : buildSampleCompletedEvaluationRows()),
+    [completedEvaluationRows, useSampleFallback],
   )
   const assignmentMap = useMemo(
     () => new Map(assignedSource.map((assignment) => [assignment.id, assignment])),
@@ -645,10 +801,9 @@ export default function DashboardSummaryPage({
 
   const filteredCompletedRows = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
-    const visibleActivityIds = new Set(filteredActivityRecords.map((record) => record.id))
 
     return completedRowsSource.filter((row) => (
-      visibleActivityIds.has(row.activityId)
+      filteredActivityRecords.some((record) => rowMatchesActivityRecord(row, record))
       && (
         !needle
         || row.studentName?.toLowerCase().includes(needle)
@@ -673,6 +828,13 @@ export default function DashboardSummaryPage({
     filteredAssignedActivities.filter((assignment) => visibleActivityIds.has(assignment.id))
   ), [filteredAssignedActivities, visibleActivityIds])
 
+  const completedStudentRows = useMemo(() => (
+    filteredCompletedRows
+      .filter((row) => normalizeLower(row.rowStatus) === 'completed')
+      .map((row) => buildCompletedRowContext(row, assignmentMap))
+      .sort((left, right) => (Date.parse(right.submittedAt ?? '') || 0) - (Date.parse(left.submittedAt ?? '') || 0))
+  ), [assignmentMap, filteredCompletedRows])
+
   const activityItems = useMemo(() => (
     visibleActivityRecords.flatMap((record) => collectActivityItems(record, assignmentMap))
   ), [assignmentMap, visibleActivityRecords])
@@ -680,11 +842,10 @@ export default function DashboardSummaryPage({
 
   const completedActivityIds = useMemo(() => (
     new Set(
-      filteredCompletedRows
-        .filter((row) => normalizeLower(row.rowStatus) === 'completed')
+      completedStudentRows
         .map((row) => row.activityId),
     )
-  ), [filteredCompletedRows])
+  ), [completedStudentRows])
 
   const metricCards = [
     {
@@ -736,9 +897,7 @@ export default function DashboardSummaryPage({
   const topPsychomotorPerformers = useMemo(() => {
     const performerMap = new Map()
 
-    filteredCompletedRows
-      .filter((row) => normalizeLower(row.rowStatus) === 'completed')
-      .forEach((row) => {
+    completedStudentRows.forEach((row) => {
         const performerId = row.studentId ?? row.registerId ?? row.studentName
         if (!performerId) return
 
@@ -764,7 +923,7 @@ export default function DashboardSummaryPage({
           scoreTotal: current.scoreTotal + (Number.isNaN(psychomotorScore) ? 0 : psychomotorScore),
           count: current.count + 1,
         })
-      })
+    })
 
     return [...performerMap.values()]
       .map((performer) => ({
@@ -773,7 +932,7 @@ export default function DashboardSummaryPage({
       }))
       .sort((left, right) => right.score - left.score)
       .slice(0, 5)
-  }, [filteredCompletedRows])
+  }, [completedStudentRows])
 
   const graphSeries = useMemo(() => {
     if (!visibleActivityRecords.length) return EMPTY_GRAPH_SERIES
@@ -860,11 +1019,14 @@ export default function DashboardSummaryPage({
   }, [graphSeries.affective])
   const activityPerformanceRows = useMemo(() => (
     visibleActivityRecords.slice(0, 6).map((record) => {
-      const rows = filteredCompletedRows.filter((row) => row.activityId === record.id)
-      const completedRows = rows.filter((row) => normalizeLower(row.rowStatus) === 'completed')
+      const completedRows = completedStudentRows.filter((row) => rowMatchesActivityRecord(row, record))
       const averageScore = completedRows.length
         ? completedRows.reduce((sum, row) => sum + (Number(row.totalPercentage) || 0), 0) / completedRows.length
         : 0
+      const completedCount = completedRows.filter((row) => normalizeLower(row.resultStatus ?? row.decisionTitle) === 'completed').length
+      const repeatCount = completedRows.filter((row) => normalizeLower(row.resultStatus ?? row.decisionTitle) === 'repeat').length
+      const remedialCount = completedRows.filter((row) => normalizeLower(row.resultStatus ?? row.decisionTitle) === 'remedial').length
+      const thresholdLabels = [...new Set(completedRows.map((row) => normalizeText(row.thresholdLabel)).filter(Boolean))]
 
       return {
         id: record.id,
@@ -874,37 +1036,124 @@ export default function DashboardSummaryPage({
         sgt: record.sgt,
         submitted: completedRows.length,
         score: averageScore,
+        completedCount,
+        repeatCount,
+        remedialCount,
+        thresholdLabel: thresholdLabels[0] || 'Not Matched',
         status: completedRows.length ? 'Evaluated' : 'Pending',
       }
     })
-  ), [filteredCompletedRows, visibleActivityRecords])
+  ), [completedStudentRows, visibleActivityRecords])
 
   const studentPerformanceRows = useMemo(() => (
-    filteredCompletedRows.slice(0, 6).map((row) => ({
+    completedStudentRows.slice(0, 6).map((row) => ({
       id: row.id ?? `${row.activityId}-${row.studentId}`,
       studentName: row.studentName,
       registerId: row.registerId,
+      year: row.year,
+      sgt: row.sgt,
+      activityName: row.activityName,
       activityType: row.activityType,
       score: Number(row.totalPercentage) || 0,
       critical: Number(row.overallCriticalMarks) || 0,
       result: row.resultStatus || '-',
+      thresholdLabel: row.thresholdLabel || 'Not Matched',
+      attemptNumber: Number(row.attemptNumber ?? 1) || 1,
+      submittedAt: row.submittedAt,
     }))
-  ), [filteredCompletedRows])
+  ), [completedStudentRows])
+
+  const performanceSummary = useMemo(() => {
+    const completedCount = completedStudentRows.filter((row) => normalizeLower(row.resultStatus ?? row.decisionTitle) === 'completed').length
+    const repeatCount = completedStudentRows.filter((row) => normalizeLower(row.resultStatus ?? row.decisionTitle) === 'repeat').length
+    const remedialCount = completedStudentRows.filter((row) => normalizeLower(row.resultStatus ?? row.decisionTitle) === 'remedial').length
+    const averageScore = completedStudentRows.length
+      ? completedStudentRows.reduce((sum, row) => sum + (Number(row.totalPercentage) || 0), 0) / completedStudentRows.length
+      : 0
+
+    return {
+      totalEvaluations: completedStudentRows.length + activityPerformanceRows.filter((row) => row.status === 'Pending').length,
+      pendingCount: activityPerformanceRows.filter((row) => row.status === 'Pending').length,
+      completedRows: completedStudentRows.length,
+      completedCount,
+      repeatCount,
+      remedialCount,
+      averageScore,
+    }
+  }, [activityPerformanceRows, completedStudentRows])
+  const pendingPerformanceRows = useMemo(() => (
+    activityPerformanceRows
+      .filter((row) => row.status === 'Pending')
+      .slice(0, 5)
+      .map((row) => ({
+        id: `pending-${row.id}`,
+        primaryLabel: row.activityName,
+        secondaryLabel: 'No student result yet',
+        year: row.year,
+        sgt: row.sgt,
+        attemptLabel: '-',
+        score: clampPercent(row.score),
+        thresholdLabel: '-',
+        resultLabel: '-',
+        statusLabel: 'Pending',
+      }))
+  ), [activityPerformanceRows])
+  const completedPerformanceRows = useMemo(() => (
+    studentPerformanceRows
+      .filter((row) => normalizeLower(row.result) === 'completed')
+      .slice(0, 6)
+      .map((row) => ({
+        id: row.id,
+        primaryLabel: row.studentName,
+        secondaryLabel: `${row.registerId} / ${row.activityName}`,
+        year: row.year,
+        sgt: row.sgt,
+        attemptLabel: `Attempt ${row.attemptNumber}`,
+        score: clampPercent(row.score),
+        thresholdLabel: formatThresholdLabel(row.thresholdLabel),
+        resultLabel: formatResultLabel(row.result),
+        statusLabel: 'Evaluated',
+      }))
+  ), [studentPerformanceRows])
+  const repeatRemedialPerformanceRows = useMemo(() => (
+    studentPerformanceRows
+      .filter((row) => ['repeat', 'remedial'].includes(normalizeLower(row.result)))
+      .slice(0, 6)
+      .map((row) => ({
+        id: row.id,
+        primaryLabel: row.studentName,
+        secondaryLabel: `${row.registerId} / ${row.activityName}`,
+        year: row.year,
+        sgt: row.sgt,
+        attemptLabel: `Attempt ${row.attemptNumber}`,
+        score: clampPercent(row.score),
+        thresholdLabel: formatThresholdLabel(row.thresholdLabel),
+        resultLabel: formatResultLabel(row.result),
+        statusLabel: 'Evaluated',
+      }))
+  ), [studentPerformanceRows])
 
   const emptyState = !visibleActivityRecords.length && !filteredCompletedRows.length
+  const hasPerformanceContent = (
+    pendingPerformanceRows.length > 0
+    || completedPerformanceRows.length > 0
+    || repeatRemedialPerformanceRows.length > 0
+  )
 
   return (
-    <section className="vx-content forms-page dashboard-summary-page">
+    <section className={`vx-content forms-page dashboard-summary-page${embedded ? ' is-embedded-dashboard' : ''}`}>
       <div className="dashboard-summary-shell">
-        <PageBreadcrumbs items={[{ label: 'Evaluation' }, { label: 'Dashboard Summary' }]} />
+        {!embedded ? <PageBreadcrumbs items={[{ label: 'Evaluation' }, { label: 'Dashboard Summary' }]} /> : null}
 
-        <section className="dashboard-summary-command">
-          <div>
-            <span className="dashboard-summary-command-kicker">Skill Analytics</span>
-            <h1>Dashboard</h1>
-            <p>Track activities, completed evaluations, domain coverage, criticality and student performance in one live view.</p>
-          </div>
-        </section>
+        {!embedded ? (
+          <section className="dashboard-summary-command">
+            <div>
+              <span className="dashboard-summary-command-kicker">{embedded ? 'Activity Analytics' : 'Skill Analytics'}</span>
+              <h1>{heading}</h1>
+              <p>{description}</p>
+            </div>
+          </section>
+        ) : null}
 
         <section className="vx-card dashboard-summary-toolbar dashboard-summary-toolbar-panel">
           <div className="dashboard-summary-toolbar-head">
@@ -918,21 +1167,25 @@ export default function DashboardSummaryPage({
           </div>
 
           <div className="dashboard-summary-toolbar-grid">
-            <DashboardFilterDropdown
-              label="Year"
-              value={selectedYear}
-              placeholder="All years"
-              options={yearOptions}
-              onChange={setSelectedYear}
-            />
+            {!embedded ? (
+              <DashboardFilterDropdown
+                label="Year"
+                value={selectedYear}
+                placeholder="All years"
+                options={yearOptions}
+                onChange={setSelectedYear}
+              />
+            ) : null}
 
-            <DashboardFilterDropdown
-              label="SGT"
-              value={selectedSgt}
-              placeholder="All groups"
-              options={sgtOptions}
-              onChange={setSelectedSgt}
-            />
+            {!embedded ? (
+              <DashboardFilterDropdown
+                label="SGT"
+                value={selectedSgt}
+                placeholder="All groups"
+                options={sgtOptions}
+                onChange={setSelectedSgt}
+              />
+            ) : null}
 
             <DashboardFilterDropdown
               label="Activity Type"
@@ -965,30 +1218,32 @@ export default function DashboardSummaryPage({
           </div>
         </section>
 
-        <section className="dashboard-summary-metrics" aria-label="Dashboard metrics">
-          {metricCards.map((card) => {
-            const Icon = card.icon
+        {!((embedded && emptyState)) ? (
+          <section className="dashboard-summary-metrics" aria-label="Dashboard metrics">
+            {metricCards.map((card) => {
+              const Icon = card.icon
 
-            return (
-              <article key={card.id} className={`dashboard-summary-metric-card ${card.tone}`}>
-                <div className="dashboard-summary-metric-icon-wrap">
-                  <span className="dashboard-summary-metric-icon" aria-hidden="true">
-                    <Icon size={18} strokeWidth={2} />
-                  </span>
-                  <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" />
-                </div>
-                <div className="dashboard-summary-metric-copy">
-                  <div className="dashboard-summary-metric-topline">
-                    <span>{card.label}</span>
+              return (
+                <article key={card.id} className={`dashboard-summary-metric-card ${card.tone}`}>
+                  <div className="dashboard-summary-metric-icon-wrap">
+                    <span className="dashboard-summary-metric-icon" aria-hidden="true">
+                      <Icon size={18} strokeWidth={2} />
+                    </span>
+                    <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" />
                   </div>
-                  <strong>{String(card.value).padStart(2, '0')}</strong>
-                </div>
-              </article>
-            )
-          })}
-        </section>
+                  <div className="dashboard-summary-metric-copy">
+                    <div className="dashboard-summary-metric-topline">
+                      <span>{card.label}</span>
+                    </div>
+                    <strong>{String(card.value).padStart(2, '0')}</strong>
+                  </div>
+                </article>
+              )
+            })}
+          </section>
+        ) : null}
 
-        {emptyState ? (
+        {emptyState && !embedded ? (
           <section className="eval-empty dashboard-summary-empty-note">
             <div className="eval-empty-copy">
               <FileSearch size={18} strokeWidth={2} />
@@ -1081,97 +1336,202 @@ export default function DashboardSummaryPage({
             </article>
         </section>
 
-        <section className="dashboard-performance-grid">
-          <article className="dashboard-performance-card">
-            <div className="dashboard-performance-head">
-              <div>
-                <span>Activity Performance</span>
-                <strong>Evaluation progress by activity</strong>
-              </div>
-              <ClipboardList size={18} strokeWidth={2} />
-            </div>
-            <div className="dashboard-performance-list">
-              {activityPerformanceRows.length ? activityPerformanceRows.map((row) => {
-                const score = clampPercent(row.score)
-
-                return (
-                  <article key={row.id} className="dashboard-performance-row">
-                    <div className="dashboard-performance-main">
-                      <span className="dashboard-performance-avatar is-activity">{normalizeText(row.activityType).slice(0, 2) || 'AC'}</span>
-                      <div>
-                        <strong>{row.activityName}</strong>
-                        <small>{row.activityType} / {row.year} / {row.sgt}</small>
-                      </div>
-                    </div>
-                    <div className="dashboard-performance-score">
-                      <span>{score}%</span>
-                      <div className="dashboard-performance-track">
-                        <i style={{ width: `${score}%` }} />
-                      </div>
-                    </div>
-                    <div className="dashboard-performance-meta">
-                      <span>{row.submitted} submitted</span>
-                      <span className={`dashboard-performance-pill ${row.status === 'Evaluated' ? 'is-good' : 'is-warn'}`}>{row.status}</span>
-                    </div>
-                  </article>
-                )
-              }) : (
-                <div className="dashboard-performance-empty">
-                  <strong>No activity data</strong>
-                  <span>Change the filters to view activity performance.</span>
+        {!((embedded && !hasPerformanceContent)) ? (
+          <section className="dashboard-performance-grid">
+            <article className="dashboard-performance-card dashboard-performance-card--combined">
+              <div className="dashboard-performance-head">
+                <div>
+                  <span>Evaluation Performance</span>
+                  <strong>Track student evaluation status by activity</strong>
                 </div>
-              )}
-            </div>
-          </article>
-
-          <article className="dashboard-performance-card">
-            <div className="dashboard-performance-head">
-              <div>
-                <span>Student Performance</span>
-                <strong>Recent completed evaluations</strong>
               </div>
-              <Users size={18} strokeWidth={2} />
-            </div>
-            <div className="dashboard-performance-list">
-              {studentPerformanceRows.length ? studentPerformanceRows.map((row) => {
-                const score = clampPercent(row.score)
-                const initials = normalizeText(row.studentName)
-                  .split(/\s+/)
-                  .map((part) => part.charAt(0))
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase()
 
-                return (
-                  <article key={row.id} className="dashboard-performance-row">
-                    <div className="dashboard-performance-main">
-                      <span className="dashboard-performance-avatar">{initials || 'ST'}</span>
-                      <div>
-                        <strong>{row.studentName}</strong>
-                        <small>{row.registerId} / {row.activityType} / Critical {row.critical}</small>
-                      </div>
-                    </div>
-                    <div className="dashboard-performance-score">
-                      <span>{score}%</span>
-                      <div className="dashboard-performance-track">
-                        <i style={{ width: `${score}%` }} />
-                      </div>
-                    </div>
-                    <div className="dashboard-performance-meta">
-                      <span>Final result</span>
-                      <span className="dashboard-performance-pill is-soft">{row.result}</span>
-                    </div>
-                  </article>
-                )
-              }) : (
-                <div className="dashboard-performance-empty">
-                  <strong>No student records</strong>
-                  <span>Search or filter by a completed evaluation.</span>
+              <div className="dashboard-performance-chipbar">
+                <article><small>Total</small><strong>{performanceSummary.totalEvaluations}</strong></article>
+                <article><small>Pending</small><strong>{performanceSummary.pendingCount}</strong></article>
+                <article><small>Completed</small><strong>{performanceSummary.completedCount}</strong></article>
+                <article><small>Repeat</small><strong>{performanceSummary.repeatCount + performanceSummary.remedialCount}</strong></article>
+                <article><small>Avg Score</small><strong>{clampPercent(performanceSummary.averageScore)}%</strong></article>
+              </div>
+
+              <div className="dashboard-performance-board">
+                <section className="dashboard-performance-group">
+                <div className="dashboard-performance-group-head">
+                  <div className="dashboard-performance-group-title is-pending">
+                    <span>Pending Evaluation</span>
+                    <strong>{pendingPerformanceRows.length}</strong>
+                  </div>
                 </div>
-              )}
-            </div>
-          </article>
-        </section>
+                <div className="dashboard-performance-table-head is-pending">
+                  <span>Student / Activity</span>
+                  <div className="dashboard-performance-meta-head">
+                    <span>Year / SGT</span>
+                    <span>Attempt</span>
+                    <span>Score</span>
+                    <span>Threshold</span>
+                    <span>Result</span>
+                    <span>Status</span>
+                  </div>
+                </div>
+                <div className="dashboard-performance-list">
+                  {pendingPerformanceRows.length ? pendingPerformanceRows.map((row) => {
+                    return (
+                      <article key={row.id} className="dashboard-performance-row dashboard-performance-row--board is-pending">
+                        <div className="dashboard-performance-identity">
+                          <strong>{row.primaryLabel}</strong>
+                          <small>{row.secondaryLabel}</small>
+                        </div>
+                        <div className="dashboard-performance-meta-grid">
+                          <div className="dashboard-performance-cell">
+                            <strong>{row.year}</strong>
+                            <small>{row.sgt}</small>
+                          </div>
+                          <div className="dashboard-performance-cell">
+                            <strong>{row.attemptLabel}</strong>
+                          </div>
+                          <div className="dashboard-performance-cell dashboard-performance-cell--score">
+                            <strong>{row.score}%</strong>
+                          </div>
+                          <div className="dashboard-performance-cell">
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.thresholdLabel)}`}>{row.thresholdLabel}</span>
+                          </div>
+                          <div className="dashboard-performance-cell">
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.resultLabel)}`}>{row.resultLabel}</span>
+                          </div>
+                          <div className="dashboard-performance-outcome">
+                            <span className="dashboard-performance-pill is-warn">{row.statusLabel}</span>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  }) : (
+                    <div className="dashboard-performance-empty">
+                      <strong>No pending evaluations</strong>
+                      <span>All visible activities already have evaluation records.</span>
+                    </div>
+                  )}
+                </div>
+                </section>
+
+                <section className="dashboard-performance-group">
+                <div className="dashboard-performance-group-head">
+                  <div className="dashboard-performance-group-title is-completed">
+                    <span>Completed Evaluation</span>
+                    <strong>{completedPerformanceRows.length}</strong>
+                  </div>
+                </div>
+                <div className="dashboard-performance-table-head">
+                  <span>Student / Activity</span>
+                  <div className="dashboard-performance-meta-head">
+                    <span>Year / SGT</span>
+                    <span>Attempt</span>
+                    <span>Score</span>
+                    <span>Threshold</span>
+                    <span>Result</span>
+                    <span>Status</span>
+                  </div>
+                </div>
+                <div className="dashboard-performance-list">
+                  {completedPerformanceRows.length ? completedPerformanceRows.map((row) => {
+                    return (
+                      <article key={row.id} className="dashboard-performance-row dashboard-performance-row--board">
+                        <div className="dashboard-performance-identity">
+                          <strong>{row.primaryLabel}</strong>
+                          <small>{row.secondaryLabel}</small>
+                        </div>
+                        <div className="dashboard-performance-meta-grid">
+                          <div className="dashboard-performance-cell">
+                            <strong>{row.year}</strong>
+                            <small>{row.sgt}</small>
+                          </div>
+                          <div className="dashboard-performance-cell">
+                            <strong>{row.attemptLabel}</strong>
+                          </div>
+                          <div className="dashboard-performance-cell dashboard-performance-cell--score">
+                            <strong>{row.score}%</strong>
+                          </div>
+                          <div className="dashboard-performance-cell">
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.thresholdLabel)}`}>{row.thresholdLabel}</span>
+                          </div>
+                          <div className="dashboard-performance-cell">
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.resultLabel)}`}>{row.resultLabel}</span>
+                          </div>
+                          <div className="dashboard-performance-outcome">
+                            <span className="dashboard-performance-pill is-good">{row.statusLabel}</span>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  }) : (
+                    <div className="dashboard-performance-empty">
+                      <strong>No completed evaluations</strong>
+                      <span>Completed student rows will appear here.</span>
+                    </div>
+                  )}
+                </div>
+                </section>
+
+                <section className="dashboard-performance-group">
+                <div className="dashboard-performance-group-head">
+                  <div className="dashboard-performance-group-title is-repeat">
+                    <span>Repeat / Remedial</span>
+                    <strong>{repeatRemedialPerformanceRows.length}</strong>
+                  </div>
+                </div>
+                <div className="dashboard-performance-table-head">
+                  <span>Student / Activity</span>
+                  <div className="dashboard-performance-meta-head">
+                    <span>Year / SGT</span>
+                    <span>Attempt</span>
+                    <span>Score</span>
+                    <span>Threshold</span>
+                    <span>Result</span>
+                    <span>Status</span>
+                  </div>
+                </div>
+                <div className="dashboard-performance-list">
+                  {repeatRemedialPerformanceRows.length ? repeatRemedialPerformanceRows.map((row) => {
+                    return (
+                      <article key={row.id} className="dashboard-performance-row dashboard-performance-row--board">
+                        <div className="dashboard-performance-identity">
+                          <strong>{row.primaryLabel}</strong>
+                          <small>{row.secondaryLabel}</small>
+                        </div>
+                        <div className="dashboard-performance-meta-grid">
+                          <div className="dashboard-performance-cell">
+                            <strong>{row.year}</strong>
+                            <small>{row.sgt}</small>
+                          </div>
+                          <div className="dashboard-performance-cell">
+                            <strong>{row.attemptLabel}</strong>
+                          </div>
+                          <div className="dashboard-performance-cell dashboard-performance-cell--score">
+                            <strong>{row.score}%</strong>
+                          </div>
+                          <div className="dashboard-performance-cell">
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.thresholdLabel)}`}>{row.thresholdLabel}</span>
+                          </div>
+                          <div className="dashboard-performance-cell">
+                            <span className={`dashboard-performance-pill ${getPerformanceToneClass(row.resultLabel)}`}>{row.resultLabel}</span>
+                          </div>
+                          <div className="dashboard-performance-outcome">
+                            <span className={`dashboard-performance-pill ${normalizeLower(row.resultLabel) === 'meets' ? 'is-soft' : 'is-warn'}`}>{row.statusLabel}</span>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  }) : (
+                    <div className="dashboard-performance-empty">
+                      <strong>No repeat or remedial evaluations</strong>
+                      <span>Students needing follow-up will appear here.</span>
+                    </div>
+                  )}
+                </div>
+                </section>
+              </div>
+            </article>
+          </section>
+        ) : null}
 
         {false ? (
         <section className="dashboard-summary-table-grid">
