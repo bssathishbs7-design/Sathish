@@ -64,6 +64,16 @@ const metricToFilter = {
 const normalizeText = (value) => String(value ?? '').trim()
 const normalizeLower = (value) => normalizeText(value).toLowerCase()
 const buildAnalyticsKey = (item) => [item?.id, item?.title, item?.type, item?.studentId, item?.studentName].map(normalizeText).join('::')
+const LIVE_ACTIVITY_AUTOPLAY_MS = 4500
+const isLiveReadyActivity = (item) => {
+  const normalizedStatus = normalizeLower(item?.status)
+  const normalizedAction = normalizeLower(item?.action)
+
+  if (normalizedStatus === 'live activity') return true
+  if (normalizedStatus === 'assigned' && normalizedAction === 'start activity') return true
+
+  return false
+}
 
 function ActivityCard({ item, onStartActivity, onSelectAnalytics, isSelected = false }) {
   const attemptValue = item.attemptCount?.split('/')?.[0]?.trim() ?? '1'
@@ -130,7 +140,9 @@ export default function MySkillActivityPage({
   const [activeMetric, setActiveMetric] = useState('Overall Activity')
   const [query, setQuery] = useState('')
   const [selectedAnalyticsKey, setSelectedAnalyticsKey] = useState('')
+  const [activeLiveIndex, setActiveLiveIndex] = useState(0)
   const analyticsSectionRef = useRef(null)
+  const boardSectionRef = useRef(null)
 
   const activityItems = useMemo(() => ([
     ...assignedActivities.map((item) => ({
@@ -148,6 +160,10 @@ export default function MySkillActivityPage({
       const normalizedStatus = normalizeLower(item.status)
       return normalizedAction === 'view results' || normalizedStatus === 'completed'
     })
+  ), [activityItems])
+
+  const liveActivities = useMemo(() => (
+    activityItems.filter((item) => isLiveReadyActivity(item))
   ), [activityItems])
 
   const filteredItems = useMemo(() => {
@@ -233,6 +249,23 @@ export default function MySkillActivityPage({
     })
   }, [selectedAnalyticsKey])
 
+  useEffect(() => {
+    if (activeLiveIndex < liveActivities.length) return
+    setActiveLiveIndex(0)
+  }, [activeLiveIndex, liveActivities.length])
+
+  useEffect(() => {
+    if (liveActivities.length < 2) return undefined
+
+    const timer = window.setInterval(() => {
+      setActiveLiveIndex((currentIndex) => (
+        currentIndex + 1 >= liveActivities.length ? 0 : currentIndex + 1
+      ))
+    }, LIVE_ACTIVITY_AUTOPLAY_MS)
+
+    return () => window.clearInterval(timer)
+  }, [liveActivities.length])
+
   const kpiItems = [
     { label: 'Assigned', value: activityItems.filter((item) => item.status === 'Assigned').length, icon: ClipboardList, tone: 'is-assigned' },
     { label: 'Live Activity', value: activityItems.filter((item) => item.status === 'Live Activity').length, icon: Activity, tone: 'is-live', isLive: true },
@@ -241,11 +274,19 @@ export default function MySkillActivityPage({
     { label: 'Activity Results', value: activityItems.filter((item) => item.status === 'Completed').length, icon: ChartColumn, tone: 'is-results' },
   ]
 
-  const liveActivity = activityItems.find((item) => item.status === 'Live Activity') ?? null
+  const liveActivity = liveActivities[activeLiveIndex] ?? null
+  const hasMultipleLiveActivities = liveActivities.length >= 2
 
   const handleMetricClick = (label) => {
     setActiveMetric(label)
     setActiveFilter(metricToFilter[label] ?? 'All')
+
+    window.requestAnimationFrame(() => {
+      boardSectionRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
   }
 
   const handleFilterClick = (filter) => {
@@ -278,7 +319,7 @@ export default function MySkillActivityPage({
             </div>
           </div>
 
-          <div className="my-skills-live-card">
+          <div className={`my-skills-live-card${hasMultipleLiveActivities ? ' is-carousel' : ''}`}>
             <div className="my-skills-live-card-top">
               <span className="my-skills-live-indicator">
                 <span className="my-skills-live-indicator-dot" aria-hidden="true" />
@@ -286,13 +327,29 @@ export default function MySkillActivityPage({
               </span>
               <span className="my-skills-live-card-date">{liveActivity?.createdDate ?? 'No date'}</span>
             </div>
-            <strong>{liveActivity?.title ?? 'No live activity right now'}</strong>
-            <p>{liveActivity ? `${liveActivity.type} is ready to launch now.` : 'New active assignments will appear here when they are available.'}</p>
+            <div className="my-skills-live-card-body">
+              <strong>{liveActivity?.title ?? 'No live activity right now'}</strong>
+              <p>{liveActivity ? `${liveActivity.type} is ready to launch now.` : 'New active assignments will appear here when they are available.'}</p>
+            </div>
             {liveActivity ? (
               <button type="button" className="tool-btn green my-skills-live-card-cta" onClick={() => onStartActivity?.(liveActivity)}>
                 <Play size={13} strokeWidth={2.2} />
                 Start Activity
               </button>
+            ) : null}
+            {hasMultipleLiveActivities ? (
+              <div className="my-skills-live-dots" aria-label="Live activity slides">
+                {liveActivities.map((item, index) => (
+                  <button
+                    key={buildAnalyticsKey(item) || `${item.title}-${index}`}
+                    type="button"
+                    className={`my-skills-live-dot${activeLiveIndex === index ? ' is-active' : ''}`}
+                    onClick={() => setActiveLiveIndex(index)}
+                    aria-label={`Show live activity ${index + 1}`}
+                    aria-pressed={activeLiveIndex === index}
+                  />
+                ))}
+              </div>
             ) : null}
           </div>
         </section>
@@ -335,7 +392,7 @@ export default function MySkillActivityPage({
           </section>
         ) : null}
 
-        <section className="my-skills-board-shell">
+        <section ref={boardSectionRef} className="my-skills-board-shell">
           <div className="my-skills-toolbar">
             <div className="my-skills-filter-row">
               {statusFilters.map((filter) => (

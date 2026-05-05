@@ -1640,6 +1640,16 @@
     linear-gradient(145deg, #0f6d56 0%, #0e7c60 42%, #114639 100%);
 }
 
+.my-skills-live-card.is-carousel {
+  min-height: 244px;
+}
+
+.my-skills-live-card-body {
+  display: grid;
+  gap: 10px;
+  min-height: 88px;
+}
+
 .my-skills-live-card strong {
   font-size: 1.04rem;
   line-height: 1.2;
@@ -1656,6 +1666,29 @@
   padding-inline: 14px;
   border-radius: 12px;
   font-size: 0.76rem;
+}
+
+.my-skills-live-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+}
+
+.my-skills-live-dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(224, 255, 243, 0.34);
+  cursor: pointer;
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.my-skills-live-dot.is-active {
+  background: #ffffff;
+  transform: scale(1.18);
 }
 
 .my-skills-metrics-grid {
@@ -1903,6 +1936,14 @@
     radial-gradient(circle at top left, rgba(95, 232, 177, 0.12), transparent 24%),
     radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.08), transparent 24%),
     linear-gradient(145deg, #111c30 0%, #0f1a2c 54%, #0d1727 100%);
+}
+
+.theme-dark .my-skills-live-dot {
+  background: rgba(224, 255, 243, 0.24);
+}
+
+.theme-dark .my-skills-live-dot.is-active {
+  background: #8ee4ca;
 }
 
 .theme-dark .my-skills-metric-card.is-active {
