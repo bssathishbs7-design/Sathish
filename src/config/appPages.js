@@ -12,6 +12,9 @@ export const APP_PAGES = {
   DASHBOARD: 'Dashboard',
   CONFIGURATION: 'Configuration',
   EVALUATION: 'Evaluation',
+  ASSESSMENT_CREATE: 'Assessment Create',
+  ASSESSMENT_EVALUATION: 'Assessment Evaluation',
+  ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
   ACTIVITY_RESULT: 'Activity Result',
   COMPLETED_EVALUATION: 'Completed Evaluation',
   REVIEW_APPROVE: 'Approval Queue',
@@ -48,6 +51,12 @@ export const MY_SKILL_PAGES = [
   APP_PAGES.STUDENT_EXAM,
 ]
 
+export const ASSESSMENT_PAGES = [
+  APP_PAGES.ASSESSMENT_CREATE,
+  APP_PAGES.ASSESSMENT_EVALUATION,
+  APP_PAGES.ASSESSMENT_DASHBOARD,
+]
+
 export const SIDEBAR_MENU = [
   {
     section: 'Main',
@@ -70,6 +79,15 @@ export const SIDEBAR_MENU = [
         icon: BookOpenCheck,
         children: [
           { label: APP_PAGES.MY_SKILL_ACTIVITY, icon: BookOpenCheck },
+        ],
+      },
+      {
+        label: 'Assessment',
+        icon: TrendingUp,
+        children: [
+          { label: APP_PAGES.ASSESSMENT_CREATE, navLabel: 'Create', icon: SlidersHorizontal },
+          { label: APP_PAGES.ASSESSMENT_EVALUATION, navLabel: 'Evaluation', icon: ClipboardCheck },
+          { label: APP_PAGES.ASSESSMENT_DASHBOARD, navLabel: 'Dashboard', icon: BarChart3 },
         ],
       },
     ],

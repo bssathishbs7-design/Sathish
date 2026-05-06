@@ -5,6 +5,9 @@ import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
+import AssessmentCreatePage from './pages/AssessmentCreatePage'
+import AssessmentEvaluationPage from './pages/AssessmentEvaluationPage'
+import AssessmentDashboardPage from './pages/AssessmentDashboardPage'
 import CompletedEvaluationPage from './pages/CompletedEvaluationPage'
 import ReviewApprovePage from './pages/ReviewApprovePage'
 import ApprovalViewPage from './pages/ApprovalViewPage'
@@ -26,6 +29,9 @@ const PAGE_PATHS = {
   [APP_PAGES.DASHBOARD]: '/',
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
+  [APP_PAGES.ASSESSMENT_CREATE]: '/assessment/create',
+  [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/evaluation',
+  [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
   [APP_PAGES.ACTIVITY_RESULT]: '/skills/activity-result',
   [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
   [APP_PAGES.REVIEW_APPROVE]: '/skills/review-approve',
@@ -1157,6 +1163,12 @@ function App() {
               onScheduleAttempt={handleSchedulePublishedAttempt}
               onClearAttemptSchedule={handleClearPublishedAttemptSchedule}
             />
+          ) : activePage === APP_PAGES.ASSESSMENT_CREATE ? (
+            <AssessmentCreatePage onNavigate={navigateToPage} onAlert={showAlert} />
+          ) : activePage === APP_PAGES.ASSESSMENT_EVALUATION ? (
+            <AssessmentEvaluationPage onNavigate={navigateToPage} onAlert={showAlert} />
+          ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
+            <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (
             <CompletedEvaluationPage
               completedEvaluationRows={completedEvaluationRows}
