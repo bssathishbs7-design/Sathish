@@ -1964,6 +1964,250 @@
   opacity: 0.88;
 }
 
+.theme-dark .my-skills-progress-shell {
+  border-color: rgba(63, 87, 118, 0.72);
+  background:
+    radial-gradient(circle at top right, rgba(67, 118, 150, 0.16), transparent 28%),
+    linear-gradient(180deg, #162235 0%, #121c2d 100%);
+  box-shadow: 0 18px 34px rgba(2, 8, 23, 0.34);
+}
+
+.theme-dark .my-skills-progress-heading h1,
+.theme-dark .my-skills-progress-summary-strip strong,
+.theme-dark .my-skills-progress-cell.is-question strong,
+.theme-dark .my-skills-progress-board .my-skills-board-head h3,
+.theme-dark .my-skills-progress-section .my-skills-section-head h3 {
+  color: #eef6ff;
+}
+
+.theme-dark .my-skills-progress-heading p,
+.theme-dark .my-skills-progress-summary-strip small,
+.theme-dark .my-skills-progress-section .my-skills-section-head span,
+.theme-dark .my-skills-progress-table-head,
+.theme-dark .my-skills-progress-cell.is-question p,
+.theme-dark .my-skills-progress-answer-box p,
+.theme-dark .my-skills-progress-remarks p,
+.theme-dark .my-skills-progress-empty {
+  color: #9fb0c8;
+}
+
+.theme-dark .my-skills-progress-back,
+.theme-dark .my-skills-progress-download {
+  border-color: rgba(42, 57, 83, 0.92);
+  background: linear-gradient(180deg, #263554 0%, #1b2840 100%);
+  color: #f8fbff;
+  box-shadow: 0 10px 20px rgba(8, 15, 30, 0.18);
+}
+
+.theme-dark .my-skills-progress-back:hover,
+.theme-dark .my-skills-progress-back:focus-visible,
+.theme-dark .my-skills-progress-download:hover,
+.theme-dark .my-skills-progress-download:focus-visible {
+  border-color: rgba(74, 101, 142, 0.95);
+  background: linear-gradient(180deg, #2c3b5d 0%, #1f2d48 100%);
+  color: #ffffff;
+}
+
+.theme-dark .my-skills-progress-date,
+.theme-dark .my-skills-progress-board-meta {
+  border-color: rgba(76, 102, 132, 0.76);
+  background: rgba(24, 37, 58, 0.94);
+  color: #d5e4f4;
+}
+
+.theme-dark .my-skills-progress-state {
+  border-color: rgba(71, 175, 145, 0.5);
+  background: rgba(18, 79, 70, 0.32);
+  color: #8cf0d5;
+}
+
+.theme-dark .my-skills-progress-summary-strip {
+  border-color: rgba(63, 87, 118, 0.72);
+  background: rgba(19, 29, 46, 0.94);
+}
+
+.theme-dark .my-skills-progress-summary-strip span {
+  border-right-color: rgba(60, 82, 111, 0.7);
+}
+
+.theme-dark .my-skills-progress-type {
+  border-color: rgba(76, 102, 132, 0.76);
+  background: rgba(24, 37, 58, 0.94);
+  color: #d5e4f4;
+}
+
+.theme-dark .my-skills-progress-type.is-ospe {
+  border-color: rgba(71, 175, 145, 0.52);
+  background: rgba(18, 79, 70, 0.28);
+  color: #8cf0d5;
+}
+
+.theme-dark .my-skills-progress-board {
+  border-color: rgba(63, 87, 118, 0.72);
+  background:
+    radial-gradient(circle at top right, rgba(67, 118, 150, 0.14), transparent 28%),
+    linear-gradient(180deg, #162235 0%, #121c2d 100%);
+  box-shadow: 0 18px 34px rgba(2, 8, 23, 0.34);
+}
+
+.theme-dark .my-skills-progress-board .my-skills-board-head h3 {
+  color: #eef6ff;
+}
+
+.theme-dark .my-skills-progress-board .my-skills-board-head .my-skills-progress-board-meta {
+  border-color: rgba(76, 102, 132, 0.76);
+  background: rgba(24, 37, 58, 0.94);
+  color: #d5e4f4;
+}
+
+.theme-dark .my-skills-progress-section {
+  border-color: rgba(63, 87, 118, 0.68);
+  background:
+    radial-gradient(circle at top right, rgba(67, 118, 150, 0.12), transparent 30%),
+    linear-gradient(180deg, #18263b 0%, #141f31 100%);
+}
+
+.theme-dark .my-skills-progress-result-row {
+  border-top-color: rgba(60, 82, 111, 0.68);
+}
+
+.theme-dark .my-skills-progress-answer-box,
+.theme-dark .my-skills-progress-remarks {
+  border-color: rgba(63, 87, 118, 0.68);
+  background: linear-gradient(180deg, #1a2940 0%, #152134 100%);
+}
+
+.theme-dark .my-skills-progress-answer-box span,
+.theme-dark .my-skills-progress-remarks span {
+  color: #9fb0c8;
+}
+
+@media (max-width: 1100px) {
+  .theme-dark .my-skills-progress-result-row {
+    border-color: rgba(63, 87, 118, 0.68);
+    background: linear-gradient(180deg, #18263b 0%, #141f31 100%);
+  }
+}
+
+.vx-shell.theme-dark .my-skills-progress-shell {
+  border-color: rgba(63, 87, 118, 0.72);
+  background:
+    radial-gradient(circle at top right, rgba(67, 118, 150, 0.16), transparent 28%),
+    linear-gradient(180deg, #162235 0%, #121c2d 100%);
+  box-shadow: 0 18px 34px rgba(2, 8, 23, 0.34);
+}
+
+.vx-shell.theme-dark .my-skills-progress-back,
+.vx-shell.theme-dark .my-skills-progress-download {
+  border-color: rgba(42, 57, 83, 0.92);
+  background: linear-gradient(180deg, #263554 0%, #1b2840 100%);
+  color: #f8fbff;
+  box-shadow: 0 10px 20px rgba(8, 15, 30, 0.18);
+}
+
+.vx-shell.theme-dark .my-skills-progress-back:hover,
+.vx-shell.theme-dark .my-skills-progress-back:focus-visible,
+.vx-shell.theme-dark .my-skills-progress-download:hover,
+.vx-shell.theme-dark .my-skills-progress-download:focus-visible {
+  border-color: rgba(74, 101, 142, 0.95);
+  background: linear-gradient(180deg, #2c3b5d 0%, #1f2d48 100%);
+  color: #ffffff;
+}
+
+.vx-shell.theme-dark .my-skills-progress-date,
+.vx-shell.theme-dark .my-skills-progress-state,
+.vx-shell.theme-dark .my-skills-progress-type,
+.vx-shell.theme-dark .my-skills-progress-summary-strip,
+.vx-shell.theme-dark .my-skills-progress-summary-strip span,
+.vx-shell.theme-dark .my-skills-progress-summary-strip small,
+.vx-shell.theme-dark .my-skills-progress-summary-strip strong {
+  position: relative;
+  z-index: 0;
+}
+
+.vx-shell.theme-dark .my-skills-progress-date,
+.vx-shell.theme-dark .my-skills-progress-board-meta {
+  border-color: rgba(76, 102, 132, 0.76);
+  background: rgba(24, 37, 58, 0.94);
+  color: #d5e4f4;
+}
+
+.vx-shell.theme-dark .my-skills-progress-state {
+  border-color: rgba(71, 175, 145, 0.5);
+  background: rgba(18, 79, 70, 0.32);
+  color: #8cf0d5;
+}
+
+.vx-shell.theme-dark .my-skills-progress-type {
+  border-color: rgba(76, 102, 132, 0.76);
+  background: rgba(24, 37, 58, 0.94);
+  color: #d5e4f4;
+}
+
+.vx-shell.theme-dark .my-skills-progress-type.is-ospe {
+  border-color: rgba(71, 175, 145, 0.52);
+  background: rgba(18, 79, 70, 0.28);
+  color: #8cf0d5;
+}
+
+.vx-shell.theme-dark .my-skills-progress-summary-strip {
+  border-color: rgba(63, 87, 118, 0.72);
+  background: rgba(19, 29, 46, 0.94);
+}
+
+.vx-shell.theme-dark .my-skills-progress-summary-strip span {
+  border-right-color: rgba(60, 82, 111, 0.7);
+}
+
+.vx-shell.theme-dark .my-skills-progress-heading h1,
+.vx-shell.theme-dark .my-skills-progress-summary-strip strong {
+  color: #eef6ff;
+}
+
+.vx-shell.theme-dark .my-skills-progress-heading p,
+.vx-shell.theme-dark .my-skills-progress-summary-strip small {
+  color: #9fb0c8;
+}
+
+.vx-shell.theme-dark .vx-content.my-skills-page {
+  background:
+    radial-gradient(circle at top left, rgba(43, 76, 110, 0.16), transparent 20%),
+    linear-gradient(180deg, #0c1522 0%, #0f1a2a 100%) !important;
+}
+
+.vx-shell.theme-dark .my-skills-progress-shell {
+  border-color: rgba(63, 87, 118, 0.72) !important;
+  background:
+    radial-gradient(circle at top right, rgba(67, 118, 150, 0.16), transparent 28%),
+    linear-gradient(180deg, #162235 0%, #121c2d 100%) !important;
+}
+
+.vx-shell.theme-dark .my-skills-progress-board {
+  border-color: rgba(63, 87, 118, 0.72) !important;
+  background:
+    radial-gradient(circle at top right, rgba(67, 118, 150, 0.14), transparent 28%),
+    linear-gradient(180deg, #162235 0%, #121c2d 100%) !important;
+  box-shadow: 0 18px 34px rgba(2, 8, 23, 0.34) !important;
+}
+
+.vx-shell.theme-dark .my-skills-progress-board .my-skills-board-head h3 {
+  color: #eef6ff !important;
+}
+
+.vx-shell.theme-dark .my-skills-progress-back,
+.vx-shell.theme-dark .my-skills-progress-download {
+  background: linear-gradient(180deg, #263554 0%, #1b2840 100%) !important;
+  border-color: rgba(42, 57, 83, 0.92) !important;
+  color: #f8fbff !important;
+}
+
+.vx-shell.theme-dark .my-skills-progress-date,
+.vx-shell.theme-dark .my-skills-progress-state,
+.vx-shell.theme-dark .my-skills-progress-type,
+.vx-shell.theme-dark .my-skills-progress-summary-strip {
+  background: rgba(19, 29, 46, 0.94) !important;
+}
+
 @media (max-width: 1240px) {
   .my-skills-metrics-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
