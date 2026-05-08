@@ -708,7 +708,7 @@ export default function DashboardSummaryPage({
   const [selectedSgt, setSelectedSgt] = useState('')
   const [selectedActivityType, setSelectedActivityType] = useState('')
   const [selectedActivity, setSelectedActivity] = useState('')
-  const [studentSearch, setStudentSearch] = useState('')
+  const [activitySearch, setActivitySearch] = useState('')
 
   const assignedSource = useMemo(
     () => (assignedActivities.length || !useSampleFallback ? assignedActivities : buildSampleAssignedActivities()),
@@ -787,8 +787,13 @@ export default function DashboardSummaryPage({
       && (!selectedSgt || record.sgt === selectedSgt)
       && (!selectedActivityType || record.activityType === selectedActivityType)
       && (!selectedActivity || record.activityName === selectedActivity)
+      && (
+        !activitySearch.trim()
+        || record.activityName?.toLowerCase().includes(activitySearch.trim().toLowerCase())
+        || record.activityType?.toLowerCase().includes(activitySearch.trim().toLowerCase())
+      )
     ))
-  ), [evaluationSource, selectedActivity, selectedActivityType, selectedSgt, selectedYear])
+  ), [activitySearch, evaluationSource, selectedActivity, selectedActivityType, selectedSgt, selectedYear])
 
   const filteredAssignedActivities = useMemo(() => (
     assignedSource.filter((assignment) => (
@@ -796,28 +801,33 @@ export default function DashboardSummaryPage({
       && (!selectedSgt || assignment.sgt === selectedSgt)
       && (!selectedActivityType || assignment.type === selectedActivityType)
       && (!selectedActivity || assignment.title === selectedActivity)
+      && (
+        !activitySearch.trim()
+        || assignment.title?.toLowerCase().includes(activitySearch.trim().toLowerCase())
+        || assignment.type?.toLowerCase().includes(activitySearch.trim().toLowerCase())
+      )
     ))
-  ), [assignedSource, selectedActivity, selectedActivityType, selectedSgt, selectedYear])
+  ), [activitySearch, assignedSource, selectedActivity, selectedActivityType, selectedSgt, selectedYear])
 
   const filteredCompletedRows = useMemo(() => {
-    const needle = studentSearch.trim().toLowerCase()
+    const needle = activitySearch.trim().toLowerCase()
 
     return completedRowsSource.filter((row) => (
       filteredActivityRecords.some((record) => rowMatchesActivityRecord(row, record))
       && (
         !needle
-        || row.studentName?.toLowerCase().includes(needle)
-        || row.registerId?.toLowerCase().includes(needle)
+        || row.activityName?.toLowerCase().includes(needle)
+        || row.activityType?.toLowerCase().includes(needle)
       )
     ))
-  }, [completedRowsSource, filteredActivityRecords, studentSearch])
+  }, [activitySearch, completedRowsSource, filteredActivityRecords])
 
   const visibleActivityRecords = useMemo(() => {
-    if (!studentSearch.trim()) return filteredActivityRecords
+    if (!activitySearch.trim()) return filteredActivityRecords
 
     const matchingActivityIds = new Set(filteredCompletedRows.map((row) => row.activityId))
     return filteredActivityRecords.filter((record) => matchingActivityIds.has(record.id))
-  }, [filteredActivityRecords, filteredCompletedRows, studentSearch])
+  }, [activitySearch, filteredActivityRecords, filteredCompletedRows])
 
   const visibleActivityIds = useMemo(
     () => new Set(visibleActivityRecords.map((record) => record.id)),
@@ -1166,7 +1176,7 @@ export default function DashboardSummaryPage({
             </div>
           </div>
 
-          <div className="dashboard-summary-toolbar-grid">
+          <div className={`dashboard-summary-toolbar-grid${embedded ? ' is-embedded' : ''}`}>
             {!embedded ? (
               <DashboardFilterDropdown
                 label="Year"
@@ -1204,21 +1214,21 @@ export default function DashboardSummaryPage({
             />
 
             <label className="dashboard-summary-toolbar-search">
-              <span>Search Student</span>
+              <span>Search Activity</span>
               <span className="dashboard-summary-toolbar-searchbox">
                 <Search size={16} strokeWidth={2} />
                 <input
                   type="search"
-                  value={studentSearch}
-                  onChange={(event) => setStudentSearch(event.target.value)}
-                  placeholder="Search student name or register number"
+                  value={activitySearch}
+                  onChange={(event) => setActivitySearch(event.target.value)}
+                  placeholder="Search activity name or type"
                 />
               </span>
             </label>
           </div>
         </section>
 
-        {!((embedded && emptyState)) ? (
+        {!embedded && !emptyState ? (
           <section className="dashboard-summary-metrics" aria-label="Dashboard metrics">
             {metricCards.map((card) => {
               const Icon = card.icon

@@ -1,0 +1,14 @@
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\components\DomainBadgeRow.jsx
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\components\DomainHeaderBadges.jsx
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\components\Navbar.jsx
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\components\PageBreadcrumbs.jsx
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\components\SendApprovalModal.jsx
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\components\Sidebar.jsx
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\eslint.config.js
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\vite.config.js
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\index.html
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\README.md
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\App.jsx
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\main.jsx
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\project_instruction.md
+C:\Users\BLUE SILICON\Documents\GitHub\Sathish\src\config\appPages.js
