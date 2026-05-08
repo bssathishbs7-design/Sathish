@@ -8,6 +8,7 @@ import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import AssessmentCreatePage from './pages/AssessmentCreatePage'
 import AssessmentEvaluationPage from './pages/AssessmentEvaluationPage'
 import AssessmentDashboardPage from './pages/AssessmentDashboardPage'
+import QuestionBankPage from './pages/QuestionBankPage'
 import CompletedEvaluationPage from './pages/CompletedEvaluationPage'
 import ReviewApprovePage from './pages/ReviewApprovePage'
 import ApprovalViewPage from './pages/ApprovalViewPage'
@@ -32,6 +33,7 @@ const PAGE_PATHS = {
   [APP_PAGES.ASSESSMENT_CREATE]: '/assessment/create',
   [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/evaluation',
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
+  [APP_PAGES.QUESTION_BANK]: '/question-bank',
   [APP_PAGES.ACTIVITY_RESULT]: '/skills/activity-result',
   [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
   [APP_PAGES.REVIEW_APPROVE]: '/skills/review-approve',
@@ -1169,6 +1171,8 @@ function App() {
             <AssessmentEvaluationPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} />
+          ) : activePage === APP_PAGES.QUESTION_BANK ? (
+            <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (
             <CompletedEvaluationPage
               completedEvaluationRows={completedEvaluationRows}

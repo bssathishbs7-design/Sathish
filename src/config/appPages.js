@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpenCheck,
+  BookText,
   ClipboardCheck,
   FileCheck2,
   FileText,
@@ -15,6 +16,7 @@ export const APP_PAGES = {
   ASSESSMENT_CREATE: 'Assessment Create',
   ASSESSMENT_EVALUATION: 'Assessment Evaluation',
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
+  QUESTION_BANK: 'Question Bank',
   ACTIVITY_RESULT: 'Activity Result',
   COMPLETED_EVALUATION: 'Completed Evaluation',
   REVIEW_APPROVE: 'Approval Queue',
@@ -89,6 +91,10 @@ export const SIDEBAR_MENU = [
           { label: APP_PAGES.ASSESSMENT_EVALUATION, navLabel: 'Evaluation', icon: ClipboardCheck },
           { label: APP_PAGES.ASSESSMENT_DASHBOARD, navLabel: 'Dashboard', icon: BarChart3 },
         ],
+      },
+      {
+        label: APP_PAGES.QUESTION_BANK,
+        icon: BookText,
       },
     ],
   },
