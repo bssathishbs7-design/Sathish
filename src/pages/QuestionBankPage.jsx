@@ -11,6 +11,8 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react'
+import RichMathEditor from '../components/RichMathEditor'
+import { stripHtml } from '../utils/mathText'
 import '../styles/question-bank.css'
 
 const SUBJECT_DIRECTORY = {
@@ -75,10 +77,10 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   subject: 'Human Anatomy',
   topics: [],
   competencies: [],
-  questionCategory: 'Direct',
-  cognitiveLevel: 'Understand',
-  thinkingLevel: 'LoT',
-  difficultyLevel: 'L1',
+  questionCategory: '',
+  cognitiveLevel: '',
+  thinkingLevel: '',
+  difficultyLevel: '',
   answerKey: '',
   imageName: '',
   options: [createOption(''), createOption(''), createOption(''), createOption('')],
@@ -91,6 +93,7 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   answerWithImage: false,
   estimationTime: '2',
   marks: '1',
+  isCritical: false,
   status: 'Draft',
 })
 
@@ -98,7 +101,9 @@ const getQuestionTypeMeta = (type) => (
   QUESTION_TYPE_CARDS.find((item) => item.type === type) ?? QUESTION_TYPE_CARDS[0]
 )
 
-const getQuestionPreview = (question) => question.questionText.trim() || question.title || 'Untitled question'
+const getRichTextPreview = (value) => stripHtml(value)
+
+const getQuestionPreview = (question) => getRichTextPreview(question.questionText) || question.title || 'Untitled question'
 
 const getAvailableCompetencies = (question) => {
   const directory = SUBJECT_DIRECTORY[question.subject] ?? SUBJECT_DIRECTORY['Human Anatomy']
@@ -107,10 +112,14 @@ const getAvailableCompetencies = (question) => {
 }
 
 const isQuestionReady = (question) => (
-  Boolean(question.questionText.trim())
-  && Boolean(question.answerKey.trim())
+  Boolean(getRichTextPreview(question.questionText))
+  && Boolean(getRichTextPreview(question.answerKey))
   && question.topics.length > 0
   && question.competencies.length > 0
+  && Boolean(question.questionCategory)
+  && Boolean(question.cognitiveLevel)
+  && Boolean(question.thinkingLevel)
+  && Boolean(question.difficultyLevel)
 )
 
 const getLevelLabel = (level) => (
@@ -118,8 +127,8 @@ const getLevelLabel = (level) => (
 )
 
 const getValidationItems = (question) => ([
-  { label: 'Question text', done: Boolean(question.questionText.trim()) },
-  { label: 'Answer key', done: Boolean(question.answerKey.trim()) },
+  { label: 'Question text', done: Boolean(getRichTextPreview(question.questionText)) },
+  { label: 'Answer key', done: Boolean(getRichTextPreview(question.answerKey)) },
   { label: 'Topic selected', done: question.topics.length > 0 },
   { label: 'Competency mapped', done: question.competencies.length > 0 },
 ])
@@ -162,7 +171,7 @@ const buildAnswerKey = (question) => {
     const answers = question.options
       .map((option, index) => ({ option, index }))
       .filter(({ option }) => correctIds.includes(option.id))
-      .map(({ option, index }) => option.label.trim() || `Option ${String.fromCharCode(65 + index)}`)
+      .map(({ option, index }) => getRichTextPreview(option.label) || `Option ${String.fromCharCode(65 + index)}`)
 
     return answers.length ? `Correct answer: ${answers.join(', ')}` : 'Select the correct option and add the answer rationale.'
   }
@@ -172,11 +181,11 @@ const buildAnswerKey = (question) => {
   }
 
   if (question.type === 'Fill in the Blanks') {
-    const answers = question.fillBlankAnswers.map((item) => item.trim()).filter(Boolean)
+    const answers = question.fillBlankAnswers.map(getRichTextPreview).filter(Boolean)
     return answers.length ? `Accepted answers: ${answers.join(', ')}` : 'Add the accepted answer for the blank.'
   }
 
-  return question.descriptiveGuide.trim() || 'Add the expected points faculty should look for in the answer.'
+  return getRichTextPreview(question.descriptiveGuide) || 'Add the expected points faculty should look for in the answer.'
 }
 
 function SelectionChips({ items, selected, onToggle, emptyLabel }) {
@@ -302,7 +311,7 @@ export default function QuestionBankPage({ onAlert }) {
     if (!query) return questions
     return questions.filter((item) => (
       item.title.toLowerCase().includes(query)
-      || item.questionText.toLowerCase().includes(query)
+      || getRichTextPreview(item.questionText).toLowerCase().includes(query)
       || item.type.toLowerCase().includes(query)
       || item.subject.toLowerCase().includes(query)
     ))
@@ -389,6 +398,18 @@ export default function QuestionBankPage({ onAlert }) {
     if (!selectedQuestion) return
     updateSelectedQuestion({ answerKey: buildAnswerKey(selectedQuestion) })
     onAlert?.({ tone: 'secondary', message: 'Answer key generated.' })
+  }
+
+  const handleMarkCreated = () => {
+    if (!selectedQuestion) return
+    updateSelectedQuestion({ status: 'Created' })
+    onAlert?.({ tone: 'success', message: 'Question created.' })
+  }
+
+  const handleSaveDraft = () => {
+    if (!selectedQuestion) return
+    updateSelectedQuestion({ status: 'Draft' })
+    onAlert?.({ tone: 'secondary', message: 'Question saved as draft.' })
   }
 
   const openMappingPicker = (type) => {
@@ -530,10 +551,21 @@ export default function QuestionBankPage({ onAlert }) {
                   <div className="question-bank-author-head">
                     <div className="question-bank-type-label">{selectedQuestion.type}</div>
                     <div className="question-bank-badge-row">
-                      <span className="question-bank-badge mint">{selectedQuestion.questionCategory}</span>
-                      <span className="question-bank-badge blue">{selectedQuestion.cognitiveLevel}</span>
-                      <span className="question-bank-badge lilac">{selectedQuestion.thinkingLevel}</span>
-                      <span className="question-bank-badge soft">{selectedQuestion.difficultyLevel}</span>
+                      {selectedQuestion.questionCategory ? (
+                        <span className="question-bank-badge mint">{selectedQuestion.questionCategory}</span>
+                      ) : null}
+                      {selectedQuestion.cognitiveLevel ? (
+                        <span className="question-bank-badge blue">{selectedQuestion.cognitiveLevel}</span>
+                      ) : null}
+                      {selectedQuestion.thinkingLevel ? (
+                        <span className="question-bank-badge lilac">{selectedQuestion.thinkingLevel}</span>
+                      ) : null}
+                      {selectedQuestion.difficultyLevel ? (
+                        <span className="question-bank-badge soft">{selectedQuestion.difficultyLevel}</span>
+                      ) : null}
+                      {selectedQuestion.isCritical ? (
+                        <span className="question-bank-badge critical">Critical</span>
+                      ) : null}
                     </div>
                     <button type="button" className="question-bank-icon-btn" onClick={handleDeleteQuestion} aria-label="Delete question">
                       <Trash2 size={15} strokeWidth={2} />
@@ -652,14 +684,15 @@ export default function QuestionBankPage({ onAlert }) {
                         </div>
 
                         <label className="question-bank-field rich">
-                          <textarea
+                          <RichMathEditor
                             value={selectedQuestion.questionText}
-                            onChange={(event) => updateSelectedQuestion({
-                              questionText: event.target.value,
-                              title: event.target.value.trim().slice(0, 60) || selectedQuestion.title,
+                            onChange={(nextValue) => updateSelectedQuestion({
+                              questionText: nextValue,
+                              title: getRichTextPreview(nextValue).slice(0, 60) || selectedQuestion.title,
                             })}
                             placeholder="Enter your question here"
-                            rows={6}
+                            minRows={5}
+                            ariaLabel="Question text"
                           />
                         </label>
 
@@ -700,17 +733,20 @@ export default function QuestionBankPage({ onAlert }) {
                                     }))}
                                   />
                                 </label>
-                                <input
+                                <RichMathEditor
                                   value={option.label}
-                                  onChange={(event) => updateSelectedQuestion((item) => ({
+                                  onChange={(nextValue) => updateSelectedQuestion((item) => ({
                                     ...item,
                                     options: item.options.map((currentOption) => (
                                       currentOption.id === option.id
-                                        ? { ...currentOption, label: event.target.value }
+                                        ? { ...currentOption, label: nextValue }
                                         : currentOption
                                     )),
                                   }))}
                                   placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                                  minRows={1}
+                                  compact
+                                  ariaLabel={`Option ${String.fromCharCode(65 + index)}`}
                                 />
                                 <div className="question-bank-choice-actions">
                                   <button
@@ -744,14 +780,14 @@ export default function QuestionBankPage({ onAlert }) {
                           </div>
 
                           <label className="question-bank-field">
-                            <textarea
-                              className="question-bank-short-note"
+                            <RichMathEditor
                               value={selectedQuestion.answerKey}
-                              onChange={(event) => updateSelectedQuestion({ answerKey: event.target.value })}
+                              onChange={(nextValue) => updateSelectedQuestion({ answerKey: nextValue })}
                               placeholder="Add a short note for the expected answer."
-                            rows={3}
-                          />
-                        </label>
+                              minRows={3}
+                              ariaLabel="Answer key"
+                            />
+                          </label>
                       </div>
 
                       </section>
@@ -801,11 +837,12 @@ export default function QuestionBankPage({ onAlert }) {
 
                           <label className="question-bank-field">
                             <span>Expected response guide</span>
-                            <textarea
+                            <RichMathEditor
                               value={selectedQuestion.descriptiveGuide}
-                              onChange={(event) => updateSelectedQuestion({ descriptiveGuide: event.target.value })}
+                              onChange={(nextValue) => updateSelectedQuestion({ descriptiveGuide: nextValue })}
                               placeholder="Outline what faculty expect in the answer"
-                              rows={4}
+                              minRows={4}
+                              ariaLabel="Expected response guide"
                             />
                           </label>
                         </section>
@@ -844,16 +881,19 @@ export default function QuestionBankPage({ onAlert }) {
                           </div>
                           <div className="question-bank-choice-list">
                             {selectedQuestion.fillBlankAnswers.map((answer, index) => (
-                              <input
+                              <RichMathEditor
                                 key={`${selectedQuestion.id}-blank-${index}`}
                                 value={answer}
-                                onChange={(event) => updateSelectedQuestion((item) => ({
+                                onChange={(nextValue) => updateSelectedQuestion((item) => ({
                                   ...item,
                                   fillBlankAnswers: item.fillBlankAnswers.map((currentAnswer, answerIndex) => (
-                                    answerIndex === index ? event.target.value : currentAnswer
+                                    answerIndex === index ? nextValue : currentAnswer
                                   )),
                                 }))}
                                 placeholder={`Accepted answer ${index + 1}`}
+                                minRows={1}
+                                compact
+                                ariaLabel={`Accepted answer ${index + 1}`}
                               />
                             ))}
                           </div>
@@ -891,7 +931,7 @@ export default function QuestionBankPage({ onAlert }) {
                           </div>
                         </div>
 
-                        <div className="question-bank-grid two">
+                        <div className="question-bank-assessment-pair">
                           <label className="question-bank-field">
                             <span>Marks</span>
                             <input
@@ -899,14 +939,29 @@ export default function QuestionBankPage({ onAlert }) {
                               onChange={(event) => updateSelectedQuestion({ marks: event.target.value })}
                             />
                           </label>
+
+                          <label className="question-bank-field question-bank-criticality-field">
+                            <span>Criticality</span>
+                            <button
+                              type="button"
+                              className={`question-bank-criticality-toggle ${selectedQuestion.isCritical ? 'is-active' : ''}`}
+                              onClick={() => updateSelectedQuestion((item) => ({ ...item, isCritical: !item.isCritical }))}
+                              aria-pressed={selectedQuestion.isCritical}
+                            >
+                              <span className="question-bank-criticality-switch" />
+                              <strong>{selectedQuestion.isCritical ? 'ON' : 'OFF'}</strong>
+                            </button>
+                          </label>
                         </div>
 
                         <label className="question-bank-field">
                           <span>Question Category</span>
                           <select
+                            className={!selectedQuestion.questionCategory ? 'is-placeholder' : ''}
                             value={selectedQuestion.questionCategory}
                             onChange={(event) => updateSelectedQuestion({ questionCategory: event.target.value })}
                           >
+                            <option value="" disabled>Select Category</option>
                             {QUESTION_CATEGORY_OPTIONS.map((option) => (
                               <option key={option} value={option}>{option}</option>
                             ))}
@@ -916,9 +971,11 @@ export default function QuestionBankPage({ onAlert }) {
                         <label className="question-bank-field">
                           <span>Cognitive Level</span>
                           <select
+                            className={!selectedQuestion.cognitiveLevel ? 'is-placeholder' : ''}
                             value={selectedQuestion.cognitiveLevel}
                             onChange={(event) => updateSelectedQuestion({ cognitiveLevel: event.target.value })}
                           >
+                            <option value="" disabled>Select Cognitive Level</option>
                             {COGNITIVE_LEVEL_OPTIONS.map((option) => (
                               <option key={option} value={option}>{option}</option>
                             ))}
@@ -928,9 +985,11 @@ export default function QuestionBankPage({ onAlert }) {
                         <label className="question-bank-field">
                           <span>Thinking Level</span>
                           <select
+                            className={!selectedQuestion.thinkingLevel ? 'is-placeholder' : ''}
                             value={selectedQuestion.thinkingLevel}
                             onChange={(event) => updateSelectedQuestion({ thinkingLevel: event.target.value })}
                           >
+                            <option value="" disabled>Select Thinking Level</option>
                             {THINKING_LEVEL_OPTIONS.map((option) => (
                               <option key={option} value={option}>{option}</option>
                             ))}
@@ -940,14 +999,26 @@ export default function QuestionBankPage({ onAlert }) {
                         <label className="question-bank-field">
                           <span>Difficulty Level</span>
                           <select
+                            className={!selectedQuestion.difficultyLevel ? 'is-placeholder' : ''}
                             value={selectedQuestion.difficultyLevel}
                             onChange={(event) => updateSelectedQuestion({ difficultyLevel: event.target.value })}
                           >
+                            <option value="">Select Difficulty Level</option>
                             {DIFFICULTY_LEVEL_OPTIONS.map((option) => (
                               <option key={option} value={option}>{option}</option>
                             ))}
                           </select>
                         </label>
+
+                        <div className="question-bank-assessment-actions">
+                          <button type="button" className="question-bank-primary-btn" onClick={handleMarkCreated}>
+                            Create
+                          </button>
+                          <button type="button" className="question-bank-secondary-btn" onClick={handleSaveDraft}>
+                            Save as Draft
+                          </button>
+                        </div>
+
                       </div>
                     </aside>
 

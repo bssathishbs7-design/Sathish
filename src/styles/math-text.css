@@ -1,0 +1,50 @@
+.math-text {
+  display: inline;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.math-text-fraction {
+  display: inline-grid;
+  grid-template-rows: auto auto;
+  align-items: center;
+  justify-items: center;
+  vertical-align: middle;
+  margin: 0 0.18em;
+  line-height: 1.05;
+}
+
+.math-text-numerator,
+.math-text-denominator {
+  display: block;
+  padding: 0 0.24em;
+  text-align: center;
+}
+
+.math-text-numerator {
+  border-bottom: 1px solid currentColor;
+}
+
+.math-text-root {
+  display: inline-flex;
+  align-items: flex-start;
+  vertical-align: middle;
+  margin: 0 0.08em;
+}
+
+.math-text-root-symbol {
+  line-height: 1.1;
+}
+
+.math-text-radicand {
+  display: inline-block;
+  padding: 0 0.12em;
+  border-top: 1px solid currentColor;
+  line-height: 1.1;
+}
+
+.math-text sup,
+.math-text sub {
+  font-size: 0.72em;
+  line-height: 0;
+}
