@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
+  Bot,
   Check,
   CheckCheck,
+  CheckCircle2,
   FilePenLine,
   FolderTree,
   ListChecks,
+  LoaderCircle,
   Plus,
   Search,
   Sigma,
@@ -105,6 +108,59 @@ const getRichTextPreview = (value) => stripHtml(value)
 
 const getQuestionPreview = (question) => getRichTextPreview(question.questionText) || question.title || 'Untitled question'
 
+const createHtmlBlock = (value) => `<div>${String(value ?? '')}</div>`
+
+const getGeneratedQuestionDraft = (question) => {
+  const type = question.type ?? 'MCQ'
+  const subject = question.subject ?? 'Human Anatomy'
+  const topic = question.topics[0] ?? 'the selected topic'
+
+  if (type === 'True or False') {
+    return {
+      questionText: createHtmlBlock(`True or False: ${subject} concepts related to ${topic} should be applied directly to clinical interpretation.`),
+      answerKey: createHtmlBlock('False. The correct response depends on the specific clinical context and supporting evidence.'),
+      questionCategory: 'Reasoning',
+      cognitiveLevel: 'Understand',
+      thinkingLevel: 'LoT',
+      difficultyLevel: 'L1',
+      trueFalseAnswer: 'False',
+    }
+  }
+
+  if (type === 'Fill in the Blanks') {
+    return {
+      questionText: createHtmlBlock(`Fill in the blank: In ${subject}, the key concept associated with ${topic} is ______.`),
+      answerKey: createHtmlBlock('Accepted answer: Add the expected key term or concept based on the mapped competency.'),
+      questionCategory: 'Direct',
+      cognitiveLevel: 'Remember',
+      thinkingLevel: 'LoT',
+      difficultyLevel: 'L1',
+      fillBlankAnswers: [createHtmlBlock('Expected key term')],
+    }
+  }
+
+  if (type === 'Descriptive Question') {
+    return {
+      questionText: createHtmlBlock(`Explain the clinical relevance of ${topic} in ${subject}, including key anatomical or functional relationships.`),
+      answerKey: createHtmlBlock('The answer should include the core concept, relevant relationships, clinical significance, and a concise conclusion.'),
+      questionCategory: 'Critical Thinking',
+      cognitiveLevel: 'Analyze',
+      thinkingLevel: 'HoT',
+      difficultyLevel: 'L3',
+      descriptiveGuide: createHtmlBlock('Look for accurate concepts, structured explanation, correct terminology, and clinical correlation.'),
+    }
+  }
+
+  return {
+    questionText: createHtmlBlock(`Which of the following best explains the application of ${topic} in ${subject}?`),
+    answerKey: createHtmlBlock('Correct answer: Review the selected option and add the supporting rationale.'),
+    questionCategory: 'Application',
+    cognitiveLevel: 'Apply',
+    thinkingLevel: 'HoT',
+    difficultyLevel: 'L2',
+  }
+}
+
 const getAvailableCompetencies = (question) => {
   const directory = SUBJECT_DIRECTORY[question.subject] ?? SUBJECT_DIRECTORY['Human Anatomy']
   if (!question.topics.length) return directory.competencies
@@ -164,29 +220,6 @@ const toggleSelection = (items, value) => (
     ? items.filter((item) => item !== value)
     : [...items, value]
 )
-
-const buildAnswerKey = (question) => {
-  if (question.type === 'MCQ') {
-    const correctIds = question.correctOptionIds
-    const answers = question.options
-      .map((option, index) => ({ option, index }))
-      .filter(({ option }) => correctIds.includes(option.id))
-      .map(({ option, index }) => getRichTextPreview(option.label) || `Option ${String.fromCharCode(65 + index)}`)
-
-    return answers.length ? `Correct answer: ${answers.join(', ')}` : 'Select the correct option and add the answer rationale.'
-  }
-
-  if (question.type === 'True or False') {
-    return `Correct answer: ${question.trueFalseAnswer}`
-  }
-
-  if (question.type === 'Fill in the Blanks') {
-    const answers = question.fillBlankAnswers.map(getRichTextPreview).filter(Boolean)
-    return answers.length ? `Accepted answers: ${answers.join(', ')}` : 'Add the accepted answer for the blank.'
-  }
-
-  return getRichTextPreview(question.descriptiveGuide) || 'Add the expected points faculty should look for in the answer.'
-}
 
 function SelectionChips({ items, selected, onToggle, emptyLabel }) {
   return (
@@ -301,6 +334,9 @@ export default function QuestionBankPage({ onAlert }) {
   const [searchValue, setSearchValue] = useState('')
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
+  const [isAiMode, setIsAiMode] = useState(false)
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
+  const [generationCompleteId, setGenerationCompleteId] = useState(null)
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
   const readyCount = questions.filter(isQuestionReady).length
@@ -352,6 +388,11 @@ export default function QuestionBankPage({ onAlert }) {
       : selectedQuestion.competencies
     : []
 
+  useEffect(() => {
+    setIsGeneratingQuestion(false)
+    setGenerationCompleteId(null)
+  }, [selectedQuestionId])
+
   const updateSelectedQuestion = (updater) => {
     if (!selectedQuestion) return
     setQuestions((current) => current.map((item) => (
@@ -394,16 +435,46 @@ export default function QuestionBankPage({ onAlert }) {
     onAlert?.({ tone: 'warning', message: 'Question removed.' })
   }
 
-  const handleGenerateAnswerKey = () => {
-    if (!selectedQuestion) return
-    updateSelectedQuestion({ answerKey: buildAnswerKey(selectedQuestion) })
-    onAlert?.({ tone: 'secondary', message: 'Answer key generated.' })
-  }
-
   const handleMarkCreated = () => {
     if (!selectedQuestion) return
     updateSelectedQuestion({ status: 'Created' })
     onAlert?.({ tone: 'success', message: 'Question created.' })
+  }
+
+  const handleGenerateQuestion = () => {
+    if (!selectedQuestion || isGeneratingQuestion) return
+
+    const questionId = selectedQuestion.id
+    const generatedDraft = getGeneratedQuestionDraft(selectedQuestion)
+
+    setIsGeneratingQuestion(true)
+    setGenerationCompleteId(null)
+
+    window.setTimeout(() => {
+      setQuestions((current) => current.map((item) => (
+        item.id === questionId
+          ? {
+            ...item,
+            ...generatedDraft,
+            title: getRichTextPreview(generatedDraft.questionText).slice(0, 60) || item.title,
+            status: 'Draft',
+          }
+          : item
+      )))
+      setSelectedQuestionId(questionId)
+      setIsGeneratingQuestion(false)
+      setGenerationCompleteId(questionId)
+      onAlert?.({ tone: 'success', message: 'AI question generated as draft.' })
+    }, 900)
+  }
+
+  const handlePrimaryQuestionAction = () => {
+    if (isAiMode) {
+      handleGenerateQuestion()
+      return
+    }
+
+    handleMarkCreated()
   }
 
   const handleSaveDraft = () => {
@@ -773,10 +844,6 @@ export default function QuestionBankPage({ onAlert }) {
                             <div>
                               <span className="question-bank-eyebrow">Answer & Explanation</span>
                             </div>
-                            <button type="button" className="question-bank-secondary-btn" onClick={handleGenerateAnswerKey}>
-                              <Sparkles size={14} strokeWidth={2} />
-                              Generate Answer Key
-                            </button>
                           </div>
 
                           <label className="question-bank-field">
@@ -924,6 +991,51 @@ export default function QuestionBankPage({ onAlert }) {
                         ))}
                       </div>
 
+                      <div className="question-bank-flow-card">
+                        <div className="question-bank-section-head">
+                          <div>
+                            <span className="question-bank-eyebrow">Question Flow</span>
+                            <strong>{isAiMode ? 'AI-assisted creation' : 'Manual creation'}</strong>
+                          </div>
+                        </div>
+
+                        <div className="question-bank-ai-flow">
+                          <button
+                            type="button"
+                            className={`question-bank-ai-toggle ${isAiMode ? 'is-active' : ''}`}
+                            onClick={() => {
+                              setIsAiMode((current) => !current)
+                              setGenerationCompleteId(null)
+                            }}
+                            aria-pressed={isAiMode}
+                          >
+                            <span className="question-bank-ai-toggle-switch" />
+                            <strong>{isAiMode ? 'AI Generate' : 'Manual'}</strong>
+                          </button>
+                        </div>
+
+                        <div className="question-bank-flow-summary">
+                          <span>
+                            <small>Mode</small>
+                            <strong>{isAiMode ? 'AI Generate' : 'Manual'}</strong>
+                          </span>
+                          <span>
+                            <small>Primary Button</small>
+                            <strong>{isAiMode ? 'AI Generate' : 'Create'}</strong>
+                          </span>
+                          <span>
+                            <small>Status</small>
+                            <strong>
+                              {isGeneratingQuestion
+                                ? 'Generating...'
+                                : generationCompleteId === selectedQuestion.id
+                                  ? 'Generated'
+                                  : 'Ready'}
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+
                       <div className="question-bank-assessment-panel question-bank-assessment-inline">
                         <div className="question-bank-section-head">
                           <div>
@@ -1011,8 +1123,30 @@ export default function QuestionBankPage({ onAlert }) {
                         </label>
 
                         <div className="question-bank-assessment-actions">
-                          <button type="button" className="question-bank-primary-btn" onClick={handleMarkCreated}>
-                            Create
+                          <button
+                            type="button"
+                            className={`question-bank-primary-btn ${isGeneratingQuestion ? 'is-loading' : ''}`}
+                            onClick={handlePrimaryQuestionAction}
+                            disabled={isGeneratingQuestion}
+                          >
+                            {isGeneratingQuestion ? (
+                              <>
+                                <LoaderCircle size={14} strokeWidth={2.2} className="question-bank-spin-icon" />
+                                Generating...
+                              </>
+                            ) : isAiMode && generationCompleteId === selectedQuestion.id ? (
+                              <>
+                                <CheckCircle2 size={14} strokeWidth={2.2} />
+                                Generated
+                              </>
+                            ) : isAiMode ? (
+                              <>
+                                <Bot size={14} strokeWidth={2.2} />
+                                AI Generate
+                              </>
+                            ) : (
+                              'Create'
+                            )}
                           </button>
                           <button type="button" className="question-bank-secondary-btn" onClick={handleSaveDraft}>
                             Save as Draft
