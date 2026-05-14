@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Bot,
   Check,
   CheckCheck,
   CheckCircle2,
@@ -54,8 +53,13 @@ const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
 const DIFFICULTY_LEVEL_OPTIONS = ['L1', 'L2', 'L3']
 const YEAR_OPTIONS = ['Year 1', 'Year 2', 'Year 3', 'Year 4']
 
+const CURRICULUM_DIRECTORY = YEAR_OPTIONS.reduce((directory, year) => ({
+  ...directory,
+  [year]: SUBJECT_DIRECTORY,
+}), {})
+
 const QUESTION_TYPE_CARDS = [
-  { type: 'MCQ', shortLabel: 'Multiple choice', icon: ListChecks },
+  { type: 'MCQ', shortLabel: 'MCQ', icon: ListChecks },
   { type: 'Descriptive Question', shortLabel: 'Descriptive', icon: FilePenLine },
   { type: 'True or False', shortLabel: 'True / False', icon: CheckCheck },
   { type: 'Fill in the Blanks', shortLabel: 'Fill in blanks', icon: Sigma },
@@ -95,9 +99,9 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   allowMultiple: false,
   answerWithImage: false,
   estimationTime: '2',
-  marks: '1',
+  marks: '0',
   isCritical: false,
-  status: 'Draft',
+  status: 'Editing',
 })
 
 const getQuestionTypeMeta = (type) => (
@@ -161,8 +165,17 @@ const getGeneratedQuestionDraft = (question) => {
   }
 }
 
+const getSubjectsForYear = (year) => Object.keys(CURRICULUM_DIRECTORY[year] ?? SUBJECT_DIRECTORY)
+
+const getSubjectDirectory = (question) => {
+  const yearDirectory = CURRICULUM_DIRECTORY[question.year] ?? SUBJECT_DIRECTORY
+  return yearDirectory[question.subject] ?? yearDirectory[getSubjectsForYear(question.year)[0]] ?? SUBJECT_DIRECTORY['Human Anatomy']
+}
+
+const getAvailableTopics = (question) => getSubjectDirectory(question).topics
+
 const getAvailableCompetencies = (question) => {
-  const directory = SUBJECT_DIRECTORY[question.subject] ?? SUBJECT_DIRECTORY['Human Anatomy']
+  const directory = getSubjectDirectory(question)
   if (!question.topics.length) return directory.competencies
   return directory.competencies.filter((item) => question.topics.includes(item.topic))
 }
@@ -182,12 +195,58 @@ const getLevelLabel = (level) => (
   level === 'parent' ? 'Parent' : level === 'child' ? 'Child' : 'Sub-Child'
 )
 
-const getValidationItems = (question) => ([
-  { label: 'Question text', done: Boolean(getRichTextPreview(question.questionText)) },
-  { label: 'Answer key', done: Boolean(getRichTextPreview(question.answerKey)) },
-  { label: 'Topic selected', done: question.topics.length > 0 },
-  { label: 'Competency mapped', done: question.competencies.length > 0 },
+const hasCurriculumMapping = (question) => (
+  Boolean(question?.year)
+  && Boolean(question?.subject)
+  && question.topics.length > 0
+  && question.competencies.length > 0
+)
+
+const hasQuestionContent = (question) => Boolean(getRichTextPreview(question?.questionText))
+
+const hasMcqOptions = (question) => (
+  question?.type !== 'MCQ'
+  || (
+    question.options.filter((option) => Boolean(getRichTextPreview(option.label))).length >= 2
+    && question.correctOptionIds.length > 0
+  )
+)
+
+const hasAssessmentTags = (question) => (
+  Boolean(question?.marks)
+  && Boolean(question?.questionCategory)
+  && Boolean(question?.cognitiveLevel)
+  && Boolean(question?.thinkingLevel)
+  && Boolean(question?.difficultyLevel)
+)
+
+const canCreateQuestion = (question) => {
+  if (!question || question.status === 'Generating') return false
+
+  if (question.type === 'MCQ') {
+    return hasCurriculumMapping(question) && hasQuestionContent(question) && hasMcqOptions(question)
+  }
+
+  return hasCurriculumMapping(question) && hasQuestionContent(question)
+}
+
+const getProcessSteps = (question) => ([
+  { label: 'Curriculum Mapping', done: hasCurriculumMapping(question) },
+  { label: 'Question Creation', done: hasQuestionContent(question) },
+  { label: 'Options', done: hasMcqOptions(question) },
+  { label: 'Answer & Explanation', done: Boolean(getRichTextPreview(question.answerKey)) },
+  { label: 'Assessment Tags', done: hasAssessmentTags(question) },
+  { label: question.status === 'Draft' ? 'Draft Saved' : 'Created', done: ['Draft', 'Created'].includes(question.status) },
 ])
+
+const getQuestionCardStatus = (question) => {
+  if (question.status === 'Generating') return 'Generating'
+  if (question.status === 'Draft') return 'Draft'
+  if (question.status === 'Created') return 'Created'
+  return 'Editing'
+}
+
+const GENERATION_DELAY_MS = 15000
 
 const isDescendantOf = (question, parentId, questionMap) => {
   let currentParentId = question.parentId
@@ -331,39 +390,31 @@ function MappingSelectorPanel({
 export default function QuestionBankPage({ onAlert }) {
   const [questions, setQuestions] = useState([])
   const [selectedQuestionId, setSelectedQuestionId] = useState(null)
-  const [searchValue, setSearchValue] = useState('')
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
-  const [isAiMode, setIsAiMode] = useState(false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   const [generationCompleteId, setGenerationCompleteId] = useState(null)
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
-  const readyCount = questions.filter(isQuestionReady).length
-  const draftCount = questions.length - readyCount
-
-  const filteredQuestions = useMemo(() => {
-    const query = searchValue.trim().toLowerCase()
-    if (!query) return questions
-    return questions.filter((item) => (
-      item.title.toLowerCase().includes(query)
-      || getRichTextPreview(item.questionText).toLowerCase().includes(query)
-      || item.type.toLowerCase().includes(query)
-      || item.subject.toLowerCase().includes(query)
-    ))
-  }, [questions, searchValue])
+  const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
+  const totalCount = visibleQuestionCards.length
+  const readyCount = questions.filter((item) => item.status === 'Created').length
+  const draftCount = questions.filter((item) => item.status === 'Draft').length
 
   const descriptiveQuestions = useMemo(
     () => questions.filter((item) => item.type === 'Descriptive Question'),
     [questions],
   )
 
-  const availableTopics = selectedQuestion
-    ? (SUBJECT_DIRECTORY[selectedQuestion.subject] ?? SUBJECT_DIRECTORY['Human Anatomy']).topics
-    : []
+  const availableSubjects = selectedQuestion ? getSubjectsForYear(selectedQuestion.year) : []
+  const availableTopics = selectedQuestion ? getAvailableTopics(selectedQuestion) : []
   const availableCompetencies = selectedQuestion ? getAvailableCompetencies(selectedQuestion) : []
   const selectedQuestionIndex = selectedQuestion ? questions.findIndex((item) => item.id === selectedQuestion.id) + 1 : 0
-  const selectedValidationItems = selectedQuestion ? getValidationItems(selectedQuestion) : []
+  const selectedProcessSteps = selectedQuestion ? getProcessSteps(selectedQuestion) : []
+  const canCreateSelectedQuestion = canCreateQuestion(selectedQuestion)
+  const isUpdatingSelectedQuestion = selectedQuestion
+    ? ['Created', 'Draft'].includes(selectedQuestion.status)
+    : false
   const curriculumStatusTone = selectedQuestion
     ? selectedQuestion.topics.length && selectedQuestion.competencies.length
       ? 'is-complete'
@@ -374,7 +425,7 @@ export default function QuestionBankPage({ onAlert }) {
   const activeMappingItems = activeMappingPicker === 'years'
     ? YEAR_OPTIONS
     : activeMappingPicker === 'subjects'
-    ? Object.keys(SUBJECT_DIRECTORY)
+    ? availableSubjects
     : activeMappingPicker === 'topics'
       ? availableTopics
       : availableCompetencies
@@ -395,6 +446,9 @@ export default function QuestionBankPage({ onAlert }) {
 
   const updateSelectedQuestion = (updater) => {
     if (!selectedQuestion) return
+    setGenerationCompleteId((current) => (
+      current === selectedQuestion.id ? null : current
+    ))
     setQuestions((current) => current.map((item) => (
       item.id === selectedQuestion.id
         ? (typeof updater === 'function' ? updater(item) : { ...item, ...updater })
@@ -435,46 +489,113 @@ export default function QuestionBankPage({ onAlert }) {
     onAlert?.({ tone: 'warning', message: 'Question removed.' })
   }
 
-  const handleMarkCreated = () => {
-    if (!selectedQuestion) return
-    updateSelectedQuestion({ status: 'Created' })
-    onAlert?.({ tone: 'success', message: 'Question created.' })
-  }
-
-  const handleGenerateQuestion = () => {
-    if (!selectedQuestion || isGeneratingQuestion) return
-
-    const questionId = selectedQuestion.id
-    const generatedDraft = getGeneratedQuestionDraft(selectedQuestion)
-
-    setIsGeneratingQuestion(true)
-    setGenerationCompleteId(null)
-
-    window.setTimeout(() => {
-      setQuestions((current) => current.map((item) => (
-        item.id === questionId
-          ? {
-            ...item,
-            ...generatedDraft,
-            title: getRichTextPreview(generatedDraft.questionText).slice(0, 60) || item.title,
-            status: 'Draft',
-          }
-          : item
-      )))
-      setSelectedQuestionId(questionId)
-      setIsGeneratingQuestion(false)
-      setGenerationCompleteId(questionId)
-      onAlert?.({ tone: 'success', message: 'AI question generated as draft.' })
-    }, 900)
+  const handleDeleteQuestionById = (questionId) => {
+    const nextQuestions = questions.filter((item) => item.id !== questionId)
+    setQuestions(nextQuestions)
+    if (selectedQuestionId === questionId) {
+      setSelectedQuestionId(nextQuestions[0]?.id ?? null)
+    }
+    onAlert?.({ tone: 'warning', message: 'Question removed.' })
   }
 
   const handlePrimaryQuestionAction = () => {
-    if (isAiMode) {
-      handleGenerateQuestion()
+    if (!selectedQuestion || isGeneratingQuestion || !canCreateSelectedQuestion) return
+
+    const questionId = selectedQuestion.id
+
+    if (isUpdatingSelectedQuestion) {
+      const nextQuestionBase = createQuestion(selectedQuestion.type, {
+        title: `${getQuestionTypeMeta(selectedQuestion.type).shortLabel} ${questions.length + 1}`,
+      })
+      const nextQuestion = {
+        ...nextQuestionBase,
+        year: selectedQuestion.year,
+        subject: selectedQuestion.subject,
+        topics: [...selectedQuestion.topics],
+        competencies: [...selectedQuestion.competencies],
+      }
+
+      setQuestions((current) => [
+        ...current.map((item) => (
+          item.id === questionId
+            ? {
+              ...item,
+              title: getQuestionPreview(item).slice(0, 60) || item.title,
+              status: 'Created',
+            }
+            : item
+        )),
+        nextQuestion,
+      ])
+      setSelectedQuestionId(nextQuestion.id)
+      setGenerationCompleteId(null)
+      closeMappingPicker()
+      onAlert?.({ tone: 'success', message: 'Question updated.' })
       return
     }
 
-    handleMarkCreated()
+    const nextQuestionBase = createQuestion(selectedQuestion.type, {
+      title: `${getQuestionTypeMeta(selectedQuestion.type).shortLabel} ${questions.length + 1}`,
+    })
+    const nextQuestion = {
+      ...nextQuestionBase,
+      year: selectedQuestion.year,
+      subject: selectedQuestion.subject,
+      topics: [...selectedQuestion.topics],
+      competencies: [...selectedQuestion.competencies],
+    }
+    const generatedDraft = getGeneratedQuestionDraft(selectedQuestion)
+
+    setGenerationCompleteId(null)
+    setQuestions((current) => [
+      ...current.map((item) => (
+        item.id === questionId ? { ...item, status: 'Generating' } : item
+      )),
+      nextQuestion,
+    ])
+    setSelectedQuestionId(nextQuestion.id)
+    closeMappingPicker()
+    onAlert?.({ tone: 'secondary', message: 'Question generation started.' })
+
+    window.setTimeout(() => {
+      setQuestions((current) => current.map((item) => {
+        if (item.id !== questionId) return item
+
+        const needsQuestion = !hasQuestionContent(item)
+        const needsOptions = item.type === 'MCQ' && !hasMcqOptions(item)
+        const needsAnswerKey = !getRichTextPreview(item.answerKey)
+        const generatedOptions = needsOptions
+          ? [
+            createOption(createHtmlBlock('A clinically relevant application')),
+            createOption(createHtmlBlock('An unrelated basic recall point')),
+            createOption(createHtmlBlock('A partially correct distractor')),
+            createOption(createHtmlBlock('A non-specific explanation')),
+          ]
+          : item.options
+
+        return {
+          ...item,
+          questionText: needsQuestion ? generatedDraft.questionText : item.questionText,
+          answerKey: needsAnswerKey ? generatedDraft.answerKey : item.answerKey,
+          questionCategory: item.questionCategory || generatedDraft.questionCategory || 'Application',
+          cognitiveLevel: item.cognitiveLevel || generatedDraft.cognitiveLevel || 'Apply',
+          thinkingLevel: item.thinkingLevel || generatedDraft.thinkingLevel || 'HoT',
+          difficultyLevel: item.difficultyLevel || generatedDraft.difficultyLevel || 'L2',
+          marks: item.marks || '1',
+          options: generatedOptions,
+          correctOptionIds: needsOptions ? [generatedOptions[0].id] : item.correctOptionIds,
+          trueFalseAnswer: item.trueFalseAnswer || generatedDraft.trueFalseAnswer || 'True',
+          fillBlankAnswers: item.fillBlankAnswers?.some((answer) => getRichTextPreview(answer))
+            ? item.fillBlankAnswers
+            : generatedDraft.fillBlankAnswers || item.fillBlankAnswers,
+          descriptiveGuide: item.descriptiveGuide || generatedDraft.descriptiveGuide || item.descriptiveGuide,
+          title: getRichTextPreview(needsQuestion ? generatedDraft.questionText : item.questionText).slice(0, 60) || item.title,
+          status: 'Created',
+        }
+      }))
+      setGenerationCompleteId(questionId)
+      onAlert?.({ tone: 'success', message: 'Question created.' })
+    }, GENERATION_DELAY_MS)
   }
 
   const handleSaveDraft = () => {
@@ -527,10 +648,54 @@ export default function QuestionBankPage({ onAlert }) {
   }
 
   const handleSelectYear = (value) => {
-    updateSelectedQuestion({ year: value })
+    updateSelectedQuestion((item) => {
+      const nextSubjects = getSubjectsForYear(value)
+      const nextSubject = nextSubjects.includes(item.subject)
+        ? item.subject
+        : nextSubjects[0] ?? ''
+      const nextTopicOptions = getAvailableTopics({ ...item, year: value, subject: nextSubject })
+      const nextTopics = nextSubject === item.subject
+        ? item.topics.filter((topic) => nextTopicOptions.includes(topic))
+        : []
+      const nextCompetencies = nextSubject === item.subject
+        ? item.competencies.filter((entry) => (
+          getAvailableCompetencies({ ...item, year: value, subject: nextSubject, topics: nextTopics })
+            .some((competency) => competency.value === entry)
+        ))
+        : []
+
+      return {
+        ...item,
+        year: value,
+        subject: nextSubject,
+        topics: nextTopics,
+        competencies: nextCompetencies,
+      }
+    })
     setActiveMappingPicker('subjects')
     setMappingSearchValue('')
   }
+
+  const questionTypePicker = (
+    <div className="question-bank-type-picker">
+      {QUESTION_TYPE_CARDS.map((item) => {
+        const Icon = item.icon
+        return (
+          <button
+            key={item.type}
+            type="button"
+            className="question-bank-type-picker-item"
+            onClick={() => handleCreateQuestion(item.type)}
+          >
+            <span className="question-bank-type-picker-icon">
+              <Icon size={15} strokeWidth={2} />
+            </span>
+            <span>{item.shortLabel}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
 
   return (
     <section className="question-bank-page">
@@ -540,80 +705,17 @@ export default function QuestionBankPage({ onAlert }) {
           <p>Create MCQ, descriptive, true or false, and fill in the blanks with fewer clicks.</p>
         </div>
         <div className="question-bank-header-stats">
-          <span><strong>{questions.length}</strong> Total</span>
+          <span><strong>{totalCount}</strong> Total</span>
           <span><strong>{readyCount}</strong> Ready</span>
           <span><strong>{draftCount}</strong> Draft</span>
         </div>
       </header>
 
+      <div className="question-bank-create-strip">
+        {questionTypePicker}
+      </div>
+
       <div className="question-bank-layout">
-        <aside className="question-bank-sidebar">
-          <div className="question-bank-sidebar-head">
-            <div>
-              <span className="question-bank-eyebrow">Create</span>
-              <strong>Question type</strong>
-            </div>
-          </div>
-
-          <div className="question-bank-type-picker">
-            {QUESTION_TYPE_CARDS.map((item) => {
-              const Icon = item.icon
-              return (
-                <button
-                  key={item.type}
-                  type="button"
-                  className="question-bank-type-picker-item"
-                  onClick={() => handleCreateQuestion(item.type)}
-                >
-                  <span className="question-bank-type-picker-icon">
-                    <Icon size={15} strokeWidth={2} />
-                  </span>
-                  <span>{item.shortLabel}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          <label className="question-bank-search">
-            <Search size={14} strokeWidth={2} />
-            <input
-              value={searchValue}
-              onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="Search questions"
-            />
-          </label>
-
-          <div className="question-bank-sidebar-list">
-            {filteredQuestions.length ? filteredQuestions.map((question, index) => {
-              const typeMeta = getQuestionTypeMeta(question.type)
-              return (
-                <button
-                  key={question.id}
-                  type="button"
-                  className={`question-bank-sidebar-item ${question.id === selectedQuestionId ? 'is-active' : ''}`}
-                  onClick={() => setSelectedQuestionId(question.id)}
-                >
-                  <div className="question-bank-sidebar-item-top">
-                    <span className="question-bank-sidebar-index">Q{index + 1}</span>
-                    <strong>{getQuestionPreview(question)}</strong>
-                  </div>
-                  <div className="question-bank-sidebar-item-bottom">
-                    <span className="question-bank-badge soft">{typeMeta.shortLabel}</span>
-                    <span className={`question-bank-badge ${isQuestionReady(question) ? 'success' : 'warning'}`}>
-                      {isQuestionReady(question) ? 'Ready' : 'Draft'}
-                    </span>
-                  </div>
-                </button>
-              )
-            }) : (
-              <div className="question-bank-empty-card">
-                <strong>No questions yet</strong>
-                <p>Select a type to start.</p>
-              </div>
-            )}
-          </div>
-        </aside>
-
         <main className="question-bank-main">
           {selectedQuestion ? (
             <div className="question-bank-workspace">
@@ -648,7 +750,7 @@ export default function QuestionBankPage({ onAlert }) {
                       <section className="question-bank-curriculum-panel">
                         <div className="question-bank-section-head">
                           <div>
-                            <span className="question-bank-eyebrow">Curriculum Mapping</span>
+                            <strong className="question-bank-step-title">STEP 1 : Curriculum Mapping</strong>
                           </div>
                           <button
                             type="button"
@@ -750,7 +852,7 @@ export default function QuestionBankPage({ onAlert }) {
                       <section className="question-bank-soft-panel question-bank-answer-panel">
                         <div className="question-bank-section-head">
                           <div>
-                            <span className="question-bank-eyebrow">Question</span>
+                            <strong className="question-bank-step-title">STEP 2 : Question Creation</strong>
                           </div>
                         </div>
 
@@ -770,7 +872,9 @@ export default function QuestionBankPage({ onAlert }) {
                       {selectedQuestion.type === 'MCQ' ? (
                         <div className="question-bank-options-block">
                           <div className="question-bank-options-head">
-                            <span className="question-bank-eyebrow">Options</span>
+                            <div>
+                              <strong className="question-bank-step-title">STEP 3 : Options</strong>
+                            </div>
                             <button
                               type="button"
                               className="question-bank-add-option-icon"
@@ -981,65 +1085,31 @@ export default function QuestionBankPage({ onAlert }) {
                     </div>
 
                     <aside className="question-bank-side-panel">
-                      <div className="question-bank-readiness-strip">
-                        <strong>Ready checklist</strong>
-                        {selectedValidationItems.map((item) => (
-                          <span key={item.label} className={item.done ? 'is-done' : ''}>
-                            <Check size={12} strokeWidth={2.5} />
-                            {item.label}
-                          </span>
-                        ))}
-                      </div>
-
                       <div className="question-bank-flow-card">
-                        <div className="question-bank-section-head">
-                          <div>
-                            <span className="question-bank-eyebrow">Question Flow</span>
-                            <strong>{isAiMode ? 'AI-assisted creation' : 'Manual creation'}</strong>
-                          </div>
-                        </div>
-
-                        <div className="question-bank-ai-flow">
-                          <button
-                            type="button"
-                            className={`question-bank-ai-toggle ${isAiMode ? 'is-active' : ''}`}
-                            onClick={() => {
-                              setIsAiMode((current) => !current)
-                              setGenerationCompleteId(null)
-                            }}
-                            aria-pressed={isAiMode}
-                          >
-                            <span className="question-bank-ai-toggle-switch" />
-                            <strong>{isAiMode ? 'AI Generate' : 'Manual'}</strong>
-                          </button>
-                        </div>
-
-                        <div className="question-bank-flow-summary">
-                          <span>
-                            <small>Mode</small>
-                            <strong>{isAiMode ? 'AI Generate' : 'Manual'}</strong>
-                          </span>
-                          <span>
-                            <small>Primary Button</small>
-                            <strong>{isAiMode ? 'AI Generate' : 'Create'}</strong>
-                          </span>
-                          <span>
-                            <small>Status</small>
-                            <strong>
-                              {isGeneratingQuestion
-                                ? 'Generating...'
-                                : generationCompleteId === selectedQuestion.id
-                                  ? 'Generated'
-                                  : 'Ready'}
-                            </strong>
-                          </span>
+                        <strong className="question-bank-process-title">Process checklist</strong>
+                        <div className="question-bank-process-list">
+                          {selectedProcessSteps.map((step, index) => (
+                            <div
+                              key={step.label}
+                              className={`question-bank-process-item ${step.done ? 'is-done' : ''}`}
+                            >
+                              <span>
+                                {step.done ? (
+                                  <Check size={13} strokeWidth={2.5} />
+                                ) : (
+                                  index + 1
+                                )}
+                              </span>
+                              <strong>{step.label}</strong>
+                            </div>
+                          ))}
                         </div>
                       </div>
 
                       <div className="question-bank-assessment-panel question-bank-assessment-inline">
                         <div className="question-bank-section-head">
                           <div>
-                            <span className="question-bank-eyebrow">Assessment Tags</span>
+                            <strong>Assessment Tags</strong>
                           </div>
                         </div>
 
@@ -1127,25 +1197,23 @@ export default function QuestionBankPage({ onAlert }) {
                             type="button"
                             className={`question-bank-primary-btn ${isGeneratingQuestion ? 'is-loading' : ''}`}
                             onClick={handlePrimaryQuestionAction}
-                            disabled={isGeneratingQuestion}
+                            disabled={isGeneratingQuestion || !canCreateSelectedQuestion}
                           >
                             {isGeneratingQuestion ? (
                               <>
                                 <LoaderCircle size={14} strokeWidth={2.2} className="question-bank-spin-icon" />
                                 Generating...
                               </>
-                            ) : isAiMode && generationCompleteId === selectedQuestion.id ? (
+                            ) : generationCompleteId === selectedQuestion.id ? (
                               <>
                                 <CheckCircle2 size={14} strokeWidth={2.2} />
-                                Generated
-                              </>
-                            ) : isAiMode ? (
-                              <>
-                                <Bot size={14} strokeWidth={2.2} />
-                                AI Generate
+                                {isUpdatingSelectedQuestion ? 'Updated' : 'Created'}
                               </>
                             ) : (
-                              'Create'
+                              <>
+                                <CheckCircle2 size={14} strokeWidth={2.2} />
+                                {isUpdatingSelectedQuestion ? 'Update' : 'Create'}
+                              </>
                             )}
                           </button>
                           <button type="button" className="question-bank-secondary-btn" onClick={handleSaveDraft}>
@@ -1158,6 +1226,109 @@ export default function QuestionBankPage({ onAlert }) {
 
                   </div>
                 </section>
+
+                {visibleQuestionCards.length ? (
+                  <section className="question-bank-created-panel">
+                    <div className="question-bank-section-head">
+                      <div>
+                        <span className="question-bank-eyebrow">Created Questions</span>
+                      </div>
+                    </div>
+
+                    <div className="question-bank-created-list">
+                      {visibleQuestionCards.map((question, index) => {
+                        const status = getQuestionCardStatus(question)
+                        const typeMeta = getQuestionTypeMeta(question.type)
+                        return (
+                          <article
+                            key={question.id}
+                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''}`}
+                          >
+                            <button
+                              type="button"
+                              className="question-bank-created-card-main"
+                              onClick={() => {
+                                if (status !== 'Generating') {
+                                  setSelectedQuestionId(question.id)
+                                }
+                              }}
+                              disabled={status === 'Generating'}
+                            >
+                              <span>
+                                <span className="question-bank-created-header">
+                                  <span className="question-bank-created-header-badges">
+                                    <span className="question-bank-badge type">{typeMeta.shortLabel}</span>
+                                    <span className={`question-bank-badge ${status === 'Draft' ? 'warning' : status === 'Created' ? 'success' : 'soft'}`}>
+                                      {status === 'Generating' ? (
+                                        <LoaderCircle size={13} strokeWidth={2.2} className="question-bank-spin-icon" />
+                                      ) : status === 'Created' ? (
+                                        <CheckCircle2 size={13} strokeWidth={2.2} />
+                                      ) : (
+                                        <FilePenLine size={13} strokeWidth={2.2} />
+                                      )}
+                                      {status}
+                                    </span>
+                                    {status === 'Created' && question.questionCategory ? (
+                                      <span className="question-bank-badge mint">{question.questionCategory}</span>
+                                    ) : null}
+                                    {status === 'Created' && question.cognitiveLevel ? (
+                                      <span className="question-bank-badge blue">{question.cognitiveLevel}</span>
+                                    ) : null}
+                                    {status === 'Created' && question.thinkingLevel ? (
+                                      <span className="question-bank-badge lilac">{question.thinkingLevel}</span>
+                                    ) : null}
+                                    {status === 'Created' && question.difficultyLevel ? (
+                                      <span className="question-bank-badge soft">{question.difficultyLevel}</span>
+                                    ) : null}
+                                    {status === 'Created' && question.marks ? (
+                                      <span className="question-bank-badge soft">
+                                        {question.marks} mark{question.marks === '1' ? '' : 's'}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                </span>
+                                <strong className="question-bank-created-question">Q{index + 1}. {getQuestionPreview(question)}</strong>
+                                {status === 'Created' ? (
+                                  <>
+                                    {question.type === 'MCQ' ? (
+                                      <span className="question-bank-created-options">
+                                        {question.options
+                                          .filter((option) => Boolean(getRichTextPreview(option.label)))
+                                          .map((option, optionIndex) => (
+                                            <b
+                                              key={option.id}
+                                              className={question.correctOptionIds.includes(option.id) ? 'is-correct' : ''}
+                                            >
+                                              {String.fromCharCode(65 + optionIndex)}. {getRichTextPreview(option.label)}
+                                            </b>
+                                          ))}
+                                      </span>
+                                    ) : null}
+                                    {getRichTextPreview(question.answerKey) ? (
+                                      <span className="question-bank-created-answer">
+                                        <b>Answer & Explanation</b>
+                                        {getRichTextPreview(question.answerKey)}
+                                      </span>
+                                    ) : null}
+                                  </>
+                                ) : null}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="question-bank-icon-btn"
+                              onClick={() => handleDeleteQuestionById(question.id)}
+                              aria-label="Delete question"
+                            >
+                              <Trash2 size={14} strokeWidth={2} />
+                            </button>
+                          </article>
+                        )
+                      })}
+                    </div>
+                  </section>
+                ) : null}
 
               </div>
             </div>
