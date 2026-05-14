@@ -257,6 +257,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const [isMetaExpanded, setIsMetaExpanded] = useState(false)
   const [isGeneratedQuestionsOpen, setIsGeneratedQuestionsOpen] = useState(Boolean(savedDraft?.generatedQuestions?.length))
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(isInterpretationWorkflow ? 'manual' : 'context')
+  const [isProgressWidgetOpen, setIsProgressWidgetOpen] = useState(false)
   const [scaffoldingSelection, setScaffoldingSelection] = useState({
     MCQ: 0,
     Descriptive: 0,
@@ -413,6 +414,18 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const hasCompletedUploadStep = isInterpretationWorkflow ? true : uploadedImageCount >= 1
   const hasCompletedQuestionStep = hasEditedDefaultCreatedQuestion || createdSkillQuestions.length > 1
   const hasGeneratedScaffolding = generatedQuestions.length > 0
+  const progressSteps = [
+    { label: 'Context Setup', done: Boolean(activityName.trim()) },
+    { label: isInterpretationWorkflow ? 'Case Ready' : 'Reference Image', done: hasCompletedUploadStep },
+    { label: isInterpretationWorkflow ? 'Manual Question' : 'Question Creation', done: hasCompletedQuestionStep },
+    { label: 'Scaffolding', done: hasGeneratedScaffolding },
+    { label: 'Created', done: isActivityCreated },
+  ]
+  const currentProgressStepIndex = progressSteps.findIndex((step) => !step.done)
+  const completedProgressStepCount = progressSteps.filter((step) => step.done).length
+  const progressPercent = progressSteps.length
+    ? Math.round((completedProgressStepCount / progressSteps.length) * 100)
+    : 0
   const canUseScaffolding = hasCompletedQuestionStep && !hasGeneratedScaffolding
   const hasDraftContent = uploadedImageCount > 0 || hasAnyQuestionCreated
   const shouldShowSkillBuilder = true
@@ -1644,6 +1657,44 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
             </>
         </section>
         ) : null}
+
+        <div className={`image-activity-progress-widget ${isProgressWidgetOpen ? 'is-open' : ''}`}>
+          {isProgressWidgetOpen ? (
+            <div className="image-activity-progress-popover" role="dialog" aria-label="Process checklist">
+              <strong className="image-activity-progress-title">Process checklist</strong>
+              <div className="image-activity-progress-list">
+                {progressSteps.map((step, index) => (
+                  <div
+                    key={step.label}
+                    className={`image-activity-progress-item ${step.done ? 'is-done' : index === currentProgressStepIndex ? 'is-current' : ''}`}
+                  >
+                    <span>
+                      {step.done ? (
+                        <CheckCircle2 size={13} strokeWidth={2.5} />
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
+                    <strong>{step.label}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="image-activity-progress-fab"
+            style={{ '--image-activity-progress': `${progressPercent}%` }}
+            onClick={() => setIsProgressWidgetOpen((current) => !current)}
+            aria-expanded={isProgressWidgetOpen}
+            aria-label="Toggle process checklist"
+          >
+            <span>
+              <strong>{completedProgressStepCount}</strong>
+              <small>/{progressSteps.length}</small>
+            </span>
+          </button>
+        </div>
 
         {activeWorkspaceTab === 'scaffolding' && generatedQuestions.length > 0 ? (
             <section ref={generatedSectionRef} className="image-activity-builder-card image-activity-builder-card--enhanced">

@@ -394,6 +394,7 @@ export default function QuestionBankPage({ onAlert }) {
   const [mappingSearchValue, setMappingSearchValue] = useState('')
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   const [generationCompleteId, setGenerationCompleteId] = useState(null)
+  const [isProgressWidgetOpen, setIsProgressWidgetOpen] = useState(false)
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
   const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
@@ -411,6 +412,11 @@ export default function QuestionBankPage({ onAlert }) {
   const availableCompetencies = selectedQuestion ? getAvailableCompetencies(selectedQuestion) : []
   const selectedQuestionIndex = selectedQuestion ? questions.findIndex((item) => item.id === selectedQuestion.id) + 1 : 0
   const selectedProcessSteps = selectedQuestion ? getProcessSteps(selectedQuestion) : []
+  const selectedCurrentProcessIndex = selectedProcessSteps.findIndex((step) => !step.done)
+  const completedProcessStepCount = selectedProcessSteps.filter((step) => step.done).length
+  const selectedProcessPercent = selectedProcessSteps.length
+    ? Math.round((completedProcessStepCount / selectedProcessSteps.length) * 100)
+    : 0
   const canCreateSelectedQuestion = canCreateQuestion(selectedQuestion)
   const isUpdatingSelectedQuestion = selectedQuestion
     ? ['Created', 'Draft'].includes(selectedQuestion.status)
@@ -442,6 +448,7 @@ export default function QuestionBankPage({ onAlert }) {
   useEffect(() => {
     setIsGeneratingQuestion(false)
     setGenerationCompleteId(null)
+    setIsProgressWidgetOpen(false)
   }, [selectedQuestionId])
 
   const updateSelectedQuestion = (updater) => {
@@ -1085,27 +1092,6 @@ export default function QuestionBankPage({ onAlert }) {
                     </div>
 
                     <aside className="question-bank-side-panel">
-                      <div className="question-bank-flow-card">
-                        <strong className="question-bank-process-title">Process checklist</strong>
-                        <div className="question-bank-process-list">
-                          {selectedProcessSteps.map((step, index) => (
-                            <div
-                              key={step.label}
-                              className={`question-bank-process-item ${step.done ? 'is-done' : ''}`}
-                            >
-                              <span>
-                                {step.done ? (
-                                  <Check size={13} strokeWidth={2.5} />
-                                ) : (
-                                  index + 1
-                                )}
-                              </span>
-                              <strong>{step.label}</strong>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
                       <div className="question-bank-assessment-panel question-bank-assessment-inline">
                         <div className="question-bank-section-head">
                           <div>
@@ -1341,6 +1327,46 @@ export default function QuestionBankPage({ onAlert }) {
           )}
         </main>
       </div>
+
+      {selectedQuestion ? (
+        <div className={`question-bank-progress-widget ${isProgressWidgetOpen ? 'is-open' : ''}`}>
+          {isProgressWidgetOpen ? (
+            <div className="question-bank-progress-popover" role="dialog" aria-label="Process checklist">
+              <strong className="question-bank-process-title">Process checklist</strong>
+              <div className="question-bank-process-list">
+                {selectedProcessSteps.map((step, index) => (
+                  <div
+                    key={step.label}
+                    className={`question-bank-process-item ${step.done ? 'is-done' : index === selectedCurrentProcessIndex ? 'is-current' : ''}`}
+                  >
+                    <span>
+                      {step.done ? (
+                        <Check size={13} strokeWidth={2.5} />
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
+                    <strong>{step.label}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="question-bank-progress-fab"
+            style={{ '--question-bank-progress': `${selectedProcessPercent}%` }}
+            onClick={() => setIsProgressWidgetOpen((current) => !current)}
+            aria-expanded={isProgressWidgetOpen}
+            aria-label="Toggle process checklist"
+          >
+            <span>
+              <strong>{completedProcessStepCount}</strong>
+              <small>/{selectedProcessSteps.length}</small>
+            </span>
+          </button>
+        </div>
+      ) : null}
     </section>
   )
 }

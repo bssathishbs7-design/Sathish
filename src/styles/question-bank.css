@@ -1295,6 +1295,88 @@
   line-height: 1.2;
 }
 
+.question-bank-progress-widget {
+  position: fixed;
+  right: 22px;
+  bottom: 28px;
+  z-index: 40;
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.question-bank-progress-fab,
+.question-bank-progress-popover {
+  pointer-events: auto;
+}
+
+.question-bank-progress-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 62px;
+  padding: 0;
+  border: 1px solid #aadcc7;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, #ffffff 0 55%, transparent 56%),
+    conic-gradient(#26a878 var(--question-bank-progress, 0%), #dce9e4 0);
+  color: #17313b;
+  box-shadow: 0 18px 38px rgba(22, 49, 60, 0.18);
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.question-bank-progress-fab:hover,
+.question-bank-progress-fab:focus-visible {
+  border-color: #57bf99;
+  box-shadow: 0 22px 44px rgba(22, 49, 60, 0.24);
+  outline: none;
+  transform: translateY(-2px);
+}
+
+.question-bank-progress-fab span {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+}
+
+.question-bank-progress-fab strong {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.question-bank-progress-fab small {
+  color: #647686;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.question-bank-progress-popover {
+  width: min(300px, calc(100vw - 44px));
+  padding: 12px;
+  border: 1px solid #d7e8e0;
+  border-radius: 8px;
+  background: #fbfefc;
+  box-shadow: 0 22px 54px rgba(22, 49, 60, 0.2);
+  animation: question-bank-progress-pop 160ms ease both;
+}
+
+@keyframes question-bank-progress-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .question-bank-add-option-icon {
   display: inline-flex;
   align-items: center;
@@ -1652,6 +1734,18 @@
   border-color: #95cfb0;
   background: #dff3e8;
   color: #12633e;
+}
+
+.question-bank-process-item.is-current {
+  border-color: #9dcfe2;
+  background: #f4fbff;
+  color: #245f78;
+}
+
+.question-bank-process-item.is-current span {
+  border-color: #9dcfe2;
+  background: #e9f6fd;
+  color: #245f78;
 }
 
 .question-bank-created-panel {
@@ -2143,6 +2237,29 @@
   background: #17263a;
 }
 
+.theme-dark .question-bank-flow-card {
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .question-bank-progress-popover {
+  border-color: rgba(94, 116, 145, 0.46);
+  background: #17263a;
+  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.42);
+}
+
+.theme-dark .question-bank-progress-fab {
+  border-color: rgba(89, 185, 143, 0.72);
+  background:
+    radial-gradient(circle at center, #17263a 0 55%, transparent 56%),
+    conic-gradient(#59c795 var(--question-bank-progress, 0%), #314257 0);
+  color: #f2f8ff;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+}
+
+.theme-dark .question-bank-progress-fab small {
+  color: #a9b8c9;
+}
+
 .theme-dark .question-bank-process-title,
 .theme-dark .question-bank-flow-card .question-bank-section-head,
 .theme-dark .question-bank-assessment-inline .question-bank-section-head,
@@ -2185,11 +2302,23 @@
   color: #8df0c7;
 }
 
+.theme-dark .question-bank-process-item.is-current {
+  border-color: rgba(103, 157, 183, 0.7);
+  background: rgba(28, 65, 88, 0.46);
+  color: #b8e6ff;
+}
+
 .theme-dark .question-bank-process-item.is-done span,
 .theme-dark .question-bank-mapping-result.is-active span {
   border-color: rgba(89, 185, 143, 0.72);
   background: rgba(36, 142, 93, 0.24);
   color: #8df0c7;
+}
+
+.theme-dark .question-bank-process-item.is-current span {
+  border-color: rgba(103, 157, 183, 0.76);
+  background: rgba(28, 65, 88, 0.62);
+  color: #b8e6ff;
 }
 
 .theme-dark .question-bank-mapping-result.is-active strong {
@@ -2404,8 +2533,14 @@
   }
 
   .question-bank-inspector,
-  .question-bank-assessment-panel {
+  .question-bank-assessment-panel,
+  .question-bank-flow-card {
     position: static;
+  }
+
+  .question-bank-flow-card {
+    min-height: 0;
+    box-shadow: none;
   }
 }
 
@@ -2422,6 +2557,16 @@
 @media (max-width: 720px) {
   .question-bank-page {
     padding: 16px 14px 24px;
+  }
+
+  .question-bank-progress-widget {
+    right: 14px;
+    bottom: 16px;
+  }
+
+  .question-bank-progress-fab {
+    width: 56px;
+    height: 56px;
   }
 
   .question-bank-header,
