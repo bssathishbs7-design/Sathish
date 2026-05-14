@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   CheckCheck,
   CheckCircle2,
   FilePenLine,
   FolderTree,
+  ImagePlus,
   ListChecks,
   LoaderCircle,
   Plus,
@@ -90,6 +91,7 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   difficultyLevel: '',
   answerKey: '',
   imageName: '',
+  imagePreviewUrl: '',
   options: [createOption(''), createOption(''), createOption(''), createOption('')],
   correctOptionIds: [],
   trueFalseAnswer: 'True',
@@ -220,6 +222,8 @@ const hasAssessmentTags = (question) => (
   && Boolean(question?.difficultyLevel)
 )
 
+const hasVisibleMarks = (marks) => Number(marks) > 0
+
 const canCreateQuestion = (question) => {
   if (!question || question.status === 'Generating') return false
 
@@ -234,8 +238,8 @@ const getProcessSteps = (question) => ([
   { label: 'Curriculum Mapping', done: hasCurriculumMapping(question) },
   { label: 'Question Creation', done: hasQuestionContent(question) },
   { label: 'Options', done: hasMcqOptions(question) },
-  { label: 'Answer & Explanation', done: Boolean(getRichTextPreview(question.answerKey)) },
-  { label: 'Assessment Tags', done: hasAssessmentTags(question) },
+  { label: 'Answer Key (optional)', done: Boolean(getRichTextPreview(question.answerKey)) },
+  { label: 'Assessment Tags (optional)', done: hasAssessmentTags(question) },
   { label: question.status === 'Draft' ? 'Draft Saved' : 'Created', done: ['Draft', 'Created'].includes(question.status) },
 ])
 
@@ -308,6 +312,12 @@ function SelectionChips({ items, selected, onToggle, emptyLabel }) {
 const getOptionValue = (item) => (typeof item === 'string' ? item : item.value)
 const getOptionLabel = (item) => (typeof item === 'string' ? item : item.value)
 const getShortCompetencyLabel = (value) => value.split(' ').slice(0, 1).join(' ')
+const getYearDisplayLabel = (year) => ({
+  'Year 1': 'First Year',
+  'Year 2': 'Second Year',
+  'Year 3': 'Third Year',
+  'Year 4': 'Fourth Year',
+}[year] ?? year)
 
 const getSelectionSummary = (selected, emptyLabel, formatter = (value) => value) => {
   if (!selected.length) return emptyLabel
@@ -315,6 +325,17 @@ const getSelectionSummary = (selected, emptyLabel, formatter = (value) => value)
   const remaining = selected.length - 2
   return remaining > 0 ? `${visible} +${remaining} more` : visible
 }
+
+const getCurriculumStatusLabel = (question) => [
+  getYearDisplayLabel(question.year),
+  question.subject,
+  question.topics.length ? question.topics.join(', ') : 'Select topics',
+  question.competencies.length ? question.competencies.map(getShortCompetencyLabel).join(', ') : 'Select competencies',
+].filter(Boolean).join(' / ')
+
+const getRestrictedText = (value, maxLength = 72) => (
+  value.length > maxLength ? `${value.slice(0, maxLength - 1).trimEnd()}...` : value
+)
 
 function MappingSelectorPanel({
   title,
@@ -388,6 +409,7 @@ function MappingSelectorPanel({
 }
 
 export default function QuestionBankPage({ onAlert }) {
+  const questionImageInputRef = useRef(null)
   const [questions, setQuestions] = useState([])
   const [selectedQuestionId, setSelectedQuestionId] = useState(null)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
@@ -469,7 +491,6 @@ export default function QuestionBankPage({ onAlert }) {
     })
     setQuestions((current) => [...current, question])
     setSelectedQuestionId(question.id)
-    onAlert?.({ tone: 'secondary', message: `${type} question created.` })
   }
 
   const handleAddHierarchyNode = (level) => {
@@ -683,6 +704,35 @@ export default function QuestionBankPage({ onAlert }) {
     setMappingSearchValue('')
   }
 
+  const handleQuestionImageAttach = (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      onAlert?.({ tone: 'warning', message: 'Attach image files only.' })
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      updateSelectedQuestion({
+        imageName: file.name,
+        imagePreviewUrl: reader.result,
+      })
+    }
+    reader.onerror = () => {
+      onAlert?.({ tone: 'warning', message: 'Unable to attach this image.' })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleQuestionImageRemove = () => {
+    updateSelectedQuestion({
+      imageName: '',
+      imagePreviewUrl: '',
+    })
+  }
+
   const questionTypePicker = (
     <div className="question-bank-type-picker">
       {QUESTION_TYPE_CARDS.map((item) => {
@@ -756,6 +806,10 @@ export default function QuestionBankPage({ onAlert }) {
                     <div className="question-bank-author-main">
                       <section className="question-bank-curriculum-panel">
                         <div className="question-bank-section-head">
+                          {(() => {
+                            const curriculumStatusLabel = getCurriculumStatusLabel(selectedQuestion)
+                            return (
+                              <>
                           <div>
                             <strong className="question-bank-step-title">STEP 1 : Curriculum Mapping</strong>
                           </div>
@@ -764,9 +818,16 @@ export default function QuestionBankPage({ onAlert }) {
                             className={`question-bank-curriculum-status ${curriculumStatusTone} ${activeMappingPicker ? 'is-open' : ''}`}
                             onClick={toggleMappingFlow}
                             aria-expanded={Boolean(activeMappingPicker)}
+                            aria-label={curriculumStatusLabel}
+                            data-tooltip={curriculumStatusLabel}
                           >
-                            {selectedQuestion.year} - {selectedQuestion.subject} - {selectedQuestion.topics.length} topic{selectedQuestion.topics.length === 1 ? '' : 's'} - {selectedQuestion.competencies.length} competenc{selectedQuestion.competencies.length === 1 ? 'y' : 'ies'}
+                            <span className="question-bank-curriculum-status-text">
+                              {getRestrictedText(curriculumStatusLabel)}
+                            </span>
                           </button>
+                              </>
+                            )
+                          })()}
                         </div>
 
                         <div className="question-bank-curriculum-grid">
@@ -873,8 +934,40 @@ export default function QuestionBankPage({ onAlert }) {
                             placeholder="Enter your question here"
                             minRows={5}
                             ariaLabel="Question text"
+                            allowPastedImages={false}
+                            onPasteImageRejected={() => onAlert?.({ tone: 'warning', message: 'Use the attach image button to add images.' })}
+                            toolbarActions={(
+                              <button
+                                type="button"
+                                className="rich-math-editor-tool"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => questionImageInputRef.current?.click()}
+                                aria-label="Attach image"
+                                title="Attach image"
+                              >
+                                <ImagePlus size={15} strokeWidth={2.2} />
+                              </button>
+                            )}
                           />
                         </label>
+                        <input
+                          ref={questionImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="question-bank-hidden-file-input"
+                          onChange={handleQuestionImageAttach}
+                        />
+                        {selectedQuestion.imagePreviewUrl ? (
+                          <figure className="question-bank-question-image-preview">
+                            <img src={selectedQuestion.imagePreviewUrl} alt={selectedQuestion.imageName || 'Attached question'} />
+                            <figcaption>
+                              <span>{selectedQuestion.imageName || 'Attached image'}</span>
+                              <button type="button" className="question-bank-icon-btn" onClick={handleQuestionImageRemove} aria-label="Remove attached image">
+                                <Trash2 size={14} strokeWidth={2} />
+                              </button>
+                            </figcaption>
+                          </figure>
+                        ) : null}
 
                       {selectedQuestion.type === 'MCQ' ? (
                         <div className="question-bank-options-block">
@@ -1266,7 +1359,7 @@ export default function QuestionBankPage({ onAlert }) {
                                     {status === 'Created' && question.difficultyLevel ? (
                                       <span className="question-bank-badge soft">{question.difficultyLevel}</span>
                                     ) : null}
-                                    {status === 'Created' && question.marks ? (
+                                    {status === 'Created' && hasVisibleMarks(question.marks) ? (
                                       <span className="question-bank-badge soft">
                                         {question.marks} mark{question.marks === '1' ? '' : 's'}
                                       </span>
@@ -1274,6 +1367,11 @@ export default function QuestionBankPage({ onAlert }) {
                                   </span>
                                 </span>
                                 <strong className="question-bank-created-question">Q{index + 1}. {getQuestionPreview(question)}</strong>
+                                {question.imagePreviewUrl ? (
+                                  <span className="question-bank-created-image">
+                                    <img src={question.imagePreviewUrl} alt={question.imageName || `Question ${index + 1} attachment`} />
+                                  </span>
+                                ) : null}
                                 {status === 'Created' ? (
                                   <>
                                     {question.type === 'MCQ' ? (

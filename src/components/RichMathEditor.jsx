@@ -76,6 +76,9 @@ export default function RichMathEditor({
   minRows = 3,
   compact = false,
   ariaLabel,
+  allowPastedImages = true,
+  onPasteImageRejected,
+  toolbarActions = null,
 }) {
   const editorRef = useRef(null)
   const currentValue = value ?? ''
@@ -115,6 +118,14 @@ export default function RichMathEditor({
 
   const handlePaste = (event) => {
     const imageFiles = [...event.clipboardData.files].filter((file) => file.type.startsWith('image/'))
+    const html = event.clipboardData.getData('text/html')
+    const hasHtmlImage = /<img\b/i.test(html) || /data:image\//i.test(html)
+    if (!allowPastedImages && (imageFiles.length || hasHtmlImage)) {
+      event.preventDefault()
+      onPasteImageRejected?.()
+      return
+    }
+
     if (imageFiles.length) {
       event.preventDefault()
       Promise.all(imageFiles.map(readImageFileAsDataUrl))
@@ -177,6 +188,7 @@ export default function RichMathEditor({
         >
           <Sigma size={15} strokeWidth={2.2} />
         </button>
+        {toolbarActions}
       </div>
       <div
         ref={editorRef}
