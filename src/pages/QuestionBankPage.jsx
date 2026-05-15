@@ -3,6 +3,7 @@ import {
   Check,
   CheckCheck,
   CheckCircle2,
+  Eye,
   FilePenLine,
   FolderTree,
   ImagePlus,
@@ -13,6 +14,7 @@ import {
   Sigma,
   Sparkles,
   Trash2,
+  X,
 } from 'lucide-react'
 import RichMathEditor from '../components/RichMathEditor'
 import { stripHtml } from '../utils/mathText'
@@ -92,6 +94,7 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   answerKey: '',
   imageName: '',
   imagePreviewUrl: '',
+  images: [],
   options: [createOption(''), createOption(''), createOption(''), createOption('')],
   correctOptionIds: [],
   trueFalseAnswer: 'True',
@@ -113,6 +116,18 @@ const getQuestionTypeMeta = (type) => (
 const getRichTextPreview = (value) => stripHtml(value)
 
 const getQuestionPreview = (question) => getRichTextPreview(question.questionText) || question.title || 'Untitled question'
+
+const getQuestionImages = (question) => {
+  if (Array.isArray(question?.images) && question.images.length) return question.images
+  if (question?.imagePreviewUrl) {
+    return [{
+      id: 'legacy-question-image',
+      name: question.imageName || 'Attached image',
+      previewUrl: question.imagePreviewUrl,
+    }]
+  }
+  return []
+}
 
 const createHtmlBlock = (value) => `<div>${String(value ?? '')}</div>`
 
@@ -417,8 +432,10 @@ export default function QuestionBankPage({ onAlert }) {
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   const [generationCompleteId, setGenerationCompleteId] = useState(null)
   const [isProgressWidgetOpen, setIsProgressWidgetOpen] = useState(false)
+  const [previewImage, setPreviewImage] = useState(null)
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
+  const selectedQuestionImages = getQuestionImages(selectedQuestion)
   const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
   const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
@@ -471,6 +488,7 @@ export default function QuestionBankPage({ onAlert }) {
     setIsGeneratingQuestion(false)
     setGenerationCompleteId(null)
     setIsProgressWidgetOpen(false)
+    setPreviewImage(null)
   }, [selectedQuestionId])
 
   const updateSelectedQuestion = (updater) => {
@@ -705,32 +723,46 @@ export default function QuestionBankPage({ onAlert }) {
   }
 
   const handleQuestionImageAttach = (event) => {
-    const file = event.target.files?.[0]
+    const files = [...(event.target.files ?? [])]
     event.target.value = ''
-    if (!file) return
-    if (!file.type.startsWith('image/')) {
+    if (!files.length) return
+
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'))
+    if (!imageFiles.length) {
       onAlert?.({ tone: 'warning', message: 'Attach image files only.' })
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      updateSelectedQuestion({
-        imageName: file.name,
-        imagePreviewUrl: reader.result,
+    Promise.all(imageFiles.map((file, index) => new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve({
+        id: `question-image-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+        name: file.name,
+        previewUrl: reader.result,
       })
-    }
-    reader.onerror = () => {
-      onAlert?.({ tone: 'warning', message: 'Unable to attach this image.' })
-    }
-    reader.readAsDataURL(file)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })))
+      .then((nextImages) => {
+        updateSelectedQuestion((item) => ({
+          ...item,
+          images: [...getQuestionImages(item), ...nextImages],
+          imageName: '',
+          imagePreviewUrl: '',
+        }))
+      })
+      .catch(() => {
+        onAlert?.({ tone: 'warning', message: 'Unable to attach one or more images.' })
+      })
   }
 
-  const handleQuestionImageRemove = () => {
-    updateSelectedQuestion({
+  const handleQuestionImageRemove = (imageId) => {
+    updateSelectedQuestion((item) => ({
+      ...item,
+      images: getQuestionImages(item).filter((image) => image.id !== imageId),
       imageName: '',
       imagePreviewUrl: '',
-    })
+    }))
   }
 
   const questionTypePicker = (
@@ -954,19 +986,32 @@ export default function QuestionBankPage({ onAlert }) {
                           ref={questionImageInputRef}
                           type="file"
                           accept="image/*"
+                          multiple
                           className="question-bank-hidden-file-input"
                           onChange={handleQuestionImageAttach}
                         />
-                        {selectedQuestion.imagePreviewUrl ? (
-                          <figure className="question-bank-question-image-preview">
-                            <img src={selectedQuestion.imagePreviewUrl} alt={selectedQuestion.imageName || 'Attached question'} />
-                            <figcaption>
-                              <span>{selectedQuestion.imageName || 'Attached image'}</span>
-                              <button type="button" className="question-bank-icon-btn" onClick={handleQuestionImageRemove} aria-label="Remove attached image">
-                                <Trash2 size={14} strokeWidth={2} />
-                              </button>
-                            </figcaption>
-                          </figure>
+                        {selectedQuestionImages.length ? (
+                          <div className="question-bank-attachment-list" aria-label="Attached question images">
+                            {selectedQuestionImages.map((image, imageIndex) => (
+                              <div key={image.id} className="question-bank-attachment-item">
+                                <button
+                                  type="button"
+                                  className="question-bank-attachment-thumb"
+                                  onClick={() => setPreviewImage(image)}
+                                  aria-label={`Preview ${image.name || `attachment ${imageIndex + 1}`}`}
+                                >
+                                  <img src={image.previewUrl} alt="" />
+                                </button>
+                                <span className="question-bank-attachment-name">{image.name || `Attachment ${imageIndex + 1}`}</span>
+                                <button type="button" className="question-bank-icon-btn" onClick={() => setPreviewImage(image)} aria-label={`Preview ${image.name || `attachment ${imageIndex + 1}`}`}>
+                                  <Eye size={14} strokeWidth={2} />
+                                </button>
+                                <button type="button" className="question-bank-icon-btn" onClick={() => handleQuestionImageRemove(image.id)} aria-label={`Remove ${image.name || `attachment ${imageIndex + 1}`}`}>
+                                  <Trash2 size={14} strokeWidth={2} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         ) : null}
 
                       {selectedQuestion.type === 'MCQ' ? (
@@ -1367,9 +1412,33 @@ export default function QuestionBankPage({ onAlert }) {
                                   </span>
                                 </span>
                                 <strong className="question-bank-created-question">Q{index + 1}. {getQuestionPreview(question)}</strong>
-                                {question.imagePreviewUrl ? (
-                                  <span className="question-bank-created-image">
-                                    <img src={question.imagePreviewUrl} alt={question.imageName || `Question ${index + 1} attachment`} />
+                                {getQuestionImages(question).length ? (
+                                  <span className="question-bank-created-images" aria-label={`Question ${index + 1} attachments`}>
+                                    {getQuestionImages(question).slice(0, 3).map((image, imageIndex) => (
+                                      <span
+                                        key={image.id}
+                                        role="button"
+                                        tabIndex={0}
+                                        className="question-bank-created-image"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          setPreviewImage(image)
+                                        }}
+                                        onKeyDown={(event) => {
+                                          if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault()
+                                            event.stopPropagation()
+                                            setPreviewImage(image)
+                                          }
+                                        }}
+                                        aria-label={`Preview ${image.name || `attachment ${imageIndex + 1}`}`}
+                                      >
+                                        <img src={image.previewUrl} alt="" />
+                                      </span>
+                                    ))}
+                                    {getQuestionImages(question).length > 3 ? (
+                                      <span className="question-bank-created-image-more">+{getQuestionImages(question).length - 3}</span>
+                                    ) : null}
                                   </span>
                                 ) : null}
                                 {status === 'Created' ? (
@@ -1463,6 +1532,22 @@ export default function QuestionBankPage({ onAlert }) {
               <small>/{selectedProcessSteps.length}</small>
             </span>
           </button>
+        </div>
+      ) : null}
+
+      {previewImage ? (
+        <div className="question-bank-image-preview-modal" onClick={() => setPreviewImage(null)}>
+          <section className="question-bank-image-preview-dialog" onClick={(event) => event.stopPropagation()}>
+            <div className="question-bank-image-preview-head">
+              <strong>{previewImage.name || 'Attached image'}</strong>
+              <button type="button" className="question-bank-icon-btn" onClick={() => setPreviewImage(null)} aria-label="Close image preview">
+                <X size={15} strokeWidth={2.2} />
+              </button>
+            </div>
+            <div className="question-bank-image-preview-frame">
+              <img src={previewImage.previewUrl} alt={previewImage.name || 'Attached question'} />
+            </div>
+          </section>
         </div>
       ) : null}
     </section>
