@@ -3,7 +3,7 @@ import { ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandLogoDark from '../assets/brand-logo-dark.svg'
 import brandMark from '../assets/brand-mark.svg'
-import { ASSESSMENT_PAGES, MY_SKILL_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
+import { ASSESSMENT_PAGES, MY_SKILL_PAGES, QUESTION_BANK_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
 
 /**
  * Sidebar Implementation Contract
@@ -37,6 +37,7 @@ export default function Sidebar({
     Skills: SKILL_PAGES.includes(activePage),
     'My Skills': MY_SKILL_PAGES.includes(activePage),
     Assessment: ASSESSMENT_PAGES.includes(activePage),
+    'Question Bank': QUESTION_BANK_PAGES.includes(activePage),
   }
   const [openGroups, setOpenGroups] = useState(activeGroupMap)
   const groupRefs = useRef({})
@@ -47,6 +48,7 @@ export default function Sidebar({
       Skills: SKILL_PAGES.includes(page),
       'My Skills': MY_SKILL_PAGES.includes(page),
       Assessment: ASSESSMENT_PAGES.includes(page),
+      'Question Bank': QUESTION_BANK_PAGES.includes(page),
     }))
     onSelectPage(page)
   }

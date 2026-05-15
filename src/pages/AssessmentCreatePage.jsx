@@ -18,7 +18,6 @@ const createHighlights = [
     icon: Sparkles,
   },
 ]
-
 export default function AssessmentCreatePage() {
   return (
     <section className="vx-content assessment-page">

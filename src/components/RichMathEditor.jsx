@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Bold,
   Italic,
@@ -8,6 +8,7 @@ import {
   Subscript,
   Superscript,
   Underline,
+  X,
 } from 'lucide-react'
 import MathText from './MathText'
 import {
@@ -81,6 +82,9 @@ export default function RichMathEditor({
   toolbarActions = null,
 }) {
   const editorRef = useRef(null)
+  const toolbarRef = useRef(null)
+  const [isToolbarOpen, setIsToolbarOpen] = useState(false)
+  const [toolbarPosition, setToolbarPosition] = useState({ left: 12, top: 10 })
   const currentValue = value ?? ''
   const plainText = stripHtml(currentValue)
 
@@ -98,6 +102,40 @@ export default function RichMathEditor({
     editorRef.current?.focus()
     document.execCommand(command, false, value)
     emitChange()
+  }
+
+  const updateSelectionToolbar = () => {
+    const editor = editorRef.current
+    const selection = window.getSelection()
+    if (!editor || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      setIsToolbarOpen(false)
+      return
+    }
+
+    const anchorNode = selection.anchorNode
+    const focusNode = selection.focusNode
+    if (!editor.contains(anchorNode) || !editor.contains(focusNode)) {
+      setIsToolbarOpen(false)
+      return
+    }
+
+    const range = selection.getRangeAt(0)
+    const rangeRect = range.getBoundingClientRect()
+    const editorRect = editor.getBoundingClientRect()
+    if (!rangeRect.width && !rangeRect.height) {
+      setIsToolbarOpen(false)
+      return
+    }
+
+    const centeredLeft = rangeRect.left - editorRect.left + (rangeRect.width / 2)
+    const left = Math.min(Math.max(centeredLeft, 28), Math.max(editorRect.width - 28, 28))
+    const topAbove = rangeRect.top - editorRect.top - 48
+    const top = topAbove >= 8
+      ? topAbove
+      : rangeRect.bottom - editorRect.top + 8
+
+    setToolbarPosition({ left, top })
+    setIsToolbarOpen(true)
   }
 
   const insertFormula = () => {
@@ -149,9 +187,39 @@ export default function RichMathEditor({
     emitChange()
   }
 
+  const handleBlur = (event) => {
+    emitChange()
+    const nextFocusTarget = event.relatedTarget
+    if (nextFocusTarget && toolbarRef.current?.contains(nextFocusTarget)) return
+    setIsToolbarOpen(false)
+  }
+
+  const handleInput = () => {
+    if (isToolbarOpen) {
+      setIsToolbarOpen(false)
+    }
+    emitChange()
+  }
+
+  const handleKeyUp = (event) => {
+    if (event.key === 'Escape') {
+      setIsToolbarOpen(false)
+      return
+    }
+    updateSelectionToolbar()
+  }
+
   return (
-    <div className={`rich-math-editor ${compact ? 'is-compact' : ''}`}>
-      <div className="rich-math-editor-toolbar" aria-label="Rich text formatting">
+    <div className={`rich-math-editor ${compact ? 'is-compact' : ''} ${isToolbarOpen ? 'is-toolbar-open' : ''}`}>
+      <div
+        ref={toolbarRef}
+        className="rich-math-editor-toolbar"
+        aria-label="Rich text formatting"
+        style={{
+          '--rich-math-toolbar-left': `${toolbarPosition.left}px`,
+          '--rich-math-toolbar-top': `${toolbarPosition.top}px`,
+        }}
+      >
         {FORMAT_BUTTONS.map((item) => {
           const Icon = item.icon
           return (
@@ -189,6 +257,19 @@ export default function RichMathEditor({
           <Sigma size={15} strokeWidth={2.2} />
         </button>
         {toolbarActions}
+        <button
+          type="button"
+          className="rich-math-editor-tool is-close"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            setIsToolbarOpen(false)
+            editorRef.current?.focus()
+          }}
+          aria-label="Close formatting toolbar"
+          title="Close"
+        >
+          <X size={15} strokeWidth={2.2} />
+        </button>
       </div>
       <div
         ref={editorRef}
@@ -198,8 +279,10 @@ export default function RichMathEditor({
         aria-label={ariaLabel ?? placeholder}
         data-placeholder={placeholder}
         data-empty={plainText ? 'false' : 'true'}
-        onInput={emitChange}
-        onBlur={emitChange}
+        onInput={handleInput}
+        onBlur={handleBlur}
+        onMouseUp={updateSelectionToolbar}
+        onKeyUp={handleKeyUp}
         onPaste={handlePaste}
         style={{ minHeight: `${Math.max(minRows, 1) * 34}px` }}
         suppressContentEditableWarning

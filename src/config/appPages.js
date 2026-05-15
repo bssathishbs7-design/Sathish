@@ -4,6 +4,8 @@ import {
   BookText,
   ClipboardCheck,
   FileCheck2,
+  FilePenLine,
+  FileSearch,
   FileText,
   SlidersHorizontal,
   TrendingUp,
@@ -17,6 +19,7 @@ export const APP_PAGES = {
   ASSESSMENT_EVALUATION: 'Assessment Evaluation',
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
   QUESTION_BANK: 'Question Bank',
+  QUESTION_BANK_NON_CREATE: 'Question Bank Overall Question',
   ACTIVITY_RESULT: 'Activity Result',
   COMPLETED_EVALUATION: 'Completed Evaluation',
   REVIEW_APPROVE: 'Approval Queue',
@@ -59,6 +62,11 @@ export const ASSESSMENT_PAGES = [
   APP_PAGES.ASSESSMENT_DASHBOARD,
 ]
 
+export const QUESTION_BANK_PAGES = [
+  APP_PAGES.QUESTION_BANK,
+  APP_PAGES.QUESTION_BANK_NON_CREATE,
+]
+
 export const SIDEBAR_MENU = [
   {
     section: 'Main',
@@ -95,6 +103,10 @@ export const SIDEBAR_MENU = [
       {
         label: APP_PAGES.QUESTION_BANK,
         icon: BookText,
+        children: [
+          { label: APP_PAGES.QUESTION_BANK, navLabel: 'Create', icon: FilePenLine },
+          { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'Overall Question', icon: FileSearch },
+        ],
       },
     ],
   },

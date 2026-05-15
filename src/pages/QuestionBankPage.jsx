@@ -3,10 +3,12 @@ import {
   Check,
   CheckCheck,
   CheckCircle2,
+  ChevronDown,
   Eye,
   FilePenLine,
   FolderTree,
   ImagePlus,
+  Info,
   ListChecks,
   LoaderCircle,
   Plus,
@@ -55,6 +57,87 @@ const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', '
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
 const DIFFICULTY_LEVEL_OPTIONS = ['L1', 'L2', 'L3']
 const YEAR_OPTIONS = ['Year 1', 'Year 2', 'Year 3', 'Year 4']
+const COGNITIVE_FUNCTION_OPTIONS = [
+  'Attention & Cue Detection',
+  'Working Memory',
+  'Pattern Recognition',
+  'Prioritization/Executive Function',
+  'Judgement & Decision Making',
+  'Metacognition (Reflection)',
+]
+const SKILL_FOCUS_OPTIONS = [
+  'Diagnosis',
+  'Investigation',
+  'Treatment',
+  'Management',
+  'Prognosis',
+  'Prevention',
+  'Knowledge',
+  'Data Interpretation',
+  'Risk Assessment',
+  'Ethics',
+  'Communication',
+  'Patient Safety',
+  'Regulations or Protocols',
+]
+const ORGAN_SYSTEM_OPTIONS = [
+  'Integumentary',
+  'Skeletal',
+  'Muscular',
+  'Nervous',
+  'Endocrine',
+  'Cardiovascular',
+  'Lymphatic',
+  'Respiratory',
+  'Digestive',
+  'Urinary',
+  'Reproductive',
+  'N/A',
+]
+const ORGAN_SUB_SYSTEM_OPTIONS = [
+  'Skin',
+  'Bone',
+  'Joint',
+  'Peripheral nerve',
+  'Brain',
+  'Spinal cord',
+  'Heart',
+  'Blood vessel',
+  'Lung',
+  'Upper GI',
+  'Lower GI',
+  'Kidney',
+  'Bladder',
+]
+const DISEASE_TAG_OPTIONS = [
+  'Inflammation',
+  'Infection',
+  'Trauma',
+  'Neoplasm',
+  'Degenerative disease',
+  'Autoimmune',
+  'Congenital',
+  'Metabolic',
+  'Vascular',
+  'Toxicity',
+]
+const KEY_CONCEPT_OPTIONS = [
+  'Anatomical relation',
+  'Clinical correlation',
+  'Mechanism',
+  'Differential diagnosis',
+  'Diagnostic clue',
+  'Management principle',
+  'Complication',
+  'Risk factor',
+  'Pathophysiology',
+  'Prevention strategy',
+]
+const SINGLE_OPTION_MIN_COUNT = 2
+const SINGLE_OPTION_MAX_COUNT = 6
+const MULTIPLE_OPTION_MIN_COUNT = 3
+const MULTIPLE_OPTION_MAX_COUNT = 8
+const MAX_QUESTION_IMAGES = 4
 
 const CURRICULUM_DIRECTORY = YEAR_OPTIONS.reduce((directory, year) => ({
   ...directory,
@@ -70,10 +153,22 @@ const QUESTION_TYPE_CARDS = [
 
 let questionSequence = 1
 let optionSequence = 1
+let imageSequence = 1
 
 const createOption = (label = '') => ({
   id: `option-${optionSequence++}`,
   label,
+})
+
+const readImageFile = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve({
+    id: `image-${imageSequence++}`,
+    name: file.name,
+    url: reader.result,
+  })
+  reader.onerror = reject
+  reader.readAsDataURL(file)
 })
 
 const createQuestion = (type = 'MCQ', config = {}) => ({
@@ -87,14 +182,18 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   subject: 'Human Anatomy',
   topics: [],
   competencies: [],
+  images: [],
   questionCategory: '',
   cognitiveLevel: '',
   thinkingLevel: '',
   difficultyLevel: '',
+  cognitiveFunction: '',
+  skillFocus: '',
+  organSystem: '',
+  organSubSystems: [],
+  diseaseTags: [],
+  keyConcepts: [],
   answerKey: '',
-  imageName: '',
-  imagePreviewUrl: '',
-  images: [],
   options: [createOption(''), createOption(''), createOption(''), createOption('')],
   correctOptionIds: [],
   trueFalseAnswer: 'True',
@@ -117,27 +216,61 @@ const getRichTextPreview = (value) => stripHtml(value)
 
 const getQuestionPreview = (question) => getRichTextPreview(question.questionText) || question.title || 'Untitled question'
 
-const getQuestionImages = (question) => {
-  if (Array.isArray(question?.images) && question.images.length) return question.images
-  if (question?.imagePreviewUrl) {
-    return [{
-      id: 'legacy-question-image',
-      name: question.imageName || 'Attached image',
-      previewUrl: question.imagePreviewUrl,
-    }]
-  }
-  return []
-}
-
 const createHtmlBlock = (value) => `<div>${String(value ?? '')}</div>`
+
+const getGeneratedOptionalTags = (type) => {
+  if (type === 'Descriptive Question') {
+    return {
+      cognitiveFunction: 'Judgement & Decision Making',
+      skillFocus: 'Communication',
+      organSystem: 'Nervous',
+      organSubSystems: ['Brain'],
+      diseaseTags: ['Trauma'],
+      keyConcepts: ['Clinical correlation', 'Management principle'],
+    }
+  }
+
+  if (type === 'True or False') {
+    return {
+      cognitiveFunction: 'Pattern Recognition',
+      skillFocus: 'Knowledge',
+      organSystem: 'N/A',
+      organSubSystems: [],
+      diseaseTags: ['Inflammation'],
+      keyConcepts: ['Mechanism'],
+    }
+  }
+
+  if (type === 'Fill in the Blanks') {
+    return {
+      cognitiveFunction: 'Working Memory',
+      skillFocus: 'Knowledge',
+      organSystem: 'N/A',
+      organSubSystems: [],
+      diseaseTags: [],
+      keyConcepts: ['Anatomical relation'],
+    }
+  }
+
+  return {
+    cognitiveFunction: 'Pattern Recognition',
+    skillFocus: 'Diagnosis',
+    organSystem: 'Nervous',
+    organSubSystems: ['Brain'],
+    diseaseTags: ['Inflammation'],
+    keyConcepts: ['Clinical correlation', 'Diagnostic clue'],
+  }
+}
 
 const getGeneratedQuestionDraft = (question) => {
   const type = question.type ?? 'MCQ'
   const subject = question.subject ?? 'Human Anatomy'
   const topic = question.topics[0] ?? 'the selected topic'
+  const optionalTags = getGeneratedOptionalTags(type)
 
   if (type === 'True or False') {
     return {
+      ...optionalTags,
       questionText: createHtmlBlock(`True or False: ${subject} concepts related to ${topic} should be applied directly to clinical interpretation.`),
       answerKey: createHtmlBlock('False. The correct response depends on the specific clinical context and supporting evidence.'),
       questionCategory: 'Reasoning',
@@ -150,6 +283,7 @@ const getGeneratedQuestionDraft = (question) => {
 
   if (type === 'Fill in the Blanks') {
     return {
+      ...optionalTags,
       questionText: createHtmlBlock(`Fill in the blank: In ${subject}, the key concept associated with ${topic} is ______.`),
       answerKey: createHtmlBlock('Accepted answer: Add the expected key term or concept based on the mapped competency.'),
       questionCategory: 'Direct',
@@ -162,6 +296,7 @@ const getGeneratedQuestionDraft = (question) => {
 
   if (type === 'Descriptive Question') {
     return {
+      ...optionalTags,
       questionText: createHtmlBlock(`Explain the clinical relevance of ${topic} in ${subject}, including key anatomical or functional relationships.`),
       answerKey: createHtmlBlock('The answer should include the core concept, relevant relationships, clinical significance, and a concise conclusion.'),
       questionCategory: 'Critical Thinking',
@@ -173,6 +308,7 @@ const getGeneratedQuestionDraft = (question) => {
   }
 
   return {
+    ...optionalTags,
     questionText: createHtmlBlock(`Which of the following best explains the application of ${topic} in ${subject}?`),
     answerKey: createHtmlBlock('Correct answer: Review the selected option and add the supporting rationale.'),
     questionCategory: 'Application',
@@ -224,7 +360,7 @@ const hasQuestionContent = (question) => Boolean(getRichTextPreview(question?.qu
 const hasMcqOptions = (question) => (
   question?.type !== 'MCQ'
   || (
-    question.options.filter((option) => Boolean(getRichTextPreview(option.label))).length >= 2
+    question.options.filter((option) => Boolean(getRichTextPreview(option.label))).length >= (question.allowMultiple ? MULTIPLE_OPTION_MIN_COUNT : SINGLE_OPTION_MIN_COUNT)
     && question.correctOptionIds.length > 0
   )
 )
@@ -324,6 +460,84 @@ function SelectionChips({ items, selected, onToggle, emptyLabel }) {
   )
 }
 
+function OptionalTagMultiSelect({ label, options, selected, onToggle, searchValue, onSearchChange }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const fieldRef = useRef(null)
+  const query = searchValue.trim().toLowerCase()
+  const visibleOptions = options
+    .filter((option) => option.toLowerCase().includes(query))
+    .slice(0, 10)
+  const summary = selected.length
+    ? selected.length === 1
+      ? selected[0]
+      : `${selected[0]} +${selected.length - 1}`
+    : `Select ${label.toLowerCase()}`
+
+  return (
+    <div
+      ref={fieldRef}
+      className={`question-bank-optional-tag-field ${isOpen ? 'is-open' : ''}`}
+      onBlur={(event) => {
+        if (!fieldRef.current?.contains(event.relatedTarget)) {
+          setIsOpen(false)
+        }
+      }}
+    >
+      <span className="question-bank-optional-tag-label">{label}</span>
+      <button
+        type="button"
+        className={`question-bank-optional-tag-trigger ${selected.length ? 'has-value' : ''}`}
+        onClick={() => setIsOpen((current) => !current)}
+        aria-expanded={isOpen}
+      >
+        <span>{summary}</span>
+        <ChevronDown size={14} strokeWidth={2.2} />
+      </button>
+
+      {isOpen ? (
+        <div className="question-bank-optional-tag-menu">
+          <div className="question-bank-optional-tag-search">
+            <Search size={13} strokeWidth={2} />
+            <input
+              value={searchValue}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder={`Search ${label.toLowerCase()}`}
+              autoFocus
+            />
+          </div>
+          <div className="question-bank-optional-tag-options">
+            {visibleOptions.length ? visibleOptions.map((option) => {
+              const isSelected = selected.includes(option)
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  className={`question-bank-optional-tag-option ${isSelected ? 'is-active' : ''}`}
+                  onClick={() => onToggle(option)}
+                >
+                  <span>{isSelected ? <Check size={12} strokeWidth={2.4} /> : null}</span>
+                  <strong>{option}</strong>
+                </button>
+              )
+            }) : (
+              <span className="question-bank-empty-inline">No matches</span>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+const getQuestionOptionalTagGroups = (question) => [
+  { label: 'Cognitive Function', values: question.cognitiveFunction ? [question.cognitiveFunction] : [] },
+  { label: 'Skill Focus', values: question.skillFocus ? [question.skillFocus] : [] },
+  { label: 'Organ System', values: question.organSystem ? [question.organSystem] : [] },
+  { label: 'Organ Sub System', values: question.organSubSystems ?? [] },
+  { label: 'Disease Tags', values: question.diseaseTags ?? [] },
+  { label: 'Key Concept', values: question.keyConcepts ?? [] },
+].filter((group) => group.values.length)
+
 const getOptionValue = (item) => (typeof item === 'string' ? item : item.value)
 const getOptionLabel = (item) => (typeof item === 'string' ? item : item.value)
 const getShortCompetencyLabel = (value) => value.split(' ').slice(0, 1).join(' ')
@@ -351,6 +565,12 @@ const getCurriculumStatusLabel = (question) => [
 const getRestrictedText = (value, maxLength = 72) => (
   value.length > maxLength ? `${value.slice(0, maxLength - 1).trimEnd()}...` : value
 )
+
+const getOptionModeConfig = (allowMultiple) => ({
+  minCount: allowMultiple ? MULTIPLE_OPTION_MIN_COUNT : SINGLE_OPTION_MIN_COUNT,
+  maxCount: allowMultiple ? MULTIPLE_OPTION_MAX_COUNT : SINGLE_OPTION_MAX_COUNT,
+  label: allowMultiple ? 'Multiple' : 'Single',
+})
 
 function MappingSelectorPanel({
   title,
@@ -424,7 +644,6 @@ function MappingSelectorPanel({
 }
 
 export default function QuestionBankPage({ onAlert }) {
-  const questionImageInputRef = useRef(null)
   const [questions, setQuestions] = useState([])
   const [selectedQuestionId, setSelectedQuestionId] = useState(null)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
@@ -432,10 +651,16 @@ export default function QuestionBankPage({ onAlert }) {
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   const [generationCompleteId, setGenerationCompleteId] = useState(null)
   const [isProgressWidgetOpen, setIsProgressWidgetOpen] = useState(false)
+  const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
+  const [openCreatedTagsId, setOpenCreatedTagsId] = useState(null)
   const [previewImage, setPreviewImage] = useState(null)
+  const [optionalTagSearchValues, setOptionalTagSearchValues] = useState({
+    organSubSystems: '',
+    diseaseTags: '',
+    keyConcepts: '',
+  })
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
-  const selectedQuestionImages = getQuestionImages(selectedQuestion)
   const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
   const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
@@ -488,7 +713,12 @@ export default function QuestionBankPage({ onAlert }) {
     setIsGeneratingQuestion(false)
     setGenerationCompleteId(null)
     setIsProgressWidgetOpen(false)
-    setPreviewImage(null)
+    setIsOptionalTagsOpen(false)
+    setOptionalTagSearchValues({
+      organSubSystems: '',
+      diseaseTags: '',
+      keyConcepts: '',
+    })
   }, [selectedQuestionId])
 
   const updateSelectedQuestion = (updater) => {
@@ -627,6 +857,12 @@ export default function QuestionBankPage({ onAlert }) {
           cognitiveLevel: item.cognitiveLevel || generatedDraft.cognitiveLevel || 'Apply',
           thinkingLevel: item.thinkingLevel || generatedDraft.thinkingLevel || 'HoT',
           difficultyLevel: item.difficultyLevel || generatedDraft.difficultyLevel || 'L2',
+          cognitiveFunction: item.cognitiveFunction || generatedDraft.cognitiveFunction || '',
+          skillFocus: item.skillFocus || generatedDraft.skillFocus || '',
+          organSystem: item.organSystem || generatedDraft.organSystem || '',
+          organSubSystems: item.organSubSystems?.length ? item.organSubSystems : generatedDraft.organSubSystems || [],
+          diseaseTags: item.diseaseTags?.length ? item.diseaseTags : generatedDraft.diseaseTags || [],
+          keyConcepts: item.keyConcepts?.length ? item.keyConcepts : generatedDraft.keyConcepts || [],
           marks: item.marks || '1',
           options: generatedOptions,
           correctOptionIds: needsOptions ? [generatedOptions[0].id] : item.correctOptionIds,
@@ -722,47 +958,88 @@ export default function QuestionBankPage({ onAlert }) {
     setMappingSearchValue('')
   }
 
-  const handleQuestionImageAttach = (event) => {
-    const files = [...(event.target.files ?? [])]
+  const handleOptionModeChange = (allowMultiple) => {
+    updateSelectedQuestion((item) => {
+      const { minCount, maxCount } = getOptionModeConfig(allowMultiple)
+      const requiredOptionCount = Math.max(minCount, Math.min(item.options.length, maxCount))
+      const nextOptions = item.options.slice(0, maxCount)
+      while (nextOptions.length < requiredOptionCount) {
+        nextOptions.push(createOption(''))
+      }
+      const optionIds = new Set(nextOptions.map((option) => option.id))
+      const nextCorrectOptionIds = item.correctOptionIds.filter((id) => optionIds.has(id))
+
+      return {
+        ...item,
+        allowMultiple,
+        options: nextOptions,
+        correctOptionIds: allowMultiple ? nextCorrectOptionIds : nextCorrectOptionIds.slice(0, 1),
+      }
+    })
+  }
+
+  const handleAddOption = () => {
+    updateSelectedQuestion((item) => {
+      const { maxCount } = getOptionModeConfig(item.allowMultiple)
+      if (item.options.length >= maxCount) return item
+
+      return {
+        ...item,
+        options: [...item.options, createOption('')],
+      }
+    })
+  }
+
+  const updateOptionalTagSearch = (field, value) => {
+    setOptionalTagSearchValues((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  const toggleOptionalTag = (field, value) => {
+    updateSelectedQuestion((item) => ({
+      ...item,
+      [field]: toggleSelection(item[field] ?? [], value),
+    }))
+  }
+
+  const handleQuestionImagesUpload = async (event) => {
+    if (!selectedQuestion) return
+
+    const files = Array.from(event.target.files ?? []).filter((file) => file.type.startsWith('image/'))
     event.target.value = ''
+
     if (!files.length) return
 
-    const imageFiles = files.filter((file) => file.type.startsWith('image/'))
-    if (!imageFiles.length) {
-      onAlert?.({ tone: 'warning', message: 'Attach image files only.' })
+    const availableSlots = MAX_QUESTION_IMAGES - (selectedQuestion.images?.length ?? 0)
+    if (availableSlots <= 0) {
+      onAlert?.({ tone: 'warning', message: 'Maximum 4 images allowed.' })
       return
     }
 
-    Promise.all(imageFiles.map((file, index) => new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve({
-        id: `question-image-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
-        name: file.name,
-        previewUrl: reader.result,
-      })
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })))
-      .then((nextImages) => {
-        updateSelectedQuestion((item) => ({
-          ...item,
-          images: [...getQuestionImages(item), ...nextImages],
-          imageName: '',
-          imagePreviewUrl: '',
-        }))
-      })
-      .catch(() => {
-        onAlert?.({ tone: 'warning', message: 'Unable to attach one or more images.' })
-      })
+    const acceptedFiles = files.slice(0, availableSlots)
+    if (files.length > availableSlots) {
+      onAlert?.({ tone: 'warning', message: 'Maximum 4 images allowed.' })
+    }
+
+    try {
+      const images = await Promise.all(acceptedFiles.map(readImageFile))
+      updateSelectedQuestion((item) => ({
+        ...item,
+        images: [...(item.images ?? []), ...images].slice(0, MAX_QUESTION_IMAGES),
+      }))
+    } catch {
+      onAlert?.({ tone: 'warning', message: 'Unable to upload image.' })
+    }
   }
 
-  const handleQuestionImageRemove = (imageId) => {
+  const removeQuestionImage = (imageId) => {
     updateSelectedQuestion((item) => ({
       ...item,
-      images: getQuestionImages(item).filter((image) => image.id !== imageId),
-      imageName: '',
-      imagePreviewUrl: '',
+      images: (item.images ?? []).filter((image) => image.id !== imageId),
     }))
+    setPreviewImage((current) => (current?.id === imageId ? null : current))
   }
 
   const questionTypePicker = (
@@ -954,6 +1231,41 @@ export default function QuestionBankPage({ onAlert }) {
                           <div>
                             <strong className="question-bank-step-title">STEP 2 : Question Creation</strong>
                           </div>
+                          <div className="question-bank-question-head-controls">
+                            {!(selectedQuestion.images?.length ?? 0) ? (
+                              <label className="question-bank-question-image-add" aria-label="Add image">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  onChange={handleQuestionImagesUpload}
+                                />
+                                <ImagePlus size={14} strokeWidth={2.1} />
+                                Add Image
+                              </label>
+                            ) : null}
+
+                            <label className="question-bank-question-head-field question-bank-question-head-criticality">
+                              <span>Criticality</span>
+                              <button
+                                type="button"
+                                className={`question-bank-criticality-toggle ${selectedQuestion.isCritical ? 'is-active' : ''}`}
+                                onClick={() => updateSelectedQuestion((item) => ({ ...item, isCritical: !item.isCritical }))}
+                                aria-pressed={selectedQuestion.isCritical}
+                              >
+                                <span className="question-bank-criticality-switch" />
+                                <strong>{selectedQuestion.isCritical ? 'ON' : 'OFF'}</strong>
+                              </button>
+                            </label>
+
+                            <label className="question-bank-question-head-field question-bank-question-head-marks">
+                              <span>Marks</span>
+                              <input
+                                value={selectedQuestion.marks}
+                                onChange={(event) => updateSelectedQuestion({ marks: event.target.value })}
+                              />
+                            </label>
+                          </div>
                         </div>
 
                         <label className="question-bank-field rich">
@@ -967,92 +1279,111 @@ export default function QuestionBankPage({ onAlert }) {
                             minRows={5}
                             ariaLabel="Question text"
                             allowPastedImages={false}
-                            onPasteImageRejected={() => onAlert?.({ tone: 'warning', message: 'Use the attach image button to add images.' })}
-                            toolbarActions={(
-                              <button
-                                type="button"
-                                className="rich-math-editor-tool"
-                                onMouseDown={(event) => event.preventDefault()}
-                                onClick={() => questionImageInputRef.current?.click()}
-                                aria-label="Attach image"
-                                title="Attach image"
-                              >
-                                <ImagePlus size={15} strokeWidth={2.2} />
-                              </button>
-                            )}
+                            onPasteImageRejected={() => onAlert?.({ tone: 'warning', message: 'Images are not supported in question text.' })}
                           />
                         </label>
-                        <input
-                          ref={questionImageInputRef}
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="question-bank-hidden-file-input"
-                          onChange={handleQuestionImageAttach}
-                        />
-                        {selectedQuestionImages.length ? (
-                          <div className="question-bank-attachment-list" aria-label="Attached question images">
-                            {selectedQuestionImages.map((image, imageIndex) => (
-                              <div key={image.id} className="question-bank-attachment-item">
+
+                        {(selectedQuestion.images?.length ?? 0) ? (
+                        <div className="question-bank-question-images">
+                          {(selectedQuestion.images ?? []).map((image, index) => (
+                            <article key={image.id} className="question-bank-question-image-card">
+                              <button
+                                type="button"
+                                className="question-bank-question-image-thumb"
+                                onClick={() => setPreviewImage(image)}
+                              >
+                                <img src={image.url} alt={image.name} />
+                              </button>
+                              <span className="question-bank-question-image-letter">{String.fromCharCode(65 + index)}</span>
+                              <span className="question-bank-question-image-actions">
                                 <button
                                   type="button"
-                                  className="question-bank-attachment-thumb"
+                                  className="question-bank-question-image-icon"
                                   onClick={() => setPreviewImage(image)}
-                                  aria-label={`Preview ${image.name || `attachment ${imageIndex + 1}`}`}
+                                  aria-label={`Preview image ${String.fromCharCode(65 + index)}`}
                                 >
-                                  <img src={image.previewUrl} alt="" />
+                                  <Eye size={12} strokeWidth={2.2} />
                                 </button>
-                                <span className="question-bank-attachment-name">{image.name || `Attachment ${imageIndex + 1}`}</span>
-                                <button type="button" className="question-bank-icon-btn" onClick={() => setPreviewImage(image)} aria-label={`Preview ${image.name || `attachment ${imageIndex + 1}`}`}>
-                                  <Eye size={14} strokeWidth={2} />
+                                <button
+                                  type="button"
+                                  className="question-bank-question-image-icon danger"
+                                  onClick={() => removeQuestionImage(image.id)}
+                                  aria-label={`Delete image ${String.fromCharCode(65 + index)}`}
+                                >
+                                  <Trash2 size={12} strokeWidth={2.2} />
                                 </button>
-                                <button type="button" className="question-bank-icon-btn" onClick={() => handleQuestionImageRemove(image.id)} aria-label={`Remove ${image.name || `attachment ${imageIndex + 1}`}`}>
-                                  <Trash2 size={14} strokeWidth={2} />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
+                              </span>
+                            </article>
+                          ))}
+
+                          {(selectedQuestion.images?.length ?? 0) < MAX_QUESTION_IMAGES ? (
+                            <label className="question-bank-question-image-add is-icon-only" aria-label="Add image">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={handleQuestionImagesUpload}
+                              />
+                              <ImagePlus size={18} strokeWidth={2.1} />
+                            </label>
+                          ) : null}
+                        </div>
                         ) : null}
 
                       {selectedQuestion.type === 'MCQ' ? (
                         <div className="question-bank-options-block">
                           <div className="question-bank-options-head">
                             <div>
-                              <strong className="question-bank-step-title">STEP 3 : Options</strong>
+                              <span className="question-bank-step-title-row">
+                                <strong className="question-bank-step-title">STEP 3 : Options</strong>
+                                <span className="question-bank-step-helper-badge">Enter Your Option &amp; Choose Right Answer</span>
+                              </span>
                             </div>
-                            <button
-                              type="button"
-                              className="question-bank-add-option-icon"
-                              onClick={() => updateSelectedQuestion((item) => ({
-                                ...item,
-                                options: [...item.options, createOption('')],
-                              }))}
-                              aria-label="Add option"
-                              title="Add option"
-                            >
-                              <Plus size={14} strokeWidth={2} />
-                              Add Option
-                            </button>
+                            <div className="question-bank-options-toolbar">
+                              <div className="question-bank-option-mode-toggle" role="group" aria-label="Answer type">
+                                <button
+                                  type="button"
+                                  className={!selectedQuestion.allowMultiple ? 'is-active' : ''}
+                                  onClick={() => handleOptionModeChange(false)}
+                                  aria-pressed={!selectedQuestion.allowMultiple}
+                                >
+                                  Single
+                                </button>
+                                <button
+                                  type="button"
+                                  className={selectedQuestion.allowMultiple ? 'is-active' : ''}
+                                  onClick={() => handleOptionModeChange(true)}
+                                  aria-pressed={selectedQuestion.allowMultiple}
+                                >
+                                  Multiple
+                                </button>
+                              </div>
+                            </div>
                           </div>
                           <div className="question-bank-choice-list">
-                            {selectedQuestion.options.map((option, index) => (
+                            {selectedQuestion.options.map((option, index) => {
+                              const { minCount } = getOptionModeConfig(selectedQuestion.allowMultiple)
+                              const isMandatoryOption = index < minCount
+                              const isSelectedOption = selectedQuestion.correctOptionIds.includes(option.id)
+                              return (
                               <div key={option.id} className="question-bank-choice-row">
                                 <span className="question-bank-choice-letter">{String.fromCharCode(65 + index)}</span>
-                                <label className="question-bank-choice-check">
-                                  <input
-                                    type={selectedQuestion.allowMultiple ? 'checkbox' : 'radio'}
-                                    name={`choice-${selectedQuestion.id}`}
-                                    checked={selectedQuestion.correctOptionIds.includes(option.id)}
-                                    onChange={(event) => updateSelectedQuestion((item) => ({
+                                <button
+                                  type="button"
+                                  className={`question-bank-choice-check ${selectedQuestion.allowMultiple ? 'is-multiple' : 'is-single'} ${isSelectedOption ? 'is-selected' : ''}`}
+                                  onClick={() => updateSelectedQuestion((item) => ({
                                       ...item,
                                       correctOptionIds: item.allowMultiple
-                                        ? event.target.checked
-                                          ? [...item.correctOptionIds, option.id]
-                                          : item.correctOptionIds.filter((currentId) => currentId !== option.id)
+                                        ? item.correctOptionIds.includes(option.id)
+                                          ? item.correctOptionIds.filter((currentId) => currentId !== option.id)
+                                          : [...item.correctOptionIds, option.id]
                                         : [option.id],
                                     }))}
-                                  />
-                                </label>
+                                  aria-label={`${isSelectedOption ? 'Unselect' : 'Select'} option ${String.fromCharCode(65 + index)} as correct`}
+                                  aria-pressed={isSelectedOption}
+                                >
+                                  {isSelectedOption ? <Check size={13} strokeWidth={2.5} /> : null}
+                                </button>
                                 <RichMathEditor
                                   value={option.label}
                                   onChange={(nextValue) => updateSelectedQuestion((item) => ({
@@ -1069,21 +1400,42 @@ export default function QuestionBankPage({ onAlert }) {
                                   ariaLabel={`Option ${String.fromCharCode(65 + index)}`}
                                 />
                                 <div className="question-bank-choice-actions">
-                                  <button
-                                    type="button"
-                                    className="question-bank-icon-btn"
-                                    onClick={() => updateSelectedQuestion((item) => ({
-                                      ...item,
-                                      options: item.options.filter((currentOption) => currentOption.id !== option.id),
-                                      correctOptionIds: item.correctOptionIds.filter((currentId) => currentId !== option.id),
-                                    }))}
-                                    aria-label="Delete option"
-                                  >
-                                    <Trash2 size={14} strokeWidth={2} />
-                                  </button>
+                                  {!isMandatoryOption ? (
+                                    <button
+                                      type="button"
+                                      className="question-bank-icon-btn"
+                                      onClick={() => updateSelectedQuestion((item) => ({
+                                        ...item,
+                                        options: item.options.filter((currentOption) => currentOption.id !== option.id),
+                                        correctOptionIds: item.correctOptionIds.filter((currentId) => currentId !== option.id),
+                                      }))}
+                                      aria-label="Delete option"
+                                    >
+                                      <Trash2 size={14} strokeWidth={2} />
+                                    </button>
+                                  ) : null}
                                 </div>
                               </div>
-                            ))}
+                            )})}
+                          </div>
+                          <div className="question-bank-options-foot">
+                            {(() => {
+                              const { maxCount } = getOptionModeConfig(selectedQuestion.allowMultiple)
+                              const isAtMaxOptions = selectedQuestion.options.length >= maxCount
+                              return (
+                                <button
+                                  type="button"
+                                  className="question-bank-add-option-icon"
+                                  onClick={handleAddOption}
+                                  aria-label="Add option"
+                                  title={isAtMaxOptions ? `Maximum ${maxCount} options` : 'Add option'}
+                                  disabled={isAtMaxOptions}
+                                >
+                                  <Plus size={14} strokeWidth={2} />
+                                  Add Option
+                                </button>
+                              )
+                            })()}
                           </div>
                         </div>
                       ) : null}
@@ -1237,29 +1589,6 @@ export default function QuestionBankPage({ onAlert }) {
                           </div>
                         </div>
 
-                        <div className="question-bank-assessment-pair">
-                          <label className="question-bank-field">
-                            <span>Marks</span>
-                            <input
-                              value={selectedQuestion.marks}
-                              onChange={(event) => updateSelectedQuestion({ marks: event.target.value })}
-                            />
-                          </label>
-
-                          <label className="question-bank-field question-bank-criticality-field">
-                            <span>Criticality</span>
-                            <button
-                              type="button"
-                              className={`question-bank-criticality-toggle ${selectedQuestion.isCritical ? 'is-active' : ''}`}
-                              onClick={() => updateSelectedQuestion((item) => ({ ...item, isCritical: !item.isCritical }))}
-                              aria-pressed={selectedQuestion.isCritical}
-                            >
-                              <span className="question-bank-criticality-switch" />
-                              <strong>{selectedQuestion.isCritical ? 'ON' : 'OFF'}</strong>
-                            </button>
-                          </label>
-                        </div>
-
                         <label className="question-bank-field">
                           <span>Question Category</span>
                           <select
@@ -1316,6 +1645,89 @@ export default function QuestionBankPage({ onAlert }) {
                           </select>
                         </label>
 
+                        <button
+                          type="button"
+                          className={`question-bank-optional-tags-badge ${isOptionalTagsOpen ? 'is-open' : ''}`}
+                          onClick={() => setIsOptionalTagsOpen((current) => !current)}
+                          aria-expanded={isOptionalTagsOpen}
+                        >
+                          <Info size={13} strokeWidth={2.2} />
+                          Add More (Optional)
+                        </button>
+
+                        {isOptionalTagsOpen ? (
+                          <div className="question-bank-optional-tags-panel">
+                            <label className="question-bank-field">
+                              <span>Cognitive Function</span>
+                              <select
+                                className={!selectedQuestion.cognitiveFunction ? 'is-placeholder' : ''}
+                                value={selectedQuestion.cognitiveFunction}
+                                onChange={(event) => updateSelectedQuestion({ cognitiveFunction: event.target.value })}
+                              >
+                                <option value="">Select Cognitive Function</option>
+                                {COGNITIVE_FUNCTION_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="question-bank-field">
+                              <span>Skill Focus</span>
+                              <select
+                                className={!selectedQuestion.skillFocus ? 'is-placeholder' : ''}
+                                value={selectedQuestion.skillFocus}
+                                onChange={(event) => updateSelectedQuestion({ skillFocus: event.target.value })}
+                              >
+                                <option value="">Select Skill Focus</option>
+                                {SKILL_FOCUS_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="question-bank-field">
+                              <span>Organ System</span>
+                              <select
+                                className={!selectedQuestion.organSystem ? 'is-placeholder' : ''}
+                                value={selectedQuestion.organSystem}
+                                onChange={(event) => updateSelectedQuestion({ organSystem: event.target.value })}
+                              >
+                                <option value="">Select Organ System</option>
+                                {ORGAN_SYSTEM_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <OptionalTagMultiSelect
+                              label="Organ Sub System"
+                              options={ORGAN_SUB_SYSTEM_OPTIONS}
+                              selected={selectedQuestion.organSubSystems ?? []}
+                              onToggle={(value) => toggleOptionalTag('organSubSystems', value)}
+                              searchValue={optionalTagSearchValues.organSubSystems}
+                              onSearchChange={(value) => updateOptionalTagSearch('organSubSystems', value)}
+                            />
+
+                            <OptionalTagMultiSelect
+                              label="Disease Tags"
+                              options={DISEASE_TAG_OPTIONS}
+                              selected={selectedQuestion.diseaseTags ?? []}
+                              onToggle={(value) => toggleOptionalTag('diseaseTags', value)}
+                              searchValue={optionalTagSearchValues.diseaseTags}
+                              onSearchChange={(value) => updateOptionalTagSearch('diseaseTags', value)}
+                            />
+
+                            <OptionalTagMultiSelect
+                              label="Key Concept"
+                              options={KEY_CONCEPT_OPTIONS}
+                              selected={selectedQuestion.keyConcepts ?? []}
+                              onToggle={(value) => toggleOptionalTag('keyConcepts', value)}
+                              searchValue={optionalTagSearchValues.keyConcepts}
+                              onSearchChange={(value) => updateOptionalTagSearch('keyConcepts', value)}
+                            />
+                          </div>
+                        ) : null}
+
                         <div className="question-bank-assessment-actions">
                           <button
                             type="button"
@@ -1363,20 +1775,30 @@ export default function QuestionBankPage({ onAlert }) {
                       {visibleQuestionCards.map((question, index) => {
                         const status = getQuestionCardStatus(question)
                         const typeMeta = getQuestionTypeMeta(question.type)
+                        const optionalTagGroups = getQuestionOptionalTagGroups(question)
                         return (
                           <article
                             key={question.id}
                             className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''}`}
                           >
-                            <button
-                              type="button"
+                            <div
                               className="question-bank-created-card-main"
+                              role="button"
+                              tabIndex={status === 'Generating' ? -1 : 0}
+                              aria-disabled={status === 'Generating'}
                               onClick={() => {
                                 if (status !== 'Generating') {
+                                  setOpenCreatedTagsId(null)
                                   setSelectedQuestionId(question.id)
                                 }
                               }}
-                              disabled={status === 'Generating'}
+                              onKeyDown={(event) => {
+                                if (status !== 'Generating' && (event.key === 'Enter' || event.key === ' ')) {
+                                  event.preventDefault()
+                                  setOpenCreatedTagsId(null)
+                                  setSelectedQuestionId(question.id)
+                                }
+                              }}
                             >
                               <span>
                                 <span className="question-bank-created-header">
@@ -1409,40 +1831,61 @@ export default function QuestionBankPage({ onAlert }) {
                                         {question.marks} mark{question.marks === '1' ? '' : 's'}
                                       </span>
                                     ) : null}
+                                    {status === 'Created' && optionalTagGroups.length ? (
+                                      <span className="question-bank-created-tags-wrap">
+                                        <button
+                                          type="button"
+                                          className="question-bank-badge question-bank-created-tags-badge"
+                                          onClick={(event) => {
+                                            event.stopPropagation()
+                                            setOpenCreatedTagsId((current) => (current === question.id ? null : question.id))
+                                          }}
+                                          aria-expanded={openCreatedTagsId === question.id}
+                                        >
+                                          <Info size={13} strokeWidth={2.2} />
+                                          View tags
+                                        </button>
+                                        <span
+                                          className={`question-bank-created-tags-tooltip ${openCreatedTagsId === question.id ? 'is-open' : ''}`}
+                                          role="tooltip"
+                                        >
+                                          {optionalTagGroups.map((group) => (
+                                            <span key={group.label} className="question-bank-created-tags-group">
+                                              <strong>{group.label}</strong>
+                                              <span>
+                                                {group.values.map((value) => (
+                                                  <span key={value}>{value}</span>
+                                                ))}
+                                              </span>
+                                            </span>
+                                          ))}
+                                        </span>
+                                      </span>
+                                    ) : null}
                                   </span>
                                 </span>
                                 <strong className="question-bank-created-question">Q{index + 1}. {getQuestionPreview(question)}</strong>
-                                {getQuestionImages(question).length ? (
-                                  <span className="question-bank-created-images" aria-label={`Question ${index + 1} attachments`}>
-                                    {getQuestionImages(question).slice(0, 3).map((image, imageIndex) => (
-                                      <span
-                                        key={image.id}
-                                        role="button"
-                                        tabIndex={0}
-                                        className="question-bank-created-image"
-                                        onClick={(event) => {
-                                          event.stopPropagation()
-                                          setPreviewImage(image)
-                                        }}
-                                        onKeyDown={(event) => {
-                                          if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault()
-                                            event.stopPropagation()
-                                            setPreviewImage(image)
-                                          }
-                                        }}
-                                        aria-label={`Preview ${image.name || `attachment ${imageIndex + 1}`}`}
-                                      >
-                                        <img src={image.previewUrl} alt="" />
-                                      </span>
-                                    ))}
-                                    {getQuestionImages(question).length > 3 ? (
-                                      <span className="question-bank-created-image-more">+{getQuestionImages(question).length - 3}</span>
-                                    ) : null}
-                                  </span>
-                                ) : null}
                                 {status === 'Created' ? (
                                   <>
+                                    {question.images?.length ? (
+                                      <span className="question-bank-created-images">
+                                        {question.images.map((image, imageIndex) => (
+                                          <button
+                                            key={image.id}
+                                            type="button"
+                                            className="question-bank-created-image-thumb"
+                                            onClick={(event) => {
+                                              event.stopPropagation()
+                                              setPreviewImage(image)
+                                            }}
+                                            aria-label={`Preview attached image ${String.fromCharCode(65 + imageIndex)}`}
+                                          >
+                                            <img src={image.url} alt={image.name} />
+                                            <span>{String.fromCharCode(65 + imageIndex)}</span>
+                                          </button>
+                                        ))}
+                                      </span>
+                                    ) : null}
                                     {question.type === 'MCQ' ? (
                                       <span className="question-bank-created-options">
                                         {question.options
@@ -1466,12 +1909,15 @@ export default function QuestionBankPage({ onAlert }) {
                                   </>
                                 ) : null}
                               </span>
-                            </button>
+                            </div>
 
                             <button
                               type="button"
                               className="question-bank-icon-btn"
-                              onClick={() => handleDeleteQuestionById(question.id)}
+                              onClick={() => {
+                                setOpenCreatedTagsId(null)
+                                handleDeleteQuestionById(question.id)
+                              }}
                               aria-label="Delete question"
                             >
                               <Trash2 size={14} strokeWidth={2} />
@@ -1536,20 +1982,30 @@ export default function QuestionBankPage({ onAlert }) {
       ) : null}
 
       {previewImage ? (
-        <div className="question-bank-image-preview-modal" onClick={() => setPreviewImage(null)}>
-          <section className="question-bank-image-preview-dialog" onClick={(event) => event.stopPropagation()}>
+        <div className="question-bank-image-preview-modal" role="dialog" aria-modal="true" aria-label="Image preview">
+          <button
+            type="button"
+            className="question-bank-image-preview-backdrop"
+            onClick={() => setPreviewImage(null)}
+            aria-label="Close image preview"
+          />
+          <div className="question-bank-image-preview-card">
             <div className="question-bank-image-preview-head">
-              <strong>{previewImage.name || 'Attached image'}</strong>
-              <button type="button" className="question-bank-icon-btn" onClick={() => setPreviewImage(null)} aria-label="Close image preview">
+              <strong>{previewImage.name}</strong>
+              <button
+                type="button"
+                className="question-bank-icon-btn"
+                onClick={() => setPreviewImage(null)}
+                aria-label="Close image preview"
+              >
                 <X size={15} strokeWidth={2.2} />
               </button>
             </div>
-            <div className="question-bank-image-preview-frame">
-              <img src={previewImage.previewUrl} alt={previewImage.name || 'Attached question'} />
-            </div>
-          </section>
+            <img src={previewImage.url} alt={previewImage.name} />
+          </div>
         </div>
       ) : null}
+
     </section>
   )
 }
