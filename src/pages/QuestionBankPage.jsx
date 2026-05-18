@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Check,
   CheckCheck,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -140,6 +139,7 @@ const SINGLE_OPTION_MAX_COUNT = 6
 const MULTIPLE_OPTION_MIN_COUNT = 3
 const MULTIPLE_OPTION_MAX_COUNT = 8
 const MAX_QUESTION_IMAGES = 4
+const DEFAULT_OPTIONAL_TAG = 'Not Applicable'
 
 const CURRICULUM_DIRECTORY = YEAR_OPTIONS.reduce((directory, year) => ({
   ...directory,
@@ -192,9 +192,9 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   cognitiveFunction: '',
   skillFocus: '',
   organSystem: '',
-  organSubSystems: [],
-  diseaseTags: [],
-  keyConcepts: [],
+  organSubSystems: [DEFAULT_OPTIONAL_TAG],
+  diseaseTags: [DEFAULT_OPTIONAL_TAG],
+  keyConcepts: [DEFAULT_OPTIONAL_TAG],
   answerKey: '',
   options: [createOption(''), createOption(''), createOption(''), createOption('')],
   correctOptionIds: [],
@@ -377,22 +377,39 @@ const hasAssessmentTags = (question) => (
 
 const hasVisibleMarks = (marks) => Number(marks) > 0
 
+const isDefaultOptionalTagOnly = (values) => (
+  !values?.length || (values.length === 1 && values[0] === DEFAULT_OPTIONAL_TAG)
+)
+
+const getAutoFilledCurriculum = (question) => {
+  const year = question.year || YEAR_OPTIONS[0]
+  const subject = question.subject || getSubjectsForYear(year)[0] || 'Human Anatomy'
+  const topicOptions = getAvailableTopics({ ...question, year, subject })
+  const topics = question.topics.length ? question.topics : topicOptions.slice(0, 1)
+  const competencyOptions = getAvailableCompetencies({ ...question, year, subject, topics })
+  const competencies = question.competencies.length
+    ? question.competencies
+    : competencyOptions.slice(0, 1).map((item) => item.value)
+
+  return {
+    year,
+    subject,
+    topics,
+    competencies,
+  }
+}
+
 const canCreateQuestion = (question) => {
   if (!question || question.status === 'Generating') return false
-
-  if (question.type === 'MCQ') {
-    return hasCurriculumMapping(question) && hasQuestionContent(question) && hasMcqOptions(question)
-  }
-
-  return hasCurriculumMapping(question) && hasQuestionContent(question)
+  return hasQuestionContent(question)
 }
 
 const getProcessSteps = (question) => ([
-  { label: 'Curriculum Mapping', done: hasCurriculumMapping(question) },
-  { label: 'Question Creation', done: hasQuestionContent(question) },
-  { label: 'Options', done: hasMcqOptions(question) },
-  { label: 'Answer Key (optional)', done: Boolean(getRichTextPreview(question.answerKey)) },
-  { label: 'Assessment Tags (optional)', done: hasAssessmentTags(question) },
+  { label: 'Question Creation (required)', done: hasQuestionContent(question) },
+  { label: 'Curriculum Mapping (AI can fill)', done: hasCurriculumMapping(question) },
+  { label: 'Options (AI can fill)', done: hasMcqOptions(question) },
+  { label: 'Answer Key (AI can fill)', done: Boolean(getRichTextPreview(question.answerKey)) },
+  { label: 'Assessment Tags (AI can fill)', done: hasAssessmentTags(question) },
   { label: question.status === 'Draft' ? 'Draft Saved' : 'Created', done: ['Draft', 'Created'].includes(question.status) },
 ])
 
@@ -462,71 +479,65 @@ function SelectionChips({ items, selected, onToggle, emptyLabel }) {
   )
 }
 
-function OptionalTagMultiSelect({ label, options, selected, onToggle, searchValue, onSearchChange }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const fieldRef = useRef(null)
-  const query = searchValue.trim().toLowerCase()
-  const visibleOptions = options
-    .filter((option) => option.toLowerCase().includes(query))
-    .slice(0, 10)
-  const summary = selected.length
-    ? selected.length === 1
-      ? selected[0]
-      : `${selected[0]} +${selected.length - 1}`
-    : `Select ${label.toLowerCase()}`
+const normalizeOptionalTagValues = (values) => {
+  const cleanValues = (values ?? [])
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean)
+
+  return cleanValues.length ? cleanValues : [DEFAULT_OPTIONAL_TAG]
+}
+
+function OptionalTagTextInput({ label, values, onChange }) {
+  const [draftValue, setDraftValue] = useState('')
+  const selected = normalizeOptionalTagValues(values)
+
+  const commitValue = (value = draftValue) => {
+    const nextValue = value.trim()
+    setDraftValue('')
+    if (!nextValue) return
+
+    const existingValues = selected.filter((item) => item !== DEFAULT_OPTIONAL_TAG)
+    const hasDuplicate = existingValues.some((item) => item.toLowerCase() === nextValue.toLowerCase())
+    if (hasDuplicate) return
+
+    onChange([...existingValues, nextValue])
+  }
+
+  const removeValue = (value) => {
+    const nextValues = selected.filter((item) => item !== value)
+    onChange(normalizeOptionalTagValues(nextValues))
+  }
 
   return (
-    <div
-      ref={fieldRef}
-      className={`question-bank-optional-tag-field ${isOpen ? 'is-open' : ''}`}
-      onBlur={(event) => {
-        if (!fieldRef.current?.contains(event.relatedTarget)) {
-          setIsOpen(false)
-        }
-      }}
-    >
+    <div className="question-bank-optional-tag-field">
       <span className="question-bank-optional-tag-label">{label}</span>
-      <button
-        type="button"
-        className={`question-bank-optional-tag-trigger ${selected.length ? 'has-value' : ''}`}
-        onClick={() => setIsOpen((current) => !current)}
-        aria-expanded={isOpen}
-      >
-        <span>{summary}</span>
-        <ChevronDown size={14} strokeWidth={2.2} />
-      </button>
-
-      {isOpen ? (
-        <div className="question-bank-optional-tag-menu">
-          <div className="question-bank-optional-tag-search">
-            <Search size={13} strokeWidth={2} />
-            <input
-              value={searchValue}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder={`Search ${label.toLowerCase()}`}
-              autoFocus
-            />
-          </div>
-          <div className="question-bank-optional-tag-options">
-            {visibleOptions.length ? visibleOptions.map((option) => {
-              const isSelected = selected.includes(option)
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  className={`question-bank-optional-tag-option ${isSelected ? 'is-active' : ''}`}
-                  onClick={() => onToggle(option)}
-                >
-                  <span>{isSelected ? <Check size={12} strokeWidth={2.4} /> : null}</span>
-                  <strong>{option}</strong>
-                </button>
-              )
-            }) : (
-              <span className="question-bank-empty-inline">No matches</span>
-            )}
-          </div>
+      <div className="question-bank-optional-tag-input">
+        <div className="question-bank-optional-tag-chips">
+          {selected.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => removeValue(value)}
+              aria-label={`Remove ${value}`}
+            >
+              {value}
+              <X size={12} strokeWidth={2.4} />
+            </button>
+          ))}
         </div>
-      ) : null}
+        <input
+          value={draftValue}
+          onChange={(event) => setDraftValue(event.target.value)}
+          onBlur={() => commitValue()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ',') {
+              event.preventDefault()
+              commitValue()
+            }
+          }}
+          placeholder={`Type ${label.toLowerCase()}`}
+        />
+      </div>
     </div>
   )
 }
@@ -564,10 +575,6 @@ const getCurriculumStatusLabel = (question) => [
   question.competencies.length ? question.competencies.map(getShortCompetencyLabel).join(', ') : 'Select competencies',
 ].filter(Boolean).join(' / ')
 
-const getRestrictedText = (value, maxLength = 72) => (
-  value.length > maxLength ? `${value.slice(0, maxLength - 1).trimEnd()}...` : value
-)
-
 const getOptionModeConfig = (allowMultiple) => ({
   minCount: allowMultiple ? MULTIPLE_OPTION_MIN_COUNT : SINGLE_OPTION_MIN_COUNT,
   maxCount: allowMultiple ? MULTIPLE_OPTION_MAX_COUNT : SINGLE_OPTION_MAX_COUNT,
@@ -581,7 +588,6 @@ function MappingSelectorPanel({
   items,
   selected,
   onToggle,
-  onClose,
   emptyLabel,
 }) {
   const query = searchValue.trim().toLowerCase()
@@ -599,13 +605,8 @@ function MappingSelectorPanel({
       <div className="question-bank-mapping-panel-head">
         <div>
           <span className="question-bank-eyebrow">{title}</span>
-          <strong>{selected.length} selected</strong>
         </div>
-        <div className="question-bank-inline-actions">
-          <button type="button" className="question-bank-secondary-btn" onClick={onClose}>
-            Done
-          </button>
-        </div>
+        <span className="question-bank-mapping-selected-badge">{selected.length} selected</span>
       </div>
 
       <label className="question-bank-search">
@@ -656,11 +657,8 @@ export default function QuestionBankPage({ onAlert }) {
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
   const [openCreatedTagsId, setOpenCreatedTagsId] = useState(null)
   const [previewImage, setPreviewImage] = useState(null)
-  const [optionalTagSearchValues, setOptionalTagSearchValues] = useState({
-    organSubSystems: '',
-    diseaseTags: '',
-    keyConcepts: '',
-  })
+  const [isCurriculumEditing, setIsCurriculumEditing] = useState(false)
+  const [curriculumDraft, setCurriculumDraft] = useState(null)
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
   const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
@@ -673,9 +671,10 @@ export default function QuestionBankPage({ onAlert }) {
     [questions],
   )
 
-  const availableSubjects = selectedQuestion ? getSubjectsForYear(selectedQuestion.year) : []
-  const availableTopics = selectedQuestion ? getAvailableTopics(selectedQuestion) : []
-  const availableCompetencies = selectedQuestion ? getAvailableCompetencies(selectedQuestion) : []
+  const curriculumQuestion = isCurriculumEditing && curriculumDraft ? curriculumDraft : selectedQuestion
+  const availableSubjects = curriculumQuestion ? getSubjectsForYear(curriculumQuestion.year) : []
+  const availableTopics = curriculumQuestion ? getAvailableTopics(curriculumQuestion) : []
+  const availableCompetencies = curriculumQuestion ? getAvailableCompetencies(curriculumQuestion) : []
   const selectedQuestionIndex = selectedQuestion ? questions.findIndex((item) => item.id === selectedQuestion.id) + 1 : 0
   const selectedProcessSteps = selectedQuestion ? getProcessSteps(selectedQuestion) : []
   const selectedCurrentProcessIndex = selectedProcessSteps.findIndex((step) => !step.done)
@@ -687,13 +686,9 @@ export default function QuestionBankPage({ onAlert }) {
   const isUpdatingSelectedQuestion = selectedQuestion
     ? ['Created', 'Draft'].includes(selectedQuestion.status)
     : false
-  const curriculumStatusTone = selectedQuestion
-    ? selectedQuestion.topics.length && selectedQuestion.competencies.length
-      ? 'is-complete'
-      : selectedQuestion.topics.length || selectedQuestion.competencies.length
-        ? 'is-partial'
-        : 'is-incomplete'
-    : ''
+  const shouldShowSelectedDelete = selectedQuestion
+    ? selectedQuestion.status !== 'Editing' || questions.length > 1
+    : false
   const activeMappingItems = activeMappingPicker === 'years'
     ? YEAR_OPTIONS
     : activeMappingPicker === 'subjects'
@@ -701,14 +696,14 @@ export default function QuestionBankPage({ onAlert }) {
     : activeMappingPicker === 'topics'
       ? availableTopics
       : availableCompetencies
-  const activeMappingSelected = selectedQuestion
+  const activeMappingSelected = curriculumQuestion
     ? activeMappingPicker === 'years'
-      ? [selectedQuestion.year]
+      ? [curriculumQuestion.year]
       : activeMappingPicker === 'subjects'
-      ? [selectedQuestion.subject]
+      ? [curriculumQuestion.subject]
       : activeMappingPicker === 'topics'
-      ? selectedQuestion.topics
-      : selectedQuestion.competencies
+      ? curriculumQuestion.topics
+      : curriculumQuestion.competencies
     : []
   const previewImages = previewImage?.images ?? []
   const previewIndex = Math.min(Math.max(previewImage?.index ?? 0, 0), Math.max(previewImages.length - 1, 0))
@@ -721,11 +716,9 @@ export default function QuestionBankPage({ onAlert }) {
     setGenerationCompleteId(null)
     setIsProgressWidgetOpen(false)
     setIsOptionalTagsOpen(false)
-    setOptionalTagSearchValues({
-      organSubSystems: '',
-      diseaseTags: '',
-      keyConcepts: '',
-    })
+    setIsCurriculumEditing(false)
+    setCurriculumDraft(null)
+    closeMappingPicker()
   }, [selectedQuestionId])
 
   const updateSelectedQuestion = (updater) => {
@@ -845,6 +838,7 @@ export default function QuestionBankPage({ onAlert }) {
         if (item.id !== questionId) return item
 
         const needsQuestion = !hasQuestionContent(item)
+        const autoFilledCurriculum = getAutoFilledCurriculum(item)
         const needsOptions = item.type === 'MCQ' && !hasMcqOptions(item)
         const needsAnswerKey = !getRichTextPreview(item.answerKey)
         const generatedOptions = needsOptions
@@ -858,6 +852,7 @@ export default function QuestionBankPage({ onAlert }) {
 
         return {
           ...item,
+          ...autoFilledCurriculum,
           questionText: needsQuestion ? generatedDraft.questionText : item.questionText,
           answerKey: needsAnswerKey ? generatedDraft.answerKey : item.answerKey,
           questionCategory: item.questionCategory || generatedDraft.questionCategory || 'Application',
@@ -867,10 +862,9 @@ export default function QuestionBankPage({ onAlert }) {
           cognitiveFunction: item.cognitiveFunction || generatedDraft.cognitiveFunction || '',
           skillFocus: item.skillFocus || generatedDraft.skillFocus || '',
           organSystem: item.organSystem || generatedDraft.organSystem || '',
-          organSubSystems: item.organSubSystems?.length ? item.organSubSystems : generatedDraft.organSubSystems || [],
-          diseaseTags: item.diseaseTags?.length ? item.diseaseTags : generatedDraft.diseaseTags || [],
-          keyConcepts: item.keyConcepts?.length ? item.keyConcepts : generatedDraft.keyConcepts || [],
-          marks: item.marks || '1',
+          organSubSystems: isDefaultOptionalTagOnly(item.organSubSystems) ? generatedDraft.organSubSystems || [DEFAULT_OPTIONAL_TAG] : item.organSubSystems,
+          diseaseTags: isDefaultOptionalTagOnly(item.diseaseTags) ? generatedDraft.diseaseTags || [DEFAULT_OPTIONAL_TAG] : item.diseaseTags,
+          keyConcepts: isDefaultOptionalTagOnly(item.keyConcepts) ? generatedDraft.keyConcepts || [DEFAULT_OPTIONAL_TAG] : item.keyConcepts,
           options: generatedOptions,
           correctOptionIds: needsOptions ? [generatedOptions[0].id] : item.correctOptionIds,
           trueFalseAnswer: item.trueFalseAnswer || generatedDraft.trueFalseAnswer || 'True',
@@ -903,8 +897,46 @@ export default function QuestionBankPage({ onAlert }) {
     setMappingSearchValue('')
   }
 
+  const startCurriculumEdit = () => {
+    if (!selectedQuestion) return
+    setCurriculumDraft({
+      year: selectedQuestion.year,
+      subject: selectedQuestion.subject,
+      topics: [...selectedQuestion.topics],
+      competencies: [...selectedQuestion.competencies],
+    })
+    setIsCurriculumEditing(true)
+    closeMappingPicker()
+  }
+
+  const cancelCurriculumEdit = () => {
+    setIsCurriculumEditing(false)
+    setCurriculumDraft(null)
+    closeMappingPicker()
+  }
+
+  const applyCurriculumEdit = () => {
+    if (!curriculumDraft) return
+    updateSelectedQuestion({
+      year: curriculumDraft.year,
+      subject: curriculumDraft.subject,
+      topics: [...curriculumDraft.topics],
+      competencies: [...curriculumDraft.competencies],
+    })
+    setIsCurriculumEditing(false)
+    setCurriculumDraft(null)
+    closeMappingPicker()
+  }
+
+  const updateCurriculumDraft = (updater) => {
+    setCurriculumDraft((current) => {
+      if (!current) return current
+      return typeof updater === 'function' ? updater(current) : { ...current, ...updater }
+    })
+  }
+
   const handleToggleTopic = (value) => {
-    updateSelectedQuestion((item) => {
+    updateCurriculumDraft((item) => {
       const nextTopics = toggleSelection(item.topics, value)
       const nextCompetencies = item.competencies.filter((entry) => (
         getAvailableCompetencies({ ...item, topics: nextTopics }).some((competency) => competency.value === entry)
@@ -918,16 +950,8 @@ export default function QuestionBankPage({ onAlert }) {
     })
   }
 
-  const toggleMappingFlow = () => {
-    if (activeMappingPicker) {
-      closeMappingPicker()
-    } else {
-      openMappingPicker('years')
-    }
-  }
-
   const handleSelectSubject = (value) => {
-    updateSelectedQuestion({
+    updateCurriculumDraft({
       subject: value,
       topics: [],
       competencies: [],
@@ -937,7 +961,7 @@ export default function QuestionBankPage({ onAlert }) {
   }
 
   const handleSelectYear = (value) => {
-    updateSelectedQuestion((item) => {
+    updateCurriculumDraft((item) => {
       const nextSubjects = getSubjectsForYear(value)
       const nextSubject = nextSubjects.includes(item.subject)
         ? item.subject
@@ -995,20 +1019,6 @@ export default function QuestionBankPage({ onAlert }) {
         options: [...item.options, createOption('')],
       }
     })
-  }
-
-  const updateOptionalTagSearch = (field, value) => {
-    setOptionalTagSearchValues((current) => ({
-      ...current,
-      [field]: value,
-    }))
-  }
-
-  const toggleOptionalTag = (field, value) => {
-    updateSelectedQuestion((item) => ({
-      ...item,
-      [field]: toggleSelection(item[field] ?? [], value),
-    }))
   }
 
   const handleQuestionImagesUpload = async (event) => {
@@ -1094,17 +1104,7 @@ export default function QuestionBankPage({ onAlert }) {
 
   return (
     <section className="question-bank-page">
-      <header className="question-bank-header">
-        <div>
-          <h1>Question Bank</h1>
-          <p>Create MCQ, descriptive, true or false, and fill in the blanks with fewer clicks.</p>
-        </div>
-        <div className="question-bank-header-stats">
-          <span><strong>{totalCount}</strong> Total</span>
-          <span><strong>{readyCount}</strong> Ready</span>
-          <span><strong>{draftCount}</strong> Draft</span>
-        </div>
-      </header>
+     
 
       <div className="question-bank-create-strip">
         {questionTypePicker}
@@ -1116,148 +1116,131 @@ export default function QuestionBankPage({ onAlert }) {
             <div className="question-bank-workspace">
               <div className="question-bank-editor">
                 <section className="question-bank-author-card">
-                  <div className="question-bank-author-head">
-                    <div className="question-bank-type-label">{selectedQuestion.type}</div>
-                    <div className="question-bank-badge-row">
-                      {selectedQuestion.questionCategory ? (
-                        <span className="question-bank-badge mint">{selectedQuestion.questionCategory}</span>
-                      ) : null}
-                      {selectedQuestion.cognitiveLevel ? (
-                        <span className="question-bank-badge blue">{selectedQuestion.cognitiveLevel}</span>
-                      ) : null}
-                      {selectedQuestion.thinkingLevel ? (
-                        <span className="question-bank-badge lilac">{selectedQuestion.thinkingLevel}</span>
-                      ) : null}
-                      {selectedQuestion.difficultyLevel ? (
-                        <span className="question-bank-badge soft">{selectedQuestion.difficultyLevel}</span>
-                      ) : null}
-                      {selectedQuestion.isCritical ? (
-                        <span className="question-bank-badge critical">Critical</span>
-                      ) : null}
-                    </div>
+                  {shouldShowSelectedDelete ? (
+                  <div className="question-bank-author-actions">
                     <button type="button" className="question-bank-icon-btn" onClick={handleDeleteQuestion} aria-label="Delete question">
                       <Trash2 size={15} strokeWidth={2} />
                     </button>
                   </div>
+                  ) : null}
 
                   <div className="question-bank-author-grid">
                     <div className="question-bank-author-main">
                       <section className="question-bank-curriculum-panel">
-                        <div className="question-bank-section-head">
-                          {(() => {
-                            const curriculumStatusLabel = getCurriculumStatusLabel(selectedQuestion)
-                            return (
-                              <>
-                                <div>
-                                  <strong className="question-bank-step-title">STEP 1 : Curriculum Mapping</strong>
-                                </div>
+                        {!isCurriculumEditing ? (
+                          <div className="question-bank-curriculum-summary-line" title={getCurriculumStatusLabel(selectedQuestion)}>
+                            <span>{getCurriculumStatusLabel(selectedQuestion)}</span>
+                            <button
+                              type="button"
+                              className="question-bank-curriculum-edit-link"
+                              onClick={startCurriculumEdit}
+                              aria-label={`Edit curriculum mapping: ${getCurriculumStatusLabel(selectedQuestion)}`}
+                            >
+                              <FilePenLine size={13} strokeWidth={2.2} />
+                              Edit Curriculum
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="question-bank-curriculum-edit-card">
+                            <div className="question-bank-curriculum-grid">
+                              <div className="question-bank-field">
                                 <button
                                   type="button"
-                                  className={`question-bank-curriculum-status ${curriculumStatusTone} ${activeMappingPicker ? 'is-open' : ''}`}
-                                  onClick={toggleMappingFlow}
-                                  aria-expanded={Boolean(activeMappingPicker)}
-                                  aria-label={curriculumStatusLabel}
-                                  data-tooltip={curriculumStatusLabel}
+                                  className="question-bank-mapping-trigger"
+                                  onClick={() => openMappingPicker('years')}
                                 >
-                                  <span className="question-bank-curriculum-status-text">
-                                    {getRestrictedText(curriculumStatusLabel)}
+                                  <strong>Year</strong>
+                                  <span>{curriculumDraft?.year}</span>
+                                </button>
+                              </div>
+
+                              <div className="question-bank-field">
+                                <button
+                                  type="button"
+                                  className="question-bank-mapping-trigger"
+                                  onClick={() => openMappingPicker('subjects')}
+                                >
+                                  <strong>Subject</strong>
+                                  <span>{curriculumDraft?.subject}</span>
+                                </button>
+                              </div>
+
+                              <div className="question-bank-field">
+                                <button
+                                  type="button"
+                                  className="question-bank-mapping-trigger"
+                                  onClick={() => openMappingPicker('topics')}
+                                >
+                                  <strong>Topics - {curriculumDraft?.topics.length ?? 0} selected</strong>
+                                  <span>{getSelectionSummary(curriculumDraft?.topics ?? [], 'Search and select topics')}</span>
+                                </button>
+                              </div>
+
+                              <div className="question-bank-field">
+                                <button
+                                  type="button"
+                                  className="question-bank-mapping-trigger"
+                                  onClick={() => openMappingPicker('competencies')}
+                                >
+                                  <strong>Competency - {curriculumDraft?.competencies.length ?? 0} selected</strong>
+                                  <span>
+                                    {getSelectionSummary(
+                                      curriculumDraft?.competencies ?? [],
+                                      'Search and select competencies',
+                                      getShortCompetencyLabel,
+                                    )}
                                   </span>
                                 </button>
-                              </>
-                            )
-                          })()}
-                        </div>
-
-                        <div className="question-bank-curriculum-grid">
-                          <div className="question-bank-field">
-                            <button
-                              type="button"
-                              className="question-bank-mapping-trigger"
-                              onClick={() => openMappingPicker('years')}
-                            >
-                              <strong>Year</strong>
-                              <span>{selectedQuestion.year}</span>
-                            </button>
+                              </div>
+                            </div>
+                            {activeMappingPicker ? (
+                              <MappingSelectorPanel
+                                title={activeMappingPicker === 'years'
+                                  ? 'Year'
+                                  : activeMappingPicker === 'subjects'
+                                  ? 'Subject'
+                                  : activeMappingPicker === 'topics'
+                                    ? 'Topics'
+                                    : 'Competency'}
+                                searchValue={mappingSearchValue}
+                                onSearchChange={setMappingSearchValue}
+                                items={activeMappingItems}
+                                selected={activeMappingSelected}
+                                onToggle={activeMappingPicker === 'years'
+                                  ? handleSelectYear
+                                  : activeMappingPicker === 'subjects'
+                                  ? handleSelectSubject
+                                  : activeMappingPicker === 'topics'
+                                    ? handleToggleTopic
+                                    : (value) => updateCurriculumDraft((item) => ({
+                                    ...item,
+                                    competencies: toggleSelection(item.competencies, value),
+                                  }))}
+                                emptyLabel={activeMappingPicker === 'years'
+                                  ? 'Try another year keyword.'
+                                  : activeMappingPicker === 'subjects'
+                                  ? 'Try another subject keyword.'
+                                  : activeMappingPicker === 'topics'
+                                  ? 'Try another topic keyword.'
+                                  : 'Select topics first or try another competency keyword.'}
+                              />
+                            ) : null}
+                            <div className="question-bank-curriculum-actions">
+                              <button type="button" className="question-bank-secondary-btn" onClick={cancelCurriculumEdit}>
+                                Cancel
+                              </button>
+                              <button type="button" className="question-bank-primary-btn" onClick={applyCurriculumEdit}>
+                                Apply
+                              </button>
+                            </div>
                           </div>
-
-                          <div className="question-bank-field">
-                            <button
-                              type="button"
-                              className="question-bank-mapping-trigger"
-                              onClick={() => openMappingPicker('subjects')}
-                            >
-                              <strong>Subject</strong>
-                              <span>{selectedQuestion.subject}</span>
-                            </button>
-                          </div>
-
-                          <div className="question-bank-field">
-                            <button
-                              type="button"
-                              className="question-bank-mapping-trigger"
-                              onClick={() => openMappingPicker('topics')}
-                            >
-                              <strong>Topics - {selectedQuestion.topics.length} selected</strong>
-                              <span>{getSelectionSummary(selectedQuestion.topics, 'Search and select topics')}</span>
-                            </button>
-                          </div>
-
-                          <div className="question-bank-field">
-                            <button
-                              type="button"
-                              className="question-bank-mapping-trigger"
-                              onClick={() => openMappingPicker('competencies')}
-                            >
-                              <strong>Competency - {selectedQuestion.competencies.length} selected</strong>
-                              <span>
-                                {getSelectionSummary(
-                                  selectedQuestion.competencies,
-                                  'Search and select competencies',
-                                  getShortCompetencyLabel,
-                                )}
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-                        {activeMappingPicker ? (
-                          <MappingSelectorPanel
-                            title={activeMappingPicker === 'years'
-                              ? 'Year'
-                              : activeMappingPicker === 'subjects'
-                              ? 'Subject'
-                              : activeMappingPicker === 'topics'
-                                ? 'Topics'
-                                : 'Competency'}
-                            searchValue={mappingSearchValue}
-                            onSearchChange={setMappingSearchValue}
-                            items={activeMappingItems}
-                            selected={activeMappingSelected}
-                            onToggle={activeMappingPicker === 'years'
-                              ? handleSelectYear
-                              : activeMappingPicker === 'subjects'
-                              ? handleSelectSubject
-                              : activeMappingPicker === 'topics'
-                                ? handleToggleTopic
-                                : (value) => updateSelectedQuestion((item) => ({
-                                ...item,
-                                competencies: toggleSelection(item.competencies, value),
-                              }))}
-                            onClose={closeMappingPicker}
-                            emptyLabel={activeMappingPicker === 'years'
-                              ? 'Try another year keyword.'
-                              : activeMappingPicker === 'subjects'
-                              ? 'Try another subject keyword.'
-                              : activeMappingPicker === 'topics'
-                              ? 'Try another topic keyword.'
-                              : 'Select topics first or try another competency keyword.'}
-                          />
-                        ) : null}
+                        )}
                       </section>
 
                       <section className="question-bank-soft-panel question-bank-answer-panel">
                         <div className="question-bank-section-head">
                           <div>
-                            <strong className="question-bank-step-title">STEP 2 : Question Creation</strong>
+                            <strong className="question-bank-step-title">STEP 1 : Question Creation</strong>
                           </div>
                           <div className="question-bank-question-head-controls">
                             {!(selectedQuestion.images?.length ?? 0) ? (
@@ -1363,7 +1346,7 @@ export default function QuestionBankPage({ onAlert }) {
                           <div className="question-bank-options-head">
                             <div>
                               <span className="question-bank-step-title-row">
-                                <strong className="question-bank-step-title">STEP 3 : Options</strong>
+                                <strong className="question-bank-step-title">STEP 2 : Options</strong>
                                 <span className="question-bank-step-helper-badge">Enter Your Option &amp; Choose Right Answer</span>
                               </span>
                             </div>
@@ -1393,8 +1376,18 @@ export default function QuestionBankPage({ onAlert }) {
                               const { minCount } = getOptionModeConfig(selectedQuestion.allowMultiple)
                               const isMandatoryOption = index < minCount
                               const isSelectedOption = selectedQuestion.correctOptionIds.includes(option.id)
+                              const hasOptionText = Boolean(getRichTextPreview(option.label))
+                              const hasAnyCorrectOption = selectedQuestion.correctOptionIds.length > 0
+                              const isIncorrectOption = hasAnyCorrectOption && hasOptionText && !isSelectedOption
+                              const optionStateClass = isSelectedOption
+                                ? 'is-correct'
+                                : isIncorrectOption
+                                  ? 'is-incorrect'
+                                  : !hasOptionText
+                                    ? 'is-empty'
+                                    : ''
                               return (
-                              <div key={option.id} className="question-bank-choice-row">
+                              <div key={option.id} className={`question-bank-choice-row ${optionStateClass}`}>
                                 <span className="question-bank-choice-letter">{String.fromCharCode(65 + index)}</span>
                                 <button
                                   type="button"
@@ -1410,7 +1403,11 @@ export default function QuestionBankPage({ onAlert }) {
                                   aria-label={`${isSelectedOption ? 'Unselect' : 'Select'} option ${String.fromCharCode(65 + index)} as correct`}
                                   aria-pressed={isSelectedOption}
                                 >
-                                  {isSelectedOption ? <Check size={13} strokeWidth={2.5} /> : null}
+                                  {isSelectedOption ? (
+                                    <Check size={13} strokeWidth={2.5} />
+                                  ) : isIncorrectOption ? (
+                                    <X size={13} strokeWidth={2.5} />
+                                  ) : null}
                                 </button>
                                 <RichMathEditor
                                   value={option.label}
@@ -1431,7 +1428,7 @@ export default function QuestionBankPage({ onAlert }) {
                                   {!isMandatoryOption ? (
                                     <button
                                       type="button"
-                                      className="question-bank-icon-btn"
+                                      className={`question-bank-icon-btn ${hasOptionText ? '' : 'is-empty-remove'}`}
                                       onClick={() => updateSelectedQuestion((item) => ({
                                         ...item,
                                         options: item.options.filter((currentOption) => currentOption.id !== option.id),
@@ -1469,18 +1466,13 @@ export default function QuestionBankPage({ onAlert }) {
                       ) : null}
 
                         <div className="question-bank-answer-block">
-                          <div className="question-bank-section-head">
-                            <div>
-                              <span className="question-bank-eyebrow">Answer & Explanation</span>
-                            </div>
-                          </div>
-
                           <label className="question-bank-field">
+                            <span className="question-bank-inline-field-badge">Answer &amp; Explanation</span>
                             <RichMathEditor
                               value={selectedQuestion.answerKey}
                               onChange={(nextValue) => updateSelectedQuestion({ answerKey: nextValue })}
                               placeholder="Add a short note for the expected answer."
-                              minRows={3}
+                              minRows={1}
                               ariaLabel="Answer key"
                             />
                           </label>
@@ -1610,6 +1602,18 @@ export default function QuestionBankPage({ onAlert }) {
                     </div>
 
                     <aside className="question-bank-side-panel">
+                      <div className="question-bank-ai-instruction-card">
+                        <strong>
+                          <Sparkles size={13} strokeWidth={2.2} />
+                          Question Generation Process
+                        </strong>
+                        <ul>
+                          <li>Enter the question text and select Create.</li>
+                          <li>The AI engine will automatically generate data for optional fields.</li>
+                          <li>Review the question to manually apply images, criticality levels, and marks, as these are not auto-generated.</li>
+                        </ul>
+                      </div>
+
                       <div className="question-bank-assessment-panel question-bank-assessment-inline">
                         <div className="question-bank-section-head">
                           <div>
@@ -1727,31 +1731,22 @@ export default function QuestionBankPage({ onAlert }) {
                               </select>
                             </label>
 
-                            <OptionalTagMultiSelect
+                            <OptionalTagTextInput
                               label="Organ Sub System"
-                              options={ORGAN_SUB_SYSTEM_OPTIONS}
-                              selected={selectedQuestion.organSubSystems ?? []}
-                              onToggle={(value) => toggleOptionalTag('organSubSystems', value)}
-                              searchValue={optionalTagSearchValues.organSubSystems}
-                              onSearchChange={(value) => updateOptionalTagSearch('organSubSystems', value)}
+                              values={selectedQuestion.organSubSystems}
+                              onChange={(values) => updateSelectedQuestion({ organSubSystems: values })}
                             />
 
-                            <OptionalTagMultiSelect
+                            <OptionalTagTextInput
                               label="Disease Tags"
-                              options={DISEASE_TAG_OPTIONS}
-                              selected={selectedQuestion.diseaseTags ?? []}
-                              onToggle={(value) => toggleOptionalTag('diseaseTags', value)}
-                              searchValue={optionalTagSearchValues.diseaseTags}
-                              onSearchChange={(value) => updateOptionalTagSearch('diseaseTags', value)}
+                              values={selectedQuestion.diseaseTags}
+                              onChange={(values) => updateSelectedQuestion({ diseaseTags: values })}
                             />
 
-                            <OptionalTagMultiSelect
+                            <OptionalTagTextInput
                               label="Key Concept"
-                              options={KEY_CONCEPT_OPTIONS}
-                              selected={selectedQuestion.keyConcepts ?? []}
-                              onToggle={(value) => toggleOptionalTag('keyConcepts', value)}
-                              searchValue={optionalTagSearchValues.keyConcepts}
-                              onSearchChange={(value) => updateOptionalTagSearch('keyConcepts', value)}
+                              values={selectedQuestion.keyConcepts}
+                              onChange={(values) => updateSelectedQuestion({ keyConcepts: values })}
                             />
                           </div>
                         ) : null}
@@ -1762,6 +1757,7 @@ export default function QuestionBankPage({ onAlert }) {
                             className={`question-bank-primary-btn ${isGeneratingQuestion ? 'is-loading' : ''}`}
                             onClick={handlePrimaryQuestionAction}
                             disabled={isGeneratingQuestion || !canCreateSelectedQuestion}
+                            data-tooltip={canCreateSelectedQuestion && !isGeneratingQuestion ? 'Enter question text. AI fills empty optional fields.' : undefined}
                           >
                             {isGeneratingQuestion ? (
                               <>
