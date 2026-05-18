@@ -4,6 +4,8 @@ import {
   CheckCheck,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   FilePenLine,
   FolderTree,
@@ -708,6 +710,11 @@ export default function QuestionBankPage({ onAlert }) {
       ? selectedQuestion.topics
       : selectedQuestion.competencies
     : []
+  const previewImages = previewImage?.images ?? []
+  const previewIndex = Math.min(Math.max(previewImage?.index ?? 0, 0), Math.max(previewImages.length - 1, 0))
+  const activePreviewImage = previewImages[previewIndex] ?? null
+  const hasPreviewNavigation = previewImages.length > 1
+  const activePreviewLetter = activePreviewImage ? String.fromCharCode(65 + previewIndex) : ''
 
   useEffect(() => {
     setIsGeneratingQuestion(false)
@@ -1034,12 +1041,34 @@ export default function QuestionBankPage({ onAlert }) {
     }
   }
 
+  const openImagePreview = (images, index) => {
+    setPreviewImage({
+      images: images ?? [],
+      index,
+    })
+  }
+
+  const movePreviewImage = (direction) => {
+    setPreviewImage((current) => {
+      if (!current?.images?.length) return current
+      const nextIndex = (current.index + direction + current.images.length) % current.images.length
+      return {
+        ...current,
+        index: nextIndex,
+      }
+    })
+  }
+
   const removeQuestionImage = (imageId) => {
     updateSelectedQuestion((item) => ({
       ...item,
       images: (item.images ?? []).filter((image) => image.id !== imageId),
     }))
-    setPreviewImage((current) => (current?.id === imageId ? null : current))
+    setPreviewImage((current) => (
+      current?.images?.[current.index]?.id === imageId
+        ? null
+        : current
+    ))
   }
 
   const questionTypePicker = (
@@ -1119,21 +1148,21 @@ export default function QuestionBankPage({ onAlert }) {
                             const curriculumStatusLabel = getCurriculumStatusLabel(selectedQuestion)
                             return (
                               <>
-                          <div>
-                            <strong className="question-bank-step-title">STEP 1 : Curriculum Mapping</strong>
-                          </div>
-                          <button
-                            type="button"
-                            className={`question-bank-curriculum-status ${curriculumStatusTone} ${activeMappingPicker ? 'is-open' : ''}`}
-                            onClick={toggleMappingFlow}
-                            aria-expanded={Boolean(activeMappingPicker)}
-                            aria-label={curriculumStatusLabel}
-                            data-tooltip={curriculumStatusLabel}
-                          >
-                            <span className="question-bank-curriculum-status-text">
-                              {getRestrictedText(curriculumStatusLabel)}
-                            </span>
-                          </button>
+                                <div>
+                                  <strong className="question-bank-step-title">STEP 1 : Curriculum Mapping</strong>
+                                </div>
+                                <button
+                                  type="button"
+                                  className={`question-bank-curriculum-status ${curriculumStatusTone} ${activeMappingPicker ? 'is-open' : ''}`}
+                                  onClick={toggleMappingFlow}
+                                  aria-expanded={Boolean(activeMappingPicker)}
+                                  aria-label={curriculumStatusLabel}
+                                  data-tooltip={curriculumStatusLabel}
+                                >
+                                  <span className="question-bank-curriculum-status-text">
+                                    {getRestrictedText(curriculumStatusLabel)}
+                                  </span>
+                                </button>
                               </>
                             )
                           })()}
@@ -1190,7 +1219,6 @@ export default function QuestionBankPage({ onAlert }) {
                             </button>
                           </div>
                         </div>
-
                         {activeMappingPicker ? (
                           <MappingSelectorPanel
                             title={activeMappingPicker === 'years'
@@ -1290,7 +1318,7 @@ export default function QuestionBankPage({ onAlert }) {
                               <button
                                 type="button"
                                 className="question-bank-question-image-thumb"
-                                onClick={() => setPreviewImage(image)}
+                                onClick={() => openImagePreview(selectedQuestion.images ?? [], index)}
                               >
                                 <img src={image.url} alt={image.name} />
                               </button>
@@ -1299,7 +1327,7 @@ export default function QuestionBankPage({ onAlert }) {
                                 <button
                                   type="button"
                                   className="question-bank-question-image-icon"
-                                  onClick={() => setPreviewImage(image)}
+                                  onClick={() => openImagePreview(selectedQuestion.images ?? [], index)}
                                   aria-label={`Preview image ${String.fromCharCode(65 + index)}`}
                                 >
                                   <Eye size={12} strokeWidth={2.2} />
@@ -1776,6 +1804,14 @@ export default function QuestionBankPage({ onAlert }) {
                         const status = getQuestionCardStatus(question)
                         const typeMeta = getQuestionTypeMeta(question.type)
                         const optionalTagGroups = getQuestionOptionalTagGroups(question)
+                        const curriculumMeta = [
+                          question.year,
+                          question.subject,
+                          question.topics?.length ? getSelectionSummary(question.topics, '') : null,
+                          question.competencies?.length
+                            ? getSelectionSummary(question.competencies, '', getShortCompetencyLabel)
+                            : null,
+                        ].filter(Boolean)
                         return (
                           <article
                             key={question.id}
@@ -1865,6 +1901,13 @@ export default function QuestionBankPage({ onAlert }) {
                                   </span>
                                 </span>
                                 <strong className="question-bank-created-question">Q{index + 1}. {getQuestionPreview(question)}</strong>
+                                {curriculumMeta.length ? (
+                                  <span className="question-bank-created-curriculum" title={curriculumMeta.join(' / ')}>
+                                    {curriculumMeta.map((item) => (
+                                      <span key={item}>{item}</span>
+                                    ))}
+                                  </span>
+                                ) : null}
                                 {status === 'Created' ? (
                                   <>
                                     {question.images?.length ? (
@@ -1876,7 +1919,7 @@ export default function QuestionBankPage({ onAlert }) {
                                             className="question-bank-created-image-thumb"
                                             onClick={(event) => {
                                               event.stopPropagation()
-                                              setPreviewImage(image)
+                                              openImagePreview(question.images ?? [], imageIndex)
                                             }}
                                             aria-label={`Preview attached image ${String.fromCharCode(65 + imageIndex)}`}
                                           >
@@ -1981,7 +2024,7 @@ export default function QuestionBankPage({ onAlert }) {
         </div>
       ) : null}
 
-      {previewImage ? (
+      {activePreviewImage ? (
         <div className="question-bank-image-preview-modal" role="dialog" aria-modal="true" aria-label="Image preview">
           <button
             type="button"
@@ -1991,17 +2034,43 @@ export default function QuestionBankPage({ onAlert }) {
           />
           <div className="question-bank-image-preview-card">
             <div className="question-bank-image-preview-head">
-              <strong>{previewImage.name}</strong>
-              <button
-                type="button"
-                className="question-bank-icon-btn"
-                onClick={() => setPreviewImage(null)}
-                aria-label="Close image preview"
-              >
-                <X size={15} strokeWidth={2.2} />
-              </button>
+              <span className="question-bank-image-preview-title">
+                <span className="question-bank-image-preview-letter">{activePreviewLetter}</span>
+              </span>
+              <span className="question-bank-image-preview-actions">
+                <button
+                  type="button"
+                  className="question-bank-icon-btn"
+                  onClick={() => setPreviewImage(null)}
+                  aria-label="Close image preview"
+                >
+                  <X size={15} strokeWidth={2.2} />
+                </button>
+              </span>
             </div>
-            <img src={previewImage.url} alt={previewImage.name} />
+            <div className="question-bank-image-preview-body">
+              {hasPreviewNavigation ? (
+                <button
+                  type="button"
+                  className="question-bank-image-preview-nav is-prev"
+                  onClick={() => movePreviewImage(-1)}
+                  aria-label="Preview previous image"
+                >
+                  <ChevronLeft size={18} strokeWidth={2.4} />
+                </button>
+              ) : null}
+              <img src={activePreviewImage.url} alt={activePreviewImage.name} />
+              {hasPreviewNavigation ? (
+                <button
+                  type="button"
+                  className="question-bank-image-preview-nav is-next"
+                  onClick={() => movePreviewImage(1)}
+                  aria-label="Preview next image"
+                >
+                  <ChevronRight size={18} strokeWidth={2.4} />
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
