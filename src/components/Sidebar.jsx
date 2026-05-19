@@ -39,41 +39,38 @@ export default function Sidebar({
     Assessment: ASSESSMENT_PAGES.includes(activePage),
     'Question Bank': QUESTION_BANK_PAGES.includes(activePage),
   }
-  const [openGroups, setOpenGroups] = useState(activeGroupMap)
+  const getActiveGroupLabel = (page) => {
+    if (SKILL_PAGES.includes(page)) return 'Skills'
+    if (MY_SKILL_PAGES.includes(page)) return 'My Skills'
+    if (ASSESSMENT_PAGES.includes(page)) return 'Assessment'
+    if (QUESTION_BANK_PAGES.includes(page)) return 'Question Bank'
+    return null
+  }
+  const [openGroupLabel, setOpenGroupLabel] = useState(() => getActiveGroupLabel(activePage))
   const groupRefs = useRef({})
   const useCollapsedFlyout = sidebarCollapsed && !mobileSidebarOpen
   const handleSelectSidebarPage = (page) => {
-    setOpenGroups((current) => ({
-      ...current,
-      Skills: SKILL_PAGES.includes(page),
-      'My Skills': MY_SKILL_PAGES.includes(page),
-      Assessment: ASSESSMENT_PAGES.includes(page),
-      'Question Bank': QUESTION_BANK_PAGES.includes(page),
-    }))
+    setOpenGroupLabel(getActiveGroupLabel(page))
     onSelectPage(page)
   }
 
   useEffect(() => {
-    setOpenGroups((current) => ({
-      ...current,
-      ...activeGroupMap,
-    }))
+    setOpenGroupLabel(getActiveGroupLabel(activePage))
   }, [activePage])
 
   useEffect(() => {
-    const openLabels = Object.entries(openGroups).filter(([, isOpen]) => isOpen).map(([label]) => label)
-    if (!useCollapsedFlyout || !openLabels.length) return undefined
+    if (!useCollapsedFlyout || !openGroupLabel) return undefined
 
     const handlePointerDown = (event) => {
-      const clickedInsideOpenGroup = openLabels.some((label) => groupRefs.current[label]?.contains(event.target))
+      const clickedInsideOpenGroup = groupRefs.current[openGroupLabel]?.contains(event.target)
       if (!clickedInsideOpenGroup) {
-        setOpenGroups((current) => Object.fromEntries(Object.keys(current).map((label) => [label, false])))
+        setOpenGroupLabel(null)
       }
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [openGroups, useCollapsedFlyout])
+  }, [openGroupLabel, useCollapsedFlyout])
 
   return (
     <aside className={`vx-sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
@@ -111,19 +108,19 @@ export default function Sidebar({
                   <button
                     type="button"
                     className={`vx-link vx-link-parent ${activeGroupMap[item.label] ? 'active' : ''}`}
-                    onClick={() => setOpenGroups((current) => ({ ...current, [item.label]: !current[item.label] }))}
-                    aria-expanded={Boolean(openGroups[item.label])}
+                    onClick={() => setOpenGroupLabel((current) => (current === item.label ? null : item.label))}
+                    aria-expanded={openGroupLabel === item.label}
                   >
                     <span className="vx-link-icon" aria-hidden="true">
                       <item.icon size={16} strokeWidth={2} />
                     </span>
                     <span className="vx-link-text">{item.label}</span>
-                    <span className={`vx-link-caret ${openGroups[item.label] ? 'open' : ''}`} aria-hidden="true">
+                    <span className={`vx-link-caret ${openGroupLabel === item.label ? 'open' : ''}`} aria-hidden="true">
                       <ChevronDown size={16} strokeWidth={2.2} />
                     </span>
                   </button>
 
-                  <div className={`vx-sublinks ${openGroups[item.label] ? 'open' : ''} ${useCollapsedFlyout ? 'is-flyout' : ''}`}>
+                  <div className={`vx-sublinks ${openGroupLabel === item.label ? 'open' : ''} ${useCollapsedFlyout ? 'is-flyout' : ''}`}>
                     {item.children.map((child) => (
                       <button
                         key={child.label}

@@ -1174,7 +1174,7 @@ function App() {
           ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
-            <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} />
+            <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
             <QuestionBankNonCreatePage />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (

@@ -105,7 +105,7 @@ export const SIDEBAR_MENU = [
         icon: BookText,
         children: [
           { label: APP_PAGES.QUESTION_BANK, navLabel: 'Create', icon: FilePenLine },
-          { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'Overall Question', icon: FileSearch },
+          { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'All Questions', icon: FileSearch },
         ],
       },
     ],

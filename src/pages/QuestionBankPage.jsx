@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Check,
   CheckCheck,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  Contact,
   Eye,
   FilePenLine,
+  IdCard,
   FolderTree,
   ImagePlus,
   Info,
+  BriefcaseBusiness,
   ListChecks,
   LoaderCircle,
+  Send,
   Plus,
   Search,
   Sigma,
@@ -149,8 +156,18 @@ const CURRICULUM_DIRECTORY = YEAR_OPTIONS.reduce((directory, year) => ({
 const QUESTION_TYPE_CARDS = [
   { type: 'MCQ', shortLabel: 'MCQ', icon: ListChecks },
   { type: 'Descriptive Question', shortLabel: 'Descriptive', icon: FilePenLine },
-  { type: 'True or False', shortLabel: 'True / False', icon: CheckCheck },
-  { type: 'Fill in the Blanks', shortLabel: 'Fill in blanks', icon: Sigma },
+  { type: 'True or False', shortLabel: 'True / False', icon: CheckCheck, isUpcoming: true },
+  { type: 'Fill in the Blanks', shortLabel: 'Fill in blanks', icon: Sigma, isUpcoming: true },
+  { type: 'Match Marker', shortLabel: 'Match Marker', icon: FolderTree, isUpcoming: true },
+  { type: 'Crossword', shortLabel: 'Crossword', icon: Search, isUpcoming: true },
+  { type: 'Assertion & Reasoning', shortLabel: 'Assertion & Reasoning', icon: CheckCircle2, isUpcoming: true },
+  { type: 'Justify Yourself', shortLabel: 'Justify Yourself', icon: FilePenLine, isUpcoming: true },
+]
+
+const APPROVAL_REVIEWERS = [
+  { facultyName: 'Dr. Meera Nair', employeeId: 'EMP1021', designation: 'Professor' },
+  { facultyName: 'Dr. Arvind Rao', employeeId: 'EMP1044', designation: 'Associate Professor' },
+  { facultyName: 'Dr. Kavya Menon', employeeId: 'EMP1180', designation: 'Assistant Professor' },
 ]
 
 let questionSequence = 1
@@ -180,8 +197,8 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   parentId: config.parentId ?? null,
   level: config.level ?? 'parent',
   questionText: '',
-  year: 'Year 1',
-  subject: 'Human Anatomy',
+  year: config.year ?? '',
+  subject: config.subject ?? '',
   topics: [],
   competencies: [],
   images: [],
@@ -266,7 +283,7 @@ const getGeneratedOptionalTags = (type) => {
 
 const getGeneratedQuestionDraft = (question) => {
   const type = question.type ?? 'MCQ'
-  const subject = question.subject ?? 'Human Anatomy'
+  const subject = question.subject || 'Human Anatomy'
   const topic = question.topics[0] ?? 'the selected topic'
   const optionalTags = getGeneratedOptionalTags(type)
 
@@ -327,9 +344,12 @@ const getSubjectDirectory = (question) => {
   return yearDirectory[question.subject] ?? yearDirectory[getSubjectsForYear(question.year)[0]] ?? SUBJECT_DIRECTORY['Human Anatomy']
 }
 
-const getAvailableTopics = (question) => getSubjectDirectory(question).topics
+const getAvailableTopics = (question) => (
+  question.year && question.subject ? getSubjectDirectory(question).topics : []
+)
 
 const getAvailableCompetencies = (question) => {
+  if (!question.year || !question.subject) return []
   const directory = getSubjectDirectory(question)
   if (!question.topics.length) return directory.competencies
   return directory.competencies.filter((item) => question.topics.includes(item.topic))
@@ -380,6 +400,34 @@ const hasVisibleMarks = (marks) => Number(marks) > 0
 const isDefaultOptionalTagOnly = (values) => (
   !values?.length || (values.length === 1 && values[0] === DEFAULT_OPTIONAL_TAG)
 )
+
+const hasDraftContent = (question) => {
+  if (!question) return false
+
+  return Boolean(getRichTextPreview(question.questionText))
+    || Boolean(getRichTextPreview(question.answerKey))
+    || question.images.length > 0
+    || Boolean(question.year)
+    || Boolean(question.subject)
+    || question.topics.length > 0
+    || question.competencies.length > 0
+    || Boolean(question.questionCategory)
+    || Boolean(question.cognitiveLevel)
+    || Boolean(question.thinkingLevel)
+    || Boolean(question.difficultyLevel)
+    || Boolean(question.cognitiveFunction)
+    || Boolean(question.skillFocus)
+    || Boolean(question.organSystem)
+    || !isDefaultOptionalTagOnly(question.organSubSystems)
+    || !isDefaultOptionalTagOnly(question.diseaseTags)
+    || !isDefaultOptionalTagOnly(question.keyConcepts)
+    || question.options.some((option) => Boolean(getRichTextPreview(option.label)))
+    || question.correctOptionIds.length > 0
+    || question.fillBlankAnswers.some((answer) => Boolean(getRichTextPreview(answer)))
+    || Boolean(getRichTextPreview(question.descriptiveGuide))
+    || hasVisibleMarks(question.marks)
+    || question.isCritical
+}
 
 const getAutoFilledCurriculum = (question) => {
   const year = question.year || YEAR_OPTIONS[0]
@@ -569,8 +617,8 @@ const getSelectionSummary = (selected, emptyLabel, formatter = (value) => value)
 }
 
 const getCurriculumStatusLabel = (question) => [
-  getYearDisplayLabel(question.year),
-  question.subject,
+  question.year ? getYearDisplayLabel(question.year) : 'Select year',
+  question.subject || 'Select subject',
   question.topics.length ? question.topics.join(', ') : 'Select topics',
   question.competencies.length ? question.competencies.map(getShortCompetencyLabel).join(', ') : 'Select competencies',
 ].filter(Boolean).join(' / ')
@@ -646,7 +694,7 @@ function MappingSelectorPanel({
   )
 }
 
-export default function QuestionBankPage({ onAlert }) {
+export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const [questions, setQuestions] = useState([])
   const [selectedQuestionId, setSelectedQuestionId] = useState(null)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
@@ -659,12 +707,40 @@ export default function QuestionBankPage({ onAlert }) {
   const [previewImage, setPreviewImage] = useState(null)
   const [isCurriculumEditing, setIsCurriculumEditing] = useState(false)
   const [curriculumDraft, setCurriculumDraft] = useState(null)
+  const [activeQuestionTab, setActiveQuestionTab] = useState('create')
+  const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
+  const [selectedQuestionTypeLabel, setSelectedQuestionTypeLabel] = useState('')
+  const [isApprovalSelectMode, setIsApprovalSelectMode] = useState(false)
+  const [approvalSelectedIds, setApprovalSelectedIds] = useState([])
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
+  const [approvalNote, setApprovalNote] = useState('')
+  const [selectedApprovalReviewerIndex, setSelectedApprovalReviewerIndex] = useState(0)
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
   const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
+  const draftQuestionCards = questions.filter((item) => item.status === 'Draft')
+  const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status))
   const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
   const draftCount = questions.filter((item) => item.status === 'Draft').length
+  const approvedCount = questions.filter((item) => item.status === 'Approved').length
+  const generatingCount = questions.filter((item) => item.status === 'Generating').length
+  const generationProcessTotal = readyCount + generatingCount
+  const generationProcessPercent = generationProcessTotal
+    ? Math.round((readyCount / generationProcessTotal) * 100)
+    : 0
+  const approvableQuestionIds = createdQuestionCards
+    .filter((item) => item.status === 'Created')
+    .map((item) => item.id)
+  const hasApprovableQuestions = approvableQuestionIds.length > 0
+  const hasAllApprovalSelected = hasApprovableQuestions
+    && approvableQuestionIds.every((id) => approvalSelectedIds.includes(id))
+  const selectedApprovalReviewer = APPROVAL_REVIEWERS[selectedApprovalReviewerIndex] ?? APPROVAL_REVIEWERS[0]
+  const activeQuestionCards = activeQuestionTab === 'draft'
+    ? draftQuestionCards
+    : activeQuestionTab === 'created'
+      ? createdQuestionCards
+      : []
 
   const descriptiveQuestions = useMemo(
     () => questions.filter((item) => item.type === 'Descriptive Question'),
@@ -682,12 +758,48 @@ export default function QuestionBankPage({ onAlert }) {
   const selectedProcessPercent = selectedProcessSteps.length
     ? Math.round((completedProcessStepCount / selectedProcessSteps.length) * 100)
     : 0
+  const questionBankMetrics = [
+    {
+      label: 'Created Question',
+      value: readyCount,
+      detail: `${totalCount} total`,
+      icon: CheckCircle2,
+      tone: 'created',
+      targetTab: 'created',
+    },
+    {
+      label: 'Draft Question',
+      value: draftCount,
+      detail: 'Saved for later',
+      icon: FilePenLine,
+      tone: 'draft',
+      targetTab: 'draft',
+    },
+    {
+      label: 'Approved Question',
+      value: approvedCount,
+      detail: 'Ready to publish',
+      icon: CheckCheck,
+      tone: 'approved',
+    },
+    {
+      label: 'Generation Process',
+      value: `${generationProcessPercent}%`,
+      detail: `${readyCount}/${generationProcessTotal} generated`,
+      icon: generatingCount ? LoaderCircle : Sparkles,
+      tone: 'process',
+      progress: generationProcessPercent,
+      isLoading: generatingCount > 0,
+      targetTab: 'created',
+    },
+  ]
   const canCreateSelectedQuestion = canCreateQuestion(selectedQuestion)
+  const canSaveSelectedDraft = hasDraftContent(selectedQuestion)
   const isUpdatingSelectedQuestion = selectedQuestion
     ? ['Created', 'Draft'].includes(selectedQuestion.status)
     : false
   const shouldShowSelectedDelete = selectedQuestion
-    ? selectedQuestion.status !== 'Editing' || questions.length > 1
+    ? selectedQuestion.status !== 'Editing'
     : false
   const activeMappingItems = activeMappingPicker === 'years'
     ? YEAR_OPTIONS
@@ -698,9 +810,9 @@ export default function QuestionBankPage({ onAlert }) {
       : availableCompetencies
   const activeMappingSelected = curriculumQuestion
     ? activeMappingPicker === 'years'
-      ? [curriculumQuestion.year]
+      ? [curriculumQuestion.year].filter(Boolean)
       : activeMappingPicker === 'subjects'
-      ? [curriculumQuestion.subject]
+      ? [curriculumQuestion.subject].filter(Boolean)
       : activeMappingPicker === 'topics'
       ? curriculumQuestion.topics
       : curriculumQuestion.competencies
@@ -734,11 +846,16 @@ export default function QuestionBankPage({ onAlert }) {
   }
 
   const handleCreateQuestion = (type) => {
+    const typeMeta = getQuestionTypeMeta(type)
+    if (typeMeta.isUpcoming) return
     const question = createQuestion(type, {
-      title: `${getQuestionTypeMeta(type).shortLabel} ${questions.length + 1}`,
+      title: `${typeMeta.shortLabel} ${questions.length + 1}`,
     })
     setQuestions((current) => [...current, question])
     setSelectedQuestionId(question.id)
+    setActiveQuestionTab('create')
+    setSelectedQuestionTypeLabel(typeMeta.shortLabel)
+    setIsQuestionTypePickerOpen(false)
   }
 
   const handleAddHierarchyNode = (level) => {
@@ -768,10 +885,93 @@ export default function QuestionBankPage({ onAlert }) {
   const handleDeleteQuestionById = (questionId) => {
     const nextQuestions = questions.filter((item) => item.id !== questionId)
     setQuestions(nextQuestions)
+    setApprovalSelectedIds((current) => current.filter((id) => id !== questionId))
     if (selectedQuestionId === questionId) {
       setSelectedQuestionId(nextQuestions[0]?.id ?? null)
     }
     onAlert?.({ tone: 'warning', message: 'Question removed.' })
+  }
+
+  const startApprovalSelection = () => {
+    if (!hasApprovableQuestions) return
+    setActiveQuestionTab('created')
+    setIsApprovalSelectMode(true)
+    setApprovalSelectedIds(approvableQuestionIds)
+  }
+
+  const cancelApprovalSelection = () => {
+    setIsApprovalSelectMode(false)
+    setApprovalSelectedIds([])
+  }
+
+  const toggleApprovalSelection = (questionId) => {
+    setApprovalSelectedIds((current) => (
+      current.includes(questionId)
+        ? current.filter((id) => id !== questionId)
+        : [...current, questionId]
+    ))
+  }
+
+  const selectAllApprovalQuestions = () => {
+    setApprovalSelectedIds(approvableQuestionIds)
+  }
+
+  const unselectAllApprovalQuestions = () => {
+    setApprovalSelectedIds([])
+  }
+
+  const sendSelectedQuestionsToApproval = () => {
+    if (!approvalSelectedIds.length) return
+    setIsApprovalModalOpen(true)
+  }
+
+  const confirmSendSelectedQuestionsToApproval = () => {
+    if (!approvalSelectedIds.length) return
+    const selectedIds = new Set(approvalSelectedIds)
+    const selectedQuestions = questions.filter((item) => selectedIds.has(item.id))
+    const approvalId = `question-bank-${Date.now()}`
+    const primaryQuestion = selectedQuestions[0] ?? null
+    const yearValues = [...new Set(selectedQuestions.map((item) => item.year).filter(Boolean))]
+    const subjectValues = [...new Set(selectedQuestions.map((item) => item.subject).filter(Boolean))]
+
+    onSendToApproval?.({
+      activityId: approvalId,
+      activityName: selectedQuestions.length === 1
+        ? getQuestionPreview(primaryQuestion)
+        : `Question Bank - ${selectedQuestions.length} Questions`,
+      activityType: 'Question Bank',
+      approvalStatus: 'Pending Approval',
+      status: 'Pending Approval',
+      totalStudents: selectedQuestions.length,
+      year: yearValues.length === 1 ? yearValues[0] : yearValues.length ? `${yearValues.length} years` : 'Question Bank',
+      sgt: subjectValues.length === 1 ? subjectValues[0] : subjectValues.length ? `${subjectValues.length} subjects` : 'Questions',
+      facultyName: selectedApprovalReviewer.facultyName,
+      employeeId: selectedApprovalReviewer.employeeId,
+      designation: selectedApprovalReviewer.designation,
+      note: approvalNote,
+      questionRows: selectedQuestions.map((question, index) => ({
+        id: question.id,
+        questionNumber: index + 1,
+        title: getQuestionPreview(question),
+        type: question.type,
+        year: question.year,
+        subject: question.subject,
+        topics: question.topics,
+        competencies: question.competencies,
+        isCritical: question.isCritical,
+        marks: question.marks,
+        questionText: question.questionText,
+        answerKey: question.answerKey,
+      })),
+    })
+
+    setQuestions((current) => current.map((item) => (
+      selectedIds.has(item.id) ? { ...item, status: 'Approved' } : item
+    )))
+    setIsApprovalModalOpen(false)
+    setApprovalNote('')
+    cancelApprovalSelection()
+    onAlert?.({ tone: 'success', message: 'Selected questions sent to approval.' })
   }
 
   const handlePrimaryQuestionAction = () => {
@@ -831,7 +1031,6 @@ export default function QuestionBankPage({ onAlert }) {
     ])
     setSelectedQuestionId(nextQuestion.id)
     closeMappingPicker()
-    onAlert?.({ tone: 'secondary', message: 'Question generation started.' })
 
     window.setTimeout(() => {
       setQuestions((current) => current.map((item) => {
@@ -882,8 +1081,27 @@ export default function QuestionBankPage({ onAlert }) {
   }
 
   const handleSaveDraft = () => {
-    if (!selectedQuestion) return
-    updateSelectedQuestion({ status: 'Draft' })
+    if (!selectedQuestion || !canSaveSelectedDraft) return
+    const questionId = selectedQuestion.id
+    const nextQuestion = createQuestion(selectedQuestion.type, {
+      title: `${getQuestionTypeMeta(selectedQuestion.type).shortLabel} ${questions.length + 1}`,
+    })
+
+    setQuestions((current) => [
+      ...current.map((item) => (
+        item.id === questionId
+          ? {
+            ...item,
+            title: getQuestionPreview(item).slice(0, 60) || item.title,
+            status: 'Draft',
+          }
+          : item
+      )),
+      nextQuestion,
+    ])
+    setSelectedQuestionId(nextQuestion.id)
+    setGenerationCompleteId(null)
+    closeMappingPicker()
     onAlert?.({ tone: 'secondary', message: 'Question saved as draft.' })
   }
 
@@ -965,7 +1183,7 @@ export default function QuestionBankPage({ onAlert }) {
       const nextSubjects = getSubjectsForYear(value)
       const nextSubject = nextSubjects.includes(item.subject)
         ? item.subject
-        : nextSubjects[0] ?? ''
+        : ''
       const nextTopicOptions = getAvailableTopics({ ...item, year: value, subject: nextSubject })
       const nextTopics = nextSubject === item.subject
         ? item.topics.filter((topic) => nextTopicOptions.includes(topic))
@@ -1082,23 +1300,42 @@ export default function QuestionBankPage({ onAlert }) {
   }
 
   const questionTypePicker = (
-    <div className="question-bank-type-picker">
-      {QUESTION_TYPE_CARDS.map((item) => {
-        const Icon = item.icon
-        return (
-          <button
-            key={item.type}
-            type="button"
-            className="question-bank-type-picker-item"
-            onClick={() => handleCreateQuestion(item.type)}
-          >
-            <span className="question-bank-type-picker-icon">
-              <Icon size={15} strokeWidth={2} />
-            </span>
-            <span>{item.shortLabel}</span>
-          </button>
-        )
-      })}
+    <div className={`question-bank-type-select-panel ${isQuestionTypePickerOpen ? 'is-open' : ''}`}>
+      <button
+        type="button"
+        className="question-bank-type-select-trigger"
+        onClick={() => setIsQuestionTypePickerOpen((current) => !current)}
+        aria-expanded={isQuestionTypePickerOpen}
+      >
+        <span className="question-bank-type-picker-icon">
+          <ListChecks size={15} strokeWidth={2} />
+        </span>
+        <strong>{selectedQuestionTypeLabel || 'Select Question Type'}</strong>
+        <ChevronDown size={16} strokeWidth={2.4} />
+      </button>
+
+      {isQuestionTypePickerOpen ? (
+        <div className="question-bank-type-picker">
+          {QUESTION_TYPE_CARDS.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.type}
+                type="button"
+                className={`question-bank-type-picker-item ${item.isUpcoming ? 'is-upcoming' : ''}`}
+                onClick={() => handleCreateQuestion(item.type)}
+                disabled={item.isUpcoming}
+              >
+                <span className="question-bank-type-picker-icon">
+                  <Icon size={15} strokeWidth={2} />
+                </span>
+                <span>{item.shortLabel}</span>
+                {item.isUpcoming ? <small>Upcoming</small> : null}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
     </div>
   )
 
@@ -1106,16 +1343,97 @@ export default function QuestionBankPage({ onAlert }) {
     <section className="question-bank-page">
      
 
-      <div className="question-bank-create-strip">
-        {questionTypePicker}
-      </div>
-
       <div className="question-bank-layout">
         <main className="question-bank-main">
+          <div className="question-bank-metrics-grid" aria-label="Question bank metrics">
+            {questionBankMetrics.map((metric) => {
+              const Icon = metric.icon
+              const MetricElement = metric.targetTab ? 'button' : 'article'
+              return (
+                <MetricElement
+                  key={metric.label}
+                  type={metric.targetTab ? 'button' : undefined}
+                  className={`question-bank-metric-card is-${metric.tone} ${metric.targetTab ? 'is-actionable' : ''}`}
+                  onClick={metric.targetTab ? () => setActiveQuestionTab(metric.targetTab) : undefined}
+                >
+                  <span className="question-bank-metric-icon">
+                    <Icon
+                      size={17}
+                      strokeWidth={2.3}
+                      className={metric.isLoading ? 'question-bank-spin-icon' : undefined}
+                    />
+                  </span>
+                  <span className="question-bank-metric-copy">
+                    <strong>{metric.value}</strong>
+                    <small>{metric.label}</small>
+                    <em className={metric.isLoading ? 'is-loading' : undefined}>
+                      {metric.isLoading ? 'Generating...' : metric.detail}
+                    </em>
+                    {typeof metric.progress === 'number' ? (
+                      <span className={`question-bank-metric-progress ${metric.isLoading ? 'is-loading' : ''}`}>
+                        <span style={{ width: `${metric.progress}%` }} />
+                      </span>
+                    ) : null}
+                  </span>
+                </MetricElement>
+              )
+            })}
+          </div>
+
+          <div className="question-bank-tabs" role="tablist" aria-label="Question bank sections">
+            <button
+              type="button"
+              className={activeQuestionTab === 'create' ? 'is-active' : ''}
+              onClick={() => setActiveQuestionTab('create')}
+              role="tab"
+              aria-selected={activeQuestionTab === 'create'}
+            >
+              Create Question
+            </button>
+            <button
+              type="button"
+              className={activeQuestionTab === 'created' ? 'is-active' : ''}
+              onClick={() => setActiveQuestionTab('created')}
+              role="tab"
+              aria-selected={activeQuestionTab === 'created'}
+            >
+              Created Questions
+              <span>{createdQuestionCards.length}</span>
+            </button>
+            <button
+              type="button"
+              className={activeQuestionTab === 'draft' ? 'is-active' : ''}
+              onClick={() => setActiveQuestionTab('draft')}
+              role="tab"
+              aria-selected={activeQuestionTab === 'draft'}
+            >
+              Draft Questions
+              <span>{draftQuestionCards.length}</span>
+            </button>
+          </div>
+
+          {activeQuestionTab === 'create' && !selectedQuestion ? (
+            <div className={`question-bank-create-strip ${!selectedQuestion ? 'has-empty-state' : ''}`}>
+              {questionTypePicker}
+              {!selectedQuestion ? (
+                <div className="question-bank-empty-state question-bank-create-empty-state">
+                  <FilePenLine size={24} strokeWidth={2} />
+                  <strong>Create your first question</strong>
+                  <p>Choose MCQ or Descriptive from Select Question Type.</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {selectedQuestion ? (
             <div className="question-bank-workspace">
               <div className="question-bank-editor">
-                <section className="question-bank-author-card">
+                {activeQuestionTab === 'create' ? (
+                <section className={`question-bank-author-card ${selectedQuestion.isCritical ? 'is-critical' : ''}`}>
+                  <div className="question-bank-author-type-strip">
+                    {questionTypePicker}
+                  </div>
+
                   {shouldShowSelectedDelete ? (
                   <div className="question-bank-author-actions">
                     <button type="button" className="question-bank-icon-btn" onClick={handleDeleteQuestion} aria-label="Delete question">
@@ -1150,7 +1468,7 @@ export default function QuestionBankPage({ onAlert }) {
                                   onClick={() => openMappingPicker('years')}
                                 >
                                   <strong>Year</strong>
-                                  <span>{curriculumDraft?.year}</span>
+                                  <span>{curriculumDraft?.year || 'Select year'}</span>
                                 </button>
                               </div>
 
@@ -1161,7 +1479,7 @@ export default function QuestionBankPage({ onAlert }) {
                                   onClick={() => openMappingPicker('subjects')}
                                 >
                                   <strong>Subject</strong>
-                                  <span>{curriculumDraft?.subject}</span>
+                                  <span>{curriculumDraft?.subject || 'Select subject'}</span>
                                 </button>
                               </div>
 
@@ -1617,75 +1935,94 @@ export default function QuestionBankPage({ onAlert }) {
                       <div className="question-bank-assessment-panel question-bank-assessment-inline">
                         <div className="question-bank-section-head">
                           <div>
-                            <strong>Assessment Tags</strong>
+                            <button
+                              type="button"
+                              className="question-bank-assessment-title-btn"
+                              onClick={() => setIsOptionalTagsOpen(false)}
+                              aria-expanded={!isOptionalTagsOpen}
+                            >
+                              <span>Assessment Tags</span>
+                              {isOptionalTagsOpen ? (
+                                <ChevronDown size={15} strokeWidth={2.4} />
+                              ) : (
+                                <ChevronUp size={15} strokeWidth={2.4} />
+                              )}
+                            </button>
                           </div>
                         </div>
 
-                        <label className="question-bank-field">
-                          <span>Question Category</span>
-                          <select
-                            className={!selectedQuestion.questionCategory ? 'is-placeholder' : ''}
-                            value={selectedQuestion.questionCategory}
-                            onChange={(event) => updateSelectedQuestion({ questionCategory: event.target.value })}
-                          >
-                            <option value="" disabled>Select Category</option>
-                            {QUESTION_CATEGORY_OPTIONS.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        </label>
+                        {!isOptionalTagsOpen ? (
+                          <>
+                            <label className="question-bank-field">
+                              <span>Question Category</span>
+                              <select
+                                className={!selectedQuestion.questionCategory ? 'is-placeholder' : ''}
+                                value={selectedQuestion.questionCategory}
+                                onChange={(event) => updateSelectedQuestion({ questionCategory: event.target.value })}
+                              >
+                                <option value="" disabled>Select Category</option>
+                                {QUESTION_CATEGORY_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
 
-                        <label className="question-bank-field">
-                          <span>Cognitive Level</span>
-                          <select
-                            className={!selectedQuestion.cognitiveLevel ? 'is-placeholder' : ''}
-                            value={selectedQuestion.cognitiveLevel}
-                            onChange={(event) => updateSelectedQuestion({ cognitiveLevel: event.target.value })}
-                          >
-                            <option value="" disabled>Select Cognitive Level</option>
-                            {COGNITIVE_LEVEL_OPTIONS.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        </label>
+                            <label className="question-bank-field">
+                              <span>Cognitive Level</span>
+                              <select
+                                className={!selectedQuestion.cognitiveLevel ? 'is-placeholder' : ''}
+                                value={selectedQuestion.cognitiveLevel}
+                                onChange={(event) => updateSelectedQuestion({ cognitiveLevel: event.target.value })}
+                              >
+                                <option value="" disabled>Select Cognitive Level</option>
+                                {COGNITIVE_LEVEL_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
 
-                        <label className="question-bank-field">
-                          <span>Thinking Level</span>
-                          <select
-                            className={!selectedQuestion.thinkingLevel ? 'is-placeholder' : ''}
-                            value={selectedQuestion.thinkingLevel}
-                            onChange={(event) => updateSelectedQuestion({ thinkingLevel: event.target.value })}
-                          >
-                            <option value="" disabled>Select Thinking Level</option>
-                            {THINKING_LEVEL_OPTIONS.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        </label>
+                            <label className="question-bank-field">
+                              <span>Thinking Level</span>
+                              <select
+                                className={!selectedQuestion.thinkingLevel ? 'is-placeholder' : ''}
+                                value={selectedQuestion.thinkingLevel}
+                                onChange={(event) => updateSelectedQuestion({ thinkingLevel: event.target.value })}
+                              >
+                                <option value="" disabled>Select Thinking Level</option>
+                                {THINKING_LEVEL_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
 
-                        <label className="question-bank-field">
-                          <span>Difficulty Level</span>
-                          <select
-                            className={!selectedQuestion.difficultyLevel ? 'is-placeholder' : ''}
-                            value={selectedQuestion.difficultyLevel}
-                            onChange={(event) => updateSelectedQuestion({ difficultyLevel: event.target.value })}
-                          >
-                            <option value="">Select Difficulty Level</option>
-                            {DIFFICULTY_LEVEL_OPTIONS.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        </label>
+                            <label className="question-bank-field">
+                              <span>Difficulty Level</span>
+                              <select
+                                className={!selectedQuestion.difficultyLevel ? 'is-placeholder' : ''}
+                                value={selectedQuestion.difficultyLevel}
+                                onChange={(event) => updateSelectedQuestion({ difficultyLevel: event.target.value })}
+                              >
+                                <option value="">Select Difficulty Level</option>
+                                {DIFFICULTY_LEVEL_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </>
+                        ) : null}
 
-                        <button
-                          type="button"
-                          className={`question-bank-optional-tags-badge ${isOptionalTagsOpen ? 'is-open' : ''}`}
-                          onClick={() => setIsOptionalTagsOpen((current) => !current)}
-                          aria-expanded={isOptionalTagsOpen}
-                        >
-                          <Info size={13} strokeWidth={2.2} />
-                          Add More (Optional)
-                        </button>
+                        {!isOptionalTagsOpen ? (
+                          <button
+                            type="button"
+                            className="question-bank-optional-tags-badge"
+                            onClick={() => setIsOptionalTagsOpen(true)}
+                            aria-expanded={isOptionalTagsOpen}
+                          >
+                            <Info size={13} strokeWidth={2.2} />
+                            <span>Add More (Optional)</span>
+                            <ChevronDown size={14} strokeWidth={2.4} />
+                          </button>
+                        ) : null}
 
                         {isOptionalTagsOpen ? (
                           <div className="question-bank-optional-tags-panel">
@@ -1757,7 +2094,7 @@ export default function QuestionBankPage({ onAlert }) {
                             className={`question-bank-primary-btn ${isGeneratingQuestion ? 'is-loading' : ''}`}
                             onClick={handlePrimaryQuestionAction}
                             disabled={isGeneratingQuestion || !canCreateSelectedQuestion}
-                            data-tooltip={canCreateSelectedQuestion && !isGeneratingQuestion ? 'Enter question text. AI fills empty optional fields.' : undefined}
+                            data-tooltip={canCreateSelectedQuestion && !isGeneratingQuestion ? 'The AI engine will automatically generate data for empty fields.' : undefined}
                           >
                             {isGeneratingQuestion ? (
                               <>
@@ -1771,12 +2108,17 @@ export default function QuestionBankPage({ onAlert }) {
                               </>
                             ) : (
                               <>
-                                <CheckCircle2 size={14} strokeWidth={2.2} />
+                                <Sparkles size={14} strokeWidth={2.2} />
                                 {isUpdatingSelectedQuestion ? 'Update' : 'Create'}
                               </>
                             )}
                           </button>
-                          <button type="button" className="question-bank-secondary-btn" onClick={handleSaveDraft}>
+                          <button
+                            type="button"
+                            className="question-bank-secondary-btn"
+                            onClick={handleSaveDraft}
+                            disabled={!canSaveSelectedDraft}
+                          >
                             Save as Draft
                           </button>
                         </div>
@@ -1787,16 +2129,78 @@ export default function QuestionBankPage({ onAlert }) {
                   </div>
                 </section>
 
-                {visibleQuestionCards.length ? (
+                ) : null}
+
+                {['created', 'draft'].includes(activeQuestionTab) && activeQuestionCards.length ? (
                   <section className="question-bank-created-panel">
                     <div className="question-bank-section-head">
                       <div>
-                        <span className="question-bank-eyebrow">Created Questions</span>
+                        {isApprovalSelectMode && activeQuestionTab === 'created' ? (
+                          <span className="question-bank-approval-selection-head">
+                            <button
+                              type="button"
+                              className="question-bank-icon-btn question-bank-approval-cancel-icon"
+                              onClick={cancelApprovalSelection}
+                              aria-label="Cancel approval selection"
+                              title="Cancel"
+                            >
+                              <X size={15} strokeWidth={2.2} />
+                            </button>
+                            <span className="question-bank-approval-count-badge">
+                              {approvalSelectedIds.length} selected
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="question-bank-eyebrow">
+                            {activeQuestionTab === 'draft' ? 'Draft Questions' : 'Created Questions'}
+                          </span>
+                        )}
                       </div>
+                      {activeQuestionTab === 'created' ? (
+                        <div className="question-bank-created-panel-actions">
+                          {isApprovalSelectMode ? (
+                            <>
+                              <button
+                                type="button"
+                                className="question-bank-secondary-btn"
+                                onClick={hasAllApprovalSelected ? unselectAllApprovalQuestions : selectAllApprovalQuestions}
+                              >
+                                {hasAllApprovalSelected ? (
+                                  <X size={14} strokeWidth={2.2} />
+                                ) : (
+                                  <CheckCheck size={14} strokeWidth={2.2} />
+                                )}
+                                {hasAllApprovalSelected ? 'Unselect All' : 'Select All'}
+                              </button>
+                              <button
+                                type="button"
+                                className="question-bank-primary-btn"
+                                onClick={sendSelectedQuestionsToApproval}
+                                disabled={!approvalSelectedIds.length}
+                              >
+                                <CheckCircle2 size={14} strokeWidth={2.2} />
+                                Send Selected
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="question-bank-secondary-btn question-bank-send-approval-btn"
+                              onClick={startApprovalSelection}
+                              disabled={!hasApprovableQuestions}
+                              aria-label="Send created questions to approval"
+                              title={hasApprovableQuestions ? 'Send to approval' : 'No created questions available'}
+                            >
+                              <CheckCheck size={15} strokeWidth={2.2} />
+                              Send to Approval
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="question-bank-created-list">
-                      {visibleQuestionCards.map((question, index) => {
+                      {activeQuestionCards.map((question, index) => {
                         const status = getQuestionCardStatus(question)
                         const typeMeta = getQuestionTypeMeta(question.type)
                         const optionalTagGroups = getQuestionOptionalTagGroups(question)
@@ -1811,24 +2215,49 @@ export default function QuestionBankPage({ onAlert }) {
                         return (
                           <article
                             key={question.id}
-                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''}`}
+                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''} ${question.isCritical ? 'is-critical' : ''} ${approvalSelectedIds.includes(question.id) ? 'is-approval-selected' : ''} ${isApprovalSelectMode ? 'is-selection-mode' : ''}`}
                           >
+                            {isApprovalSelectMode ? (
+                              <label
+                                className="question-bank-approval-checkbox"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={approvalSelectedIds.includes(question.id)}
+                                  disabled={status !== 'Created'}
+                                  onChange={() => toggleApprovalSelection(question.id)}
+                                />
+                                <span />
+                              </label>
+                            ) : null}
                             <div
                               className="question-bank-created-card-main"
                               role="button"
                               tabIndex={status === 'Generating' ? -1 : 0}
                               aria-disabled={status === 'Generating'}
                               onClick={() => {
+                                if (isApprovalSelectMode) {
+                                  if (status === 'Created') toggleApprovalSelection(question.id)
+                                  return
+                                }
                                 if (status !== 'Generating') {
                                   setOpenCreatedTagsId(null)
                                   setSelectedQuestionId(question.id)
+                                  setActiveQuestionTab('create')
                                 }
                               }}
                               onKeyDown={(event) => {
+                                if (isApprovalSelectMode && (event.key === 'Enter' || event.key === ' ')) {
+                                  event.preventDefault()
+                                  if (status === 'Created') toggleApprovalSelection(question.id)
+                                  return
+                                }
                                 if (status !== 'Generating' && (event.key === 'Enter' || event.key === ' ')) {
                                   event.preventDefault()
                                   setOpenCreatedTagsId(null)
                                   setSelectedQuestionId(question.id)
+                                  setActiveQuestionTab('create')
                                 }
                               }}
                             >
@@ -1896,7 +2325,19 @@ export default function QuestionBankPage({ onAlert }) {
                                     ) : null}
                                   </span>
                                 </span>
-                                <strong className="question-bank-created-question">Q{index + 1}. {getQuestionPreview(question)}</strong>
+                                <div className="question-bank-created-question">
+                                  <strong className="question-bank-created-question-prefix">Q{index + 1}.</strong>
+                                  {getRichTextPreview(question.questionText) ? (
+                                    <div
+                                      className="question-bank-created-question-body"
+                                      dangerouslySetInnerHTML={{ __html: question.questionText }}
+                                    />
+                                  ) : (
+                                    <strong className="question-bank-created-question-body">
+                                      {question.title || 'Untitled question'}
+                                    </strong>
+                                  )}
+                                </div>
                                 {curriculumMeta.length ? (
                                   <span className="question-bank-created-curriculum" title={curriculumMeta.join(' / ')}>
                                     {curriculumMeta.map((item) => (
@@ -1968,19 +2409,29 @@ export default function QuestionBankPage({ onAlert }) {
                   </section>
                 ) : null}
 
+                {['created', 'draft'].includes(activeQuestionTab) && !activeQuestionCards.length ? (
+                  <div className="question-bank-empty-state question-bank-tab-empty-state">
+                    <FilePenLine size={24} strokeWidth={2} />
+                    <strong>
+                      {activeQuestionTab === 'draft' ? 'No draft questions yet' : 'No created questions yet'}
+                    </strong>
+                    <p>
+                      {activeQuestionTab === 'draft'
+                        ? 'Save a question as draft to see it here.'
+                        : 'Create a question to see it here.'}
+                    </p>
+                  </div>
+                ) : null}
+
               </div>
             </div>
           ) : (
-            <div className="question-bank-empty-state">
-              <FilePenLine size={24} strokeWidth={2} />
-              <strong>Create your first question</strong>
-              <p>Choose MCQ, Descriptive, True/False, or Fill in the Blanks from the create card.</p>
-            </div>
+            null
           )}
         </main>
       </div>
 
-      {selectedQuestion ? (
+      {selectedQuestion && activeQuestionTab === 'create' ? (
         <div className={`question-bank-progress-widget ${isProgressWidgetOpen ? 'is-open' : ''}`}>
           {isProgressWidgetOpen ? (
             <div className="question-bank-progress-popover" role="dialog" aria-label="Process checklist">
@@ -2070,6 +2521,102 @@ export default function QuestionBankPage({ onAlert }) {
           </div>
         </div>
       ) : null}
+
+      {isApprovalModalOpen && typeof document !== 'undefined' ? createPortal((
+        <div className="question-bank-approval-modal" role="dialog" aria-modal="true" aria-labelledby="question-bank-approval-title">
+          <button
+            type="button"
+            className="question-bank-approval-modal-backdrop"
+            onClick={() => setIsApprovalModalOpen(false)}
+            aria-label="Close send to approval"
+          />
+          <div className="question-bank-approval-modal-card">
+            <div className="question-bank-approval-modal-head">
+              <div>
+                <h2 id="question-bank-approval-title">Send to Approval</h2>
+                <p>{approvalSelectedIds.length} selected question{approvalSelectedIds.length === 1 ? '' : 's'} will be sent for review</p>
+              </div>
+              <button
+                type="button"
+                className="question-bank-icon-btn"
+                onClick={() => setIsApprovalModalOpen(false)}
+                aria-label="Close send to approval"
+              >
+                <X size={17} strokeWidth={2.2} />
+              </button>
+            </div>
+
+            <div className="question-bank-approval-modal-body">
+              <label className="question-bank-approval-modal-field">
+                <span>Faculty Name</span>
+                <div>
+                  <Contact size={16} strokeWidth={2.2} />
+                  <select
+                    value={selectedApprovalReviewerIndex}
+                    onChange={(event) => setSelectedApprovalReviewerIndex(Number(event.target.value))}
+                  >
+                    {APPROVAL_REVIEWERS.map((reviewer, index) => (
+                      <option key={reviewer.employeeId} value={index}>{reviewer.facultyName}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={15} strokeWidth={2.2} />
+                </div>
+              </label>
+
+              <label className="question-bank-approval-modal-field">
+                <span>Employee ID</span>
+                <div>
+                  <IdCard size={16} strokeWidth={2.2} />
+                  <select
+                    value={selectedApprovalReviewerIndex}
+                    onChange={(event) => setSelectedApprovalReviewerIndex(Number(event.target.value))}
+                  >
+                    {APPROVAL_REVIEWERS.map((reviewer, index) => (
+                      <option key={reviewer.employeeId} value={index}>{reviewer.employeeId}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={15} strokeWidth={2.2} />
+                </div>
+              </label>
+
+              <label className="question-bank-approval-modal-field">
+                <span>Designation</span>
+                <div>
+                  <BriefcaseBusiness size={16} strokeWidth={2.2} />
+                  <select
+                    value={selectedApprovalReviewerIndex}
+                    onChange={(event) => setSelectedApprovalReviewerIndex(Number(event.target.value))}
+                  >
+                    {APPROVAL_REVIEWERS.map((reviewer, index) => (
+                      <option key={reviewer.employeeId} value={index}>{reviewer.designation}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={15} strokeWidth={2.2} />
+                </div>
+              </label>
+
+              <label className="question-bank-approval-modal-note">
+                <span>Note</span>
+                <textarea
+                  value={approvalNote}
+                  onChange={(event) => setApprovalNote(event.target.value)}
+                  placeholder="Add approval note"
+                />
+              </label>
+            </div>
+
+            <div className="question-bank-approval-modal-actions">
+              <button type="button" className="question-bank-secondary-btn" onClick={() => setIsApprovalModalOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="question-bank-primary-btn" onClick={confirmSendSelectedQuestionsToApproval}>
+                <Send size={15} strokeWidth={2.2} />
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      ), document.body) : null}
 
     </section>
   )
