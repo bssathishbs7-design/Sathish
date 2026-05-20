@@ -2925,7 +2925,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               <button type="button" className="question-bank-secondary-btn" onClick={cancelEditQuestionFlow}>
                 Cancel
               </button>
-              <button type="button" className="question-bank-primary-btn" onClick={startEditQuestionFlow}>
+              <button type="button" className="question-bank-primary-btn" onClick={() => startEditQuestionFlow()}>
                 <FilePenLine size={15} strokeWidth={2.2} />
                 Start to Edit
               </button>
