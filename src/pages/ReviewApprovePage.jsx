@@ -278,6 +278,8 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
 
     approvalQueueRows.forEach((row) => {
       const activityKey = row.activityId ?? row.id
+      const approvalStatus = String(row.approvalStatus ?? row.status ?? row.reviewStatus ?? '').trim().toLowerCase()
+      if (isQuestionBankRow(row) && approvalStatus && approvalStatus !== 'pending approval') return
       if (!activityKey || activityRows.has(activityKey)) return
       activityRows.set(activityKey, row)
     })

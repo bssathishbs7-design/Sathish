@@ -194,7 +194,7 @@ const readImageFile = (file) => new Promise((resolve, reject) => {
 })
 
 const createQuestion = (type = 'MCQ', config = {}) => ({
-  id: `question-${questionSequence++}`,
+  id: `question-${Date.now()}-${questionSequence++}`,
   title: config.title ?? `Question ${questionSequence - 1}`,
   type,
   parentId: config.parentId ?? null,
@@ -749,9 +749,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
   const draftQuestionCards = questions.filter((item) => item.status === 'Draft')
   const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status))
-  const sentApprovalQuestionCards = questions.filter((item) => item.status === 'Sent to Approval')
-  const approvedQuestionCards = questions.filter((item) => item.status === 'Approved')
-  const rejectedQuestionCards = questions.filter((item) => item.status === 'Approval Rejected')
+  const sentApprovalQuestionCards = questions.filter((item) => item.status === 'Sent to Approval' && hasQuestionContent(item))
+  const approvedQuestionCards = questions.filter((item) => item.status === 'Approved' && hasQuestionContent(item))
+  const rejectedQuestionCards = questions.filter((item) => item.status === 'Approval Rejected' && hasQuestionContent(item))
   const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
   const draftCount = questions.filter((item) => item.status === 'Draft').length

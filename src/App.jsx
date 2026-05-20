@@ -796,7 +796,11 @@ function App() {
       tone: nextReviewedRecord.approvalStatus === 'Approved' ? 'secondary' : 'warning',
       message: `${nextReviewedRecord.activityName ?? 'Activity'} ${nextReviewedRecord.approvalStatus === 'Approved' ? 'approved' : 'rejected'}${nextReviewedRecord.reviewRemarks ? ' with remarks' : ''}.`,
     })
-    navigateToPage(APP_PAGES.EVALUATION)
+    navigateToPage(
+      String(nextReviewedRecord.activityType ?? '').trim().toLowerCase() === 'question bank'
+        ? APP_PAGES.QUESTION_BANK
+        : APP_PAGES.EVALUATION,
+    )
   }
 
   const handlePublishEvaluation = (record) => {
