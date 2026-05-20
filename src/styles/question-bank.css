@@ -40,6 +40,10 @@
 }
 
 .question-bank-author-type-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   min-width: 0;
   padding-bottom: 12px;
   border-bottom: 1px solid #dff0ea;
@@ -47,6 +51,13 @@
 
 .question-bank-author-type-strip .question-bank-type-select-panel {
   padding: 0;
+}
+
+.question-bank-author-type-strip > .question-bank-icon-btn {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
 }
 
 .question-bank-header {
@@ -2894,32 +2905,16 @@
   padding: 22px;
 }
 
-.question-bank-edit-modal-body > .question-bank-badge {
-  justify-self: start;
-}
-
-.question-bank-edit-flow-list {
-  display: grid;
-  gap: 9px;
-}
-
-.question-bank-edit-flow-list span {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  align-items: center;
-  min-height: 38px;
-  padding: 9px 11px;
+.question-bank-edit-instruction {
+  margin: 0;
+  padding: 14px;
   border: 1px solid #d7e8e0;
   border-radius: 8px;
   background: #f8fcfa;
   color: #284a56;
-  font-size: 0.86rem;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.question-bank-edit-flow-list svg {
-  color: #0f9f76;
+  font-size: 0.92rem;
+  font-weight: 750;
+  line-height: 1.55;
 }
 
 @keyframes question-bank-modal-enter {
@@ -5389,14 +5384,10 @@
   color: #8ea1b6;
 }
 
-.theme-dark .question-bank-edit-flow-list span {
+.theme-dark .question-bank-edit-instruction {
   border-color: rgba(94, 116, 145, 0.46);
   background: #132235;
   color: #d9e8f8;
-}
-
-.theme-dark .question-bank-edit-flow-list svg {
-  color: #8df0c7;
 }
 
 .theme-dark .question-bank-question-image-status {

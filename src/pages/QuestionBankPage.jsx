@@ -172,6 +172,7 @@ const APPROVAL_REVIEWERS = [
 
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 const QUESTION_BANK_REVIEW_RESULTS_KEY = 'vx-question-bank-review-results'
+const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
 
 let questionSequence = 1
 let optionSequence = 1
@@ -248,6 +249,17 @@ const readQuestionBankReviewResults = () => {
 
   try {
     const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_REVIEW_RESULTS_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const readPublishedQuestionBankQuestions = () => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_PUBLISHED_KEY) ?? '[]')
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
@@ -742,6 +754,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const [selectedQuestionTypeLabel, setSelectedQuestionTypeLabel] = useState('')
   const [isApprovalSelectMode, setIsApprovalSelectMode] = useState(false)
   const [approvalSelectedIds, setApprovalSelectedIds] = useState([])
+  const [approvedQuestionBankSelectedIds, setApprovedQuestionBankSelectedIds] = useState([])
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
   const [approvalNote, setApprovalNote] = useState('')
   const [selectedApprovalReviewerIndex, setSelectedApprovalReviewerIndex] = useState(0)
@@ -755,6 +768,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const sentApprovalQuestionCards = questions.filter((item) => item.status === 'Sent to Approval' && hasQuestionContent(item))
   const approvedQuestionCards = questions.filter((item) => item.status === 'Approved' && hasQuestionContent(item))
   const rejectedQuestionCards = questions.filter((item) => item.status === 'Approval Rejected' && hasQuestionContent(item))
+  const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
   const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
   const draftCount = questions.filter((item) => item.status === 'Draft').length
@@ -769,9 +783,13 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const approvableQuestionIds = createdQuestionCards
     .filter((item) => item.status === 'Created')
     .map((item) => item.id)
+  const approvedQuestionBankPendingIds = approvedQuestionBankPendingCards.map((item) => item.id)
   const hasApprovableQuestions = approvableQuestionIds.length > 0
+  const hasApprovedQuestionsToSend = approvedQuestionBankPendingCards.length > 0
   const hasAllApprovalSelected = hasApprovableQuestions
     && approvableQuestionIds.every((id) => approvalSelectedIds.includes(id))
+  const hasAllApprovedQuestionBankSelected = hasApprovedQuestionsToSend
+    && approvedQuestionBankPendingIds.every((id) => approvedQuestionBankSelectedIds.includes(id))
   const selectedApprovalReviewer = APPROVAL_REVIEWERS[selectedApprovalReviewerIndex] ?? APPROVAL_REVIEWERS[0]
   const activeQuestionCards = activeQuestionTab === 'draft'
     ? draftQuestionCards
@@ -1029,6 +1047,64 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       setSelectedQuestionId(nextQuestions[0]?.id ?? null)
     }
     onAlert?.({ tone: 'warning', message: 'Question removed.' })
+  }
+
+  const sendApprovedQuestionsToQuestionBank = (questionIds = approvedQuestionBankSelectedIds) => {
+    if (!questionIds.length || typeof window === 'undefined') return
+
+    const selectedIds = new Set(questionIds)
+    const selectedApprovedCards = approvedQuestionBankPendingCards.filter((question) => selectedIds.has(question.id))
+    if (!selectedApprovedCards.length) return
+
+    const sentAt = new Date().toISOString()
+    const nextPublishedQuestions = selectedApprovedCards.map((question) => ({
+      ...question,
+      questionBankStatus: 'Sent to Question Bank',
+      questionBankSentAt: sentAt,
+    }))
+    const existingQuestions = readPublishedQuestionBankQuestions()
+    const nextQuestionIds = new Set(nextPublishedQuestions.map((question) => question.id))
+    const mergedQuestions = [
+      ...existingQuestions.filter((question) => !nextQuestionIds.has(question.id)),
+      ...nextPublishedQuestions,
+    ]
+
+    window.localStorage.setItem(QUESTION_BANK_PUBLISHED_KEY, JSON.stringify(mergedQuestions))
+    setQuestions((current) => current.map((item) => (
+      nextQuestionIds.has(item.id)
+        ? {
+          ...item,
+          questionBankStatus: 'Sent to Question Bank',
+          questionBankSentAt: sentAt,
+        }
+        : item
+    )))
+    setApprovedQuestionBankSelectedIds((current) => current.filter((id) => !nextQuestionIds.has(id)))
+    onAlert?.({
+      tone: 'success',
+      message: `${nextPublishedQuestions.length} approved question${nextPublishedQuestions.length === 1 ? '' : 's'} sent to Question Bank.`,
+    })
+  }
+
+  const selectAllApprovedQuestionBankQuestions = () => {
+    setApprovedQuestionBankSelectedIds(approvedQuestionBankPendingIds)
+  }
+
+  const unselectApprovedQuestionBankQuestions = () => {
+    setApprovedQuestionBankSelectedIds([])
+  }
+
+  const clearApprovedQuestionBankSelection = () => {
+    setApprovedQuestionBankSelectedIds([])
+  }
+
+  const toggleApprovedQuestionBankSelection = (questionId) => {
+    if (!approvedQuestionBankPendingIds.includes(questionId)) return
+    setApprovedQuestionBankSelectedIds((current) => (
+      current.includes(questionId)
+        ? current.filter((id) => id !== questionId)
+        : [...current, questionId]
+    ))
   }
 
   const startApprovalSelection = () => {
@@ -1649,15 +1725,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                 <section className={`question-bank-author-card ${selectedQuestion.isCritical ? 'is-critical' : ''}`}>
                   <div className="question-bank-author-type-strip">
                     {questionTypePicker}
+                    {shouldShowSelectedDelete ? (
+                      <button type="button" className="question-bank-icon-btn" onClick={handleDeleteQuestion} aria-label="Delete question">
+                        <Trash2 size={15} strokeWidth={2} />
+                      </button>
+                    ) : null}
                   </div>
-
-                  {shouldShowSelectedDelete ? (
-                  <div className="question-bank-author-actions">
-                    <button type="button" className="question-bank-icon-btn" onClick={handleDeleteQuestion} aria-label="Delete question">
-                      <Trash2 size={15} strokeWidth={2} />
-                    </button>
-                  </div>
-                  ) : null}
 
                   <div className="question-bank-author-grid">
                     <div className="question-bank-author-main">
@@ -2352,7 +2425,13 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                   <section className="question-bank-created-panel">
                     <div className="question-bank-section-head">
                       <div>
-                        {isApprovalSelectMode && activeQuestionTab === 'created' ? (
+                        {activeQuestionTab === 'approved' ? (
+                          <span className="question-bank-approval-selection-head">
+                            <span className="question-bank-approval-count-badge">
+                              {approvedQuestionBankSelectedIds.length} selected
+                            </span>
+                          </span>
+                        ) : isApprovalSelectMode && activeQuestionTab === 'created' ? (
                           <span className="question-bank-approval-selection-head">
                             <button
                               type="button"
@@ -2381,9 +2460,50 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                           </span>
                         )}
                       </div>
-                      {activeQuestionTab === 'created' ? (
+                      {activeQuestionTab === 'created' || activeQuestionTab === 'approved' ? (
                         <div className="question-bank-created-panel-actions">
-                          {isApprovalSelectMode ? (
+                          {activeQuestionTab === 'approved' ? (
+                            <>
+                              <button
+                                type="button"
+                                className="question-bank-secondary-btn"
+                                onClick={selectAllApprovedQuestionBankQuestions}
+                                disabled={!hasApprovedQuestionsToSend || hasAllApprovedQuestionBankSelected}
+                              >
+                                <CheckCheck size={14} strokeWidth={2.2} />
+                                Select All
+                              </button>
+                              <button
+                                type="button"
+                                className="question-bank-secondary-btn"
+                                onClick={unselectApprovedQuestionBankQuestions}
+                                disabled={!approvedQuestionBankSelectedIds.length}
+                              >
+                                <X size={14} strokeWidth={2.2} />
+                                Unselect
+                              </button>
+                              <button
+                                type="button"
+                                className="question-bank-secondary-btn"
+                                onClick={clearApprovedQuestionBankSelection}
+                                disabled={!approvedQuestionBankSelectedIds.length}
+                              >
+                                <Trash2 size={14} strokeWidth={2.2} />
+                                Clear
+                              </button>
+                              <button
+                                type="button"
+                                className="question-bank-primary-btn"
+                                onClick={() => sendApprovedQuestionsToQuestionBank()}
+                                disabled={!approvedQuestionBankSelectedIds.length}
+                                aria-label="Send selected approved questions to question bank"
+                                title={approvedQuestionBankSelectedIds.length ? 'Send selected approved questions to Question Bank' : 'Select approved questions to send'}
+                              >
+                                <Send size={14} strokeWidth={2.2} />
+                                Send Selected
+                              </button>
+                            </>
+                          ) : isApprovalSelectMode ? (
                             <>
                               <button
                                 type="button"
@@ -2431,6 +2551,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         const optionalTagGroups = getQuestionOptionalTagGroups(question)
                         const isLockedApprovalCard = ['Sent to Approval', 'Approved'].includes(status)
                         const canStartCardEdit = ['Approved', 'Approval Rejected'].includes(status)
+                        const isApprovedQuestionBankSelection = activeQuestionTab === 'approved'
+                        const isQuestionBankSent = Boolean(question.questionBankSentAt)
+                        const isQuestionBankSelected = approvedQuestionBankSelectedIds.includes(question.id)
                         const shouldShowQuestionDetails = ['Created', 'Sent to Approval', 'Approved', 'Approval Rejected'].includes(status)
                         const curriculumMeta = [
                           question.year,
@@ -2443,28 +2566,41 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         return (
                           <article
                             key={question.id}
-                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''} ${question.isCritical ? 'is-critical' : ''} ${approvalSelectedIds.includes(question.id) ? 'is-approval-selected' : ''} ${isApprovalSelectMode ? 'is-selection-mode' : ''} ${isLockedApprovalCard ? 'is-approval-locked' : ''}`}
+                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''} ${question.isCritical ? 'is-critical' : ''} ${approvalSelectedIds.includes(question.id) || isQuestionBankSelected ? 'is-approval-selected' : ''} ${isApprovalSelectMode || isApprovedQuestionBankSelection ? 'is-selection-mode' : ''} ${isLockedApprovalCard ? 'is-approval-locked' : ''}`}
                           >
-                            {isApprovalSelectMode ? (
+                            {isApprovalSelectMode || isApprovedQuestionBankSelection ? (
                               <label
                                 className="question-bank-approval-checkbox"
                                 onClick={(event) => event.stopPropagation()}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={approvalSelectedIds.includes(question.id)}
-                                  disabled={status !== 'Created'}
-                                  onChange={() => toggleApprovalSelection(question.id)}
-                                />
+                                {isApprovedQuestionBankSelection ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={isQuestionBankSelected}
+                                    disabled={isQuestionBankSent}
+                                    onChange={() => toggleApprovedQuestionBankSelection(question.id)}
+                                  />
+                                ) : (
+                                  <input
+                                    type="checkbox"
+                                    checked={approvalSelectedIds.includes(question.id)}
+                                    disabled={status !== 'Created'}
+                                    onChange={() => toggleApprovalSelection(question.id)}
+                                  />
+                                )}
                                 <span />
                               </label>
                             ) : null}
                             <div
                               className="question-bank-created-card-main"
-                              role={isLockedApprovalCard ? undefined : 'button'}
-                              tabIndex={status === 'Generating' || isLockedApprovalCard ? -1 : 0}
-                              aria-disabled={status === 'Generating'}
+                              role={isApprovedQuestionBankSelection || !isLockedApprovalCard ? 'button' : undefined}
+                              tabIndex={status === 'Generating' || (isLockedApprovalCard && !isApprovedQuestionBankSelection) || (isApprovedQuestionBankSelection && isQuestionBankSent) ? -1 : 0}
+                              aria-disabled={status === 'Generating' || (isApprovedQuestionBankSelection && isQuestionBankSent)}
                               onClick={() => {
+                                if (isApprovedQuestionBankSelection) {
+                                  toggleApprovedQuestionBankSelection(question.id)
+                                  return
+                                }
                                 if (isApprovalSelectMode) {
                                   if (status === 'Created') toggleApprovalSelection(question.id)
                                   return
@@ -2476,6 +2612,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                 }
                               }}
                               onKeyDown={(event) => {
+                                if (isApprovedQuestionBankSelection && (event.key === 'Enter' || event.key === ' ')) {
+                                  event.preventDefault()
+                                  toggleApprovedQuestionBankSelection(question.id)
+                                  return
+                                }
                                 if (isApprovalSelectMode && (event.key === 'Enter' || event.key === ' ')) {
                                   event.preventDefault()
                                   if (status === 'Created') toggleApprovalSelection(question.id)
@@ -2522,6 +2663,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                     {shouldShowQuestionDetails && hasVisibleMarks(question.marks) ? (
                                       <span className="question-bank-badge soft">
                                         {question.marks} mark{question.marks === '1' ? '' : 's'}
+                                      </span>
+                                    ) : null}
+                                    {status === 'Approved' && question.questionBankSentAt ? (
+                                      <span className="question-bank-badge blue">
+                                        <Send size={13} strokeWidth={2.2} />
+                                        Sent to Question Bank
                                       </span>
                                     ) : null}
                                     {shouldShowQuestionDetails && optionalTagGroups.length ? (
@@ -2899,7 +3046,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
             <div className="question-bank-approval-modal-head">
               <div>
                 <h2 id="question-bank-edit-title">Edit Question</h2>
-                <p>{getQuestionTypeMeta(pendingEditQuestion.type).shortLabel} details will be loaded in Create Question.</p>
               </div>
               <button
                 type="button"
@@ -2912,13 +3058,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
             </div>
 
             <div className="question-bank-edit-modal-body">
-              <span className="question-bank-badge type">{getQuestionTypeMeta(pendingEditQuestion.type).shortLabel}</span>
-              <div className="question-bank-edit-flow-list">
-                <span><Check size={13} strokeWidth={2.4} /> Open Create Question tab</span>
-                <span><Check size={13} strokeWidth={2.4} /> Fetch question type and saved details</span>
-                <span><Check size={13} strokeWidth={2.4} /> Edit the question, options, answer key, tags, and curriculum mapping</span>
-                <span><Check size={13} strokeWidth={2.4} /> Save or update, then send again for approval when ready</span>
-              </div>
+              <p className="question-bank-edit-instruction">
+                This question will open in the Create Question tab with all saved details. Review the content, make the required changes, then update and send it for approval again.
+              </p>
             </div>
 
             <div className="question-bank-approval-modal-actions">
