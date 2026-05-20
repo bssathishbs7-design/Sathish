@@ -3594,6 +3594,18 @@
   box-shadow: 0 12px 28px rgba(15, 118, 110, 0.14);
 }
 
+.question-bank-created-card.is-question-bank-sent {
+  border-color: #b8c7d9;
+  background: linear-gradient(180deg, #f9fbfe 0%, #eef3f8 100%);
+  box-shadow: 0 1px 0 rgba(71, 85, 105, 0.06);
+}
+
+.question-bank-created-card.is-question-bank-sent:hover {
+  border-color: #9cafc4;
+  background: linear-gradient(180deg, #f8fafc 0%, #e8eef5 100%);
+  box-shadow: 0 10px 22px rgba(71, 85, 105, 0.12);
+}
+
 .question-bank-created-card:hover {
   border-color: #73c7a5;
   background: linear-gradient(180deg, #ffffff 0%, #f4fff9 100%);
@@ -4856,6 +4868,18 @@
   border-color: rgba(89, 185, 143, 0.78);
   background: linear-gradient(180deg, #1a3344 0%, #142c35 100%);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+}
+
+.theme-dark .question-bank-created-card.is-question-bank-sent {
+  border-color: rgba(112, 131, 158, 0.62);
+  background: linear-gradient(180deg, #182435 0%, #111c2c 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.theme-dark .question-bank-created-card.is-question-bank-sent:hover {
+  border-color: rgba(142, 160, 188, 0.72);
+  background: linear-gradient(180deg, #1d2b3f 0%, #152236 100%);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.3);
 }
 
 .theme-dark .question-bank-approval-checkbox span {

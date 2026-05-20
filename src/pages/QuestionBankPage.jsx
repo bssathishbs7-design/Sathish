@@ -274,6 +274,13 @@ const getRichTextPreview = (value) => stripHtml(value)
 
 const getQuestionPreview = (question) => getRichTextPreview(question.questionText) || question.title || 'Untitled question'
 
+const getQuestionAuthorName = (question) => (
+  question?.authorName
+  ?? question?.createdByName
+  ?? question?.senderName
+  ?? 'Karthik Subramanian'
+)
+
 const createHtmlBlock = (value) => `<div>${String(value ?? '')}</div>`
 
 const getGeneratedOptionalTags = (type) => {
@@ -766,7 +773,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const draftQuestionCards = questions.filter((item) => item.status === 'Draft')
   const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status))
   const sentApprovalQuestionCards = questions.filter((item) => item.status === 'Sent to Approval' && hasQuestionContent(item))
-  const approvedQuestionCards = questions.filter((item) => item.status === 'Approved' && hasQuestionContent(item))
+  const approvedQuestionCards = questions
+    .filter((item) => item.status === 'Approved' && hasQuestionContent(item))
+    .sort((firstQuestion, secondQuestion) => (
+      Number(Boolean(firstQuestion.questionBankSentAt)) - Number(Boolean(secondQuestion.questionBankSentAt))
+    ))
   const rejectedQuestionCards = questions.filter((item) => item.status === 'Approval Rejected' && hasQuestionContent(item))
   const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
   const totalCount = visibleQuestionCards.length
@@ -1070,6 +1081,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     ]
 
     window.localStorage.setItem(QUESTION_BANK_PUBLISHED_KEY, JSON.stringify(mergedQuestions))
+    window.dispatchEvent(new Event('question-bank-published-questions'))
     setQuestions((current) => current.map((item) => (
       nextQuestionIds.has(item.id)
         ? {
@@ -1188,6 +1200,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
         id: question.id,
         questionNumber: index + 1,
         title: getQuestionPreview(question),
+        authorName: getQuestionAuthorName(question),
         type: question.type,
         year: question.year,
         subject: question.subject,
@@ -2500,7 +2513,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                 title={approvedQuestionBankSelectedIds.length ? 'Send selected approved questions to Question Bank' : 'Select approved questions to send'}
                               >
                                 <Send size={14} strokeWidth={2.2} />
-                                Send Selected
+                                Sent to Question Bank
                               </button>
                             </>
                           ) : isApprovalSelectMode ? (
@@ -2554,6 +2567,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         const isApprovedQuestionBankSelection = activeQuestionTab === 'approved'
                         const isQuestionBankSent = Boolean(question.questionBankSentAt)
                         const isQuestionBankSelected = approvedQuestionBankSelectedIds.includes(question.id)
+                        const shouldShowStatusBadge = !(status === 'Approved' && isQuestionBankSent)
                         const shouldShowQuestionDetails = ['Created', 'Sent to Approval', 'Approved', 'Approval Rejected'].includes(status)
                         const curriculumMeta = [
                           question.year,
@@ -2566,9 +2580,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         return (
                           <article
                             key={question.id}
-                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''} ${question.isCritical ? 'is-critical' : ''} ${approvalSelectedIds.includes(question.id) || isQuestionBankSelected ? 'is-approval-selected' : ''} ${isApprovalSelectMode || isApprovedQuestionBankSelection ? 'is-selection-mode' : ''} ${isLockedApprovalCard ? 'is-approval-locked' : ''}`}
+                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''} ${question.isCritical ? 'is-critical' : ''} ${approvalSelectedIds.includes(question.id) || isQuestionBankSelected ? 'is-approval-selected' : ''} ${isApprovalSelectMode || (isApprovedQuestionBankSelection && !isQuestionBankSent) ? 'is-selection-mode' : ''} ${isQuestionBankSent ? 'is-question-bank-sent' : ''} ${isLockedApprovalCard ? 'is-approval-locked' : ''}`}
                           >
-                            {isApprovalSelectMode || isApprovedQuestionBankSelection ? (
+                            {isApprovalSelectMode || (isApprovedQuestionBankSelection && !isQuestionBankSent) ? (
                               <label
                                 className="question-bank-approval-checkbox"
                                 onClick={(event) => event.stopPropagation()}
@@ -2577,7 +2591,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                   <input
                                     type="checkbox"
                                     checked={isQuestionBankSelected}
-                                    disabled={isQuestionBankSent}
                                     onChange={() => toggleApprovedQuestionBankSelection(question.id)}
                                   />
                                 ) : (
@@ -2634,20 +2647,27 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                 <span className="question-bank-created-header">
                                   <span className="question-bank-created-header-badges">
                                     <span className="question-bank-badge type">{typeMeta.shortLabel}</span>
-                                    <span className={`question-bank-badge ${status === 'Draft' ? 'warning' : status === 'Created' ? 'success' : status === 'Sent to Approval' ? 'blue' : status === 'Approved' ? 'success' : status === 'Approval Rejected' ? 'danger' : 'soft'}`}>
-                                      {status === 'Generating' ? (
-                                        <LoaderCircle size={13} strokeWidth={2.2} className="question-bank-spin-icon" />
-                                      ) : status === 'Created' || status === 'Approved' ? (
-                                        <CheckCircle2 size={13} strokeWidth={2.2} />
-                                      ) : status === 'Sent to Approval' ? (
-                                        <Send size={13} strokeWidth={2.2} />
-                                      ) : status === 'Approval Rejected' ? (
-                                        <X size={13} strokeWidth={2.2} />
-                                      ) : (
-                                        <FilePenLine size={13} strokeWidth={2.2} />
-                                      )}
-                                      {status}
-                                    </span>
+                                    {shouldShowStatusBadge ? (
+                                      <span className={`question-bank-badge ${status === 'Draft' ? 'warning' : status === 'Created' ? 'success' : status === 'Sent to Approval' ? 'blue' : status === 'Approved' ? 'success' : status === 'Approval Rejected' ? 'danger' : 'soft'}`}>
+                                        {status === 'Generating' ? (
+                                          <LoaderCircle size={13} strokeWidth={2.2} className="question-bank-spin-icon" />
+                                        ) : status === 'Created' || status === 'Approved' ? (
+                                          <CheckCircle2 size={13} strokeWidth={2.2} />
+                                        ) : status === 'Sent to Approval' ? (
+                                          <Send size={13} strokeWidth={2.2} />
+                                        ) : status === 'Approval Rejected' ? (
+                                          <X size={13} strokeWidth={2.2} />
+                                        ) : (
+                                          <FilePenLine size={13} strokeWidth={2.2} />
+                                        )}
+                                        {status}
+                                      </span>
+                                    ) : null}
+                                    {activeQuestionTab === 'approved' && question.questionBankSentAt ? (
+                                      <span className="question-bank-badge soft">
+                                        Author By : {getQuestionAuthorName(question)}
+                                      </span>
+                                    ) : null}
                                     {shouldShowQuestionDetails && question.questionCategory ? (
                                       <span className="question-bank-badge mint">{question.questionCategory}</span>
                                     ) : null}
@@ -2665,7 +2685,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                         {question.marks} mark{question.marks === '1' ? '' : 's'}
                                       </span>
                                     ) : null}
-                                    {status === 'Approved' && question.questionBankSentAt ? (
+                                    {status === 'Approved' && question.questionBankSentAt && shouldShowStatusBadge ? (
                                       <span className="question-bank-badge blue">
                                         <Send size={13} strokeWidth={2.2} />
                                         Sent to Question Bank
