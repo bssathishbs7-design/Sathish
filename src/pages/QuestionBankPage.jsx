@@ -170,6 +170,9 @@ const APPROVAL_REVIEWERS = [
   { facultyName: 'Dr. Kavya Menon', employeeId: 'EMP1180', designation: 'Assistant Professor' },
 ]
 
+const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
+const QUESTION_BANK_REVIEW_RESULTS_KEY = 'vx-question-bank-review-results'
+
 let questionSequence = 1
 let optionSequence = 1
 let imageSequence = 1
@@ -225,7 +228,30 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   marks: '0',
   isCritical: false,
   status: 'Editing',
+  revisionStatus: 'Created',
 })
+
+const readStoredQuestionBankQuestions = () => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_STORAGE_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const readQuestionBankReviewResults = () => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_REVIEW_RESULTS_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
 
 const getQuestionTypeMeta = (type) => (
   QUESTION_TYPE_CARDS.find((item) => item.type === type) ?? QUESTION_TYPE_CARDS[0]
@@ -448,7 +474,7 @@ const getAutoFilledCurriculum = (question) => {
 }
 
 const canCreateQuestion = (question) => {
-  if (!question || question.status === 'Generating') return false
+  if (!question || ['Generating', 'Sent to Approval', 'Approved'].includes(question.status)) return false
   return hasQuestionContent(question)
 }
 
@@ -458,13 +484,16 @@ const getProcessSteps = (question) => ([
   { label: 'Options (AI can fill)', done: hasMcqOptions(question) },
   { label: 'Answer Key (AI can fill)', done: Boolean(getRichTextPreview(question.answerKey)) },
   { label: 'Assessment Tags (AI can fill)', done: hasAssessmentTags(question) },
-  { label: question.status === 'Draft' ? 'Draft Saved' : 'Created', done: ['Draft', 'Created'].includes(question.status) },
+  { label: question.status === 'Draft' ? 'Draft Saved' : question.status === 'Sent to Approval' ? 'Sent to Approval' : 'Created', done: ['Draft', 'Created', 'Sent to Approval'].includes(question.status) },
 ])
 
 const getQuestionCardStatus = (question) => {
   if (question.status === 'Generating') return 'Generating'
   if (question.status === 'Draft') return 'Draft'
   if (question.status === 'Created') return 'Created'
+  if (question.status === 'Sent to Approval') return 'Sent to Approval'
+  if (question.status === 'Approved') return 'Approved'
+  if (question.status === 'Approval Rejected') return 'Approval Rejected'
   return 'Editing'
 }
 
@@ -695,7 +724,7 @@ function MappingSelectorPanel({
 }
 
 export default function QuestionBankPage({ onAlert, onSendToApproval }) {
-  const [questions, setQuestions] = useState([])
+  const [questions, setQuestions] = useState(() => readStoredQuestionBankQuestions())
   const [selectedQuestionId, setSelectedQuestionId] = useState(null)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
@@ -720,10 +749,15 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
   const draftQuestionCards = questions.filter((item) => item.status === 'Draft')
   const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status))
+  const sentApprovalQuestionCards = questions.filter((item) => item.status === 'Sent to Approval')
+  const approvedQuestionCards = questions.filter((item) => item.status === 'Approved')
+  const rejectedQuestionCards = questions.filter((item) => item.status === 'Approval Rejected')
   const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
   const draftCount = questions.filter((item) => item.status === 'Draft').length
-  const approvedCount = questions.filter((item) => item.status === 'Approved').length
+  const sentApprovalCount = sentApprovalQuestionCards.length
+  const approvedCount = approvedQuestionCards.length
+  const rejectedCount = rejectedQuestionCards.length
   const generatingCount = questions.filter((item) => item.status === 'Generating').length
   const generationProcessTotal = readyCount + generatingCount
   const generationProcessPercent = generationProcessTotal
@@ -740,6 +774,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     ? draftQuestionCards
     : activeQuestionTab === 'created'
       ? createdQuestionCards
+      : activeQuestionTab === 'sent'
+        ? sentApprovalQuestionCards
+        : activeQuestionTab === 'approved'
+          ? approvedQuestionCards
+          : activeQuestionTab === 'rejected'
+            ? rejectedQuestionCards
       : []
 
   const descriptiveQuestions = useMemo(
@@ -760,20 +800,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     : 0
   const questionBankMetrics = [
     {
-      label: 'Created Question',
-      value: readyCount,
-      detail: `${totalCount} total`,
-      icon: CheckCircle2,
-      tone: 'created',
-      targetTab: 'created',
-    },
-    {
-      label: 'Draft Question',
-      value: draftCount,
-      detail: 'Saved for later',
-      icon: FilePenLine,
+      label: 'Sent to Approval',
+      value: sentApprovalCount,
+      detail: 'Waiting for review',
+      icon: Send,
       tone: 'draft',
-      targetTab: 'draft',
+      targetTab: 'sent',
     },
     {
       label: 'Approved Question',
@@ -781,6 +813,15 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       detail: 'Ready to publish',
       icon: CheckCheck,
       tone: 'approved',
+      targetTab: 'approved',
+    },
+    {
+      label: 'Approval Rejected',
+      value: rejectedCount,
+      detail: 'Needs correction',
+      icon: X,
+      tone: 'rejected',
+      targetTab: 'rejected',
     },
     {
       label: 'Generation Process',
@@ -794,12 +835,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     },
   ]
   const canCreateSelectedQuestion = canCreateQuestion(selectedQuestion)
-  const canSaveSelectedDraft = hasDraftContent(selectedQuestion)
+  const canSaveSelectedDraft = selectedQuestion?.status !== 'Sent to Approval' && hasDraftContent(selectedQuestion)
   const isUpdatingSelectedQuestion = selectedQuestion
-    ? ['Created', 'Draft'].includes(selectedQuestion.status)
+    ? ['Created', 'Draft', 'Approval Rejected'].includes(selectedQuestion.status)
     : false
   const shouldShowSelectedDelete = selectedQuestion
-    ? selectedQuestion.status !== 'Editing'
+    ? selectedQuestion.status !== 'Editing' && !['Sent to Approval', 'Approved'].includes(selectedQuestion.status)
     : false
   const activeMappingItems = activeMappingPicker === 'years'
     ? YEAR_OPTIONS
@@ -822,6 +863,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const activePreviewImage = previewImages[previewIndex] ?? null
   const hasPreviewNavigation = previewImages.length > 1
   const activePreviewLetter = activePreviewImage ? String.fromCharCode(65 + previewIndex) : ''
+  const isListQuestionTab = ['created', 'draft', 'sent', 'approved', 'rejected'].includes(activeQuestionTab)
 
   useEffect(() => {
     setIsGeneratingQuestion(false)
@@ -833,14 +875,61 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     closeMappingPicker()
   }, [selectedQuestionId])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(questions))
+  }, [questions])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const applyReviewResults = () => {
+      const results = readQuestionBankReviewResults()
+      if (!results.length) return
+
+      const resultByQuestionId = new Map(results.map((result) => [result.questionId, result]))
+      const currentIds = new Set(questions.map((question) => question.id))
+      const hasMatchingResults = results.some((result) => currentIds.has(result.questionId))
+      if (!hasMatchingResults) return
+
+      setQuestions((current) => current.map((question) => {
+        const result = resultByQuestionId.get(question.id)
+        if (!result) return question
+
+        return {
+          ...question,
+          status: result.status === 'Approved' ? 'Approved' : 'Approval Rejected',
+          approvalReviewRemarks: result.remarks ?? '',
+          approvalReviewedAt: result.reviewedAt ?? '',
+        }
+      }))
+
+      const remainingResults = results.filter((result) => !currentIds.has(result.questionId))
+      window.localStorage.setItem(QUESTION_BANK_REVIEW_RESULTS_KEY, JSON.stringify(remainingResults))
+    }
+
+    applyReviewResults()
+    window.addEventListener('question-bank-review-results', applyReviewResults)
+    window.addEventListener('storage', applyReviewResults)
+
+    return () => {
+      window.removeEventListener('question-bank-review-results', applyReviewResults)
+      window.removeEventListener('storage', applyReviewResults)
+    }
+  }, [questions])
+
   const updateSelectedQuestion = (updater) => {
     if (!selectedQuestion) return
+    if (['Sent to Approval', 'Approved'].includes(selectedQuestion.status)) return
     setGenerationCompleteId((current) => (
       current === selectedQuestion.id ? null : current
     ))
     setQuestions((current) => current.map((item) => (
       item.id === selectedQuestion.id
-        ? (typeof updater === 'function' ? updater(item) : { ...item, ...updater })
+        ? {
+          ...(typeof updater === 'function' ? updater(item) : { ...item, ...updater }),
+          revisionStatus: item.status === 'Created' ? 'Edited' : item.revisionStatus,
+        }
         : item
     )))
   }
@@ -876,6 +965,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
 
   const handleDeleteQuestion = () => {
     if (!selectedQuestion) return
+    if (selectedQuestion.status === 'Sent to Approval') return
     const nextQuestions = questions.filter((item) => item.id !== selectedQuestion.id)
     setQuestions(nextQuestions)
     setSelectedQuestionId(nextQuestions[0]?.id ?? null)
@@ -883,6 +973,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   }
 
   const handleDeleteQuestionById = (questionId) => {
+    const question = questions.find((item) => item.id === questionId)
+    if (question?.status === 'Sent to Approval') return
     const nextQuestions = questions.filter((item) => item.id !== questionId)
     setQuestions(nextQuestions)
     setApprovalSelectedIds((current) => current.filter((id) => id !== questionId))
@@ -905,6 +997,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   }
 
   const toggleApprovalSelection = (questionId) => {
+    if (!approvableQuestionIds.includes(questionId)) return
     setApprovalSelectedIds((current) => (
       current.includes(questionId)
         ? current.filter((id) => id !== questionId)
@@ -933,6 +1026,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     const primaryQuestion = selectedQuestions[0] ?? null
     const yearValues = [...new Set(selectedQuestions.map((item) => item.year).filter(Boolean))]
     const subjectValues = [...new Set(selectedQuestions.map((item) => item.subject).filter(Boolean))]
+    const questionTypeSummary = selectedQuestions.reduce((summary, question) => ({
+      ...summary,
+      [getQuestionTypeMeta(question.type).shortLabel]: (summary[getQuestionTypeMeta(question.type).shortLabel] ?? 0) + 1,
+    }), {})
+    const questionTypeSummaryText = Object.entries(questionTypeSummary)
+      .map(([type, count]) => `${type}: ${count}`)
+      .join(', ')
+    const questionChangeStatus = selectedQuestions.some((question) => question.revisionStatus === 'Edited')
+      ? 'Edited'
+      : 'Created'
 
     onSendToApproval?.({
       activityId: approvalId,
@@ -943,6 +1046,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       approvalStatus: 'Pending Approval',
       status: 'Pending Approval',
       totalStudents: selectedQuestions.length,
+      totalQuestions: selectedQuestions.length,
+      questionTypeSummary,
+      questionTypeSummaryText,
+      questionRevisionStatus: questionChangeStatus,
+      questionChangeStatus,
       year: yearValues.length === 1 ? yearValues[0] : yearValues.length ? `${yearValues.length} years` : 'Question Bank',
       sgt: subjectValues.length === 1 ? subjectValues[0] : subjectValues.length ? `${subjectValues.length} subjects` : 'Questions',
       facultyName: selectedApprovalReviewer.facultyName,
@@ -959,15 +1067,38 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
         topics: question.topics,
         competencies: question.competencies,
         isCritical: question.isCritical,
+        revisionStatus: question.revisionStatus || 'Created',
         marks: question.marks,
+        questionCategory: question.questionCategory,
+        cognitiveLevel: question.cognitiveLevel,
+        thinkingLevel: question.thinkingLevel,
+        difficultyLevel: question.difficultyLevel,
+        cognitiveFunction: question.cognitiveFunction,
+        skillFocus: question.skillFocus,
+        organSystem: question.organSystem,
+        organSubSystems: question.organSubSystems,
+        diseaseTags: question.diseaseTags,
+        keyConcepts: question.keyConcepts,
+        images: question.images,
         questionText: question.questionText,
+        options: question.options,
+        correctOptionIds: question.correctOptionIds,
+        trueFalseAnswer: question.trueFalseAnswer,
+        fillBlankAnswers: question.fillBlankAnswers,
+        descriptiveGuide: question.descriptiveGuide,
         answerKey: question.answerKey,
       })),
     })
 
     setQuestions((current) => current.map((item) => (
-      selectedIds.has(item.id) ? { ...item, status: 'Approved' } : item
+      selectedIds.has(item.id) ? { ...item, status: 'Sent to Approval' } : item
     )))
+    setActiveQuestionTab('sent')
+    setSelectedQuestionId((currentId) => {
+      if (!selectedIds.has(currentId)) return currentId
+      const nextEditable = questions.find((item) => !selectedIds.has(item.id) && !['Sent to Approval', 'Approved'].includes(item.status))
+      return nextEditable?.id ?? null
+    })
     setIsApprovalModalOpen(false)
     setApprovalNote('')
     cancelApprovalSelection()
@@ -998,6 +1129,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               ...item,
               title: getQuestionPreview(item).slice(0, 60) || item.title,
               status: 'Created',
+              revisionStatus: 'Edited',
+              approvalReviewRemarks: '',
+              approvalReviewedAt: '',
             }
             : item
         )),
@@ -1073,6 +1207,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
           descriptiveGuide: item.descriptiveGuide || generatedDraft.descriptiveGuide || item.descriptiveGuide,
           title: getRichTextPreview(needsQuestion ? generatedDraft.questionText : item.questionText).slice(0, 60) || item.title,
           status: 'Created',
+          revisionStatus: item.revisionStatus || 'Created',
         }
       }))
       setGenerationCompleteId(questionId)
@@ -1410,6 +1545,36 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               Draft Questions
               <span>{draftQuestionCards.length}</span>
             </button>
+            <button
+              type="button"
+              className={activeQuestionTab === 'sent' ? 'is-active' : ''}
+              onClick={() => setActiveQuestionTab('sent')}
+              role="tab"
+              aria-selected={activeQuestionTab === 'sent'}
+            >
+              Sent to Approval
+              <span>{sentApprovalQuestionCards.length}</span>
+            </button>
+            <button
+              type="button"
+              className={activeQuestionTab === 'approved' ? 'is-active' : ''}
+              onClick={() => setActiveQuestionTab('approved')}
+              role="tab"
+              aria-selected={activeQuestionTab === 'approved'}
+            >
+              Approved Questions
+              <span>{approvedQuestionCards.length}</span>
+            </button>
+            <button
+              type="button"
+              className={activeQuestionTab === 'rejected' ? 'is-active' : ''}
+              onClick={() => setActiveQuestionTab('rejected')}
+              role="tab"
+              aria-selected={activeQuestionTab === 'rejected'}
+            >
+              Approval Rejected
+              <span>{rejectedQuestionCards.length}</span>
+            </button>
           </div>
 
           {activeQuestionTab === 'create' && !selectedQuestion ? (
@@ -1425,10 +1590,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
             </div>
           ) : null}
 
-          {selectedQuestion ? (
+          {selectedQuestion || isListQuestionTab ? (
             <div className="question-bank-workspace">
               <div className="question-bank-editor">
-                {activeQuestionTab === 'create' ? (
+                {activeQuestionTab === 'create' && selectedQuestion ? (
                 <section className={`question-bank-author-card ${selectedQuestion.isCritical ? 'is-critical' : ''}`}>
                   <div className="question-bank-author-type-strip">
                     {questionTypePicker}
@@ -2131,7 +2296,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
 
                 ) : null}
 
-                {['created', 'draft'].includes(activeQuestionTab) && activeQuestionCards.length ? (
+                {['created', 'draft', 'sent', 'approved', 'rejected'].includes(activeQuestionTab) && activeQuestionCards.length ? (
                   <section className="question-bank-created-panel">
                     <div className="question-bank-section-head">
                       <div>
@@ -2152,7 +2317,15 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                           </span>
                         ) : (
                           <span className="question-bank-eyebrow">
-                            {activeQuestionTab === 'draft' ? 'Draft Questions' : 'Created Questions'}
+                            {activeQuestionTab === 'draft'
+                              ? 'Draft Questions'
+                              : activeQuestionTab === 'sent'
+                                ? 'Sent to Approval'
+                                : activeQuestionTab === 'approved'
+                                  ? 'Approved Questions'
+                                  : activeQuestionTab === 'rejected'
+                                    ? 'Approval Rejected'
+                                : 'Created Questions'}
                           </span>
                         )}
                       </div>
@@ -2204,6 +2377,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         const status = getQuestionCardStatus(question)
                         const typeMeta = getQuestionTypeMeta(question.type)
                         const optionalTagGroups = getQuestionOptionalTagGroups(question)
+                        const isLockedApprovalCard = ['Sent to Approval', 'Approved'].includes(status)
+                        const shouldShowQuestionDetails = ['Created', 'Sent to Approval', 'Approved', 'Approval Rejected'].includes(status)
                         const curriculumMeta = [
                           question.year,
                           question.subject,
@@ -2215,7 +2390,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         return (
                           <article
                             key={question.id}
-                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''} ${question.isCritical ? 'is-critical' : ''} ${approvalSelectedIds.includes(question.id) ? 'is-approval-selected' : ''} ${isApprovalSelectMode ? 'is-selection-mode' : ''}`}
+                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''} ${question.isCritical ? 'is-critical' : ''} ${approvalSelectedIds.includes(question.id) ? 'is-approval-selected' : ''} ${isApprovalSelectMode ? 'is-selection-mode' : ''} ${isLockedApprovalCard ? 'is-approval-locked' : ''}`}
                           >
                             {isApprovalSelectMode ? (
                               <label
@@ -2233,15 +2408,15 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                             ) : null}
                             <div
                               className="question-bank-created-card-main"
-                              role="button"
-                              tabIndex={status === 'Generating' ? -1 : 0}
+                              role={isLockedApprovalCard ? undefined : 'button'}
+                              tabIndex={status === 'Generating' || isLockedApprovalCard ? -1 : 0}
                               aria-disabled={status === 'Generating'}
                               onClick={() => {
                                 if (isApprovalSelectMode) {
                                   if (status === 'Created') toggleApprovalSelection(question.id)
                                   return
                                 }
-                                if (status !== 'Generating') {
+                                if (status !== 'Generating' && !isLockedApprovalCard) {
                                   setOpenCreatedTagsId(null)
                                   setSelectedQuestionId(question.id)
                                   setActiveQuestionTab('create')
@@ -2253,7 +2428,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                   if (status === 'Created') toggleApprovalSelection(question.id)
                                   return
                                 }
-                                if (status !== 'Generating' && (event.key === 'Enter' || event.key === ' ')) {
+                                if (status !== 'Generating' && !isLockedApprovalCard && (event.key === 'Enter' || event.key === ' ')) {
                                   event.preventDefault()
                                   setOpenCreatedTagsId(null)
                                   setSelectedQuestionId(question.id)
@@ -2265,34 +2440,38 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                 <span className="question-bank-created-header">
                                   <span className="question-bank-created-header-badges">
                                     <span className="question-bank-badge type">{typeMeta.shortLabel}</span>
-                                    <span className={`question-bank-badge ${status === 'Draft' ? 'warning' : status === 'Created' ? 'success' : 'soft'}`}>
+                                    <span className={`question-bank-badge ${status === 'Draft' ? 'warning' : status === 'Created' ? 'success' : status === 'Sent to Approval' ? 'blue' : status === 'Approved' ? 'success' : status === 'Approval Rejected' ? 'danger' : 'soft'}`}>
                                       {status === 'Generating' ? (
                                         <LoaderCircle size={13} strokeWidth={2.2} className="question-bank-spin-icon" />
-                                      ) : status === 'Created' ? (
+                                      ) : status === 'Created' || status === 'Approved' ? (
                                         <CheckCircle2 size={13} strokeWidth={2.2} />
+                                      ) : status === 'Sent to Approval' ? (
+                                        <Send size={13} strokeWidth={2.2} />
+                                      ) : status === 'Approval Rejected' ? (
+                                        <X size={13} strokeWidth={2.2} />
                                       ) : (
                                         <FilePenLine size={13} strokeWidth={2.2} />
                                       )}
                                       {status}
                                     </span>
-                                    {status === 'Created' && question.questionCategory ? (
+                                    {shouldShowQuestionDetails && question.questionCategory ? (
                                       <span className="question-bank-badge mint">{question.questionCategory}</span>
                                     ) : null}
-                                    {status === 'Created' && question.cognitiveLevel ? (
+                                    {shouldShowQuestionDetails && question.cognitiveLevel ? (
                                       <span className="question-bank-badge blue">{question.cognitiveLevel}</span>
                                     ) : null}
-                                    {status === 'Created' && question.thinkingLevel ? (
+                                    {shouldShowQuestionDetails && question.thinkingLevel ? (
                                       <span className="question-bank-badge lilac">{question.thinkingLevel}</span>
                                     ) : null}
-                                    {status === 'Created' && question.difficultyLevel ? (
+                                    {shouldShowQuestionDetails && question.difficultyLevel ? (
                                       <span className="question-bank-badge soft">{question.difficultyLevel}</span>
                                     ) : null}
-                                    {status === 'Created' && hasVisibleMarks(question.marks) ? (
+                                    {shouldShowQuestionDetails && hasVisibleMarks(question.marks) ? (
                                       <span className="question-bank-badge soft">
                                         {question.marks} mark{question.marks === '1' ? '' : 's'}
                                       </span>
                                     ) : null}
-                                    {status === 'Created' && optionalTagGroups.length ? (
+                                    {shouldShowQuestionDetails && optionalTagGroups.length ? (
                                       <span className="question-bank-created-tags-wrap">
                                         <button
                                           type="button"
@@ -2345,7 +2524,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                     ))}
                                   </span>
                                 ) : null}
-                                {status === 'Created' ? (
+                                {shouldShowQuestionDetails ? (
                                   <>
                                     {question.images?.length ? (
                                       <span className="question-bank-created-images">
@@ -2386,22 +2565,30 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                         {getRichTextPreview(question.answerKey)}
                                       </span>
                                     ) : null}
+                                    {status === 'Approval Rejected' && question.approvalReviewRemarks ? (
+                                      <span className="question-bank-created-answer is-rejected-remark">
+                                        <b>Reviewer Remarks</b>
+                                        {question.approvalReviewRemarks}
+                                      </span>
+                                    ) : null}
                                   </>
                                 ) : null}
                               </span>
                             </div>
 
-                            <button
-                              type="button"
-                              className="question-bank-icon-btn"
-                              onClick={() => {
-                                setOpenCreatedTagsId(null)
-                                handleDeleteQuestionById(question.id)
-                              }}
-                              aria-label="Delete question"
-                            >
-                              <Trash2 size={14} strokeWidth={2} />
-                            </button>
+                            {!isLockedApprovalCard ? (
+                              <button
+                                type="button"
+                                className="question-bank-icon-btn"
+                                onClick={() => {
+                                  setOpenCreatedTagsId(null)
+                                  handleDeleteQuestionById(question.id)
+                                }}
+                                aria-label="Delete question"
+                              >
+                                <Trash2 size={14} strokeWidth={2} />
+                              </button>
+                            ) : null}
                           </article>
                         )
                       })}
@@ -2409,15 +2596,29 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                   </section>
                 ) : null}
 
-                {['created', 'draft'].includes(activeQuestionTab) && !activeQuestionCards.length ? (
+                {['created', 'draft', 'sent', 'approved', 'rejected'].includes(activeQuestionTab) && !activeQuestionCards.length ? (
                   <div className="question-bank-empty-state question-bank-tab-empty-state">
                     <FilePenLine size={24} strokeWidth={2} />
                     <strong>
-                      {activeQuestionTab === 'draft' ? 'No draft questions yet' : 'No created questions yet'}
+                      {activeQuestionTab === 'draft'
+                        ? 'No draft questions yet'
+                        : activeQuestionTab === 'sent'
+                          ? 'No questions sent to approval yet'
+                          : activeQuestionTab === 'approved'
+                            ? 'No approved questions yet'
+                            : activeQuestionTab === 'rejected'
+                              ? 'No rejected questions yet'
+                          : 'No created questions yet'}
                     </strong>
                     <p>
                       {activeQuestionTab === 'draft'
                         ? 'Save a question as draft to see it here.'
+                        : activeQuestionTab === 'sent'
+                          ? 'Send created questions for approval to see them here.'
+                          : activeQuestionTab === 'approved'
+                            ? 'Approved questions will appear here after review.'
+                            : activeQuestionTab === 'rejected'
+                              ? 'Rejected questions will appear here for correction.'
                         : 'Create a question to see it here.'}
                     </p>
                   </div>

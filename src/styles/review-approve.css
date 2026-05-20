@@ -122,6 +122,61 @@
   color: #4871d9;
 }
 
+.review-approve-type-chip.question-bank {
+  border-color: #cfe4ff;
+  background: #f4f8ff;
+  color: #2757b8;
+}
+
+.review-approve-question-bank-card {
+  gap: 14px;
+  min-height: 220px;
+  border-color: #d8eadf;
+  background:
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.08), transparent 28%),
+    linear-gradient(180deg, #ffffff, #f8fcfa);
+}
+
+.review-approve-question-bank-card .review-approve-type-chip,
+.review-approve-question-bank-card .review-approve-question-state {
+  font-weight: 700;
+}
+
+.review-approve-question-bank-card .review-approve-card-footer {
+  padding: 12px;
+  border-color: #e6f0eb;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.review-approve-question-bank-card .review-approve-card-view-btn {
+  min-width: 84px;
+  font-weight: 700;
+}
+
+.review-approve-question-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid #cdebdc;
+  border-radius: 999px;
+  background: #effcf4;
+  color: #15803d;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.review-approve-question-state.is-edited {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .review-approve-status-pill {
   justify-self: end;
   border-color: #dce8e2;
@@ -211,6 +266,154 @@
   font-size: 0.84rem;
   line-height: 1.2;
   font-weight: 800;
+}
+
+.review-approve-qb-body {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+}
+
+.review-approve-qb-count,
+.review-approve-qb-types {
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 14px;
+}
+
+.review-approve-qb-count {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  min-height: 88px;
+  background: #eefbf4;
+  color: #11663d;
+}
+
+.review-approve-qb-count strong {
+  color: #0f6840;
+  font-size: 1.95rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.review-approve-qb-count span {
+  color: #587369;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.review-approve-qb-types {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f5f9ff;
+}
+
+.review-approve-qb-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #6f8479;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.review-approve-qb-type-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.review-approve-qb-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid #d7e7ff;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #22457c;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.review-approve-qb-type-chip strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e4efff;
+  color: #1e4fa3;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.review-approve-qb-submitted {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  color: #60786d;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.review-approve-qb-submitted svg {
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.review-approve-qb-submitted-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.review-approve-qb-submitted-label {
+  color: #71857b;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.review-approve-qb-submitted-name {
+  max-width: 100%;
+  overflow: hidden;
+  color: #29473b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-approve-qb-submitted-date {
+  color: #71857b;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .review-approve-card-footer {
@@ -406,15 +609,23 @@
 
 .theme-dark .review-approve-card-title h3,
 .theme-dark .review-approve-card-meta-item strong,
+.theme-dark .review-approve-qb-count strong,
 .theme-dark .review-approve-card-action-cell strong,
 .theme-dark .review-approve-tooltip strong {
   color: #e6efeb;
 }
 
 .theme-dark .review-approve-card-date,
+.theme-dark .review-approve-qb-submitted,
+.theme-dark .review-approve-qb-submitted-label,
+.theme-dark .review-approve-qb-submitted-date,
 .theme-dark .review-approve-tooltip span,
 .theme-dark .review-approve-tooltip small {
   color: #9fb4ab;
+}
+
+.theme-dark .review-approve-qb-submitted-name {
+  color: #dcebe4;
 }
 
 .theme-dark .review-approve-tooltip-label {
@@ -442,6 +653,35 @@
   background: rgba(15, 24, 40, 0.9);
 }
 
+.theme-dark .review-approve-qb-count,
+.theme-dark .review-approve-qb-types {
+  border-color: transparent;
+}
+
+.theme-dark .review-approve-qb-count {
+  background: rgba(21, 128, 61, 0.16);
+}
+
+.theme-dark .review-approve-qb-types {
+  background: rgba(37, 99, 235, 0.11);
+}
+
+.theme-dark .review-approve-qb-count span,
+.theme-dark .review-approve-qb-label {
+  color: #9fb4ab;
+}
+
+.theme-dark .review-approve-qb-type-chip {
+  border-color: rgba(96, 165, 250, 0.26);
+  background: rgba(15, 24, 40, 0.66);
+  color: #dbeafe;
+}
+
+.theme-dark .review-approve-qb-type-chip strong {
+  background: rgba(96, 165, 250, 0.18);
+  color: #bfdbfe;
+}
+
 .theme-dark .review-approve-card.is-published-card {
   border-color: #275b47;
   background:
@@ -455,6 +695,13 @@
 .theme-dark .review-approve-card.is-published-card .review-approve-card-footer-chip {
   border-color: #2f5144;
   background: rgba(11, 28, 22, 0.84);
+}
+
+.theme-dark .review-approve-question-bank-card {
+  border-color: #28483b;
+  background:
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(15, 30, 27, 0.98), rgba(12, 23, 34, 0.98));
 }
 
 .theme-dark .review-approve-type-chip {
@@ -483,6 +730,24 @@
   border-color: rgba(125, 164, 255, 0.28);
   background: rgba(27, 53, 110, 0.34);
   color: #bfd4ff;
+}
+
+.theme-dark .review-approve-type-chip.question-bank {
+  border-color: rgba(96, 165, 250, 0.3);
+  background: rgba(30, 58, 138, 0.28);
+  color: #bfdbfe;
+}
+
+.theme-dark .review-approve-question-state {
+  border-color: rgba(95, 232, 177, 0.22);
+  background: rgba(14, 59, 47, 0.34);
+  color: #8ee4ca;
+}
+
+.theme-dark .review-approve-question-state.is-edited {
+  border-color: rgba(251, 146, 60, 0.26);
+  background: rgba(124, 45, 18, 0.28);
+  color: #fed7aa;
 }
 
 .theme-dark .review-approve-status-pill.is-pending {
@@ -541,7 +806,8 @@
 
 @media (max-width: 640px) {
   .review-approve-card-grid,
-  .review-approve-card-meta {
+  .review-approve-card-meta,
+  .review-approve-qb-body {
     grid-template-columns: 1fr;
   }
 
@@ -561,6 +827,10 @@
 
   .review-approve-card-meta-item:last-child {
     border-bottom: 0;
+  }
+
+  .review-approve-qb-count {
+    min-height: 82px;
   }
 
   .review-approve-card-footer {

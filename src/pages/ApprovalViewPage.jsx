@@ -1,21 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowUpDown,
   BadgeCheck,
   BriefcaseBusiness,
   CalendarClock,
+  CheckCheck,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Download,
   Eye,
   Info,
+  MessageSquareText,
+  Send,
+  Square,
+  SquareCheckBig,
   RotateCcw,
   Search,
   Users,
   X,
+  XCircle,
 } from 'lucide-react'
 import '../styles/approval-view.css'
+
+const QUESTION_BANK_REVIEW_RESULTS_KEY = 'vx-question-bank-review-results'
 
 const formatDateTime = (value) => {
   if (!value) return 'Not received'
@@ -37,6 +46,8 @@ const formatDateTime = (value) => {
 }
 
 const getActivityToneClass = (value = '') => String(value).trim().toLowerCase().replace(/\s+/g, '-')
+
+const isQuestionBankRecord = (record) => String(record?.activityType ?? '').trim().toLowerCase() === 'question bank'
 
 const formatPercent = (value) => `${Number(value ?? 0).toFixed(1).replace(/\.0$/, '')}%`
 
@@ -101,6 +112,61 @@ const getThresholdTone = (value = '') => {
   if (normalized.includes('below') || normalized.includes('not matched')) return 'is-remedial'
 
   return 'is-neutral'
+}
+
+const getHtmlText = (html = '') => String(html)
+  .replace(/<br\s*\/?>/gi, ' ')
+  .replace(/<\/(p|div|li|h[1-6])>/gi, ' ')
+  .replace(/<[^>]*>/g, '')
+  .replace(/&nbsp;/g, ' ')
+  .trim()
+
+const RichQuestionContent = ({ html, fallback = 'Not added' }) => {
+  const content = String(html ?? '').trim()
+
+  if (!content) return <span>{fallback}</span>
+
+  return (
+    <div
+      className="approval-view-question-richtext"
+      dangerouslySetInnerHTML={{ __html: content }}
+    />
+  )
+}
+
+const getVisibleTagValues = (values) => (Array.isArray(values) ? values : [])
+  .map((value) => String(value ?? '').trim())
+  .filter((value) => value && value !== 'N/A')
+
+const getQuestionTagGroups = (question) => ([
+  { label: 'Cognitive Function', values: question.cognitiveFunction ? [question.cognitiveFunction] : [] },
+  { label: 'Skill Focus', values: question.skillFocus ? [question.skillFocus] : [] },
+  { label: 'Organ System', values: question.organSystem ? [question.organSystem] : [] },
+  { label: 'Organ Sub-systems', values: getVisibleTagValues(question.organSubSystems) },
+  { label: 'Disease Tags', values: getVisibleTagValues(question.diseaseTags) },
+  { label: 'Key Concepts', values: getVisibleTagValues(question.keyConcepts) },
+]).filter((group) => group.values.length)
+
+const getQuestionAssessmentBadges = (question) => [
+  question.questionCategory || 'Application',
+  question.cognitiveLevel || 'Apply',
+  question.thinkingLevel || 'HoT',
+  question.difficultyLevel || 'L2',
+].filter(Boolean)
+
+const getQuestionTooltipGroups = (question) => {
+  return [
+    { label: 'Cognitive Function', values: question.cognitiveFunction ? [question.cognitiveFunction] : ['Pattern Recognition'] },
+    { label: 'Skill Focus', values: question.skillFocus ? [question.skillFocus] : ['Diagnosis'] },
+    { label: 'Organ System', values: question.organSystem ? [question.organSystem] : ['Nervous'] },
+    { label: 'Organ Sub System', values: getVisibleTagValues(question.organSubSystems).length ? getVisibleTagValues(question.organSubSystems) : ['Brain'] },
+    { label: 'Disease Tags', values: getVisibleTagValues(question.diseaseTags).length ? getVisibleTagValues(question.diseaseTags) : ['Inflammation'] },
+    { label: 'Key Concept', values: getVisibleTagValues(question.keyConcepts).length ? getVisibleTagValues(question.keyConcepts) : ['Clinical correlation', 'Diagnostic clue'] },
+    { label: 'Question Category', values: [question.questionCategory || 'Application'] },
+    { label: 'Cognitive Level', values: [question.cognitiveLevel || 'Apply'] },
+    { label: 'Thinking Level', values: [question.thinkingLevel || 'HoT'] },
+    { label: 'Difficulty Level', values: [question.difficultyLevel || 'L2'] },
+  ].filter((group) => group.values.length)
 }
 
 const buildDomainBadges = (item = {}) => {
@@ -327,6 +393,11 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
   const [studentSortDirection, setStudentSortDirection] = useState('asc')
   const [studentPage, setStudentPage] = useState(1)
   const [selectedPerformanceRow, setSelectedPerformanceRow] = useState(null)
+  const [questionReviewState, setQuestionReviewState] = useState({})
+  const [activeQuestionRemarkId, setActiveQuestionRemarkId] = useState('')
+  const [activeQuestionTagsId, setActiveQuestionTagsId] = useState('')
+  const [selectedQuestionReviewIds, setSelectedQuestionReviewIds] = useState([])
+  const [isQuestionSubmitConfirmOpen, setIsQuestionSubmitConfirmOpen] = useState(false)
   const studentPageSize = 10
   const approvalStudentRows = useMemo(() => {
     if (!approvalRecord) return []
@@ -483,6 +554,14 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
     setStudentPage(1)
   }, [studentSearch, studentSortDirection, studentSortKey, studentStatusFilter])
 
+  useEffect(() => {
+    setQuestionReviewState({})
+    setActiveQuestionRemarkId('')
+    setActiveQuestionTagsId('')
+    setSelectedQuestionReviewIds([])
+    setIsQuestionSubmitConfirmOpen(false)
+  }, [approvalRecord?.activityId])
+
   if (!approvalRecord) {
     return (
       <section className="vx-content approval-view-page">
@@ -508,6 +587,27 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
   const senderDesignation = approvalRecord.senderDesignation ?? ''
   const attemptCount = approvalRecord.attemptCount ?? approvalRecord.attempts ?? approvalRecord.attemptNumber ?? 1
   const showDecisionPanel = String(status).trim().toLowerCase() !== 'published'
+  const questionRows = Array.isArray(approvalRecord.questionRows) ? approvalRecord.questionRows : []
+
+  const setQuestionDecision = (questionId, decision) => {
+    setQuestionReviewState((current) => ({
+      ...current,
+      [questionId]: {
+        ...(current[questionId] ?? {}),
+        decision,
+      },
+    }))
+  }
+
+  const setQuestionRemark = (questionId, remark) => {
+    setQuestionReviewState((current) => ({
+      ...current,
+      [questionId]: {
+        ...(current[questionId] ?? {}),
+        remark,
+      },
+    }))
+  }
 
   const handleApprovalAction = (action) => {
     const nextStatus = action === 'approve' ? 'Approved' : 'Approval Rejected'
@@ -591,6 +691,428 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
     { key: 'result', label: 'Result' },
     { key: 'actions', label: 'Actions', sortable: false },
   ]
+
+  const getQuestionReviewId = (question, index) => question.id ?? `question-${index}`
+  const questionReviewIds = questionRows.map(getQuestionReviewId)
+  const pendingQuestionIds = questionRows
+    .map((question, index) => ({
+      id: getQuestionReviewId(question, index),
+      decision: questionReviewState[getQuestionReviewId(question, index)]?.decision ?? 'Pending',
+    }))
+    .filter((item) => item.decision === 'Pending')
+    .map((item) => item.id)
+  const selectedReviewIds = selectedQuestionReviewIds.filter((id) => questionReviewIds.includes(id))
+  const selectedReviewSet = new Set(selectedReviewIds)
+  const hasAllPendingSelected = pendingQuestionIds.length > 0
+    && pendingQuestionIds.every((id) => selectedReviewSet.has(id))
+  const reviewCounts = questionRows.reduce((summary, question, index) => {
+    const decision = questionReviewState[getQuestionReviewId(question, index)]?.decision ?? 'Pending'
+    return {
+      ...summary,
+      [decision.toLowerCase()]: (summary[decision.toLowerCase()] ?? 0) + 1,
+    }
+  }, { pending: 0, approved: 0, rejected: 0 })
+  const allQuestionsReviewed = questionRows.length > 0 && reviewCounts.pending === 0
+
+  const toggleQuestionReviewSelection = (questionId) => {
+    setSelectedQuestionReviewIds((current) => (
+      current.includes(questionId)
+        ? current.filter((id) => id !== questionId)
+        : [...current, questionId]
+    ))
+  }
+
+  const selectAllPendingQuestionReviews = () => {
+    setSelectedQuestionReviewIds(pendingQuestionIds)
+  }
+
+  const unselectAllQuestionReviews = () => {
+    setSelectedQuestionReviewIds([])
+  }
+
+  const clearQuestionReviewState = () => {
+    setSelectedQuestionReviewIds([])
+    setQuestionReviewState({})
+    setActiveQuestionRemarkId('')
+  }
+
+  const applyBulkQuestionDecision = (decision) => {
+    if (!selectedReviewIds.length) return
+    setQuestionReviewState((current) => selectedReviewIds.reduce((next, questionId) => ({
+      ...next,
+      [questionId]: {
+        ...(next[questionId] ?? {}),
+        decision,
+      },
+    }), { ...current }))
+    setSelectedQuestionReviewIds([])
+  }
+
+  const submitQuestionBankReview = () => {
+    if (!allQuestionsReviewed) return
+    const hasRejected = questionRows.some((question, index) => (
+      questionReviewState[getQuestionReviewId(question, index)]?.decision === 'Rejected'
+    ))
+    const nextStatus = hasRejected ? 'Approval Rejected' : 'Approved'
+    const reviewedQuestions = questionRows.map((question, index) => {
+      const questionId = getQuestionReviewId(question, index)
+      const reviewState = questionReviewState[questionId] ?? {}
+
+      return {
+        ...question,
+        reviewStatus: reviewState.decision ?? 'Pending',
+        reviewRemarks: reviewState.remark ?? '',
+      }
+    })
+    const questionBankResults = reviewedQuestions.map((question) => ({
+      questionId: question.id,
+      status: question.reviewStatus,
+      remarks: question.reviewRemarks,
+      activityId: approvalRecord.activityId,
+      reviewedAt: new Date().toISOString(),
+    }))
+
+    if (typeof window !== 'undefined') {
+      try {
+        const currentResults = JSON.parse(window.localStorage.getItem(QUESTION_BANK_REVIEW_RESULTS_KEY) ?? '[]')
+        const mergedResults = [
+          ...(Array.isArray(currentResults) ? currentResults : []).filter((result) => (
+            !questionBankResults.some((item) => item.questionId === result.questionId)
+          )),
+          ...questionBankResults,
+        ]
+        window.localStorage.setItem(QUESTION_BANK_REVIEW_RESULTS_KEY, JSON.stringify(mergedResults))
+        window.dispatchEvent(new Event('question-bank-review-results'))
+      } catch {
+        window.localStorage.setItem(QUESTION_BANK_REVIEW_RESULTS_KEY, JSON.stringify(questionBankResults))
+        window.dispatchEvent(new Event('question-bank-review-results'))
+      }
+    }
+
+    onApprovalAction?.({
+      ...approvalRecord,
+      status: nextStatus,
+      approvalStatus: nextStatus,
+      reviewStatus: nextStatus,
+      questionRows: reviewedQuestions,
+      reviewedAt: new Date().toISOString(),
+    })
+    setIsQuestionSubmitConfirmOpen(false)
+  }
+  const questionSubmitConfirmModal = isQuestionSubmitConfirmOpen ? (
+    <div className="approval-view-qb-confirm" role="dialog" aria-modal="true" aria-labelledby="question-bank-submit-review-title">
+      <button
+        type="button"
+        className="approval-view-qb-confirm-backdrop"
+        onClick={() => setIsQuestionSubmitConfirmOpen(false)}
+        aria-label="Cancel submit review"
+      />
+      <div className="approval-view-qb-confirm-card">
+        <div className="approval-view-qb-confirm-copy">
+          <h2 id="question-bank-submit-review-title">Submit Review</h2>
+          <p>Your decisions are ready to send for this Question Bank.</p>
+          <div className="approval-view-qb-confirm-summary" aria-label="Review summary">
+            <span className="is-approved">
+              <BadgeCheck size={14} strokeWidth={2.1} />
+              <strong>{reviewCounts.approved ?? 0}</strong>
+              Approved
+            </span>
+            <span className="is-rejected">
+              <XCircle size={14} strokeWidth={2.1} />
+              <strong>{reviewCounts.rejected ?? 0}</strong>
+              Rejected
+            </span>
+          </div>
+        </div>
+        <div className="approval-view-qb-confirm-actions">
+          <button
+            type="button"
+            className="approval-view-qb-toolbar-btn"
+            onClick={() => setIsQuestionSubmitConfirmOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="approval-view-qb-toolbar-btn is-submit"
+            onClick={submitQuestionBankReview}
+          >
+            <Send size={14} strokeWidth={2.1} />
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
+  if (isQuestionBankRecord(approvalRecord)) {
+    return (
+      <section className="vx-content approval-view-page approval-view-question-bank-page">
+        <div className="approval-view-shell">
+          <header className="approval-view-header approval-view-qb-header">
+            <button type="button" className="approval-view-back" onClick={onBack} aria-label="Back to approval queue">
+              <ChevronLeft size={19} strokeWidth={2.2} />
+            </button>
+            <div className="approval-view-title approval-view-qb-title">
+              <div className="approval-view-meta-row">
+                <span className={`approval-view-activity-pill ${getActivityToneClass(activityType)}`}>Question Bank</span>
+                <span className="approval-view-status-pill">{status}</span>
+                {approvalRecord.note ? (
+                  <span className="approval-view-qb-note-pill" title={approvalRecord.note}>
+                    <strong>Note</strong>
+                    {approvalRecord.note}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <div className="approval-view-info-actions">
+              <InfoTooltipButton
+                id="sender"
+                icon={Info}
+                label="View created by details"
+                title="Created By"
+                activeTooltipId={activeTooltipId}
+                onToggle={setActiveTooltipId}
+                items={[
+                  { label: 'Name', value: senderName },
+                  { label: 'ID', value: senderId },
+                  { label: 'Designation', value: senderDesignation },
+                  { label: 'Sent date and time', value: receivedAt },
+                ]}
+              />
+            </div>
+          </header>
+
+          <section className="approval-view-qb-review-toolbar" aria-label="Question review actions">
+            <div className="approval-view-qb-review-counts">
+              <span className="is-pending">Pending <strong>{reviewCounts.pending ?? 0}</strong></span>
+              <span className="is-approved">Approved <strong>{reviewCounts.approved ?? 0}</strong></span>
+              <span className="is-rejected">Rejected <strong>{reviewCounts.rejected ?? 0}</strong></span>
+            </div>
+            <div className="approval-view-qb-review-buttons">
+              <button
+                type="button"
+                className="approval-view-qb-toolbar-btn"
+                onClick={hasAllPendingSelected ? unselectAllQuestionReviews : selectAllPendingQuestionReviews}
+                disabled={!pendingQuestionIds.length}
+              >
+                {hasAllPendingSelected ? <X size={14} strokeWidth={2.1} /> : <CheckCheck size={14} strokeWidth={2.1} />}
+                {hasAllPendingSelected ? 'Unselect All' : 'Select All'}
+              </button>
+              <button
+                type="button"
+                className="approval-view-qb-toolbar-btn"
+                onClick={clearQuestionReviewState}
+              >
+                <X size={14} strokeWidth={2.1} />
+                Clear
+              </button>
+              <button
+                type="button"
+                className="approval-view-qb-toolbar-btn is-reject"
+                onClick={() => applyBulkQuestionDecision('Rejected')}
+                disabled={!selectedReviewIds.length}
+              >
+                <XCircle size={14} strokeWidth={2.1} />
+                Reject Selected
+              </button>
+              <button
+                type="button"
+                className="approval-view-qb-toolbar-btn is-approve"
+                onClick={() => applyBulkQuestionDecision('Approved')}
+                disabled={!selectedReviewIds.length}
+              >
+                <BadgeCheck size={14} strokeWidth={2.1} />
+                Approve Selected
+              </button>
+              <button
+                type="button"
+                className="approval-view-qb-toolbar-btn is-submit"
+                onClick={() => setIsQuestionSubmitConfirmOpen(true)}
+                disabled={!allQuestionsReviewed}
+              >
+                <Send size={14} strokeWidth={2.1} />
+                Submit Review
+              </button>
+            </div>
+          </section>
+
+          <section className="approval-view-qb-list" aria-label="Questions sent for approval">
+            {questionRows.map((question, index) => {
+              const questionId = question.id ?? `question-${index}`
+              const reviewState = questionReviewState[questionId] ?? {}
+              const decision = reviewState.decision ?? 'Pending'
+              const remarkValue = reviewState.remark ?? ''
+              const isRemarkOpen = activeQuestionRemarkId === questionId
+              const optionRows = Array.isArray(question.options) ? question.options : []
+              const imageRows = Array.isArray(question.images) ? question.images : []
+              const tagGroups = getQuestionTooltipGroups(question)
+              const isTagsOpen = activeQuestionTagsId === questionId
+              const assessmentBadges = getQuestionAssessmentBadges(question)
+              const isQuestionSelected = selectedReviewSet.has(questionId)
+
+              return (
+                <article key={questionId} className={`approval-view-qb-question-card is-${String(decision).toLowerCase()} ${isQuestionSelected ? 'is-selected' : ''}`}>
+                  <div className="approval-view-qb-question-head">
+                    <div className="approval-view-qb-question-head-left">
+                      <button
+                        type="button"
+                        className={`approval-view-qb-select-btn ${isQuestionSelected ? 'is-selected' : ''}`}
+                        onClick={() => toggleQuestionReviewSelection(questionId)}
+                        aria-pressed={isQuestionSelected}
+                        aria-label={`${isQuestionSelected ? 'Unselect' : 'Select'} question ${question.questionNumber ?? index + 1}`}
+                      >
+                        {isQuestionSelected ? <SquareCheckBig size={16} strokeWidth={2.2} /> : <Square size={16} strokeWidth={2.2} />}
+                      </button>
+                      <div className="approval-view-qb-question-badges">
+                        <span className="approval-view-qb-pill is-type">{question.type ?? 'Question'}</span>
+                        <span className={`approval-view-qb-pill is-revision ${String(question.revisionStatus ?? 'Created').toLowerCase()}`}>
+                          {question.revisionStatus ?? 'Created'}
+                        </span>
+                        {assessmentBadges.map((badge) => (
+                          <span key={badge} className="approval-view-qb-pill">{badge}</span>
+                        ))}
+                        {question.marks ? (
+                          <span className="approval-view-qb-pill">
+                            {question.marks} mark{String(question.marks) === '1' ? '' : 's'}
+                          </span>
+                        ) : null}
+                        {question.isCritical ? <span className="approval-view-qb-pill is-critical">Critical</span> : null}
+                        <span className="approval-view-qb-tags-wrap">
+                          <button
+                            type="button"
+                            className="approval-view-qb-pill approval-view-qb-tags-btn"
+                            onClick={() => setActiveQuestionTagsId(isTagsOpen ? '' : questionId)}
+                            aria-expanded={isTagsOpen}
+                          >
+                            <Info size={12} strokeWidth={2.2} />
+                            View tags
+                          </button>
+                          {isTagsOpen ? (
+                            <span className="approval-view-qb-tags-popover" role="tooltip">
+                              {tagGroups.length ? (
+                                tagGroups.map((group) => (
+                                  <span key={group.label} className="approval-view-qb-tags-group">
+                                    <strong>{group.label}</strong>
+                                    <span>
+                                      {group.values.map((value) => (
+                                        <span key={value}>{value}</span>
+                                      ))}
+                                    </span>
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="approval-view-qb-tags-empty">No optional tags added.</span>
+                              )}
+                            </span>
+                          ) : null}
+                        </span>
+                      </div>
+                    </div>
+                    <span className={`approval-view-qb-decision is-${String(decision).toLowerCase()}`}>{decision}</span>
+                  </div>
+
+                  <div className="approval-view-qb-question-body">
+                    <div className="approval-view-qb-question-title">
+                      <strong>Q{question.questionNumber ?? index + 1}.</strong>
+                      {question.questionText ? (
+                        <RichQuestionContent html={question.questionText} fallback={question.title || 'Untitled question'} />
+                      ) : (
+                        <span>{question.title || 'Untitled question'}</span>
+                      )}
+                    </div>
+                    <div className="approval-view-qb-path">
+                      {[question.year, question.subject, ...(question.topics ?? []), ...(question.competencies ?? [])]
+                        .filter(Boolean)
+                        .join(' / ') || 'Curriculum not selected'}
+                    </div>
+
+                    {imageRows.length ? (
+                      <div className="approval-view-qb-images" aria-label="Question images">
+                        {imageRows.map((image, imageIndex) => (
+                          <figure key={image.id ?? `${questionId}-image-${imageIndex}`} className="approval-view-qb-image">
+                            <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
+                            <figcaption>{String.fromCharCode(65 + imageIndex)}</figcaption>
+                          </figure>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {optionRows.length ? (
+                      <div className="approval-view-qb-options">
+                        {optionRows.map((option, optionIndex) => {
+                          const optionLabel = String.fromCharCode(65 + optionIndex)
+                          const isCorrect = (question.correctOptionIds ?? []).includes(option.id)
+
+                          return (
+                            <div key={option.id ?? `${questionId}-option-${optionIndex}`} className={`approval-view-qb-option ${isCorrect ? 'is-correct' : ''}`}>
+                              <span>{optionLabel}.</span>
+                              <RichQuestionContent html={option.content ?? option.label} fallback={`Option ${optionLabel}`} />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+
+                    {question.answerKey ? (
+                      <div className="approval-view-qb-answer">
+                        <strong>Answer & Explanation</strong>
+                        <RichQuestionContent html={question.answerKey} />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="approval-view-qb-actions">
+                    <div className="approval-view-qb-remark-wrap">
+                      <button
+                        type="button"
+                        className={`approval-view-qb-remark-btn ${remarkValue ? 'has-remark' : ''}`}
+                        onClick={() => setActiveQuestionRemarkId(isRemarkOpen ? '' : questionId)}
+                        aria-expanded={isRemarkOpen}
+                      >
+                        <MessageSquareText size={15} strokeWidth={2.1} />
+                        Remarks
+                      </button>
+                      {isRemarkOpen ? (
+                        <div className="approval-view-qb-remark-popover" role="tooltip">
+                          <label>
+                            <span>Comment</span>
+                            <textarea
+                              value={remarkValue}
+                              onChange={(event) => setQuestionRemark(questionId, event.target.value)}
+                              placeholder="Add comment for this question"
+                              rows={4}
+                            />
+                          </label>
+                        </div>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      className={`approval-view-qb-action-btn is-reject ${decision === 'Rejected' ? 'is-active' : ''}`}
+                      onClick={() => setQuestionDecision(questionId, 'Rejected')}
+                    >
+                      <XCircle size={15} strokeWidth={2.1} />
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      className={`approval-view-qb-action-btn is-approve ${decision === 'Approved' ? 'is-active' : ''}`}
+                      onClick={() => setQuestionDecision(questionId, 'Approved')}
+                    >
+                      <BadgeCheck size={15} strokeWidth={2.1} />
+                      Approve
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </section>
+          {questionSubmitConfirmModal ? createPortal(questionSubmitConfirmModal, document.body) : null}
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="vx-content approval-view-page">
