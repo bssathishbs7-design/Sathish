@@ -229,6 +229,7 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   isCritical: false,
   status: 'Editing',
   revisionStatus: 'Created',
+  editCount: 0,
 })
 
 const readStoredQuestionBankQuestions = () => {
@@ -744,8 +745,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
   const [approvalNote, setApprovalNote] = useState('')
   const [selectedApprovalReviewerIndex, setSelectedApprovalReviewerIndex] = useState(0)
+  const [pendingEditQuestionId, setPendingEditQuestionId] = useState(null)
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
+  const pendingEditQuestion = questions.find((item) => item.id === pendingEditQuestionId) ?? null
   const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
   const draftQuestionCards = questions.filter((item) => item.status === 'Draft')
   const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status))
@@ -929,6 +932,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
         ? {
           ...(typeof updater === 'function' ? updater(item) : { ...item, ...updater }),
           revisionStatus: item.status === 'Created' ? 'Edited' : item.revisionStatus,
+          editCount: item.status === 'Created' ? Math.max(Number(item.editCount ?? item.revisionCount ?? 1) || 1, 1) : item.editCount,
         }
         : item
     )))
@@ -945,6 +949,49 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     setActiveQuestionTab('create')
     setSelectedQuestionTypeLabel(typeMeta.shortLabel)
     setIsQuestionTypePickerOpen(false)
+  }
+
+  const openEditQuestionFlow = (questionId) => {
+    setOpenCreatedTagsId(null)
+    const question = questions.find((item) => item.id === questionId)
+    if (question?.status === 'Approval Rejected') {
+      startEditQuestionFlow(question)
+      return
+    }
+    setPendingEditQuestionId(questionId)
+  }
+
+  const cancelEditQuestionFlow = () => {
+    setPendingEditQuestionId(null)
+  }
+
+  const startEditQuestionFlow = (questionToEdit = pendingEditQuestion) => {
+    if (!questionToEdit) return
+
+    const questionId = questionToEdit.id
+    const typeMeta = getQuestionTypeMeta(questionToEdit.type)
+    const isRejectedQuestion = questionToEdit.status === 'Approval Rejected'
+
+    setQuestions((current) => current.map((item) => (
+      item.id === questionId
+        ? {
+          ...item,
+          status: 'Draft',
+          revisionStatus: isRejectedQuestion ? 'Created' : 'Edited',
+          editCount: isRejectedQuestion ? 0 : Number(item.editCount ?? item.revisionCount ?? 0) + 1,
+          approvalReviewRemarks: '',
+          approvalReviewedAt: '',
+        }
+        : item
+    )))
+    setSelectedQuestionId(questionId)
+    setActiveQuestionTab('create')
+    setSelectedQuestionTypeLabel(typeMeta.shortLabel)
+    setPendingEditQuestionId(null)
+    setIsQuestionTypePickerOpen(false)
+    setIsApprovalSelectMode(false)
+    setApprovalSelectedIds((current) => current.filter((id) => id !== questionId))
+    onAlert?.({ tone: 'secondary', message: `${typeMeta.shortLabel} loaded for editing.` })
   }
 
   const handleAddHierarchyNode = (level) => {
@@ -1036,6 +1083,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     const questionChangeStatus = selectedQuestions.some((question) => question.revisionStatus === 'Edited')
       ? 'Edited'
       : 'Created'
+    const questionEditedCount = selectedQuestions.reduce((total, question) => (
+      total + (question.revisionStatus === 'Edited' ? Math.max(Number(question.editCount ?? question.revisionCount ?? 1) || 1, 1) : 0)
+    ), 0)
 
     onSendToApproval?.({
       activityId: approvalId,
@@ -1051,6 +1101,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       questionTypeSummaryText,
       questionRevisionStatus: questionChangeStatus,
       questionChangeStatus,
+      questionEditCount: questionEditedCount,
       year: yearValues.length === 1 ? yearValues[0] : yearValues.length ? `${yearValues.length} years` : 'Question Bank',
       sgt: subjectValues.length === 1 ? subjectValues[0] : subjectValues.length ? `${subjectValues.length} subjects` : 'Questions',
       facultyName: selectedApprovalReviewer.facultyName,
@@ -1068,6 +1119,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
         competencies: question.competencies,
         isCritical: question.isCritical,
         revisionStatus: question.revisionStatus || 'Created',
+        editCount: question.editCount ?? question.revisionCount ?? 0,
         marks: question.marks,
         questionCategory: question.questionCategory,
         cognitiveLevel: question.cognitiveLevel,
@@ -1129,7 +1181,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               ...item,
               title: getQuestionPreview(item).slice(0, 60) || item.title,
               status: 'Created',
-              revisionStatus: 'Edited',
+              revisionStatus: item.revisionStatus === 'Edited' ? 'Edited' : 'Created',
               approvalReviewRemarks: '',
               approvalReviewedAt: '',
             }
@@ -1445,7 +1497,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
         <span className="question-bank-type-picker-icon">
           <ListChecks size={15} strokeWidth={2} />
         </span>
-        <strong>{selectedQuestionTypeLabel || 'Select Question Type'}</strong>
+        <strong>{selectedQuestion ? getQuestionTypeMeta(selectedQuestion.type).shortLabel : selectedQuestionTypeLabel || 'Select Question Type'}</strong>
         <ChevronDown size={16} strokeWidth={2.4} />
       </button>
 
@@ -2378,6 +2430,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         const typeMeta = getQuestionTypeMeta(question.type)
                         const optionalTagGroups = getQuestionOptionalTagGroups(question)
                         const isLockedApprovalCard = ['Sent to Approval', 'Approved'].includes(status)
+                        const canStartCardEdit = ['Approved', 'Approval Rejected'].includes(status)
                         const shouldShowQuestionDetails = ['Created', 'Sent to Approval', 'Approved', 'Approval Rejected'].includes(status)
                         const curriculumMeta = [
                           question.year,
@@ -2576,18 +2629,33 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                               </span>
                             </div>
 
-                            {!isLockedApprovalCard ? (
-                              <button
-                                type="button"
-                                className="question-bank-icon-btn"
-                                onClick={() => {
-                                  setOpenCreatedTagsId(null)
-                                  handleDeleteQuestionById(question.id)
-                                }}
-                                aria-label="Delete question"
-                              >
-                                <Trash2 size={14} strokeWidth={2} />
-                              </button>
+                            {canStartCardEdit || !isLockedApprovalCard ? (
+                              <span className="question-bank-created-card-actions">
+                                {canStartCardEdit ? (
+                                  <button
+                                    type="button"
+                                    className="question-bank-icon-btn"
+                                    onClick={() => openEditQuestionFlow(question.id)}
+                                    aria-label="Edit question"
+                                    title="Edit question"
+                                  >
+                                    <FilePenLine size={14} strokeWidth={2} />
+                                  </button>
+                                ) : null}
+                                {!isLockedApprovalCard ? (
+                                  <button
+                                    type="button"
+                                    className="question-bank-icon-btn"
+                                    onClick={() => {
+                                      setOpenCreatedTagsId(null)
+                                      handleDeleteQuestionById(question.id)
+                                    }}
+                                    aria-label="Delete question"
+                                  >
+                                    <Trash2 size={14} strokeWidth={2} />
+                                  </button>
+                                ) : null}
+                              </span>
                             ) : null}
                           </article>
                         )
@@ -2813,6 +2881,53 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               <button type="button" className="question-bank-primary-btn" onClick={confirmSendSelectedQuestionsToApproval}>
                 <Send size={15} strokeWidth={2.2} />
                 Send
+              </button>
+            </div>
+          </div>
+        </div>
+      ), document.body) : null}
+
+      {pendingEditQuestion && typeof document !== 'undefined' ? createPortal((
+        <div className="question-bank-approval-modal question-bank-edit-modal" role="dialog" aria-modal="true" aria-labelledby="question-bank-edit-title">
+          <button
+            type="button"
+            className="question-bank-approval-modal-backdrop"
+            onClick={cancelEditQuestionFlow}
+            aria-label="Close edit question"
+          />
+          <div className="question-bank-approval-modal-card">
+            <div className="question-bank-approval-modal-head">
+              <div>
+                <h2 id="question-bank-edit-title">Edit Question</h2>
+                <p>{getQuestionTypeMeta(pendingEditQuestion.type).shortLabel} details will be loaded in Create Question.</p>
+              </div>
+              <button
+                type="button"
+                className="question-bank-icon-btn"
+                onClick={cancelEditQuestionFlow}
+                aria-label="Close edit question"
+              >
+                <X size={17} strokeWidth={2.2} />
+              </button>
+            </div>
+
+            <div className="question-bank-edit-modal-body">
+              <span className="question-bank-badge type">{getQuestionTypeMeta(pendingEditQuestion.type).shortLabel}</span>
+              <div className="question-bank-edit-flow-list">
+                <span><Check size={13} strokeWidth={2.4} /> Open Create Question tab</span>
+                <span><Check size={13} strokeWidth={2.4} /> Fetch question type and saved details</span>
+                <span><Check size={13} strokeWidth={2.4} /> Edit the question, options, answer key, tags, and curriculum mapping</span>
+                <span><Check size={13} strokeWidth={2.4} /> Save or update, then send again for approval when ready</span>
+              </div>
+            </div>
+
+            <div className="question-bank-approval-modal-actions">
+              <button type="button" className="question-bank-secondary-btn" onClick={cancelEditQuestionFlow}>
+                Cancel
+              </button>
+              <button type="button" className="question-bank-primary-btn" onClick={startEditQuestionFlow}>
+                <FilePenLine size={15} strokeWidth={2.2} />
+                Start to Edit
               </button>
             </div>
           </div>

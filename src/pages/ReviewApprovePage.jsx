@@ -82,6 +82,19 @@ const getActivityMeta = (row) => ({
 
 const isQuestionBankRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'question bank'
 
+const getQuestionEditCount = (question) => {
+  const explicitCount = Number(question?.editCount ?? question?.revisionCount ?? 0)
+  if (explicitCount > 0) return explicitCount
+  return String(question?.revisionStatus ?? '').trim().toLowerCase() === 'edited' ? 1 : 0
+}
+
+const getQuestionBankEditCount = (row) => {
+  const explicitCount = Number(row.questionEditCount ?? row.questionEditedCount ?? 0)
+  if (explicitCount > 0) return explicitCount
+
+  return (row.questionRows ?? []).reduce((total, question) => total + getQuestionEditCount(question), 0)
+}
+
 const getQuestionTypeSummaryText = (row) => {
   if (row.questionTypeSummaryText) return row.questionTypeSummaryText
 
@@ -137,6 +150,10 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
   if (isQuestionBankRow(row)) {
     const questionRevisionStatus = getQuestionRevisionStatus(row)
     const revisionTone = questionRevisionStatus.toLowerCase()
+    const questionEditCount = getQuestionBankEditCount(row)
+    const questionRevisionLabel = questionRevisionStatus.toLowerCase() === 'edited' && questionEditCount
+      ? `Edited ${questionEditCount}`
+      : questionRevisionStatus
     const totalQuestions = Number(row.totalQuestions ?? row.questionRows?.length ?? row.totalStudents ?? 0) || 0
     const questionTypeItems = getQuestionTypeSummaryItems(row)
 
@@ -145,7 +162,7 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
         <div className="review-approve-card-top">
           <div className="review-approve-card-topline">
             <span className={`review-approve-type-chip ${getActivityToneClass(activityType)}`}>{activityType}</span>
-            <span className={`review-approve-question-state is-${revisionTone}`}>{questionRevisionStatus}</span>
+            <span className={`review-approve-question-state is-${revisionTone}`}>{questionRevisionLabel}</span>
           </div>
         </div>
 

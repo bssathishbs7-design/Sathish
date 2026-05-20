@@ -49,6 +49,21 @@ const getActivityToneClass = (value = '') => String(value).trim().toLowerCase().
 
 const isQuestionBankRecord = (record) => String(record?.activityType ?? '').trim().toLowerCase() === 'question bank'
 
+const getQuestionEditCount = (question) => {
+  const explicitCount = Number(question?.editCount ?? question?.revisionCount ?? 0)
+  if (explicitCount > 0) return explicitCount
+  return String(question?.revisionStatus ?? '').trim().toLowerCase() === 'edited' ? 1 : 0
+}
+
+const getQuestionRevisionLabel = (question) => {
+  const revisionStatus = question?.revisionStatus ?? 'Created'
+  const editCount = getQuestionEditCount(question)
+
+  return String(revisionStatus).trim().toLowerCase() === 'edited' && editCount
+    ? `Edited ${editCount}`
+    : revisionStatus
+}
+
 const formatPercent = (value) => `${Number(value ?? 0).toFixed(1).replace(/\.0$/, '')}%`
 
 const formatMarks = (value) => {
@@ -967,7 +982,7 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
                       <div className="approval-view-qb-question-badges">
                         <span className="approval-view-qb-pill is-type">{question.type ?? 'Question'}</span>
                         <span className={`approval-view-qb-pill is-revision ${String(question.revisionStatus ?? 'Created').toLowerCase()}`}>
-                          {question.revisionStatus ?? 'Created'}
+                          {getQuestionRevisionLabel(question)}
                         </span>
                         {assessmentBadges.map((badge) => (
                           <span key={badge} className="approval-view-qb-pill">{badge}</span>
