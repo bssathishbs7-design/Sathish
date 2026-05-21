@@ -217,7 +217,8 @@
   margin-top: 4px;
 }
 
-.assessment-page-question-options span {
+.assessment-page-question-options > span {
+  position: relative;
   display: flex;
   gap: 6px;
   align-items: center;
@@ -232,13 +233,76 @@
   line-height: 1.35;
 }
 
-.assessment-page-question-options span.is-correct {
+.assessment-page-question-card:has(.assessment-page-option-distractor-tooltip) {
+  z-index: 20;
+}
+
+.assessment-page-option-distractor {
+  position: relative;
+  display: inline-flex;
+  margin-left: auto;
+}
+
+.assessment-page-option-distractor > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #236073;
+  cursor: pointer;
+}
+
+.assessment-page-option-distractor > button:hover,
+.assessment-page-option-distractor > button:focus-visible {
+  color: #0f766e;
+  outline: none;
+}
+
+.assessment-page-option-distractor-tooltip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 7px);
+  right: 0;
+  display: grid;
+  gap: 6px;
+  min-width: 190px;
+  max-width: 240px;
+  padding: 8px;
+  border: 1px solid #dce8e4;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #17313b;
+  box-shadow: 0 12px 28px rgba(24, 55, 71, 0.14);
+}
+
+.assessment-page-option-distractor-tooltip strong {
+  color: #236073;
+  font-size: 0.7rem;
+}
+
+.assessment-page-option-distractor-tooltip span {
+  min-height: 20px;
+  padding: 3px 7px;
+  border: 1px solid #d6e5df;
+  border-radius: 999px;
+  background: #f8fcfa;
+  color: #405866;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.assessment-page-question-options > span.is-correct {
   border-color: #a9ddc0;
   background: #e9f8ef;
   color: #167246;
 }
 
-.assessment-page-question-options strong {
+.assessment-page-question-options > span > strong {
   color: inherit;
   font-weight: 900;
 }
@@ -429,6 +493,26 @@
   border-color: rgba(94, 116, 145, 0.5);
   background: #132235;
   color: #d9e8f8;
+}
+
+.theme-dark .assessment-page-option-distractor > button {
+  color: #8df0c7;
+}
+
+.theme-dark .assessment-page-option-distractor-tooltip {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: #132235;
+  color: #d9e8f8;
+}
+
+.theme-dark .assessment-page-option-distractor-tooltip strong {
+  color: #8df0c7;
+}
+
+.theme-dark .assessment-page-option-distractor-tooltip span {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: #17263a;
+  color: #eef6ff;
 }
 
 .theme-dark .assessment-page-question-options span.is-correct {

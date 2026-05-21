@@ -141,6 +141,59 @@ const KEY_CONCEPT_OPTIONS = [
   'Pathophysiology',
   'Prevention strategy',
 ]
+const DISTRACTOR_ERROR_GROUPS = [
+  {
+    heading: 'Simple Errors',
+    options: [
+      'Factual Recall Error',
+      'Terminology Confusion',
+      'Misclassification',
+      'Localization/Structural Error',
+      'Visual Recognition Error',
+      'Unit Error',
+      'Outdated Knowledge',
+      'False Association',
+      'Careless Mistake',
+      'Numerical Error',
+      'Language Misinterpretation',
+    ],
+  },
+  {
+    heading: 'Applied Errors',
+    options: [
+      'Mechanism Confusion',
+      'Sequential Ordering Error',
+      'Chronicity/Staging Error',
+      'Spatial Relationship Error',
+      'Concept Gap',
+      'Normalcy Bias',
+      'Misinterpretation',
+      'Cause-Effect Confusion',
+      'Overgeneralization',
+      'Superficial Match',
+      'Data-Concept Mismatch',
+    ],
+  },
+  {
+    heading: 'Complex Errors',
+    options: [
+      'Reasoning Flaw',
+      'Clinical Context Neglect',
+      'Guideline Mismatch',
+      'Misdiagnosis',
+      'Diagnostic Criteria Incompleteness',
+      'Contraindication Oversight',
+      'Wrong Investigation Choice',
+      'Treatment Misjudgment',
+      'Prognosis Misinterpretation',
+      'Cross-Discipline Confusion',
+      'Incomplete Synthesis',
+      'Failure to Prioritize',
+      'Risk/Benefit Miscalculation',
+      'Ethical/Professional Norm Violation',
+    ],
+  },
+]
 const SINGLE_OPTION_MIN_COUNT = 2
 const SINGLE_OPTION_MAX_COUNT = 6
 const MULTIPLE_OPTION_MIN_COUNT = 3
@@ -181,6 +234,7 @@ let imageSequence = 1
 const createOption = (label = '') => ({
   id: `option-${optionSequence++}`,
   label,
+  distractorErrors: [],
 })
 
 const readImageFile = (file) => new Promise((resolve, reject) => {
@@ -383,6 +437,14 @@ const getGeneratedQuestionDraft = (question) => {
   }
 }
 
+const getGeneratedDistractorErrors = (optionIndex) => {
+  if (optionIndex === 0) return []
+  if (optionIndex === 1) return ['Factual Recall Error']
+  if (optionIndex === 2) return ['Superficial Match']
+  if (optionIndex === 3) return ['Mechanism Confusion']
+  return ['Misinterpretation']
+}
+
 const getSubjectsForYear = (year) => Object.keys(CURRICULUM_DIRECTORY[year] ?? SUBJECT_DIRECTORY)
 
 const getSubjectDirectory = (question) => {
@@ -468,6 +530,7 @@ const hasDraftContent = (question) => {
     || !isDefaultOptionalTagOnly(question.diseaseTags)
     || !isDefaultOptionalTagOnly(question.keyConcepts)
     || question.options.some((option) => Boolean(getRichTextPreview(option.label)))
+    || question.options.some((option) => (option.distractorErrors ?? []).length > 0)
     || question.correctOptionIds.length > 0
     || question.fillBlankAnswers.some((answer) => Boolean(getRichTextPreview(answer)))
     || Boolean(getRichTextPreview(question.descriptiveGuide))
@@ -753,9 +816,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const [isProgressWidgetOpen, setIsProgressWidgetOpen] = useState(false)
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
   const [openCreatedTagsId, setOpenCreatedTagsId] = useState(null)
+  const [openDistractorOptionId, setOpenDistractorOptionId] = useState(null)
+  const [openDistractorMenuOptionId, setOpenDistractorMenuOptionId] = useState(null)
+  const [openOptionDistractorPreviewId, setOpenOptionDistractorPreviewId] = useState(null)
   const [previewImage, setPreviewImage] = useState(null)
   const [isCurriculumEditing, setIsCurriculumEditing] = useState(false)
   const [curriculumDraft, setCurriculumDraft] = useState(null)
+  const [isDefaultCurriculumOpen, setIsDefaultCurriculumOpen] = useState(false)
+  const [autoOpenCurriculumQuestionId, setAutoOpenCurriculumQuestionId] = useState(null)
   const [activeQuestionTab, setActiveQuestionTab] = useState('create')
   const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
   const [selectedQuestionTypeLabel, setSelectedQuestionTypeLabel] = useState('')
@@ -902,15 +970,48 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     setGenerationCompleteId(null)
     setIsProgressWidgetOpen(false)
     setIsOptionalTagsOpen(false)
+    setOpenDistractorOptionId(null)
+    setOpenDistractorMenuOptionId(null)
+    setOpenOptionDistractorPreviewId(null)
+    closeMappingPicker()
+    const nextSelectedQuestion = questions.find((item) => item.id === selectedQuestionId)
+    if (selectedQuestionId && nextSelectedQuestion) {
+      setCurriculumDraft({
+        year: nextSelectedQuestion.year,
+        subject: nextSelectedQuestion.subject,
+        topics: [...nextSelectedQuestion.topics],
+        competencies: [...nextSelectedQuestion.competencies],
+      })
+      setIsCurriculumEditing(true)
+      setIsDefaultCurriculumOpen(true)
+      setAutoOpenCurriculumQuestionId(null)
+      return
+    }
     setIsCurriculumEditing(false)
     setCurriculumDraft(null)
-    closeMappingPicker()
+    setIsDefaultCurriculumOpen(false)
   }, [selectedQuestionId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(questions))
   }, [questions])
+
+  useEffect(() => {
+    if (!openDistractorOptionId && !openDistractorMenuOptionId) return undefined
+    if (typeof document === 'undefined') return undefined
+
+    const handleOutsideDistractorClick = (event) => {
+      if (event.target.closest?.('.question-bank-distractor-wrap')) return
+      setOpenDistractorOptionId(null)
+      setOpenDistractorMenuOptionId(null)
+    }
+
+    document.addEventListener('mousedown', handleOutsideDistractorClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideDistractorClick)
+    }
+  }, [openDistractorOptionId, openDistractorMenuOptionId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -975,6 +1076,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     })
     setQuestions((current) => [...current, question])
     setSelectedQuestionId(question.id)
+    setAutoOpenCurriculumQuestionId(question.id)
     setActiveQuestionTab('create')
     setSelectedQuestionTypeLabel(typeMeta.shortLabel)
     setIsQuestionTypePickerOpen(false)
@@ -1317,12 +1419,17 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
         const needsAnswerKey = !getRichTextPreview(item.answerKey)
         const generatedOptions = needsOptions
           ? [
-            createOption(createHtmlBlock('A clinically relevant application')),
-            createOption(createHtmlBlock('An unrelated basic recall point')),
-            createOption(createHtmlBlock('A partially correct distractor')),
-            createOption(createHtmlBlock('A non-specific explanation')),
+            { ...createOption(createHtmlBlock('A clinically relevant application')), distractorErrors: getGeneratedDistractorErrors(0) },
+            { ...createOption(createHtmlBlock('An unrelated basic recall point')), distractorErrors: getGeneratedDistractorErrors(1) },
+            { ...createOption(createHtmlBlock('A partially correct distractor')), distractorErrors: getGeneratedDistractorErrors(2) },
+            { ...createOption(createHtmlBlock('A non-specific explanation')), distractorErrors: getGeneratedDistractorErrors(3) },
           ]
-          : item.options
+          : item.options.map((option, optionIndex) => ({
+            ...option,
+            distractorErrors: (option.distractorErrors ?? []).length
+              ? option.distractorErrors
+              : getGeneratedDistractorErrors(optionIndex),
+          }))
 
         return {
           ...item,
@@ -1400,12 +1507,21 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       competencies: [...selectedQuestion.competencies],
     })
     setIsCurriculumEditing(true)
+    setIsDefaultCurriculumOpen(false)
     closeMappingPicker()
   }
 
   const cancelCurriculumEdit = () => {
-    setIsCurriculumEditing(false)
-    setCurriculumDraft(null)
+    if (selectedQuestion) {
+      setCurriculumDraft({
+        year: selectedQuestion.year,
+        subject: selectedQuestion.subject,
+        topics: [...selectedQuestion.topics],
+        competencies: [...selectedQuestion.competencies],
+      })
+    }
+    setIsCurriculumEditing(true)
+    setIsDefaultCurriculumOpen(true)
     closeMappingPicker()
   }
 
@@ -1417,12 +1533,13 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       topics: [...curriculumDraft.topics],
       competencies: [...curriculumDraft.competencies],
     })
-    setIsCurriculumEditing(false)
-    setCurriculumDraft(null)
+    setIsCurriculumEditing(true)
+    setIsDefaultCurriculumOpen(true)
     closeMappingPicker()
   }
 
   const updateCurriculumDraft = (updater) => {
+    setIsDefaultCurriculumOpen(false)
     setCurriculumDraft((current) => {
       if (!current) return current
       return typeof updater === 'function' ? updater(current) : { ...current, ...updater }
@@ -1513,6 +1630,31 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
         options: [...item.options, createOption('')],
       }
     })
+  }
+
+  const selectOptionDistractorError = (optionId, error) => {
+    updateSelectedQuestion((item) => ({
+      ...item,
+      options: item.options.map((option) => {
+        if (option.id !== optionId) return option
+        return {
+          ...option,
+          distractorErrors: [error],
+        }
+      }),
+    }))
+    setOpenDistractorMenuOptionId(null)
+  }
+
+  const clearOptionDistractorError = (optionId) => {
+    updateSelectedQuestion((item) => ({
+      ...item,
+      options: item.options.map((option) => (
+        option.id === optionId
+          ? { ...option, distractorErrors: [] }
+          : option
+      )),
+    }))
   }
 
   const handleQuestionImagesUpload = async (event) => {
@@ -1748,20 +1890,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                   <div className="question-bank-author-grid">
                     <div className="question-bank-author-main">
                       <section className="question-bank-curriculum-panel">
-                        {!isCurriculumEditing ? (
-                          <div className="question-bank-curriculum-summary-line" title={getCurriculumStatusLabel(selectedQuestion)}>
-                            <span>{getCurriculumStatusLabel(selectedQuestion)}</span>
-                            <button
-                              type="button"
-                              className="question-bank-curriculum-edit-link"
-                              onClick={startCurriculumEdit}
-                              aria-label={`Edit curriculum mapping: ${getCurriculumStatusLabel(selectedQuestion)}`}
-                            >
-                              <FilePenLine size={13} strokeWidth={2.2} />
-                              Edit Curriculum
-                            </button>
-                          </div>
-                        ) : (
+                        {isCurriculumEditing ? (
                           <div className="question-bank-curriculum-edit-card">
                             <div className="question-bank-curriculum-grid">
                               <div className="question-bank-field">
@@ -1846,16 +1975,18 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                   : 'Select topics first or try another competency keyword.'}
                               />
                             ) : null}
-                            <div className="question-bank-curriculum-actions">
-                              <button type="button" className="question-bank-secondary-btn" onClick={cancelCurriculumEdit}>
-                                Cancel
-                              </button>
-                              <button type="button" className="question-bank-primary-btn" onClick={applyCurriculumEdit}>
-                                Apply
-                              </button>
-                            </div>
+                            {!isDefaultCurriculumOpen ? (
+                              <div className="question-bank-curriculum-actions">
+                                <button type="button" className="question-bank-secondary-btn" onClick={cancelCurriculumEdit}>
+                                  Cancel
+                                </button>
+                                <button type="button" className="question-bank-primary-btn" onClick={applyCurriculumEdit}>
+                                  Apply
+                                </button>
+                              </div>
+                            ) : null}
                           </div>
-                        )}
+                        ) : null}
                       </section>
 
                       <section className="question-bank-soft-panel question-bank-answer-panel">
@@ -2046,6 +2177,76 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                   ariaLabel={`Option ${String.fromCharCode(65 + index)}`}
                                 />
                                 <div className="question-bank-choice-actions">
+                                  <span className="question-bank-distractor-wrap">
+                                    <button
+                                      type="button"
+                                      className={`question-bank-icon-btn question-bank-distractor-trigger ${(option.distractorErrors ?? []).length ? 'has-selection' : ''}`}
+                                      onClick={() => {
+                                        setOpenDistractorOptionId((current) => (current === option.id ? null : option.id))
+                                        setOpenDistractorMenuOptionId(null)
+                                      }}
+                                      aria-label={`Distractor errors for option ${String.fromCharCode(65 + index)}`}
+                                      aria-expanded={openDistractorOptionId === option.id}
+                                      title="Distractor Error"
+                                    >
+                                      <Info size={14} strokeWidth={2.2} />
+                                    </button>
+                                    {openDistractorOptionId === option.id ? (
+                                      <span className="question-bank-distractor-popover" role="tooltip">
+                                        <strong className="question-bank-distractor-title">Distractor Error</strong>
+                                        {(option.distractorErrors ?? []).length ? (
+                                          <button
+                                            type="button"
+                                            className="question-bank-distractor-clear"
+                                            onClick={() => clearOptionDistractorError(option.id)}
+                                          >
+                                            Clear selected
+                                            <X size={11} strokeWidth={2.3} />
+                                          </button>
+                                        ) : null}
+                                        <span className="question-bank-distractor-dropdown">
+                                          <button
+                                            type="button"
+                                            className="question-bank-distractor-dropdown-trigger"
+                                            onClick={() => {
+                                              setOpenDistractorMenuOptionId((current) => (current === option.id ? null : option.id))
+                                            }}
+                                            aria-expanded={openDistractorMenuOptionId === option.id}
+                                          >
+                                            <span>{(option.distractorErrors ?? [])[0] ?? 'Select distractor error'}</span>
+                                            <ChevronDown size={14} strokeWidth={2.2} />
+                                          </button>
+                                              {openDistractorMenuOptionId === option.id ? (
+                                            <span className="question-bank-distractor-menu">
+                                              <span className="question-bank-distractor-menu-list">
+                                                {DISTRACTOR_ERROR_GROUPS.map((group) => (
+                                                  <span key={group.heading} className="question-bank-distractor-group">
+                                                    <strong>{group.heading}</strong>
+                                                    <span>
+                                                      {group.options.map((error) => {
+                                                        const isSelected = (option.distractorErrors ?? []).includes(error)
+                                                        return (
+                                                          <button
+                                                            key={error}
+                                                            type="button"
+                                                            className={isSelected ? 'is-active' : ''}
+                                                            onClick={() => selectOptionDistractorError(option.id, error)}
+                                                          >
+                                                            <span>{isSelected ? <Check size={12} strokeWidth={2.4} /> : null}</span>
+                                                            {error}
+                                                          </button>
+                                                        )
+                                                      })}
+                                                    </span>
+                                                  </span>
+                                                ))}
+                                              </span>
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                      </span>
+                                    ) : null}
+                                  </span>
                                   {!isMandatoryOption ? (
                                     <button
                                       type="button"
@@ -2769,14 +2970,41 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                       <span className="question-bank-created-options">
                                         {question.options
                                           .filter((option) => Boolean(getRichTextPreview(option.label)))
-                                          .map((option, optionIndex) => (
-                                            <b
-                                              key={option.id}
-                                              className={question.correctOptionIds.includes(option.id) ? 'is-correct' : ''}
-                                            >
-                                              {String.fromCharCode(65 + optionIndex)}. {getRichTextPreview(option.label)}
-                                            </b>
-                                          ))}
+                                          .map((option, optionIndex) => {
+                                            const optionPreviewId = `${question.id}-${option.id}`
+
+                                            return (
+                                              <b
+                                                key={option.id}
+                                                className={question.correctOptionIds.includes(option.id) ? 'is-correct' : ''}
+                                              >
+                                                {String.fromCharCode(65 + optionIndex)}. {getRichTextPreview(option.label)}
+                                                <span className="question-bank-option-distractor-preview">
+                                                  <button
+                                                    type="button"
+                                                    onClick={(event) => {
+                                                      event.stopPropagation()
+                                                      setOpenOptionDistractorPreviewId((current) => (current === optionPreviewId ? null : optionPreviewId))
+                                                    }}
+                                                    aria-expanded={openOptionDistractorPreviewId === optionPreviewId}
+                                                    aria-label={`View distractor errors for option ${String.fromCharCode(65 + optionIndex)}`}
+                                                  >
+                                                    <Info size={12} strokeWidth={2.2} />
+                                                  </button>
+                                                  {openOptionDistractorPreviewId === optionPreviewId ? (
+                                                    <span className="question-bank-option-distractor-tooltip" role="tooltip">
+                                                      <strong>Distractor Error</strong>
+                                                      {(option.distractorErrors ?? []).length ? (
+                                                        <span>{option.distractorErrors[0]}</span>
+                                                      ) : (
+                                                        <span>No distractor error selected</span>
+                                                      )}
+                                                    </span>
+                                                  ) : null}
+                                                </span>
+                                              </b>
+                                            )
+                                          })}
                                       </span>
                                     ) : null}
                                     {getRichTextPreview(question.answerKey) ? (

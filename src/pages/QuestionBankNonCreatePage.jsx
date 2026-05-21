@@ -70,6 +70,7 @@ const nonCreateHighlights = [
 export default function QuestionBankNonCreatePage() {
   const [publishedQuestions, setPublishedQuestions] = useState(() => readPublishedQuestions())
   const [activeTagsId, setActiveTagsId] = useState('')
+  const [activeOptionDistractorId, setActiveOptionDistractorId] = useState('')
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -175,11 +176,28 @@ export default function QuestionBankNonCreatePage() {
                         .map((option, optionIndex) => {
                           const optionLabel = String.fromCharCode(65 + optionIndex)
                           const isCorrect = (question.correctOptionIds ?? []).includes(option.id)
+                          const optionPreviewId = `${questionId}-${option.id ?? optionIndex}`
 
                           return (
                             <span key={option.id ?? `${questionId}-option-${optionIndex}`} className={isCorrect ? 'is-correct' : ''}>
                               <strong>{optionLabel}.</strong>
                               {stripHtml(option.label ?? option.content)}
+                              <span className="assessment-page-option-distractor">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveOptionDistractorId((current) => (current === optionPreviewId ? '' : optionPreviewId))}
+                                  aria-expanded={activeOptionDistractorId === optionPreviewId}
+                                  aria-label={`View distractor errors for option ${optionLabel}`}
+                                >
+                                  <Info size={12} strokeWidth={2.2} />
+                                </button>
+                                {activeOptionDistractorId === optionPreviewId ? (
+                                  <span className="assessment-page-option-distractor-tooltip" role="tooltip">
+                                    <strong>Distractor Error</strong>
+                                    <span>{(option.distractorErrors ?? [])[0] ?? 'No distractor error selected'}</span>
+                                  </span>
+                                ) : null}
+                              </span>
                             </span>
                           )
                         })}
