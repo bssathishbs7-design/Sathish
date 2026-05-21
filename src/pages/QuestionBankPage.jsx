@@ -1673,7 +1673,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'created'}
             >
-              Created Questions
+              Created Qus
               <span>{createdQuestionCards.length}</span>
             </button>
             <button
@@ -1683,7 +1683,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'draft'}
             >
-              Draft Questions
+              Draft
               <span>{draftQuestionCards.length}</span>
             </button>
             <button
@@ -1703,7 +1703,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'approved'}
             >
-              Approved Questions
+              Approved Qus
               <span>{approvedQuestionCards.length}</span>
             </button>
             <button
@@ -1713,7 +1713,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'rejected'}
             >
-              Approval Rejected
+              Rejected Qus
               <span>{rejectedQuestionCards.length}</span>
             </button>
           </div>
@@ -2394,6 +2394,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         <div className="question-bank-assessment-actions">
                           <button
                             type="button"
+                            className="question-bank-secondary-btn"
+                            onClick={handleSaveDraft}
+                            disabled={!canSaveSelectedDraft}
+                          >
+                            Save as Draft
+                          </button>
+                          <button
+                            type="button"
                             className={`question-bank-primary-btn ${isGeneratingQuestion ? 'is-loading' : ''}`}
                             onClick={handlePrimaryQuestionAction}
                             disabled={isGeneratingQuestion || !canCreateSelectedQuestion}
@@ -2415,14 +2423,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                 {isUpdatingSelectedQuestion ? 'Update' : 'Create'}
                               </>
                             )}
-                          </button>
-                          <button
-                            type="button"
-                            className="question-bank-secondary-btn"
-                            onClick={handleSaveDraft}
-                            disabled={!canSaveSelectedDraft}
-                          >
-                            Save as Draft
                           </button>
                         </div>
 
