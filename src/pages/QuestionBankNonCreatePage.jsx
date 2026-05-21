@@ -91,11 +91,7 @@ export default function QuestionBankNonCreatePage() {
   return (
     <section className="vx-content assessment-page">
       <div className="assessment-page-shell">
-        <section className="assessment-page-hero">
-          <span className="assessment-page-kicker">Question Bank</span>
-          <h1>Overall Question</h1>
-          <p>Manage approved questions sent from the Question Bank create workflow.</p>
-        </section>
+      
 
         {publishedQuestions.length ? (
           <section className="assessment-page-question-list" aria-label="Sent question bank questions">
