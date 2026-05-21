@@ -429,7 +429,7 @@ const getGeneratedQuestionDraft = (question) => {
   return {
     ...optionalTags,
     questionText: createHtmlBlock(`Which of the following best explains the application of ${topic} in ${subject}?`),
-    answerKey: createHtmlBlock('Correct answer: Review the selected option and add the supporting rationale.'),
+    answerKey: createHtmlBlock('Add the correct option and explanation.'),
     questionCategory: 'Application',
     cognitiveLevel: 'Apply',
     thinkingLevel: 'HoT',
