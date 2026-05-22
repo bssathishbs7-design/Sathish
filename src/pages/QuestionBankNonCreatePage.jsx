@@ -10,6 +10,7 @@ const OLD_DEFAULT_ANSWER_TEXT = 'Correct answer: Review the selected option and 
 const CURRENT_DEFAULT_ANSWER_TEXT = 'Add the correct option and explanation.'
 
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
+const getCompetencyCode = (value) => String(value ?? '').trim().split(/\s+/)[0] || value
 
 const MEDSY_EXTRA_SAMPLE_QUESTIONS = [
   ['Which muscle initiates abduction of the shoulder joint?', 'Supraspinatus', 'Deltoid', 'Teres minor', 'Infraspinatus', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Musculoskeletal', 'Shoulder', 'Supraspinatus initiates the first 15 degrees of shoulder abduction.'],
@@ -295,21 +296,6 @@ const getAuthorBadgeClassName = (question) => (
   getQuestionSourceType(question) === 'Uploaded' ? 'is-uploaded-author' : 'is-created-author'
 )
 
-const getQuestionSearchText = (question) => [
-  getQuestionPreview(question),
-  question.type,
-  getQuestionAuthorName(question),
-  getQuestionSourceType(question),
-  question.year,
-  question.subject,
-  ...(question.topics ?? []),
-  ...(question.competencies ?? []),
-  question.questionCategory,
-  question.cognitiveLevel,
-  question.thinkingLevel,
-  question.difficultyLevel,
-].filter(Boolean).join(' ').toLowerCase()
-
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 
 const createEmptyFilters = () => ({
@@ -369,8 +355,6 @@ export default function QuestionBankNonCreatePage() {
   const moreFiltersRef = useRef(null)
   const [publishedQuestions, setPublishedQuestions] = useState(() => readAllQuestionBankQuestions())
   const activeView = 'grid'
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [filterSearchTerms, setFilterSearchTerms] = useState({})
   const [filters, setFilters] = useState(() => createEmptyFilters())
   const [openFilterKey, setOpenFilterKey] = useState('')
@@ -459,10 +443,7 @@ export default function QuestionBankNonCreatePage() {
   }
 
   const filteredQuestions = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase()
-
     return publishedQuestions.filter((question) => {
-      if (normalizedSearch && !getQuestionSearchText(question).includes(normalizedSearch)) return false
       if (!hasFilterMatch(filters.authors, getQuestionAuthorName(question))) return false
       if (!hasFilterMatch(filters.types, question.type)) return false
       if (!hasFilterMatch(filters.years, question.year)) return false
@@ -481,12 +462,15 @@ export default function QuestionBankNonCreatePage() {
       if (!hasFilterMatch(filters.keyConcepts, question.keyConcepts ?? [])) return false
       return true
     })
-  }, [filters, publishedQuestions, searchTerm])
+  }, [filters, publishedQuestions])
 
   const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize))
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const pageStartIndex = (safeCurrentPage - 1) * pageSize
   const pagedQuestions = filteredQuestions.slice(pageStartIndex, pageStartIndex + pageSize)
+  const pagedQuestionIds = pagedQuestions.map((question, index) => question.id ?? `${question.type}-${index}`)
+  const hasAllVisibleRowsExpanded = Boolean(pagedQuestionIds.length)
+    && pagedQuestionIds.every((questionId) => expandedTableRows.includes(questionId))
   const baseFilterDefinitions = [
     ['authors', 'Author', filterOptions.authors],
     ['types', 'Type', filterOptions.types],
@@ -525,7 +509,15 @@ export default function QuestionBankNonCreatePage() {
     filters: group.filters.filter(([, , options]) => options.length),
   })).filter((group) => group.filters.length)
   const advancedFilterDefinitions = moreFilterGroups.flatMap((group) => group.filters)
-  const searchableFilterKeys = ['organSystems', 'organSubSystems', 'diseaseTags', 'keyConcepts']
+  const searchableFilterKeys = ['subjects', 'topics', 'competencies', 'organSystems', 'organSubSystems', 'diseaseTags', 'keyConcepts']
+
+  const expandAllVisibleRows = () => {
+    setExpandedTableRows((current) => Array.from(new Set([...current, ...pagedQuestionIds])))
+  }
+
+  const collapseAllVisibleRows = () => {
+    setExpandedTableRows((current) => current.filter((questionId) => !pagedQuestionIds.includes(questionId)))
+  }
 
   const renderFilterDropdown = ([filterKey, label, options]) => {
     const selectedValues = filters[filterKey]
@@ -598,7 +590,7 @@ export default function QuestionBankNonCreatePage() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [filters, pageSize, searchTerm])
+  }, [filters, pageSize])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -710,33 +702,6 @@ export default function QuestionBankNonCreatePage() {
             aria-label="All question bank controls"
           >
             <div className="assessment-page-filter-strip" aria-label="Question filters">
-              <div className={`assessment-page-search-compact ${isSearchOpen || searchTerm ? 'is-open' : ''}`}>
-                <button
-                  type="button"
-                  onClick={() => setIsSearchOpen((current) => !current)}
-                  aria-label={isSearchOpen ? 'Close search' : 'Open search'}
-                >
-                  <Search size={17} strokeWidth={2.2} />
-                </button>
-                <input
-                  type="search"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Search question, author, subject..."
-                />
-                {(isSearchOpen || searchTerm) ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchTerm('')
-                      setIsSearchOpen(false)
-                    }}
-                    aria-label="Clear search"
-                  >
-                    <X size={15} strokeWidth={2.3} />
-                  </button>
-                ) : null}
-              </div>
               <button
                 type="button"
                 className={`assessment-page-filter-toggle ${openFilterKey ? 'is-open' : ''}`}
@@ -789,13 +754,35 @@ export default function QuestionBankNonCreatePage() {
                   ) : null}
                 </span>
               ) : null}
+              <span className="assessment-page-expand-toggle" role="group" aria-label="Expand or collapse all visible questions">
+                <button
+                  type="button"
+                  className={!hasAllVisibleRowsExpanded ? 'is-active' : ''}
+                  onClick={collapseAllVisibleRows}
+                  disabled={!pagedQuestionIds.length}
+                  title="Collapse all"
+                  aria-label="Collapse all visible questions"
+                >
+                  <ChevronUp size={14} strokeWidth={2.4} />
+                </button>
+                <button
+                  type="button"
+                  className={hasAllVisibleRowsExpanded ? 'is-active' : ''}
+                  onClick={expandAllVisibleRows}
+                  disabled={!pagedQuestionIds.length}
+                  title="Expand all"
+                  aria-label="Expand all visible questions"
+                >
+                  <ChevronDown size={14} strokeWidth={2.4} />
+                </button>
+              </span>
             </div>
             {hasSelectedFilters(filters) ? (
               <div className="assessment-page-active-filters">
                 {Object.entries(filters).flatMap(([filterKey, values]) => (
                   values.map((value) => (
                     <button key={`${filterKey}-${value}`} type="button" onClick={() => clearFilterValue(filterKey, value)}>
-                      {value}
+                      {filterKey === 'competencies' ? getCompetencyCode(value) : value}
                       <X size={12} strokeWidth={2.4} />
                     </button>
                   ))

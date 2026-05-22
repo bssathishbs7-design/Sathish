@@ -95,9 +95,9 @@
 .assessment-page-bank-pagination {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
-  padding: 14px;
+  padding: 10px 12px;
   border: 1px solid #dbe7e2;
   border-radius: 12px;
   background: #ffffff;
@@ -210,20 +210,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 34px;
-  padding: 0 11px;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
   border: 1px solid #d7e8e2;
-  border-radius: 9px;
+  border-radius: 7px;
   background: #ffffff;
   color: #405866;
-  font-size: 0.84rem;
-  font-weight: 850;
+  font-size: 0.74rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .assessment-page-filter-toggle {
-  min-width: 40px;
+  min-width: 34px;
 }
 
 .assessment-page-bank-controls.is-compact .assessment-page-filter-toggle,
@@ -257,7 +257,7 @@
 .assessment-page-filter-strip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 1 1 auto;
   flex-wrap: wrap;
   padding: 0;
@@ -295,14 +295,14 @@
 .assessment-page-filter-dropdown > button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 0 11px;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
   border: 1px solid #dce9e4;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #ffffff;
   color: #405866;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 1px 0 rgba(15, 55, 45, 0.02);
@@ -328,27 +328,27 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
   border-radius: 999px;
   background: #10b9a8;
   color: #ffffff;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 900;
 }
 
 .assessment-page-more-filters-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 0 12px;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px;
   border: 1px solid #cdebe1;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #f2fbf7;
   color: #08776d;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 800;
   cursor: pointer;
 }
@@ -362,6 +362,46 @@
 
 .assessment-page-more-filters-btn.is-open {
   background: #e9f8ef;
+}
+
+.assessment-page-expand-toggle {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
+  padding: 2px;
+  border: 1px solid #dce9e4;
+  border-radius: 8px;
+  background: #f8fcfa;
+}
+
+.assessment-page-expand-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #607380;
+  cursor: pointer;
+}
+
+.assessment-page-expand-toggle button:hover,
+.assessment-page-expand-toggle button:focus-visible {
+  color: #08776d;
+  outline: none;
+}
+
+.assessment-page-expand-toggle button.is-active {
+  background: #e9f8ef;
+  color: #08776d;
+}
+
+.assessment-page-expand-toggle button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .assessment-page-more-filters-wrap {
@@ -452,13 +492,14 @@
   display: grid;
   gap: 8px;
   width: min(320px, calc(100vw - 36px));
-  max-height: 310px;
+  max-height: min(320px, calc(100vh - 190px));
   padding: 10px;
   border: 1px solid #dbe7e2;
   border-radius: 10px;
   background: #ffffff;
   box-shadow: 0 16px 34px rgba(24, 55, 71, 0.15);
   animation: assessment-filter-menu-in 150ms ease both;
+  overflow: hidden;
 }
 
 .assessment-page-filter-menu > div:first-child {
@@ -468,7 +509,7 @@
   gap: 8px;
   color: #526978;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .assessment-page-filter-menu > div:first-child button {
@@ -479,15 +520,18 @@
   background: #f8fcfa;
   color: #8f1d2c;
   font-size: 0.7rem;
-  font-weight: 850;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .assessment-page-filter-menu > div:last-child {
   display: grid;
   gap: 4px;
-  max-height: 240px;
+  max-height: min(210px, calc(100vh - 285px));
   overflow: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #bdd8cf transparent;
 }
 
 .assessment-page-filter-menu-search {
@@ -510,7 +554,7 @@
   color: #17313b;
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 500;
   outline: none;
 }
 
@@ -518,7 +562,7 @@
   padding: 8px;
   color: #607380;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .assessment-page-filter-menu label {
@@ -527,12 +571,20 @@
   align-items: center;
   gap: 7px;
   min-height: 30px;
-  padding: 3px 5px;
+  padding: 3px 8px 3px 5px;
   border-radius: 7px;
   color: #17313b;
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
   cursor: pointer;
+}
+
+.assessment-page-filter-menu label > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assessment-page-filter-menu label:hover {
@@ -544,6 +596,7 @@
 }
 
 .assessment-page-filter-menu input {
+  flex: 0 0 auto;
   width: 14px;
   height: 14px;
   accent-color: #10b9a8;
