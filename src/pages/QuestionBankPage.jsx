@@ -226,6 +226,7 @@ const APPROVAL_REVIEWERS = [
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 const QUESTION_BANK_REVIEW_RESULTS_KEY = 'vx-question-bank-review-results'
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
+const QUESTION_BANK_CREATED_DATA_CLEANUP_KEY = 'vx-question-bank-created-data-cleaned'
 
 let questionSequence = 1
 let optionSequence = 1
@@ -291,6 +292,12 @@ const readStoredQuestionBankQuestions = () => {
   if (typeof window === 'undefined') return []
 
   try {
+    if (!window.localStorage.getItem(QUESTION_BANK_CREATED_DATA_CLEANUP_KEY)) {
+      window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify([]))
+      window.localStorage.setItem(QUESTION_BANK_CREATED_DATA_CLEANUP_KEY, 'true')
+      return []
+    }
+
     const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_STORAGE_KEY) ?? '[]')
     return Array.isArray(parsed) ? parsed : []
   } catch {
