@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Info, ListChecks, Plus, Search, X } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Grid2X2, Info, ListChecks, Plus, Rows3, Search, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import '../styles/assessment-pages.css'
 
@@ -158,10 +158,11 @@ const readAllQuestionBankQuestions = () => [
 ]
 
 const readQuestionBankView = () => {
-  if (typeof window === 'undefined') return 'table'
+  if (typeof window === 'undefined') return 'grid'
 
   const savedView = window.localStorage.getItem(QUESTION_BANK_VIEW_KEY)
-  return savedView === 'table' ? 'table' : 'card'
+  if (savedView === 'card') return 'card'
+  return 'grid'
 }
 
 const getQuestionAuthorName = (question) => (
@@ -299,7 +300,7 @@ const nonCreateHighlights = [
 export default function QuestionBankNonCreatePage() {
   const filterHeaderRef = useRef(null)
   const [publishedQuestions, setPublishedQuestions] = useState(() => readAllQuestionBankQuestions())
-  const [activeView] = useState(() => readQuestionBankView())
+  const [activeView, setActiveView] = useState(() => readQuestionBankView())
   const [searchTerm, setSearchTerm] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [filterSearchTerms, setFilterSearchTerms] = useState({})
@@ -412,6 +413,11 @@ export default function QuestionBankNonCreatePage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [filters, pageSize, searchTerm])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(QUESTION_BANK_VIEW_KEY, activeView)
+  }, [activeView])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -549,6 +555,24 @@ export default function QuestionBankNonCreatePage() {
                 <Filter size={16} strokeWidth={2.2} />
                 {selectedFilterCount ? <span>{selectedFilterCount}</span> : null}
               </button>
+              <div className="assessment-page-view-segment" role="group" aria-label="Question view mode">
+                <button
+                  type="button"
+                  className={activeView === 'grid' ? 'is-active' : ''}
+                  onClick={() => setActiveView('grid')}
+                >
+                  <Grid2X2 size={15} strokeWidth={2.3} />
+                  Grid
+                </button>
+                <button
+                  type="button"
+                  className={activeView === 'card' ? 'is-active' : ''}
+                  onClick={() => setActiveView('card')}
+                >
+                  <Rows3 size={15} strokeWidth={2.3} />
+                  Card
+                </button>
+              </div>
               {filterDefinitions.map(([filterKey, label, options]) => {
                 const selectedValues = filters[filterKey]
                 const isOpen = openFilterKey === filterKey
@@ -779,12 +803,11 @@ export default function QuestionBankNonCreatePage() {
           </section>
         ) : null}
 
-        {pagedQuestions.length && activeView === 'table' ? (
+        {pagedQuestions.length && activeView === 'grid' ? (
           <section className="assessment-page-table-wrap" aria-label="Sent question bank table">
-            <table className="assessment-page-question-table">
+            <table className="assessment-page-question-table assessment-page-grid-table">
               <thead>
                 <tr>
-                  <th>S.No.</th>
                   <th>Question</th>
                 </tr>
               </thead>
@@ -806,37 +829,51 @@ export default function QuestionBankNonCreatePage() {
                   const isTableRowOpen = expandedTableRows.includes(questionId)
 
                   return (
-                    <tr key={questionId}>
-                      <td className="assessment-page-table-serial">Q{questionNumber}</td>
-                      <td className="assessment-page-table-question-cell">
-                        <div className="assessment-page-table-question-stack">
-                          <div className="assessment-page-table-question-badges">
-                            <span className="assessment-page-table-pill">{question.type ?? 'Question'}</span>
-                            {question.difficultyLevel ? <span>{question.difficultyLevel}</span> : null}
-                            {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{question.thinkingLevel}</span> : null}
-                            {question.questionCategory ? <span>{question.questionCategory}</span> : null}
-                            <span className={`assessment-page-table-author-pill ${getAuthorBadgeClassName(question)}`}>Author By : {getQuestionAuthorName(question)}</span>
-                          </div>
-                          <div className="assessment-page-table-question-text">
-                            <strong>{getQuestionPreview(question)}</strong>
-                            <button
-                              type="button"
-                              className="assessment-page-table-collapse-btn"
-                              onClick={() => {
-                                setExpandedTableRows((current) => (
-                                  current.includes(questionId)
-                                    ? current.filter((id) => id !== questionId)
-                                    : [...current, questionId]
-                                ))
-                              }}
-                              aria-expanded={isTableRowOpen}
-                              aria-label={`${isTableRowOpen ? 'Collapse' : 'Expand'} question ${questionNumber}`}
-                            >
-                              {isTableRowOpen ? <ChevronUp size={16} strokeWidth={2.4} /> : <ChevronDown size={16} strokeWidth={2.4} />}
-                            </button>
-                          </div>
-                          {isTableRowOpen ? (
-                            <>
+                    <Fragment key={questionId}>
+                      <tr
+                        className={`assessment-page-grid-summary-row ${isTableRowOpen ? 'is-open' : ''}`}
+                        onClick={() => {
+                          setExpandedTableRows((current) => (
+                            current.includes(questionId)
+                              ? current.filter((id) => id !== questionId)
+                              : [...current, questionId]
+                          ))
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            setExpandedTableRows((current) => (
+                              current.includes(questionId)
+                                ? current.filter((id) => id !== questionId)
+                                : [...current, questionId]
+                            ))
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isTableRowOpen}
+                      >
+                        <td className="assessment-page-grid-question">
+                          <strong>Q{questionNumber}. {getQuestionPreview(question)}</strong>
+                          <span className="assessment-page-grid-question-meta">
+                            <span className="assessment-page-grid-type-label">{question.type ?? 'Question'}</span>
+                            <span className={`assessment-page-grid-author-label ${getAuthorBadgeClassName(question)}`}>
+                              {getQuestionAuthorName(question)}
+                            </span>
+                            {question.questionCategory ? <span className="assessment-page-table-value-pill">{question.questionCategory}</span> : null}
+                            {question.difficultyLevel ? <span className="assessment-page-table-value-pill">{question.difficultyLevel}</span> : null}
+                            {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
+                            {question.cognitiveLevel ? <span className="assessment-page-table-value-pill">{question.cognitiveLevel}</span> : null}
+                          </span>
+                        </td>
+                      </tr>
+                      {isTableRowOpen ? (
+                        <tr key={`${questionId}-details`} className="assessment-page-grid-detail-row">
+                          <td colSpan={1}>
+                            <div className="assessment-page-table-question-stack">
+                              <div className="assessment-page-table-full-question">
+                                Q{questionNumber}. {getQuestionPreview(question)}
+                              </div>
                               {curriculum.length ? (
                                 <div className="assessment-page-table-curriculum">{curriculum.join(' / ')}</div>
                               ) : null}
@@ -922,11 +959,11 @@ export default function QuestionBankNonCreatePage() {
                                   </span>
                                 </div>
                               ) : null}
-                            </>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   )
                 })}
               </tbody>
@@ -959,8 +996,8 @@ export default function QuestionBankNonCreatePage() {
           </section>
         ) : null}
 
-        {publishedQuestions.length ? (
-          <section className="assessment-page-bank-pagination" aria-label="All question bank pagination">
+        {publishedQuestions.length && pagedQuestions.length ? (
+          <section className="assessment-page-bank-pagination assessment-page-grid-pagination" aria-label="All question bank pagination">
             <span>
               Page {safeCurrentPage} of {totalPages}
             </span>

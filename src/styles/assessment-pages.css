@@ -545,14 +545,16 @@
 }
 
 .assessment-page-question-author.is-uploaded-author,
-.assessment-page-table-author-pill.is-uploaded-author {
+.assessment-page-table-author-pill.is-uploaded-author,
+.assessment-page-grid-author-label.is-uploaded-author {
   border-color: #bbf7d0 !important;
   background: #f0fdf4 !important;
   color: #15803d !important;
 }
 
 .assessment-page-question-author.is-created-author,
-.assessment-page-table-author-pill.is-created-author {
+.assessment-page-table-author-pill.is-created-author,
+.assessment-page-grid-author-label.is-created-author {
   border-color: #bfdbfe !important;
   background: #eff6ff !important;
   color: #1d4ed8 !important;
@@ -628,7 +630,7 @@
 }
 
 .assessment-page-table-wrap {
-  overflow-x: auto;
+  overflow: hidden;
   border: 1px solid #dbe7e2;
   border-radius: 14px;
   background: #ffffff;
@@ -637,10 +639,16 @@
 
 .assessment-page-question-table {
   width: 100%;
-  min-width: 1180px;
-  border-collapse: collapse;
+  min-width: 0;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
   border: 0;
   background: transparent;
+}
+
+.assessment-page-grid-table {
+  min-width: 0;
 }
 
 .assessment-page-question-table th,
@@ -649,8 +657,8 @@
   border: 0;
   border-bottom: 1px solid #e1ede9;
   color: #334652;
-  font-size: 0.82rem;
-  font-weight: 750;
+  font-size: 0.8rem;
+  font-weight: 500;
   line-height: 1.45;
   text-align: left;
   vertical-align: middle;
@@ -659,25 +667,171 @@
 .assessment-page-question-table th {
   background: #f6fbf9;
   color: #5f7180;
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.assessment-page-question-table th:nth-child(1),
-.assessment-page-question-table td:nth-child(1) {
-  width: 54px;
+.assessment-page-grid-table th,
+.assessment-page-grid-table td {
+  padding: 9px 10px;
 }
 
-.assessment-page-question-table th:nth-child(2),
-.assessment-page-question-table td:nth-child(2) {
+.assessment-page-grid-table th:first-child,
+.assessment-page-grid-table td:first-child {
+  width: 100%;
   text-align: left;
 }
 
-.assessment-page-question-table tbody tr:hover {
+.assessment-page-grid-summary-row {
+  cursor: pointer;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.assessment-page-grid-summary-row:hover {
+  background: #effbf7;
+  box-shadow: inset 3px 0 0 #16bda6;
+}
+
+.assessment-page-grid-summary-row:focus-visible {
+  outline: 2px solid #16bda6;
+  outline-offset: -2px;
+}
+
+.assessment-page-grid-table tbody tr.is-open {
+  background: #eafbf5;
+  box-shadow: inset 3px 0 0 #079c87;
+}
+
+.assessment-page-grid-question strong {
+  display: block;
+  max-width: none;
+  overflow: hidden;
+  color: #17313b;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assessment-page-grid-question-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+.assessment-page-grid-type-label,
+.assessment-page-grid-author-label {
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  min-height: 18px;
+  padding: 0 7px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assessment-page-grid-type-label {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.assessment-page-grid-meta-text {
+  overflow: hidden;
+  color: #486170;
+  font-size: 0.74rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assessment-page-grid-author,
+.assessment-page-table-value-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  max-width: 140px;
+  padding: 0 7px;
+  border: 1px solid #d2e7e1;
+  border-radius: 999px;
+  background: #f8fcfa;
+  color: #405866;
+  font-size: 0.66rem;
+  font-weight: 650;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assessment-page-table-value-pill.assessment-page-thinking-hot {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #b42318;
+}
+
+.assessment-page-table-value-pill.assessment-page-thinking-lot {
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.assessment-page-grid-detail-row td {
+  padding: 14px 18px 18px;
+  background: #fbfefd;
+}
+
+.assessment-page-table-full-question {
+  color: #17313b;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.assessment-page-grid-pagination {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.assessment-page-grid-pagination > span {
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.assessment-page-grid-pagination button {
+  width: 30px;
+  height: 30px;
+}
+
+.assessment-page-grid-pagination select {
+  height: 30px;
+  padding: 0 30px 0 10px;
+  border: 1px solid #cfe7db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #405866;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.assessment-page-question-table tbody tr:not(.assessment-page-grid-summary-row):hover {
   background: #f8fcfa;
 }
 
@@ -1499,8 +1653,28 @@
   background: #101827;
 }
 
-.theme-dark .assessment-page-question-table tbody tr:hover {
+.theme-dark .assessment-page-question-table tbody tr:not(.assessment-page-grid-summary-row):hover {
   background: rgba(19, 34, 53, 0.72);
+}
+
+.theme-dark .assessment-page-grid-summary-row:hover {
+  background: rgba(20, 184, 166, 0.14);
+  box-shadow: inset 3px 0 0 #2dd4bf;
+}
+
+.theme-dark .assessment-page-grid-question strong {
+  color: #eef6ff;
+}
+
+.theme-dark .assessment-page-grid-detail-row td {
+  background: #101827;
+}
+
+.theme-dark .assessment-page-grid-author,
+.theme-dark .assessment-page-table-value-pill {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: #17263a;
+  color: #c3d4e8;
 }
 
 .theme-dark .assessment-page-question-type,
@@ -1661,10 +1835,6 @@
 
   .assessment-page-question-options {
     grid-template-columns: 1fr;
-  }
-
-  .assessment-page-question-table {
-    min-width: 1040px;
   }
 
   .assessment-page-table-options {
