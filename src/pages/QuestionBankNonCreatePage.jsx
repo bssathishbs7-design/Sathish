@@ -11,6 +11,80 @@ const CURRENT_DEFAULT_ANSWER_TEXT = 'Add the correct option and explanation.'
 
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
 
+const MEDSY_EXTRA_SAMPLE_QUESTIONS = [
+  ['Which muscle initiates abduction of the shoulder joint?', 'Supraspinatus', 'Deltoid', 'Teres minor', 'Infraspinatus', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Musculoskeletal', 'Shoulder', 'Supraspinatus initiates the first 15 degrees of shoulder abduction.'],
+  ['Which nerve is most commonly injured in surgical neck fracture of humerus?', 'Axillary nerve', 'Radial nerve', 'Median nerve', 'Ulnar nerve', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Nervous', 'Peripheral nerve', 'The axillary nerve winds around the surgical neck of the humerus and is vulnerable in fractures.'],
+  ['Which artery is palpated in the anatomical snuffbox?', 'Radial artery', 'Ulnar artery', 'Brachial artery', 'Anterior interosseous artery', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Cardiovascular', 'Blood vessel', 'The radial artery passes through the anatomical snuffbox and can be palpated there.'],
+  ['Which carpal bone is most commonly fractured after a fall on the outstretched hand?', 'Scaphoid', 'Lunate', 'Triquetrum', 'Pisiform', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Skeletal', 'Bone', 'The scaphoid is the most commonly fractured carpal bone in a fall on an outstretched hand.'],
+  ['Which nerve supplies the diaphragm motor function?', 'Phrenic nerve', 'Vagus nerve', 'Intercostal nerve', 'Accessory nerve', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Respiratory', 'Diaphragm', 'The phrenic nerve provides motor supply to the diaphragm.'],
+  ['Which valve is best heard at the left fifth intercostal space in the midclavicular line?', 'Mitral valve', 'Aortic valve', 'Pulmonary valve', 'Tricuspid valve', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Cardiovascular', 'Heart', 'The mitral valve area is located at the cardiac apex in the left fifth intercostal space.'],
+  ['Which structure forms the anterior boundary of the epiploic foramen?', 'Free edge of lesser omentum', 'Inferior vena cava', 'Caudate lobe', 'First part of duodenum', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Digestive', 'Upper GI', 'The free edge of the lesser omentum containing the portal triad forms the anterior boundary.'],
+  ['Which cranial nerve carries taste from the anterior two-thirds of the tongue?', 'Facial nerve', 'Glossopharyngeal nerve', 'Trigeminal nerve', 'Vagus nerve', 'Neuroanatomy', 'AN4.2 Identify major cranial nerve pathways', 'Nervous', 'Cranial nerve', 'Taste from the anterior two-thirds of the tongue is carried by the facial nerve via chorda tympani.'],
+  ['Which cranial nerve exits the skull through the jugular foramen?', 'Glossopharyngeal nerve', 'Optic nerve', 'Mandibular nerve', 'Facial nerve', 'Neuroanatomy', 'AN4.2 Identify major cranial nerve pathways', 'Nervous', 'Cranial nerve', 'The glossopharyngeal nerve exits through the jugular foramen.'],
+  ['Which lobe of the brain contains the primary visual cortex?', 'Occipital lobe', 'Frontal lobe', 'Parietal lobe', 'Temporal lobe', 'Neuroanatomy', 'AN4.2 Identify major cranial nerve pathways', 'Nervous', 'Brain', 'The primary visual cortex is located in the occipital lobe.'],
+  ['Which cell type produces surfactant in the alveoli?', 'Type II pneumocyte', 'Type I pneumocyte', 'Alveolar macrophage', 'Club cell', 'Respiratory System', 'PY6.8 Interpret spirometry and lung volumes', 'Respiratory', 'Lung', 'Type II pneumocytes synthesize and secrete pulmonary surfactant.'],
+  ['Which lung volume cannot be measured by simple spirometry?', 'Residual volume', 'Tidal volume', 'Inspiratory reserve volume', 'Expiratory reserve volume', 'Respiratory System', 'PY6.8 Interpret spirometry and lung volumes', 'Respiratory', 'Lung', 'Residual volume cannot be directly measured by simple spirometry.'],
+  ['Which blood cell is primarily responsible for oxygen transport?', 'Erythrocyte', 'Neutrophil', 'Platelet', 'Lymphocyte', 'Hematology', 'PY2.11 Interpret complete blood count findings', 'Cardiovascular', 'Blood', 'Erythrocytes transport oxygen through hemoglobin.'],
+  ['Which leukocyte increases most typically in acute bacterial infection?', 'Neutrophil', 'Eosinophil', 'Basophil', 'Monocyte', 'Hematology', 'PY2.11 Interpret complete blood count findings', 'Immune', 'Blood', 'Neutrophilia is commonly associated with acute bacterial infection.'],
+  ['Which anemia shows macrocytic red blood cells?', 'Vitamin B12 deficiency anemia', 'Iron deficiency anemia', 'Thalassemia', 'Anemia of chronic disease', 'Hematology', 'PA3.4 Classify anemia using peripheral smear findings', 'Cardiovascular', 'Blood', 'Vitamin B12 deficiency commonly causes megaloblastic macrocytic anemia.'],
+  ['Which process describes programmed cell death?', 'Apoptosis', 'Necrosis', 'Metaplasia', 'Hypertrophy', 'General Pathology', 'PA1.2 Explain cell injury and adaptation', 'General pathology', 'Cell injury', 'Apoptosis is programmed cell death with controlled cellular dismantling.'],
+  ['Which cellular adaptation is seen in increased workload without new cell formation?', 'Hypertrophy', 'Hyperplasia', 'Metaplasia', 'Dysplasia', 'General Pathology', 'PA1.2 Explain cell injury and adaptation', 'General pathology', 'Cell adaptation', 'Hypertrophy is an increase in cell size due to increased workload.'],
+  ['Which necrosis is classically seen in tuberculosis?', 'Caseous necrosis', 'Coagulative necrosis', 'Liquefactive necrosis', 'Fat necrosis', 'General Pathology', 'PA1.2 Explain cell injury and adaptation', 'General pathology', 'Necrosis', 'Caseous necrosis is classically associated with tuberculosis.'],
+  ['Which investigation is most useful for assessing cardiac rhythm?', 'Electrocardiogram', 'Chest X-ray', 'Spirometry', 'Ultrasound abdomen', 'Cardiovascular System', 'PY4.5 Explain regulation of cardiac output', 'Cardiovascular', 'Heart', 'An electrocardiogram records electrical activity and rhythm of the heart.'],
+  ['Which chamber of the heart receives oxygenated blood from the lungs?', 'Left atrium', 'Right atrium', 'Left ventricle', 'Right ventricle', 'Cardiovascular System', 'PY4.5 Explain regulation of cardiac output', 'Cardiovascular', 'Heart', 'The left atrium receives oxygenated blood from pulmonary veins.'],
+  ['Which hormone increases blood calcium levels?', 'Parathyroid hormone', 'Insulin', 'Calcitonin', 'Aldosterone', 'General Physiology', 'PY1.4 Describe body fluid compartments and homeostasis', 'Endocrine', 'Calcium homeostasis', 'Parathyroid hormone increases blood calcium levels.'],
+  ['Which compartment contains the largest percentage of total body water?', 'Intracellular fluid', 'Plasma', 'Interstitial fluid', 'Transcellular fluid', 'General Physiology', 'PY1.4 Describe body fluid compartments and homeostasis', 'General physiology', 'Body fluids', 'Intracellular fluid is the largest body water compartment.'],
+  ['Which joint is a ball-and-socket type?', 'Hip joint', 'Elbow joint', 'Superior radioulnar joint', 'Interphalangeal joint', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Skeletal', 'Joint', 'The hip joint is a multiaxial ball-and-socket synovial joint.'],
+  ['Which anatomical term means closer to the midline?', 'Medial', 'Lateral', 'Proximal', 'Distal', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'General anatomy', 'Directional terms', 'Medial means nearer to the median plane or midline.'],
+  ['Which term describes movement away from the midline?', 'Abduction', 'Adduction', 'Flexion', 'Extension', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Musculoskeletal', 'Movement', 'Abduction is movement away from the midline.'],
+]
+
+const createMedsyExtraSampleQuestions = () => MEDSY_EXTRA_SAMPLE_QUESTIONS.map(([
+  questionText,
+  correctAnswer,
+  optionB,
+  optionC,
+  optionD,
+  topic,
+  competency,
+  organSystem,
+  organSubSystem,
+  answerKey,
+], index) => {
+  const questionNumber = index + 4
+  const isHigherOrder = index % 3 === 1
+
+  return {
+    id: `medsy-uploaded-sample-${questionNumber}`,
+    type: 'MCQ',
+    authorName: 'Medsy',
+    questionText,
+    year: 'Year 1',
+    subject: ['Respiratory System', 'Cardiovascular System', 'General Physiology'].includes(topic) ? 'Physiology' : topic.includes('Pathology') || competency.startsWith('PA') ? 'Pathology' : 'Human Anatomy',
+    topics: [topic],
+    competencies: [competency],
+    questionCategory: isHigherOrder ? 'Application' : 'Direct',
+    cognitiveLevel: isHigherOrder ? 'Apply' : 'Recall',
+    cognitiveFunction: isHigherOrder ? 'Clinical Reasoning' : 'Pattern Recognition',
+    skillFocus: isHigherOrder ? 'Diagnosis' : 'Identification',
+    organSystem,
+    organSubSystems: [organSubSystem],
+    diseaseTags: index % 4 === 0 ? ['Clinical correlation'] : ['Not Applicable'],
+    keyConcepts: isHigherOrder ? ['Diagnostic clue'] : ['Core concept'],
+    thinkingLevel: isHigherOrder ? 'HoT' : 'LoT',
+    difficultyLevel: index % 5 === 0 ? 'L2' : 'L1',
+    options: [
+      { id: `medsy-${questionNumber}-a`, label: correctAnswer, distractorErrors: [] },
+      { id: `medsy-${questionNumber}-b`, label: optionB, distractorErrors: ['Terminology Confusion'] },
+      { id: `medsy-${questionNumber}-c`, label: optionC, distractorErrors: ['False Association'] },
+      { id: `medsy-${questionNumber}-d`, label: optionD, distractorErrors: ['Misclassification'] },
+    ],
+    correctOptionIds: [`medsy-${questionNumber}-a`],
+    answerKey,
+    questionBankSentAt: new Date(`2026-05-22T10:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
+  }
+})
+
 const createMedsySampleQuestions = () => [
   {
     id: 'medsy-uploaded-sample-1',
@@ -94,6 +168,7 @@ const createMedsySampleQuestions = () => [
     answerKey: 'Anatomical position is the standard reference position with the body standing upright, face forward, upper limbs by the side, and palms facing forward.',
     questionBankSentAt: new Date('2026-05-22T09:10:00+05:30').toISOString(),
   },
+  ...createMedsyExtraSampleQuestions(),
 ]
 
 const cleanQuestionBankItems = (items) => items
