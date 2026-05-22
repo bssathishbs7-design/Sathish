@@ -288,6 +288,13 @@ const getThinkingBadgeClassName = (value) => {
   return ''
 }
 
+const getQuestionTypeBadgeClassName = (type) => {
+  const normalized = String(type ?? '').trim().toLowerCase()
+  if (normalized === 'mcq') return 'is-mcq'
+  if (normalized.includes('descriptive')) return 'is-descriptive'
+  return ''
+}
+
 const getQuestionSourceType = (question) => (
   getQuestionAuthorName(question).trim().toLowerCase() === 'medsy' ? 'Uploaded' : 'Created'
 )
@@ -367,6 +374,8 @@ export default function QuestionBankNonCreatePage() {
   const [activeTagsId, setActiveTagsId] = useState('')
   const [activeOptionDistractorId, setActiveOptionDistractorId] = useState('')
   const [expandedTableRows, setExpandedTableRows] = useState([])
+  const [selectedGridAction, setSelectedGridAction] = useState('')
+  const [selectedGridQuestionIds, setSelectedGridQuestionIds] = useState([])
   const [expandedCardRows, setExpandedCardRows] = useState([])
 
   const filterOptions = useMemo(() => ({
@@ -517,6 +526,19 @@ export default function QuestionBankNonCreatePage() {
 
   const collapseAllVisibleRows = () => {
     setExpandedTableRows((current) => current.filter((questionId) => !pagedQuestionIds.includes(questionId)))
+  }
+
+  const toggleGridQuestionSelection = (questionId) => {
+    setSelectedGridQuestionIds((current) => (
+      current.includes(questionId)
+        ? current.filter((id) => id !== questionId)
+        : [...current, questionId]
+    ))
+  }
+
+  const clearGridActionState = () => {
+    setSelectedGridAction('')
+    setSelectedGridQuestionIds([])
   }
 
   const renderFilterDropdown = ([filterKey, label, options]) => {
@@ -754,6 +776,36 @@ export default function QuestionBankNonCreatePage() {
                   ) : null}
                 </span>
               ) : null}
+              <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
+                <button
+                  type="button"
+                  className={selectedGridAction === 'assessment' ? 'is-active' : ''}
+                  onClick={() => setSelectedGridAction('assessment')}
+                  disabled={selectedGridAction === 'learn'}
+                >
+                  <ListChecks size={14} strokeWidth={2.3} />
+                  Add to Assessment
+                </button>
+                <button
+                  type="button"
+                  className={selectedGridAction === 'learn' ? 'is-active' : ''}
+                  onClick={() => setSelectedGridAction('learn')}
+                  disabled={selectedGridAction === 'assessment'}
+                >
+                  <FileSearch size={14} strokeWidth={2.3} />
+                  Assign to Learn
+                </button>
+                {(selectedGridAction || selectedGridQuestionIds.length) ? (
+                  <button
+                    type="button"
+                    className="assessment-page-grid-action-clear"
+                    onClick={clearGridActionState}
+                  >
+                    <X size={13} strokeWidth={2.4} />
+                    Clear
+                  </button>
+                ) : null}
+              </span>
               <span className="assessment-page-expand-toggle" role="group" aria-label="Expand or collapse all visible questions">
                 <button
                   type="button"
@@ -763,7 +815,7 @@ export default function QuestionBankNonCreatePage() {
                   title="Collapse all"
                   aria-label="Collapse all visible questions"
                 >
-                  <ChevronUp size={14} strokeWidth={2.4} />
+                  <ListChecks size={14} strokeWidth={2.3} />
                 </button>
                 <button
                   type="button"
@@ -773,7 +825,7 @@ export default function QuestionBankNonCreatePage() {
                   title="Expand all"
                   aria-label="Expand all visible questions"
                 >
-                  <ChevronDown size={14} strokeWidth={2.4} />
+                  <FileSearch size={14} strokeWidth={2.3} />
                 </button>
               </span>
             </div>
@@ -960,6 +1012,7 @@ export default function QuestionBankNonCreatePage() {
                   const tableTagsId = `table-tags-${questionId}`
                   const isTagsOpen = activeTagsId === tableTagsId
                   const isTableRowOpen = expandedTableRows.includes(questionId)
+                  const isGridQuestionSelected = selectedGridQuestionIds.includes(questionId)
 
                   return (
                     <Fragment key={questionId}>
@@ -984,16 +1037,30 @@ export default function QuestionBankNonCreatePage() {
                           aria-expanded="false"
                         >
                           <td className="assessment-page-grid-question">
-                            <strong>Q{questionNumber}. {getQuestionPreview(question)}</strong>
-                            <span className="assessment-page-grid-question-meta">
-                              <span className="assessment-page-grid-type-label">{question.type ?? 'Question'}</span>
-                              <span className={`assessment-page-grid-author-label ${getAuthorBadgeClassName(question)}`}>
-                                {getQuestionAuthorName(question)}
+                            <span className="assessment-page-grid-row-layout">
+                              {selectedGridAction ? (
+                                <label className="assessment-page-grid-row-checkbox" onClick={(event) => event.stopPropagation()}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isGridQuestionSelected}
+                                    onChange={() => toggleGridQuestionSelection(questionId)}
+                                    aria-label={`Select question ${questionNumber}`}
+                                  />
+                                </label>
+                              ) : null}
+                              <span className="assessment-page-grid-question-content">
+                                <strong>Q{questionNumber}. {getQuestionPreview(question)}</strong>
+                                <span className="assessment-page-grid-question-meta">
+                                  <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question.type)}`}>{question.type ?? 'Question'}</span>
+                                  <span className={`assessment-page-grid-author-label ${getAuthorBadgeClassName(question)}`}>
+                                    {getQuestionAuthorName(question)}
+                                  </span>
+                                  {question.questionCategory ? <span className="assessment-page-table-value-pill">{question.questionCategory}</span> : null}
+                                  {question.difficultyLevel ? <span className="assessment-page-table-value-pill assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
+                                  {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
+                                  {question.cognitiveLevel ? <span className="assessment-page-table-value-pill">{question.cognitiveLevel}</span> : null}
+                                </span>
                               </span>
-                              {question.questionCategory ? <span className="assessment-page-table-value-pill">{question.questionCategory}</span> : null}
-                              {question.difficultyLevel ? <span className="assessment-page-table-value-pill">{question.difficultyLevel}</span> : null}
-                              {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
-                              {question.cognitiveLevel ? <span className="assessment-page-table-value-pill">{question.cognitiveLevel}</span> : null}
                             </span>
                             <span className="assessment-page-grid-collapse-indicator" aria-hidden="true">
                               <ChevronDown size={16} strokeWidth={2.4} />
@@ -1021,6 +1088,16 @@ export default function QuestionBankNonCreatePage() {
                           <td colSpan={1}>
                             <div className="assessment-page-table-question-stack">
                               <div className="assessment-page-grid-detail-head">
+                                {selectedGridAction ? (
+                                  <label className="assessment-page-grid-row-checkbox" onClick={(event) => event.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isGridQuestionSelected}
+                                      onChange={() => toggleGridQuestionSelection(questionId)}
+                                      aria-label={`Select question ${questionNumber}`}
+                                    />
+                                  </label>
+                                ) : null}
                                 <div className="assessment-page-table-full-question">
                                   Q{questionNumber}. {getQuestionPreview(question)}
                                 </div>
@@ -1029,12 +1106,12 @@ export default function QuestionBankNonCreatePage() {
                                 </span>
                               </div>
                               <div className="assessment-page-grid-question-meta assessment-page-grid-detail-meta">
-                                <span className="assessment-page-grid-type-label">{question.type ?? 'Question'}</span>
+                                <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question.type)}`}>{question.type ?? 'Question'}</span>
                                 <span className={`assessment-page-grid-author-label ${getAuthorBadgeClassName(question)}`}>
                                   {getQuestionAuthorName(question)}
                                 </span>
                                 {question.questionCategory ? <span className="assessment-page-table-value-pill">{question.questionCategory}</span> : null}
-                                {question.difficultyLevel ? <span className="assessment-page-table-value-pill">{question.difficultyLevel}</span> : null}
+                                {question.difficultyLevel ? <span className="assessment-page-table-value-pill assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
                                 {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
                                 {question.cognitiveLevel ? <span className="assessment-page-table-value-pill">{question.cognitiveLevel}</span> : null}
                                 {tagGroups.length ? (
