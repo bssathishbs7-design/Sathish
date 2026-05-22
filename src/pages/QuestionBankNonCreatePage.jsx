@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Grid2X2, Info, ListChecks, Plus, Rows3, Search, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Info, ListChecks, Plus, Search, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import '../styles/assessment-pages.css'
 
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
 const QUESTION_BANK_UPLOADED_KEY = 'vx-question-bank-uploaded-questions'
-const QUESTION_BANK_VIEW_KEY = 'vx-question-bank-all-view'
 const OLD_DEFAULT_ANSWER_TEXT = 'Correct answer: Review the selected option and add the supporting rationale.'
 const CURRENT_DEFAULT_ANSWER_TEXT = 'Add the correct option and explanation.'
 
@@ -157,14 +157,6 @@ const readAllQuestionBankQuestions = () => [
   ...readStoredQuestionList(QUESTION_BANK_UPLOADED_KEY),
 ]
 
-const readQuestionBankView = () => {
-  if (typeof window === 'undefined') return 'grid'
-
-  const savedView = window.localStorage.getItem(QUESTION_BANK_VIEW_KEY)
-  if (savedView === 'card') return 'card'
-  return 'grid'
-}
-
 const getQuestionAuthorName = (question) => (
   question?.authorName
   ?? question?.createdByName
@@ -299,14 +291,16 @@ const nonCreateHighlights = [
 
 export default function QuestionBankNonCreatePage() {
   const filterHeaderRef = useRef(null)
+  const moreFiltersRef = useRef(null)
   const [publishedQuestions, setPublishedQuestions] = useState(() => readAllQuestionBankQuestions())
-  const [activeView, setActiveView] = useState(() => readQuestionBankView())
+  const activeView = 'grid'
   const [searchTerm, setSearchTerm] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [filterSearchTerms, setFilterSearchTerms] = useState({})
   const [filters, setFilters] = useState(() => createEmptyFilters())
   const [openFilterKey, setOpenFilterKey] = useState('')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [moreFiltersPanelStyle, setMoreFiltersPanelStyle] = useState({})
   const [isFilterHeaderCompact, setIsFilterHeaderCompact] = useState(false)
   const [isCompactFilterTrayOpen, setIsCompactFilterTrayOpen] = useState(false)
   const [pageSize, setPageSize] = useState(25)
@@ -356,6 +350,39 @@ export default function QuestionBankNonCreatePage() {
     }))
   }
 
+  const clearMoreFilters = () => {
+    setFilters((current) => {
+      const nextFilters = { ...current }
+      advancedFilterDefinitions.forEach(([filterKey]) => {
+        nextFilters[filterKey] = []
+      })
+      return nextFilters
+    })
+  }
+
+  const updateMoreFiltersPosition = () => {
+    if (typeof window === 'undefined') return
+    const trigger = moreFiltersRef.current?.querySelector('button')
+    if (!trigger) return
+
+    const rect = trigger.getBoundingClientRect()
+    const viewportPadding = 32
+    const panelWidth = Math.min(420, window.innerWidth - (viewportPadding * 2))
+    const preferredLeft = rect.left
+    const left = Math.max(
+      viewportPadding,
+      Math.min(preferredLeft, window.innerWidth - panelWidth - viewportPadding),
+    )
+    const arrowLeft = Math.max(18, Math.min((rect.left + (rect.width / 2)) - left - 6, panelWidth - 30))
+
+    setMoreFiltersPanelStyle({
+      left: `${left}px`,
+      top: `${rect.bottom + 10}px`,
+      width: `${panelWidth}px`,
+      '--assessment-more-arrow-left': `${arrowLeft}px`,
+    })
+  }
+
   const filteredQuestions = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase()
 
@@ -392,32 +419,111 @@ export default function QuestionBankNonCreatePage() {
     ['subjects', 'Subject', filterOptions.subjects],
     ['topics', 'Topic', filterOptions.topics],
     ['competencies', 'Competency', filterOptions.competencies],
-    ['categories', 'Category', filterOptions.categories],
-    ['thinkingLevels', 'Thinking', filterOptions.thinkingLevels],
-    ['difficultyLevels', 'Difficulty', filterOptions.difficultyLevels],
   ].filter(([, , options]) => options.length)
-  const advancedFilterDefinitions = [
-    ['cognitiveLevels', 'Cognitive', filterOptions.cognitiveLevels],
-    ['cognitiveFunctions', 'Cognitive Function', filterOptions.cognitiveFunctions],
-    ['skillFocuses', 'Skill Focus', filterOptions.skillFocuses],
-    ['organSystems', 'Organ System', filterOptions.organSystems],
-    ['organSubSystems', 'Organ Sub-System', filterOptions.organSubSystems],
-    ['diseaseTags', 'Disease Tags', filterOptions.diseaseTags],
-    ['keyConcepts', 'Key Concept', filterOptions.keyConcepts],
-  ].filter(([, , options]) => options.length)
-  const filterDefinitions = showAdvancedFilters
-    ? [...baseFilterDefinitions, ...advancedFilterDefinitions]
-    : baseFilterDefinitions
+  const moreFilterGroups = [
+    {
+      label: 'Curriculum',
+      filters: [],
+    },
+    {
+      label: 'Assessment',
+      filters: [
+        ['categories', 'Category', filterOptions.categories],
+        ['thinkingLevels', 'Thinking', filterOptions.thinkingLevels],
+        ['difficultyLevels', 'Difficulty', filterOptions.difficultyLevels],
+        ['cognitiveLevels', 'Cognitive', filterOptions.cognitiveLevels],
+      ],
+    },
+    {
+      label: 'Tags',
+      filters: [
+        ['cognitiveFunctions', 'Cognitive Function', filterOptions.cognitiveFunctions],
+        ['skillFocuses', 'Skill Focus', filterOptions.skillFocuses],
+        ['organSystems', 'Organ System', filterOptions.organSystems],
+        ['organSubSystems', 'Organ Sub-System', filterOptions.organSubSystems],
+        ['diseaseTags', 'Disease Tags', filterOptions.diseaseTags],
+        ['keyConcepts', 'Key Concept', filterOptions.keyConcepts],
+      ],
+    },
+  ].map((group) => ({
+    ...group,
+    filters: group.filters.filter(([, , options]) => options.length),
+  })).filter((group) => group.filters.length)
+  const advancedFilterDefinitions = moreFilterGroups.flatMap((group) => group.filters)
   const searchableFilterKeys = ['organSystems', 'organSubSystems', 'diseaseTags', 'keyConcepts']
+
+  const renderFilterDropdown = ([filterKey, label, options]) => {
+    const selectedValues = filters[filterKey]
+    const isOpen = openFilterKey === filterKey
+    const isSearchableFilter = searchableFilterKeys.includes(filterKey)
+    const filterSearchTerm = filterSearchTerms[filterKey] ?? ''
+    const visibleOptions = isSearchableFilter
+      ? options.filter((option) => option.toLowerCase().includes(filterSearchTerm.trim().toLowerCase()))
+      : options
+
+    return (
+      <div key={filterKey} className="assessment-page-filter-dropdown" data-filter-key={filterKey}>
+        <button
+          type="button"
+          className={selectedValues.length ? 'has-selection' : ''}
+          onClick={() => setOpenFilterKey(isOpen ? '' : filterKey)}
+          aria-expanded={isOpen}
+        >
+          <span>{label}</span>
+          {selectedValues.length ? <strong>{selectedValues.length}</strong> : null}
+          <ChevronDown size={14} strokeWidth={2.3} />
+        </button>
+        {isOpen ? (
+          <div className="assessment-page-filter-menu" role="menu">
+            <div>
+              <strong>{label}</strong>
+              {selectedValues.length ? (
+                <button type="button" onClick={() => setFilters((current) => ({ ...current, [filterKey]: [] }))}>
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            {isSearchableFilter ? (
+              <label className="assessment-page-filter-menu-search">
+                <Search size={14} strokeWidth={2.2} />
+                <input
+                  type="search"
+                  value={filterSearchTerm}
+                  onChange={(event) => setFilterSearchTerms((current) => ({
+                    ...current,
+                    [filterKey]: event.target.value,
+                  }))}
+                  placeholder={`Search ${label.toLowerCase()}...`}
+                />
+              </label>
+            ) : null}
+            <div>
+              {visibleOptions.map((option) => {
+                const isSelected = selectedValues.includes(option)
+                return (
+                  <label key={option}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleFilterValue(filterKey, option)}
+                    />
+                    <span>{option}</span>
+                  </label>
+                )
+              })}
+              {!visibleOptions.length ? (
+                <span className="assessment-page-filter-menu-empty">No matches</span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   useEffect(() => {
     setCurrentPage(1)
   }, [filters, pageSize, searchTerm])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(QUESTION_BANK_VIEW_KEY, activeView)
-  }, [activeView])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -438,20 +544,47 @@ export default function QuestionBankNonCreatePage() {
   }, [])
 
   useEffect(() => {
-    if (!openFilterKey) return undefined
+    if (!openFilterKey && !showAdvancedFilters) return undefined
     if (typeof document === 'undefined') return undefined
 
     const handleOutsideFilterClick = (event) => {
-      if (event.target.closest?.('.assessment-page-filter-dropdown')) return
+      const activeDropdown = event.target.closest?.('.assessment-page-filter-dropdown')
+      if (activeDropdown?.dataset?.filterKey === openFilterKey) return
       if (event.target.closest?.('.assessment-page-filter-toggle')) return
+      if (event.target.closest?.('.assessment-page-filter-advanced-row')) {
+        setOpenFilterKey('')
+        return
+      }
+      if (event.target.closest?.('.assessment-page-more-filters-wrap')) {
+        setOpenFilterKey('')
+        return
+      }
       setOpenFilterKey('')
+      setShowAdvancedFilters(false)
     }
 
     document.addEventListener('mousedown', handleOutsideFilterClick)
     return () => {
       document.removeEventListener('mousedown', handleOutsideFilterClick)
     }
-  }, [openFilterKey])
+  }, [openFilterKey, showAdvancedFilters])
+
+  useEffect(() => {
+    if (!showAdvancedFilters) return undefined
+    if (typeof window === 'undefined') return undefined
+
+    const updatePosition = () => updateMoreFiltersPosition()
+    const frame = window.requestAnimationFrame(updatePosition)
+
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [showAdvancedFilters])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -498,19 +631,9 @@ export default function QuestionBankNonCreatePage() {
         {publishedQuestions.length ? (
           <section
             ref={filterHeaderRef}
-            className={`assessment-page-bank-controls ${isFilterHeaderCompact ? 'is-compact' : ''} ${isCompactFilterTrayOpen ? 'is-filter-tray-open' : ''}`}
+            className={`assessment-page-bank-controls ${activeView === 'grid' ? 'is-grid-attached' : ''} ${isFilterHeaderCompact ? 'is-compact' : ''} ${isCompactFilterTrayOpen ? 'is-filter-tray-open' : ''}`}
             aria-label="All question bank controls"
           >
-            {hasSelectedFilters(filters) ? (
-              <button
-                type="button"
-                className="assessment-page-filter-clear"
-                onClick={() => setFilters(createEmptyFilters())}
-              >
-                <X size={14} strokeWidth={2.3} />
-                Clear all
-              </button>
-            ) : null}
             <div className="assessment-page-filter-strip" aria-label="Question filters">
               <div className={`assessment-page-search-compact ${isSearchOpen || searchTerm ? 'is-open' : ''}`}>
                 <button
@@ -548,107 +671,48 @@ export default function QuestionBankNonCreatePage() {
                     setOpenFilterKey('')
                     return
                   }
-                  setOpenFilterKey((current) => (current ? '' : filterDefinitions[0]?.[0] ?? ''))
+                  setOpenFilterKey((current) => (current ? '' : baseFilterDefinitions[0]?.[0] ?? ''))
                 }}
                 aria-expanded={isFilterHeaderCompact ? isCompactFilterTrayOpen : Boolean(openFilterKey)}
               >
                 <Filter size={16} strokeWidth={2.2} />
                 {selectedFilterCount ? <span>{selectedFilterCount}</span> : null}
               </button>
-              <div className="assessment-page-view-segment" role="group" aria-label="Question view mode">
-                <button
-                  type="button"
-                  className={activeView === 'grid' ? 'is-active' : ''}
-                  onClick={() => setActiveView('grid')}
-                >
-                  <Grid2X2 size={15} strokeWidth={2.3} />
-                  Grid
-                </button>
-                <button
-                  type="button"
-                  className={activeView === 'card' ? 'is-active' : ''}
-                  onClick={() => setActiveView('card')}
-                >
-                  <Rows3 size={15} strokeWidth={2.3} />
-                  Card
-                </button>
-              </div>
-              {filterDefinitions.map(([filterKey, label, options]) => {
-                const selectedValues = filters[filterKey]
-                const isOpen = openFilterKey === filterKey
-                const isSearchableFilter = searchableFilterKeys.includes(filterKey)
-                const filterSearchTerm = filterSearchTerms[filterKey] ?? ''
-                const visibleOptions = isSearchableFilter
-                  ? options.filter((option) => option.toLowerCase().includes(filterSearchTerm.trim().toLowerCase()))
-                  : options
-                return (
-                  <div key={filterKey} className="assessment-page-filter-dropdown">
-                    <button
-                      type="button"
-                      className={selectedValues.length ? 'has-selection' : ''}
-                      onClick={() => setOpenFilterKey(isOpen ? '' : filterKey)}
-                      aria-expanded={isOpen}
-                    >
-                      <span>{label}</span>
-                      {selectedValues.length ? <strong>{selectedValues.length}</strong> : null}
-                      <ChevronDown size={14} strokeWidth={2.3} />
-                    </button>
-                    {isOpen ? (
-                      <div className="assessment-page-filter-menu" role="menu">
-                        <div>
-                          <strong>{label}</strong>
-                          {selectedValues.length ? (
-                            <button type="button" onClick={() => setFilters((current) => ({ ...current, [filterKey]: [] }))}>
-                              Clear
-                            </button>
-                          ) : null}
-                        </div>
-                        {isSearchableFilter ? (
-                          <label className="assessment-page-filter-menu-search">
-                            <Search size={14} strokeWidth={2.2} />
-                            <input
-                              type="search"
-                              value={filterSearchTerm}
-                              onChange={(event) => setFilterSearchTerms((current) => ({
-                                ...current,
-                                [filterKey]: event.target.value,
-                              }))}
-                              placeholder={`Search ${label.toLowerCase()}...`}
-                            />
-                          </label>
-                        ) : null}
-                        <div>
-                          {visibleOptions.map((option) => {
-                            const isSelected = selectedValues.includes(option)
-                            return (
-                              <label key={option}>
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => toggleFilterValue(filterKey, option)}
-                                />
-                                <span>{option}</span>
-                              </label>
-                            )
-                          })}
-                          {!visibleOptions.length ? (
-                            <span className="assessment-page-filter-menu-empty">No matches</span>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                )
-              })}
+              {baseFilterDefinitions.map(renderFilterDropdown)}
               {advancedFilterDefinitions.length ? (
-                <button
-                  type="button"
-                  className={`assessment-page-more-filters-btn ${showAdvancedFilters ? 'is-open' : ''}`}
-                  onClick={() => setShowAdvancedFilters((current) => !current)}
-                >
-                  <Plus size={15} strokeWidth={2.3} />
-                  {showAdvancedFilters ? 'Hide more filters' : 'More Filters'}
-                </button>
+                <span className="assessment-page-more-filters-wrap" ref={moreFiltersRef}>
+                  <button
+                    type="button"
+                    className={`assessment-page-more-filters-btn ${showAdvancedFilters ? 'is-open' : ''}`}
+                    onClick={() => {
+                      updateMoreFiltersPosition()
+                      setShowAdvancedFilters((current) => !current)
+                    }}
+                    aria-expanded={showAdvancedFilters}
+                  >
+                    <Plus size={15} strokeWidth={2.3} />
+                    More
+                  </button>
+                  {showAdvancedFilters && typeof document !== 'undefined' ? createPortal(
+                    <span className="assessment-page-filter-advanced-row" style={moreFiltersPanelStyle} role="tooltip">
+                      <span className="assessment-page-more-filter-head">
+                        <strong>More filters</strong>
+                        {advancedFilterDefinitions.some(([filterKey]) => filters[filterKey]?.length) ? (
+                          <button type="button" onClick={clearMoreFilters}>
+                            Clear
+                          </button>
+                        ) : null}
+                      </span>
+                      {moreFilterGroups.map((group) => (
+                        <span key={group.label} className="assessment-page-more-filter-group">
+                          <strong>{group.label}</strong>
+                          <span>{group.filters.map(renderFilterDropdown)}</span>
+                        </span>
+                      ))}
+                    </span>,
+                    document.body,
+                  ) : null}
+                </span>
               ) : null}
             </div>
             {hasSelectedFilters(filters) ? (
@@ -661,6 +725,13 @@ export default function QuestionBankNonCreatePage() {
                     </button>
                   ))
                 ))}
+                <button
+                  type="button"
+                  className="assessment-page-active-filters-clear"
+                  onClick={() => setFilters(createEmptyFilters())}
+                >
+                  Clear all
+                </button>
               </div>
             ) : null}
           </section>
@@ -830,49 +901,110 @@ export default function QuestionBankNonCreatePage() {
 
                   return (
                     <Fragment key={questionId}>
-                      <tr
-                        className={`assessment-page-grid-summary-row ${isTableRowOpen ? 'is-open' : ''}`}
-                        onClick={() => {
-                          setExpandedTableRows((current) => (
-                            current.includes(questionId)
-                              ? current.filter((id) => id !== questionId)
-                              : [...current, questionId]
-                          ))
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault()
+                      {!isTableRowOpen ? (
+                        <tr
+                          className="assessment-page-grid-summary-row"
+                          onClick={() => {
                             setExpandedTableRows((current) => (
-                              current.includes(questionId)
-                                ? current.filter((id) => id !== questionId)
-                                : [...current, questionId]
+                              [...current, questionId]
                             ))
-                          }
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        aria-expanded={isTableRowOpen}
-                      >
-                        <td className="assessment-page-grid-question">
-                          <strong>Q{questionNumber}. {getQuestionPreview(question)}</strong>
-                          <span className="assessment-page-grid-question-meta">
-                            <span className="assessment-page-grid-type-label">{question.type ?? 'Question'}</span>
-                            <span className={`assessment-page-grid-author-label ${getAuthorBadgeClassName(question)}`}>
-                              {getQuestionAuthorName(question)}
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              setExpandedTableRows((current) => (
+                                [...current, questionId]
+                              ))
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          aria-expanded="false"
+                        >
+                          <td className="assessment-page-grid-question">
+                            <strong>Q{questionNumber}. {getQuestionPreview(question)}</strong>
+                            <span className="assessment-page-grid-question-meta">
+                              <span className="assessment-page-grid-type-label">{question.type ?? 'Question'}</span>
+                              <span className={`assessment-page-grid-author-label ${getAuthorBadgeClassName(question)}`}>
+                                {getQuestionAuthorName(question)}
+                              </span>
+                              {question.questionCategory ? <span className="assessment-page-table-value-pill">{question.questionCategory}</span> : null}
+                              {question.difficultyLevel ? <span className="assessment-page-table-value-pill">{question.difficultyLevel}</span> : null}
+                              {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
+                              {question.cognitiveLevel ? <span className="assessment-page-table-value-pill">{question.cognitiveLevel}</span> : null}
                             </span>
-                            {question.questionCategory ? <span className="assessment-page-table-value-pill">{question.questionCategory}</span> : null}
-                            {question.difficultyLevel ? <span className="assessment-page-table-value-pill">{question.difficultyLevel}</span> : null}
-                            {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
-                            {question.cognitiveLevel ? <span className="assessment-page-table-value-pill">{question.cognitiveLevel}</span> : null}
-                          </span>
-                        </td>
-                      </tr>
+                            <span className="assessment-page-grid-collapse-indicator" aria-hidden="true">
+                              <ChevronDown size={16} strokeWidth={2.4} />
+                            </span>
+                          </td>
+                        </tr>
+                      ) : null}
                       {isTableRowOpen ? (
-                        <tr key={`${questionId}-details`} className="assessment-page-grid-detail-row">
+                        <tr
+                          key={`${questionId}-details`}
+                          className="assessment-page-grid-detail-row"
+                          onClick={() => {
+                            setExpandedTableRows((current) => current.filter((id) => id !== questionId))
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              setExpandedTableRows((current) => current.filter((id) => id !== questionId))
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          aria-expanded="true"
+                        >
                           <td colSpan={1}>
                             <div className="assessment-page-table-question-stack">
-                              <div className="assessment-page-table-full-question">
-                                Q{questionNumber}. {getQuestionPreview(question)}
+                              <div className="assessment-page-grid-detail-head">
+                                <div className="assessment-page-table-full-question">
+                                  Q{questionNumber}. {getQuestionPreview(question)}
+                                </div>
+                                <span className="assessment-page-grid-collapse-indicator" aria-hidden="true">
+                                  <ChevronUp size={16} strokeWidth={2.4} />
+                                </span>
+                              </div>
+                              <div className="assessment-page-grid-question-meta assessment-page-grid-detail-meta">
+                                <span className="assessment-page-grid-type-label">{question.type ?? 'Question'}</span>
+                                <span className={`assessment-page-grid-author-label ${getAuthorBadgeClassName(question)}`}>
+                                  {getQuestionAuthorName(question)}
+                                </span>
+                                {question.questionCategory ? <span className="assessment-page-table-value-pill">{question.questionCategory}</span> : null}
+                                {question.difficultyLevel ? <span className="assessment-page-table-value-pill">{question.difficultyLevel}</span> : null}
+                                {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
+                                {question.cognitiveLevel ? <span className="assessment-page-table-value-pill">{question.cognitiveLevel}</span> : null}
+                                {tagGroups.length ? (
+                                  <span className="assessment-page-question-tags-wrap">
+                                    <button
+                                      type="button"
+                                      className="assessment-page-question-tags-btn"
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        setActiveTagsId(isTagsOpen ? '' : tableTagsId)
+                                      }}
+                                      aria-expanded={isTagsOpen}
+                                    >
+                                      <Info size={12} strokeWidth={2.2} />
+                                      View Tags
+                                    </button>
+                                    {isTagsOpen ? (
+                                      <span className="assessment-page-question-tags-popover" role="tooltip">
+                                        {tagGroups.map((group) => (
+                                          <span key={group.label} className="assessment-page-question-tags-group">
+                                            <strong>{group.label}</strong>
+                                            <span>
+                                              {group.values.map((value) => (
+                                                <span key={value}>{value}</span>
+                                              ))}
+                                            </span>
+                                          </span>
+                                        ))}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                ) : null}
                               </div>
                               {curriculum.length ? (
                                 <div className="assessment-page-table-curriculum">{curriculum.join(' / ')}</div>
@@ -906,7 +1038,10 @@ export default function QuestionBankNonCreatePage() {
                                             <span className="question-bank-option-distractor-preview assessment-page-table-option-info">
                                               <button
                                                 type="button"
-                                                onClick={() => setActiveOptionDistractorId((current) => (current === optionPreviewId ? '' : optionPreviewId))}
+                                                onClick={(event) => {
+                                                  event.stopPropagation()
+                                                  setActiveOptionDistractorId((current) => (current === optionPreviewId ? '' : optionPreviewId))
+                                                }}
                                                 aria-expanded={activeOptionDistractorId === optionPreviewId}
                                                 aria-label={`View distractor errors for option ${optionLabel}`}
                                               >
@@ -928,35 +1063,6 @@ export default function QuestionBankNonCreatePage() {
                               {stripHtml(question.answerKey) ? (
                                 <div className="assessment-page-table-inline-section assessment-page-table-answer">
                                   <span>{stripHtml(question.answerKey)}</span>
-                                </div>
-                              ) : null}
-                              {tagGroups.length ? (
-                                <div className="assessment-page-table-inline-section assessment-page-table-tags-line">
-                                  <span className="assessment-page-question-tags-wrap">
-                                    <button
-                                      type="button"
-                                      className="assessment-page-question-tags-btn"
-                                      onClick={() => setActiveTagsId(isTagsOpen ? '' : tableTagsId)}
-                                      aria-expanded={isTagsOpen}
-                                    >
-                                      <Info size={13} strokeWidth={2.2} />
-                                      View Tags
-                                    </button>
-                                    {isTagsOpen ? (
-                                      <span className="assessment-page-question-tags-popover" role="tooltip">
-                                        {tagGroups.map((group) => (
-                                          <span key={group.label} className="assessment-page-question-tags-group">
-                                            <strong>{group.label}</strong>
-                                            <span>
-                                              {group.values.map((value) => (
-                                                <span key={value}>{value}</span>
-                                              ))}
-                                            </span>
-                                          </span>
-                                        ))}
-                                      </span>
-                                    ) : null}
-                                  </span>
                                 </div>
                               ) : null}
                             </div>

@@ -1200,6 +1200,27 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     })
   }
 
+  const removeApprovedQuestionFromQuestionBank = (questionId) => {
+    if (!questionId || typeof window === 'undefined') return
+
+    const existingQuestions = readPublishedQuestionBankQuestions()
+    const nextPublishedQuestions = existingQuestions.filter((question) => question.id !== questionId)
+
+    window.localStorage.setItem(QUESTION_BANK_PUBLISHED_KEY, JSON.stringify(nextPublishedQuestions))
+    window.dispatchEvent(new Event('question-bank-published-questions'))
+    setQuestions((current) => current.map((item) => (
+      item.id === questionId
+        ? {
+          ...item,
+          questionBankStatus: undefined,
+          questionBankSentAt: undefined,
+        }
+        : item
+    )))
+    setApprovedQuestionBankSelectedIds((current) => current.filter((id) => id !== questionId))
+    onAlert?.({ tone: 'warning', message: 'Question removed from Question Bank.' })
+  }
+
   const selectAllApprovedQuestionBankQuestions = () => {
     setApprovedQuestionBankSelectedIds(approvedQuestionBankPendingIds)
   }
@@ -3035,6 +3056,20 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                     title="Edit question"
                                   >
                                     <FilePenLine size={14} strokeWidth={2} />
+                                  </button>
+                                ) : null}
+                                {activeQuestionTab === 'approved' && isQuestionBankSent ? (
+                                  <button
+                                    type="button"
+                                    className="question-bank-icon-btn"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      removeApprovedQuestionFromQuestionBank(question.id)
+                                    }}
+                                    aria-label="Delete from question bank"
+                                    title="Delete from Question Bank"
+                                  >
+                                    <Trash2 size={14} strokeWidth={2} />
                                   </button>
                                 ) : null}
                                 {!isLockedApprovalCard ? (
