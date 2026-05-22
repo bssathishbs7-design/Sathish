@@ -293,9 +293,17 @@ const readStoredQuestionBankQuestions = () => {
 
   try {
     if (!window.localStorage.getItem(QUESTION_BANK_CREATED_DATA_CLEANUP_KEY)) {
-      window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify([]))
+      const existingQuestions = JSON.parse(window.localStorage.getItem(QUESTION_BANK_STORAGE_KEY) ?? '[]')
+      const preservedQuestions = Array.isArray(existingQuestions)
+        ? existingQuestions.filter((question) => (
+          question?.status === 'Approved'
+          || Boolean(question?.questionBankSentAt)
+          || question?.questionBankStatus === 'Sent to Question Bank'
+        ))
+        : []
+      window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(preservedQuestions))
       window.localStorage.setItem(QUESTION_BANK_CREATED_DATA_CLEANUP_KEY, 'true')
-      return []
+      return preservedQuestions
     }
 
     const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_STORAGE_KEY) ?? '[]')

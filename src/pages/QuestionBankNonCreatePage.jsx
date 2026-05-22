@@ -1,11 +1,13 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Info, LayoutGrid, ListChecks, Plus, Search, Sparkles, Star, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Filter, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Sparkles, Star, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import '../styles/assessment-pages.css'
 
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
 const QUESTION_BANK_UPLOADED_KEY = 'vx-question-bank-uploaded-questions'
+const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
+const QUESTION_BANK_FAVORITE_STORAGE_KEYS = [QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY, QUESTION_BANK_STORAGE_KEY]
 const OLD_DEFAULT_ANSWER_TEXT = 'Correct answer: Review the selected option and add the supporting rationale.'
 const CURRENT_DEFAULT_ANSWER_TEXT = 'Add the correct option and explanation.'
 
@@ -199,11 +201,15 @@ const readStoredQuestionList = (storageKey) => {
         const existingUploaded = JSON.parse(existingRaw)
         if (Array.isArray(existingUploaded)) {
           const sampleById = new Map(sampleQuestions.map((question) => [question.id, question]))
-          const refreshedUploaded = existingUploaded.map((question) => (
-            sampleById.has(question.id)
-              ? { ...sampleById.get(question.id), ...question, ...sampleById.get(question.id) }
-              : question
-          ))
+          const refreshedUploaded = existingUploaded.map((question) => {
+            const sampleQuestion = sampleById.get(question.id)
+            if (!sampleQuestion) return question
+
+            return {
+              ...sampleQuestion,
+              isFavorite: isFavoriteQuestion(question),
+            }
+          })
           const missingSamples = sampleQuestions.filter((sample) => (
             !refreshedUploaded.some((question) => question.id === sample.id)
           ))
@@ -215,7 +221,7 @@ const readStoredQuestionList = (storageKey) => {
     const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
     if (!Array.isArray(parsed)) return []
 
-    const cleanedQuestions = cleanQuestionBankItems(parsed).filter(isMedsyQuestion)
+    const cleanedQuestions = cleanQuestionBankItems(parsed).filter(isAllQuestionBankQuestion)
 
     if (JSON.stringify(cleanedQuestions) !== JSON.stringify(parsed)) {
       window.localStorage.setItem(storageKey, JSON.stringify(cleanedQuestions))
@@ -228,11 +234,6 @@ const readStoredQuestionList = (storageKey) => {
   }
 }
 
-const readAllQuestionBankQuestions = () => [
-  ...readStoredQuestionList(QUESTION_BANK_PUBLISHED_KEY),
-  ...readStoredQuestionList(QUESTION_BANK_UPLOADED_KEY),
-]
-
 const getQuestionAuthorName = (question) => (
   question?.authorName
   ?? question?.createdByName
@@ -241,6 +242,73 @@ const getQuestionAuthorName = (question) => (
 )
 
 const isMedsyQuestion = (question) => getQuestionAuthorName(question).trim().toLowerCase() === 'medsy'
+
+const isApprovedQuestion = (question) => (
+  question?.status === 'Approved'
+  || Boolean(question?.questionBankSentAt)
+  || question?.questionBankStatus === 'Sent to Question Bank'
+)
+
+const isAllQuestionBankQuestion = (question) => isMedsyQuestion(question) || isApprovedQuestion(question)
+
+const isFavoriteQuestion = (question) => Boolean(question?.isFavorite || question?.isFavourite)
+
+const updateQuestionFavoriteInStorage = (questionId, isFavorite) => {
+  if (typeof window === 'undefined' || !questionId) return
+
+  QUESTION_BANK_FAVORITE_STORAGE_KEYS.forEach((storageKey) => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
+      if (!Array.isArray(parsed)) return
+
+      let didUpdate = false
+      const nextQuestions = parsed.map((question) => {
+        if (question?.id !== questionId) return question
+        didUpdate = true
+        return {
+          ...question,
+          isFavorite,
+          isFavourite: undefined,
+        }
+      })
+
+      if (didUpdate) {
+        window.localStorage.setItem(storageKey, JSON.stringify(nextQuestions))
+      }
+    } catch {
+      // Ignore malformed local storage entries and keep the in-memory UI responsive.
+    }
+  })
+
+  window.dispatchEvent(new Event('question-bank-published-questions'))
+  window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+}
+
+const readApprovedCreatedQuestions = () => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_STORAGE_KEY) ?? '[]')
+    if (!Array.isArray(parsed)) return []
+    return cleanQuestionBankItems(parsed).filter((question) => !isMedsyQuestion(question) && isApprovedQuestion(question))
+  } catch {
+    return []
+  }
+}
+
+const readAllQuestionBankQuestions = () => {
+  const questionsById = new Map()
+
+  ;[
+    ...readStoredQuestionList(QUESTION_BANK_PUBLISHED_KEY),
+    ...readStoredQuestionList(QUESTION_BANK_UPLOADED_KEY),
+    ...readApprovedCreatedQuestions(),
+  ].forEach((question, index) => {
+    questionsById.set(question.id ?? `question-${index}`, question)
+  })
+
+  return Array.from(questionsById.values())
+}
 
 const getListSummary = (values, fallback = '-') => {
   const list = Array.isArray(values) ? values.filter(Boolean) : []
@@ -398,7 +466,7 @@ export default function QuestionBankNonCreatePage() {
     publishedQuestions.filter((question) => {
       if (activeMetric === 'medsy') return isMedsyQuestion(question)
       if (activeMetric === 'created') return !isMedsyQuestion(question)
-      if (activeMetric === 'favorites') return question.isFavorite || question.isFavourite
+      if (activeMetric === 'favorites') return isFavoriteQuestion(question)
       if (activeMetric === 'suggested') return question.isSuggested || question.questionSource === 'Suggested'
       return true
     })
@@ -568,7 +636,7 @@ export default function QuestionBankNonCreatePage() {
     { key: 'total', label: 'Total Question', value: publishedQuestions.length, icon: ClipboardList, tone: 'total' },
     { key: 'medsy', label: 'Medsy Question', value: publishedQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy' },
     { key: 'created', label: 'Created Question', value: publishedQuestions.filter((question) => !isMedsyQuestion(question)).length, icon: ListChecks, tone: 'created' },
-    { key: 'favorites', label: 'Favorites', value: publishedQuestions.filter((question) => question.isFavorite || question.isFavourite).length, icon: Star, tone: 'favorites' },
+    { key: 'favorites', label: 'Favorites', value: publishedQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites' },
     { key: 'suggested', label: 'Suggested Question', value: publishedQuestions.filter((question) => question.isSuggested || question.questionSource === 'Suggested').length, icon: Sparkles, tone: 'suggested' },
   ]
 
@@ -586,6 +654,65 @@ export default function QuestionBankNonCreatePage() {
         ? current.filter((id) => id !== questionId)
         : [...current, questionId]
     ))
+  }
+
+  const toggleQuestionFavorite = (questionId) => {
+    const question = publishedQuestions.find((item) => item.id === questionId)
+    if (!question) return
+
+    const nextFavoriteState = !isFavoriteQuestion(question)
+    setPublishedQuestions((current) => current.map((item) => (
+      item.id === questionId
+        ? { ...item, isFavorite: nextFavoriteState, isFavourite: undefined }
+        : item
+    )))
+    updateQuestionFavoriteInStorage(questionId, nextFavoriteState)
+  }
+
+  const renderQuestionRowActions = (question, questionId, questionNumber, isTableRowOpen) => {
+    const isFavorite = isFavoriteQuestion(question)
+
+    return (
+      <span className="assessment-page-grid-row-actions" onClick={(event) => event.stopPropagation()}>
+        <button
+          type="button"
+          className="assessment-page-grid-row-action is-icon-only"
+          disabled
+          title="Edit question"
+          aria-label={`Edit question ${questionNumber}`}
+        >
+          <Pencil size={14} strokeWidth={2.2} />
+        </button>
+        <button
+          type="button"
+          className="assessment-page-grid-row-action"
+          disabled
+          title="Report question"
+          aria-label={`Report question ${questionNumber}`}
+        >
+          <Flag size={14} strokeWidth={2.2} />
+          Report
+        </button>
+        <button
+          type="button"
+          className={`assessment-page-grid-row-action is-icon-only is-favorite ${isFavorite ? 'is-active' : ''}`}
+          onClick={() => toggleQuestionFavorite(questionId)}
+          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          aria-label={`${isFavorite ? 'Remove' : 'Add'} question ${questionNumber} ${isFavorite ? 'from' : 'to'} favorites`}
+          aria-pressed={isFavorite}
+        >
+          <Star size={15} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
+        </button>
+        <button
+          type="button"
+          className="assessment-page-grid-collapse-indicator"
+          onClick={() => toggleGridRowExpansion(questionId, isTableRowOpen)}
+          aria-label={`${isTableRowOpen ? 'Collapse' : 'Expand'} question ${questionNumber}`}
+        >
+          {isTableRowOpen ? <ChevronUp size={16} strokeWidth={2.4} /> : <ChevronDown size={16} strokeWidth={2.4} />}
+        </button>
+      </span>
+    )
   }
 
   const handleGridRowAction = (questionId, isTableRowOpen) => {
@@ -1164,17 +1291,7 @@ export default function QuestionBankNonCreatePage() {
                                 </span>
                               </span>
                             </span>
-                            <button
-                              type="button"
-                              className="assessment-page-grid-collapse-indicator"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                toggleGridRowExpansion(questionId, false)
-                              }}
-                              aria-label={`Expand question ${questionNumber}`}
-                            >
-                              <ChevronDown size={16} strokeWidth={2.4} />
-                            </button>
+                            {renderQuestionRowActions(question, questionId, questionNumber, false)}
                           </td>
                         </tr>
                       ) : null}
@@ -1210,17 +1327,7 @@ export default function QuestionBankNonCreatePage() {
                                 <div className="assessment-page-table-full-question">
                                   Q{questionNumber}. {getQuestionPreview(question)}
                                 </div>
-                                <button
-                                  type="button"
-                                  className="assessment-page-grid-collapse-indicator"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    toggleGridRowExpansion(questionId, true)
-                                  }}
-                                  aria-label={`Collapse question ${questionNumber}`}
-                                >
-                                  <ChevronUp size={16} strokeWidth={2.4} />
-                                </button>
+                                {renderQuestionRowActions(question, questionId, questionNumber, true)}
                               </div>
                               <div className="assessment-page-grid-question-meta assessment-page-grid-detail-meta">
                                 <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question.type)}`}>{question.type ?? 'Question'}</span>
