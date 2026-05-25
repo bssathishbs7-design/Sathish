@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock3, FileSearch, Filter, Flag, Info, LayoutGrid, ListChecks, Plus } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Filter, Flag, Info, LayoutGrid, ListChecks, Plus } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import '../styles/assessment-pages.css'
 
@@ -65,29 +65,13 @@ const getOptionalTagGroups = (question) => [
 
 export default function QueryRequestPage() {
   const [reportedRequests, setReportedRequests] = useState(() => readReportedQuestionRecords())
-  const [activeMetric, setActiveMetric] = useState('open')
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedRequestIds, setExpandedRequestIds] = useState([])
   const [activeTagsId, setActiveTagsId] = useState('')
-  const metricCounts = reportedRequests.reduce((counts, request) => ({
-    open: counts.open + (isRequestResolved(request) ? 0 : 1),
-    pending: counts.pending + (isRequestPending(request) ? 1 : 0),
-    resolved: counts.resolved + (isRequestResolved(request) ? 1 : 0),
-  }), { open: 0, pending: 0, resolved: 0 })
-  const metricCards = [
-    { key: 'open', label: 'Open', value: metricCounts.open, icon: Flag, className: 'is-total' },
-    { key: 'pending', label: 'Pending', value: metricCounts.pending, icon: Clock3, className: 'is-favorites' },
-    { key: 'resolved', label: 'Resolved', value: metricCounts.resolved, icon: CheckCircle2, className: 'is-medsy' },
-  ]
-  const filteredRequests = reportedRequests.filter((request) => {
-    if (activeMetric === 'resolved') return isRequestResolved(request)
-    if (activeMetric === 'pending') return isRequestPending(request)
-    return !isRequestResolved(request)
-  })
-  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / QUERY_REQUEST_PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(reportedRequests.length / QUERY_REQUEST_PAGE_SIZE))
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const pageStartIndex = (safeCurrentPage - 1) * QUERY_REQUEST_PAGE_SIZE
-  const pagedRequests = filteredRequests.slice(pageStartIndex, pageStartIndex + QUERY_REQUEST_PAGE_SIZE)
+  const pagedRequests = reportedRequests.slice(pageStartIndex, pageStartIndex + QUERY_REQUEST_PAGE_SIZE)
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -105,19 +89,22 @@ export default function QueryRequestPage() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeMetric, reportedRequests.length])
-
-  useEffect(() => {
-    if (!reportedRequests.length || metricCounts[activeMetric]) return
-
-    const nextMetric = metricCards.find((metric) => metric.value)?.key
-    if (nextMetric) setActiveMetric(nextMetric)
-  }, [activeMetric, metricCards, metricCounts, reportedRequests.length])
+  }, [reportedRequests.length])
 
   const resolveReport = (questionId) => {
+    const resolvedAt = new Date().toISOString()
     const nextRequests = readReportedQuestionRecords().map((record) => (
       record.questionId === questionId
-        ? { ...record, status: 'Resolved', resolvedAt: new Date().toISOString() }
+        ? {
+            ...record,
+            status: 'Resolved',
+            resolvedAt,
+            question: record.question ? {
+              ...record.question,
+              reportStatus: 'Resolved',
+              resolvedAt,
+            } : record.question,
+          }
         : record
     ))
     window.localStorage.setItem(QUESTION_BANK_REPORTED_KEY, JSON.stringify(nextRequests))
@@ -125,7 +112,6 @@ export default function QueryRequestPage() {
     setReportedRequests(nextRequests)
     setExpandedRequestIds((current) => current.filter((id) => id !== questionId))
     setActiveTagsId('')
-    setActiveMetric('resolved')
   }
 
   const toggleRequestExpansion = (requestId) => {
@@ -146,18 +132,19 @@ export default function QueryRequestPage() {
 
   const renderRequestActions = (request, questionNumber, isOpen) => (
     <span className="assessment-page-grid-row-actions" onClick={(event) => event.stopPropagation()}>
-      <button type="button" className="assessment-page-grid-row-action" title={request.authorAction || 'Report request'}>
+      <span className={`query-request-status-pill is-${getRequestStatus(request)}`} title={request.authorAction || 'Report request'}>
         <Flag size={14} strokeWidth={2.2} />
         {getRequestStatusLabel(request)}
-      </button>
-      <button
-        type="button"
-        className="assessment-page-grid-row-action"
-        onClick={() => resolveReport(request.questionId)}
-        disabled={getRequestStatus(request) === 'resolved'}
-      >
-        {getRequestStatus(request) === 'resolved' ? 'Resolved' : 'Resolve'}
-      </button>
+      </span>
+      {getRequestStatus(request) !== 'resolved' ? (
+        <button
+          type="button"
+          className="assessment-page-grid-row-action query-request-resolve-action"
+          onClick={() => resolveReport(request.questionId)}
+        >
+          Resolve
+        </button>
+      ) : null}
       <button
         type="button"
         className="assessment-page-grid-collapse-indicator"
@@ -169,37 +156,32 @@ export default function QueryRequestPage() {
     </span>
   )
 
+  const renderReportMetaBadges = (request) => (
+    <span className="query-request-meta-badges">
+      {request.reasons?.length ? (
+        <span className="query-request-meta-badge is-reason">
+          <strong>Reason:</strong>
+          {request.reasons.join(', ')}
+        </span>
+      ) : null}
+      {request.authorAction ? (
+        <span className="query-request-meta-badge is-action">
+          <strong>Action:</strong>
+          {request.authorAction}
+        </span>
+      ) : null}
+      {request.explanation ? (
+        <span className="query-request-meta-badge is-note">
+          <strong>Note:</strong>
+          {request.explanation}
+        </span>
+      ) : null}
+    </span>
+  )
+
   return (
     <section className="vx-content assessment-page query-request-page">
       <div className="assessment-page-shell query-request-shell">
-        <section className="assessment-page-metrics-strip query-request-metrics-strip" aria-label="Query request metrics">
-          {metricCards.map((metric) => {
-            const Icon = metric.icon
-            const isActive = activeMetric === metric.key
-
-            return (
-              <button
-                key={metric.key}
-                type="button"
-                className={`${metric.className} ${isActive ? 'is-active' : ''}`}
-                onClick={() => {
-                  if (!metric.value) return
-                  setActiveMetric(metric.key)
-                }}
-                disabled={!metric.value}
-                aria-pressed={isActive}
-              >
-                <span className="assessment-page-metric-icon" aria-hidden="true">
-                  <Icon size={15} strokeWidth={2.2} />
-                </span>
-                <span className="assessment-page-metric-copy">
-                  <strong>{metric.value}</strong>
-                  <span>{metric.label}</span>
-                </span>
-              </button>
-            )
-          })}
-        </section>
         <section className="assessment-page-bank-controls is-grid-attached" aria-label="Query request controls">
           <div className="assessment-page-filter-strip" aria-label="Query request filters">
             <button type="button" className="assessment-page-filter-toggle" aria-label="Filter query requests">
@@ -219,21 +201,19 @@ export default function QueryRequestPage() {
                 More
               </button>
             </span>
-            <span className="assessment-page-grid-action-controls" role="group" aria-label="Query request actions">
-              <button type="button" disabled>
-                <ListChecks size={14} strokeWidth={2.3} />
-                Add to Assessment
-              </button>
-              <button type="button" disabled>
-                <FileSearch size={14} strokeWidth={2.3} />
-                Assign to Learn
-              </button>
-            </span>
-            <span className="assessment-page-expand-toggle" role="group" aria-label="View mode">
-              <button type="button" className="is-active" aria-label="List view">
+            <span className="assessment-page-expand-toggle" role="group" aria-label="Expand query request rows">
+              <button
+                type="button"
+                onClick={() => setExpandedRequestIds(reportedRequests.map((request, index) => request.questionId ?? request.id ?? `query-request-${index}`))}
+                aria-label="Expand all query requests"
+              >
                 <ListChecks size={15} strokeWidth={2.4} />
               </button>
-              <button type="button" aria-label="Grid view">
+              <button
+                type="button"
+                onClick={() => setExpandedRequestIds([])}
+                aria-label="Collapse all query requests"
+              >
                 <LayoutGrid size={14} strokeWidth={2.3} />
               </button>
             </span>
@@ -274,7 +254,7 @@ export default function QueryRequestPage() {
                       <Fragment key={requestId}>
                         {!isOpen ? (
                           <tr
-                            className="assessment-page-grid-summary-row"
+                            className={`assessment-page-grid-summary-row ${isRequestResolved(request) ? 'is-query-resolved' : ''}`}
                             onClick={() => toggleRequestExpansion(requestId)}
                             onKeyDown={(event) => {
                               if (event.key === 'Enter' || event.key === ' ') {
@@ -295,15 +275,7 @@ export default function QueryRequestPage() {
                               <span className="assessment-page-grid-row-layout">
                                 <span className="assessment-page-grid-question-content">
                                   <strong>Q{questionNumber}. {getQuestionPreview(question)}</strong>
-                                  {request.reasons?.length ? (
-                                    <span className="query-request-row-note">{request.reasons.join(', ')}</span>
-                                  ) : null}
-                                  {request.explanation ? (
-                                    <span className="query-request-row-note">{request.explanation}</span>
-                                  ) : null}
-                                  {request.authorAction ? (
-                                    <span className="query-request-row-note">{request.authorAction}</span>
-                                  ) : null}
+                                  {renderReportMetaBadges(request)}
                                 </span>
                               </span>
                             </td>
@@ -319,7 +291,7 @@ export default function QueryRequestPage() {
                         ) : null}
                         {isOpen ? (
                           <tr
-                            className="assessment-page-grid-detail-row"
+                            className={`assessment-page-grid-detail-row ${isRequestResolved(request) ? 'is-query-resolved' : ''}`}
                             onClick={() => toggleRequestExpansion(requestId)}
                             onKeyDown={(event) => {
                               if (event.key === 'Enter' || event.key === ' ') {
@@ -421,10 +393,8 @@ export default function QueryRequestPage() {
                                     <span>{stripHtml(question.answerKey)}</span>
                                   </div>
                                 ) : null}
-                                <div className="assessment-page-table-inline-section query-request-report-detail">
-                                  {request.reasons?.length ? <strong>{request.reasons.join(', ')}</strong> : null}
-                                  {request.explanation ? <span>{request.explanation}</span> : null}
-                                  {request.authorAction ? <span>{request.authorAction}</span> : null}
+                                <div className="assessment-page-table-inline-section">
+                                  {renderReportMetaBadges(request)}
                                 </div>
                               </div>
                             </td>
@@ -439,7 +409,7 @@ export default function QueryRequestPage() {
             <section className="assessment-page-bank-pagination assessment-page-grid-pagination" aria-label="Query request pagination">
               <span className="assessment-page-grid-pagination-summary">
                 <span>Page {safeCurrentPage} of {totalPages}</span>
-                <span>Showing {pagedRequests.length} of {filteredRequests.length}</span>
+                <span>Showing {pagedRequests.length} of {reportedRequests.length}</span>
               </span>
               <div>
                 <button

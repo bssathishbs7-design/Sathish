@@ -3,7 +3,7 @@ import { ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandLogoDark from '../assets/brand-logo-dark.svg'
 import brandMark from '../assets/brand-mark.svg'
-import { ASSESSMENT_PAGES, MY_SKILL_PAGES, QUESTION_BANK_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
+import { APP_PAGES, ASSESSMENT_PAGES, MY_SKILL_PAGES, QUESTION_BANK_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
 
 /**
  * Sidebar Implementation Contract
@@ -29,6 +29,7 @@ export default function Sidebar({
   theme,
   useCompactLogo,
   activePage,
+  queryRequestCount = 0,
   onSelectPage,
   onCloseMobile,
 }) {
@@ -49,6 +50,10 @@ export default function Sidebar({
   const [openGroupLabel, setOpenGroupLabel] = useState(() => getActiveGroupLabel(activePage))
   const groupRefs = useRef({})
   const useCollapsedFlyout = sidebarCollapsed && !mobileSidebarOpen
+  const getNotificationCount = (page) => (
+    page === APP_PAGES.QUERY_REQUEST ? queryRequestCount : 0
+  )
+  const formatNotificationCount = (count) => (count > 9 ? '9+' : String(count))
   const handleSelectSidebarPage = (page) => {
     setOpenGroupLabel(getActiveGroupLabel(page))
     onSelectPage(page)
@@ -131,12 +136,17 @@ export default function Sidebar({
                         <span className="vx-sublink-icon" aria-hidden="true">
                           <child.icon size={14} strokeWidth={2} />
                         </span>
-                        <span className={useCollapsedFlyout ? 'vx-sublink-text' : 'vx-link-text'}>
-                          {child.navLabel ?? child.label}
+                      <span className={useCollapsedFlyout ? 'vx-sublink-text' : 'vx-link-text'}>
+                        {child.navLabel ?? child.label}
+                      </span>
+                      {getNotificationCount(child.page ?? child.label) ? (
+                        <span className="vx-link-badge" aria-label={`${getNotificationCount(child.page ?? child.label)} notifications`}>
+                          {formatNotificationCount(getNotificationCount(child.page ?? child.label))}
                         </span>
-                      </button>
-                    ))}
-                  </div>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
                 </div>
               ) : (
                 <button
@@ -149,6 +159,11 @@ export default function Sidebar({
                     <item.icon size={16} strokeWidth={2} />
                   </span>
                   <span className="vx-link-text">{item.label}</span>
+                  {getNotificationCount(item.label) ? (
+                    <span className="vx-link-badge" aria-label={`${getNotificationCount(item.label)} notifications`}>
+                      {formatNotificationCount(getNotificationCount(item.label))}
+                    </span>
+                  ) : null}
                 </button>
               )
             ))}

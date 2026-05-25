@@ -596,6 +596,27 @@
   transform: rotate(180deg);
 }
 
+.vx-link-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.vx-link.active .vx-link-badge {
+  background: #dc2626;
+}
+
 .vx-sublinks {
   display: none;
   gap: 4px;
@@ -1350,43 +1371,130 @@
 }
 
 .assessment-page-shell.query-request-shell {
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
 }
 
-.query-request-metrics-strip {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.query-request-row-note {
-  display: block;
+.query-request-meta-badges {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-top: 3px;
   max-width: 100%;
-  margin-top: 4px;
-  overflow: hidden;
-  color: #607380;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.query-request-report-detail {
-  color: #607380;
-  font-size: 0.76rem;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.query-request-report-detail {
-  display: grid;
-  gap: 4px;
-}
-
-.query-request-report-detail strong {
+.query-request-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 18px;
+  max-width: 100%;
+  padding: 1px 6px;
+  border: 1px solid #dbe7e2;
+  border-radius: 5px;
   color: #405866;
-  font-size: 0.78rem;
-  font-weight: 850;
+  font-size: 0.64rem;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.query-request-meta-badge strong {
+  display: inline;
+  font-size: 0.62rem;
+  font-weight: 750;
+  line-height: 1.1;
+  opacity: 0.78;
+}
+
+.assessment-page-grid-question .query-request-meta-badge strong,
+.assessment-page-table-question-stack .query-request-meta-badge strong {
+  display: inline;
+  color: inherit;
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.1;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+.query-request-meta-badge.is-reason {
+  border-color: #fecaca;
+  background: #fff7f8;
+  color: #be123c;
+}
+
+.query-request-meta-badge.is-action {
+  border-color: #99f6e4;
+  background: #f2fffa;
+  color: #0f766e;
+}
+
+.query-request-meta-badge.is-note {
+  border-color: #cbd5e1;
+  background: #fbfdff;
+  color: #475569;
+}
+
+.query-request-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 20px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #405866;
+  font-size: 0.68rem;
+  font-weight: 750;
+  cursor: default;
+  user-select: none;
+}
+
+.query-request-status-pill.is-pending {
+  background: #fffbeb;
+  color: #a16207;
+}
+
+.query-request-status-pill.is-open {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.query-request-status-pill.is-resolved,
+.assessment-page-grid-row-action.query-request-resolve-action {
+  border-color: #99f6e4;
+  background: #ecfdf5;
+  color: #0f766e;
+}
+
+.assessment-page-grid-row-action.query-request-resolve-action:hover,
+.assessment-page-grid-row-action.query-request-resolve-action:focus-visible {
+  border-color: #5eead4;
+  background: #ccfbf1;
+  color: #0f766e;
+  outline: none;
+}
+
+.assessment-page-grid-summary-row.is-query-resolved,
+.assessment-page-grid-detail-row.is-query-resolved td {
+  background: #f3f6f6;
+  box-shadow: inset 3px 0 0 #94a3b8;
+}
+
+.assessment-page-grid-summary-row.is-query-resolved:hover,
+.assessment-page-grid-detail-row.is-query-resolved:hover td {
+  background: #eef2f3;
+  box-shadow: inset 3px 0 0 #94a3b8;
+}
+
+.assessment-page-grid-summary-row.is-query-resolved .assessment-page-grid-question strong,
+.assessment-page-grid-detail-row.is-query-resolved .assessment-page-table-full-question,
+.assessment-page-grid-detail-row.is-query-resolved .assessment-page-table-curriculum,
+.assessment-page-grid-detail-row.is-query-resolved .assessment-page-table-answer {
+  color: #64748b;
 }
 
 .query-request-head,
@@ -1553,16 +1661,60 @@
   color: #8df0c7;
 }
 
-.theme-dark .query-request-row-note {
-  color: #9fb0c8;
+.theme-dark .query-request-meta-badge.is-reason {
+  border-color: rgba(248, 113, 113, 0.48);
+  background: rgba(127, 29, 29, 0.22);
+  color: #fca5a5;
 }
 
-.theme-dark .query-request-report-detail {
-  color: #9fb0c8;
+.theme-dark .query-request-meta-badge.is-action {
+  border-color: rgba(45, 212, 191, 0.48);
+  background: rgba(20, 184, 166, 0.14);
+  color: #8df0c7;
 }
 
-.theme-dark .query-request-report-detail strong {
-  color: #dceaff;
+.theme-dark .query-request-meta-badge.is-note {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: rgba(19, 34, 53, 0.72);
+  color: #c3d4e8;
+}
+
+.theme-dark .query-request-status-pill {
+  border: 0;
+  background: transparent;
+  color: #c7d7ee;
+}
+
+.theme-dark .query-request-status-pill.is-pending {
+  background: rgba(180, 83, 9, 0.18);
+  color: #fbbf24;
+}
+
+.theme-dark .query-request-status-pill.is-open {
+  background: rgba(30, 64, 175, 0.18);
+  color: #93c5fd;
+}
+
+.theme-dark .query-request-status-pill.is-resolved,
+.theme-dark .assessment-page-grid-row-action.query-request-resolve-action {
+  border-color: rgba(45, 212, 191, 0.48);
+  background: rgba(20, 184, 166, 0.14);
+  color: #8df0c7;
+}
+
+.theme-dark .assessment-page-grid-summary-row.is-query-resolved,
+.theme-dark .assessment-page-grid-detail-row.is-query-resolved td,
+.theme-dark .assessment-page-grid-summary-row.is-query-resolved:hover,
+.theme-dark .assessment-page-grid-detail-row.is-query-resolved:hover td {
+  background: rgba(71, 85, 105, 0.18);
+  box-shadow: inset 3px 0 0 #64748b;
+}
+
+.theme-dark .assessment-page-grid-summary-row.is-query-resolved .assessment-page-grid-question strong,
+.theme-dark .assessment-page-grid-detail-row.is-query-resolved .assessment-page-table-full-question,
+.theme-dark .assessment-page-grid-detail-row.is-query-resolved .assessment-page-table-curriculum,
+.theme-dark .assessment-page-grid-detail-row.is-query-resolved .assessment-page-table-answer {
+  color: #94a3b8;
 }
 
 .vx-breadcrumbs {
@@ -2375,6 +2527,16 @@
 .theme-dark .vx-link.active .vx-link-icon {
   color: #7af0c1;
   background: rgba(122, 240, 193, 0.12);
+}
+
+.theme-dark .vx-link-badge {
+  background: #f87171;
+  color: #450a0a;
+  box-shadow: 0 0 0 2px #101827;
+}
+
+.theme-dark .vx-link.active .vx-link-badge {
+  background: #fca5a5;
 }
 
 .theme-dark .vx-link-caret {

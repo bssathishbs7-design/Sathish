@@ -71,6 +71,18 @@ const APPROVAL_QUEUE_STORAGE_KEY = 'vx-approval-queue-rows'
 const APPROVAL_VIEW_STORAGE_KEY = 'vx-approval-view-record'
 const PROGRESS_RESULT_STORAGE_KEY = 'vx-progress-result-record'
 const ACTIVITY_RESULT_STORAGE_KEY = 'vx-activity-result-record'
+const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
+
+const readActiveQueryRequestCount = () => {
+  try {
+    const rows = JSON.parse(window.localStorage.getItem(QUESTION_BANK_REPORTED_KEY) || '[]')
+    if (!Array.isArray(rows)) return 0
+
+    return rows.filter((row) => String(row?.status ?? '').trim().toLowerCase() !== 'resolved').length
+  } catch {
+    return 0
+  }
+}
 
 const readStoredStartEvaluationRecord = () => {
   try {
@@ -360,6 +372,7 @@ function App() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
+  const [queryRequestCount, setQueryRequestCount] = useState(() => readActiveQueryRequestCount())
   const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
   const activeEvaluationRecord = selectedEvaluationRecord
     ?? evaluationRecords.find((record) => idsMatch(record.id, selectedCompletedEvaluationActivityId))
@@ -377,6 +390,18 @@ function App() {
     const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement))
     document.addEventListener('fullscreenchange', onFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
+  useEffect(() => {
+    const syncQueryRequestCount = () => setQueryRequestCount(readActiveQueryRequestCount())
+
+    window.addEventListener('storage', syncQueryRequestCount)
+    window.addEventListener('question-bank-reported-questions', syncQueryRequestCount)
+
+    return () => {
+      window.removeEventListener('storage', syncQueryRequestCount)
+      window.removeEventListener('question-bank-reported-questions', syncQueryRequestCount)
+    }
   }, [])
 
   useEffect(() => {
@@ -1099,6 +1124,7 @@ function App() {
           theme={theme}
           useCompactLogo={useCompactLogo}
           activePage={activePage}
+          queryRequestCount={queryRequestCount}
           onSelectPage={navigateToPage}
           onCloseMobile={() => setMobileSidebarOpen(false)}
         />

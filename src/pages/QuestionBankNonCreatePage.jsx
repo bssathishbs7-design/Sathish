@@ -8,6 +8,7 @@ const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
 const QUESTION_BANK_UPLOADED_KEY = 'vx-question-bank-uploaded-questions'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
+const QUESTION_BANK_CREATED_REPORTED_KEY = 'vx-question-bank-created-reported-questions'
 const QUESTION_BANK_FAVORITE_STORAGE_KEYS = [QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY, QUESTION_BANK_STORAGE_KEY]
 const REPORT_REASON_OPTIONS = [
   'Wrong answer',
@@ -278,8 +279,27 @@ const readReportedQuestionRecords = () => {
   }
 }
 
+const readCreatedReportedQuestionRecords = () => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_CREATED_REPORTED_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const isResolvedReportRecord = (record) => String(record?.status ?? '').trim().toLowerCase() === 'resolved'
+
 const getReportedQuestionIds = () => new Set(
-  readReportedQuestionRecords().map((record) => record.questionId).filter(Boolean),
+  [
+    ...readReportedQuestionRecords(),
+    ...readCreatedReportedQuestionRecords(),
+  ]
+    .filter((record) => !isResolvedReportRecord(record))
+    .map((record) => record.questionId)
+    .filter(Boolean),
 )
 
 const isSharedToStudentsQuestion = (question) => Boolean(
@@ -530,6 +550,7 @@ export default function QuestionBankNonCreatePage() {
   const [expandedCardRows, setExpandedCardRows] = useState([])
   const [activeMetric, setActiveMetric] = useState('total')
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
+  const [createdReportedQuestionRecords, setCreatedReportedQuestionRecords] = useState(() => readCreatedReportedQuestionRecords())
   const [reportQuestion, setReportQuestion] = useState(null)
   const [reportReasons, setReportReasons] = useState([])
   const [reportExplanation, setReportExplanation] = useState('')
@@ -537,7 +558,13 @@ export default function QuestionBankNonCreatePage() {
 
   const metricFilteredQuestions = useMemo(() => {
     if (activeMetric === 'suggested') {
-      return reportedQuestionRecords.map((record) => record.question).filter(Boolean)
+      return [
+        ...reportedQuestionRecords,
+        ...createdReportedQuestionRecords,
+      ]
+        .filter((record) => !isResolvedReportRecord(record))
+        .map((record) => record.question)
+        .filter(Boolean)
     }
 
     return publishedQuestions.filter((question) => {
@@ -547,7 +574,7 @@ export default function QuestionBankNonCreatePage() {
       if (activeMetric === 'shared') return isSharedToStudentsQuestion(question)
       return true
     })
-  }, [activeMetric, publishedQuestions, reportedQuestionRecords])
+  }, [activeMetric, publishedQuestions, reportedQuestionRecords, createdReportedQuestionRecords])
   const filterOptions = useMemo(() => ({
     authors: getUniqueValues(metricFilteredQuestions, getQuestionAuthorName),
     types: getUniqueValues(metricFilteredQuestions, (question) => question.type),
@@ -714,7 +741,10 @@ export default function QuestionBankNonCreatePage() {
     { key: 'created', label: 'Created Question', value: publishedQuestions.filter((question) => !isMedsyQuestion(question)).length, icon: ListChecks, tone: 'created' },
     { key: 'favorites', label: 'Favorites', value: publishedQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites' },
     { key: 'shared', label: 'Share to Students', value: publishedQuestions.filter(isSharedToStudentsQuestion).length, icon: Share2, tone: 'shared' },
-    { key: 'suggested', label: 'Report Question', value: reportedQuestionRecords.length, icon: Flag, tone: 'suggested' },
+    { key: 'suggested', label: 'Report Question', value: [
+      ...reportedQuestionRecords,
+      ...createdReportedQuestionRecords,
+    ].filter((record) => !isResolvedReportRecord(record)).length, icon: Flag, tone: 'suggested' },
   ]
   const activeMetricLabel = questionMetrics.find((metric) => metric.key === activeMetric)?.label ?? 'questions'
   const isReportMetricActive = activeMetric === 'suggested'
@@ -766,9 +796,10 @@ export default function QuestionBankNonCreatePage() {
   }
 
   const submitReportQuestion = () => {
-    if (!reportQuestion || !reportReasons.length || !reportExplanation.trim() || !reportAuthorAction) return
+    if (!reportQuestion || !reportReasons.length || !reportAuthorAction) return
 
     const reportedAt = new Date().toISOString()
+    const isCreatedReport = !isMedsyQuestion(reportQuestion)
     const reportedQuestion = {
       ...reportQuestion,
       type: String(reportQuestion.type ?? '').trim().toLowerCase() === 'descriptive' ? 'Descriptive Question' : reportQuestion.type,
@@ -782,7 +813,7 @@ export default function QuestionBankNonCreatePage() {
       status: 'Reported',
     }
     const nextRecord = {
-      id: `query-report-${reportQuestion.id ?? Date.now()}`,
+      id: `${isCreatedReport ? 'created-report' : 'query-report'}-${reportQuestion.id ?? Date.now()}`,
       questionId: reportQuestion.id,
       title: getQuestionPreview(reportQuestion),
       requester: getQuestionAuthorName(reportQuestion),
@@ -793,14 +824,23 @@ export default function QuestionBankNonCreatePage() {
       reportedAt,
       question: reportedQuestion,
     }
-    const nextRecords = [
-      nextRecord,
-      ...readReportedQuestionRecords().filter((record) => record.questionId !== reportQuestion.id),
-    ]
 
-    window.localStorage.setItem(QUESTION_BANK_REPORTED_KEY, JSON.stringify(nextRecords))
-    window.dispatchEvent(new Event('question-bank-reported-questions'))
-    setReportedQuestionRecords(nextRecords)
+    if (isCreatedReport) {
+      const nextCreatedRecords = [
+        nextRecord,
+        ...readCreatedReportedQuestionRecords().filter((record) => record.questionId !== reportQuestion.id),
+      ]
+      window.localStorage.setItem(QUESTION_BANK_CREATED_REPORTED_KEY, JSON.stringify(nextCreatedRecords))
+      window.dispatchEvent(new Event('question-bank-created-reported-questions'))
+    } else {
+      const nextRecords = [
+        nextRecord,
+        ...readReportedQuestionRecords().filter((record) => record.questionId !== reportQuestion.id),
+      ]
+      window.localStorage.setItem(QUESTION_BANK_REPORTED_KEY, JSON.stringify(nextRecords))
+      window.dispatchEvent(new Event('question-bank-reported-questions'))
+      setReportedQuestionRecords(nextRecords)
+    }
     setPublishedQuestions(readAllQuestionBankQuestions())
     resetReportModal()
   }
@@ -809,15 +849,18 @@ export default function QuestionBankNonCreatePage() {
     if (!questionId || typeof window === 'undefined') return
 
     const nextRecords = readReportedQuestionRecords().filter((record) => record.questionId !== questionId)
+    const nextCreatedRecords = readCreatedReportedQuestionRecords().filter((record) => record.questionId !== questionId)
     window.localStorage.setItem(QUESTION_BANK_REPORTED_KEY, JSON.stringify(nextRecords))
+    window.localStorage.setItem(QUESTION_BANK_CREATED_REPORTED_KEY, JSON.stringify(nextCreatedRecords))
     window.dispatchEvent(new Event('question-bank-reported-questions'))
+    window.dispatchEvent(new Event('question-bank-created-reported-questions'))
     setReportedQuestionRecords(nextRecords)
+    setCreatedReportedQuestionRecords(nextCreatedRecords)
     setPublishedQuestions(readAllQuestionBankQuestions())
   }
 
   const renderQuestionRowActions = (question, questionId, questionNumber, isTableRowOpen) => {
     const isFavorite = isFavoriteQuestion(question)
-    const canReportQuestion = isMedsyQuestion(question)
 
     return (
       <span className="assessment-page-grid-row-actions" onClick={(event) => event.stopPropagation()}>
@@ -835,7 +878,6 @@ export default function QuestionBankNonCreatePage() {
         <button
           type="button"
           className="assessment-page-grid-row-action"
-          disabled={!isReportMetricActive && !canReportQuestion}
           onClick={() => {
             if (isReportMetricActive) {
               withdrawReportedQuestion(question.id)
@@ -844,7 +886,7 @@ export default function QuestionBankNonCreatePage() {
 
             openReportModal(question)
           }}
-          title={isReportMetricActive ? 'Withdraw report' : canReportQuestion ? 'Report question' : 'Only Medsy questions can be reported'}
+          title={isReportMetricActive ? 'Withdraw report' : 'Report question'}
           aria-label={`${isReportMetricActive ? 'Withdraw report for' : 'Report'} question ${questionNumber}`}
         >
           <Flag size={14} strokeWidth={2.2} />
@@ -1038,6 +1080,7 @@ export default function QuestionBankNonCreatePage() {
 
     const syncPublishedQuestions = () => {
       setReportedQuestionRecords(readReportedQuestionRecords())
+      setCreatedReportedQuestionRecords(readCreatedReportedQuestionRecords())
       setPublishedQuestions(readAllQuestionBankQuestions())
     }
 
@@ -1045,12 +1088,14 @@ export default function QuestionBankNonCreatePage() {
     window.addEventListener('question-bank-published-questions', syncPublishedQuestions)
     window.addEventListener('question-bank-uploaded-questions', syncPublishedQuestions)
     window.addEventListener('question-bank-reported-questions', syncPublishedQuestions)
+    window.addEventListener('question-bank-created-reported-questions', syncPublishedQuestions)
 
     return () => {
       window.removeEventListener('storage', syncPublishedQuestions)
       window.removeEventListener('question-bank-published-questions', syncPublishedQuestions)
       window.removeEventListener('question-bank-uploaded-questions', syncPublishedQuestions)
       window.removeEventListener('question-bank-reported-questions', syncPublishedQuestions)
+      window.removeEventListener('question-bank-created-reported-questions', syncPublishedQuestions)
     }
   }, [])
 
@@ -1718,32 +1763,43 @@ export default function QuestionBankNonCreatePage() {
               <header className="assessment-page-report-head">
                 <div>
                   <h2 id="assessment-report-title">Why report this?</h2>
-                  <p>{getQuestionPreview(reportQuestion)}</p>
                 </div>
                 <button type="button" onClick={resetReportModal} aria-label="Close report dialog">
                   <X size={17} strokeWidth={2.4} />
                 </button>
               </header>
               <label className="assessment-page-report-field">
-                <span>Why report this?</span>
+                <span>Select reason for the question</span>
                 <select
-                  multiple
-                  value={reportReasons}
-                  onChange={(event) => setReportReasons(Array.from(event.target.selectedOptions, (option) => option.value))}
+                  value=""
+                  onChange={(event) => {
+                    const selectedReason = event.target.value
+                    if (!selectedReason) return
+                    setReportReasons((current) => (
+                      current.includes(selectedReason) ? current : [...current, selectedReason]
+                    ))
+                  }}
                 >
-                  {REPORT_REASON_OPTIONS.map((reason) => (
-                    <option key={reason} value={reason}>{reason}</option>
-                  ))}
+                  <option value="">Select reason</option>
+                  {REPORT_REASON_OPTIONS
+                    .filter((reason) => !reportReasons.includes(reason))
+                    .map((reason) => (
+                      <option key={reason} value={reason}>{reason}</option>
+                    ))}
                 </select>
-              </label>
-              <label className="assessment-page-report-field">
-                <span>Details</span>
-                <textarea
-                  value={reportExplanation}
-                  onChange={(event) => setReportExplanation(event.target.value)}
-                  placeholder="Explain clearly why you are rejecting this"
-                  rows={4}
-                />
+                <span className="assessment-page-report-reason-badges" aria-label="Selected report reasons">
+                  {reportReasons.map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => setReportReasons((current) => current.filter((item) => item !== reason))}
+                      aria-label={`Remove ${reason}`}
+                    >
+                      {reason}
+                      <X size={12} strokeWidth={2.4} />
+                    </button>
+                  ))}
+                </span>
               </label>
               <label className="assessment-page-report-field">
                 <span>Assign to Author</span>
@@ -1754,6 +1810,15 @@ export default function QuestionBankNonCreatePage() {
                   ))}
                 </select>
               </label>
+              <label className="assessment-page-report-field">
+                <span>Any other comments <small>(optional)</small></span>
+                <textarea
+                  value={reportExplanation}
+                  onChange={(event) => setReportExplanation(event.target.value)}
+                  placeholder="Explain clearly why you are rejecting this"
+                  rows={4}
+                />
+              </label>
               <footer className="assessment-page-report-actions">
                 <button type="button" className="is-secondary" onClick={resetReportModal}>
                   Cancel
@@ -1761,7 +1826,7 @@ export default function QuestionBankNonCreatePage() {
                 <button
                   type="button"
                   onClick={submitReportQuestion}
-                  disabled={!reportReasons.length || !reportExplanation.trim() || !reportAuthorAction}
+                  disabled={!reportReasons.length || !reportAuthorAction}
                 >
                   Assign to Author
                 </button>

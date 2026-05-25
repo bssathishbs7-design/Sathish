@@ -227,6 +227,7 @@ const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 const QUESTION_BANK_REVIEW_RESULTS_KEY = 'vx-question-bank-review-results'
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
 const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
+const QUESTION_BANK_CREATED_REPORTED_KEY = 'vx-question-bank-created-reported-questions'
 const QUESTION_BANK_CREATED_DATA_CLEANUP_KEY = 'vx-question-bank-created-data-cleaned'
 
 let questionSequence = 1
@@ -340,11 +341,17 @@ const readReportedQuestionRecords = () => {
   if (typeof window === 'undefined') return []
 
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_REPORTED_KEY) ?? '[]')
+    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_CREATED_REPORTED_KEY) ?? '[]')
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
   }
+}
+
+const writeCreatedReportedQuestionRecords = (records) => {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(QUESTION_BANK_CREATED_REPORTED_KEY, JSON.stringify(records))
+  window.dispatchEvent(new Event('question-bank-created-reported-questions'))
 }
 
 const getQuestionTypeMeta = (type) => (
@@ -1045,11 +1052,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     const syncReportedQuestions = () => setReportedQuestionRecords(readReportedQuestionRecords())
 
     window.addEventListener('storage', syncReportedQuestions)
-    window.addEventListener('question-bank-reported-questions', syncReportedQuestions)
+    window.addEventListener('question-bank-created-reported-questions', syncReportedQuestions)
 
     return () => {
       window.removeEventListener('storage', syncReportedQuestions)
-      window.removeEventListener('question-bank-reported-questions', syncReportedQuestions)
+      window.removeEventListener('question-bank-created-reported-questions', syncReportedQuestions)
     }
   }, [])
 
@@ -1141,6 +1148,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const openEditQuestionFlow = (questionId) => {
     setOpenCreatedTagsId(null)
     const question = questions.find((item) => item.id === questionId)
+      ?? reportedQuestionRecords.find((record) => record.questionId === questionId)?.question
     if (question?.status === 'Approval Rejected') {
       startEditQuestionFlow(question)
       return
@@ -1159,18 +1167,24 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     const typeMeta = getQuestionTypeMeta(questionToEdit.type)
     const isRejectedQuestion = questionToEdit.status === 'Approval Rejected'
 
-    setQuestions((current) => current.map((item) => (
-      item.id === questionId
-        ? {
-          ...item,
-          status: 'Draft',
-          revisionStatus: isRejectedQuestion ? 'Created' : 'Edited',
-          editCount: isRejectedQuestion ? 0 : Number(item.editCount ?? item.revisionCount ?? 0) + 1,
-          approvalReviewRemarks: '',
-          approvalReviewedAt: '',
-        }
-        : item
-    )))
+    setQuestions((current) => {
+      const nextQuestion = {
+        ...questionToEdit,
+        status: 'Draft',
+        revisionStatus: isRejectedQuestion ? 'Created' : 'Edited',
+        editCount: isRejectedQuestion ? 0 : Number(questionToEdit.editCount ?? questionToEdit.revisionCount ?? 0) + 1,
+        approvalReviewRemarks: '',
+        approvalReviewedAt: '',
+        isReported: false,
+        reported: false,
+        reportStatus: undefined,
+      }
+      const hasQuestion = current.some((item) => item.id === questionId)
+
+      return hasQuestion
+        ? current.map((item) => (item.id === questionId ? { ...item, ...nextQuestion } : item))
+        : [...current, nextQuestion]
+    })
     setSelectedQuestionId(questionId)
     setActiveQuestionTab('create')
     setSelectedQuestionTypeLabel(typeMeta.shortLabel)
@@ -1179,6 +1193,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     setIsApprovalSelectMode(false)
     setApprovalSelectedIds((current) => current.filter((id) => id !== questionId))
     onAlert?.({ tone: 'secondary', message: `${typeMeta.shortLabel} loaded for editing.` })
+  }
+
+  const clearCreatedReportForQuestion = (questionId) => {
+    const nextRecords = readReportedQuestionRecords().filter((record) => record.questionId !== questionId)
+    writeCreatedReportedQuestionRecords(nextRecords)
+    setReportedQuestionRecords(nextRecords)
   }
 
   const handleAddHierarchyNode = (level) => {
@@ -1460,6 +1480,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       setSelectedQuestionId(nextQuestion.id)
       setGenerationCompleteId(null)
       closeMappingPicker()
+      clearCreatedReportForQuestion(questionId)
       onAlert?.({ tone: 'success', message: 'Question updated.' })
       return
     }
@@ -2851,7 +2872,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         const typeMeta = getQuestionTypeMeta(question.type)
                         const optionalTagGroups = getQuestionOptionalTagGroups(question)
                         const isLockedApprovalCard = ['Sent to Approval', 'Approved'].includes(status)
-                        const canStartCardEdit = ['Approved', 'Approval Rejected'].includes(status)
+                        const canStartCardEdit = activeQuestionTab === 'report' || ['Approved', 'Approval Rejected'].includes(status)
                         const isApprovedQuestionBankSelection = activeQuestionTab === 'approved'
                         const isQuestionBankSent = Boolean(question.questionBankSentAt)
                         const isQuestionBankSelected = approvedQuestionBankSelectedIds.includes(question.id)
