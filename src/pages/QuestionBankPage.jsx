@@ -226,9 +226,11 @@ const APPROVAL_REVIEWERS = [
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 const QUESTION_BANK_REVIEW_RESULTS_KEY = 'vx-question-bank-review-results'
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
+const QUESTION_BANK_UPLOADED_KEY = 'vx-question-bank-uploaded-questions'
 const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
 const QUESTION_BANK_CREATED_REPORTED_KEY = 'vx-question-bank-created-reported-questions'
 const QUESTION_BANK_CREATED_DATA_CLEANUP_KEY = 'vx-question-bank-created-data-cleaned'
+const QUESTION_BANK_EDIT_HANDOFF_KEY = 'vx-question-bank-edit-handoff'
 
 let questionSequence = 1
 let optionSequence = 1
@@ -352,6 +354,64 @@ const writeCreatedReportedQuestionRecords = (records) => {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(QUESTION_BANK_CREATED_REPORTED_KEY, JSON.stringify(records))
   window.dispatchEvent(new Event('question-bank-created-reported-questions'))
+}
+
+const replaceQuestionInStorage = (question) => {
+  if (typeof window === 'undefined' || !question?.id) return
+
+  ;[QUESTION_BANK_STORAGE_KEY, QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY].forEach((storageKey) => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
+      if (!Array.isArray(parsed)) return
+      if (!parsed.some((item) => item?.id === question.id)) return
+
+      window.localStorage.setItem(storageKey, JSON.stringify(parsed.map((item) => (
+        item?.id === question.id ? { ...item, ...question } : item
+      ))))
+    } catch {
+      // Keep the edit flow responsive if one storage bucket is malformed.
+    }
+  })
+
+  window.dispatchEvent(new Event('question-bank-published-questions'))
+  window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+}
+
+const cloneQuestionForCreate = (question, mode) => {
+  const questionId = mode === 'duplicate'
+    ? `question-${Date.now()}-${questionSequence++}`
+    : question.id
+  const optionIdMap = new Map()
+  const clonedOptions = (question.options ?? []).map((option, optionIndex) => {
+    const nextOptionId = mode === 'duplicate' ? `option-${Date.now()}-${optionIndex}-${optionSequence++}` : option.id
+    optionIdMap.set(option.id, nextOptionId)
+    return {
+      ...option,
+      id: nextOptionId,
+    }
+  })
+
+  return {
+    ...question,
+    id: questionId,
+    title: question.title || getQuestionPreview(question).slice(0, 60),
+    options: clonedOptions,
+    correctOptionIds: mode === 'duplicate'
+      ? (question.correctOptionIds ?? []).map((optionId) => optionIdMap.get(optionId) ?? optionId)
+      : question.correctOptionIds ?? [],
+    status: 'Editing',
+    revisionStatus: mode === 'duplicate' ? 'Created' : 'Edited',
+    questionBankEditMode: mode,
+    sourceQuestionId: question.id,
+    questionBankStatus: undefined,
+    questionBankSentAt: undefined,
+    approvalReviewRemarks: '',
+    approvalReviewedAt: '',
+    isReported: false,
+    reported: false,
+    reportStatus: undefined,
+    reportedAt: undefined,
+  }
 }
 
 const getQuestionTypeMeta = (type) => (
@@ -986,7 +1046,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const canCreateSelectedQuestion = canCreateQuestion(selectedQuestion)
   const canSaveSelectedDraft = selectedQuestion?.status !== 'Sent to Approval' && hasDraftContent(selectedQuestion)
   const isUpdatingSelectedQuestion = selectedQuestion
-    ? ['Created', 'Draft', 'Approval Rejected'].includes(selectedQuestion.status)
+    ? selectedQuestion.questionBankEditMode === 'duplicate'
+      ? false
+      : ['Created', 'Draft', 'Approval Rejected'].includes(selectedQuestion.status) || selectedQuestion.questionBankEditMode === 'overwrite'
     : false
   const shouldShowSelectedDelete = selectedQuestion
     ? selectedQuestion.status !== 'Editing' && !['Sent to Approval', 'Approved'].includes(selectedQuestion.status)
@@ -1047,6 +1109,38 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   }, [questions])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const handoff = JSON.parse(window.sessionStorage.getItem(QUESTION_BANK_EDIT_HANDOFF_KEY) ?? 'null')
+      if (!handoff?.question) return
+
+      window.sessionStorage.removeItem(QUESTION_BANK_EDIT_HANDOFF_KEY)
+      const mode = handoff.mode === 'duplicate' ? 'duplicate' : 'overwrite'
+      const editableQuestion = cloneQuestionForCreate(handoff.question, mode)
+      const typeMeta = getQuestionTypeMeta(editableQuestion.type)
+
+      setQuestions((current) => {
+        const hasQuestion = current.some((item) => item.id === editableQuestion.id)
+        return hasQuestion
+          ? current.map((item) => (item.id === editableQuestion.id ? { ...item, ...editableQuestion } : item))
+          : [...current, editableQuestion]
+      })
+      setSelectedQuestionId(editableQuestion.id)
+      setActiveQuestionTab('create')
+      setSelectedQuestionTypeLabel(typeMeta.shortLabel)
+      setIsQuestionTypePickerOpen(false)
+      setGenerationCompleteId(null)
+      onAlert?.({
+        tone: 'secondary',
+        message: mode === 'duplicate' ? 'Question duplicated into Create Question.' : 'Question loaded for overwrite.',
+      })
+    } catch {
+      window.sessionStorage.removeItem(QUESTION_BANK_EDIT_HANDOFF_KEY)
+    }
+  }, [onAlert])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return undefined
 
     const syncReportedQuestions = () => setReportedQuestionRecords(readReportedQuestionRecords())
@@ -1097,6 +1191,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
           status: result.status === 'Approved' ? 'Approved' : 'Approval Rejected',
           approvalReviewRemarks: result.remarks ?? '',
           approvalReviewedAt: result.reviewedAt ?? '',
+          questionBankStatus: undefined,
+          questionBankSentAt: undefined,
         }
       }))
 
@@ -1175,6 +1271,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
         editCount: isRejectedQuestion ? 0 : Number(questionToEdit.editCount ?? questionToEdit.revisionCount ?? 0) + 1,
         approvalReviewRemarks: '',
         approvalReviewedAt: '',
+        questionBankStatus: undefined,
+        questionBankSentAt: undefined,
         isReported: false,
         reported: false,
         reportStatus: undefined,
@@ -1248,14 +1346,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     const sentAt = new Date().toISOString()
     const nextPublishedQuestions = selectedApprovedCards.map((question) => ({
       ...question,
+      authorName: getQuestionAuthorName(question),
+      status: 'Approved',
       questionBankStatus: 'Sent to Question Bank',
       questionBankSentAt: sentAt,
     }))
     const existingQuestions = readPublishedQuestionBankQuestions()
     const nextQuestionIds = new Set(nextPublishedQuestions.map((question) => question.id))
     const mergedQuestions = [
-      ...existingQuestions.filter((question) => !nextQuestionIds.has(question.id)),
       ...nextPublishedQuestions,
+      ...existingQuestions.filter((question) => !nextQuestionIds.has(question.id)),
     ]
 
     window.localStorage.setItem(QUESTION_BANK_PUBLISHED_KEY, JSON.stringify(mergedQuestions))
@@ -1431,7 +1531,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     })
 
     setQuestions((current) => current.map((item) => (
-      selectedIds.has(item.id) ? { ...item, status: 'Sent to Approval' } : item
+      selectedIds.has(item.id)
+        ? {
+          ...item,
+          status: 'Sent to Approval',
+          questionBankStatus: undefined,
+          questionBankSentAt: undefined,
+        }
+        : item
     )))
     setActiveQuestionTab('sent')
     setSelectedQuestionId((currentId) => {
@@ -1451,6 +1558,17 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     const questionId = selectedQuestion.id
 
     if (isUpdatingSelectedQuestion) {
+      const updatedQuestion = {
+        ...selectedQuestion,
+        title: getQuestionPreview(selectedQuestion).slice(0, 60) || selectedQuestion.title,
+        status: 'Created',
+        revisionStatus: selectedQuestion.revisionStatus === 'Edited' ? 'Edited' : 'Created',
+        approvalReviewRemarks: '',
+        approvalReviewedAt: '',
+        questionBankStatus: undefined,
+        questionBankSentAt: undefined,
+        questionBankEditMode: undefined,
+      }
       const nextQuestionBase = createQuestion(selectedQuestion.type, {
         title: `${getQuestionTypeMeta(selectedQuestion.type).shortLabel} ${questions.length + 1}`,
       })
@@ -1465,18 +1583,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       setQuestions((current) => [
         ...current.map((item) => (
           item.id === questionId
-            ? {
-              ...item,
-              title: getQuestionPreview(item).slice(0, 60) || item.title,
-              status: 'Created',
-              revisionStatus: item.revisionStatus === 'Edited' ? 'Edited' : 'Created',
-              approvalReviewRemarks: '',
-              approvalReviewedAt: '',
-            }
+            ? { ...item, ...updatedQuestion }
             : item
         )),
         nextQuestion,
       ])
+      replaceQuestionInStorage(updatedQuestion)
       setSelectedQuestionId(nextQuestion.id)
       setGenerationCompleteId(null)
       closeMappingPicker()
@@ -1554,6 +1666,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
           title: getRichTextPreview(needsQuestion ? generatedDraft.questionText : item.questionText).slice(0, 60) || item.title,
           status: 'Created',
           revisionStatus: item.revisionStatus || 'Created',
+          questionBankStatus: undefined,
+          questionBankSentAt: undefined,
+          questionBankEditMode: undefined,
         }
       }))
       setGenerationCompleteId(questionId)

@@ -72,10 +72,22 @@ const APPROVAL_VIEW_STORAGE_KEY = 'vx-approval-view-record'
 const PROGRESS_RESULT_STORAGE_KEY = 'vx-progress-result-record'
 const ACTIVITY_RESULT_STORAGE_KEY = 'vx-activity-result-record'
 const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
+const QUESTION_BANK_CREATED_REPORTED_KEY = 'vx-question-bank-created-reported-questions'
 
 const readActiveQueryRequestCount = () => {
   try {
     const rows = JSON.parse(window.localStorage.getItem(QUESTION_BANK_REPORTED_KEY) || '[]')
+    if (!Array.isArray(rows)) return 0
+
+    return rows.filter((row) => String(row?.status ?? '').trim().toLowerCase() !== 'resolved').length
+  } catch {
+    return 0
+  }
+}
+
+const readActiveCreatedReportCount = () => {
+  try {
+    const rows = JSON.parse(window.localStorage.getItem(QUESTION_BANK_CREATED_REPORTED_KEY) || '[]')
     if (!Array.isArray(rows)) return 0
 
     return rows.filter((row) => String(row?.status ?? '').trim().toLowerCase() !== 'resolved').length
@@ -373,6 +385,7 @@ function App() {
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
   const [queryRequestCount, setQueryRequestCount] = useState(() => readActiveQueryRequestCount())
+  const [createdReportCount, setCreatedReportCount] = useState(() => readActiveCreatedReportCount())
   const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
   const activeEvaluationRecord = selectedEvaluationRecord
     ?? evaluationRecords.find((record) => idsMatch(record.id, selectedCompletedEvaluationActivityId))
@@ -401,6 +414,18 @@ function App() {
     return () => {
       window.removeEventListener('storage', syncQueryRequestCount)
       window.removeEventListener('question-bank-reported-questions', syncQueryRequestCount)
+    }
+  }, [])
+
+  useEffect(() => {
+    const syncCreatedReportCount = () => setCreatedReportCount(readActiveCreatedReportCount())
+
+    window.addEventListener('storage', syncCreatedReportCount)
+    window.addEventListener('question-bank-created-reported-questions', syncCreatedReportCount)
+
+    return () => {
+      window.removeEventListener('storage', syncCreatedReportCount)
+      window.removeEventListener('question-bank-created-reported-questions', syncCreatedReportCount)
     }
   }, [])
 
@@ -1125,6 +1150,7 @@ function App() {
           useCompactLogo={useCompactLogo}
           activePage={activePage}
           queryRequestCount={queryRequestCount}
+          createdReportCount={createdReportCount}
           onSelectPage={navigateToPage}
           onCloseMobile={() => setMobileSidebarOpen(false)}
         />
@@ -1208,7 +1234,7 @@ function App() {
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
             <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
-            <QuestionBankNonCreatePage />
+            <QuestionBankNonCreatePage onNavigate={navigateToPage} />
           ) : activePage === APP_PAGES.QUERY_REQUEST ? (
             <QueryRequestPage />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (

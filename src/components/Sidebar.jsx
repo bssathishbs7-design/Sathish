@@ -30,6 +30,7 @@ export default function Sidebar({
   useCompactLogo,
   activePage,
   queryRequestCount = 0,
+  createdReportCount = 0,
   onSelectPage,
   onCloseMobile,
 }) {
@@ -51,7 +52,11 @@ export default function Sidebar({
   const groupRefs = useRef({})
   const useCollapsedFlyout = sidebarCollapsed && !mobileSidebarOpen
   const getNotificationCount = (page) => (
-    page === APP_PAGES.QUERY_REQUEST ? queryRequestCount : 0
+    page === APP_PAGES.QUERY_REQUEST
+      ? queryRequestCount
+      : page === APP_PAGES.QUESTION_BANK
+        ? createdReportCount
+        : 0
   )
   const formatNotificationCount = (count) => (count > 9 ? '9+' : String(count))
   const handleSelectSidebarPage = (page) => {

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Filter, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Star, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
+import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
@@ -9,6 +10,7 @@ const QUESTION_BANK_UPLOADED_KEY = 'vx-question-bank-uploaded-questions'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
 const QUESTION_BANK_CREATED_REPORTED_KEY = 'vx-question-bank-created-reported-questions'
+const QUESTION_BANK_EDIT_HANDOFF_KEY = 'vx-question-bank-edit-handoff'
 const QUESTION_BANK_FAVORITE_STORAGE_KEYS = [QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY, QUESTION_BANK_STORAGE_KEY]
 const REPORT_REASON_OPTIONS = [
   'Wrong answer',
@@ -256,7 +258,16 @@ const getQuestionAuthorName = (question) => (
   ?? 'Karthik Subramanian'
 )
 
-const isMedsyQuestion = (question) => getQuestionAuthorName(question).trim().toLowerCase() === 'medsy'
+const isEditedQuestion = (question) => Boolean(
+  question?.sourceQuestionId
+  || String(question?.revisionStatus ?? '').trim().toLowerCase() === 'edited'
+  || Number(question?.editCount ?? question?.revisionCount ?? 0) > 0,
+)
+
+const isMedsyQuestion = (question) => (
+  getQuestionAuthorName(question).trim().toLowerCase() === 'medsy'
+  && !isEditedQuestion(question)
+)
 
 const isApprovedQuestion = (question) => (
   question?.status === 'Approved'
@@ -367,7 +378,12 @@ const readAllQuestionBankQuestions = () => {
     questionsById.set(question.id ?? `question-${index}`, question)
   })
 
-  return Array.from(questionsById.values())
+  return Array.from(questionsById.values()).sort((firstQuestion, secondQuestion) => {
+    const firstSentAt = Date.parse(firstQuestion?.questionBankSentAt ?? firstQuestion?.updatedAt ?? firstQuestion?.createdAt ?? '')
+    const secondSentAt = Date.parse(secondQuestion?.questionBankSentAt ?? secondQuestion?.updatedAt ?? secondQuestion?.createdAt ?? '')
+
+    return (Number.isNaN(secondSentAt) ? 0 : secondSentAt) - (Number.isNaN(firstSentAt) ? 0 : firstSentAt)
+  })
 }
 
 const getListSummary = (values, fallback = '-') => {
@@ -432,7 +448,7 @@ const getQuestionTypeLabel = (type) => {
 }
 
 const getQuestionSourceType = (question) => (
-  getQuestionAuthorName(question).trim().toLowerCase() === 'medsy' ? 'Uploaded' : 'Created'
+  isMedsyQuestion(question) ? 'Uploaded' : 'Created'
 )
 
 const getAuthorBadgeClassName = (question) => (
@@ -525,7 +541,7 @@ const nonCreateHighlights = [
   },
 ]
 
-export default function QuestionBankNonCreatePage() {
+export default function QuestionBankNonCreatePage({ onNavigate }) {
   const filterHeaderRef = useRef(null)
   const moreFiltersRef = useRef(null)
   const selectionBarRef = useRef(null)
@@ -555,6 +571,8 @@ export default function QuestionBankNonCreatePage() {
   const [reportReasons, setReportReasons] = useState([])
   const [reportExplanation, setReportExplanation] = useState('')
   const [reportAuthorAction, setReportAuthorAction] = useState('')
+  const [editQuestion, setEditQuestion] = useState(null)
+  const [editQuestionMode, setEditQuestionMode] = useState('overwrite')
 
   const metricFilteredQuestions = useMemo(() => {
     if (activeMetric === 'suggested') {
@@ -795,6 +813,28 @@ export default function QuestionBankNonCreatePage() {
     setReportAuthorAction('')
   }
 
+  const openEditModeModal = (question) => {
+    setEditQuestion(question)
+    setEditQuestionMode('overwrite')
+  }
+
+  const closeEditModeModal = () => {
+    setEditQuestion(null)
+    setEditQuestionMode('overwrite')
+  }
+
+  const continueEditQuestion = () => {
+    if (!editQuestion || typeof window === 'undefined') return
+
+    window.sessionStorage.setItem(QUESTION_BANK_EDIT_HANDOFF_KEY, JSON.stringify({
+      mode: editQuestionMode,
+      question: editQuestion,
+      requestedAt: new Date().toISOString(),
+    }))
+    closeEditModeModal()
+    onNavigate?.(APP_PAGES.QUESTION_BANK)
+  }
+
   const submitReportQuestion = () => {
     if (!reportQuestion || !reportReasons.length || !reportAuthorAction) return
 
@@ -868,7 +908,7 @@ export default function QuestionBankNonCreatePage() {
           <button
             type="button"
             className="assessment-page-grid-row-action is-icon-only"
-            disabled
+            onClick={() => openEditModeModal(question)}
             title="Edit question"
             aria-label={`Edit question ${questionNumber}`}
           >
@@ -1360,7 +1400,7 @@ export default function QuestionBankNonCreatePage() {
               const isCardOpen = expandedCardRows.includes(questionId)
 
               return (
-                <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
+                <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'} ${isEditedQuestion(question) ? 'is-edited-question' : ''}`}>
                   <div className="assessment-page-question-head">
                     <span className="assessment-page-question-type">{question.type ?? 'Question'}</span>
                     <span
@@ -1518,7 +1558,7 @@ export default function QuestionBankNonCreatePage() {
                     <Fragment key={questionId}>
                       {!isTableRowOpen ? (
                         <tr
-                          className={`assessment-page-grid-summary-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''}`}
+                          className={`assessment-page-grid-summary-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''} ${isEditedQuestion(question) ? 'is-edited-question' : ''}`}
                           onClick={() => handleGridRowAction(questionId, false)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -1564,7 +1604,7 @@ export default function QuestionBankNonCreatePage() {
                       {isTableRowOpen ? (
                         <tr
                           key={`${questionId}-details`}
-                          className={`assessment-page-grid-detail-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''}`}
+                          className={`assessment-page-grid-detail-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''} ${isEditedQuestion(question) ? 'is-edited-question' : ''}`}
                           onClick={() => handleGridRowAction(questionId, true)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -1829,6 +1869,54 @@ export default function QuestionBankNonCreatePage() {
                   disabled={!reportReasons.length || !reportAuthorAction}
                 >
                   Assign to Author
+                </button>
+              </footer>
+            </div>
+          </div>,
+          document.body,
+        ) : null}
+
+        {editQuestion && typeof document !== 'undefined' ? createPortal(
+          <div className="assessment-page-report-modal" role="dialog" aria-modal="true" aria-labelledby="assessment-edit-title">
+            <div className="assessment-page-report-backdrop" onClick={closeEditModeModal} aria-hidden="true" />
+            <div className="assessment-page-report-card assessment-page-edit-mode-card">
+              <header className="assessment-page-report-head">
+                <div>
+                  <h2 id="assessment-edit-title">Edit this question?</h2>
+                </div>
+                <button type="button" onClick={closeEditModeModal} aria-label="Close edit dialog">
+                  <X size={17} strokeWidth={2.4} />
+                </button>
+              </header>
+              <p className="assessment-page-edit-mode-copy">
+                Choose how you want to use this question in Create Question.
+              </p>
+              <div className="assessment-page-edit-mode-toggle" role="radiogroup" aria-label="Edit mode">
+                <button
+                  type="button"
+                  className={editQuestionMode === 'overwrite' ? 'is-active' : ''}
+                  onClick={() => setEditQuestionMode('overwrite')}
+                  role="radio"
+                  aria-checked={editQuestionMode === 'overwrite'}
+                >
+                  Overwrite
+                </button>
+                <button
+                  type="button"
+                  className={editQuestionMode === 'duplicate' ? 'is-active' : ''}
+                  onClick={() => setEditQuestionMode('duplicate')}
+                  role="radio"
+                  aria-checked={editQuestionMode === 'duplicate'}
+                >
+                  Duplicate
+                </button>
+              </div>
+              <footer className="assessment-page-report-actions">
+                <button type="button" className="is-secondary" onClick={closeEditModeModal}>
+                  Cancel
+                </button>
+                <button type="button" onClick={continueEditQuestion}>
+                  Continue
                 </button>
               </footer>
             </div>

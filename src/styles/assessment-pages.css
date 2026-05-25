@@ -1164,6 +1164,26 @@
   box-shadow: inset 5px 0 0 #10b9a8;
 }
 
+.assessment-page-grid-summary-row.is-edited-question {
+  background: #fff8ed;
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+.assessment-page-grid-summary-row.is-edited-question:hover {
+  background: #fff3db;
+  box-shadow: inset 4px 0 0 #f59e0b;
+}
+
+.assessment-page-grid-detail-row.is-edited-question td {
+  background: #fffbf2;
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+.assessment-page-grid-detail-row.is-edited-question:hover td {
+  background: #fff3db;
+  box-shadow: inset 5px 0 0 #f59e0b, inset 0 0 0 1px rgba(245, 158, 11, 0.2);
+}
+
 .assessment-page-grid-summary-row:focus-visible {
   outline: 2px solid #16bda6;
   outline-offset: -2px;
@@ -1765,6 +1785,46 @@
   cursor: not-allowed;
 }
 
+.assessment-page-edit-mode-card {
+  width: min(460px, 100%);
+}
+
+.assessment-page-edit-mode-copy {
+  margin: 0;
+  color: #607380;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.assessment-page-edit-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid #cfe7db;
+  border-radius: 10px;
+  background: #f8fcfa;
+}
+
+.assessment-page-edit-mode-toggle button {
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #405866;
+  font-size: 0.8rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.assessment-page-edit-mode-toggle button.is-active {
+  border-color: #9bd9c7;
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
 .assessment-page-grid-pagination {
   position: relative;
   z-index: 5;
@@ -2121,6 +2181,14 @@
   display: grid;
   gap: 12px;
   padding: 16px 18px;
+}
+
+.assessment-page-question-card.is-edited-question {
+  border-color: #f3cf8f;
+  background:
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.08), transparent 28%),
+    linear-gradient(180deg, #fffdf8 0%, #fff8ed 100%);
+  box-shadow: inset 3px 0 0 #f59e0b, 0 8px 22px rgba(13, 55, 38, 0.045);
 }
 
 .assessment-page-question-card.is-closed {
@@ -2574,6 +2642,14 @@
   box-shadow: 0 18px 34px rgba(2, 8, 23, 0.28);
 }
 
+.theme-dark .assessment-page-question-card.is-edited-question {
+  border-color: rgba(251, 191, 36, 0.42);
+  background:
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 28%),
+    linear-gradient(180deg, #141b2a 0%, #191c26 100%);
+  box-shadow: inset 3px 0 0 #fbbf24, 0 18px 34px rgba(2, 8, 23, 0.28);
+}
+
 .theme-dark .assessment-page-question-title,
 .theme-dark .assessment-page-empty strong,
 .theme-dark .assessment-page-view-count strong,
@@ -2770,6 +2846,26 @@
   box-shadow: inset 5px 0 0 #2dd4bf;
 }
 
+.theme-dark .assessment-page-grid-summary-row.is-edited-question {
+  background: rgba(245, 158, 11, 0.13);
+  box-shadow: inset 3px 0 0 #fbbf24;
+}
+
+.theme-dark .assessment-page-grid-summary-row.is-edited-question:hover {
+  background: rgba(245, 158, 11, 0.18);
+  box-shadow: inset 4px 0 0 #fbbf24;
+}
+
+.theme-dark .assessment-page-grid-detail-row.is-edited-question td {
+  background: rgba(245, 158, 11, 0.11);
+  box-shadow: inset 3px 0 0 #fbbf24;
+}
+
+.theme-dark .assessment-page-grid-detail-row.is-edited-question:hover td {
+  background: rgba(245, 158, 11, 0.17);
+  box-shadow: inset 5px 0 0 #fbbf24, inset 0 0 0 1px rgba(251, 191, 36, 0.22);
+}
+
 .theme-dark .assessment-page-grid-question strong,
 .theme-dark .assessment-page-table-full-question {
   color: #eef6ff;
@@ -2887,6 +2983,25 @@
   border-color: rgba(45, 212, 191, 0.62);
   background: rgba(20, 184, 166, 0.24);
   color: #ccfbf1;
+}
+
+.theme-dark .assessment-page-edit-mode-copy {
+  color: #9fb0c8;
+}
+
+.theme-dark .assessment-page-edit-mode-toggle {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: #132235;
+}
+
+.theme-dark .assessment-page-edit-mode-toggle button {
+  color: #c3d4e8;
+}
+
+.theme-dark .assessment-page-edit-mode-toggle button.is-active {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.18);
+  color: #8df0c7;
 }
 
 .theme-dark .assessment-page-grid-author,
