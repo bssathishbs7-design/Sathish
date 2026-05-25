@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Filter, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Sparkles, Star, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Filter, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Star, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import '../styles/assessment-pages.css'
 
@@ -253,6 +253,15 @@ const isAllQuestionBankQuestion = (question) => isMedsyQuestion(question) || isA
 
 const isFavoriteQuestion = (question) => Boolean(question?.isFavorite || question?.isFavourite)
 
+const isSharedToStudentsQuestion = (question) => Boolean(
+  question?.sharedToStudents
+  || question?.shareToStudents
+  || question?.isSharedToStudents
+  || question?.sharedWithStudents
+  || (Array.isArray(question?.sharedStudentIds) && question.sharedStudentIds.length)
+  || (Array.isArray(question?.studentShareIds) && question.studentShareIds.length)
+)
+
 const updateQuestionFavoriteInStorage = (questionId, isFavorite) => {
   if (typeof window === 'undefined' || !questionId) return
 
@@ -496,6 +505,7 @@ export default function QuestionBankNonCreatePage() {
       if (activeMetric === 'created') return !isMedsyQuestion(question)
       if (activeMetric === 'favorites') return isFavoriteQuestion(question)
       if (activeMetric === 'suggested') return question.isSuggested || question.questionSource === 'Suggested'
+      if (activeMetric === 'shared') return isSharedToStudentsQuestion(question)
       return true
     })
   ), [activeMetric, publishedQuestions])
@@ -661,11 +671,12 @@ export default function QuestionBankNonCreatePage() {
   const advancedFilterDefinitions = moreFilterGroups.flatMap((group) => group.filters)
   const searchableFilterKeys = ['subjects', 'topics', 'competencies', 'organSystems', 'organSubSystems', 'diseaseTags', 'keyConcepts']
   const questionMetrics = [
-    { key: 'total', label: 'Total Qus', value: publishedQuestions.length, icon: ClipboardList, tone: 'total' },
-    { key: 'medsy', label: 'Medsy Qus', value: publishedQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy' },
-    { key: 'created', label: 'Institution Qus', value: publishedQuestions.filter((question) => !isMedsyQuestion(question)).length, icon: ListChecks, tone: 'created' },
+    { key: 'total', label: 'Total Question', value: publishedQuestions.length, icon: ClipboardList, tone: 'total' },
+    { key: 'medsy', label: 'Medsy Question', value: publishedQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy' },
+    { key: 'created', label: 'Created Question', value: publishedQuestions.filter((question) => !isMedsyQuestion(question)).length, icon: ListChecks, tone: 'created' },
     { key: 'favorites', label: 'Favorites', value: publishedQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites' },
-    { key: 'suggested', label: 'Suggested Qus', value: publishedQuestions.filter((question) => question.isSuggested || question.questionSource === 'Suggested').length, icon: Sparkles, tone: 'suggested' },
+    { key: 'shared', label: 'Share to Students', value: publishedQuestions.filter(isSharedToStudentsQuestion).length, icon: Share2, tone: 'shared' },
+    { key: 'suggested', label: 'Report Question', value: publishedQuestions.filter((question) => question.isSuggested || question.questionSource === 'Suggested').length, icon: Flag, tone: 'suggested' },
   ]
   const activeMetricLabel = questionMetrics.find((metric) => metric.key === activeMetric)?.label ?? 'questions'
   const footerResultSummary = hasSelectedFilters(filters)
@@ -1024,8 +1035,10 @@ export default function QuestionBankNonCreatePage() {
                 <span className="assessment-page-metric-icon" aria-hidden="true">
                   <Icon size={15} strokeWidth={2.2} />
                 </span>
-                <span>{metric.label}</span>
-                <strong title={formatMetricCount(metric.value)}>{formatCompactMetricCount(metric.value)}</strong>
+                <span className="assessment-page-metric-copy">
+                  <strong title={formatMetricCount(metric.value)}>{formatCompactMetricCount(metric.value)}</strong>
+                  <span>{metric.label}</span>
+                </span>
               </button>
             )
           })}
