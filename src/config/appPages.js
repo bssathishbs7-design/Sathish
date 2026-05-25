@@ -7,6 +7,7 @@ import {
   FilePenLine,
   FileSearch,
   FileText,
+  MessageSquareText,
   SlidersHorizontal,
   TrendingUp,
 } from 'lucide-react'
@@ -20,6 +21,7 @@ export const APP_PAGES = {
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
   QUESTION_BANK: 'Question Bank',
   QUESTION_BANK_NON_CREATE: 'Question Bank Overall Question',
+  QUERY_REQUEST: 'Query Request',
   ACTIVITY_RESULT: 'Activity Result',
   COMPLETED_EVALUATION: 'Completed Evaluation',
   REVIEW_APPROVE: 'Approval Queue',
@@ -107,6 +109,10 @@ export const SIDEBAR_MENU = [
           { label: APP_PAGES.QUESTION_BANK, navLabel: 'Create', icon: FilePenLine },
           { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'All Questions', icon: FileSearch },
         ],
+      },
+      {
+        label: APP_PAGES.QUERY_REQUEST,
+        icon: MessageSquareText,
       },
     ],
   },

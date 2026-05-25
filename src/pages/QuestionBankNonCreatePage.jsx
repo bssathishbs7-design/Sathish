@@ -7,7 +7,21 @@ import '../styles/assessment-pages.css'
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
 const QUESTION_BANK_UPLOADED_KEY = 'vx-question-bank-uploaded-questions'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
+const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
 const QUESTION_BANK_FAVORITE_STORAGE_KEYS = [QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY, QUESTION_BANK_STORAGE_KEY]
+const REPORT_REASON_OPTIONS = [
+  'Wrong answer',
+  'Duplicate question',
+  'Poor explanation',
+  'Incorrect difficulty',
+  'Wrong topic / competency',
+  'Typo or unclear wording',
+  'Other',
+]
+const REPORT_AUTHOR_ACTION_OPTIONS = [
+  'Delete this question',
+  'Regenerate this question',
+]
 const OLD_DEFAULT_ANSWER_TEXT = 'Correct answer: Review the selected option and add the supporting rationale.'
 const CURRENT_DEFAULT_ANSWER_TEXT = 'Add the correct option and explanation.'
 
@@ -253,6 +267,21 @@ const isAllQuestionBankQuestion = (question) => isMedsyQuestion(question) || isA
 
 const isFavoriteQuestion = (question) => Boolean(question?.isFavorite || question?.isFavourite)
 
+const readReportedQuestionRecords = () => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_REPORTED_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const getReportedQuestionIds = () => new Set(
+  readReportedQuestionRecords().map((record) => record.questionId).filter(Boolean),
+)
+
 const isSharedToStudentsQuestion = (question) => Boolean(
   question?.sharedToStudents
   || question?.shareToStudents
@@ -307,12 +336,14 @@ const readApprovedCreatedQuestions = () => {
 
 const readAllQuestionBankQuestions = () => {
   const questionsById = new Map()
+  const reportedQuestionIds = getReportedQuestionIds()
 
   ;[
     ...readStoredQuestionList(QUESTION_BANK_PUBLISHED_KEY),
     ...readStoredQuestionList(QUESTION_BANK_UPLOADED_KEY),
     ...readApprovedCreatedQuestions(),
   ].forEach((question, index) => {
+    if (reportedQuestionIds.has(question.id)) return
     questionsById.set(question.id ?? `question-${index}`, question)
   })
 
@@ -498,18 +529,25 @@ export default function QuestionBankNonCreatePage() {
   const [selectionBarPosition, setSelectionBarPosition] = useState(null)
   const [expandedCardRows, setExpandedCardRows] = useState([])
   const [activeMetric, setActiveMetric] = useState('total')
+  const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
+  const [reportQuestion, setReportQuestion] = useState(null)
+  const [reportReasons, setReportReasons] = useState([])
+  const [reportExplanation, setReportExplanation] = useState('')
+  const [reportAuthorAction, setReportAuthorAction] = useState('')
 
-  const metricFilteredQuestions = useMemo(() => (
-    publishedQuestions.filter((question) => {
+  const metricFilteredQuestions = useMemo(() => {
+    if (activeMetric === 'suggested') {
+      return reportedQuestionRecords.map((record) => record.question).filter(Boolean)
+    }
+
+    return publishedQuestions.filter((question) => {
       if (activeMetric === 'medsy') return isMedsyQuestion(question)
       if (activeMetric === 'created') return !isMedsyQuestion(question)
       if (activeMetric === 'favorites') return isFavoriteQuestion(question)
-      if (activeMetric === 'suggested') return question.isSuggested || question.questionSource === 'Suggested'
       if (activeMetric === 'shared') return isSharedToStudentsQuestion(question)
       return true
     })
-  ), [activeMetric, publishedQuestions])
-
+  }, [activeMetric, publishedQuestions, reportedQuestionRecords])
   const filterOptions = useMemo(() => ({
     authors: getUniqueValues(metricFilteredQuestions, getQuestionAuthorName),
     types: getUniqueValues(metricFilteredQuestions, (question) => question.type),
@@ -676,9 +714,10 @@ export default function QuestionBankNonCreatePage() {
     { key: 'created', label: 'Created Question', value: publishedQuestions.filter((question) => !isMedsyQuestion(question)).length, icon: ListChecks, tone: 'created' },
     { key: 'favorites', label: 'Favorites', value: publishedQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites' },
     { key: 'shared', label: 'Share to Students', value: publishedQuestions.filter(isSharedToStudentsQuestion).length, icon: Share2, tone: 'shared' },
-    { key: 'suggested', label: 'Report Question', value: publishedQuestions.filter((question) => question.isSuggested || question.questionSource === 'Suggested').length, icon: Flag, tone: 'suggested' },
+    { key: 'suggested', label: 'Report Question', value: reportedQuestionRecords.length, icon: Flag, tone: 'suggested' },
   ]
   const activeMetricLabel = questionMetrics.find((metric) => metric.key === activeMetric)?.label ?? 'questions'
+  const isReportMetricActive = activeMetric === 'suggested'
   const footerResultSummary = hasSelectedFilters(filters)
     ? `${formatMetricCount(filteredQuestions.length)} filtered of ${formatMetricCount(metricFilteredQuestions.length)} ${activeMetricLabel.toLowerCase()}`
     : `Showing ${formatMetricCount(pagedQuestions.length)} of ${formatMetricCount(metricFilteredQuestions.length)}`
@@ -712,40 +751,117 @@ export default function QuestionBankNonCreatePage() {
     updateQuestionFavoriteInStorage(questionId, nextFavoriteState)
   }
 
+  const resetReportModal = () => {
+    setReportQuestion(null)
+    setReportReasons([])
+    setReportExplanation('')
+    setReportAuthorAction('')
+  }
+
+  const openReportModal = (question) => {
+    setReportQuestion(question)
+    setReportReasons([])
+    setReportExplanation('')
+    setReportAuthorAction('')
+  }
+
+  const submitReportQuestion = () => {
+    if (!reportQuestion || !reportReasons.length || !reportExplanation.trim() || !reportAuthorAction) return
+
+    const reportedAt = new Date().toISOString()
+    const reportedQuestion = {
+      ...reportQuestion,
+      type: String(reportQuestion.type ?? '').trim().toLowerCase() === 'descriptive' ? 'Descriptive Question' : reportQuestion.type,
+      isReported: true,
+      reported: true,
+      reportStatus: 'Pending',
+      reportedAt,
+      reportReasons,
+      reportExplanation: reportExplanation.trim(),
+      reportAuthorAction,
+      status: 'Reported',
+    }
+    const nextRecord = {
+      id: `query-report-${reportQuestion.id ?? Date.now()}`,
+      questionId: reportQuestion.id,
+      title: getQuestionPreview(reportQuestion),
+      requester: getQuestionAuthorName(reportQuestion),
+      status: 'Pending',
+      reasons: reportReasons,
+      explanation: reportExplanation.trim(),
+      authorAction: reportAuthorAction,
+      reportedAt,
+      question: reportedQuestion,
+    }
+    const nextRecords = [
+      nextRecord,
+      ...readReportedQuestionRecords().filter((record) => record.questionId !== reportQuestion.id),
+    ]
+
+    window.localStorage.setItem(QUESTION_BANK_REPORTED_KEY, JSON.stringify(nextRecords))
+    window.dispatchEvent(new Event('question-bank-reported-questions'))
+    setReportedQuestionRecords(nextRecords)
+    setPublishedQuestions(readAllQuestionBankQuestions())
+    resetReportModal()
+  }
+
+  const withdrawReportedQuestion = (questionId) => {
+    if (!questionId || typeof window === 'undefined') return
+
+    const nextRecords = readReportedQuestionRecords().filter((record) => record.questionId !== questionId)
+    window.localStorage.setItem(QUESTION_BANK_REPORTED_KEY, JSON.stringify(nextRecords))
+    window.dispatchEvent(new Event('question-bank-reported-questions'))
+    setReportedQuestionRecords(nextRecords)
+    setPublishedQuestions(readAllQuestionBankQuestions())
+  }
+
   const renderQuestionRowActions = (question, questionId, questionNumber, isTableRowOpen) => {
     const isFavorite = isFavoriteQuestion(question)
+    const canReportQuestion = isMedsyQuestion(question)
 
     return (
       <span className="assessment-page-grid-row-actions" onClick={(event) => event.stopPropagation()}>
-        <button
-          type="button"
-          className="assessment-page-grid-row-action is-icon-only"
-          disabled
-          title="Edit question"
-          aria-label={`Edit question ${questionNumber}`}
-        >
-          <Pencil size={14} strokeWidth={2.2} />
-        </button>
+        {!isReportMetricActive ? (
+          <button
+            type="button"
+            className="assessment-page-grid-row-action is-icon-only"
+            disabled
+            title="Edit question"
+            aria-label={`Edit question ${questionNumber}`}
+          >
+            <Pencil size={14} strokeWidth={2.2} />
+          </button>
+        ) : null}
         <button
           type="button"
           className="assessment-page-grid-row-action"
-          disabled
-          title="Report question"
-          aria-label={`Report question ${questionNumber}`}
+          disabled={!isReportMetricActive && !canReportQuestion}
+          onClick={() => {
+            if (isReportMetricActive) {
+              withdrawReportedQuestion(question.id)
+              return
+            }
+
+            openReportModal(question)
+          }}
+          title={isReportMetricActive ? 'Withdraw report' : canReportQuestion ? 'Report question' : 'Only Medsy questions can be reported'}
+          aria-label={`${isReportMetricActive ? 'Withdraw report for' : 'Report'} question ${questionNumber}`}
         >
           <Flag size={14} strokeWidth={2.2} />
-          Report
+          {isReportMetricActive ? 'Withdraw' : 'Report'}
         </button>
-        <button
-          type="button"
-          className={`assessment-page-grid-row-action is-icon-only is-favorite ${isFavorite ? 'is-active' : ''}`}
-          onClick={() => toggleQuestionFavorite(questionId)}
-          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-          aria-label={`${isFavorite ? 'Remove' : 'Add'} question ${questionNumber} ${isFavorite ? 'from' : 'to'} favorites`}
-          aria-pressed={isFavorite}
-        >
-          <Star size={15} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
-        </button>
+        {!isReportMetricActive ? (
+          <button
+            type="button"
+            className={`assessment-page-grid-row-action is-icon-only is-favorite ${isFavorite ? 'is-active' : ''}`}
+            onClick={() => toggleQuestionFavorite(questionId)}
+            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-label={`${isFavorite ? 'Remove' : 'Add'} question ${questionNumber} ${isFavorite ? 'from' : 'to'} favorites`}
+            aria-pressed={isFavorite}
+          >
+            <Star size={15} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
+          </button>
+        ) : null}
         <button
           type="button"
           className="assessment-page-grid-collapse-indicator"
@@ -921,17 +1037,20 @@ export default function QuestionBankNonCreatePage() {
     if (typeof window === 'undefined') return undefined
 
     const syncPublishedQuestions = () => {
+      setReportedQuestionRecords(readReportedQuestionRecords())
       setPublishedQuestions(readAllQuestionBankQuestions())
     }
 
     window.addEventListener('storage', syncPublishedQuestions)
     window.addEventListener('question-bank-published-questions', syncPublishedQuestions)
     window.addEventListener('question-bank-uploaded-questions', syncPublishedQuestions)
+    window.addEventListener('question-bank-reported-questions', syncPublishedQuestions)
 
     return () => {
       window.removeEventListener('storage', syncPublishedQuestions)
       window.removeEventListener('question-bank-published-questions', syncPublishedQuestions)
       window.removeEventListener('question-bank-uploaded-questions', syncPublishedQuestions)
+      window.removeEventListener('question-bank-reported-questions', syncPublishedQuestions)
     }
   }, [])
 
@@ -1029,7 +1148,11 @@ export default function QuestionBankNonCreatePage() {
                 key={metric.key}
                 type="button"
                 className={`is-${metric.tone} ${isActive ? 'is-active' : ''}`}
-                onClick={() => setActiveMetric(metric.key)}
+                onClick={() => {
+                  if (!metric.value) return
+                  setActiveMetric(metric.key)
+                }}
+                disabled={!metric.value}
                 aria-pressed={isActive}
               >
                 <span className="assessment-page-metric-icon" aria-hidden="true">
@@ -1108,7 +1231,7 @@ export default function QuestionBankNonCreatePage() {
                   type="button"
                   className={selectedGridAction === 'assessment' ? 'is-active' : ''}
                   onClick={() => setSelectedGridAction('assessment')}
-                  disabled={selectedGridAction === 'learn'}
+                  disabled={selectedGridAction === 'learn' || isReportMetricActive}
                 >
                   <ListChecks size={14} strokeWidth={2.3} />
                   Add to Assessment
@@ -1120,7 +1243,7 @@ export default function QuestionBankNonCreatePage() {
                   type="button"
                   className={selectedGridAction === 'learn' ? 'is-active' : ''}
                   onClick={() => setSelectedGridAction('learn')}
-                  disabled={selectedGridAction === 'assessment'}
+                  disabled={selectedGridAction === 'assessment' || isReportMetricActive}
                 >
                   <FileSearch size={14} strokeWidth={2.3} />
                   Assign to Learn
@@ -1586,6 +1709,66 @@ export default function QuestionBankNonCreatePage() {
               Clear
             </button>
           </section>
+        ) : null}
+
+        {reportQuestion && typeof document !== 'undefined' ? createPortal(
+          <div className="assessment-page-report-modal" role="dialog" aria-modal="true" aria-labelledby="assessment-report-title">
+            <div className="assessment-page-report-backdrop" onClick={resetReportModal} aria-hidden="true" />
+            <div className="assessment-page-report-card">
+              <header className="assessment-page-report-head">
+                <div>
+                  <h2 id="assessment-report-title">Why report this?</h2>
+                  <p>{getQuestionPreview(reportQuestion)}</p>
+                </div>
+                <button type="button" onClick={resetReportModal} aria-label="Close report dialog">
+                  <X size={17} strokeWidth={2.4} />
+                </button>
+              </header>
+              <label className="assessment-page-report-field">
+                <span>Why report this?</span>
+                <select
+                  multiple
+                  value={reportReasons}
+                  onChange={(event) => setReportReasons(Array.from(event.target.selectedOptions, (option) => option.value))}
+                >
+                  {REPORT_REASON_OPTIONS.map((reason) => (
+                    <option key={reason} value={reason}>{reason}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="assessment-page-report-field">
+                <span>Details</span>
+                <textarea
+                  value={reportExplanation}
+                  onChange={(event) => setReportExplanation(event.target.value)}
+                  placeholder="Explain clearly why you are rejecting this"
+                  rows={4}
+                />
+              </label>
+              <label className="assessment-page-report-field">
+                <span>Assign to Author</span>
+                <select value={reportAuthorAction} onChange={(event) => setReportAuthorAction(event.target.value)}>
+                  <option value="">Select action</option>
+                  {REPORT_AUTHOR_ACTION_OPTIONS.map((action) => (
+                    <option key={action} value={action}>{action}</option>
+                  ))}
+                </select>
+              </label>
+              <footer className="assessment-page-report-actions">
+                <button type="button" className="is-secondary" onClick={resetReportModal}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submitReportQuestion}
+                  disabled={!reportReasons.length || !reportExplanation.trim() || !reportAuthorAction}
+                >
+                  Assign to Author
+                </button>
+              </footer>
+            </div>
+          </div>,
+          document.body,
         ) : null}
 
         {publishedQuestions.length && !pagedQuestions.length ? (

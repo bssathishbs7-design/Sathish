@@ -226,6 +226,7 @@ const APPROVAL_REVIEWERS = [
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 const QUESTION_BANK_REVIEW_RESULTS_KEY = 'vx-question-bank-review-results'
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
+const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
 const QUESTION_BANK_CREATED_DATA_CLEANUP_KEY = 'vx-question-bank-created-data-cleaned'
 
 let questionSequence = 1
@@ -329,6 +330,17 @@ const readPublishedQuestionBankQuestions = () => {
 
   try {
     const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_PUBLISHED_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const readReportedQuestionRecords = () => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_REPORTED_KEY) ?? '[]')
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
@@ -552,6 +564,14 @@ const hasDraftContent = (question) => {
     || hasVisibleMarks(question.marks)
     || question.isCritical
 }
+
+const isReportedQuestion = (question) => Boolean(
+  question?.isReported
+  || question?.reported
+  || question?.reportStatus
+  || question?.reportedAt
+  || (Array.isArray(question?.reports) && question.reports.length)
+)
 
 const getAutoFilledCurriculum = (question) => {
   const year = question.year || YEAR_OPTIONS[0]
@@ -849,6 +869,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const [approvalNote, setApprovalNote] = useState('')
   const [selectedApprovalReviewerIndex, setSelectedApprovalReviewerIndex] = useState(0)
   const [pendingEditQuestionId, setPendingEditQuestionId] = useState(null)
+  const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
   const pendingEditQuestion = questions.find((item) => item.id === pendingEditQuestionId) ?? null
@@ -862,6 +883,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       Number(Boolean(firstQuestion.questionBankSentAt)) - Number(Boolean(secondQuestion.questionBankSentAt))
     ))
   const rejectedQuestionCards = questions.filter((item) => item.status === 'Approval Rejected' && hasQuestionContent(item))
+  const reportQuestionCards = Array.from(new Map([
+    ...reportedQuestionRecords.map((record) => record.question).filter((question) => question && hasQuestionContent(question)),
+    ...questions.filter((item) => isReportedQuestion(item) && hasQuestionContent(item)),
+  ].map((question) => [question.id ?? getQuestionPreview(question), question])).values())
   const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
   const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
@@ -895,7 +920,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
           ? approvedQuestionCards
           : activeQuestionTab === 'rejected'
             ? rejectedQuestionCards
-      : []
+            : activeQuestionTab === 'report'
+              ? reportQuestionCards
+              : []
 
   const descriptiveQuestions = useMemo(
     () => questions.filter((item) => item.type === 'Descriptive Question'),
@@ -978,7 +1005,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   const activePreviewImage = previewImages[previewIndex] ?? null
   const hasPreviewNavigation = previewImages.length > 1
   const activePreviewLetter = activePreviewImage ? String.fromCharCode(65 + previewIndex) : ''
-  const isListQuestionTab = ['created', 'draft', 'sent', 'approved', 'rejected'].includes(activeQuestionTab)
+  const isListQuestionTab = ['created', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab)
 
   useEffect(() => {
     setIsGeneratingQuestion(false)
@@ -1011,6 +1038,20 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     if (typeof window === 'undefined') return
     window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(questions))
   }, [questions])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const syncReportedQuestions = () => setReportedQuestionRecords(readReportedQuestionRecords())
+
+    window.addEventListener('storage', syncReportedQuestions)
+    window.addEventListener('question-bank-reported-questions', syncReportedQuestions)
+
+    return () => {
+      window.removeEventListener('storage', syncReportedQuestions)
+      window.removeEventListener('question-bank-reported-questions', syncReportedQuestions)
+    }
+  }, [])
 
   useEffect(() => {
     if (!openDistractorOptionId && !openDistractorMenuOptionId) return undefined
@@ -1894,6 +1935,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               Rejected Qus
               <span>{rejectedQuestionCards.length}</span>
             </button>
+            <button
+              type="button"
+              className={activeQuestionTab === 'report' ? 'is-active' : ''}
+              onClick={() => setActiveQuestionTab('report')}
+              role="tab"
+              aria-selected={activeQuestionTab === 'report'}
+            >
+              Report Qus
+              <span>{reportQuestionCards.length}</span>
+            </button>
           </div>
 
           {activeQuestionTab === 'create' && !selectedQuestion ? (
@@ -2671,7 +2722,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
 
                 ) : null}
 
-                {['created', 'draft', 'sent', 'approved', 'rejected'].includes(activeQuestionTab) && activeQuestionCards.length ? (
+                {['created', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && activeQuestionCards.length ? (
                   <section className="question-bank-created-panel">
                     <div className="question-bank-section-head">
                       <div>
@@ -3109,7 +3160,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                   </section>
                 ) : null}
 
-                {['created', 'draft', 'sent', 'approved', 'rejected'].includes(activeQuestionTab) && !activeQuestionCards.length ? (
+                {['created', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && !activeQuestionCards.length ? (
                   <div className="question-bank-empty-state question-bank-tab-empty-state">
                     <FilePenLine size={24} strokeWidth={2} />
                     <strong>

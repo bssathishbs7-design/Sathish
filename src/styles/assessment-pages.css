@@ -53,6 +53,15 @@
   box-shadow: 0 6px 14px rgba(13, 55, 38, 0.08);
 }
 
+.assessment-page-metrics-strip button:disabled {
+  cursor: not-allowed;
+}
+
+.assessment-page-metrics-strip button:disabled:hover,
+.assessment-page-metrics-strip button:disabled:focus-visible {
+  transform: none;
+}
+
 .assessment-page-metric-icon {
   display: inline-flex;
   align-items: center;
@@ -1588,6 +1597,133 @@
   user-select: none;
 }
 
+.assessment-page-report-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.assessment-page-report-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 20, 18, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.assessment-page-report-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  width: min(560px, 100%);
+  padding: 16px;
+  border: 1px solid #cfe7db;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 24px 64px rgba(13, 55, 38, 0.22);
+}
+
+.assessment-page-report-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.assessment-page-report-head h2 {
+  margin: 0;
+  color: #102a34;
+  font-size: 1.05rem;
+}
+
+.assessment-page-report-head p {
+  margin: 5px 0 0;
+  color: #607380;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.assessment-page-report-head button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #d7e8e2;
+  border-radius: 8px;
+  background: #f8fcfa;
+  color: #405866;
+  cursor: pointer;
+}
+
+.assessment-page-report-field {
+  display: grid;
+  gap: 7px;
+  color: #405866;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.assessment-page-report-field select,
+.assessment-page-report-field textarea {
+  width: 100%;
+  border: 1px solid #cfe7db;
+  border-radius: 10px;
+  background: #f8fcfa;
+  color: #17313b;
+  font: inherit;
+  font-weight: 650;
+  outline: none;
+}
+
+.assessment-page-report-field select {
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.assessment-page-report-field select[multiple] {
+  min-height: 132px;
+}
+
+.assessment-page-report-field textarea {
+  min-height: 104px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.assessment-page-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.assessment-page-report-actions button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #9bd9c7;
+  border-radius: 9px;
+  background: #10b9a8;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.assessment-page-report-actions button.is-secondary {
+  border-color: #d7e8e2;
+  background: #ffffff;
+  color: #405866;
+}
+
+.assessment-page-report-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .assessment-page-grid-pagination {
   position: relative;
   z-index: 5;
@@ -2292,9 +2428,12 @@
 }
 
 .assessment-page-empty {
-  display: grid;
-  place-items: center;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 260px;
   padding: 24px;
   text-align: center;
   color: #647686;
@@ -2659,6 +2798,40 @@
 
 .theme-dark .assessment-page-selection-bar span {
   color: #c3d4e8;
+}
+
+.theme-dark .assessment-page-report-backdrop {
+  background: rgba(2, 8, 23, 0.62);
+}
+
+.theme-dark .assessment-page-report-card {
+  border-color: rgba(63, 87, 118, 0.72);
+  background: #101827;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.48);
+}
+
+.theme-dark .assessment-page-report-head h2 {
+  color: #eef6ff;
+}
+
+.theme-dark .assessment-page-report-head p,
+.theme-dark .assessment-page-report-field {
+  color: #c3d4e8;
+}
+
+.theme-dark .assessment-page-report-head button,
+.theme-dark .assessment-page-report-field select,
+.theme-dark .assessment-page-report-field textarea,
+.theme-dark .assessment-page-report-actions button.is-secondary {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: #132235;
+  color: #eef6ff;
+}
+
+.theme-dark .assessment-page-report-actions button {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.24);
+  color: #ccfbf1;
 }
 
 .theme-dark .assessment-page-grid-author,
