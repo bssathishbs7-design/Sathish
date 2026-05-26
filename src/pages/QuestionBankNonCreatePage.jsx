@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Filter, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Star, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Filter, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import { APP_PAGES } from '../config/appPages'
+import medsyIcon from '../assets/medsy-icon.svg'
 import '../styles/assessment-pages.css'
 
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
@@ -434,7 +435,23 @@ const getAuthorBadgeInitial = (question) => (
 )
 
 const getAuthorBadgeTooltip = (question) => (
-  isMedsyQuestion(question) ? 'Medsy' : getQuestionAuthorName(question)
+  isEditedQuestion(question) ? 'Edited question' : isMedsyQuestion(question) ? 'Medsy' : getQuestionAuthorName(question)
+)
+
+const renderSourceBadge = (question, className) => (
+  <span
+    className={`${className} assessment-page-source-badge ${getAuthorBadgeClassName(question)} ${isEditedQuestion(question) ? 'is-edited-author' : ''}`}
+    title={getAuthorBadgeTooltip(question)}
+    aria-label={getAuthorBadgeTooltip(question)}
+  >
+    {isEditedQuestion(question) ? (
+      <Shuffle size={14} strokeWidth={2.4} />
+    ) : isMedsyQuestion(question) ? (
+      <img className="assessment-page-medsy-mark" src={medsyIcon} alt="" aria-hidden="true" />
+    ) : (
+      getAuthorBadgeInitial(question)
+    )}
+  </span>
 )
 
 const formatMetricCount = (value) => (
@@ -933,13 +950,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
 
   const renderQuestionTagBadges = (question) => (
     <>
-      <span
-        className={`assessment-page-grid-author-label assessment-page-source-badge ${getAuthorBadgeClassName(question)}`}
-        title={getAuthorBadgeTooltip(question)}
-        aria-label={getAuthorBadgeTooltip(question)}
-      >
-        {getAuthorBadgeInitial(question)}
-      </span>
+      {renderSourceBadge(question, 'assessment-page-grid-author-label')}
       {question.difficultyLevel ? <span className="assessment-page-table-value-pill assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
       {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
     </>
@@ -1305,8 +1316,8 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                   onClick={() => setSelectedGridAction('learn')}
                   disabled={selectedGridAction === 'assessment' || isReportMetricActive}
                 >
-                  <FileSearch size={14} strokeWidth={2.3} />
-                  Assign to Learn
+                  <Share2 size={14} strokeWidth={2.3} />
+                  Share to Students
                   {selectedGridAction === 'learn' && selectedGridQuestionIds.length ? (
                     <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
                   ) : null}
@@ -1377,16 +1388,10 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
               const isDescriptive = isDescriptiveQuestion(question)
 
               return (
-                <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'} ${isEditedQuestion(question) ? 'is-edited-question' : ''}`}>
+                <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
                   <div className="assessment-page-question-head">
                     <span className="assessment-page-question-type">{question.type ?? 'Question'}</span>
-                    <span
-                      className={`assessment-page-question-author assessment-page-source-badge ${getAuthorBadgeClassName(question)}`}
-                      title={getAuthorBadgeTooltip(question)}
-                      aria-label={getAuthorBadgeTooltip(question)}
-                    >
-                      {getAuthorBadgeInitial(question)}
-                    </span>
+                    {renderSourceBadge(question, 'assessment-page-question-author')}
                     {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{question.thinkingLevel}</span> : null}
                     {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
                     {isCardOpen && tagGroups.length ? (
@@ -1557,7 +1562,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                     <Fragment key={questionId}>
                       {!isTableRowOpen ? (
                         <tr
-                          className={`assessment-page-grid-summary-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''} ${isEditedQuestion(question) ? 'is-edited-question' : ''}`}
+                          className={`assessment-page-grid-summary-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''}`}
                           onClick={() => handleGridRowAction(questionId, false)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -1603,7 +1608,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                       {isTableRowOpen ? (
                         <tr
                           key={`${questionId}-details`}
-                          className={`assessment-page-grid-detail-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''} ${isEditedQuestion(question) ? 'is-edited-question' : ''}`}
+                          className={`assessment-page-grid-detail-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''}`}
                           onClick={() => handleGridRowAction(questionId, true)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -1936,7 +1941,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                   role="radio"
                   aria-checked={editQuestionMode === 'duplicate'}
                 >
-                  Duplicate
+                  Create New
                 </button>
               </div>
               <footer className="assessment-page-report-actions">

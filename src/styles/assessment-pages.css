@@ -971,6 +971,25 @@
   color: #1d4ed8 !important;
 }
 
+.assessment-page-question-author.is-edited-author,
+.assessment-page-table-author-pill.is-edited-author,
+.assessment-page-grid-author-label.is-edited-author {
+  border-color: #93c5fd !important;
+  background: #4b9dde !important;
+  color: #ffffff !important;
+}
+
+.assessment-page-source-badge.is-edited-author svg {
+  display: block;
+}
+
+.assessment-page-medsy-mark {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
 .assessment-page-view-toolbar,
 .assessment-page-table-wrap {
   border: 1px solid #dbe7e2;
@@ -3118,6 +3137,14 @@
   border-color: rgba(96, 165, 250, 0.56) !important;
   background: rgba(30, 64, 175, 0.24) !important;
   color: #bfdbfe !important;
+}
+
+.theme-dark .assessment-page-question-author.is-edited-author,
+.theme-dark .assessment-page-table-author-pill.is-edited-author,
+.theme-dark .assessment-page-grid-author-label.is-edited-author {
+  border-color: rgba(147, 197, 253, 0.72) !important;
+  background: #3f8fd1 !important;
+  color: #ffffff !important;
 }
 
 .theme-dark .assessment-page-difficulty-badge,
