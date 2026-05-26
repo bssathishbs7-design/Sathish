@@ -149,6 +149,10 @@ const RichQuestionContent = ({ html, fallback = 'Not added' }) => {
   )
 }
 
+const isDescriptiveQuestion = (question) => (
+  String(question?.type ?? '').trim().toLowerCase().includes('descriptive')
+)
+
 const getVisibleTagValues = (values) => (Array.isArray(values) ? values : [])
   .map((value) => String(value ?? '').trim())
   .filter((value) => value && value !== 'N/A')
@@ -965,6 +969,8 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
               const isTagsOpen = activeQuestionTagsId === questionId
               const assessmentBadges = getQuestionAssessmentBadges(question)
               const isQuestionSelected = selectedReviewSet.has(questionId)
+              const isDescriptive = isDescriptiveQuestion(question)
+              const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
 
               return (
                 <article key={questionId} className={`approval-view-qb-question-card is-${String(decision).toLowerCase()} ${isQuestionSelected ? 'is-selected' : ''}`}>
@@ -1053,7 +1059,7 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
                       </div>
                     ) : null}
 
-                    {optionRows.length ? (
+                    {!isDescriptive && optionRows.length ? (
                       <div className="approval-view-qb-options">
                         {optionRows.map((option, optionIndex) => {
                           const optionLabel = String.fromCharCode(65 + optionIndex)
@@ -1069,7 +1075,32 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
                       </div>
                     ) : null}
 
-                    {question.answerKey ? (
+                    {isDescriptive && descriptiveSections.length ? (
+                      <div className="approval-view-qb-descriptive-list">
+                        {descriptiveSections.map((section, sectionIndex) => (
+                          <div key={section.id ?? `${questionId}-section-${sectionIndex}`} className="approval-view-qb-descriptive-item">
+                            <div className="approval-view-qb-descriptive-line">
+                              <span>{sectionIndex + 1}.</span>
+                              <RichQuestionContent html={section.questionText} fallback="Question not added" />
+                              {Number(section.marks ?? 0) > 0 ? <b>{section.marks} marks</b> : null}
+                            </div>
+                            {(section.children ?? []).length ? (
+                              <div className="approval-view-qb-descriptive-children">
+                                {(section.children ?? []).map((child, childIndex) => (
+                                  <div key={child.id ?? `${section.id}-child-${childIndex}`} className="approval-view-qb-descriptive-line">
+                                    <span>{String.fromCharCode(97 + childIndex)}.</span>
+                                    <RichQuestionContent html={child.questionText} fallback="Question not added" />
+                                    {Number(child.marks ?? 0) > 0 ? <b>{child.marks} marks</b> : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {!isDescriptive && question.answerKey ? (
                       <div className="approval-view-qb-answer">
                         <strong>Answer & Explanation</strong>
                         <RichQuestionContent html={question.answerKey} />

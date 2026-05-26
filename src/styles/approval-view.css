@@ -2352,6 +2352,49 @@
   font-weight: 800;
 }
 
+.approval-view-qb-descriptive-list {
+  display: grid;
+  gap: 4px;
+}
+
+.approval-view-qb-descriptive-item {
+  display: grid;
+  gap: 4px;
+}
+
+.approval-view-qb-descriptive-line {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #38504a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.approval-view-qb-descriptive-line > span {
+  color: #42635a;
+  font-weight: 900;
+}
+
+.approval-view-qb-descriptive-line > b {
+  color: #0f766e;
+  font-size: 0.76rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.approval-view-qb-descriptive-children {
+  display: grid;
+  gap: 4px;
+  margin-left: 34px;
+}
+
 .approval-view-qb-actions {
   justify-content: flex-end;
   padding-top: 4px;
@@ -2689,7 +2732,8 @@
 
 .theme-dark .approval-view-qb-path,
 .theme-dark .approval-view-qb-answer,
-.theme-dark .approval-view-qb-option {
+.theme-dark .approval-view-qb-option,
+.theme-dark .approval-view-qb-descriptive-line {
   color: #a6bab1;
 }
 
@@ -2716,6 +2760,14 @@
 .theme-dark .approval-view-qb-action-btn.is-approve {
   border-color: rgba(95, 232, 177, 0.22);
   background: rgba(14, 59, 47, 0.34);
+  color: #8ee4ca;
+}
+
+.theme-dark .approval-view-qb-descriptive-line > span {
+  color: #c7d7d1;
+}
+
+.theme-dark .approval-view-qb-descriptive-line > b {
   color: #8ee4ca;
 }
 

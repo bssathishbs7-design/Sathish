@@ -31,35 +31,33 @@ const CURRENT_DEFAULT_ANSWER_TEXT = 'Add the correct option and explanation.'
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
 const getCompetencyCode = (value) => String(value ?? '').trim().split(/\s+/)[0] || value
 
-const MEDSY_EXTRA_SAMPLE_QUESTIONS = [
+const MEDSY_MCQ_SAMPLE_QUESTIONS = [
+  ['Which structure passes through the optic canal along with the ophthalmic artery?', 'Optic nerve', 'Oculomotor nerve', 'Trochlear nerve', 'Abducens nerve', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Nervous', 'Optic pathway', 'Optic nerve passes through the optic canal with the ophthalmic artery.'],
+  ['Which plane divides the body into superior and inferior parts?', 'Transverse plane', 'Sagittal plane', 'Coronal plane', 'Median plane', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'General anatomy', 'Body planes', 'The transverse plane divides the body into superior and inferior parts.'],
   ['Which muscle initiates abduction of the shoulder joint?', 'Supraspinatus', 'Deltoid', 'Teres minor', 'Infraspinatus', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Musculoskeletal', 'Shoulder', 'Supraspinatus initiates the first 15 degrees of shoulder abduction.'],
   ['Which nerve is most commonly injured in surgical neck fracture of humerus?', 'Axillary nerve', 'Radial nerve', 'Median nerve', 'Ulnar nerve', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Nervous', 'Peripheral nerve', 'The axillary nerve winds around the surgical neck of the humerus and is vulnerable in fractures.'],
   ['Which artery is palpated in the anatomical snuffbox?', 'Radial artery', 'Ulnar artery', 'Brachial artery', 'Anterior interosseous artery', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Cardiovascular', 'Blood vessel', 'The radial artery passes through the anatomical snuffbox and can be palpated there.'],
   ['Which carpal bone is most commonly fractured after a fall on the outstretched hand?', 'Scaphoid', 'Lunate', 'Triquetrum', 'Pisiform', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Skeletal', 'Bone', 'The scaphoid is the most commonly fractured carpal bone in a fall on an outstretched hand.'],
   ['Which nerve supplies the diaphragm motor function?', 'Phrenic nerve', 'Vagus nerve', 'Intercostal nerve', 'Accessory nerve', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Respiratory', 'Diaphragm', 'The phrenic nerve provides motor supply to the diaphragm.'],
   ['Which valve is best heard at the left fifth intercostal space in the midclavicular line?', 'Mitral valve', 'Aortic valve', 'Pulmonary valve', 'Tricuspid valve', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Cardiovascular', 'Heart', 'The mitral valve area is located at the cardiac apex in the left fifth intercostal space.'],
-  ['Which structure forms the anterior boundary of the epiploic foramen?', 'Free edge of lesser omentum', 'Inferior vena cava', 'Caudate lobe', 'First part of duodenum', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Digestive', 'Upper GI', 'The free edge of the lesser omentum containing the portal triad forms the anterior boundary.'],
   ['Which cranial nerve carries taste from the anterior two-thirds of the tongue?', 'Facial nerve', 'Glossopharyngeal nerve', 'Trigeminal nerve', 'Vagus nerve', 'Neuroanatomy', 'AN4.2 Identify major cranial nerve pathways', 'Nervous', 'Cranial nerve', 'Taste from the anterior two-thirds of the tongue is carried by the facial nerve via chorda tympani.'],
-  ['Which cranial nerve exits the skull through the jugular foramen?', 'Glossopharyngeal nerve', 'Optic nerve', 'Mandibular nerve', 'Facial nerve', 'Neuroanatomy', 'AN4.2 Identify major cranial nerve pathways', 'Nervous', 'Cranial nerve', 'The glossopharyngeal nerve exits through the jugular foramen.'],
-  ['Which lobe of the brain contains the primary visual cortex?', 'Occipital lobe', 'Frontal lobe', 'Parietal lobe', 'Temporal lobe', 'Neuroanatomy', 'AN4.2 Identify major cranial nerve pathways', 'Nervous', 'Brain', 'The primary visual cortex is located in the occipital lobe.'],
-  ['Which cell type produces surfactant in the alveoli?', 'Type II pneumocyte', 'Type I pneumocyte', 'Alveolar macrophage', 'Club cell', 'Respiratory System', 'PY6.8 Interpret spirometry and lung volumes', 'Respiratory', 'Lung', 'Type II pneumocytes synthesize and secrete pulmonary surfactant.'],
   ['Which lung volume cannot be measured by simple spirometry?', 'Residual volume', 'Tidal volume', 'Inspiratory reserve volume', 'Expiratory reserve volume', 'Respiratory System', 'PY6.8 Interpret spirometry and lung volumes', 'Respiratory', 'Lung', 'Residual volume cannot be directly measured by simple spirometry.'],
-  ['Which blood cell is primarily responsible for oxygen transport?', 'Erythrocyte', 'Neutrophil', 'Platelet', 'Lymphocyte', 'Hematology', 'PY2.11 Interpret complete blood count findings', 'Cardiovascular', 'Blood', 'Erythrocytes transport oxygen through hemoglobin.'],
-  ['Which leukocyte increases most typically in acute bacterial infection?', 'Neutrophil', 'Eosinophil', 'Basophil', 'Monocyte', 'Hematology', 'PY2.11 Interpret complete blood count findings', 'Immune', 'Blood', 'Neutrophilia is commonly associated with acute bacterial infection.'],
-  ['Which anemia shows macrocytic red blood cells?', 'Vitamin B12 deficiency anemia', 'Iron deficiency anemia', 'Thalassemia', 'Anemia of chronic disease', 'Hematology', 'PA3.4 Classify anemia using peripheral smear findings', 'Cardiovascular', 'Blood', 'Vitamin B12 deficiency commonly causes megaloblastic macrocytic anemia.'],
-  ['Which process describes programmed cell death?', 'Apoptosis', 'Necrosis', 'Metaplasia', 'Hypertrophy', 'General Pathology', 'PA1.2 Explain cell injury and adaptation', 'General pathology', 'Cell injury', 'Apoptosis is programmed cell death with controlled cellular dismantling.'],
-  ['Which cellular adaptation is seen in increased workload without new cell formation?', 'Hypertrophy', 'Hyperplasia', 'Metaplasia', 'Dysplasia', 'General Pathology', 'PA1.2 Explain cell injury and adaptation', 'General pathology', 'Cell adaptation', 'Hypertrophy is an increase in cell size due to increased workload.'],
-  ['Which necrosis is classically seen in tuberculosis?', 'Caseous necrosis', 'Coagulative necrosis', 'Liquefactive necrosis', 'Fat necrosis', 'General Pathology', 'PA1.2 Explain cell injury and adaptation', 'General pathology', 'Necrosis', 'Caseous necrosis is classically associated with tuberculosis.'],
-  ['Which investigation is most useful for assessing cardiac rhythm?', 'Electrocardiogram', 'Chest X-ray', 'Spirometry', 'Ultrasound abdomen', 'Cardiovascular System', 'PY4.5 Explain regulation of cardiac output', 'Cardiovascular', 'Heart', 'An electrocardiogram records electrical activity and rhythm of the heart.'],
-  ['Which chamber of the heart receives oxygenated blood from the lungs?', 'Left atrium', 'Right atrium', 'Left ventricle', 'Right ventricle', 'Cardiovascular System', 'PY4.5 Explain regulation of cardiac output', 'Cardiovascular', 'Heart', 'The left atrium receives oxygenated blood from pulmonary veins.'],
-  ['Which hormone increases blood calcium levels?', 'Parathyroid hormone', 'Insulin', 'Calcitonin', 'Aldosterone', 'General Physiology', 'PY1.4 Describe body fluid compartments and homeostasis', 'Endocrine', 'Calcium homeostasis', 'Parathyroid hormone increases blood calcium levels.'],
-  ['Which compartment contains the largest percentage of total body water?', 'Intracellular fluid', 'Plasma', 'Interstitial fluid', 'Transcellular fluid', 'General Physiology', 'PY1.4 Describe body fluid compartments and homeostasis', 'General physiology', 'Body fluids', 'Intracellular fluid is the largest body water compartment.'],
-  ['Which joint is a ball-and-socket type?', 'Hip joint', 'Elbow joint', 'Superior radioulnar joint', 'Interphalangeal joint', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Skeletal', 'Joint', 'The hip joint is a multiaxial ball-and-socket synovial joint.'],
-  ['Which anatomical term means closer to the midline?', 'Medial', 'Lateral', 'Proximal', 'Distal', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'General anatomy', 'Directional terms', 'Medial means nearer to the median plane or midline.'],
-  ['Which term describes movement away from the midline?', 'Abduction', 'Adduction', 'Flexion', 'Extension', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Musculoskeletal', 'Movement', 'Abduction is movement away from the midline.'],
 ]
 
-const createMedsyExtraSampleQuestions = () => MEDSY_EXTRA_SAMPLE_QUESTIONS.map(([
+const MEDSY_DESCRIPTIVE_SAMPLE_QUESTIONS = [
+  ['Define anatomical position and mention two key features used to describe it.', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'General anatomy', 'Anatomical terminology'],
+  ['Describe the boundaries and clinical importance of the anatomical snuffbox.', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Musculoskeletal', 'Wrist anatomy'],
+  ['Explain the course and functional importance of the phrenic nerve.', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Respiratory', 'Diaphragm'],
+  ['Describe the surface marking of the mitral valve area and its auscultatory relevance.', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Cardiovascular', 'Heart sounds'],
+  ['Explain the anatomical basis for axillary nerve injury in surgical neck fracture of humerus.', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Nervous', 'Peripheral nerve'],
+  ['Describe the role of type II pneumocytes in alveolar function.', 'Respiratory System', 'PY6.8 Interpret spirometry and lung volumes', 'Respiratory', 'Pulmonary surfactant'],
+  ['Explain why residual volume cannot be measured by simple spirometry.', 'Respiratory System', 'PY6.8 Interpret spirometry and lung volumes', 'Respiratory', 'Lung volumes'],
+  ['Describe the causes and peripheral smear features of macrocytic anemia.', 'Hematology', 'PA3.4 Classify anemia using peripheral smear findings', 'Cardiovascular', 'Anemia'],
+  ['Explain apoptosis and contrast it with necrosis.', 'General Pathology', 'PA1.2 Explain cell injury and adaptation', 'General pathology', 'Cell injury'],
+  ['Describe the regulation of blood calcium by parathyroid hormone.', 'General Physiology', 'PY1.4 Describe body fluid compartments and homeostasis', 'Endocrine', 'Calcium homeostasis'],
+]
+
+const createMedsyMcqSampleQuestions = () => MEDSY_MCQ_SAMPLE_QUESTIONS.map(([
   questionText,
   correctAnswer,
   optionB,
@@ -71,7 +69,7 @@ const createMedsyExtraSampleQuestions = () => MEDSY_EXTRA_SAMPLE_QUESTIONS.map((
   organSubSystem,
   answerKey,
 ], index) => {
-  const questionNumber = index + 4
+  const questionNumber = index + 1
   const isHigherOrder = index % 3 === 1
 
   return {
@@ -101,94 +99,63 @@ const createMedsyExtraSampleQuestions = () => MEDSY_EXTRA_SAMPLE_QUESTIONS.map((
     ],
     correctOptionIds: [`medsy-${questionNumber}-a`],
     answerKey,
-    questionBankSentAt: new Date(`2026-05-22T10:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
+    questionBankSentAt: new Date(`2026-05-22T09:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
+  }
+})
+
+const createMedsyDescriptiveSampleQuestions = () => MEDSY_DESCRIPTIVE_SAMPLE_QUESTIONS.map(([
+  questionText,
+  topic,
+  competency,
+  organSystem,
+  organSubSystem,
+], index) => {
+  const questionNumber = index + 11
+  const isHigherOrder = index % 2 === 0
+
+  return {
+    id: `medsy-uploaded-sample-${questionNumber}`,
+    type: 'Descriptive Question',
+    authorName: 'Medsy',
+    questionText,
+    year: 'Year 1',
+    subject: ['Respiratory System', 'General Physiology'].includes(topic) ? 'Physiology' : topic.includes('Pathology') || competency.startsWith('PA') ? 'Pathology' : 'Human Anatomy',
+    topics: [topic],
+    competencies: [competency],
+    questionCategory: isHigherOrder ? 'Reasoning' : 'Direct',
+    cognitiveLevel: isHigherOrder ? 'Analyze' : 'Understand',
+    cognitiveFunction: isHigherOrder ? 'Concept Explanation' : 'Concept Recall',
+    skillFocus: isHigherOrder ? 'Structured explanation' : 'Definition',
+    organSystem,
+    organSubSystems: [organSubSystem],
+    diseaseTags: ['Not Applicable'],
+    keyConcepts: ['Core concept'],
+    thinkingLevel: isHigherOrder ? 'HoT' : 'LoT',
+    difficultyLevel: index % 3 === 0 ? 'L2' : 'L1',
+    options: [],
+    correctOptionIds: [],
+    descriptiveSections: [
+      {
+        id: `medsy-desc-${questionNumber}-section-1`,
+        questionText: 'Mention the key anatomical or physiological points.',
+        marks: '2',
+        children: [
+          {
+            id: `medsy-desc-${questionNumber}-child-1`,
+            questionText: 'Add one relevant clinical correlation.',
+            marks: '1',
+          },
+        ],
+      },
+    ],
+    answerKey: '',
+    questionBankSentAt: new Date(`2026-05-22T09:${String(questionNumber).padStart(2, '0')}:00+05:30`).toISOString(),
   }
 })
 
 const createMedsySampleQuestions = () => [
-  {
-    id: 'medsy-uploaded-sample-1',
-    type: 'MCQ',
-    authorName: 'Medsy',
-    questionText: 'Which structure passes through the optic canal along with the ophthalmic artery?',
-    year: 'Year 1',
-    subject: 'Human Anatomy',
-    topics: ['General Anatomy'],
-    competencies: ['AN1.1 Describe anatomical position and planes'],
-    questionCategory: 'Direct',
-    cognitiveLevel: 'Recall',
-    cognitiveFunction: 'Pattern Recognition',
-    skillFocus: 'Identification',
-    organSystem: 'Nervous',
-    organSubSystems: ['Optic pathway'],
-    diseaseTags: ['Optic canal lesion'],
-    keyConcepts: ['Anatomical foramen', 'Neurovascular relation'],
-    thinkingLevel: 'LoT',
-    difficultyLevel: 'L1',
-    options: [
-      { id: 'medsy-1-a', label: 'Optic nerve', distractorErrors: [] },
-      { id: 'medsy-1-b', label: 'Oculomotor nerve', distractorErrors: ['Localization/Structural Error'] },
-      { id: 'medsy-1-c', label: 'Trochlear nerve', distractorErrors: ['False Association'] },
-      { id: 'medsy-1-d', label: 'Abducens nerve', distractorErrors: ['Misclassification'] },
-    ],
-    correctOptionIds: ['medsy-1-a'],
-    answerKey: 'Optic nerve passes through the optic canal with the ophthalmic artery.',
-    questionBankSentAt: new Date('2026-05-22T09:00:00+05:30').toISOString(),
-  },
-  {
-    id: 'medsy-uploaded-sample-2',
-    type: 'MCQ',
-    authorName: 'Medsy',
-    questionText: 'Which plane divides the body into superior and inferior parts?',
-    year: 'Year 1',
-    subject: 'Human Anatomy',
-    topics: ['General Anatomy'],
-    competencies: ['AN1.1 Describe anatomical position and planes'],
-    questionCategory: 'Application',
-    cognitiveLevel: 'Apply',
-    cognitiveFunction: 'Spatial Orientation',
-    skillFocus: 'Anatomical planes',
-    organSystem: 'General anatomy',
-    organSubSystems: ['Body planes'],
-    diseaseTags: ['Not Applicable'],
-    keyConcepts: ['Sectional anatomy', 'Clinical orientation'],
-    thinkingLevel: 'HoT',
-    difficultyLevel: 'L2',
-    options: [
-      { id: 'medsy-2-a', label: 'Sagittal plane', distractorErrors: ['Terminology Confusion'] },
-      { id: 'medsy-2-b', label: 'Coronal plane', distractorErrors: ['Spatial Relationship Error'] },
-      { id: 'medsy-2-c', label: 'Transverse plane', distractorErrors: [] },
-      { id: 'medsy-2-d', label: 'Median plane', distractorErrors: ['Misclassification'] },
-    ],
-    correctOptionIds: ['medsy-2-c'],
-    answerKey: 'The transverse plane divides the body into superior and inferior parts.',
-    questionBankSentAt: new Date('2026-05-22T09:05:00+05:30').toISOString(),
-  },
-  {
-    id: 'medsy-uploaded-sample-3',
-    type: 'Descriptive',
-    authorName: 'Medsy',
-    questionText: 'Define anatomical position and mention two key features used to describe it.',
-    year: 'Year 1',
-    subject: 'Human Anatomy',
-    topics: ['General Anatomy'],
-    competencies: ['AN1.1 Describe anatomical position and planes'],
-    questionCategory: 'Reasoning',
-    cognitiveLevel: 'Understand',
-    cognitiveFunction: 'Concept Recall',
-    skillFocus: 'Definition',
-    organSystem: 'General anatomy',
-    organSubSystems: ['Anatomical terminology'],
-    diseaseTags: ['Not Applicable'],
-    keyConcepts: ['Reference position', 'Directional terms'],
-    thinkingLevel: 'LoT',
-    difficultyLevel: 'L1',
-    options: [],
-    correctOptionIds: [],
-    answerKey: 'Anatomical position is the standard reference position with the body standing upright, face forward, upper limbs by the side, and palms facing forward.',
-    questionBankSentAt: new Date('2026-05-22T09:10:00+05:30').toISOString(),
-  },
-  ...createMedsyExtraSampleQuestions(),
+  ...createMedsyMcqSampleQuestions(),
+  ...createMedsyDescriptiveSampleQuestions(),
 ]
 
 const cleanQuestionBankItems = (items) => items
@@ -218,7 +185,10 @@ const readStoredQuestionList = (storageKey) => {
         const existingUploaded = JSON.parse(existingRaw)
         if (Array.isArray(existingUploaded)) {
           const sampleById = new Map(sampleQuestions.map((question) => [question.id, question]))
-          const refreshedUploaded = existingUploaded.map((question) => {
+          const refreshedUploaded = existingUploaded.filter((question) => (
+            !String(question?.id ?? '').startsWith('medsy-uploaded-sample-')
+            || sampleById.has(question.id)
+          )).map((question) => {
             const sampleQuestion = sampleById.get(question.id)
             if (!sampleQuestion) return question
 
@@ -446,6 +416,10 @@ const getQuestionTypeLabel = (type) => {
   if (normalized.toLowerCase().includes('descriptive')) return 'Desc'
   return normalized || 'Question'
 }
+
+const isDescriptiveQuestion = (question) => (
+  String(question?.type ?? '').trim().toLowerCase().includes('descriptive')
+)
 
 const getQuestionSourceType = (question) => (
   isMedsyQuestion(question) ? 'Uploaded' : 'Created'
@@ -815,7 +789,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
 
   const openEditModeModal = (question) => {
     setEditQuestion(question)
-    setEditQuestionMode('overwrite')
+    setEditQuestionMode(isMedsyQuestion(question) ? 'overwrite' : 'duplicate')
   }
 
   const closeEditModeModal = () => {
@@ -825,9 +799,10 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
 
   const continueEditQuestion = () => {
     if (!editQuestion || typeof window === 'undefined') return
+    const safeEditMode = isMedsyQuestion(editQuestion) ? editQuestionMode : 'duplicate'
 
     window.sessionStorage.setItem(QUESTION_BANK_EDIT_HANDOFF_KEY, JSON.stringify({
-      mode: editQuestionMode,
+      mode: safeEditMode,
       question: editQuestion,
       requestedAt: new Date().toISOString(),
     }))
@@ -1398,6 +1373,8 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
               const questionId = question.id ?? `${question.type}-${index}`
               const isTagsOpen = activeTagsId === questionId
               const isCardOpen = expandedCardRows.includes(questionId)
+              const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
+              const isDescriptive = isDescriptiveQuestion(question)
 
               return (
                 <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'} ${isEditedQuestion(question) ? 'is-edited-question' : ''}`}>
@@ -1510,7 +1487,27 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                             })}
                         </div>
                       ) : null}
-                      {stripHtml(question.answerKey) ? (
+                      {isDescriptive && descriptiveSections.length ? (
+                        <div className="assessment-page-descriptive-lines">
+                          {descriptiveSections.map((section, sectionIndex) => (
+                            <div key={section.id ?? `${questionId}-section-${sectionIndex}`} className="assessment-page-descriptive-item">
+                              <div className="assessment-page-descriptive-line">
+                                <strong>{sectionIndex + 1}.</strong>
+                                <span>{stripHtml(section.questionText) || 'Question not added'}</span>
+                                {Number(section.marks ?? 0) > 0 ? <em>{section.marks} marks</em> : null}
+                              </div>
+                              {(section.children ?? []).map((child, childIndex) => (
+                                <div key={child.id ?? `${section.id}-child-${childIndex}`} className="assessment-page-descriptive-line is-child">
+                                  <strong>{String.fromCharCode(97 + childIndex)}.</strong>
+                                  <span>{stripHtml(child.questionText) || 'Question not added'}</span>
+                                  {Number(child.marks ?? 0) > 0 ? <em>{child.marks} marks</em> : null}
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {!isDescriptive && stripHtml(question.answerKey) ? (
                         <div className="assessment-page-question-answer">
                           <strong>Answer & Explanation</strong>
                           <span>{stripHtml(question.answerKey)}</span>
@@ -1553,6 +1550,8 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                   const isTagsOpen = activeTagsId === tableTagsId
                   const isTableRowOpen = expandedTableRows.includes(questionId)
                   const isGridQuestionSelected = selectedGridQuestionIds.includes(questionId)
+                  const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
+                  const isDescriptive = isDescriptiveQuestion(question)
 
                   return (
                     <Fragment key={questionId}>
@@ -1639,41 +1638,6 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                                 </div>
                                 {renderQuestionRowActions(question, questionId, questionNumber, true)}
                               </div>
-                              {tagGroups.length ? (
-                                <div className="assessment-page-grid-question-meta assessment-page-grid-detail-extra-tags">
-                                  <span className="assessment-page-question-tags-wrap">
-                                    <button
-                                      type="button"
-                                      className="assessment-page-question-tags-btn"
-                                      onClick={(event) => {
-                                        event.stopPropagation()
-                                        setActiveTagsId(isTagsOpen ? '' : tableTagsId)
-                                      }}
-                                      aria-expanded={isTagsOpen}
-                                    >
-                                      <Info size={12} strokeWidth={2.2} />
-                                      View Tags
-                                    </button>
-                                    {isTagsOpen ? (
-                                      <span className="assessment-page-question-tags-popover" role="tooltip">
-                                        {tagGroups.map((group) => (
-                                          <span key={group.label} className="assessment-page-question-tags-group">
-                                            <strong>{group.label}</strong>
-                                            <span>
-                                              {group.values.map((value) => (
-                                                <span key={value}>{value}</span>
-                                              ))}
-                                            </span>
-                                          </span>
-                                        ))}
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                </div>
-                              ) : null}
-                              {curriculum.length ? (
-                                <div className="assessment-page-table-curriculum">{curriculum.join(' / ')}</div>
-                              ) : null}
                               {imageRows.length ? (
                                 <div className="assessment-page-table-inline-section">
                                   <div className="assessment-page-table-images" aria-label={`Images for question ${questionNumber}`}>
@@ -1725,9 +1689,70 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                                   </div>
                                 </div>
                               ) : null}
-                              {stripHtml(question.answerKey) ? (
+                              {isDescriptive && descriptiveSections.length ? (
+                                <div className="assessment-page-table-inline-section">
+                                  <div className="assessment-page-descriptive-lines">
+                                    {descriptiveSections.map((section, sectionIndex) => (
+                                      <div key={section.id ?? `${questionId}-table-section-${sectionIndex}`} className="assessment-page-descriptive-item">
+                                        <div className="assessment-page-descriptive-line">
+                                          <strong>{sectionIndex + 1}.</strong>
+                                          <span>{stripHtml(section.questionText) || 'Question not added'}</span>
+                                          {Number(section.marks ?? 0) > 0 ? <em>{section.marks} marks</em> : null}
+                                        </div>
+                                        {(section.children ?? []).map((child, childIndex) => (
+                                          <div key={child.id ?? `${section.id}-table-child-${childIndex}`} className="assessment-page-descriptive-line is-child">
+                                            <strong>{String.fromCharCode(97 + childIndex)}.</strong>
+                                            <span>{stripHtml(child.questionText) || 'Question not added'}</span>
+                                            {Number(child.marks ?? 0) > 0 ? <em>{child.marks} marks</em> : null}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {!isDescriptive && stripHtml(question.answerKey) ? (
                                 <div className="assessment-page-table-inline-section assessment-page-table-answer">
                                   <span>{stripHtml(question.answerKey)}</span>
+                                </div>
+                              ) : null}
+                              {tagGroups.length || curriculum.length ? (
+                                <div className="assessment-page-grid-detail-footer-meta">
+                                  {tagGroups.length ? (
+                                    <div className="assessment-page-grid-question-meta assessment-page-grid-detail-extra-tags">
+                                      <span className="assessment-page-question-tags-wrap">
+                                        <button
+                                          type="button"
+                                          className="assessment-page-question-tags-btn"
+                                          onClick={(event) => {
+                                            event.stopPropagation()
+                                            setActiveTagsId(isTagsOpen ? '' : tableTagsId)
+                                          }}
+                                          aria-expanded={isTagsOpen}
+                                        >
+                                          <Info size={12} strokeWidth={2.2} />
+                                          View Tags
+                                        </button>
+                                        {isTagsOpen ? (
+                                          <span className="assessment-page-question-tags-popover" role="tooltip">
+                                            {tagGroups.map((group) => (
+                                              <span key={group.label} className="assessment-page-question-tags-group">
+                                                <strong>{group.label}</strong>
+                                                <span>
+                                                  {group.values.map((value) => (
+                                                    <span key={value}>{value}</span>
+                                                  ))}
+                                                </span>
+                                              </span>
+                                            ))}
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    </div>
+                                  ) : null}
+                                  {curriculum.length ? (
+                                    <div className="assessment-page-table-curriculum">{curriculum.join(' / ')}</div>
+                                  ) : null}
                                 </div>
                               ) : null}
                             </div>
@@ -1896,8 +1921,11 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                   type="button"
                   className={editQuestionMode === 'overwrite' ? 'is-active' : ''}
                   onClick={() => setEditQuestionMode('overwrite')}
+                  disabled={!isMedsyQuestion(editQuestion)}
                   role="radio"
                   aria-checked={editQuestionMode === 'overwrite'}
+                  aria-disabled={!isMedsyQuestion(editQuestion)}
+                  title={!isMedsyQuestion(editQuestion) ? 'Created questions can only be duplicated for editing' : 'Overwrite this question'}
                 >
                   Overwrite
                 </button>

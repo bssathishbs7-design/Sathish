@@ -200,6 +200,7 @@ const MULTIPLE_OPTION_MIN_COUNT = 3
 const MULTIPLE_OPTION_MAX_COUNT = 8
 const MAX_QUESTION_IMAGES = 4
 const DEFAULT_OPTIONAL_TAG = 'Not Applicable'
+const ROMAN_NUMERALS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']
 
 const CURRICULUM_DIRECTORY = YEAR_OPTIONS.reduce((directory, year) => ({
   ...directory,
@@ -240,6 +241,22 @@ const createOption = (label = '') => ({
   id: `option-${optionSequence++}`,
   label,
   distractorErrors: [],
+})
+
+const createDescriptiveInsideQuestion = () => ({
+  id: `descriptive-inside-${Date.now()}-${optionSequence++}`,
+  questionText: '',
+  marks: '0',
+})
+
+const createDescriptiveSubQuestion = () => ({
+  id: `descriptive-sub-${Date.now()}-${optionSequence++}`,
+  type: 'text',
+  questionText: '',
+  marks: '0',
+  options: [createOption(''), createOption(''), createOption(''), createOption('')],
+  correctOptionIds: [],
+  children: [],
 })
 
 const readImageFile = (file) => new Promise((resolve, reject) => {
@@ -290,6 +307,7 @@ const createQuestion = (type = 'MCQ', config = {}) => ({
   status: 'Editing',
   revisionStatus: 'Created',
   editCount: 0,
+  descriptiveSections: [],
 })
 
 const readStoredQuestionBankQuestions = () => {
@@ -370,6 +388,25 @@ const replaceQuestionInStorage = (question) => {
       ))))
     } catch {
       // Keep the edit flow responsive if one storage bucket is malformed.
+    }
+  })
+
+  window.dispatchEvent(new Event('question-bank-published-questions'))
+  window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+}
+
+const deleteQuestionFromStorage = (questionId) => {
+  if (typeof window === 'undefined' || !questionId) return
+
+  ;[QUESTION_BANK_STORAGE_KEY, QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY].forEach((storageKey) => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
+      if (!Array.isArray(parsed)) return
+      const nextQuestions = parsed.filter((question) => question?.id !== questionId)
+      if (nextQuestions.length === parsed.length) return
+      window.localStorage.setItem(storageKey, JSON.stringify(nextQuestions))
+    } catch {
+      // Ignore malformed storage and continue deleting from any valid bucket.
     }
   })
 
@@ -951,7 +988,15 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     ))
   const rejectedQuestionCards = questions.filter((item) => item.status === 'Approval Rejected' && hasQuestionContent(item))
   const reportQuestionCards = Array.from(new Map([
-    ...reportedQuestionRecords.map((record) => record.question).filter((question) => question && hasQuestionContent(question)),
+    ...reportedQuestionRecords
+      .map((record) => (record.question && hasQuestionContent(record.question) ? {
+        ...record.question,
+        reportReasons: record.reasons ?? record.question.reportReasons ?? [],
+        reportExplanation: record.explanation ?? record.question.reportExplanation ?? '',
+        reportAuthorAction: record.authorAction ?? record.question.reportAuthorAction ?? '',
+        reportRecordId: record.id,
+      } : null))
+      .filter(Boolean),
     ...questions.filter((item) => isReportedQuestion(item) && hasQuestionContent(item)),
   ].map((question) => [question.id ?? getQuestionPreview(question), question])).values())
   const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
@@ -1245,6 +1290,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     setOpenCreatedTagsId(null)
     const question = questions.find((item) => item.id === questionId)
       ?? reportedQuestionRecords.find((record) => record.questionId === questionId)?.question
+    if (activeQuestionTab === 'report' && question) {
+      startEditQuestionFlow(question)
+      return
+    }
     if (question?.status === 'Approval Rejected') {
       startEditQuestionFlow(question)
       return
@@ -1299,6 +1348,20 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
     setReportedQuestionRecords(nextRecords)
   }
 
+  const deleteCreatedReportQuestion = (questionId) => {
+    if (!questionId) return
+
+    const nextRecords = readReportedQuestionRecords().filter((record) => record.questionId !== questionId)
+    writeCreatedReportedQuestionRecords(nextRecords)
+    setReportedQuestionRecords(nextRecords)
+    deleteQuestionFromStorage(questionId)
+    setQuestions((current) => current.filter((item) => item.id !== questionId))
+    if (selectedQuestionId === questionId) {
+      setSelectedQuestionId(null)
+    }
+    onAlert?.({ tone: 'warning', message: 'Reported question deleted.' })
+  }
+
   const handleAddHierarchyNode = (level) => {
     if (!selectedQuestion || selectedQuestion.type !== 'Descriptive Question') return
     if (level === 'child' && selectedQuestion.level === 'sub-child') return
@@ -1334,6 +1397,70 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
       setSelectedQuestionId(nextQuestions[0]?.id ?? null)
     }
     onAlert?.({ tone: 'warning', message: 'Question removed.' })
+  }
+
+  const updateDescriptiveSections = (updater) => {
+    if (!selectedQuestionId) return
+
+    setGenerationCompleteId((current) => (
+      current === selectedQuestionId ? null : current
+    ))
+    setQuestions((current) => current.map((item) => {
+      if (item.id !== selectedQuestionId) return item
+
+      return {
+        ...item,
+        descriptiveSections: typeof updater === 'function'
+          ? updater(item.descriptiveSections ?? [])
+          : updater,
+        revisionStatus: item.status === 'Created' ? 'Edited' : item.revisionStatus,
+        editCount: item.status === 'Created' ? Math.max(Number(item.editCount ?? item.revisionCount ?? 1) || 1, 1) : item.editCount,
+      }
+    }))
+  }
+
+  const addDescriptiveSubQuestion = () => {
+    updateDescriptiveSections((sections) => [...sections, createDescriptiveSubQuestion()])
+  }
+
+  const updateDescriptiveSubQuestion = (sectionId, updater) => {
+    updateDescriptiveSections((sections) => sections.map((section) => (
+      section.id === sectionId
+        ? {
+          ...section,
+          ...(typeof updater === 'function' ? updater(section) : updater),
+        }
+        : section
+    )))
+  }
+
+  const deleteDescriptiveSubQuestion = (sectionId) => {
+    updateDescriptiveSections((sections) => sections.filter((section) => section.id !== sectionId))
+  }
+
+  const addDescriptiveInsideQuestion = (sectionId) => {
+    updateDescriptiveSubQuestion(sectionId, (section) => ({
+      children: [...(section.children ?? []), createDescriptiveInsideQuestion()],
+    }))
+  }
+
+  const updateDescriptiveInsideQuestion = (sectionId, childId, updater) => {
+    updateDescriptiveSubQuestion(sectionId, (section) => ({
+      children: (section.children ?? []).map((child) => (
+        child.id === childId
+          ? {
+            ...child,
+            ...(typeof updater === 'function' ? updater(child) : updater),
+          }
+          : child
+      )),
+    }))
+  }
+
+  const deleteDescriptiveInsideQuestion = (sectionId, childId) => {
+    updateDescriptiveSubQuestion(sectionId, (section) => ({
+      children: (section.children ?? []).filter((child) => child.id !== childId),
+    }))
   }
 
   const sendApprovedQuestionsToQuestionBank = (questionIds = approvedQuestionBankSelectedIds) => {
@@ -1526,6 +1653,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
         trueFalseAnswer: question.trueFalseAnswer,
         fillBlankAnswers: question.fillBlankAnswers,
         descriptiveGuide: question.descriptiveGuide,
+        descriptiveSections: question.descriptiveSections,
         answerKey: question.answerKey,
       })),
     })
@@ -2028,7 +2156,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'created'}
             >
-              Created Qus
+              My Questions
               <span>{createdQuestionCards.length}</span>
             </button>
             <button
@@ -2038,7 +2166,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'draft'}
             >
-              Draft
+             My Draft
               <span>{draftQuestionCards.length}</span>
             </button>
             <button
@@ -2048,7 +2176,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'sent'}
             >
-              Sent to Approval
+              Pending Approval
               <span>{sentApprovalQuestionCards.length}</span>
             </button>
             <button
@@ -2058,7 +2186,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'approved'}
             >
-              Approved Qus
+              Approved
               <span>{approvedQuestionCards.length}</span>
             </button>
             <button
@@ -2068,7 +2196,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'rejected'}
             >
-              Rejected Qus
+              Rejected
               <span>{rejectedQuestionCards.length}</span>
             </button>
             <button
@@ -2078,7 +2206,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
               role="tab"
               aria-selected={activeQuestionTab === 'report'}
             >
-              Report Qus
+              Reported
               <span>{reportQuestionCards.length}</span>
             </button>
           </div>
@@ -2316,6 +2444,124 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         </div>
                         ) : null}
 
+                      {selectedQuestion.type === 'Descriptive Question' ? (
+                        <div className="question-bank-descriptive-builder">
+                          <div className="question-bank-descriptive-builder-head">
+                            <div>
+                              <strong>Sub Questions</strong>
+                            </div>
+                            <button
+                              type="button"
+                              className="question-bank-secondary-btn"
+                              onClick={addDescriptiveSubQuestion}
+                            >
+                              <Plus size={14} strokeWidth={2.2} />
+                              Sub Question
+                            </button>
+                          </div>
+
+                          {(selectedQuestion.descriptiveSections ?? []).length ? (
+                            <div className="question-bank-descriptive-sub-list">
+                              {(selectedQuestion.descriptiveSections ?? []).map((section, sectionIndex) => {
+                                const sectionLabel = `${ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.`
+                                return (
+                                  <div key={section.id} className="question-bank-descriptive-sub-card">
+                                    <div className="question-bank-descriptive-row">
+                                      <span className="question-bank-descriptive-index">{sectionLabel}</span>
+                                      <label className="question-bank-descriptive-text">
+                                        <RichMathEditor
+                                          value={section.questionText}
+                                          onChange={(nextValue) => updateDescriptiveSubQuestion(section.id, { questionText: nextValue })}
+                                          placeholder="Enter your question"
+                                          minRows={1}
+                                          compact
+                                          ariaLabel={`Sub question ${sectionIndex + 1}`}
+                                        />
+                                      </label>
+                                      <label className="question-bank-descriptive-marks">
+                                        <span>Marks</span>
+                                        <input
+                                          value={section.marks ?? '0'}
+                                          onChange={(event) => updateDescriptiveSubQuestion(section.id, { marks: event.target.value })}
+                                          inputMode="decimal"
+                                        />
+                                      </label>
+                                      <button
+                                        type="button"
+                                        className="question-bank-icon-btn question-bank-descriptive-delete-btn"
+                                        onPointerDown={(event) => {
+                                          event.preventDefault()
+                                          event.stopPropagation()
+                                          deleteDescriptiveSubQuestion(section.id)
+                                        }}
+                                        onClick={(event) => event.stopPropagation()}
+                                        aria-label={`Delete sub question ${sectionIndex + 1}`}
+                                      >
+                                        <Trash2 size={14} strokeWidth={2.2} />
+                                      </button>
+                                    </div>
+
+                                    <div className="question-bank-descriptive-inside-list">
+                                      {(section.children ?? []).map((child, childIndex) => (
+                                        <div key={child.id} className="question-bank-descriptive-row is-child">
+                                          <span className="question-bank-descriptive-index">{String.fromCharCode(97 + childIndex)}.</span>
+                                          <label className="question-bank-descriptive-text">
+                                            <RichMathEditor
+                                              value={child.questionText}
+                                              onChange={(nextValue) => updateDescriptiveInsideQuestion(section.id, child.id, { questionText: nextValue })}
+                                              placeholder="Enter your question"
+                                              minRows={1}
+                                              compact
+                                              ariaLabel={`Inside question ${childIndex + 1}`}
+                                            />
+                                          </label>
+                                          <label className="question-bank-descriptive-marks">
+                                            <span>Marks</span>
+                                            <input
+                                              value={child.marks ?? '0'}
+                                              onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value })}
+                                              inputMode="decimal"
+                                            />
+                                          </label>
+                                          <button
+                                            type="button"
+                                            className="question-bank-icon-btn question-bank-descriptive-delete-btn"
+                                            onPointerDown={(event) => {
+                                              event.preventDefault()
+                                              event.stopPropagation()
+                                              deleteDescriptiveInsideQuestion(section.id, child.id)
+                                            }}
+                                            onClick={(event) => event.stopPropagation()}
+                                            aria-label={`Delete inside question ${childIndex + 1}`}
+                                          >
+                                            <Trash2 size={14} strokeWidth={2.2} />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    <div className="question-bank-descriptive-sub-actions">
+                                      <button
+                                        type="button"
+                                        className="question-bank-secondary-btn"
+                                        onClick={() => addDescriptiveInsideQuestion(section.id)}
+                                      >
+                                        <Plus size={14} strokeWidth={2.2} />
+                                        Inside
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <div className="question-bank-descriptive-empty">
+                              No sub questions added.
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+
                       {selectedQuestion.type === 'MCQ' ? (
                         <div className="question-bank-options-block">
                           <div className="question-bank-options-head">
@@ -2510,6 +2756,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         </div>
                       ) : null}
 
+                      {selectedQuestion.type !== 'Descriptive Question' ? (
                         <div className="question-bank-answer-block">
                           <label className="question-bank-field">
                             <span className="question-bank-inline-field-badge">Answer &amp; Explanation</span>
@@ -2521,65 +2768,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                               ariaLabel="Answer key"
                             />
                           </label>
-                      </div>
+                        </div>
+                      ) : null}
 
                       </section>
-
-                      {selectedQuestion.type === 'Descriptive Question' ? (
-                        <section className="question-bank-soft-panel">
-                          <div className="question-bank-section-head">
-                            <div>
-                              <span className="question-bank-eyebrow">Question Structure</span>
-                              <strong>Parent, child and sub-child flow</strong>
-                            </div>
-                            <div className="question-bank-inline-actions">
-                              <button
-                                type="button"
-                                className="question-bank-secondary-btn"
-                                onClick={() => handleAddHierarchyNode('child')}
-                                disabled={selectedQuestion.level === 'sub-child'}
-                              >
-                                <FolderTree size={14} strokeWidth={2} />
-                                Add Child
-                              </button>
-                              <button
-                                type="button"
-                                className="question-bank-secondary-btn"
-                                onClick={() => handleAddHierarchyNode('sub-child')}
-                                disabled={selectedQuestion.level !== 'child'}
-                              >
-                                <Sparkles size={14} strokeWidth={2} />
-                                Add Sub-Child
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="question-bank-hierarchy-list">
-                            {descriptiveQuestions.map((item) => (
-                              <button
-                                key={item.id}
-                                type="button"
-                                className={`question-bank-hierarchy-item is-${item.level} ${item.id === selectedQuestion.id ? 'is-active' : ''}`}
-                                onClick={() => setSelectedQuestionId(item.id)}
-                              >
-                                <span>{getLevelLabel(item.level)}</span>
-                                <strong>{getQuestionPreview(item)}</strong>
-                              </button>
-                            ))}
-                          </div>
-
-                          <label className="question-bank-field">
-                            <span>Expected response guide</span>
-                            <RichMathEditor
-                              value={selectedQuestion.descriptiveGuide}
-                              onChange={(nextValue) => updateSelectedQuestion({ descriptiveGuide: nextValue })}
-                              placeholder="Outline what faculty expect in the answer"
-                              minRows={4}
-                              ariaLabel="Expected response guide"
-                            />
-                          </label>
-                        </section>
-                      ) : null}
 
                       {selectedQuestion.type === 'True or False' ? (
                         <section className="question-bank-soft-panel">
@@ -2991,6 +3183,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                         const isApprovedQuestionBankSelection = activeQuestionTab === 'approved'
                         const isQuestionBankSent = Boolean(question.questionBankSentAt)
                         const isQuestionBankSelected = approvedQuestionBankSelectedIds.includes(question.id)
+                        const reportReasonText = (question.reportReasons ?? []).filter(Boolean).join(', ')
+                        const reportActionText = question.reportAuthorAction ?? ''
+                        const isDescriptiveCard = question.type === 'Descriptive Question'
+                        const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
                         const shouldShowStatusBadge = !(status === 'Approved' && isQuestionBankSent)
                         const shouldShowQuestionDetails = ['Created', 'Sent to Approval', 'Approved', 'Approval Rejected'].includes(status)
                         const curriculumMeta = [
@@ -3107,6 +3303,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                     {shouldShowQuestionDetails && hasVisibleMarks(question.marks) ? (
                                       <span className="question-bank-badge soft">
                                         {question.marks} mark{question.marks === '1' ? '' : 's'}
+                                      </span>
+                                    ) : null}
+                                    {activeQuestionTab === 'report' && reportReasonText ? (
+                                      <span className="question-bank-badge report-reason" title={reportReasonText}>
+                                        Reason: {reportReasonText}
+                                      </span>
+                                    ) : null}
+                                    {activeQuestionTab === 'report' && reportActionText ? (
+                                      <span className="question-bank-badge report-action" title={reportActionText}>
+                                        Action: {reportActionText}
                                       </span>
                                     ) : null}
                                     {status === 'Approved' && question.questionBankSentAt && shouldShowStatusBadge ? (
@@ -3227,10 +3433,30 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                                 </span>
                                               </b>
                                             )
-                                          })}
+                                        })}
                                       </span>
                                     ) : null}
-                                    {getRichTextPreview(question.answerKey) ? (
+                                    {isDescriptiveCard && descriptiveSections.length ? (
+                                      <span className="question-bank-created-descriptive-list">
+                                        {descriptiveSections.map((section, sectionIndex) => (
+                                          <span key={section.id ?? `${question.id}-section-${sectionIndex}`} className="question-bank-created-descriptive-item">
+                                            <span className="question-bank-created-descriptive-line">
+                                              <b>{ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.</b>
+                                              <span>{getRichTextPreview(section.questionText) || 'Question not added'}</span>
+                                              {hasVisibleMarks(section.marks) ? <em>{section.marks} marks</em> : null}
+                                            </span>
+                                            {(section.children ?? []).map((child, childIndex) => (
+                                              <span key={child.id ?? `${section.id}-child-${childIndex}`} className="question-bank-created-descriptive-line is-child">
+                                                <b>{String.fromCharCode(97 + childIndex)}.</b>
+                                                <span>{getRichTextPreview(child.questionText) || 'Question not added'}</span>
+                                                {hasVisibleMarks(child.marks) ? <em>{child.marks} marks</em> : null}
+                                              </span>
+                                            ))}
+                                          </span>
+                                        ))}
+                                      </span>
+                                    ) : null}
+                                    {!isDescriptiveCard && getRichTextPreview(question.answerKey) ? (
                                       <span className="question-bank-created-answer">
                                         <b>Answer & Explanation</b>
                                         {getRichTextPreview(question.answerKey)}
@@ -3280,7 +3506,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
                                     className="question-bank-icon-btn"
                                     onClick={() => {
                                       setOpenCreatedTagsId(null)
-                                      handleDeleteQuestionById(question.id)
+                                      if (activeQuestionTab === 'report') {
+                                        deleteCreatedReportQuestion(question.id)
+                                      } else {
+                                        handleDeleteQuestionById(question.id)
+                                      }
                                     }}
                                     aria-label="Delete question"
                                   >
