@@ -77,7 +77,12 @@ const initialForm = {
   year: '',
 }
 
+const requiredAssessmentFields = ['collegeName', 'assessmentName', 'academicYear', 'examCategory', 'course', 'year']
+
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
+
+const toCapitalizedCase = (value) =>
+  value.replace(/[A-Za-z]+/g, (word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
 
 function SelectField({ label, value, options, placeholder, onChange, className = '' }) {
   return (
@@ -109,6 +114,7 @@ function UploadImageIcon() {
 
 export default function AssessmentCreatePage({ onNavigate }) {
   const [form, setForm] = useState(initialForm)
+  const isCreateDisabled = requiredAssessmentFields.some((field) => !String(form[field] ?? '').trim())
 
   const updateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -135,6 +141,8 @@ export default function AssessmentCreatePage({ onNavigate }) {
   }
 
   const createAssessment = () => {
+    if (isCreateDisabled) return
+
     window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(form))
     onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
   }
@@ -218,7 +226,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                       type="text"
                       value={form.assessmentName}
                       placeholder="Assessment Name"
-                      onChange={(event) => updateForm('assessmentName', event.target.value)}
+                      onChange={(event) => updateForm('assessmentName', toCapitalizedCase(event.target.value))}
                     />
                   </label>
 
@@ -253,7 +261,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
 
                 <div className="assessment-create-form-actions">
                   <button type="button" className="is-clear" onClick={clearForm}>Clear</button>
-                  <button type="button" className="is-primary" onClick={createAssessment}>
+                  <button
+                    type="button"
+                    className="is-primary"
+                    onClick={createAssessment}
+                    disabled={isCreateDisabled}
+                  >
                     <ClipboardPlus size={16} strokeWidth={2.3} />
                     Create Assessment
                   </button>
