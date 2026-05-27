@@ -6,16 +6,20 @@ import {
   ChevronDown,
   ChevronUp,
   Clock3,
+  Database,
   Eye,
   FilePenLine,
   ImagePlus,
   Info,
   ListChecks,
   LogOut,
+  Moon,
   Plus,
+  RotateCcw,
   Save,
   Search,
   Sparkles,
+  Sun,
   Trash2,
   X,
 } from 'lucide-react'
@@ -27,6 +31,7 @@ import '../styles/assessment-pages.css'
 
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
+const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 
 const SUBJECT_DIRECTORY = {
   'Human Anatomy': {
@@ -161,6 +166,7 @@ const toggleSelection = (items, value) => (
 )
 
 const getRichTextPreview = (value) => stripHtml(value).trim()
+const hasVisibleMarks = (marks) => Number(marks) > 0
 const getOptionModeConfig = (allowMultiple) => ({
   minCount: allowMultiple ? MULTIPLE_OPTION_MIN_COUNT : SINGLE_OPTION_MIN_COUNT,
   maxCount: allowMultiple ? MULTIPLE_OPTION_MAX_COUNT : SINGLE_OPTION_MAX_COUNT,
@@ -177,6 +183,15 @@ const normalizeOptionalTagValues = (values) => {
 
   return cleanValues.length ? cleanValues : [DEFAULT_OPTIONAL_TAG]
 }
+
+const getQuestionOptionalTagGroups = (item) => [
+  { label: 'Cognitive Function', values: item.cognitiveFunction ? [item.cognitiveFunction] : [] },
+  { label: 'Skill Focus', values: item.skillFocus ? [item.skillFocus] : [] },
+  { label: 'Organ System', values: item.organSystem ? [item.organSystem] : [] },
+  { label: 'Organ Sub System', values: item.organSubSystems ?? [] },
+  { label: 'Disease Tags', values: item.diseaseTags ?? [] },
+  { label: 'Key Concept', values: item.keyConcepts ?? [] },
+].filter((group) => group.values.length)
 
 function MappingSelectorPanel({ title, searchValue, onSearchChange, items, selected, onToggle, emptyLabel }) {
   const normalizedSearch = searchValue.trim().toLowerCase()
@@ -259,7 +274,7 @@ function OptionalTagTextInput({ label, values, onChange }) {
   )
 }
 
-export default function CreateAssessmentPage({ onNavigate }) {
+export default function CreateAssessmentPage({ onNavigate, theme = 'light', onToggleTheme }) {
   const [setup] = useState(readCreateAssessmentSetup)
   const [question, setQuestion] = useState(null)
   const [savedQuestions, setSavedQuestions] = useState(readSavedAssessmentQuestions)
@@ -268,6 +283,7 @@ export default function CreateAssessmentPage({ onNavigate }) {
   const [mappingSearchValue, setMappingSearchValue] = useState('')
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState('')
+  const [expandedQuestionId, setExpandedQuestionId] = useState(null)
 
   const detailItems = [setup.collegeName, setup.academicYear, setup.examCategory, setup.course, setup.year].filter(Boolean)
   const subjectDirectory = question ? SUBJECT_DIRECTORY[question.subject] ?? null : null
@@ -315,6 +331,12 @@ export default function CreateAssessmentPage({ onNavigate }) {
       ? true
       : (question?.options ?? []).slice(0, 2).every((option) => getRichTextPreview(option.label))
   )
+  const visibleQuestionRows = question
+    ? [
+      { ...question, isLivePreview: true },
+      ...savedQuestions.filter((item) => item.id !== question.id),
+    ]
+    : savedQuestions
 
   const updateQuestion = (patch) => {
     setQuestion((current) => current ? ({
@@ -341,7 +363,59 @@ export default function CreateAssessmentPage({ onNavigate }) {
     window.localStorage.setItem(CREATE_ASSESSMENT_QUESTIONS_KEY, JSON.stringify(nextQuestions))
     setSavedQuestions(nextQuestions)
     setQuestion(createQuestion(setup, question.type))
+    setExpandedQuestionId(nextQuestion.id)
     setSaveStatus(status === 'Draft' ? 'Draft saved.' : 'Question created.')
+  }
+
+  const clearQuestion = () => {
+    setQuestion(null)
+    setIsQuestionTypePickerOpen(false)
+    setActiveMappingPicker(null)
+    setMappingSearchValue('')
+    setIsOptionalTagsOpen(false)
+    setSaveStatus('')
+  }
+
+  const editSavedQuestion = (item) => {
+    const baseQuestion = createQuestion(setup, item.type)
+
+    setQuestion({
+      ...baseQuestion,
+      ...item,
+      options: item.options?.length ? item.options : baseQuestion.options,
+      descriptiveSections: item.descriptiveSections ?? [],
+      status: 'Editing',
+    })
+    setExpandedQuestionId(item.id)
+    setIsQuestionTypePickerOpen(false)
+    setSaveStatus('Editing saved question.')
+  }
+
+  const addQuestionToQuestionBank = () => {
+    if (!question || !canCreate) return
+
+    const questionBankQuestion = {
+      ...question,
+      id: `assessment-qb-${Date.now()}`,
+      status: 'Created',
+      source: 'Create Assessment',
+      assessmentName: setup.assessmentName || 'Untitled Assessment',
+      createdAt: new Date().toISOString(),
+      questionCategory: question.questionCategory || 'Direct',
+      cognitiveLevel: question.cognitiveLevel || 'Apply',
+      thinkingLevel: question.thinkingLevel || 'LoT',
+      difficultyLevel: question.difficultyLevel || 'L1',
+    }
+
+    try {
+      const existingRows = JSON.parse(window.localStorage.getItem(QUESTION_BANK_STORAGE_KEY) ?? '[]')
+      const nextRows = [questionBankQuestion, ...(Array.isArray(existingRows) ? existingRows : [])]
+      window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(nextRows))
+      window.dispatchEvent(new Event('question-bank-created-questions'))
+      setSaveStatus('Added to question bank.')
+    } catch {
+      setSaveStatus('Unable to add question bank.')
+    }
   }
 
   const handleQuestionTypeChange = (type) => {
@@ -505,6 +579,19 @@ export default function CreateAssessmentPage({ onNavigate }) {
             <Clock3 size={15} strokeWidth={2.2} />
             Duration: 00:00
           </span>
+          <button
+            type="button"
+            className="create-assessment-theme-btn"
+            onClick={onToggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          >
+            {theme === 'dark' ? (
+              <Sun size={15} strokeWidth={2.2} />
+            ) : (
+              <Moon size={15} strokeWidth={2.2} />
+            )}
+          </button>
           <button type="button" onClick={() => onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)}>
             <LogOut size={15} strokeWidth={2.2} />
             Exit
@@ -521,14 +608,7 @@ export default function CreateAssessmentPage({ onNavigate }) {
               onClick={() => setIsQuestionTypePickerOpen((current) => !current)}
               aria-expanded={isQuestionTypePickerOpen}
             >
-              <span className="question-bank-type-picker-icon">
-                {question?.type === 'Descriptive Question' ? (
-                  <FilePenLine size={15} strokeWidth={2} />
-                ) : (
-                  <ListChecks size={15} strokeWidth={2} />
-                )}
-              </span>
-              <strong>{question ? question.type === 'Descriptive Question' ? 'Descriptive' : 'MCQ' : 'Select Question Type'}</strong>
+              <strong>{question ? question.type === 'Descriptive Question' ? 'Descriptive' : 'MCQ' : 'Create New Question'}</strong>
               <ChevronDown size={16} strokeWidth={2.4} />
             </button>
 
@@ -550,8 +630,26 @@ export default function CreateAssessmentPage({ onNavigate }) {
                     </button>
                   )
                 })}
+                {question ? (
+                  <button
+                    type="button"
+                    className="question-bank-type-picker-item is-clear-option"
+                    onClick={clearQuestion}
+                  >
+                    <span className="question-bank-type-picker-icon">
+                      <RotateCcw size={15} strokeWidth={2} />
+                    </span>
+                    <span>Clear</span>
+                  </button>
+                ) : null}
               </div>
             ) : null}
+          </div>
+          <div className="create-assessment-type-actions">
+            <button type="button" className="create-assessment-type-action is-question-bank" onClick={addQuestionToQuestionBank} disabled={!question || !canCreate}>
+              <Database size={16} strokeWidth={2.2} />
+              Add to Question Bank
+            </button>
           </div>
           {saveStatus ? <span className="create-assessment-save-status">{saveStatus}</span> : null}
         </div>
@@ -941,6 +1039,136 @@ export default function CreateAssessmentPage({ onNavigate }) {
                 </div>
               </aside>
             </div>
+          </section>
+        ) : null}
+
+        {visibleQuestionRows.length ? (
+          <section className="create-assessment-question-list" aria-label="Created questions">
+            {visibleQuestionRows.map((item, index) => {
+              const isOpen = expandedQuestionId === item.id
+              const isDescriptive = item.type === 'Descriptive Question'
+              const optionalTagGroups = getQuestionOptionalTagGroups(item)
+              const visibleOptions = (item.options ?? []).filter((option) => Boolean(getRichTextPreview(option.label)))
+              const curriculumMeta = [
+                item.year,
+                item.subject,
+                item.topics?.length ? getSelectionSummary(item.topics, '') : null,
+                item.competencies?.length ? getSelectionSummary(item.competencies, '', getShortCompetencyLabel) : null,
+              ].filter(Boolean)
+
+              return (
+                <article key={item.id} className={`question-bank-created-card create-assessment-question-row ${item.isCritical ? 'is-critical' : ''} ${isOpen ? 'is-open' : ''}`}>
+                  <div className="create-assessment-question-summary">
+                    <span className={`question-bank-badge type create-assessment-question-type ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>
+                      {isDescriptive ? 'Desc' : 'MCQ'}
+                    </span>
+                    <button
+                      type="button"
+                      className="create-assessment-question-title"
+                      onClick={() => setExpandedQuestionId((current) => (current === item.id ? null : item.id))}
+                      aria-expanded={isOpen}
+                      title={isOpen ? 'Close question details' : 'Open question details'}
+                    >
+                      <strong>Q{index + 1}.</strong>
+                      <span>{getRichTextPreview(item.questionText) || item.title || (item.isLivePreview ? 'Current question preview' : 'Untitled question')}</span>
+                    </button>
+                    <span className="create-assessment-question-badges">
+                      {item.isLivePreview ? <span className="question-bank-badge mint">Editing</span> : null}
+                      {item.difficultyLevel ? <span className="question-bank-badge soft">{item.difficultyLevel}</span> : null}
+                      {item.thinkingLevel ? <span className="question-bank-badge lilac">{item.thinkingLevel}</span> : null}
+                      {item.isCritical ? <span className="question-bank-badge warning">Critical</span> : null}
+                      {optionalTagGroups.length ? (
+                        <span className="question-bank-created-tags-wrap">
+                          <button
+                            type="button"
+                            className="question-bank-badge question-bank-created-tags-badge"
+                            onClick={(event) => event.stopPropagation()}
+                            aria-label={`View tags for question ${index + 1}`}
+                          >
+                            <Info size={13} strokeWidth={2.2} />
+                            Tags
+                          </button>
+                          <span className="question-bank-created-tags-tooltip" role="tooltip">
+                            {optionalTagGroups.map((group) => (
+                              <span key={group.label} className="question-bank-created-tags-group">
+                                <strong>{group.label}</strong>
+                                <span>
+                                  {group.values.map((value) => (
+                                    <span key={value}>{value}</span>
+                                  ))}
+                                </span>
+                              </span>
+                            ))}
+                          </span>
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="create-assessment-question-actions">
+                      {!item.isLivePreview ? (
+                        <button type="button" className="question-bank-icon-btn" onClick={() => editSavedQuestion(item)} aria-label={`Edit question ${index + 1}`} title="Edit question">
+                          <FilePenLine size={15} strokeWidth={2.1} />
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="question-bank-icon-btn"
+                        onClick={() => setExpandedQuestionId((current) => (current === item.id ? null : item.id))}
+                        aria-label={`${isOpen ? 'Close' : 'Open'} question ${index + 1}`}
+                        aria-expanded={isOpen}
+                        title={isOpen ? 'Close details' : 'Open details'}
+                      >
+                        {isOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
+                      </button>
+                    </span>
+                  </div>
+
+                  {isOpen ? (
+                    <div className="create-assessment-question-detail">
+                      {curriculumMeta.length ? (
+                        <span className="question-bank-created-curriculum" title={curriculumMeta.join(' / ')}>
+                          {curriculumMeta.map((meta) => <span key={meta}>{meta}</span>)}
+                        </span>
+                      ) : null}
+                      {!isDescriptive && visibleOptions.length ? (
+                        <span className="question-bank-created-options">
+                          {visibleOptions.map((option, optionIndex) => (
+                            <b key={option.id} className={(item.correctOptionIds ?? []).includes(option.id) ? 'is-correct' : ''}>
+                              {String.fromCharCode(65 + optionIndex)}. {getRichTextPreview(option.label)}
+                            </b>
+                          ))}
+                        </span>
+                      ) : null}
+                      {isDescriptive && (item.descriptiveSections ?? []).length ? (
+                        <span className="question-bank-created-descriptive-list">
+                          {(item.descriptiveSections ?? []).map((section, sectionIndex) => (
+                            <span key={section.id ?? `${item.id}-${sectionIndex}`} className="question-bank-created-descriptive-item">
+                              <span className="question-bank-created-descriptive-line">
+                                <b>{ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.</b>
+                                <span>{getRichTextPreview(section.questionText) || 'Question not added'}</span>
+                                {hasVisibleMarks(section.marks) ? <em>{section.marks} marks</em> : null}
+                              </span>
+                              {(section.children ?? []).map((child, childIndex) => (
+                                <span key={child.id ?? `${section.id}-${childIndex}`} className="question-bank-created-descriptive-line is-child">
+                                  <b>{String.fromCharCode(97 + childIndex)}.</b>
+                                  <span>{getRichTextPreview(child.questionText) || 'Question not added'}</span>
+                                  {hasVisibleMarks(child.marks) ? <em>{child.marks} marks</em> : null}
+                                </span>
+                              ))}
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                      {getRichTextPreview(item.answerKey) ? (
+                        <span className="question-bank-created-answer">
+                          <b>Answer &amp; Explanation</b>
+                          {getRichTextPreview(item.answerKey)}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </article>
+              )
+            })}
           </section>
         ) : null}
       </main>

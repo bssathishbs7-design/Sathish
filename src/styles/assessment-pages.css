@@ -895,6 +895,23 @@
   cursor: pointer;
 }
 
+.create-assessment-header-actions .create-assessment-theme-btn {
+  justify-content: center;
+  width: 34px;
+  padding: 0;
+  border-color: #cfe2dc;
+  background: #f5fffb;
+  color: #08776d;
+}
+
+.create-assessment-header-actions .create-assessment-theme-btn:hover,
+.create-assessment-header-actions .create-assessment-theme-btn:focus-visible {
+  border-color: #10b9a8;
+  background: #ecfffb;
+  color: #075f54;
+  outline: none;
+}
+
 .create-assessment-workspace-main {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -1107,22 +1124,198 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 10px;
   width: min(100%, 1120px);
-  min-height: 34px;
+  min-height: 38px;
   margin: 0 auto;
 }
 
 .create-assessment-type-control .question-bank-type-select-panel {
   position: relative;
   width: auto;
-  min-width: 154px;
+  min-width: 0;
   padding: 0;
   flex: 0 0 auto;
 }
 
+.create-assessment-type-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.create-assessment-type-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #cfe2dc;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #405866;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.create-assessment-type-action.is-question-bank {
+  border-color: #0fb9a8;
+  background: #f2fffb;
+  color: #08776d;
+}
+
+.create-assessment-type-action.is-clear {
+  border-color: #f1c9d0;
+  background: #fff7f8;
+  color: #8f1d2c;
+}
+
+.create-assessment-type-action:hover:not(:disabled),
+.create-assessment-type-action:focus-visible:not(:disabled) {
+  border-color: #10b9a8;
+  background: #ecfffb;
+  color: #075f54;
+  outline: none;
+}
+
+.create-assessment-type-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.create-assessment-question-list {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+}
+
+.create-assessment-question-row {
+  display: block;
+  min-height: 0;
+  padding: 0;
+  overflow: visible;
+  border-color: #cfe5dd;
+  background: #ffffff;
+  box-shadow: 0 1px 0 rgba(15, 118, 110, 0.04);
+  animation: none;
+}
+
+.create-assessment-question-row:hover {
+  transform: none;
+}
+
+.create-assessment-question-row.is-critical,
+.create-assessment-question-row.is-critical:hover {
+  border-color: #cfe5dd;
+  background: #ffffff;
+  box-shadow: 0 1px 0 rgba(15, 118, 110, 0.04);
+}
+
+.create-assessment-question-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 10px;
+}
+
+.create-assessment-question-type {
+  min-width: 58px;
+  min-height: 26px;
+  justify-content: center;
+  padding: 0 10px;
+  font-weight: 900;
+}
+
+.create-assessment-question-type.is-desc {
+  border-color: #cab8ff;
+  background: #f5efff;
+  color: #6d35d7;
+}
+
+.create-assessment-question-title {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #062233;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.create-assessment-question-title strong,
+.create-assessment-question-title span {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-assessment-question-title:focus-visible {
+  outline: 2px solid rgba(20, 184, 166, 0.32);
+  outline-offset: 4px;
+  border-radius: 5px;
+}
+
+.create-assessment-question-badges {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.create-assessment-question-badges .question-bank-badge {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.create-assessment-question-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.create-assessment-question-actions .question-bank-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+}
+
+.create-assessment-question-detail {
+  display: grid;
+  gap: 4px;
+  padding: 0 12px 12px 80px;
+  border-top: 1px solid #e2eee9;
+}
+
+.create-assessment-question-detail .question-bank-created-curriculum {
+  margin-top: 10px;
+}
+
+.create-assessment-question-row .question-bank-created-tags-tooltip {
+  left: auto;
+  right: 0;
+}
+
 .create-assessment-workspace .question-bank-author-grid {
-  grid-template-columns: minmax(0, 70fr) minmax(280px, 30fr);
+  grid-template-columns: minmax(0, 75fr) minmax(260px, 25fr);
   gap: 12px;
 }
 
@@ -1168,10 +1361,10 @@
 }
 
 .create-assessment-workspace .question-bank-type-select-trigger {
-  min-height: 30px;
-  padding: 0 9px;
-  gap: 6px;
-  font-size: 0.74rem;
+  min-height: 36px;
+  padding: 0 12px;
+  gap: 8px;
+  font-size: 0.84rem;
 }
 
 .create-assessment-workspace .question-bank-type-picker {
@@ -1197,9 +1390,20 @@
   font-size: 0.72rem;
 }
 
+.create-assessment-workspace .question-bank-type-picker-item.is-clear-option {
+  border-color: #f1c9d0;
+  background: #fff7f8;
+  color: #8f1d2c;
+}
+
+.create-assessment-workspace .question-bank-type-picker-item.is-clear-option .question-bank-type-picker-icon {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
 .create-assessment-workspace .question-bank-type-picker-icon {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
 }
 
@@ -4689,6 +4893,19 @@
   color: #fca5a5;
 }
 
+.theme-dark .create-assessment-header-actions .create-assessment-theme-btn {
+  border-color: rgba(45, 212, 191, 0.48);
+  background: rgba(20, 184, 166, 0.12);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-header-actions .create-assessment-theme-btn:hover,
+.theme-dark .create-assessment-header-actions .create-assessment-theme-btn:focus-visible {
+  border-color: rgba(94, 234, 212, 0.72);
+  background: rgba(20, 184, 166, 0.2);
+  color: #ccfbf1;
+}
+
 .theme-dark .create-assessment-wizard button span {
   background: #17263a;
   color: #aebfd4;
@@ -4703,6 +4920,521 @@
 .theme-dark .create-assessment-wizard button.is-active span {
   background: #0f8f75;
   color: #ffffff;
+}
+
+.theme-dark .create-assessment-footer {
+  border-top-color: rgba(94, 116, 145, 0.62);
+  background: #101827;
+  box-shadow: 0 -14px 32px rgba(0, 0, 0, 0.28);
+}
+
+.theme-dark .create-assessment-footer-btn {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: #132235;
+  color: #d9e8f8;
+}
+
+.theme-dark .create-assessment-footer-btn.is-preview {
+  border-color: rgba(56, 189, 248, 0.42);
+  background: rgba(14, 116, 144, 0.18);
+  color: #9bdcf8;
+}
+
+.theme-dark .create-assessment-footer-btn.is-draft {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: #132235;
+  color: #d9e8f8;
+}
+
+.theme-dark .create-assessment-footer-btn.is-next {
+  border-color: rgba(45, 212, 191, 0.68);
+  background: #0f8f75;
+  color: #ffffff;
+}
+
+.theme-dark .create-assessment-footer-btn:hover:not(:disabled),
+.theme-dark .create-assessment-footer-btn:focus-visible:not(:disabled) {
+  border-color: rgba(94, 234, 212, 0.68);
+  background: rgba(20, 184, 166, 0.18);
+  color: #ccfbf1;
+}
+
+.theme-dark .create-assessment-type-action {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: #132235;
+  color: #d9e8f8;
+}
+
+.theme-dark .create-assessment-type-action.is-question-bank {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: rgba(20, 184, 166, 0.12);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-type-action.is-clear {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.22);
+  color: #fca5a5;
+}
+
+.theme-dark .create-assessment-type-action:hover:not(:disabled),
+.theme-dark .create-assessment-type-action:focus-visible:not(:disabled) {
+  border-color: rgba(94, 234, 212, 0.72);
+  background: rgba(20, 184, 166, 0.2);
+  color: #ccfbf1;
+}
+
+.theme-dark .create-assessment-question-row {
+  border-color: rgba(96, 125, 153, 0.62);
+  background: #0d1828;
+  box-shadow: none;
+}
+
+.theme-dark .create-assessment-question-row:hover,
+.theme-dark .create-assessment-question-row.is-open {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: #101d2f;
+}
+
+.theme-dark .create-assessment-question-row.is-critical,
+.theme-dark .create-assessment-question-row.is-critical:hover {
+  border-color: rgba(96, 125, 153, 0.62);
+  background: #0d1828;
+  box-shadow: none;
+}
+
+.theme-dark .create-assessment-question-title {
+  color: #eef6ff;
+}
+
+.theme-dark .create-assessment-question-detail {
+  border-top-color: rgba(96, 125, 153, 0.48);
+}
+
+.theme-dark .create-assessment-question-type.is-desc {
+  border-color: rgba(167, 139, 250, 0.62);
+  background: rgba(91, 33, 182, 0.25);
+  color: #c4b5fd;
+}
+
+.theme-dark .create-assessment-question-actions .question-bank-icon-btn {
+  border-color: #3f5570;
+  background: #122238;
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-author-card {
+  border-color: rgba(45, 212, 191, 0.34);
+  background: #0f172a;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-soft-panel,
+.theme-dark .create-assessment-workspace .question-bank-curriculum-edit-card,
+.theme-dark .create-assessment-workspace .question-bank-assessment-panel,
+.theme-dark .create-assessment-workspace .question-bank-optional-tags-panel,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-sub-card {
+  border-color: rgba(94, 116, 145, 0.52);
+  background: #101827;
+  box-shadow: none;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-type-select-trigger,
+.theme-dark .create-assessment-workspace .question-bank-type-picker,
+.theme-dark .create-assessment-workspace .question-bank-type-picker-item,
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger,
+.theme-dark .create-assessment-workspace .question-bank-mapping-panel,
+.theme-dark .create-assessment-workspace .question-bank-mapping-result,
+.theme-dark .create-assessment-workspace .question-bank-search,
+.theme-dark .create-assessment-workspace .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field input,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-marks input {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: #132235;
+  color: #eef6ff;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-type-select-trigger:hover,
+.theme-dark .create-assessment-workspace .question-bank-type-select-trigger:focus-visible,
+.theme-dark .create-assessment-workspace .question-bank-type-picker-item:hover,
+.theme-dark .create-assessment-workspace .question-bank-type-picker-item:focus-visible,
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger:hover,
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger:focus-visible,
+.theme-dark .create-assessment-workspace .question-bank-mapping-result:hover,
+.theme-dark .create-assessment-workspace .question-bank-mapping-result:focus-visible,
+.theme-dark .create-assessment-workspace .rich-math-editor:focus-within,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input:focus-within {
+  border-color: rgba(45, 212, 191, 0.72);
+  background: #14273a;
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-type-picker {
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-type-picker-icon,
+.theme-dark .create-assessment-workspace .question-bank-choice-letter {
+  background: rgba(20, 184, 166, 0.14);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-type-select-trigger strong,
+.theme-dark .create-assessment-workspace .question-bank-type-picker-item,
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger strong,
+.theme-dark .create-assessment-workspace .question-bank-mapping-result strong,
+.theme-dark .create-assessment-workspace .question-bank-step-title,
+.theme-dark .create-assessment-workspace .question-bank-options-head strong,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-builder-head strong,
+.theme-dark .create-assessment-workspace .question-bank-assessment-title-btn {
+  color: #eef6ff;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-type-picker-item.is-clear-option {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.22);
+  color: #fca5a5;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-type-picker-item.is-clear-option .question-bank-type-picker-icon {
+  background: rgba(127, 29, 29, 0.32);
+  color: #fca5a5;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger span,
+.theme-dark .create-assessment-workspace .question-bank-mapping-selected-badge,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-empty,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-index,
+.theme-dark .create-assessment-workspace .question-bank-question-head-field > span,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field span,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-label,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-text span,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-marks span {
+  color: #aebfd4;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-field .rich-math-editor-surface,
+.theme-dark .create-assessment-workspace .question-bank-field .rich-math-editor-surface span:not(.rich-math-editor-formula):not(.math-text),
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field input,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select,
+.theme-dark .create-assessment-workspace .question-bank-search input,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input input,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-marks input {
+  color: #eef6ff !important;
+}
+
+.theme-dark .create-assessment-workspace .rich-math-editor-surface[data-empty="true"]::before,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select.is-placeholder,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input input::placeholder,
+.theme-dark .create-assessment-workspace .question-bank-search input::placeholder {
+  color: #8fa3bb;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-question-head-marks input,
+.theme-dark .create-assessment-workspace .question-bank-criticality-toggle,
+.theme-dark .create-assessment-workspace .question-bank-option-mode-toggle,
+.theme-dark .create-assessment-workspace .question-bank-choice-check,
+.theme-dark .create-assessment-workspace .question-bank-icon-btn {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: #132235;
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-option-mode-toggle button {
+  color: #aebfd4;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-option-mode-toggle button.is-active {
+  background: #0f8f75;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-choice-check.is-selected,
+.theme-dark .create-assessment-workspace .question-bank-choice-row.is-correct .question-bank-choice-check {
+  border-color: rgba(45, 212, 191, 0.72);
+  background: rgba(20, 184, 166, 0.22);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-choice-row.is-correct .rich-math-editor {
+  border-color: rgba(74, 222, 128, 0.58);
+  background: rgba(22, 101, 52, 0.22);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-choice-row.is-incorrect .rich-math-editor {
+  border-color: rgba(248, 113, 113, 0.58);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-step-helper-badge,
+.theme-dark .create-assessment-workspace .question-bank-inline-field-badge {
+  border-color: rgba(56, 189, 248, 0.42);
+  background: rgba(14, 116, 144, 0.16);
+  color: #9bdcf8;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-question-image-add,
+.theme-dark .create-assessment-workspace .question-bank-add-option-icon,
+.theme-dark .create-assessment-workspace .question-bank-optional-tags-badge,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-builder .question-bank-secondary-btn {
+  border-color: rgba(45, 212, 191, 0.5);
+  background: rgba(20, 184, 166, 0.12);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-ai-instruction-card {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.1);
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-ai-instruction-card strong {
+  border-color: rgba(45, 212, 191, 0.48);
+  background: #132235;
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-ai-instruction-card li {
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-ai-instruction-card li::before {
+  background: #5eead4;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input .question-bank-optional-tag-chips button {
+  border-color: rgba(45, 212, 191, 0.48);
+  background: rgba(20, 184, 166, 0.14);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-mapping-result.is-active,
+.theme-dark .create-assessment-workspace .question-bank-mapping-selected-badge {
+  border-color: rgba(45, 212, 191, 0.5);
+  background: rgba(20, 184, 166, 0.16);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-workspace .rich-math-editor-toolbar,
+.theme-dark .create-assessment-workspace .rich-math-editor-tool {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: #101827;
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-workspace .rich-math-editor-tool:hover,
+.theme-dark .create-assessment-workspace .rich-math-editor-tool:focus-visible {
+  background: rgba(20, 184, 166, 0.16);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-author-card {
+  border-color: rgba(148, 163, 184, 0.72);
+  background: #0b1424;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-soft-panel,
+.theme-dark .create-assessment-workspace .question-bank-curriculum-edit-card,
+.theme-dark .create-assessment-workspace .question-bank-assessment-panel,
+.theme-dark .create-assessment-workspace .question-bank-optional-tags-panel {
+  border-color: rgba(75, 99, 125, 0.72);
+  background: #0d1828;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger,
+.theme-dark .create-assessment-workspace .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select,
+.theme-dark .create-assessment-workspace .question-bank-question-head-marks input,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-marks input,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input {
+  border-color: rgba(86, 113, 142, 0.78);
+  background: #122238;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger span,
+.theme-dark .create-assessment-workspace .rich-math-editor-surface[data-empty="true"]::before,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select.is-placeholder,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input input::placeholder {
+  color: #9db2c8;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-choice-row .rich-math-editor {
+  border-color: rgba(92, 122, 153, 0.82);
+  background: #122238;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-choice-row .rich-math-editor:focus-within {
+  border-color: rgba(45, 212, 191, 0.72);
+  background: #14283c;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-add-option-icon {
+  border: 0;
+  background: transparent !important;
+  box-shadow: none;
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-add-option-icon:hover,
+.theme-dark .create-assessment-workspace .question-bank-add-option-icon:focus-visible {
+  background: transparent !important;
+  color: #ccfbf1;
+  text-decoration: underline;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-inline-field-badge {
+  border-color: rgba(56, 189, 248, 0.52);
+  background: #0d1828;
+  color: #7dd3fc;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-section-head {
+  border-color: rgba(75, 99, 125, 0.72);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-section-head {
+  border-bottom-color: rgba(75, 99, 125, 0.72);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-criticality-switch {
+  background: #334155;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-criticality-switch::after {
+  background: #e2e8f0;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-question-image-add {
+  background: rgba(20, 184, 166, 0.08);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-question-image-add:hover,
+.theme-dark .create-assessment-workspace .question-bank-question-image-add:focus-visible {
+  background: rgba(20, 184, 166, 0.16);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-icon-btn {
+  border-color: rgba(86, 113, 142, 0.78);
+  background: #122238;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-icon-btn:hover,
+.theme-dark .create-assessment-workspace .question-bank-icon-btn:focus-visible {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: rgba(20, 184, 166, 0.12);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-author-card,
+.theme-dark .create-assessment-workspace .question-bank-soft-panel,
+.theme-dark .create-assessment-workspace .question-bank-curriculum-edit-card,
+.theme-dark .create-assessment-workspace .question-bank-assessment-panel,
+.theme-dark .create-assessment-workspace .question-bank-ai-instruction-card,
+.theme-dark .create-assessment-workspace .question-bank-optional-tags-panel,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-sub-card,
+.theme-dark .create-assessment-workspace .question-bank-type-select-trigger,
+.theme-dark .create-assessment-workspace .question-bank-type-picker,
+.theme-dark .create-assessment-workspace .question-bank-type-picker-item,
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger,
+.theme-dark .create-assessment-workspace .question-bank-mapping-panel,
+.theme-dark .create-assessment-workspace .question-bank-mapping-result,
+.theme-dark .create-assessment-workspace .question-bank-search,
+.theme-dark .create-assessment-workspace .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-choice-row .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field input,
+.theme-dark .create-assessment-workspace .question-bank-question-head-marks input,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-marks input,
+.theme-dark .create-assessment-workspace .question-bank-criticality-toggle,
+.theme-dark .create-assessment-workspace .question-bank-option-mode-toggle,
+.theme-dark .create-assessment-workspace .question-bank-choice-check,
+.theme-dark .create-assessment-workspace .question-bank-icon-btn,
+.theme-dark .create-assessment-workspace .question-bank-step-helper-badge,
+.theme-dark .create-assessment-workspace .question-bank-inline-field-badge,
+.theme-dark .create-assessment-workspace .question-bank-question-image-add,
+.theme-dark .create-assessment-workspace .question-bank-optional-tags-badge,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input .question-bank-optional-tag-chips button {
+  border-color: rgba(96, 125, 153, 0.62);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-answer-panel > .question-bank-section-head,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-section-head,
+.theme-dark .create-assessment-workspace .question-bank-question-images {
+  border-color: rgba(96, 125, 153, 0.42);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-type-select-trigger:hover,
+.theme-dark .create-assessment-workspace .question-bank-type-select-trigger:focus-visible,
+.theme-dark .create-assessment-workspace .question-bank-type-picker-item:hover,
+.theme-dark .create-assessment-workspace .question-bank-type-picker-item:focus-visible,
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger:hover,
+.theme-dark .create-assessment-workspace .question-bank-mapping-trigger:focus-visible,
+.theme-dark .create-assessment-workspace .question-bank-mapping-result:hover,
+.theme-dark .create-assessment-workspace .question-bank-mapping-result:focus-visible,
+.theme-dark .create-assessment-workspace .rich-math-editor:focus-within,
+.theme-dark .create-assessment-workspace .question-bank-choice-row .rich-math-editor:focus-within,
+.theme-dark .create-assessment-workspace .question-bank-optional-tag-input:focus-within,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select:focus,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field input:focus,
+.theme-dark .create-assessment-workspace .question-bank-question-head-marks input:focus,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-marks input:focus,
+.theme-dark .create-assessment-workspace .question-bank-question-image-add:hover,
+.theme-dark .create-assessment-workspace .question-bank-question-image-add:focus-visible,
+.theme-dark .create-assessment-workspace .question-bank-optional-tags-badge:hover,
+.theme-dark .create-assessment-workspace .question-bank-optional-tags-badge:focus-visible {
+  border-color: rgba(45, 212, 191, 0.72);
+}
+
+.theme-dark .create-assessment-workspace .question-bank-choice-row .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-answer-block .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-field.rich > .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-text .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field input,
+.theme-dark .create-assessment-workspace .question-bank-question-head-marks input,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-marks input,
+.theme-dark .create-assessment-workspace .question-bank-choice-check,
+.theme-dark .create-assessment-workspace .question-bank-icon-btn,
+.theme-dark .create-assessment-workspace .question-bank-option-mode-toggle,
+.theme-dark .create-assessment-workspace .question-bank-criticality-toggle,
+.theme-dark .create-assessment-workspace .question-bank-inline-field-badge {
+  border-color: #3f5570 !important;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-choice-row .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-answer-block .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-field.rich > .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-text .rich-math-editor {
+  background: #122238 !important;
+  box-shadow: none !important;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-choice-row .rich-math-editor:focus-within,
+.theme-dark .create-assessment-workspace .question-bank-answer-block .rich-math-editor:focus-within,
+.theme-dark .create-assessment-workspace .question-bank-field.rich > .rich-math-editor:focus-within,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-text .rich-math-editor:focus-within,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select:focus,
+.theme-dark .create-assessment-workspace .question-bank-assessment-inline .question-bank-field input:focus,
+.theme-dark .create-assessment-workspace .question-bank-question-head-marks input:focus,
+.theme-dark .create-assessment-workspace .question-bank-descriptive-marks input:focus {
+  border-color: #2dd4bf !important;
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.14) !important;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-choice-row.is-empty .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-choice-row.is-correct .rich-math-editor,
+.theme-dark .create-assessment-workspace .question-bank-choice-row.is-incorrect .rich-math-editor {
+  border-color: #3f5570 !important;
+}
+
+.theme-dark .create-assessment-workspace .question-bank-answer-block .question-bank-inline-field-badge {
+  border-color: #3f5570 !important;
+  background: #122238 !important;
+  color: #93c5fd !important;
 }
 
 .theme-dark .assessment-page-expand-toggle {

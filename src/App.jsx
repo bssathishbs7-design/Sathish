@@ -1232,7 +1232,12 @@ function App() {
           ) : activePage === APP_PAGES.ASSESSMENT_CREATE ? (
             <AssessmentCreatePage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.CREATE_ASSESSMENT ? (
-            <CreateAssessmentPage onNavigate={navigateToPage} onAlert={showAlert} />
+            <CreateAssessmentPage
+              onNavigate={navigateToPage}
+              onAlert={showAlert}
+              theme={theme}
+              onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+            />
           ) : activePage === APP_PAGES.ASSESSMENT_EVALUATION ? (
             <AssessmentEvaluationPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
