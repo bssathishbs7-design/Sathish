@@ -1350,6 +1350,25 @@
   min-height: 100svh;
 }
 
+.vx-shell.is-assessment-plain-mode {
+  background: #f8fbfa;
+}
+
+.theme-dark.vx-shell.is-assessment-plain-mode {
+  background: #0b1220;
+}
+
+.vx-shell.is-assessment-plain-mode::before,
+.vx-shell.is-assessment-plain-mode::after {
+  display: none;
+}
+
+.vx-shell.is-assessment-plain-mode .vx-main,
+.vx-shell.is-assessment-plain-mode .vx-page-surface {
+  width: 100%;
+  min-width: 0;
+}
+
 .vx-topbar {
   position: sticky;
   top: 0;
@@ -2234,7 +2253,9 @@
     grid-template-columns: 260px 1fr;
   }
 
-  .vx-shell.is-exam-mode {
+  .vx-shell.is-exam-mode,
+  .vx-shell.is-assessment-plain-mode,
+  .vx-shell.is-assessment-plain-mode.is-collapsed {
     grid-template-columns: 1fr;
   }
 

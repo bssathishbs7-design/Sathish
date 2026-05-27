@@ -1,46 +1,271 @@
-import { ClipboardList, FolderPlus, Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { BadgeCheck, ChevronDown, ClipboardList, ClipboardPlus, Clock3, FileWarning, FolderPlus, Trash2 } from 'lucide-react'
+import PageNavigationHeader from '../components/PageNavigationHeader'
+import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 
-const createHighlights = [
+const assessmentMetrics = [
   {
-    title: 'Assessment blueprint',
-    description: 'Define the structure, activity type, and scoring plan for new assessment workflows.',
-    icon: FolderPlus,
-  },
-  {
-    title: 'Authoring queue',
-    description: 'Prepare a dedicated workspace for question banks, rubrics, and review-ready drafts.',
+    label: 'Created Assessment',
+    count: 0,
     icon: ClipboardList,
+    tone: 'created',
   },
   {
-    title: 'Publishing readiness',
-    description: 'Track what still needs approval before a newly created assessment can be released.',
-    icon: Sparkles,
+    label: 'Draft Assessment',
+    count: 0,
+    icon: FolderPlus,
+    tone: 'draft',
+  },
+  {
+    label: 'Pending Approval',
+    count: 0,
+    icon: Clock3,
+    tone: 'pending',
+  },
+  {
+    label: 'Approved Assessment',
+    count: 0,
+    icon: BadgeCheck,
+    tone: 'approved',
+  },
+  {
+    label: 'Approval Rejected',
+    count: 0,
+    icon: FileWarning,
+    tone: 'rejected',
+  },
+  {
+    label: 'Published Assessment',
+    count: 0,
+    icon: BadgeCheck,
+    tone: 'published',
   },
 ]
-export default function AssessmentCreatePage() {
+
+const selectOptions = {
+  colleges: [
+    'Sri Ramachandra Institute of Higher Education and Research',
+    'Saveetha Institute of Medical and Technical Sciences',
+    'SRM Medical College Hospital and Research Centre',
+    'Sri Manakula Vinayagar Medical College and Hospital',
+  ],
+  examCategories: [
+    'Internal Assessment',
+    'University Exam',
+    'Formative Assessment',
+    'Summative Assessment',
+    'Theory Exam',
+    'Practical Exam',
+    'Viva Voce',
+    'Mock Test',
+    'Entrance/Screening Test',
+  ],
+  courses: ['India MBBS (NMC Syllabus)'],
+  years: ['Year 1', 'Year 2', 'Year 3', 'Year 4'],
+  academicYears: ['2024 - 2025', '2025 - 2026', '2026 - 2027', '2027 - 2028'],
+}
+
+const initialForm = {
+  collegeName: '',
+  logoName: '',
+  logoPreview: '',
+  assessmentName: '',
+  academicYear: '2025 - 2026',
+  examCategory: '',
+  course: '',
+  year: '',
+}
+
+const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
+
+function SelectField({ label, value, options, placeholder, onChange, className = '' }) {
+  return (
+    <label className={`assessment-create-field ${className}`.trim()}>
+      <span>{label}</span>
+      <span className="assessment-create-select-wrap">
+        <select value={value} onChange={(event) => onChange(event.target.value)}>
+          <option value="">{placeholder || label}</option>
+          {options.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+        <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
+      </span>
+    </label>
+  )
+}
+
+function UploadImageIcon() {
+  return (
+    <svg className="assessment-create-upload-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <path d="M11 10h34a7 7 0 0 1 7 7v20.2a15.6 15.6 0 0 0-4-2V17a3 3 0 0 0-3-3H11a3 3 0 0 0-3 3v29.4l12.2-12.2a4 4 0 0 1 5.6 0l5.1 5.1 8.6-8.6a4 4 0 0 1 5.7 0l.7.7a15.7 15.7 0 0 0-9.4 20.6H11a7 7 0 0 1-7-7V17a7 7 0 0 1 7-7Z" />
+      <circle cx="19" cy="24" r="6" />
+      <circle cx="48" cy="48" r="13" />
+      <path d="M48 56a2 2 0 0 1-2-2V45.8l-3 3a2 2 0 1 1-2.8-2.8l6.4-6.4a2 2 0 0 1 2.8 0l6.4 6.4a2 2 0 0 1-2.8 2.8l-3-3V54a2 2 0 0 1-2 2Z" fill="#fff" />
+    </svg>
+  )
+}
+
+export default function AssessmentCreatePage({ onNavigate }) {
+  const [form, setForm] = useState(initialForm)
+
+  const updateForm = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  const clearForm = () => {
+    setForm(initialForm)
+  }
+
+  const uploadLogo = (file) => {
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      updateForm('logoName', file.name)
+      updateForm('logoPreview', String(reader.result ?? ''))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeLogo = () => {
+    updateForm('logoName', '')
+    updateForm('logoPreview', '')
+  }
+
+  const createAssessment = () => {
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(form))
+    onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
+  }
+
   return (
     <section className="vx-content assessment-page">
       <div className="assessment-page-shell">
-        <section className="assessment-page-hero">
-          <span className="assessment-page-kicker">Assessment</span>
-          <h1>Create</h1>
-          <p>Build a new assessment workspace here. This page is independent from the existing Skills configuration flow.</p>
-        </section>
+        <PageNavigationHeader items={['My Pages', 'Assessment', 'Create']} />
 
-        <section className="assessment-page-grid" aria-label="Assessment create overview">
-          {createHighlights.map((item) => {
-            const Icon = item.icon
+        <section className="assessment-create-metrics" aria-label="Assessment create metrics">
+          {assessmentMetrics.map((metric) => {
+            const Icon = metric.icon
+
             return (
-              <article key={item.title} className="assessment-page-card">
-                <span className="assessment-page-card-icon" aria-hidden="true">
-                  <Icon size={18} strokeWidth={2} />
+              <article key={metric.label} className={`assessment-create-metric is-${metric.tone}`}>
+                <span className="assessment-create-metric-icon" aria-hidden="true">
+                  <Icon size={16} strokeWidth={2.2} />
                 </span>
-                <strong>{item.title}</strong>
-                <p>{item.description}</p>
+                <span className="assessment-create-metric-copy">
+                  <strong>{metric.count}</strong>
+                  <span>{metric.label}</span>
+                </span>
               </article>
             )
           })}
+        </section>
+
+        <section className="assessment-create-form-shell" aria-label="Create assessment setup">
+          <form className="assessment-create-form" onSubmit={(event) => event.preventDefault()}>
+           
+              <section className="assessment-create-setup-card">
+                <div className="assessment-create-card-heading">
+                  <h2>Create Assessment</h2>
+                </div>
+
+                <div className="assessment-create-setup-top">
+                  <label
+                    className="assessment-create-field assessment-create-upload"
+                    data-tooltip="Upload logo in PNG, JPG, or SVG format. Square or 1:1 aspect ratio recommended. Max 2MB."
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => uploadLogo(event.target.files?.[0])}
+                    />
+                    <strong>
+                      {form.logoPreview ? (
+                        <img src={form.logoPreview} alt={form.logoName || 'Uploaded logo'} />
+                      ) : (
+                        <UploadImageIcon />
+                      )}
+                    </strong>
+                    {form.logoPreview ? (
+                      <button type="button" onClick={removeLogo} aria-label="Remove logo">
+                        <Trash2 size={13} strokeWidth={2.2} />
+                      </button>
+                    ) : null}
+                  </label>
+
+                  <SelectField
+                    className="assessment-create-college-field"
+                    label="Select College Name"
+                    value={form.collegeName}
+                    options={selectOptions.colleges}
+                    placeholder="Select College Name"
+                    onChange={(value) => updateForm('collegeName', value)}
+                  />
+
+                  <SelectField
+                    className="assessment-create-year-field"
+                    label="Academic Year"
+                    value={form.academicYear}
+                    options={selectOptions.academicYears}
+                    placeholder="Academic Year"
+                    onChange={(value) => updateForm('academicYear', value)}
+                  />
+
+                  <label className="assessment-create-field assessment-create-name-field">
+                    <span>Assessment Name</span>
+                    <input
+                      type="text"
+                      value={form.assessmentName}
+                      placeholder="Assessment Name"
+                      onChange={(event) => updateForm('assessmentName', event.target.value)}
+                    />
+                  </label>
+
+                  <div className="assessment-create-side-fields">
+                    <SelectField
+                      label="Exam Category"
+                      value={form.examCategory}
+                      options={selectOptions.examCategories}
+                      placeholder="Exam Category"
+                      onChange={(value) => updateForm('examCategory', value)}
+                    />
+
+                    <SelectField
+                      label="Select Course"
+                      value={form.course}
+                      options={selectOptions.courses}
+                      placeholder="Select Course"
+                      onChange={(value) => updateForm('course', value)}
+                    />
+
+                    <SelectField
+                      label="Select Year"
+                      value={form.year}
+                      options={selectOptions.years}
+                      placeholder="Select Year"
+                      onChange={(value) => updateForm('year', value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="assessment-create-setup-divider" />
+
+                <div className="assessment-create-form-actions">
+                  <button type="button" className="is-clear" onClick={clearForm}>Clear</button>
+                  <button type="button" className="is-primary" onClick={createAssessment}>
+                    <ClipboardPlus size={16} strokeWidth={2.3} />
+                    Create Assessment
+                  </button>
+                </div>
+              </section>
+              <aside className="assessment-create-guidance">
+                <p>
+                 <b>Helper Notes:</b>After clicking <strong>Create Assessment</strong>, you will be taken to the complete assessment setup page where you can configure exam pattern & sections, question distribution, online/offline settings, scheduling, evaluation rules, and security & approval workflow.
+                </p>
+
+              </aside>
+          </form>
         </section>
       </div>
     </section>

@@ -21,6 +21,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import SendApprovalModal from '../components/SendApprovalModal'
 import '../styles/evaluation.css'
 import '../styles/start-evaluation.css'
@@ -2322,6 +2323,8 @@ export default function StartEvaluationPage({
   return (
     <section className="vx-content forms-page start-evaluation-page">
       <div className="start-eval-shell">
+        <PageNavigationHeader items={['My Pages', 'Assessment', 'Evaluation', 'Start Evaluation']} />
+
         <section className="start-eval-summary-card">
           <div className="start-eval-summary-main">
             <div className="start-eval-summary-topline">

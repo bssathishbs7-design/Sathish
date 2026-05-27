@@ -1,0 +1,121 @@
+.page-navigation-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 30px;
+  color: #6f7a87;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.page-navigation-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.page-navigation-history button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.page-navigation-history button:hover,
+.page-navigation-history button:focus-visible {
+  background: #eef6f3;
+  color: #0f766e;
+  outline: none;
+}
+
+.page-navigation-history button:disabled {
+  color: #cbd5df;
+  cursor: not-allowed;
+}
+
+.page-navigation-divider {
+  width: 1px;
+  height: 24px;
+  flex: 0 0 auto;
+  background: #e2e8f0;
+}
+
+.page-navigation-crumbs {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.page-navigation-crumbs li {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-navigation-crumbs li + li::before {
+  content: "/";
+  margin: 0 5px;
+  color: #a7b0bd;
+  font-weight: 600;
+}
+
+.page-navigation-crumbs .is-current {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.theme-dark .page-navigation-header {
+  color: #92a3b8;
+}
+
+.theme-dark .page-navigation-history button {
+  color: #9fb0c8;
+}
+
+.theme-dark .page-navigation-history button:hover,
+.theme-dark .page-navigation-history button:focus-visible {
+  background: rgba(45, 212, 191, 0.12);
+  color: #8df0c7;
+}
+
+.theme-dark .page-navigation-history button:disabled {
+  color: #52637a;
+}
+
+.theme-dark .page-navigation-divider {
+  background: rgba(94, 116, 145, 0.46);
+}
+
+.theme-dark .page-navigation-crumbs li + li::before {
+  color: #667892;
+}
+
+.theme-dark .page-navigation-crumbs .is-current {
+  color: #eef6ff;
+}
+
+@media (max-width: 640px) {
+  .page-navigation-header {
+    gap: 9px;
+    font-size: 0.8rem;
+  }
+
+  .page-navigation-history button {
+    width: 22px;
+    height: 22px;
+  }
+}

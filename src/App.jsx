@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import AssessmentCreatePage from './pages/AssessmentCreatePage'
+import CreateAssessmentPage from './pages/CreateAssessmentPage'
 import AssessmentEvaluationPage from './pages/AssessmentEvaluationPage'
 import AssessmentDashboardPage from './pages/AssessmentDashboardPage'
 import QuestionBankPage from './pages/QuestionBankPage'
@@ -33,6 +34,7 @@ const PAGE_PATHS = {
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
   [APP_PAGES.ASSESSMENT_CREATE]: '/assessment/create',
+  [APP_PAGES.CREATE_ASSESSMENT]: '/createassessment',
   [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/evaluation',
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
@@ -387,6 +389,8 @@ function App() {
   const [queryRequestCount, setQueryRequestCount] = useState(() => readActiveQueryRequestCount())
   const [createdReportCount, setCreatedReportCount] = useState(() => readActiveCreatedReportCount())
   const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
+  const isPlainAssessmentMode = activePage === APP_PAGES.CREATE_ASSESSMENT
+  const hideShellChrome = isExamMode || isPlainAssessmentMode
   const activeEvaluationRecord = selectedEvaluationRecord
     ?? evaluationRecords.find((record) => idsMatch(record.id, selectedCompletedEvaluationActivityId))
     ?? readStoredStartEvaluationRecord()
@@ -1133,8 +1137,8 @@ function App() {
   }
 
   return (
-    <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''} ${isExamMode ? 'is-exam-mode' : ''}`}>
-      {!isExamMode ? (
+    <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''} ${isExamMode ? 'is-exam-mode' : ''} ${isPlainAssessmentMode ? 'is-assessment-plain-mode' : ''}`}>
+      {!hideShellChrome ? (
         <div
           className={`vx-overlay ${mobileSidebarOpen ? 'open' : ''}`}
           onClick={() => setMobileSidebarOpen(false)}
@@ -1142,7 +1146,7 @@ function App() {
         />
       ) : null}
 
-      {!isExamMode ? (
+      {!hideShellChrome ? (
         <Sidebar
           mobileSidebarOpen={mobileSidebarOpen}
           sidebarCollapsed={sidebarCollapsed}
@@ -1165,7 +1169,7 @@ function App() {
           </div>
         ) : null}
 
-        {!isExamMode ? (
+        {!hideShellChrome ? (
           <Navbar
             sidebarCollapsed={sidebarCollapsed}
             onOpenSidebar={() => setMobileSidebarOpen(true)}
@@ -1227,6 +1231,8 @@ function App() {
             />
           ) : activePage === APP_PAGES.ASSESSMENT_CREATE ? (
             <AssessmentCreatePage onNavigate={navigateToPage} onAlert={showAlert} />
+          ) : activePage === APP_PAGES.CREATE_ASSESSMENT ? (
+            <CreateAssessmentPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.ASSESSMENT_EVALUATION ? (
             <AssessmentEvaluationPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
@@ -1427,7 +1433,7 @@ function App() {
 
       </main>
 
-      {!isExamMode ? (
+      {!hideShellChrome ? (
         <nav className="vx-mobile-nav">
           <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
           <button

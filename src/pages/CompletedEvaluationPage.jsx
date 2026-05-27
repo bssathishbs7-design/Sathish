@@ -11,6 +11,7 @@ import {
   SendHorizonal,
   Shapes,
 } from 'lucide-react'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import SendApprovalModal from '../components/SendApprovalModal'
 import '../styles/evaluation.css'
 
@@ -550,6 +551,8 @@ export default function CompletedEvaluationPage({
   return (
     <section className="vx-content forms-page eval-page">
       <div className="eval-shell">
+        <PageNavigationHeader items={['My Pages', 'Assessment', 'Evaluation', 'Completed Evaluation']} />
+
         <section className="eval-header eval-completed-compact-header">
           <button
             type="button"

@@ -1,4 +1,5 @@
 import { CheckSquare2, ListChecks, Users } from 'lucide-react'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import '../styles/assessment-pages.css'
 
 const evaluationPanels = [
@@ -23,6 +24,8 @@ export default function AssessmentEvaluationPage() {
   return (
     <section className="vx-content assessment-page">
       <div className="assessment-page-shell">
+        <PageNavigationHeader items={['My Pages', 'Assessment', 'Evaluation']} />
+
         <section className="assessment-page-hero">
           <span className="assessment-page-kicker">Assessment</span>
           <h1>Evaluation</h1>

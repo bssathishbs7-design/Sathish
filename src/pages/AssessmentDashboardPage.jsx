@@ -1,4 +1,5 @@
 import { Activity, ChartColumnBig, ShieldCheck } from 'lucide-react'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import '../styles/assessment-pages.css'
 
 const dashboardCards = [
@@ -23,6 +24,8 @@ export default function AssessmentDashboardPage() {
   return (
     <section className="vx-content assessment-page">
       <div className="assessment-page-shell">
+        <PageNavigationHeader items={['My Pages', 'Assessment', 'Dashboard']} />
+
         <section className="assessment-page-hero">
           <span className="assessment-page-kicker">Assessment</span>
           <h1>Dashboard</h1>

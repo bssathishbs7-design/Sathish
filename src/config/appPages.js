@@ -17,6 +17,7 @@ export const APP_PAGES = {
   CONFIGURATION: 'Configuration',
   EVALUATION: 'Evaluation',
   ASSESSMENT_CREATE: 'Assessment Create',
+  CREATE_ASSESSMENT: 'createassessment',
   ASSESSMENT_EVALUATION: 'Assessment Evaluation',
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
   QUESTION_BANK: 'Question Bank',
@@ -60,6 +61,7 @@ export const MY_SKILL_PAGES = [
 
 export const ASSESSMENT_PAGES = [
   APP_PAGES.ASSESSMENT_CREATE,
+  APP_PAGES.CREATE_ASSESSMENT,
   APP_PAGES.ASSESSMENT_EVALUATION,
   APP_PAGES.ASSESSMENT_DASHBOARD,
 ]
