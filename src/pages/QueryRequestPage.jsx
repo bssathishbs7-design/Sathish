@@ -19,11 +19,20 @@ const readReportedQuestionRecords = () => {
 }
 
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
-const getQuestionTypeLabel = (type) => (String(type ?? '').toLowerCase().includes('descriptive') ? 'Desc' : type || 'Question')
+const descriptiveTypeLabels = new Map([
+  ['desc long answer questions (laqs)', 'LAQs'],
+  ['desc short answer questions (saqs)', 'SAQs'],
+  ['desc modified essay questions (meqs)', 'MEQs'],
+  ['descriptive question', 'Descriptive'],
+])
+const getQuestionTypeLabel = (type) => {
+  const normalized = String(type ?? '').trim()
+  return descriptiveTypeLabels.get(normalized.toLowerCase()) ?? (normalized.toLowerCase().includes('descriptive') ? 'Descriptive' : normalized || 'Question')
+}
 const getQuestionTypeClassName = (type) => {
   const normalized = String(type ?? '').trim().toLowerCase()
   if (normalized === 'mcq') return 'is-mcq'
-  if (normalized.includes('descriptive')) return 'is-descriptive'
+  if (normalized.includes('descriptive') || normalized.startsWith('desc ')) return 'is-descriptive'
   return ''
 }
 const getThinkingBadgeClassName = (value) => {

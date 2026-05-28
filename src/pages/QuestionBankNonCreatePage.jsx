@@ -28,6 +28,12 @@ const REPORT_AUTHOR_ACTION_OPTIONS = [
 ]
 const OLD_DEFAULT_ANSWER_TEXT = 'Correct answer: Review the selected option and add the supporting rationale.'
 const CURRENT_DEFAULT_ANSWER_TEXT = 'Add the correct option and explanation.'
+const DESCRIPTIVE_TYPE_LABELS = new Map([
+  ['desc long answer questions (laqs)', 'LAQs'],
+  ['desc short answer questions (saqs)', 'SAQs'],
+  ['desc modified essay questions (meqs)', 'MEQs'],
+  ['descriptive question', 'Descriptive'],
+])
 
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
 const getCompetencyCode = (value) => String(value ?? '').trim().split(/\s+/)[0] || value
@@ -418,18 +424,20 @@ const getThinkingBadgeClassName = (value) => {
 const getQuestionTypeBadgeClassName = (type) => {
   const normalized = String(type ?? '').trim().toLowerCase()
   if (normalized === 'mcq') return 'is-mcq'
-  if (normalized.includes('descriptive')) return 'is-descriptive'
+  if (normalized.includes('descriptive') || normalized.startsWith('desc ')) return 'is-descriptive'
   return ''
 }
 
 const getQuestionTypeLabel = (type) => {
   const normalized = String(type ?? '').trim()
-  if (normalized.toLowerCase().includes('descriptive')) return 'Desc'
+  const compactLabel = DESCRIPTIVE_TYPE_LABELS.get(normalized.toLowerCase())
+  if (compactLabel) return compactLabel
+  if (normalized.toLowerCase().includes('descriptive')) return 'Descriptive'
   return normalized || 'Question'
 }
 
 const isDescriptiveQuestion = (question) => (
-  String(question?.type ?? '').trim().toLowerCase().includes('descriptive')
+  getQuestionTypeBadgeClassName(question?.type) === 'is-descriptive'
 )
 
 const getQuestionSourceType = (question) => (
@@ -613,7 +621,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }, [activeMetric, publishedQuestions, reportedQuestionRecords, createdReportedQuestionRecords])
   const filterOptions = useMemo(() => ({
     authors: getUniqueValues(metricFilteredQuestions, getQuestionAuthorName),
-    types: getUniqueValues(metricFilteredQuestions, (question) => question.type),
+    types: getUniqueValues(metricFilteredQuestions, (question) => getQuestionTypeLabel(question.type)),
     years: getUniqueValues(metricFilteredQuestions, (question) => question.year),
     subjects: getUniqueValues(metricFilteredQuestions, (question) => question.subject),
     topics: getUniqueValues(metricFilteredQuestions, (question) => question.topics ?? []),
@@ -632,7 +640,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
 
   const filterOptionCounts = useMemo(() => ({
     authors: getValueCounts(metricFilteredQuestions, getQuestionAuthorName),
-    types: getValueCounts(metricFilteredQuestions, (question) => question.type),
+    types: getValueCounts(metricFilteredQuestions, (question) => getQuestionTypeLabel(question.type)),
     years: getValueCounts(metricFilteredQuestions, (question) => question.year),
     subjects: getValueCounts(metricFilteredQuestions, (question) => question.subject),
     topics: getValueCounts(metricFilteredQuestions, (question) => question.topics ?? []),
@@ -706,7 +714,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const filteredQuestions = useMemo(() => {
     return metricFilteredQuestions.filter((question) => {
       if (!hasFilterMatch(filters.authors, getQuestionAuthorName(question))) return false
-      if (!hasFilterMatch(filters.types, question.type)) return false
+      if (!hasFilterMatch(filters.types, getQuestionTypeLabel(question.type))) return false
       if (!hasFilterMatch(filters.years, question.year)) return false
       if (!hasFilterMatch(filters.subjects, question.subject)) return false
       if (!hasFilterMatch(filters.topics, question.topics ?? [])) return false
@@ -1297,7 +1305,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
 
   return (
     <section className={`vx-content assessment-page ${embedded ? 'is-embedded' : ''} is-${resolvedMode}-mode`}>
-      <div className={`assessment-page-shell ${selectedGridAction ? 'has-selection-bar' : ''}`}>
+      <div className={`assessment-page-shell question-bank-overview-shell ${selectedGridAction ? 'has-selection-bar' : ''}`}>
         <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
           {visibleQuestionMetrics.map((metric) => {
             const Icon = metric.icon
@@ -1483,7 +1491,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               return (
                 <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
                   <div className="assessment-page-question-head">
-                    <span className="assessment-page-question-type">{question.type ?? 'Question'}</span>
+                    <span className="assessment-page-question-type">{getQuestionTypeLabel(question.type)}</span>
                     {renderSourceBadge(question, 'assessment-page-question-author')}
                     {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{question.thinkingLevel}</span> : null}
                     {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}

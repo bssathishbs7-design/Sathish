@@ -612,9 +612,7 @@
 
 .question-bank-type-picker-item > span:not(.question-bank-type-picker-icon) {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .question-bank-type-picker-item:last-child {

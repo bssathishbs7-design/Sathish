@@ -146,11 +146,24 @@ const RichQuestionContent = ({ html, fallback = 'Not added' }) => {
       className="approval-view-question-richtext"
       dangerouslySetInnerHTML={{ __html: content }}
     />
-  )
+)
+}
+
+const descriptiveTypeLabels = new Map([
+  ['desc long answer questions (laqs)', 'LAQs'],
+  ['desc short answer questions (saqs)', 'SAQs'],
+  ['desc modified essay questions (meqs)', 'MEQs'],
+  ['descriptive question', 'Descriptive'],
+])
+
+const getQuestionTypeLabel = (type) => {
+  const normalized = String(type ?? '').trim()
+  return descriptiveTypeLabels.get(normalized.toLowerCase()) ?? (normalized || 'Question')
 }
 
 const isDescriptiveQuestion = (question) => (
-  String(question?.type ?? '').trim().toLowerCase().includes('descriptive')
+  getQuestionTypeLabel(question?.type) === 'Descriptive'
+  || String(question?.type ?? '').trim().toLowerCase().startsWith('desc ')
 )
 
 const getVisibleTagValues = (values) => (Array.isArray(values) ? values : [])
@@ -986,7 +999,7 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
                         {isQuestionSelected ? <SquareCheckBig size={16} strokeWidth={2.2} /> : <Square size={16} strokeWidth={2.2} />}
                       </button>
                       <div className="approval-view-qb-question-badges">
-                        <span className="approval-view-qb-pill is-type">{question.type ?? 'Question'}</span>
+                        <span className="approval-view-qb-pill is-type">{getQuestionTypeLabel(question.type)}</span>
                         <span className={`approval-view-qb-pill is-revision ${String(question.revisionStatus ?? 'Created').toLowerCase()}`}>
                           {getQuestionRevisionLabel(question)}
                         </span>

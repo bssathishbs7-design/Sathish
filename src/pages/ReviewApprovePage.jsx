@@ -95,35 +95,49 @@ const getQuestionBankEditCount = (row) => {
   return (row.questionRows ?? []).reduce((total, question) => total + getQuestionEditCount(question), 0)
 }
 
+const descriptiveTypeLabels = new Map([
+  ['desc long answer questions (laqs)', 'LAQs'],
+  ['desc short answer questions (saqs)', 'SAQs'],
+  ['desc modified essay questions (meqs)', 'MEQs'],
+  ['descriptive question', 'Descriptive'],
+])
+
+const getQuestionTypeLabel = (type) => {
+  const normalized = String(type ?? '').trim()
+  return descriptiveTypeLabels.get(normalized.toLowerCase()) ?? (normalized || 'Question')
+}
+
 const getQuestionTypeSummaryText = (row) => {
   if (row.questionTypeSummaryText) return row.questionTypeSummaryText
 
   if (Array.isArray(row.questionTypeSummary)) {
-    return row.questionTypeSummary.map((item) => `${item.type}: ${item.count}`).join(', ')
+    return row.questionTypeSummary.map((item) => `${getQuestionTypeLabel(item.type)}: ${item.count}`).join(', ')
   }
 
   if (row.questionTypeSummary && typeof row.questionTypeSummary === 'object') {
-    return Object.entries(row.questionTypeSummary).map(([type, count]) => `${type}: ${count}`).join(', ')
+    return Object.entries(row.questionTypeSummary).map(([type, count]) => `${getQuestionTypeLabel(type)}: ${count}`).join(', ')
   }
 
   const counts = (row.questionRows ?? []).reduce((summary, question) => ({
     ...summary,
-    [question.type ?? 'Question']: (summary[question.type ?? 'Question'] ?? 0) + 1,
+    [getQuestionTypeLabel(question.type)]: (summary[getQuestionTypeLabel(question.type)] ?? 0) + 1,
   }), {})
 
   return Object.entries(counts).map(([type, count]) => `${type}: ${count}`).join(', ') || 'Not set'
 }
 
 const getQuestionTypeSummaryItems = (row) => {
-  if (Array.isArray(row.questionTypeSummary)) return row.questionTypeSummary
+  if (Array.isArray(row.questionTypeSummary)) {
+    return row.questionTypeSummary.map((item) => ({ ...item, type: getQuestionTypeLabel(item.type) }))
+  }
 
   if (row.questionTypeSummary && typeof row.questionTypeSummary === 'object') {
-    return Object.entries(row.questionTypeSummary).map(([type, count]) => ({ type, count }))
+    return Object.entries(row.questionTypeSummary).map(([type, count]) => ({ type: getQuestionTypeLabel(type), count }))
   }
 
   const counts = (row.questionRows ?? []).reduce((summary, question) => ({
     ...summary,
-    [question.type ?? 'Question']: (summary[question.type ?? 'Question'] ?? 0) + 1,
+    [getQuestionTypeLabel(question.type)]: (summary[getQuestionTypeLabel(question.type)] ?? 0) + 1,
   }), {})
 
   return Object.entries(counts).map(([type, count]) => ({ type, count }))

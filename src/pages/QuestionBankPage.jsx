@@ -59,7 +59,25 @@ const SUBJECT_DIRECTORY = {
   },
 }
 
-const QUESTION_TYPE_OPTIONS = ['MCQ', 'Descriptive Question', 'True or False', 'Fill in the Blanks']
+const DESCRIPTIVE_QUESTION_TYPES = [
+  {
+    type: 'Desc Long Answer Questions (LAQs)',
+    shortLabel: 'LAQs',
+    menuLabel: 'Long Answer Questions (LAQs)',
+  },
+  {
+    type: 'Desc Short Answer Questions (SAQs)',
+    shortLabel: 'SAQs',
+    menuLabel: 'Short Answer Questions (SAQs)',
+  },
+  {
+    type: 'Desc Modified Essay Questions (MEQs)',
+    shortLabel: 'MEQs',
+    menuLabel: 'Modified Essay Questions (MEQs)',
+  },
+]
+const DESCRIPTIVE_QUESTION_TYPE_SET = new Set(['Descriptive Question', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type)])
+const QUESTION_TYPE_OPTIONS = ['MCQ', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type), 'True or False', 'Fill in the Blanks']
 const QUESTION_CATEGORY_OPTIONS = ['Direct', 'Reasoning', 'Critical Thinking', 'Application']
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
@@ -209,7 +227,7 @@ const CURRICULUM_DIRECTORY = YEAR_OPTIONS.reduce((directory, year) => ({
 
 const QUESTION_TYPE_CARDS = [
   { type: 'MCQ', shortLabel: 'MCQ', icon: ListChecks },
-  { type: 'Descriptive Question', shortLabel: 'Descriptive', icon: FilePenLine },
+  ...DESCRIPTIVE_QUESTION_TYPES.map((item) => ({ ...item, icon: FilePenLine })),
   { type: 'True or False', shortLabel: 'True / False', icon: CheckCheck, isUpcoming: true },
   { type: 'Fill in the Blanks', shortLabel: 'Fill in blanks', icon: Sigma, isUpcoming: true },
   { type: 'Match Marker', shortLabel: 'Match Marker', icon: FolderTree, isUpcoming: true },
@@ -451,8 +469,11 @@ const cloneQuestionForCreate = (question, mode) => {
   }
 }
 
+const isDescriptiveQuestionType = (type) => DESCRIPTIVE_QUESTION_TYPE_SET.has(type)
+
 const getQuestionTypeMeta = (type) => (
-  QUESTION_TYPE_CARDS.find((item) => item.type === type) ?? QUESTION_TYPE_CARDS[0]
+  QUESTION_TYPE_CARDS.find((item) => item.type === type)
+  ?? (type === 'Descriptive Question' ? { type, shortLabel: 'Descriptive', menuLabel: 'Descriptive Question', icon: FilePenLine } : QUESTION_TYPE_CARDS[0])
 )
 
 const getRichTextPreview = (value) => stripHtml(value)
@@ -469,7 +490,7 @@ const getQuestionAuthorName = (question) => (
 const createHtmlBlock = (value) => `<div>${String(value ?? '')}</div>`
 
 const getGeneratedOptionalTags = (type) => {
-  if (type === 'Descriptive Question') {
+  if (isDescriptiveQuestionType(type)) {
     return {
       cognitiveFunction: 'Judgement & Decision Making',
       skillFocus: 'Communication',
@@ -544,7 +565,7 @@ const getGeneratedQuestionDraft = (question) => {
     }
   }
 
-  if (type === 'Descriptive Question') {
+  if (isDescriptiveQuestionType(type)) {
     return {
       ...optionalTags,
       questionText: createHtmlBlock(`Explain the clinical relevance of ${topic} in ${subject}, including key anatomical or functional relationships.`),
@@ -1039,11 +1060,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
               ? reportQuestionCards
               : []
 
-  const descriptiveQuestions = useMemo(
-    () => questions.filter((item) => item.type === 'Descriptive Question'),
-    [questions],
-  )
-
   const curriculumQuestion = isCurriculumEditing && curriculumDraft ? curriculumDraft : selectedQuestion
   const availableSubjects = curriculumQuestion ? getSubjectsForYear(curriculumQuestion.year) : []
   const availableTopics = curriculumQuestion ? getAvailableTopics(curriculumQuestion) : []
@@ -1366,11 +1382,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   }
 
   const handleAddHierarchyNode = (level) => {
-    if (!selectedQuestion || selectedQuestion.type !== 'Descriptive Question') return
+    if (!selectedQuestion || !isDescriptiveQuestionType(selectedQuestion.type)) return
     if (level === 'child' && selectedQuestion.level === 'sub-child') return
     if (level === 'sub-child' && selectedQuestion.level !== 'child') return
 
-    const question = createQuestion('Descriptive Question', {
+    const question = createQuestion(selectedQuestion.type, {
       parentId: selectedQuestion.id,
       level,
       title: `${getLevelLabel(level)} Question`,
@@ -2091,7 +2107,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                 <span className="question-bank-type-picker-icon">
                   <Icon size={15} strokeWidth={2} />
                 </span>
-                <span>{item.shortLabel}</span>
+                <span>{item.menuLabel ?? item.shortLabel}</span>
                 {item.isUpcoming ? <small>Upcoming</small> : null}
               </button>
             )
@@ -2447,7 +2463,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         </div>
                         ) : null}
 
-                      {selectedQuestion.type === 'Descriptive Question' ? (
+                      {isDescriptiveQuestionType(selectedQuestion.type) ? (
                         <div className="question-bank-descriptive-builder">
                           <div className="question-bank-descriptive-builder-head">
                             <div>
@@ -2759,7 +2775,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         </div>
                       ) : null}
 
-                      {selectedQuestion.type !== 'Descriptive Question' ? (
+                      {!isDescriptiveQuestionType(selectedQuestion.type) ? (
                         <div className="question-bank-answer-block">
                           <label className="question-bank-field">
                             <span className="question-bank-inline-field-badge">Answer &amp; Explanation</span>
@@ -3188,7 +3204,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         const isQuestionBankSelected = approvedQuestionBankSelectedIds.includes(question.id)
                         const reportReasonText = (question.reportReasons ?? []).filter(Boolean).join(', ')
                         const reportActionText = question.reportAuthorAction ?? ''
-                        const isDescriptiveCard = question.type === 'Descriptive Question'
+                        const isDescriptiveCard = isDescriptiveQuestionType(question.type)
                         const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
                         const shouldShowStatusBadge = !(status === 'Approved' && isQuestionBankSent)
                         const shouldShowQuestionDetails = ['Created', 'Sent to Approval', 'Approved', 'Approval Rejected'].includes(status)

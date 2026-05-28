@@ -77,9 +77,15 @@ const SINGLE_OPTION_MAX_COUNT = 6
 const MULTIPLE_OPTION_MIN_COUNT = 3
 const MULTIPLE_OPTION_MAX_COUNT = 8
 const ROMAN_NUMERALS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']
+const DESCRIPTIVE_QUESTION_TYPES = [
+  { type: 'Desc Long Answer Questions (LAQs)', shortLabel: 'LAQs', menuLabel: 'Long Answer Questions (LAQs)' },
+  { type: 'Desc Short Answer Questions (SAQs)', shortLabel: 'SAQs', menuLabel: 'Short Answer Questions (SAQs)' },
+  { type: 'Desc Modified Essay Questions (MEQs)', shortLabel: 'MEQs', menuLabel: 'Modified Essay Questions (MEQs)' },
+]
+const DESCRIPTIVE_QUESTION_TYPE_SET = new Set(['Descriptive Question', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type)])
 const QUESTION_TYPE_CARDS = [
   { type: 'MCQ', shortLabel: 'MCQ', icon: ListChecks },
-  { type: 'Descriptive Question', shortLabel: 'Descriptive', icon: FilePenLine },
+  ...DESCRIPTIVE_QUESTION_TYPES.map((item) => ({ ...item, icon: FilePenLine })),
 ]
 
 let optionSequence = 1
@@ -167,6 +173,11 @@ const toggleSelection = (items, value) => (
 )
 
 const getRichTextPreview = (value) => stripHtml(value).trim()
+const isDescriptiveQuestionType = (type) => DESCRIPTIVE_QUESTION_TYPE_SET.has(type)
+const getQuestionTypeMeta = (type) => (
+  QUESTION_TYPE_CARDS.find((item) => item.type === type)
+  ?? (type === 'Descriptive Question' ? { type, shortLabel: 'Descriptive', menuLabel: 'Descriptive Question' } : QUESTION_TYPE_CARDS[0])
+)
 const hasVisibleMarks = (marks) => Number(marks) > 0
 const getOptionModeConfig = (allowMultiple) => ({
   minCount: allowMultiple ? MULTIPLE_OPTION_MIN_COUNT : SINGLE_OPTION_MIN_COUNT,
@@ -317,7 +328,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     (question?.topics ?? []).length > 0,
     (question?.competencies ?? []).length > 0,
     Boolean(getRichTextPreview(question?.questionText ?? '')),
-    question?.type === 'Descriptive Question' ? true : (question?.correctOptionIds ?? []).length > 0,
+    isDescriptiveQuestionType(question?.type) ? true : (question?.correctOptionIds ?? []).length > 0,
   ].filter(Boolean).length
   const hasDescriptiveContent = (question?.descriptiveSections ?? []).some((section) => (
     getRichTextPreview(section.questionText)
@@ -329,7 +340,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     || hasDescriptiveContent,
   )
   const canCreate = requiredProgress === 6 && (
-    question?.type === 'Descriptive Question'
+    isDescriptiveQuestionType(question?.type)
       ? true
       : (question?.options ?? []).slice(0, 2).every((option) => getRichTextPreview(option.label))
   )
@@ -616,7 +627,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
               onClick={() => setIsQuestionTypePickerOpen((current) => !current)}
               aria-expanded={isQuestionTypePickerOpen}
             >
-              <strong>{question ? question.type === 'Descriptive Question' ? 'Descriptive' : 'MCQ' : 'Create New Question'}</strong>
+              <strong>{question ? getQuestionTypeMeta(question.type).shortLabel : 'Create New Question'}</strong>
               <ChevronDown size={16} strokeWidth={2.4} />
             </button>
 
@@ -634,7 +645,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                       <span className="question-bank-type-picker-icon">
                         <Icon size={15} strokeWidth={2} />
                       </span>
-                      <span>{item.shortLabel}</span>
+                      <span>{item.menuLabel ?? item.shortLabel}</span>
                     </button>
                   )
                 })}
@@ -1073,7 +1084,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
           <section className="create-assessment-question-list" aria-label="Created questions">
             {visibleQuestionRows.map((item, index) => {
               const isOpen = expandedQuestionId === item.id
-              const isDescriptive = item.type === 'Descriptive Question'
+              const isDescriptive = isDescriptiveQuestionType(item.type)
               const optionalTagGroups = getQuestionOptionalTagGroups(item)
               const visibleOptions = (item.options ?? []).filter((option) => Boolean(getRichTextPreview(option.label)))
               const curriculumMeta = [
@@ -1087,7 +1098,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                 <article key={item.id} className={`question-bank-created-card create-assessment-question-row ${item.isCritical ? 'is-critical' : ''} ${isOpen ? 'is-open' : ''}`}>
                   <div className="create-assessment-question-summary">
                     <span className={`question-bank-badge type create-assessment-question-type ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>
-                      {isDescriptive ? 'Desc' : 'MCQ'}
+                      {isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}
                     </span>
                     <button
                       type="button"
