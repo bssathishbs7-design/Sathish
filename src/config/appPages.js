@@ -1,9 +1,13 @@
 import {
   BarChart3,
   BookOpenCheck,
+  BookText,
   ClipboardCheck,
   FileCheck2,
+  FilePenLine,
+  FileSearch,
   FileText,
+  MessageSquareText,
   SlidersHorizontal,
   TrendingUp,
 } from 'lucide-react'
@@ -13,8 +17,12 @@ export const APP_PAGES = {
   CONFIGURATION: 'Configuration',
   EVALUATION: 'Evaluation',
   ASSESSMENT_CREATE: 'Assessment Create',
+  CREATE_ASSESSMENT: 'createassessment',
   ASSESSMENT_EVALUATION: 'Assessment Evaluation',
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
+  QUESTION_BANK: 'Question Bank',
+  QUESTION_BANK_NON_CREATE: 'Question Bank Overall Question',
+  QUERY_REQUEST: 'Query Request',
   ACTIVITY_RESULT: 'Activity Result',
   COMPLETED_EVALUATION: 'Completed Evaluation',
   REVIEW_APPROVE: 'Approval Queue',
@@ -53,8 +61,14 @@ export const MY_SKILL_PAGES = [
 
 export const ASSESSMENT_PAGES = [
   APP_PAGES.ASSESSMENT_CREATE,
+  APP_PAGES.CREATE_ASSESSMENT,
   APP_PAGES.ASSESSMENT_EVALUATION,
   APP_PAGES.ASSESSMENT_DASHBOARD,
+]
+
+export const QUESTION_BANK_PAGES = [
+  APP_PAGES.QUESTION_BANK,
+  APP_PAGES.QUESTION_BANK_NON_CREATE,
 ]
 
 export const SIDEBAR_MENU = [
@@ -89,6 +103,18 @@ export const SIDEBAR_MENU = [
           { label: APP_PAGES.ASSESSMENT_EVALUATION, navLabel: 'Evaluation', icon: ClipboardCheck },
           { label: APP_PAGES.ASSESSMENT_DASHBOARD, navLabel: 'Dashboard', icon: BarChart3 },
         ],
+      },
+      {
+        label: APP_PAGES.QUESTION_BANK,
+        icon: BookText,
+        children: [
+          { label: APP_PAGES.QUESTION_BANK, navLabel: 'Create', icon: FilePenLine },
+          { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'All Questions', icon: FileSearch },
+        ],
+      },
+      {
+        label: APP_PAGES.QUERY_REQUEST,
+        icon: MessageSquareText,
       },
     ],
   },

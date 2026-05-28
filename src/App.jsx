@@ -6,8 +6,12 @@ import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import AssessmentCreatePage from './pages/AssessmentCreatePage'
+import CreateAssessmentPage from './pages/CreateAssessmentPage'
 import AssessmentEvaluationPage from './pages/AssessmentEvaluationPage'
 import AssessmentDashboardPage from './pages/AssessmentDashboardPage'
+import QuestionBankPage from './pages/QuestionBankPage'
+import QuestionBankNonCreatePage from './pages/QuestionBankNonCreatePage'
+import QueryRequestPage from './pages/QueryRequestPage'
 import CompletedEvaluationPage from './pages/CompletedEvaluationPage'
 import ReviewApprovePage from './pages/ReviewApprovePage'
 import ApprovalViewPage from './pages/ApprovalViewPage'
@@ -30,8 +34,12 @@ const PAGE_PATHS = {
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
   [APP_PAGES.ASSESSMENT_CREATE]: '/assessment/create',
+  [APP_PAGES.CREATE_ASSESSMENT]: '/createassessment',
   [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/evaluation',
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
+  [APP_PAGES.QUESTION_BANK]: '/question-bank',
+  [APP_PAGES.QUESTION_BANK_NON_CREATE]: '/question-bank/non-create',
+  [APP_PAGES.QUERY_REQUEST]: '/query-request',
   [APP_PAGES.ACTIVITY_RESULT]: '/skills/activity-result',
   [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
   [APP_PAGES.REVIEW_APPROVE]: '/skills/review-approve',
@@ -65,6 +73,30 @@ const APPROVAL_QUEUE_STORAGE_KEY = 'vx-approval-queue-rows'
 const APPROVAL_VIEW_STORAGE_KEY = 'vx-approval-view-record'
 const PROGRESS_RESULT_STORAGE_KEY = 'vx-progress-result-record'
 const ACTIVITY_RESULT_STORAGE_KEY = 'vx-activity-result-record'
+const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
+const QUESTION_BANK_CREATED_REPORTED_KEY = 'vx-question-bank-created-reported-questions'
+
+const readActiveQueryRequestCount = () => {
+  try {
+    const rows = JSON.parse(window.localStorage.getItem(QUESTION_BANK_REPORTED_KEY) || '[]')
+    if (!Array.isArray(rows)) return 0
+
+    return rows.filter((row) => String(row?.status ?? '').trim().toLowerCase() !== 'resolved').length
+  } catch {
+    return 0
+  }
+}
+
+const readActiveCreatedReportCount = () => {
+  try {
+    const rows = JSON.parse(window.localStorage.getItem(QUESTION_BANK_CREATED_REPORTED_KEY) || '[]')
+    if (!Array.isArray(rows)) return 0
+
+    return rows.filter((row) => String(row?.status ?? '').trim().toLowerCase() !== 'resolved').length
+  } catch {
+    return 0
+  }
+}
 
 const readStoredStartEvaluationRecord = () => {
   try {
@@ -333,6 +365,7 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const useCompactLogo = sidebarCollapsed
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
+  const [questionBankMode, setQuestionBankMode] = useState('editable')
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)
   const [selectedOspeActivity, setSelectedOspeActivity] = useState(null)
@@ -354,7 +387,11 @@ function App() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [profileToast, setProfileToast] = useState('')
   const [alerts, setAlerts] = useState([])
+  const [queryRequestCount, setQueryRequestCount] = useState(() => readActiveQueryRequestCount())
+  const [createdReportCount, setCreatedReportCount] = useState(() => readActiveCreatedReportCount())
   const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
+  const isPlainAssessmentMode = activePage === APP_PAGES.CREATE_ASSESSMENT
+  const hideShellChrome = isExamMode || isPlainAssessmentMode
   const activeEvaluationRecord = selectedEvaluationRecord
     ?? evaluationRecords.find((record) => idsMatch(record.id, selectedCompletedEvaluationActivityId))
     ?? readStoredStartEvaluationRecord()
@@ -420,6 +457,30 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const syncQueryRequestCount = () => setQueryRequestCount(readActiveQueryRequestCount())
+
+    window.addEventListener('storage', syncQueryRequestCount)
+    window.addEventListener('question-bank-reported-questions', syncQueryRequestCount)
+
+    return () => {
+      window.removeEventListener('storage', syncQueryRequestCount)
+      window.removeEventListener('question-bank-reported-questions', syncQueryRequestCount)
+    }
+  }, [])
+
+  useEffect(() => {
+    const syncCreatedReportCount = () => setCreatedReportCount(readActiveCreatedReportCount())
+
+    window.addEventListener('storage', syncCreatedReportCount)
+    window.addEventListener('question-bank-created-reported-questions', syncCreatedReportCount)
+
+    return () => {
+      window.removeEventListener('storage', syncCreatedReportCount)
+      window.removeEventListener('question-bank-created-reported-questions', syncCreatedReportCount)
+    }
+  }, [])
+
+  useEffect(() => {
     const onPointerDown = (event) => {
       if (!event.target.closest?.('.vx-profile-menu')) {
         setIsProfileMenuOpen(false)
@@ -482,8 +543,10 @@ function App() {
       window.history.replaceState({ page: resolvedPage }, '', PAGE_PATHS[resolvedPage])
     }
 
-    const handlePopState = () => {
-      setActivePage(getPageFromPath(window.location.pathname))
+    const handlePopState = (event) => {
+      const nextPage = getPageFromPath(window.location.pathname)
+      setActivePage(nextPage)
+      setQuestionBankMode(nextPage === APP_PAGES.QUESTION_BANK ? event.state?.questionBankMode ?? 'editable' : 'editable')
       setMobileSidebarOpen(false)
       setIsProfileMenuOpen(false)
     }
@@ -518,15 +581,20 @@ function App() {
   }
 
   const navigateToPage = (page, options = {}) => {
-    const { replace = false } = options
+    const { replace = false, questionBankMode: nextQuestionBankMode = 'editable' } = options
     const nextPath = PAGE_PATHS[page] ?? PAGE_PATHS[APP_PAGES.DASHBOARD]
     const historyMethod = replace ? 'replaceState' : 'pushState'
+    const nextHistoryState = {
+      page,
+      ...(page === APP_PAGES.QUESTION_BANK ? { questionBankMode: nextQuestionBankMode } : {}),
+    }
 
     if (window.location.pathname !== nextPath || replace) {
-      window.history[historyMethod]({ page }, '', nextPath)
+      window.history[historyMethod](nextHistoryState, '', nextPath)
     }
 
     setActivePage(page)
+    setQuestionBankMode(page === APP_PAGES.QUESTION_BANK ? nextQuestionBankMode : 'editable')
     setMobileSidebarOpen(false)
     setIsProfileMenuOpen(false)
   }
@@ -838,7 +906,11 @@ function App() {
       tone: nextReviewedRecord.approvalStatus === 'Approved' ? 'secondary' : 'warning',
       message: `${nextReviewedRecord.activityName ?? 'Activity'} ${nextReviewedRecord.approvalStatus === 'Approved' ? 'approved' : 'rejected'}${nextReviewedRecord.reviewRemarks ? ' with remarks' : ''}.`,
     })
-    navigateToPage(APP_PAGES.EVALUATION)
+    navigateToPage(
+      String(nextReviewedRecord.activityType ?? '').trim().toLowerCase() === 'question bank'
+        ? APP_PAGES.QUESTION_BANK
+        : APP_PAGES.EVALUATION,
+    )
   }
 
   const handlePublishEvaluation = (record) => {
@@ -1119,8 +1191,8 @@ function App() {
   }
 
   return (
-    <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''} ${isExamMode ? 'is-exam-mode' : ''}`}>
-      {!isExamMode ? (
+    <div className={`vx-shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${theme === 'dark' ? 'theme-dark' : ''} ${isExamMode ? 'is-exam-mode' : ''} ${isPlainAssessmentMode ? 'is-assessment-plain-mode' : ''}`}>
+      {!hideShellChrome ? (
         <div
           className={`vx-overlay ${mobileSidebarOpen ? 'open' : ''}`}
           onClick={() => setMobileSidebarOpen(false)}
@@ -1128,13 +1200,15 @@ function App() {
         />
       ) : null}
 
-      {!isExamMode ? (
+      {!hideShellChrome ? (
         <Sidebar
           mobileSidebarOpen={mobileSidebarOpen}
           sidebarCollapsed={sidebarCollapsed}
           theme={theme}
           useCompactLogo={useCompactLogo}
           activePage={activePage}
+          queryRequestCount={queryRequestCount}
+          createdReportCount={createdReportCount}
           onSelectPage={navigateToPage}
           onCloseMobile={() => setMobileSidebarOpen(false)}
         />
@@ -1149,7 +1223,7 @@ function App() {
           </div>
         ) : null}
 
-        {!isExamMode ? (
+        {!hideShellChrome ? (
           <Navbar
             sidebarCollapsed={sidebarCollapsed}
             onOpenSidebar={() => setMobileSidebarOpen(true)}
@@ -1211,10 +1285,23 @@ function App() {
             />
           ) : activePage === APP_PAGES.ASSESSMENT_CREATE ? (
             <AssessmentCreatePage onNavigate={navigateToPage} onAlert={showAlert} />
+          ) : activePage === APP_PAGES.CREATE_ASSESSMENT ? (
+            <CreateAssessmentPage
+              onNavigate={navigateToPage}
+              onAlert={showAlert}
+              theme={theme}
+              onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+            />
           ) : activePage === APP_PAGES.ASSESSMENT_EVALUATION ? (
             <AssessmentEvaluationPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} />
+          ) : activePage === APP_PAGES.QUESTION_BANK ? (
+            <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
+          ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
+            <QuestionBankNonCreatePage onNavigate={navigateToPage} />
+          ) : activePage === APP_PAGES.QUERY_REQUEST ? (
+            <QueryRequestPage />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (
             <CompletedEvaluationPage
               completedEvaluationRows={completedEvaluationRows}
@@ -1405,7 +1492,7 @@ function App() {
 
       </main>
 
-      {!isExamMode ? (
+      {!hideShellChrome ? (
         <nav className="vx-mobile-nav">
           <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
           <button

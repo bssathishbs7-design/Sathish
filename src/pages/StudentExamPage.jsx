@@ -25,6 +25,7 @@ import {
   UserRound,
   Users,
 } from 'lucide-react'
+import MathText from '../components/MathText'
 import '../styles/student-exam.css'
 
 const ANSWER_PLACEHOLDER = 'Enter Response'
@@ -33,6 +34,10 @@ const formatQuestionCountLabel = (label, count) => `${label} - ${count} Question
 const getFormResponsePlaceholder = (responseIndex, responseCount) => (
   responseCount > 1 ? `${ANSWER_PLACEHOLDER} ${responseIndex + 1}` : ANSWER_PLACEHOLDER
 )
+const getChoiceOptionLabel = (option, index) => {
+  if (typeof option === 'string') return option
+  return option?.label?.trim() || `Option ${String.fromCharCode(65 + index)}`
+}
 
 const fallbackExam = {
   id: 'fallback-student-exam',
@@ -283,7 +288,7 @@ function StudentQuestionCard({
           ))}
         </div>
         <div className="student-exam-question-copy">
-          <h2>{item.prompt}</h2>
+          <h2><MathText text={item.prompt} /></h2>
         </div>
       </div>
 
@@ -325,17 +330,20 @@ function StudentQuestionCard({
         </div>
       ) : isChoice && options.length ? (
         <div className="student-exam-choice-grid" role="radiogroup" aria-label={item.prompt}>
-          {options.map((option) => (
-            <label key={option} className={`student-exam-choice-card ${value === option ? 'is-selected' : ''}`}>
+          {options.map((option, index) => {
+            const optionLabel = getChoiceOptionLabel(option, index)
+
+            return (
+            <label key={option?.id ?? optionLabel} className={`student-exam-choice-card ${value === optionLabel ? 'is-selected' : ''}`}>
               <input
                 type="radio"
                 name={item.id}
-                checked={value === option}
-                onChange={() => onChangeQuestion(item.id, option, item.section)}
+                checked={value === optionLabel}
+                onChange={() => onChangeQuestion(item.id, optionLabel, item.section)}
               />
-              <span>{option}</span>
+              <span><MathText text={optionLabel} /></span>
             </label>
-          ))}
+          )})}
         </div>
       ) : item.kind === 'Fill in the blanks' ? (
         <input

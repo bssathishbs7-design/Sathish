@@ -669,6 +669,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const [isFormTooltipOpen, setIsFormTooltipOpen] = useState(false)
   const [formGenerationCount, setFormGenerationCount] = useState(7)
   const [isScaffoldingTooltipOpen, setIsScaffoldingTooltipOpen] = useState(false)
+  const [isProgressWidgetOpen, setIsProgressWidgetOpen] = useState(false)
   const formCountInputRef = useRef(null)
   const firstScaffoldingOptionRef = useRef(null)
   const reviewAssignOpenHandledRef = useRef(false)
@@ -688,6 +689,18 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const checklistReady = checklistItems.some((item) => item.text.trim())
   const formReady = !formItems.length || formItems.some((item) => item.questionText.trim() || getVisibleFormResponses(item).some((response) => response.answerText.trim()))
   const canSaveActivity = checklistReady && formReady
+  const ospeProgressSteps = [
+    { label: 'Context Setup', done: Boolean(activityName.trim()) },
+    { label: 'Checklist', done: checklistReady },
+    { label: 'Form', done: formReady },
+    { label: 'Scaffolding', done: !generatedModules.scaffolding || scaffoldItems.length > 0 },
+    { label: 'Saved', done: isActivitySaved },
+  ]
+  const currentProgressStepIndex = ospeProgressSteps.findIndex((step) => !step.done)
+  const completedProgressStepCount = ospeProgressSteps.filter((step) => step.done).length
+  const progressPercent = ospeProgressSteps.length
+    ? Math.round((completedProgressStepCount / ospeProgressSteps.length) * 100)
+    : 0
   const hasMarks = marksEnabled
   const isCertifiable = certifiableEnabled
   const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
@@ -1340,6 +1353,44 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
               {isActivitySaved ? 'Review / Assign' : 'Save Activity'}
             </button>
           </div>
+        </div>
+
+        <div className={`ospe-progress-widget ${isProgressWidgetOpen ? 'is-open' : ''}`}>
+          {isProgressWidgetOpen ? (
+            <div className="ospe-progress-popover" role="dialog" aria-label="Process checklist">
+              <strong className="ospe-progress-title">Process checklist</strong>
+              <div className="ospe-progress-list">
+                {ospeProgressSteps.map((step, index) => (
+                  <div
+                    key={step.label}
+                    className={`ospe-progress-item ${step.done ? 'is-done' : index === currentProgressStepIndex ? 'is-current' : ''}`}
+                  >
+                    <span>
+                      {step.done ? (
+                        <CheckCircle2 size={13} strokeWidth={2.5} />
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
+                    <strong>{step.label}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="ospe-progress-fab"
+            style={{ '--ospe-progress': `${progressPercent}%` }}
+            onClick={() => setIsProgressWidgetOpen((current) => !current)}
+            aria-expanded={isProgressWidgetOpen}
+            aria-label="Toggle process checklist"
+          >
+            <span>
+              <strong>{completedProgressStepCount}</strong>
+              <small>/{ospeProgressSteps.length}</small>
+            </span>
+          </button>
         </div>
 
         {isReviewAssignPopupOpen ? createPortal(

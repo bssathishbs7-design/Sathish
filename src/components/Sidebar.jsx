@@ -3,7 +3,7 @@ import { ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandLogoDark from '../assets/brand-logo-dark.svg'
 import brandMark from '../assets/brand-mark.svg'
-import { ASSESSMENT_PAGES, MY_SKILL_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
+import { APP_PAGES, ASSESSMENT_PAGES, MY_SKILL_PAGES, QUESTION_BANK_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
 
 export default function Sidebar({
   mobileSidebarOpen,
@@ -11,6 +11,8 @@ export default function Sidebar({
   theme,
   useCompactLogo,
   activePage,
+  queryRequestCount = 0,
+  createdReportCount = 0,
   onSelectPage,
   onCloseMobile,
 }) {
@@ -19,41 +21,48 @@ export default function Sidebar({
     Skills: SKILL_PAGES.includes(activePage),
     'My Skills': MY_SKILL_PAGES.includes(activePage),
     Assessment: ASSESSMENT_PAGES.includes(activePage),
+    'Question Bank': QUESTION_BANK_PAGES.includes(activePage),
   }
-  const [openGroups, setOpenGroups] = useState(activeGroupMap)
+  const getActiveGroupLabel = (page) => {
+    if (SKILL_PAGES.includes(page)) return 'Skills'
+    if (MY_SKILL_PAGES.includes(page)) return 'My Skills'
+    if (ASSESSMENT_PAGES.includes(page)) return 'Assessment'
+    if (QUESTION_BANK_PAGES.includes(page)) return 'Question Bank'
+    return null
+  }
+  const [openGroupLabel, setOpenGroupLabel] = useState(() => getActiveGroupLabel(activePage))
   const groupRefs = useRef({})
   const useCollapsedFlyout = sidebarCollapsed && !mobileSidebarOpen
+  const getNotificationCount = (page) => (
+    page === APP_PAGES.QUERY_REQUEST
+      ? queryRequestCount
+      : page === APP_PAGES.QUESTION_BANK
+        ? createdReportCount
+        : 0
+  )
+  const formatNotificationCount = (count) => (count > 9 ? '9+' : String(count))
   const handleSelectSidebarPage = (page) => {
-    setOpenGroups((current) => ({
-      ...current,
-      Skills: SKILL_PAGES.includes(page),
-      'My Skills': MY_SKILL_PAGES.includes(page),
-      Assessment: ASSESSMENT_PAGES.includes(page),
-    }))
+    setOpenGroupLabel(getActiveGroupLabel(page))
     onSelectPage(page)
   }
 
   useEffect(() => {
-    setOpenGroups((current) => ({
-      ...current,
-      ...activeGroupMap,
-    }))
+    setOpenGroupLabel(getActiveGroupLabel(activePage))
   }, [activePage])
 
   useEffect(() => {
-    const openLabels = Object.entries(openGroups).filter(([, isOpen]) => isOpen).map(([label]) => label)
-    if (!useCollapsedFlyout || !openLabels.length) return undefined
+    if (!useCollapsedFlyout || !openGroupLabel) return undefined
 
     const handlePointerDown = (event) => {
-      const clickedInsideOpenGroup = openLabels.some((label) => groupRefs.current[label]?.contains(event.target))
+      const clickedInsideOpenGroup = groupRefs.current[openGroupLabel]?.contains(event.target)
       if (!clickedInsideOpenGroup) {
-        setOpenGroups((current) => Object.fromEntries(Object.keys(current).map((label) => [label, false])))
+        setOpenGroupLabel(null)
       }
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [openGroups, useCollapsedFlyout])
+  }, [openGroupLabel, useCollapsedFlyout])
 
   return (
     <aside className={`vx-sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
@@ -91,19 +100,19 @@ export default function Sidebar({
                   <button
                     type="button"
                     className={`vx-link vx-link-parent ${activeGroupMap[item.label] ? 'active' : ''}`}
-                    onClick={() => setOpenGroups((current) => ({ ...current, [item.label]: !current[item.label] }))}
-                    aria-expanded={Boolean(openGroups[item.label])}
+                    onClick={() => setOpenGroupLabel((current) => (current === item.label ? null : item.label))}
+                    aria-expanded={openGroupLabel === item.label}
                   >
                     <span className="vx-link-icon" aria-hidden="true">
                       <item.icon size={16} strokeWidth={2} />
                     </span>
                     <span className="vx-link-text">{item.label}</span>
-                    <span className={`vx-link-caret ${openGroups[item.label] ? 'open' : ''}`} aria-hidden="true">
+                    <span className={`vx-link-caret ${openGroupLabel === item.label ? 'open' : ''}`} aria-hidden="true">
                       <ChevronDown size={16} strokeWidth={2.2} />
                     </span>
                   </button>
 
-                  <div className={`vx-sublinks ${openGroups[item.label] ? 'open' : ''} ${useCollapsedFlyout ? 'is-flyout' : ''}`}>
+                  <div className={`vx-sublinks ${openGroupLabel === item.label ? 'open' : ''} ${useCollapsedFlyout ? 'is-flyout' : ''}`}>
                     {item.children.map((child) => (
                       <button
                         key={child.label}
@@ -114,12 +123,17 @@ export default function Sidebar({
                         <span className="vx-sublink-icon" aria-hidden="true">
                           <child.icon size={14} strokeWidth={2} />
                         </span>
-                        <span className={useCollapsedFlyout ? 'vx-sublink-text' : 'vx-link-text'}>
-                          {child.navLabel ?? child.label}
+                      <span className={useCollapsedFlyout ? 'vx-sublink-text' : 'vx-link-text'}>
+                        {child.navLabel ?? child.label}
+                      </span>
+                      {getNotificationCount(child.page ?? child.label) ? (
+                        <span className="vx-link-badge" aria-label={`${getNotificationCount(child.page ?? child.label)} notifications`}>
+                          {formatNotificationCount(getNotificationCount(child.page ?? child.label))}
                         </span>
-                      </button>
-                    ))}
-                  </div>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
                 </div>
               ) : (
                 <button
@@ -132,6 +146,11 @@ export default function Sidebar({
                     <item.icon size={16} strokeWidth={2} />
                   </span>
                   <span className="vx-link-text">{item.label}</span>
+                  {getNotificationCount(item.label) ? (
+                    <span className="vx-link-badge" aria-label={`${getNotificationCount(item.label)} notifications`}>
+                      {formatNotificationCount(getNotificationCount(item.label))}
+                    </span>
+                  ) : null}
                 </button>
               )
             ))}

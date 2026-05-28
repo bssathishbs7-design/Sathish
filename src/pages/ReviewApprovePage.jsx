@@ -80,6 +80,64 @@ const getActivityMeta = (row) => ({
   sgt: row.sgt ?? row.activityRecord?.sgt ?? 'Not set',
 })
 
+const isQuestionBankRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'question bank'
+
+const getQuestionEditCount = (question) => {
+  const explicitCount = Number(question?.editCount ?? question?.revisionCount ?? 0)
+  if (explicitCount > 0) return explicitCount
+  return String(question?.revisionStatus ?? '').trim().toLowerCase() === 'edited' ? 1 : 0
+}
+
+const getQuestionBankEditCount = (row) => {
+  const explicitCount = Number(row.questionEditCount ?? row.questionEditedCount ?? 0)
+  if (explicitCount > 0) return explicitCount
+
+  return (row.questionRows ?? []).reduce((total, question) => total + getQuestionEditCount(question), 0)
+}
+
+const getQuestionTypeSummaryText = (row) => {
+  if (row.questionTypeSummaryText) return row.questionTypeSummaryText
+
+  if (Array.isArray(row.questionTypeSummary)) {
+    return row.questionTypeSummary.map((item) => `${item.type}: ${item.count}`).join(', ')
+  }
+
+  if (row.questionTypeSummary && typeof row.questionTypeSummary === 'object') {
+    return Object.entries(row.questionTypeSummary).map(([type, count]) => `${type}: ${count}`).join(', ')
+  }
+
+  const counts = (row.questionRows ?? []).reduce((summary, question) => ({
+    ...summary,
+    [question.type ?? 'Question']: (summary[question.type ?? 'Question'] ?? 0) + 1,
+  }), {})
+
+  return Object.entries(counts).map(([type, count]) => `${type}: ${count}`).join(', ') || 'Not set'
+}
+
+const getQuestionTypeSummaryItems = (row) => {
+  if (Array.isArray(row.questionTypeSummary)) return row.questionTypeSummary
+
+  if (row.questionTypeSummary && typeof row.questionTypeSummary === 'object') {
+    return Object.entries(row.questionTypeSummary).map(([type, count]) => ({ type, count }))
+  }
+
+  const counts = (row.questionRows ?? []).reduce((summary, question) => ({
+    ...summary,
+    [question.type ?? 'Question']: (summary[question.type ?? 'Question'] ?? 0) + 1,
+  }), {})
+
+  return Object.entries(counts).map(([type, count]) => ({ type, count }))
+}
+
+const getQuestionRevisionStatus = (row) => {
+  if (row.questionRevisionStatus) return row.questionRevisionStatus
+  if (row.questionChangeStatus) return row.questionChangeStatus
+
+  return (row.questionRows ?? []).some((question) => question.revisionStatus === 'Edited')
+    ? 'Edited'
+    : 'Created'
+}
+
 function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
   const decision = getDisplayDecision(row)
   const sender = getSenderDetails(row)
@@ -87,6 +145,67 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
   const receivedAt = formatReceivedDateTime(row.receivedAt ?? row.sentAt ?? row.submittedAt)
   const activityType = row.activityType ?? 'Activity'
   const hasInfo = Boolean(sender.name || sender.id || sender.designation)
+  const receivedDateTime = `${receivedAt.date}${receivedAt.time ? ` ${receivedAt.time}` : ''}`
+
+  if (isQuestionBankRow(row)) {
+    const questionRevisionStatus = getQuestionRevisionStatus(row)
+    const revisionTone = questionRevisionStatus.toLowerCase()
+    const questionEditCount = getQuestionBankEditCount(row)
+    const questionRevisionLabel = questionRevisionStatus.toLowerCase() === 'edited' && questionEditCount
+      ? `Edited ${questionEditCount}`
+      : questionRevisionStatus
+    const totalQuestions = Number(row.totalQuestions ?? row.questionRows?.length ?? row.totalStudents ?? 0) || 0
+    const questionTypeItems = getQuestionTypeSummaryItems(row)
+
+    return (
+      <article className="review-approve-card review-approve-question-bank-card">
+        <div className="review-approve-card-top">
+          <div className="review-approve-card-topline">
+            <span className={`review-approve-type-chip ${getActivityToneClass(activityType)}`}>{activityType}</span>
+            <span className={`review-approve-question-state is-${revisionTone}`}>{questionRevisionLabel}</span>
+          </div>
+        </div>
+
+        <div className="review-approve-qb-body">
+          <div className="review-approve-qb-count">
+            <strong>{totalQuestions}</strong>
+            <span>Total Question{totalQuestions === 1 ? '' : 's'}</span>
+          </div>
+          <div className="review-approve-qb-types">
+            <span className="review-approve-qb-label">
+              <LayoutGrid size={12} strokeWidth={2.2} />
+              Question Type
+            </span>
+            <div className="review-approve-qb-type-list" aria-label={getQuestionTypeSummaryText(row)}>
+              {questionTypeItems.length ? questionTypeItems.map((item) => (
+                <span key={item.type} className="review-approve-qb-type-chip">
+                  {item.type}
+                  <strong>{item.count}</strong>
+                </span>
+              )) : <span className="review-approve-qb-type-chip">Not set</span>}
+            </div>
+          </div>
+        </div>
+
+        <div className="review-approve-card-footer">
+          <div className="review-approve-card-footer-meta">
+            <div className="review-approve-qb-submitted">
+              <CalendarClock size={12} strokeWidth={2} />
+              <span className="review-approve-qb-submitted-copy">
+                <span className="review-approve-qb-submitted-label">Created By</span>
+                <span className="review-approve-qb-submitted-name">{sender.name}</span>
+                <span className="review-approve-qb-submitted-date">{receivedDateTime}</span>
+              </span>
+            </div>
+          </div>
+
+          <button type="button" className="tool-btn eval-view-btn review-approve-card-view-btn" onClick={onView}>
+            View
+          </button>
+        </div>
+      </article>
+    )
+  }
 
   return (
     <article className="review-approve-card">
@@ -134,7 +253,7 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
       <div className="review-approve-card-date-row">
         <div className="review-approve-card-date">
           <CalendarClock size={12} strokeWidth={2} />
-          {receivedAt.date}{receivedAt.time ? ` ${receivedAt.time}` : ''}
+          {receivedDateTime}
         </div>
         {hasInfo ? (
           <div className="review-approve-tooltip-wrap">
@@ -176,6 +295,8 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
 
     approvalQueueRows.forEach((row) => {
       const activityKey = row.activityId ?? row.id
+      const approvalStatus = String(row.approvalStatus ?? row.status ?? row.reviewStatus ?? '').trim().toLowerCase()
+      if (isQuestionBankRow(row) && approvalStatus && approvalStatus !== 'pending approval') return
       if (!activityKey || activityRows.has(activityKey)) return
       activityRows.set(activityKey, row)
     })

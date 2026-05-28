@@ -15,7 +15,7 @@ import {
   Trophy,
   Users,
 } from 'lucide-react'
-import PageBreadcrumbs from '../components/PageBreadcrumbs'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import '../styles/dashboard-summary.css'
 import { skillAssessmentActivities } from './skillAssessmentData'
 
@@ -1153,7 +1153,7 @@ export default function DashboardSummaryPage({
   return (
     <section className={`vx-content forms-page dashboard-summary-page${embedded ? ' is-embedded-dashboard' : ''}`}>
       <div className="dashboard-summary-shell">
-        {!embedded ? <PageBreadcrumbs items={[{ label: 'Evaluation' }, { label: 'Dashboard Summary' }]} /> : null}
+        {!embedded ? <PageNavigationHeader items={['My Pages', 'Assessment', 'Dashboard', 'Summary']} /> : null}
 
         {!embedded ? (
           <section className="dashboard-summary-command">
