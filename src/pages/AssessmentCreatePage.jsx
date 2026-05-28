@@ -149,7 +149,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
 
   return (
     <section className="vx-content assessment-page">
-      <div className="assessment-page-shell">
+      <div className="assessment-page-shell assessment-create-page-shell">
         <PageNavigationHeader items={['My Pages', 'Assessment', 'Create']} />
 
         <section className="assessment-create-metrics" aria-label="Assessment create metrics">

@@ -945,7 +945,10 @@ function MappingSelectorPanel({
   )
 }
 
-export default function QuestionBankPage({ onAlert, onSendToApproval }) {
+export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'editable' }) {
+  const normalizedMode = mode === 'editable' ? 'editable' : 'readonly'
+  const isEditable = normalizedMode === 'editable'
+  const isReadonly = normalizedMode === 'readonly'
   const [questions, setQuestions] = useState(() => readStoredQuestionBankQuestions())
   const [selectedQuestionId, setSelectedQuestionId] = useState(null)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
@@ -2099,7 +2102,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval }) {
   )
 
   return (
-    <section className="question-bank-page">
+    <section className={`question-bank-page is-${normalizedMode}`}>
      
 
       <div className="question-bank-layout">

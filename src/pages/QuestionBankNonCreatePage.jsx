@@ -293,6 +293,16 @@ const isSharedToStudentsQuestion = (question) => Boolean(
   || (Array.isArray(question?.studentShareIds) && question.studentShareIds.length)
 )
 
+const isUsedInAssessmentQuestion = (question) => Boolean(
+  question?.usedInAssessment
+  || question?.isUsedInAssessment
+  || question?.assessmentId
+  || question?.assessmentName
+  || (Array.isArray(question?.assessmentIds) && question.assessmentIds.length)
+  || (Array.isArray(question?.usedAssessmentIds) && question.usedAssessmentIds.length)
+  || (Array.isArray(question?.assessmentNames) && question.assessmentNames.length)
+)
+
 const updateQuestionFavoriteInStorage = (questionId, isFavorite) => {
   if (typeof window === 'undefined' || !questionId) return
 
@@ -484,6 +494,8 @@ const createEmptyFilters = () => ({
   organSubSystems: [],
   diseaseTags: [],
   keyConcepts: [],
+  sharedToStudents: [],
+  usedInAssessment: [],
 })
 
 const getUniqueValues = (questions, getter) => (
@@ -512,6 +524,11 @@ const hasFilterMatch = (selectedValues, questionValues) => {
   if (!selectedValues.length) return true
   const values = Array.isArray(questionValues) ? questionValues.filter(Boolean) : [questionValues].filter(Boolean)
   return selectedValues.some((value) => values.includes(value))
+}
+
+const hasBooleanFilterMatch = (selectedValues, isMatch) => {
+  if (!selectedValues.length) return true
+  return selectedValues.includes(isMatch ? 'Yes' : 'No')
 }
 
 const nonCreateHighlights = [
@@ -704,6 +721,8 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       if (!hasFilterMatch(filters.organSubSystems, question.organSubSystems ?? [])) return false
       if (!hasFilterMatch(filters.diseaseTags, question.diseaseTags ?? [])) return false
       if (!hasFilterMatch(filters.keyConcepts, question.keyConcepts ?? [])) return false
+      if (!hasBooleanFilterMatch(filters.sharedToStudents, isSharedToStudentsQuestion(question))) return false
+      if (!hasBooleanFilterMatch(filters.usedInAssessment, isUsedInAssessmentQuestion(question))) return false
       return true
     })
   }, [filters, metricFilteredQuestions])
@@ -735,6 +754,8 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
         ['thinkingLevels', 'Thinking', filterOptions.thinkingLevels],
         ['difficultyLevels', 'Difficulty', filterOptions.difficultyLevels],
         ['cognitiveLevels', 'Cognitive', filterOptions.cognitiveLevels],
+        ['sharedToStudents', 'Shared to Student', ['Yes', 'No'], 'boolean'],
+        ['usedInAssessment', 'Used in Assessment', ['Yes', 'No'], 'boolean'],
       ],
     },
     {
@@ -765,6 +786,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       ...createdReportedQuestionRecords,
     ].filter((record) => !isResolvedReportRecord(record)).length, icon: Flag, tone: 'suggested' },
   ]
+  const visibleQuestionMetrics = isEditable
+    ? questionMetrics
+    : questionMetrics.filter((metric) => !['shared', 'suggested'].includes(metric.key))
   const activeMetricLabel = questionMetrics.find((metric) => metric.key === activeMetric)?.label ?? 'questions'
   const isReportMetricActive = activeMetric === 'suggested'
   const footerResultSummary = hasSelectedFilters(filters)
@@ -1106,6 +1130,57 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     )
   }
 
+  const renderBooleanFilterDropdown = ([filterKey, label, options]) => {
+    const selectedValue = filters[filterKey]?.[0] ?? ''
+    const isOpen = openFilterKey === filterKey
+
+    return (
+      <div key={filterKey} className="assessment-page-filter-dropdown assessment-page-boolean-dropdown" data-filter-key={filterKey}>
+        <button
+          type="button"
+          className={selectedValue ? 'has-selection' : ''}
+          onClick={() => setOpenFilterKey(isOpen ? '' : filterKey)}
+          aria-expanded={isOpen}
+        >
+          <span>{label}</span>
+          {selectedValue ? <strong>{selectedValue}</strong> : null}
+          <ChevronDown size={14} strokeWidth={2.3} />
+        </button>
+        {isOpen ? (
+          <div className="assessment-page-filter-menu" role="menu">
+            <div>
+              <strong>{label}</strong>
+              {selectedValue ? (
+                <button type="button" onClick={() => setFilters((current) => ({ ...current, [filterKey]: [] }))}>
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <div>
+              {options.map((option) => {
+                const isSelected = selectedValue === option
+                return (
+                  <label key={option} className="assessment-page-filter-option">
+                    <input
+                      type="radio"
+                      name={filterKey}
+                      checked={isSelected}
+                      onChange={() => {
+                        setFilters((current) => ({ ...current, [filterKey]: [option] }))
+                        setOpenFilterKey('')
+                      }}
+                    />
+                    <span>{option}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
   useEffect(() => {
     setCurrentPage(1)
   }, [activeMetric, filters, pageSize])
@@ -1224,7 +1299,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     <section className={`vx-content assessment-page ${embedded ? 'is-embedded' : ''} is-${resolvedMode}-mode`}>
       <div className={`assessment-page-shell ${selectedGridAction ? 'has-selection-bar' : ''}`}>
         <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
-          {questionMetrics.map((metric) => {
+          {visibleQuestionMetrics.map((metric) => {
             const Icon = metric.icon
             const isActive = activeMetric === metric.key
 
@@ -1303,7 +1378,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                       {moreFilterGroups.map((group) => (
                         <span key={group.label} className="assessment-page-more-filter-group">
                           <strong>{group.label}</strong>
-                          <span>{group.filters.map(renderFilterDropdown)}</span>
+                          <span>{group.filters.map((filter) => (
+                            filter[3] === 'boolean' ? renderBooleanFilterDropdown(filter) : renderFilterDropdown(filter)
+                          ))}</span>
                         </span>
                       ))}
                     </span>,

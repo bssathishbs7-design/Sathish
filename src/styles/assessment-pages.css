@@ -28,9 +28,15 @@
   padding-bottom: 0;
 }
 
+.assessment-create-page-shell {
+  width: min(100%, 1320px);
+  margin: 0 auto;
+  grid-template-rows: auto auto auto;
+}
+
 .assessment-create-metrics {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(150px, 1fr));
   gap: clamp(6px, 0.65vw, 10px);
   min-width: 0;
 }
@@ -284,7 +290,7 @@
 
 .assessment-create-setup-top {
   display: grid;
-  grid-template-columns: 110px minmax(320px, 1.35fr) minmax(320px, 0.9fr);
+  grid-template-columns: 112px minmax(260px, 1.35fr) minmax(260px, 0.9fr);
   grid-template-areas:
     "logo college side"
     "logo name side"
@@ -303,7 +309,7 @@
 
 .assessment-create-year-field {
   grid-area: year;
-  max-width: 340px;
+  max-width: min(100%, 360px);
 }
 
 .assessment-create-name-field {
@@ -2548,6 +2554,10 @@
 
 .assessment-page-filter-advanced-row .assessment-page-filter-dropdown > button {
   max-width: 180px;
+}
+
+.assessment-page-boolean-dropdown > button strong {
+  min-width: 26px;
 }
 
 .assessment-page-filter-menu {
@@ -5986,6 +5996,10 @@
 }
 
 @media (max-width: 980px) {
+  .assessment-create-page-shell {
+    width: 100%;
+  }
+
   .assessment-create-metrics {
     grid-template-columns: repeat(6, minmax(132px, 1fr));
     overflow-x: auto;
