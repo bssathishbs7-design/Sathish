@@ -176,7 +176,7 @@ const getRichTextPreview = (value) => stripHtml(value).trim()
 const isDescriptiveQuestionType = (type) => DESCRIPTIVE_QUESTION_TYPE_SET.has(type)
 const getQuestionTypeMeta = (type) => (
   QUESTION_TYPE_CARDS.find((item) => item.type === type)
-  ?? (type === 'Descriptive Question' ? { type, shortLabel: 'Descriptive', menuLabel: 'Descriptive Question' } : QUESTION_TYPE_CARDS[0])
+  ?? (type === 'Descriptive Question' ? { type, shortLabel: 'SAQs', menuLabel: 'Short Answer Questions (SAQs)' } : QUESTION_TYPE_CARDS[0])
 )
 const hasVisibleMarks = (marks) => Number(marks) > 0
 const getOptionModeConfig = (allowMultiple) => ({

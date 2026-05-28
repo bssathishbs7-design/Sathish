@@ -32,7 +32,8 @@ const DESCRIPTIVE_TYPE_LABELS = new Map([
   ['desc long answer questions (laqs)', 'LAQs'],
   ['desc short answer questions (saqs)', 'SAQs'],
   ['desc modified essay questions (meqs)', 'MEQs'],
-  ['descriptive question', 'Descriptive'],
+  ['descriptive question', 'SAQs'],
+  ['descriptive', 'SAQs'],
 ])
 
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
@@ -421,23 +422,53 @@ const getThinkingBadgeClassName = (value) => {
   return ''
 }
 
-const getQuestionTypeBadgeClassName = (type) => {
+const hasFilledOptions = (question) => (
+  Array.isArray(question?.options)
+  && question.options.some((option) => stripHtml(option?.label ?? option?.content).trim())
+)
+
+const hasDescriptiveSections = (question) => (
+  Array.isArray(question?.descriptiveSections)
+  && question.descriptiveSections.some((section) => (
+    stripHtml(section?.questionText).trim()
+    || (section?.children ?? []).some((child) => stripHtml(child?.questionText).trim())
+  ))
+)
+
+const getResolvedQuestionType = (questionOrType) => {
+  if (questionOrType && typeof questionOrType === 'object') {
+    const rawType = String(questionOrType.type ?? '').trim()
+    const normalizedType = rawType.toLowerCase()
+    const hasAnswerOptions = hasFilledOptions(questionOrType) || (questionOrType.correctOptionIds ?? []).length > 0
+
+    if ((normalizedType.includes('descriptive') || normalizedType.startsWith('desc ')) && hasAnswerOptions && !hasDescriptiveSections(questionOrType)) {
+      return 'MCQ'
+    }
+
+    return rawType
+  }
+
+  return String(questionOrType ?? '').trim()
+}
+
+const getQuestionTypeBadgeClassName = (questionOrType) => {
+  const type = getResolvedQuestionType(questionOrType)
   const normalized = String(type ?? '').trim().toLowerCase()
   if (normalized === 'mcq') return 'is-mcq'
   if (normalized.includes('descriptive') || normalized.startsWith('desc ')) return 'is-descriptive'
   return ''
 }
 
-const getQuestionTypeLabel = (type) => {
-  const normalized = String(type ?? '').trim()
+const getQuestionTypeLabel = (questionOrType) => {
+  const normalized = getResolvedQuestionType(questionOrType)
   const compactLabel = DESCRIPTIVE_TYPE_LABELS.get(normalized.toLowerCase())
   if (compactLabel) return compactLabel
-  if (normalized.toLowerCase().includes('descriptive')) return 'Descriptive'
+  if (normalized.toLowerCase().includes('descriptive')) return 'SAQs'
   return normalized || 'Question'
 }
 
 const isDescriptiveQuestion = (question) => (
-  getQuestionTypeBadgeClassName(question?.type) === 'is-descriptive'
+  getQuestionTypeBadgeClassName(question) === 'is-descriptive'
 )
 
 const getQuestionSourceType = (question) => (
@@ -621,7 +652,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }, [activeMetric, publishedQuestions, reportedQuestionRecords, createdReportedQuestionRecords])
   const filterOptions = useMemo(() => ({
     authors: getUniqueValues(metricFilteredQuestions, getQuestionAuthorName),
-    types: getUniqueValues(metricFilteredQuestions, (question) => getQuestionTypeLabel(question.type)),
+    types: getUniqueValues(metricFilteredQuestions, (question) => getQuestionTypeLabel(question)),
     years: getUniqueValues(metricFilteredQuestions, (question) => question.year),
     subjects: getUniqueValues(metricFilteredQuestions, (question) => question.subject),
     topics: getUniqueValues(metricFilteredQuestions, (question) => question.topics ?? []),
@@ -640,7 +671,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
 
   const filterOptionCounts = useMemo(() => ({
     authors: getValueCounts(metricFilteredQuestions, getQuestionAuthorName),
-    types: getValueCounts(metricFilteredQuestions, (question) => getQuestionTypeLabel(question.type)),
+    types: getValueCounts(metricFilteredQuestions, (question) => getQuestionTypeLabel(question)),
     years: getValueCounts(metricFilteredQuestions, (question) => question.year),
     subjects: getValueCounts(metricFilteredQuestions, (question) => question.subject),
     topics: getValueCounts(metricFilteredQuestions, (question) => question.topics ?? []),
@@ -714,7 +745,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const filteredQuestions = useMemo(() => {
     return metricFilteredQuestions.filter((question) => {
       if (!hasFilterMatch(filters.authors, getQuestionAuthorName(question))) return false
-      if (!hasFilterMatch(filters.types, getQuestionTypeLabel(question.type))) return false
+      if (!hasFilterMatch(filters.types, getQuestionTypeLabel(question))) return false
       if (!hasFilterMatch(filters.years, question.year)) return false
       if (!hasFilterMatch(filters.subjects, question.subject)) return false
       if (!hasFilterMatch(filters.topics, question.topics ?? [])) return false
@@ -1487,11 +1518,12 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               const isCardOpen = expandedCardRows.includes(questionId)
               const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
               const isDescriptive = isDescriptiveQuestion(question)
+              const isMcq = getQuestionTypeLabel(question) === 'MCQ'
 
               return (
                 <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
                   <div className="assessment-page-question-head">
-                    <span className="assessment-page-question-type">{getQuestionTypeLabel(question.type)}</span>
+                    <span className="assessment-page-question-type">{getQuestionTypeLabel(question)}</span>
                     {renderSourceBadge(question, 'assessment-page-question-author')}
                     {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{question.thinkingLevel}</span> : null}
                     {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
@@ -1559,7 +1591,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           ))}
                         </div>
                       ) : null}
-                      {question.type === 'MCQ' && optionRows.length ? (
+                      {isMcq && optionRows.length ? (
                         <div className="assessment-page-question-options">
                           {optionRows
                             .filter((option) => stripHtml(option.label ?? option.content))
@@ -1658,6 +1690,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   const isGridQuestionSelected = selectedGridQuestionIds.includes(questionId)
                   const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
                   const isDescriptive = isDescriptiveQuestion(question)
+                  const isMcq = getQuestionTypeLabel(question) === 'MCQ'
 
                   return (
                     <Fragment key={questionId}>
@@ -1677,7 +1710,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           aria-pressed={selectedGridAction ? isGridQuestionSelected : undefined}
                         >
                           <td className="assessment-page-grid-type-cell">
-                            <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question.type)}`}>{getQuestionTypeLabel(question.type)}</span>
+                            <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)}`}>{getQuestionTypeLabel(question)}</span>
                           </td>
                           <td className="assessment-page-grid-question">
                             <span className="assessment-page-grid-row-layout">
@@ -1735,7 +1768,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                     />
                                   </label>
                                 ) : null}
-                                <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question.type)}`}>{getQuestionTypeLabel(question.type)}</span>
+                                <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)}`}>{getQuestionTypeLabel(question)}</span>
                                 <div className="assessment-page-table-full-question">
                                   Q{questionNumber}. {getQuestionPreview(question)}
                                 </div>
@@ -1756,7 +1789,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                   </div>
                                 </div>
                               ) : null}
-                              {question.type === 'MCQ' && optionRows.length ? (
+                              {isMcq && optionRows.length ? (
                                 <div className="assessment-page-table-inline-section">
                                   <div className="assessment-page-table-options">
                                     {optionRows

@@ -473,7 +473,7 @@ const isDescriptiveQuestionType = (type) => DESCRIPTIVE_QUESTION_TYPE_SET.has(ty
 
 const getQuestionTypeMeta = (type) => (
   QUESTION_TYPE_CARDS.find((item) => item.type === type)
-  ?? (type === 'Descriptive Question' ? { type, shortLabel: 'Descriptive', menuLabel: 'Descriptive Question', icon: FilePenLine } : QUESTION_TYPE_CARDS[0])
+  ?? (type === 'Descriptive Question' ? { type, shortLabel: 'SAQs', menuLabel: 'Short Answer Questions (SAQs)', icon: FilePenLine } : QUESTION_TYPE_CARDS[0])
 )
 
 const getRichTextPreview = (value) => stripHtml(value)

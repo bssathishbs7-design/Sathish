@@ -23,11 +23,12 @@ const descriptiveTypeLabels = new Map([
   ['desc long answer questions (laqs)', 'LAQs'],
   ['desc short answer questions (saqs)', 'SAQs'],
   ['desc modified essay questions (meqs)', 'MEQs'],
-  ['descriptive question', 'Descriptive'],
+  ['descriptive question', 'SAQs'],
+  ['descriptive', 'SAQs'],
 ])
 const getQuestionTypeLabel = (type) => {
   const normalized = String(type ?? '').trim()
-  return descriptiveTypeLabels.get(normalized.toLowerCase()) ?? (normalized.toLowerCase().includes('descriptive') ? 'Descriptive' : normalized || 'Question')
+  return descriptiveTypeLabels.get(normalized.toLowerCase()) ?? (normalized.toLowerCase().includes('descriptive') ? 'SAQs' : normalized || 'Question')
 }
 const getQuestionTypeClassName = (type) => {
   const normalized = String(type ?? '').trim().toLowerCase()
