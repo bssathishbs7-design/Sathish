@@ -805,13 +805,13 @@
 }
 
 .create-assessment-workspace {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-width: 0;
-  min-height: 100svh;
+  min-height: auto;
   padding-top: 74px;
-  padding-bottom: 64px;
+  padding-bottom: 0;
   background: #f8fbfa;
   color: #17313b;
 }
@@ -933,11 +933,29 @@
 
 .create-assessment-workspace-main {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   gap: 8px;
-  min-height: 0;
+  min-height: auto;
   min-width: 0;
   padding: 8px 10px 10px;
+}
+
+.create-assessment-workspace .assessment-page.is-embedded {
+  max-height: none;
+  overflow: visible;
+}
+
+.create-assessment-workspace .question-bank-overview-shell {
+  grid-template-rows: auto auto auto;
+}
+
+.create-assessment-workspace .assessment-page-table-wrap {
+  height: auto;
+  overflow: visible;
+}
+
+.create-assessment-workspace .assessment-page-grid-scroll {
+  overflow: visible;
 }
 
 .create-assessment-question-bank-panel {
@@ -1004,20 +1022,17 @@
 }
 
 .create-assessment-footer {
-  position: fixed;
-  z-index: 110;
-  right: 0;
-  bottom: 0;
-  left: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  width: 100%;
+  margin-top: 8px;
   min-height: 56px;
   padding: 9px 16px;
   border-top: 1px solid #d7e8e2;
   background: #ffffff;
-  box-shadow: 0 -10px 26px rgba(24, 55, 71, 0.08);
+  box-shadow: 0 -1px 0 rgba(24, 55, 71, 0.03);
 }
 
 .create-assessment-footer-left,
