@@ -392,7 +392,10 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   }
 
   const addQuestionToQuestionBank = () => {
-    if (!question || !canCreate) return
+    if (!question || !canCreate) {
+      onNavigate?.(APP_PAGES.QUESTION_BANK, { questionBankMode: 'readonly' })
+      return
+    }
 
     const questionBankQuestion = {
       ...question,
@@ -413,8 +416,10 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(nextRows))
       window.dispatchEvent(new Event('question-bank-created-questions'))
       setSaveStatus('Added to question bank.')
+      onNavigate?.(APP_PAGES.QUESTION_BANK, { questionBankMode: 'readonly' })
     } catch {
       setSaveStatus('Unable to add question bank.')
+      onNavigate?.(APP_PAGES.QUESTION_BANK, { questionBankMode: 'readonly' })
     }
   }
 
@@ -646,7 +651,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             ) : null}
           </div>
           <div className="create-assessment-type-actions">
-            <button type="button" className="create-assessment-type-action is-question-bank" onClick={addQuestionToQuestionBank} disabled={!question || !canCreate}>
+            <button type="button" className="create-assessment-type-action is-question-bank" onClick={addQuestionToQuestionBank} >
               <Database size={16} strokeWidth={2.2} />
               Add to Question Bank
             </button>

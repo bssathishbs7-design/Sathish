@@ -80,6 +80,7 @@ export default function RichMathEditor({
   allowPastedImages = true,
   onPasteImageRejected,
   toolbarActions = null,
+  readOnly = false,
 }) {
   const editorRef = useRef(null)
   const toolbarRef = useRef(null)
@@ -95,16 +96,22 @@ export default function RichMathEditor({
   }, [currentValue])
 
   const emitChange = () => {
+    if (readOnly) return
     onChange?.(editorRef.current?.innerHTML ?? '')
   }
 
   const runCommand = (command, value = null) => {
+    if (readOnly) return
     editorRef.current?.focus()
     document.execCommand(command, false, value)
     emitChange()
   }
 
   const updateSelectionToolbar = () => {
+    if (readOnly) {
+      setIsToolbarOpen(false)
+      return
+    }
     const editor = editorRef.current
     const selection = window.getSelection()
     if (!editor || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
@@ -139,6 +146,7 @@ export default function RichMathEditor({
   }
 
   const insertFormula = () => {
+    if (readOnly) return
     const formula = window.prompt('Enter formula using LaTeX syntax', '\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}')
     if (!formula?.trim()) return
 
@@ -155,6 +163,10 @@ export default function RichMathEditor({
   }
 
   const handlePaste = (event) => {
+    if (readOnly) {
+      event.preventDefault()
+      return
+    }
     const imageFiles = [...event.clipboardData.files].filter((file) => file.type.startsWith('image/'))
     const html = event.clipboardData.getData('text/html')
     const hasHtmlImage = /<img\b/i.test(html) || /data:image\//i.test(html)
@@ -195,6 +207,7 @@ export default function RichMathEditor({
   }
 
   const handleInput = () => {
+    if (readOnly) return
     if (isToolbarOpen) {
       setIsToolbarOpen(false)
     }
@@ -210,73 +223,76 @@ export default function RichMathEditor({
   }
 
   return (
-    <div className={`rich-math-editor ${compact ? 'is-compact' : ''} ${isToolbarOpen ? 'is-toolbar-open' : ''}`}>
-      <div
-        ref={toolbarRef}
-        className="rich-math-editor-toolbar"
-        aria-label="Rich text formatting"
-        style={{
-          '--rich-math-toolbar-left': `${toolbarPosition.left}px`,
-          '--rich-math-toolbar-top': `${toolbarPosition.top}px`,
-        }}
-      >
-        {FORMAT_BUTTONS.map((item) => {
-          const Icon = item.icon
-          return (
-            <button
-              key={item.command}
-              type="button"
-              className="rich-math-editor-tool"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => runCommand(item.command)}
-              aria-label={item.label}
-              title={item.label}
-            >
-              <Icon size={15} strokeWidth={2.2} />
-            </button>
-          )
-        })}
-        <button
-          type="button"
-          className="rich-math-editor-tool"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => runCommand('formatBlock', 'p')}
-          aria-label="Paragraph"
-          title="Paragraph"
-        >
-          <Pilcrow size={15} strokeWidth={2.2} />
-        </button>
-        <button
-          type="button"
-          className="rich-math-editor-tool is-formula"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={insertFormula}
-          aria-label="Insert formula"
-          title="Insert formula"
-        >
-          <Sigma size={15} strokeWidth={2.2} />
-        </button>
-        {toolbarActions}
-        <button
-          type="button"
-          className="rich-math-editor-tool is-close"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => {
-            setIsToolbarOpen(false)
-            editorRef.current?.focus()
+    <div className={`rich-math-editor ${compact ? 'is-compact' : ''} ${isToolbarOpen ? 'is-toolbar-open' : ''} ${readOnly ? 'is-readonly' : ''}`}>
+      {!readOnly ? (
+        <div
+          ref={toolbarRef}
+          className="rich-math-editor-toolbar"
+          aria-label="Rich text formatting"
+          style={{
+            '--rich-math-toolbar-left': `${toolbarPosition.left}px`,
+            '--rich-math-toolbar-top': `${toolbarPosition.top}px`,
           }}
-          aria-label="Close formatting toolbar"
-          title="Close"
         >
-          <X size={15} strokeWidth={2.2} />
-        </button>
-      </div>
+          {FORMAT_BUTTONS.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.command}
+                type="button"
+                className="rich-math-editor-tool"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => runCommand(item.command)}
+                aria-label={item.label}
+                title={item.label}
+              >
+                <Icon size={15} strokeWidth={2.2} />
+              </button>
+            )
+          })}
+          <button
+            type="button"
+            className="rich-math-editor-tool"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => runCommand('formatBlock', 'p')}
+            aria-label="Paragraph"
+            title="Paragraph"
+          >
+            <Pilcrow size={15} strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            className="rich-math-editor-tool is-formula"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={insertFormula}
+            aria-label="Insert formula"
+            title="Insert formula"
+          >
+            <Sigma size={15} strokeWidth={2.2} />
+          </button>
+          {toolbarActions}
+          <button
+            type="button"
+            className="rich-math-editor-tool is-close"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              setIsToolbarOpen(false)
+              editorRef.current?.focus()
+            }}
+            aria-label="Close formatting toolbar"
+            title="Close"
+          >
+            <X size={15} strokeWidth={2.2} />
+          </button>
+        </div>
+      ) : null}
       <div
         ref={editorRef}
         className="rich-math-editor-surface"
-        contentEditable
+        contentEditable={!readOnly}
         role="textbox"
         aria-label={ariaLabel ?? placeholder}
+        aria-readonly={readOnly}
         data-placeholder={placeholder}
         data-empty={plainText ? 'false' : 'true'}
         onInput={handleInput}

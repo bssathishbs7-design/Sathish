@@ -365,6 +365,7 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const useCompactLogo = sidebarCollapsed
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
+  const [questionBankMode, setQuestionBankMode] = useState('editable')
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)
   const [selectedOspeActivity, setSelectedOspeActivity] = useState(null)
@@ -496,8 +497,10 @@ function App() {
       window.history.replaceState({ page: resolvedPage }, '', PAGE_PATHS[resolvedPage])
     }
 
-    const handlePopState = () => {
-      setActivePage(getPageFromPath(window.location.pathname))
+    const handlePopState = (event) => {
+      const nextPage = getPageFromPath(window.location.pathname)
+      setActivePage(nextPage)
+      setQuestionBankMode(nextPage === APP_PAGES.QUESTION_BANK ? event.state?.questionBankMode ?? 'editable' : 'editable')
       setMobileSidebarOpen(false)
       setIsProfileMenuOpen(false)
     }
@@ -532,15 +535,20 @@ function App() {
   }
 
   const navigateToPage = (page, options = {}) => {
-    const { replace = false } = options
+    const { replace = false, questionBankMode: nextQuestionBankMode = 'editable' } = options
     const nextPath = PAGE_PATHS[page] ?? PAGE_PATHS[APP_PAGES.DASHBOARD]
     const historyMethod = replace ? 'replaceState' : 'pushState'
+    const nextHistoryState = {
+      page,
+      ...(page === APP_PAGES.QUESTION_BANK ? { questionBankMode: nextQuestionBankMode } : {}),
+    }
 
     if (window.location.pathname !== nextPath || replace) {
-      window.history[historyMethod]({ page }, '', nextPath)
+      window.history[historyMethod](nextHistoryState, '', nextPath)
     }
 
     setActivePage(page)
+    setQuestionBankMode(page === APP_PAGES.QUESTION_BANK ? nextQuestionBankMode : 'editable')
     setMobileSidebarOpen(false)
     setIsProfileMenuOpen(false)
   }
@@ -1243,7 +1251,7 @@ function App() {
           ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
-            <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} />
+            <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
             <QuestionBankNonCreatePage onNavigate={navigateToPage} />
           ) : activePage === APP_PAGES.QUERY_REQUEST ? (
