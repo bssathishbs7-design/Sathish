@@ -26,6 +26,7 @@ import {
 import RichMathEditor from '../components/RichMathEditor'
 import { APP_PAGES } from '../config/appPages'
 import { stripHtml } from '../utils/mathText'
+import QuestionBankNonCreatePage from './QuestionBankNonCreatePage'
 import '../styles/question-bank.css'
 import '../styles/assessment-pages.css'
 
@@ -283,6 +284,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [mappingSearchValue, setMappingSearchValue] = useState('')
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState('')
+  const [isQuestionBankVisible, setIsQuestionBankVisible] = useState(false)
   const [expandedQuestionId, setExpandedQuestionId] = useState(null)
 
   const detailItems = [setup.collegeName, setup.academicYear, setup.examCategory, setup.course, setup.year].filter(Boolean)
@@ -393,7 +395,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
 
   const addQuestionToQuestionBank = () => {
     if (!question || !canCreate) {
-      onNavigate?.(APP_PAGES.QUESTION_BANK, { questionBankMode: 'readonly' })
+      setIsQuestionBankVisible(true)
+      // setSaveStatus('Question bank opened in view-only mode.')
       return
     }
 
@@ -416,10 +419,10 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(nextRows))
       window.dispatchEvent(new Event('question-bank-created-questions'))
       setSaveStatus('Added to question bank.')
-      onNavigate?.(APP_PAGES.QUESTION_BANK, { questionBankMode: 'readonly' })
+      setIsQuestionBankVisible(true)
     } catch {
       setSaveStatus('Unable to add question bank.')
-      onNavigate?.(APP_PAGES.QUESTION_BANK, { questionBankMode: 'readonly' })
+      setIsQuestionBankVisible(true)
     }
   }
 
@@ -658,6 +661,25 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
           </div>
           {saveStatus ? <span className="create-assessment-save-status">{saveStatus}</span> : null}
         </div>
+
+        {isQuestionBankVisible ? (
+          <section className="create-assessment-question-bank-panel" aria-label="Question bank view">
+            <header className="create-assessment-question-bank-panel-head">
+              <div>
+                <strong>Question Bank</strong>
+                {/* <span>Readonly mode</span> */}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuestionBankVisible(false)}
+                aria-label="Close question bank"
+              >
+                <X size={16} strokeWidth={2.3} />
+              </button>
+            </header>
+            <QuestionBankNonCreatePage mode="readonly" embedded onNavigate={onNavigate} />
+          </section>
+        ) : null}
 
         {question ? (
           <section className={`question-bank-author-card ${question.isCritical ? 'is-critical' : ''}`}>

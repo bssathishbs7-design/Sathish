@@ -532,7 +532,10 @@ const nonCreateHighlights = [
   },
 ]
 
-export default function QuestionBankNonCreatePage({ onNavigate }) {
+export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly', embedded = false }) {
+  const resolvedMode = mode === 'editable' ? 'editable' : 'readonly'
+  const isEditable = resolvedMode === 'editable'
+  const isReadonly = resolvedMode === 'readonly'
   const filterHeaderRef = useRef(null)
   const moreFiltersRef = useRef(null)
   const selectionBarRef = useRef(null)
@@ -564,6 +567,13 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
   const [reportAuthorAction, setReportAuthorAction] = useState('')
   const [editQuestion, setEditQuestion] = useState(null)
   const [editQuestionMode, setEditQuestionMode] = useState('overwrite')
+
+  useEffect(() => {
+    if (!isReadonly) return
+    setSelectedGridAction('')
+    setSelectedGridQuestionIds([])
+    setSelectionBarPosition(null)
+  }, [isReadonly])
 
   const metricFilteredQuestions = useMemo(() => {
     if (activeMetric === 'suggested') {
@@ -798,6 +808,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
   }
 
   const openReportModal = (question) => {
+    if (!isEditable) return
     setReportQuestion(question)
     setReportReasons([])
     setReportExplanation('')
@@ -805,6 +816,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
   }
 
   const openEditModeModal = (question) => {
+    if (!isEditable) return
     setEditQuestion(question)
     setEditQuestionMode(isMedsyQuestion(question) ? 'overwrite' : 'duplicate')
   }
@@ -896,7 +908,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
 
     return (
       <span className="assessment-page-grid-row-actions" onClick={(event) => event.stopPropagation()}>
-        {!isReportMetricActive ? (
+        {isEditable && !isReportMetricActive ? (
           <button
             type="button"
             className="assessment-page-grid-row-action is-icon-only"
@@ -907,24 +919,26 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
             <Pencil size={14} strokeWidth={2.2} />
           </button>
         ) : null}
-        <button
-          type="button"
-          className="assessment-page-grid-row-action"
-          onClick={() => {
-            if (isReportMetricActive) {
-              withdrawReportedQuestion(question.id)
-              return
-            }
+        {isEditable ? (
+          <button
+            type="button"
+            className="assessment-page-grid-row-action"
+            onClick={() => {
+              if (isReportMetricActive) {
+                withdrawReportedQuestion(question.id)
+                return
+              }
 
-            openReportModal(question)
-          }}
-          title={isReportMetricActive ? 'Withdraw report' : 'Report question'}
-          aria-label={`${isReportMetricActive ? 'Withdraw report for' : 'Report'} question ${questionNumber}`}
-        >
-          <Flag size={14} strokeWidth={2.2} />
-          {isReportMetricActive ? 'Withdraw' : 'Report'}
-        </button>
-        {!isReportMetricActive ? (
+              openReportModal(question)
+            }}
+            title={isReportMetricActive ? 'Withdraw report' : 'Report question'}
+            aria-label={`${isReportMetricActive ? 'Withdraw report for' : 'Report'} question ${questionNumber}`}
+          >
+            <Flag size={14} strokeWidth={2.2} />
+            {isReportMetricActive ? 'Withdraw' : 'Report'}
+          </button>
+        ) : null}
+        {isEditable && !isReportMetricActive ? (
           <button
             type="button"
             className={`assessment-page-grid-row-action is-icon-only is-favorite ${isFavorite ? 'is-active' : ''}`}
@@ -1207,7 +1221,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
   }, [])
 
   return (
-    <section className="vx-content assessment-page">
+    <section className={`vx-content assessment-page ${embedded ? 'is-embedded' : ''} is-${resolvedMode}-mode`}>
       <div className={`assessment-page-shell ${selectedGridAction ? 'has-selection-bar' : ''}`}>
         <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
           {questionMetrics.map((metric) => {
@@ -1297,32 +1311,34 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
                   ) : null}
                 </span>
               ) : null}
-              <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
-                <button
-                  type="button"
-                  className={selectedGridAction === 'assessment' ? 'is-active' : ''}
-                  onClick={() => setSelectedGridAction('assessment')}
-                  disabled={selectedGridAction === 'learn' || isReportMetricActive}
-                >
-                  <ListChecks size={14} strokeWidth={2.3} />
-                  Add to Assessment
-                  {selectedGridAction === 'assessment' && selectedGridQuestionIds.length ? (
-                    <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
-                  ) : null}
-                </button>
-                <button
-                  type="button"
-                  className={selectedGridAction === 'learn' ? 'is-active' : ''}
-                  onClick={() => setSelectedGridAction('learn')}
-                  disabled={selectedGridAction === 'assessment' || isReportMetricActive}
-                >
-                  <Share2 size={14} strokeWidth={2.3} />
-                  Share to Students
-                  {selectedGridAction === 'learn' && selectedGridQuestionIds.length ? (
-                    <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
-                  ) : null}
-                </button>
-              </span>
+              {isEditable ? (
+                <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
+                  <button
+                    type="button"
+                    className={selectedGridAction === 'assessment' ? 'is-active' : ''}
+                    onClick={() => setSelectedGridAction('assessment')}
+                    disabled={selectedGridAction === 'learn' || isReportMetricActive}
+                  >
+                    <ListChecks size={14} strokeWidth={2.3} />
+                    Add to Assessment
+                    {selectedGridAction === 'assessment' && selectedGridQuestionIds.length ? (
+                      <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    className={selectedGridAction === 'learn' ? 'is-active' : ''}
+                    onClick={() => setSelectedGridAction('learn')}
+                    disabled={selectedGridAction === 'assessment' || isReportMetricActive}
+                  >
+                    <Share2 size={14} strokeWidth={2.3} />
+                    Share to Students
+                    {selectedGridAction === 'learn' && selectedGridQuestionIds.length ? (
+                      <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
+                    ) : null}
+                  </button>
+                </span>
+              ) : null}
               <span className="assessment-page-expand-toggle" role="group" aria-label="Expand or collapse all visible questions">
                 <button
                   type="button"
@@ -1799,7 +1815,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
           </section>
         ) : null}
 
-        {selectedGridAction ? (
+        {isEditable && selectedGridAction ? (
           <section
             ref={selectionBarRef}
             className="assessment-page-selection-bar"
@@ -1826,7 +1842,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
           </section>
         ) : null}
 
-        {reportQuestion && typeof document !== 'undefined' ? createPortal(
+        {isEditable && reportQuestion && typeof document !== 'undefined' ? createPortal(
           <div className="assessment-page-report-modal" role="dialog" aria-modal="true" aria-labelledby="assessment-report-title">
             <div className="assessment-page-report-backdrop" onClick={resetReportModal} aria-hidden="true" />
             <div className="assessment-page-report-card">
@@ -1906,7 +1922,7 @@ export default function QuestionBankNonCreatePage({ onNavigate }) {
           document.body,
         ) : null}
 
-        {editQuestion && typeof document !== 'undefined' ? createPortal(
+        {isEditable && editQuestion && typeof document !== 'undefined' ? createPortal(
           <div className="assessment-page-report-modal" role="dialog" aria-modal="true" aria-labelledby="assessment-edit-title">
             <div className="assessment-page-report-backdrop" onClick={closeEditModeModal} aria-hidden="true" />
             <div className="assessment-page-report-card assessment-page-edit-mode-card">

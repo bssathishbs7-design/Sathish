@@ -1253,7 +1253,7 @@ function App() {
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
             <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
-            <QuestionBankNonCreatePage onNavigate={navigateToPage} />
+            <QuestionBankNonCreatePage onNavigate={navigateToPage} mode="editable" />
           ) : activePage === APP_PAGES.QUERY_REQUEST ? (
             <QueryRequestPage />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (
