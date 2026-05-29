@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Filter, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import { APP_PAGES } from '../config/appPages'
 import medsyIcon from '../assets/medsy-icon.svg'
@@ -698,8 +698,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     keyConcepts: getValueCounts(metricFilteredQuestions, (question) => question.keyConcepts ?? []),
   }), [metricFilteredQuestions])
 
-  const selectedFilterCount = Object.values(filters).reduce((total, values) => total + values.length, 0)
-
   const toggleFilterValue = (filterKey, value) => {
     setFilters((current) => {
       const selectedValues = current[filterKey] ?? []
@@ -1383,60 +1381,46 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
             aria-label="All question bank controls"
           >
             <div className="assessment-page-filter-strip" aria-label="Question filters">
-              <button
-                type="button"
-                className={`assessment-page-filter-toggle ${openFilterKey ? 'is-open' : ''}`}
-                onClick={() => {
-                  if (isFilterHeaderCompact) {
-                    setIsCompactFilterTrayOpen((current) => !current)
-                    setOpenFilterKey('')
-                    return
-                  }
-                  setOpenFilterKey((current) => (current ? '' : baseFilterDefinitions[0]?.[0] ?? ''))
-                }}
-                aria-expanded={isFilterHeaderCompact ? isCompactFilterTrayOpen : Boolean(openFilterKey)}
-              >
-                <Filter size={16} strokeWidth={2.2} />
-                {selectedFilterCount ? <span>{selectedFilterCount}</span> : null}
-              </button>
-              {baseFilterDefinitions.map(renderFilterDropdown)}
-              {advancedFilterDefinitions.length ? (
-                <span className="assessment-page-more-filters-wrap" ref={moreFiltersRef}>
-                  <button
-                    type="button"
-                    className={`assessment-page-more-filters-btn ${showAdvancedFilters ? 'is-open' : ''}`}
-                    onClick={() => {
-                      updateMoreFiltersPosition()
-                      setShowAdvancedFilters((current) => !current)
-                    }}
-                    aria-expanded={showAdvancedFilters}
-                  >
-                    <Plus size={15} strokeWidth={2.3} />
-                    More
-                  </button>
-                  {showAdvancedFilters && typeof document !== 'undefined' ? createPortal(
-                    <span className="assessment-page-filter-advanced-row" style={moreFiltersPanelStyle} role="tooltip">
-                      <span className="assessment-page-more-filter-head">
-                        <strong>More filters</strong>
-                        {advancedFilterDefinitions.some(([filterKey]) => filters[filterKey]?.length) ? (
-                          <button type="button" onClick={clearMoreFilters}>
-                            Clear
-                          </button>
-                        ) : null}
-                      </span>
-                      {moreFilterGroups.map((group) => (
-                        <span key={group.label} className="assessment-page-more-filter-group">
-                          <strong>{group.label}</strong>
-                          <span>{group.filters.map((filter) => (
-                            filter[3] === 'boolean' ? renderBooleanFilterDropdown(filter) : renderFilterDropdown(filter)
-                          ))}</span>
+              <span className="assessment-page-filter-controls">
+                {baseFilterDefinitions.map(renderFilterDropdown)}
+                {advancedFilterDefinitions.length ? (
+                  <span className="assessment-page-more-filters-wrap" ref={moreFiltersRef}>
+                    <button
+                      type="button"
+                      className={`assessment-page-more-filters-btn ${showAdvancedFilters ? 'is-open' : ''}`}
+                      onClick={() => {
+                        updateMoreFiltersPosition()
+                        setShowAdvancedFilters((current) => !current)
+                      }}
+                      aria-expanded={showAdvancedFilters}
+                    >
+                      <Plus size={15} strokeWidth={2.3} />
+                      More
+                    </button>
+                    {showAdvancedFilters && typeof document !== 'undefined' ? createPortal(
+                      <span className="assessment-page-filter-advanced-row" style={moreFiltersPanelStyle} role="tooltip">
+                        <span className="assessment-page-more-filter-head">
+                          <strong>More filters</strong>
+                          {advancedFilterDefinitions.some(([filterKey]) => filters[filterKey]?.length) ? (
+                            <button type="button" onClick={clearMoreFilters}>
+                              Clear
+                            </button>
+                          ) : null}
                         </span>
-                      ))}
-                    </span>,
-                    document.body,
-                  ) : null}
-                </span>
-              ) : null}
+                        {moreFilterGroups.map((group) => (
+                          <span key={group.label} className="assessment-page-more-filter-group">
+                            <strong>{group.label}</strong>
+                            <span>{group.filters.map((filter) => (
+                              filter[3] === 'boolean' ? renderBooleanFilterDropdown(filter) : renderFilterDropdown(filter)
+                            ))}</span>
+                          </span>
+                        ))}
+                      </span>,
+                      document.body,
+                    ) : null}
+                  </span>
+                ) : null}
+              </span>
               {isEditable ? (
                 <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
                   <button

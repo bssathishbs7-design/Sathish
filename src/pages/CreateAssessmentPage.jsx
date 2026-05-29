@@ -18,6 +18,7 @@ import {
   RotateCcw,
   Save,
   Search,
+  Settings,
   Sparkles,
   Sun,
   Trash2,
@@ -291,11 +292,13 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [question, setQuestion] = useState(null)
   const [savedQuestions, setSavedQuestions] = useState(readSavedAssessmentQuestions)
   const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
+  const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState('')
-  const [isQuestionBankVisible, setIsQuestionBankVisible] = useState(false)
+  const [activeCreateTab, setActiveCreateTab] = useState('create')
+  const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(false)
   const [expandedQuestionId, setExpandedQuestionId] = useState(null)
 
   const detailItems = [setup.collegeName, setup.academicYear, setup.examCategory, setup.course, setup.year].filter(Boolean)
@@ -345,10 +348,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       : (question?.options ?? []).slice(0, 2).every((option) => getRichTextPreview(option.label))
   )
   const visibleQuestionRows = question
-    ? [
-      { ...question, isLivePreview: true },
-      ...savedQuestions.filter((item) => item.id !== question.id),
-    ]
+    ? savedQuestions.filter((item) => item.id !== question.id)
     : savedQuestions
 
   const updateQuestion = (patch) => {
@@ -383,6 +383,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const clearQuestion = () => {
     setQuestion(null)
     setIsQuestionTypePickerOpen(false)
+    setIsDescriptiveTypePickerOpen(false)
     setActiveMappingPicker(null)
     setMappingSearchValue('')
     setIsOptionalTagsOpen(false)
@@ -401,12 +402,16 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     })
     setExpandedQuestionId(item.id)
     setIsQuestionTypePickerOpen(false)
+    setIsDescriptiveTypePickerOpen(false)
+    setActiveCreateTab('create')
+    setHasSelectedCreateTab(true)
     setSaveStatus('Editing saved question.')
   }
 
   const addQuestionToQuestionBank = () => {
     if (!question || !canCreate) {
-      setIsQuestionBankVisible(true)
+      setActiveCreateTab('questionBank')
+      setHasSelectedCreateTab(true)
       // setSaveStatus('Question bank opened in view-only mode.')
       return
     }
@@ -430,10 +435,12 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(nextRows))
       window.dispatchEvent(new Event('question-bank-created-questions'))
       setSaveStatus('Added to question bank.')
-      setIsQuestionBankVisible(true)
+      setActiveCreateTab('questionBank')
+      setHasSelectedCreateTab(true)
     } catch {
       setSaveStatus('Unable to add question bank.')
-      setIsQuestionBankVisible(true)
+      setActiveCreateTab('questionBank')
+      setHasSelectedCreateTab(true)
     }
   }
 
@@ -456,6 +463,9 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       keyConcepts: current.keyConcepts,
     }) : createQuestion(setup, type))
     setIsQuestionTypePickerOpen(false)
+    setIsDescriptiveTypePickerOpen(false)
+    setActiveCreateTab('create')
+    setHasSelectedCreateTab(true)
     setSaveStatus('')
   }
 
@@ -618,80 +628,66 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         </div>
       </header>
 
+      <div className="create-assessment-workspace-body">
       <main className="create-assessment-workspace-main">
-        <div className="create-assessment-type-control">
-          <div className={`question-bank-type-select-panel ${isQuestionTypePickerOpen ? 'is-open' : ''}`}>
-            <button
-              type="button"
-              className="question-bank-type-select-trigger"
-              onClick={() => setIsQuestionTypePickerOpen((current) => !current)}
-              aria-expanded={isQuestionTypePickerOpen}
-            >
-              <strong>{question ? getQuestionTypeMeta(question.type).shortLabel : 'Create New Question'}</strong>
-              <ChevronDown size={16} strokeWidth={2.4} />
-            </button>
-
-            {isQuestionTypePickerOpen ? (
-              <div className="question-bank-type-picker">
-                {QUESTION_TYPE_CARDS.map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <button
-                      key={item.type}
-                      type="button"
-                      className="question-bank-type-picker-item"
-                      onClick={() => handleQuestionTypeChange(item.type)}
-                    >
-                      <span className="question-bank-type-picker-icon">
-                        <Icon size={15} strokeWidth={2} />
-                      </span>
-                      <span>{item.menuLabel ?? item.shortLabel}</span>
-                    </button>
-                  )
-                })}
-                {question ? (
-                  <button
-                    type="button"
-                    className="question-bank-type-picker-item is-clear-option"
-                    onClick={clearQuestion}
-                  >
-                    <span className="question-bank-type-picker-icon">
-                      <RotateCcw size={15} strokeWidth={2} />
-                    </span>
-                    <span>Clear</span>
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-          <div className="create-assessment-type-actions">
-            <button type="button" className="create-assessment-type-action is-question-bank" onClick={addQuestionToQuestionBank} >
-              <Database size={16} strokeWidth={2.2} />
-              Add to Question Bank
-            </button>
-          </div>
-          {saveStatus ? <span className="create-assessment-save-status">{saveStatus}</span> : null}
-        </div>
-
-        {isQuestionBankVisible ? (
+        {activeCreateTab === 'questionBank' ? (
           <section className="create-assessment-question-bank-panel" aria-label="Question bank view">
-            <header className="create-assessment-question-bank-panel-head">
-              <div>
-                <strong>Question Bank</strong>
-                {/* <span>Readonly mode</span> */}
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsQuestionBankVisible(false)}
-                aria-label="Close question bank"
-              >
-                <X size={16} strokeWidth={2.3} />
-              </button>
-            </header>
             <QuestionBankNonCreatePage mode="readonly" embedded onNavigate={onNavigate} />
           </section>
         ) : null}
 
+        {activeCreateTab === 'preview' ? (
+          <section className="create-assessment-tab-panel" aria-label="Assessment preview">
+            <div className="create-assessment-tab-panel-head">
+              <strong>Preview</strong>
+            </div>
+            {question || savedQuestions.length ? (
+              <div className="create-assessment-preview-list">
+                {[...(question ? [question] : []), ...savedQuestions.filter((item) => item.id !== question?.id)].map((item, index) => (
+                  <article key={item.id} className="create-assessment-preview-card">
+                    <span className={`question-bank-badge type ${isDescriptiveQuestionType(item.type) ? 'is-desc' : 'is-mcq'}`}>
+                      {isDescriptiveQuestionType(item.type) ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}
+                    </span>
+                    <div>
+                      <strong>Q{index + 1}. {getRichTextPreview(item.questionText) || item.title || 'Untitled question'}</strong>
+                      <span>{[item.year, item.subject, item.topics?.[0]].filter(Boolean).join(' / ') || 'Curriculum not selected'}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="assessment-create-placeholder">
+                <p>No questions available for preview.</p>
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        {activeCreateTab === 'configuration' ? (
+          <section className="create-assessment-tab-panel" aria-label="Assessment configuration">
+            <div className="create-assessment-tab-panel-head">
+              <strong>Configuration</strong>
+            </div>
+            <div className="create-assessment-configuration-grid">
+              {[
+                ['College', setup.collegeName],
+                ['Academic Year', setup.academicYear],
+                ['Exam Category', setup.examCategory],
+                ['Course', setup.course],
+                ['Year', setup.year],
+                ['Assessment', setup.assessmentName || 'Untitled Assessment'],
+              ].map(([label, value]) => (
+                <span key={label} className="create-assessment-configuration-item">
+                  <small>{label}</small>
+                  <strong>{value || 'Not configured'}</strong>
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {activeCreateTab === 'create' ? (
+          <>
         {question ? (
           <section className={`question-bank-author-card ${question.isCritical ? 'is-critical' : ''}`}>
             <div className="question-bank-author-grid">
@@ -1209,26 +1205,133 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             })}
           </section>
         ) : null}
+          </>
+        ) : null}
       </main>
 
-      <footer className="create-assessment-footer">
-        <div className="create-assessment-footer-left">
-          <button type="button" className="create-assessment-footer-btn is-preview" disabled={!question}>
-            <Eye size={16} strokeWidth={2.2} />
-            Preview
+      <aside className="create-assessment-action-panel" aria-label="Create actions">
+        <strong>Create Assessment</strong>
+        <div className={`question-bank-type-select-panel ${isQuestionTypePickerOpen ? 'is-open' : ''}`}>
+          <button
+            type="button"
+            className={`create-assessment-action-btn is-create ${hasSelectedCreateTab && activeCreateTab === 'create' ? 'is-active' : ''}`}
+            onClick={() => {
+              setActiveCreateTab('create')
+              setHasSelectedCreateTab(true)
+              if (isQuestionTypePickerOpen) setIsDescriptiveTypePickerOpen(false)
+              setIsQuestionTypePickerOpen((current) => !current)
+            }}
+            aria-expanded={isQuestionTypePickerOpen}
+            aria-pressed={hasSelectedCreateTab && activeCreateTab === 'create'}
+          >
+            <ListChecks size={16} strokeWidth={2.2} />
+            <span>Create New Question</span>
+            <ChevronDown size={15} strokeWidth={2.4} />
           </button>
+
+          {isQuestionTypePickerOpen ? (
+            <div className="question-bank-type-picker">
+              {QUESTION_TYPE_CARDS.slice(0, 1).map((item) => {
+                const Icon = item.icon
+                return (
+                  <button
+                    key={item.type}
+                    type="button"
+                    className="question-bank-type-picker-item"
+                    onClick={() => handleQuestionTypeChange(item.type)}
+                  >
+                    <span className="question-bank-type-picker-icon">
+                      <Icon size={15} strokeWidth={2} />
+                    </span>
+                    <span>{item.menuLabel ?? item.shortLabel}</span>
+                  </button>
+                )
+              })}
+              <div className={`question-bank-type-picker-group ${isDescriptiveTypePickerOpen ? 'is-open' : ''}`}>
+                <button
+                  type="button"
+                  className="question-bank-type-picker-item question-bank-type-picker-menu-trigger"
+                  onClick={() => setIsDescriptiveTypePickerOpen((current) => !current)}
+                  aria-expanded={isDescriptiveTypePickerOpen}
+                >
+                  <span className="question-bank-type-picker-icon">
+                    <FilePenLine size={15} strokeWidth={2} />
+                  </span>
+                  <span>Descriptive</span>
+                  <ChevronDown size={15} strokeWidth={2.4} />
+                </button>
+                {isDescriptiveTypePickerOpen ? (
+                  <div className="question-bank-type-picker-menu">
+                    {DESCRIPTIVE_QUESTION_TYPES.map((item) => (
+                      <button
+                        key={item.type}
+                        type="button"
+                        className="question-bank-type-picker-menu-item"
+                        onClick={() => handleQuestionTypeChange(item.type)}
+                      >
+                        <span className="question-bank-type-picker-icon">
+                          <FilePenLine size={15} strokeWidth={2} />
+                        </span>
+                        <span>{item.menuLabel}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
-        <div className="create-assessment-footer-right">
-          <button type="button" className="create-assessment-footer-btn is-draft" onClick={() => persistQuestion('Draft')} disabled={!question || !canSaveDraft}>
-            <Save size={16} strokeWidth={2.2} />
-            Save Draft
-          </button>
-          <button type="button" className="create-assessment-footer-btn is-next" onClick={() => persistQuestion('Created')} disabled={!question || !canCreate}>
-            <ArrowRight size={16} strokeWidth={2.2} />
-            Save to Next
-          </button>
-        </div>
-      </footer>
+        <button
+          type="button"
+          className={`create-assessment-action-btn ${activeCreateTab === 'questionBank' ? 'is-active' : ''}`}
+          onClick={() => {
+            setActiveCreateTab('questionBank')
+            setHasSelectedCreateTab(true)
+            setIsQuestionTypePickerOpen(false)
+          }}
+          aria-pressed={activeCreateTab === 'questionBank'}
+        >
+          <Database size={16} strokeWidth={2.2} />
+          <span>Question Bank</span>
+        </button>
+        <button
+          type="button"
+          className={`create-assessment-action-btn ${activeCreateTab === 'preview' ? 'is-active' : ''}`}
+          onClick={() => {
+            setActiveCreateTab('preview')
+            setHasSelectedCreateTab(true)
+            setIsQuestionTypePickerOpen(false)
+          }}
+          disabled={!question && !savedQuestions.length}
+          aria-pressed={activeCreateTab === 'preview'}
+        >
+          <Eye size={16} strokeWidth={2.2} />
+          <span>Preview</span>
+        </button>
+        <button
+          type="button"
+          className={`create-assessment-action-btn ${activeCreateTab === 'configuration' ? 'is-active' : ''}`}
+          onClick={() => {
+            setActiveCreateTab('configuration')
+            setHasSelectedCreateTab(true)
+            setIsQuestionTypePickerOpen(false)
+          }}
+          aria-pressed={activeCreateTab === 'configuration'}
+        >
+          <Settings size={16} strokeWidth={2.2} />
+          <span>Configuration</span>
+        </button>
+        <button type="button" className="create-assessment-action-btn" onClick={() => persistQuestion('Draft')} disabled={!question || !canSaveDraft}>
+          <Save size={16} strokeWidth={2.2} />
+          <span>Save as Draft</span>
+        </button>
+        <button type="button" className="create-assessment-action-btn is-primary" onClick={() => persistQuestion('Created')} disabled={!question || !canCreate}>
+          <ArrowRight size={16} strokeWidth={2.2} />
+          <span>Send to Approval</span>
+        </button>
+        {saveStatus ? <span className="create-assessment-save-status">{saveStatus}</span> : null}
+      </aside>
+      </div>
     </section>
   )
 }
