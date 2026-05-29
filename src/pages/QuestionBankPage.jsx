@@ -227,7 +227,6 @@ const CURRICULUM_DIRECTORY = YEAR_OPTIONS.reduce((directory, year) => ({
 
 const QUESTION_TYPE_CARDS = [
   { type: 'MCQ', shortLabel: 'MCQ', icon: ListChecks },
-  ...DESCRIPTIVE_QUESTION_TYPES.map((item) => ({ ...item, icon: FilePenLine })),
   { type: 'True or False', shortLabel: 'True / False', icon: CheckCheck, isUpcoming: true },
   { type: 'Fill in the Blanks', shortLabel: 'Fill in blanks', icon: Sigma, isUpcoming: true },
   { type: 'Match Marker', shortLabel: 'Match Marker', icon: FolderTree, isUpcoming: true },
@@ -473,6 +472,7 @@ const isDescriptiveQuestionType = (type) => DESCRIPTIVE_QUESTION_TYPE_SET.has(ty
 
 const getQuestionTypeMeta = (type) => (
   QUESTION_TYPE_CARDS.find((item) => item.type === type)
+  ?? DESCRIPTIVE_QUESTION_TYPES.find((item) => item.type === type)
   ?? (type === 'Descriptive Question' ? { type, shortLabel: 'SAQs', menuLabel: 'Short Answer Questions (SAQs)', icon: FilePenLine } : QUESTION_TYPE_CARDS[0])
 )
 
@@ -989,6 +989,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [autoOpenCurriculumQuestionId, setAutoOpenCurriculumQuestionId] = useState(null)
   const [activeQuestionTab, setActiveQuestionTab] = useState('create')
   const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
+  const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
   const [selectedQuestionTypeLabel, setSelectedQuestionTypeLabel] = useState('')
   const [isApprovalSelectMode, setIsApprovalSelectMode] = useState(false)
   const [approvalSelectedIds, setApprovalSelectedIds] = useState([])
@@ -1303,6 +1304,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setActiveQuestionTab('create')
     setSelectedQuestionTypeLabel(typeMeta.shortLabel)
     setIsQuestionTypePickerOpen(false)
+    setIsDescriptiveTypePickerOpen(false)
   }
 
   const openEditQuestionFlow = (questionId) => {
@@ -2082,7 +2084,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       <button
         type="button"
         className="question-bank-type-select-trigger"
-        onClick={() => setIsQuestionTypePickerOpen((current) => !current)}
+        onClick={() => {
+          if (isQuestionTypePickerOpen) setIsDescriptiveTypePickerOpen(false)
+          setIsQuestionTypePickerOpen((current) => !current)
+        }}
         aria-expanded={isQuestionTypePickerOpen}
       >
         <span className="question-bank-type-picker-icon">
@@ -2094,7 +2099,56 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
       {isQuestionTypePickerOpen ? (
         <div className="question-bank-type-picker">
-          {QUESTION_TYPE_CARDS.map((item) => {
+          {QUESTION_TYPE_CARDS.slice(0, 1).map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.type}
+                type="button"
+                className={`question-bank-type-picker-item ${item.isUpcoming ? 'is-upcoming' : ''}`}
+                onClick={() => handleCreateQuestion(item.type)}
+                disabled={item.isUpcoming}
+              >
+                <span className="question-bank-type-picker-icon">
+                  <Icon size={15} strokeWidth={2} />
+                </span>
+                <span>{item.menuLabel ?? item.shortLabel}</span>
+                {item.isUpcoming ? <small>Upcoming</small> : null}
+              </button>
+            )
+          })}
+          <div className={`question-bank-type-picker-group ${isDescriptiveTypePickerOpen ? 'is-open' : ''}`}>
+            <button
+              type="button"
+              className="question-bank-type-picker-item question-bank-type-picker-menu-trigger"
+              onClick={() => setIsDescriptiveTypePickerOpen((current) => !current)}
+              aria-expanded={isDescriptiveTypePickerOpen}
+            >
+              <span className="question-bank-type-picker-icon">
+                <FilePenLine size={15} strokeWidth={2} />
+              </span>
+              <span>Descriptive</span>
+              <ChevronDown size={15} strokeWidth={2.4} />
+            </button>
+            {isDescriptiveTypePickerOpen ? (
+              <div className="question-bank-type-picker-menu">
+                {DESCRIPTIVE_QUESTION_TYPES.map((item) => (
+                  <button
+                    key={item.type}
+                    type="button"
+                    className="question-bank-type-picker-menu-item"
+                    onClick={() => handleCreateQuestion(item.type)}
+                  >
+                    <span className="question-bank-type-picker-icon">
+                      <FilePenLine size={15} strokeWidth={2} />
+                    </span>
+                    <span>{item.menuLabel}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          {QUESTION_TYPE_CARDS.slice(1).map((item) => {
             const Icon = item.icon
             return (
               <button
