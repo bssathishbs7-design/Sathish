@@ -35,6 +35,11 @@ const DESCRIPTIVE_TYPE_LABELS = new Map([
   ['descriptive question', 'SAQs'],
   ['descriptive', 'SAQs'],
 ])
+const DESCRIPTIVE_FILTER_TYPE_LABELS = new Map([
+  ['LAQs', 'Descriptive (LAQs)'],
+  ['SAQs', 'Descriptive (SAQs)'],
+  ['MEQs', 'Descriptive (MEQs)'],
+])
 
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
 const getCompetencyCode = (value) => String(value ?? '').trim().split(/\s+/)[0] || value
@@ -467,6 +472,11 @@ const getQuestionTypeLabel = (questionOrType) => {
   return normalized || 'Question'
 }
 
+const getQuestionTypeFilterLabel = (questionOrType) => {
+  const compactLabel = getQuestionTypeLabel(questionOrType)
+  return DESCRIPTIVE_FILTER_TYPE_LABELS.get(compactLabel) ?? compactLabel
+}
+
 const isDescriptiveQuestion = (question) => (
   getQuestionTypeBadgeClassName(question) === 'is-descriptive'
 )
@@ -652,7 +662,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }, [activeMetric, publishedQuestions, reportedQuestionRecords, createdReportedQuestionRecords])
   const filterOptions = useMemo(() => ({
     authors: getUniqueValues(metricFilteredQuestions, getQuestionAuthorName),
-    types: getUniqueValues(metricFilteredQuestions, (question) => getQuestionTypeLabel(question)),
+    types: getUniqueValues(metricFilteredQuestions, (question) => getQuestionTypeFilterLabel(question)),
     years: getUniqueValues(metricFilteredQuestions, (question) => question.year),
     subjects: getUniqueValues(metricFilteredQuestions, (question) => question.subject),
     topics: getUniqueValues(metricFilteredQuestions, (question) => question.topics ?? []),
@@ -671,7 +681,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
 
   const filterOptionCounts = useMemo(() => ({
     authors: getValueCounts(metricFilteredQuestions, getQuestionAuthorName),
-    types: getValueCounts(metricFilteredQuestions, (question) => getQuestionTypeLabel(question)),
+    types: getValueCounts(metricFilteredQuestions, (question) => getQuestionTypeFilterLabel(question)),
     years: getValueCounts(metricFilteredQuestions, (question) => question.year),
     subjects: getValueCounts(metricFilteredQuestions, (question) => question.subject),
     topics: getValueCounts(metricFilteredQuestions, (question) => question.topics ?? []),
@@ -745,7 +755,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const filteredQuestions = useMemo(() => {
     return metricFilteredQuestions.filter((question) => {
       if (!hasFilterMatch(filters.authors, getQuestionAuthorName(question))) return false
-      if (!hasFilterMatch(filters.types, getQuestionTypeLabel(question))) return false
+      if (!hasFilterMatch(filters.types, getQuestionTypeFilterLabel(question))) return false
       if (!hasFilterMatch(filters.years, question.year)) return false
       if (!hasFilterMatch(filters.subjects, question.subject)) return false
       if (!hasFilterMatch(filters.topics, question.topics ?? [])) return false
