@@ -953,7 +953,7 @@
   min-height: 0;
   min-width: 0;
   overflow: auto;
-  padding: 0;
+  padding: 13px;
 }
 
 .create-assessment-workspace .assessment-page.is-embedded {

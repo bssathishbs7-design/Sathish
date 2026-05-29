@@ -79,9 +79,9 @@ const MULTIPLE_OPTION_MIN_COUNT = 3
 const MULTIPLE_OPTION_MAX_COUNT = 8
 const ROMAN_NUMERALS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']
 const DESCRIPTIVE_QUESTION_TYPES = [
-  { type: 'Desc Long Answer Questions (LAQs)', shortLabel: 'LAQs', menuLabel: 'Long Answer Questions (LAQs)' },
-  { type: 'Desc Short Answer Questions (SAQs)', shortLabel: 'SAQs', menuLabel: 'Short Answer Questions (SAQs)' },
-  { type: 'Desc Modified Essay Questions (MEQs)', shortLabel: 'MEQs', menuLabel: 'Modified Essay Questions (MEQs)' },
+  { type: 'Desc Long Answer Questions (LAQs)', shortLabel: 'LAQs', menuLabel: 'Descriptive Long (LAQs)' },
+  { type: 'Desc Short Answer Questions (SAQs)', shortLabel: 'SAQs', menuLabel: 'Descriptive Short (SAQs)' },
+  { type: 'Desc Modified Essay Questions (MEQs)', shortLabel: 'MEQs', menuLabel: 'Descriptive Essay (MEQs)' },
 ]
 const DESCRIPTIVE_QUESTION_TYPE_SET = new Set(['Descriptive Question', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type)])
 const QUESTION_TYPE_CARDS = [
@@ -299,6 +299,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [saveStatus, setSaveStatus] = useState('')
   const [activeCreateTab, setActiveCreateTab] = useState('create')
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(false)
+  const [selectedCreateQuestionTypeLabel, setSelectedCreateQuestionTypeLabel] = useState('')
   const [expandedQuestionId, setExpandedQuestionId] = useState(null)
 
   const detailItems = [setup.collegeName, setup.academicYear, setup.examCategory, setup.course, setup.year].filter(Boolean)
@@ -347,6 +348,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       ? true
       : (question?.options ?? []).slice(0, 2).every((option) => getRichTextPreview(option.label))
   )
+  const selectedQuestionTypeLabel = selectedCreateQuestionTypeLabel || 'Create New Question'
   const visibleQuestionRows = question
     ? savedQuestions.filter((item) => item.id !== question.id)
     : savedQuestions
@@ -437,14 +439,17 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       setSaveStatus('Added to question bank.')
       setActiveCreateTab('questionBank')
       setHasSelectedCreateTab(true)
+      setSelectedCreateQuestionTypeLabel('')
     } catch {
       setSaveStatus('Unable to add question bank.')
       setActiveCreateTab('questionBank')
       setHasSelectedCreateTab(true)
+      setSelectedCreateQuestionTypeLabel('')
     }
   }
 
   const handleQuestionTypeChange = (type) => {
+    const nextTypeMeta = getQuestionTypeMeta(type)
     setQuestion((current) => current ? ({
       ...createQuestion(setup, type),
       year: current.year,
@@ -466,6 +471,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     setIsDescriptiveTypePickerOpen(false)
     setActiveCreateTab('create')
     setHasSelectedCreateTab(true)
+    setSelectedCreateQuestionTypeLabel(nextTypeMeta?.menuLabel ?? nextTypeMeta?.shortLabel ?? 'Create New Question')
     setSaveStatus('')
   }
 
@@ -1225,7 +1231,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             aria-pressed={hasSelectedCreateTab && activeCreateTab === 'create'}
           >
             <ListChecks size={16} strokeWidth={2.2} />
-            <span>Create New Question</span>
+            <span>{selectedQuestionTypeLabel}</span>
             <ChevronDown size={15} strokeWidth={2.4} />
           </button>
 
@@ -1288,6 +1294,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             setActiveCreateTab('questionBank')
             setHasSelectedCreateTab(true)
             setIsQuestionTypePickerOpen(false)
+            setIsDescriptiveTypePickerOpen(false)
+            setSelectedCreateQuestionTypeLabel('')
           }}
           aria-pressed={activeCreateTab === 'questionBank'}
         >
@@ -1301,6 +1309,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             setActiveCreateTab('preview')
             setHasSelectedCreateTab(true)
             setIsQuestionTypePickerOpen(false)
+            setIsDescriptiveTypePickerOpen(false)
+            setSelectedCreateQuestionTypeLabel('')
           }}
           disabled={!question && !savedQuestions.length}
           aria-pressed={activeCreateTab === 'preview'}
@@ -1315,6 +1325,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             setActiveCreateTab('configuration')
             setHasSelectedCreateTab(true)
             setIsQuestionTypePickerOpen(false)
+            setIsDescriptiveTypePickerOpen(false)
+            setSelectedCreateQuestionTypeLabel('')
           }}
           aria-pressed={activeCreateTab === 'configuration'}
         >
