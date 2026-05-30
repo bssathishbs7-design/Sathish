@@ -300,7 +300,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [activeCreateTab, setActiveCreateTab] = useState('create')
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(false)
   const [selectedCreateQuestionTypeLabel, setSelectedCreateQuestionTypeLabel] = useState('')
-  const [expandedQuestionId, setExpandedQuestionId] = useState(null)
 
   const detailItems = [setup.collegeName, setup.academicYear, setup.examCategory, setup.course, setup.year].filter(Boolean)
   const subjectDirectory = question ? SUBJECT_DIRECTORY[question.subject] ?? null : null
@@ -349,9 +348,11 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       : (question?.options ?? []).slice(0, 2).every((option) => getRichTextPreview(option.label))
   )
   const selectedQuestionTypeLabel = selectedCreateQuestionTypeLabel || 'Create New Question'
-  const visibleQuestionRows = question
-    ? savedQuestions.filter((item) => item.id !== question.id)
-    : savedQuestions
+  const previewQuestions = useMemo(
+    () => [...(question ? [question] : []), ...savedQuestions.filter((item) => item.id !== question?.id)],
+    [question, savedQuestions],
+  )
+  const previewQuestionCount = previewQuestions.length
 
   const updateQuestion = (patch) => {
     setQuestion((current) => current ? ({
@@ -378,7 +379,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     window.localStorage.setItem(CREATE_ASSESSMENT_QUESTIONS_KEY, JSON.stringify(nextQuestions))
     setSavedQuestions(nextQuestions)
     setQuestion(createQuestion(setup, question.type))
-    setExpandedQuestionId(nextQuestion.id)
     setSaveStatus(status === 'Draft' ? 'Draft saved.' : 'Question created.')
   }
 
@@ -390,24 +390,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     setMappingSearchValue('')
     setIsOptionalTagsOpen(false)
     setSaveStatus('')
-  }
-
-  const editSavedQuestion = (item) => {
-    const baseQuestion = createQuestion(setup, item.type)
-
-    setQuestion({
-      ...baseQuestion,
-      ...item,
-      options: item.options?.length ? item.options : baseQuestion.options,
-      descriptiveSections: item.descriptiveSections ?? [],
-      status: 'Editing',
-    })
-    setExpandedQuestionId(item.id)
-    setIsQuestionTypePickerOpen(false)
-    setIsDescriptiveTypePickerOpen(false)
-    setActiveCreateTab('create')
-    setHasSelectedCreateTab(true)
-    setSaveStatus('Editing saved question.')
   }
 
   const addQuestionToQuestionBank = () => {
@@ -446,6 +428,45 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       setHasSelectedCreateTab(true)
       setSelectedCreateQuestionTypeLabel('')
     }
+  }
+
+  const addQuestionBankSelectionToAssessment = (questions = []) => {
+    const importedQuestions = questions.map((item, index) => ({
+      ...item,
+      id: `assessment-imported-${item.id ?? Date.now()}-${index}`,
+      originalQuestionId: item.id ?? item.originalQuestionId,
+      status: 'Created',
+      source: item.source || 'Question Bank',
+      assessmentName: setup.assessmentName || 'Untitled Assessment',
+      savedAt: new Date().toISOString(),
+    }))
+
+    if (!importedQuestions.length) return
+
+    const nextQuestions = [
+      ...importedQuestions,
+      ...savedQuestions.filter((item) => !questions.some((questionItem) => (
+        (questionItem.id ?? questionItem.originalQuestionId) === (item.originalQuestionId ?? item.id)
+      ))),
+    ]
+    window.localStorage.setItem(CREATE_ASSESSMENT_QUESTIONS_KEY, JSON.stringify(nextQuestions))
+    setSavedQuestions(nextQuestions)
+    setSaveStatus(`${importedQuestions.length} question${importedQuestions.length === 1 ? '' : 's'} added to assessment.`)
+  }
+
+  const deletePreviewQuestion = (item) => {
+    if (!item?.id) return
+
+    if (question?.id === item.id) {
+      setQuestion(null)
+      setSaveStatus('Question removed from preview.')
+      return
+    }
+
+    const nextQuestions = savedQuestions.filter((savedItem) => savedItem.id !== item.id)
+    window.localStorage.setItem(CREATE_ASSESSMENT_QUESTIONS_KEY, JSON.stringify(nextQuestions))
+    setSavedQuestions(nextQuestions)
+    setSaveStatus('Question removed from preview.')
   }
 
   const handleQuestionTypeChange = (type) => {
@@ -489,13 +510,13 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     )))
   }
 
-  const updateDescriptiveInsideQuestion = (sectionId, childId, patch) => {
-    updateDescriptiveSections((sections) => sections.map((section) => (
-      section.id === sectionId
+  const updateDescriptiveInsideQuestion = (sectionId, childId, patch, sectionIndex, childIndex) => {
+    updateDescriptiveSections((sections) => sections.map((section, index) => (
+      section.id === sectionId || index === sectionIndex
         ? {
           ...section,
-          children: (section.children ?? []).map((child) => (
-            child.id === childId ? { ...child, ...patch } : child
+          children: (Array.isArray(section.children) ? section.children : []).map((child, currentChildIndex) => (
+            child.id === childId || currentChildIndex === childIndex ? { ...child, ...patch } : child
           )),
         }
         : section
@@ -510,18 +531,23 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     updateDescriptiveSections((sections) => sections.filter((section) => section.id !== sectionId))
   }
 
-  const addDescriptiveInsideQuestion = (sectionId) => {
-    updateDescriptiveSections((sections) => sections.map((section) => (
-      section.id === sectionId
-        ? { ...section, children: [...(section.children ?? []), createDescriptiveInsideQuestion()] }
+  const addDescriptiveInsideQuestion = (sectionId, sectionIndex) => {
+    updateDescriptiveSections((sections) => sections.map((section, index) => (
+      section.id === sectionId || index === sectionIndex
+        ? { ...section, children: [...(Array.isArray(section.children) ? section.children : []), createDescriptiveInsideQuestion()] }
         : section
     )))
   }
 
-  const deleteDescriptiveInsideQuestion = (sectionId, childId) => {
-    updateDescriptiveSections((sections) => sections.map((section) => (
-      section.id === sectionId
-        ? { ...section, children: (section.children ?? []).filter((child) => child.id !== childId) }
+  const deleteDescriptiveInsideQuestion = (sectionId, childId, sectionIndex, childIndex) => {
+    updateDescriptiveSections((sections) => sections.map((section, index) => (
+      section.id === sectionId || index === sectionIndex
+        ? {
+          ...section,
+          children: (Array.isArray(section.children) ? section.children : []).filter((child, currentChildIndex) => (
+            child.id !== childId && currentChildIndex !== childIndex
+          )),
+        }
         : section
     )))
   }
@@ -638,7 +664,12 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       <main className="create-assessment-workspace-main">
         {activeCreateTab === 'questionBank' ? (
           <section className="create-assessment-question-bank-panel" aria-label="Question bank view">
-            <QuestionBankNonCreatePage mode="readonly" embedded onNavigate={onNavigate} />
+            <QuestionBankNonCreatePage
+              mode="readonly"
+              embedded
+              onNavigate={onNavigate}
+              onAddToAssessment={addQuestionBankSelectionToAssessment}
+            />
           </section>
         ) : null}
 
@@ -647,9 +678,9 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             <div className="create-assessment-tab-panel-head">
               <strong>Preview</strong>
             </div>
-            {question || savedQuestions.length ? (
+            {previewQuestionCount ? (
               <div className="create-assessment-preview-list">
-                {[...(question ? [question] : []), ...savedQuestions.filter((item) => item.id !== question?.id)].map((item, index) => (
+                {previewQuestions.map((item, index) => (
                   <article key={item.id} className="create-assessment-preview-card">
                     <span className={`question-bank-badge type ${isDescriptiveQuestionType(item.type) ? 'is-desc' : 'is-mcq'}`}>
                       {isDescriptiveQuestionType(item.type) ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}
@@ -658,6 +689,15 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                       <strong>Q{index + 1}. {getRichTextPreview(item.questionText) || item.title || 'Untitled question'}</strong>
                       <span>{[item.year, item.subject, item.topics?.[0]].filter(Boolean).join(' / ') || 'Curriculum not selected'}</span>
                     </div>
+                    <button
+                      type="button"
+                      className="create-assessment-preview-delete"
+                      onClick={() => deletePreviewQuestion(item)}
+                      aria-label={`Delete question ${index + 1} from preview`}
+                      title="Delete question"
+                    >
+                      <Trash2 size={15} strokeWidth={2.2} />
+                    </button>
                   </article>
                 ))}
               </div>
@@ -944,7 +984,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                     <label className="question-bank-descriptive-text">
                                       <RichMathEditor
                                         value={child.questionText}
-                                        onChange={(nextValue) => updateDescriptiveInsideQuestion(section.id, child.id, { questionText: nextValue })}
+                                        onChange={(nextValue) => updateDescriptiveInsideQuestion(section.id, child.id, { questionText: nextValue }, sectionIndex, childIndex)}
                                         placeholder="Enter your question"
                                         minRows={1}
                                         compact
@@ -953,9 +993,9 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                     </label>
                                     <label className="question-bank-descriptive-marks">
                                       <span>Marks</span>
-                                      <input value={child.marks ?? '0'} onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value })} inputMode="decimal" />
+                                      <input value={child.marks ?? '0'} onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value }, sectionIndex, childIndex)} inputMode="decimal" />
                                     </label>
-                                    <button type="button" className="question-bank-icon-btn question-bank-descriptive-delete-btn" onClick={() => deleteDescriptiveInsideQuestion(section.id, child.id)} aria-label={`Delete inside question ${childIndex + 1}`}>
+                                    <button type="button" className="question-bank-icon-btn question-bank-descriptive-delete-btn" onClick={() => deleteDescriptiveInsideQuestion(section.id, child.id, sectionIndex, childIndex)} aria-label={`Delete inside question ${childIndex + 1}`}>
                                       <Trash2 size={14} strokeWidth={2.2} />
                                     </button>
                                   </div>
@@ -963,7 +1003,14 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                               </div>
 
                               <div className="question-bank-descriptive-sub-actions">
-                                <button type="button" className="question-bank-secondary-btn" onClick={() => addDescriptiveInsideQuestion(section.id)}>
+                                <button
+                                  type="button"
+                                  className="question-bank-secondary-btn"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    addDescriptiveInsideQuestion(section.id, sectionIndex)
+                                  }}
+                                >
                                   <Plus size={14} strokeWidth={2.2} />
                                   Inside
                                 </button>
@@ -1082,135 +1129,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
           </section>
         ) : null}
 
-        {visibleQuestionRows.length ? (
-          <section className="create-assessment-question-list" aria-label="Created questions">
-            {visibleQuestionRows.map((item, index) => {
-              const isOpen = expandedQuestionId === item.id
-              const isDescriptive = isDescriptiveQuestionType(item.type)
-              const optionalTagGroups = getQuestionOptionalTagGroups(item)
-              const visibleOptions = (item.options ?? []).filter((option) => Boolean(getRichTextPreview(option.label)))
-              const curriculumMeta = [
-                item.year,
-                item.subject,
-                item.topics?.length ? getSelectionSummary(item.topics, '') : null,
-                item.competencies?.length ? getSelectionSummary(item.competencies, '', getShortCompetencyLabel) : null,
-              ].filter(Boolean)
-
-              return (
-                <article key={item.id} className={`question-bank-created-card create-assessment-question-row ${item.isCritical ? 'is-critical' : ''} ${isOpen ? 'is-open' : ''}`}>
-                  <div className="create-assessment-question-summary">
-                    <span className={`question-bank-badge type create-assessment-question-type ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>
-                      {isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}
-                    </span>
-                    <button
-                      type="button"
-                      className="create-assessment-question-title"
-                      onClick={() => setExpandedQuestionId((current) => (current === item.id ? null : item.id))}
-                      aria-expanded={isOpen}
-                      title={isOpen ? 'Close question details' : 'Open question details'}
-                    >
-                      <strong>Q{index + 1}.</strong>
-                      <span>{getRichTextPreview(item.questionText) || item.title || (item.isLivePreview ? 'Current question preview' : 'Untitled question')}</span>
-                    </button>
-                    <span className="create-assessment-question-badges">
-                      {item.isLivePreview ? <span className="question-bank-badge mint">Editing</span> : null}
-                      {item.difficultyLevel ? <span className="question-bank-badge soft">{item.difficultyLevel}</span> : null}
-                      {item.thinkingLevel ? <span className="question-bank-badge lilac">{item.thinkingLevel}</span> : null}
-                      {item.isCritical ? <span className="question-bank-badge warning">Critical</span> : null}
-                      {optionalTagGroups.length ? (
-                        <span className="question-bank-created-tags-wrap">
-                          <button
-                            type="button"
-                            className="question-bank-badge question-bank-created-tags-badge"
-                            onClick={(event) => event.stopPropagation()}
-                            aria-label={`View tags for question ${index + 1}`}
-                          >
-                            <Info size={13} strokeWidth={2.2} />
-                            Tags
-                          </button>
-                          <span className="question-bank-created-tags-tooltip" role="tooltip">
-                            {optionalTagGroups.map((group) => (
-                              <span key={group.label} className="question-bank-created-tags-group">
-                                <strong>{group.label}</strong>
-                                <span>
-                                  {group.values.map((value) => (
-                                    <span key={value}>{value}</span>
-                                  ))}
-                                </span>
-                              </span>
-                            ))}
-                          </span>
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="create-assessment-question-actions">
-                      {!item.isLivePreview ? (
-                        <button type="button" className="question-bank-icon-btn" onClick={() => editSavedQuestion(item)} aria-label={`Edit question ${index + 1}`} title="Edit question">
-                          <FilePenLine size={15} strokeWidth={2.1} />
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="question-bank-icon-btn"
-                        onClick={() => setExpandedQuestionId((current) => (current === item.id ? null : item.id))}
-                        aria-label={`${isOpen ? 'Close' : 'Open'} question ${index + 1}`}
-                        aria-expanded={isOpen}
-                        title={isOpen ? 'Close details' : 'Open details'}
-                      >
-                        {isOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
-                      </button>
-                    </span>
-                  </div>
-
-                  {isOpen ? (
-                    <div className="create-assessment-question-detail">
-                      {curriculumMeta.length ? (
-                        <span className="question-bank-created-curriculum" title={curriculumMeta.join(' / ')}>
-                          {curriculumMeta.map((meta) => <span key={meta}>{meta}</span>)}
-                        </span>
-                      ) : null}
-                      {!isDescriptive && visibleOptions.length ? (
-                        <span className="question-bank-created-options">
-                          {visibleOptions.map((option, optionIndex) => (
-                            <b key={option.id} className={(item.correctOptionIds ?? []).includes(option.id) ? 'is-correct' : ''}>
-                              {String.fromCharCode(65 + optionIndex)}. {getRichTextPreview(option.label)}
-                            </b>
-                          ))}
-                        </span>
-                      ) : null}
-                      {isDescriptive && (item.descriptiveSections ?? []).length ? (
-                        <span className="question-bank-created-descriptive-list">
-                          {(item.descriptiveSections ?? []).map((section, sectionIndex) => (
-                            <span key={section.id ?? `${item.id}-${sectionIndex}`} className="question-bank-created-descriptive-item">
-                              <span className="question-bank-created-descriptive-line">
-                                <b>{ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.</b>
-                                <span>{getRichTextPreview(section.questionText) || 'Question not added'}</span>
-                                {hasVisibleMarks(section.marks) ? <em>{section.marks} marks</em> : null}
-                              </span>
-                              {(section.children ?? []).map((child, childIndex) => (
-                                <span key={child.id ?? `${section.id}-${childIndex}`} className="question-bank-created-descriptive-line is-child">
-                                  <b>{String.fromCharCode(97 + childIndex)}.</b>
-                                  <span>{getRichTextPreview(child.questionText) || 'Question not added'}</span>
-                                  {hasVisibleMarks(child.marks) ? <em>{child.marks} marks</em> : null}
-                                </span>
-                              ))}
-                            </span>
-                          ))}
-                        </span>
-                      ) : null}
-                      {getRichTextPreview(item.answerKey) ? (
-                        <span className="question-bank-created-answer">
-                          <b>Answer &amp; Explanation</b>
-                          {getRichTextPreview(item.answerKey)}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </article>
-              )
-            })}
-          </section>
-        ) : null}
           </>
         ) : null}
       </main>
@@ -1312,11 +1230,12 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             setIsDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
-          disabled={!question && !savedQuestions.length}
+          disabled={!previewQuestionCount}
           aria-pressed={activeCreateTab === 'preview'}
         >
           <Eye size={16} strokeWidth={2.2} />
           <span>Preview</span>
+          {previewQuestionCount ? <b className="create-assessment-action-count">{previewQuestionCount}</b> : null}
         </button>
         <button
           type="button"
@@ -1341,7 +1260,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
           <ArrowRight size={16} strokeWidth={2.2} />
           <span>Send to Approval</span>
         </button>
-        {saveStatus ? <span className="create-assessment-save-status">{saveStatus}</span> : null}
       </aside>
       </div>
     </section>

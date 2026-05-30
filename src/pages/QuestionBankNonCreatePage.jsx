@@ -481,6 +481,12 @@ const isDescriptiveQuestion = (question) => (
   getQuestionTypeBadgeClassName(question) === 'is-descriptive'
 )
 
+const getQuestionMarksLabel = (question) => {
+  const marks = question?.marks
+  if (Number(marks) > 0) return String(marks)
+  return getQuestionTypeLabel(question) === 'MCQ' ? '1' : ''
+}
+
 const getQuestionSourceType = (question) => (
   isMedsyQuestion(question) ? 'Uploaded' : 'Created'
 )
@@ -598,7 +604,7 @@ const nonCreateHighlights = [
   },
 ]
 
-export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly', embedded = false }) {
+export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly', embedded = false, onAddToAssessment }) {
   const resolvedMode = mode === 'editable' ? 'editable' : 'readonly'
   const isEditable = resolvedMode === 'editable'
   const isReadonly = resolvedMode === 'readonly'
@@ -623,6 +629,8 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [selectedGridAction, setSelectedGridAction] = useState('')
   const [selectedGridQuestionIds, setSelectedGridQuestionIds] = useState([])
   const [selectionBarPosition, setSelectionBarPosition] = useState(null)
+  const [isEmbeddedSelectionBarClosed, setIsEmbeddedSelectionBarClosed] = useState(false)
+  const [isEmbeddedSelectionBarVisible, setIsEmbeddedSelectionBarVisible] = useState(false)
   const [expandedCardRows, setExpandedCardRows] = useState([])
   const [activeMetric, setActiveMetric] = useState('total')
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
@@ -635,11 +643,11 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [editQuestionMode, setEditQuestionMode] = useState('overwrite')
 
   useEffect(() => {
-    if (!isReadonly) return
+    if (!isReadonly || embedded) return
     setSelectedGridAction('')
     setSelectedGridQuestionIds([])
     setSelectionBarPosition(null)
-  }, [isReadonly])
+  }, [embedded, isReadonly])
 
   const metricFilteredQuestions = useMemo(() => {
     if (activeMetric === 'suggested') {
@@ -838,6 +846,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     : questionMetrics.filter((metric) => !['shared', 'suggested'].includes(metric.key))
   const activeMetricLabel = questionMetrics.find((metric) => metric.key === activeMetric)?.label ?? 'questions'
   const isReportMetricActive = activeMetric === 'suggested'
+  const hasEmbeddedAssessmentSelection = embedded && typeof onAddToAssessment === 'function' && !isReportMetricActive
   const footerResultSummary = hasSelectedFilters(filters)
     ? `${formatMetricCount(filteredQuestions.length)} filtered of ${formatMetricCount(metricFilteredQuestions.length)} ${activeMetricLabel.toLowerCase()}`
     : `Showing ${formatMetricCount(pagedQuestions.length)} of ${formatMetricCount(metricFilteredQuestions.length)}`
@@ -851,11 +860,24 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }
 
   const toggleGridQuestionSelection = (questionId) => {
+    setIsEmbeddedSelectionBarClosed(false)
+    setIsEmbeddedSelectionBarVisible(true)
     setSelectedGridQuestionIds((current) => (
       current.includes(questionId)
         ? current.filter((id) => id !== questionId)
         : [...current, questionId]
     ))
+  }
+
+  const addSelectedQuestionsToAssessment = () => {
+    if (!selectedGridQuestionIds.length) return
+    const selectedQuestions = publishedQuestions.filter((item) => selectedGridQuestionIds.includes(item.id))
+    onAddToAssessment?.(selectedQuestions)
+    setSelectedGridQuestionIds([])
+    setSelectedGridAction('')
+    setSelectionBarPosition(null)
+    setIsEmbeddedSelectionBarClosed(false)
+    setIsEmbeddedSelectionBarVisible(false)
   }
 
   const toggleQuestionFavorite = (questionId) => {
@@ -1036,6 +1058,11 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const renderQuestionTagBadges = (question) => (
     <>
       {renderSourceBadge(question, 'assessment-page-grid-author-label')}
+      {getQuestionMarksLabel(question) ? (
+        <span className="assessment-page-table-value-pill assessment-page-marks-badge">
+          {getQuestionMarksLabel(question)}M
+        </span>
+      ) : null}
       {question.difficultyLevel ? <span className="assessment-page-table-value-pill assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
       {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
     </>
@@ -1065,6 +1092,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const clearGridActionState = () => {
     setSelectedGridAction('')
     setSelectedGridQuestionIds([])
+    setSelectionBarPosition(null)
+    setIsEmbeddedSelectionBarClosed(false)
+    setIsEmbeddedSelectionBarVisible(false)
   }
 
   const handleSelectionBarPointerDown = (event) => {
@@ -1513,12 +1543,14 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
               const isDescriptive = isDescriptiveQuestion(question)
               const isMcq = getQuestionTypeLabel(question) === 'MCQ'
+              const questionMarksLabel = getQuestionMarksLabel(question)
 
               return (
                 <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
                   <div className="assessment-page-question-head">
                     <span className="assessment-page-question-type">{getQuestionTypeLabel(question)}</span>
                     {renderSourceBadge(question, 'assessment-page-question-author')}
+                    {questionMarksLabel ? <span className="assessment-page-marks-badge">{questionMarksLabel}M</span> : null}
                     {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{question.thinkingLevel}</span> : null}
                     {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
                     {isCardOpen && tagGroups.length ? (
@@ -1663,6 +1695,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                     <th>Question</th>
                     <th>Tags</th>
                     <th aria-label="Actions"></th>
+                    {hasEmbeddedAssessmentSelection ? <th aria-label="Select questions"></th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -1731,6 +1764,18 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           <td className="assessment-page-grid-actions-cell">
                             {renderQuestionRowActions(question, questionId, questionNumber, false)}
                           </td>
+                          {hasEmbeddedAssessmentSelection ? (
+                            <td className="assessment-page-grid-select-cell">
+                              <label className="assessment-page-grid-row-checkbox" onClick={(event) => event.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isGridQuestionSelected}
+                                  onChange={() => toggleGridQuestionSelection(questionId)}
+                                  aria-label={`Select question ${questionNumber}`}
+                                />
+                              </label>
+                            </td>
+                          ) : null}
                         </tr>
                       ) : null}
                       {isTableRowOpen ? (
@@ -1749,7 +1794,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           aria-expanded="true"
                           aria-pressed={selectedGridAction ? isGridQuestionSelected : undefined}
                         >
-                          <td colSpan={4}>
+                          <td colSpan={hasEmbeddedAssessmentSelection ? 5 : 4}>
                             <div className="assessment-page-table-question-stack">
                               <div className="assessment-page-grid-detail-head">
                                 {selectedGridAction ? (
@@ -1770,6 +1815,16 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                   {renderQuestionTagBadges(question)}
                                 </div>
                                 {renderQuestionRowActions(question, questionId, questionNumber, true)}
+                                {hasEmbeddedAssessmentSelection ? (
+                                  <label className="assessment-page-grid-row-checkbox is-detail-select" onClick={(event) => event.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isGridQuestionSelected}
+                                      onChange={() => toggleGridQuestionSelection(questionId)}
+                                      aria-label={`Select question ${questionNumber}`}
+                                    />
+                                  </label>
+                                ) : null}
                               </div>
                               {imageRows.length ? (
                                 <div className="assessment-page-table-inline-section">
@@ -1927,10 +1982,10 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           </section>
         ) : null}
 
-        {isEditable && selectedGridAction ? (
+        {(isEditable && selectedGridAction) || (hasEmbeddedAssessmentSelection && isEmbeddedSelectionBarVisible && !isEmbeddedSelectionBarClosed) ? (
           <section
             ref={selectionBarRef}
-            className="assessment-page-selection-bar"
+            className={`assessment-page-selection-bar ${hasEmbeddedAssessmentSelection ? 'is-assessment-picker' : ''}`}
             style={selectionBarPosition ? {
               top: `${selectionBarPosition.y}px`,
               right: 'auto',
@@ -1946,11 +2001,40 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           >
             <span>
               <strong>{selectedGridQuestionIds.length}</strong>
-              selected for {selectedGridAction === 'assessment' ? 'Assessment' : 'Learn'}
+              {hasEmbeddedAssessmentSelection
+                ? `question${selectedGridQuestionIds.length === 1 ? '' : 's'} selected`
+                : `selected for ${selectedGridAction === 'assessment' ? 'Assessment' : 'Learn'}`}
             </span>
-            <button type="button" onClick={clearGridActionState}>
-              Clear
-            </button>
+            <div className="assessment-page-selection-bar-actions">
+              <button type="button" onClick={() => setSelectedGridQuestionIds([])}>
+                Clear
+              </button>
+              {hasEmbeddedAssessmentSelection ? (
+                <button
+                  type="button"
+                  className="is-primary"
+                  onClick={addSelectedQuestionsToAssessment}
+                  disabled={!selectedGridQuestionIds.length}
+                >
+                  Add to Assessment
+                </button>
+              ) : null}
+              {hasEmbeddedAssessmentSelection ? (
+                <button
+                  type="button"
+                  className="is-icon-only"
+                  onClick={() => setIsEmbeddedSelectionBarClosed(true)}
+                  aria-label="Close selection card"
+                  title="Close"
+                >
+                  <X size={15} strokeWidth={2.4} />
+                </button>
+              ) : (
+                <button type="button" onClick={clearGridActionState}>
+                  Cancel
+                </button>
+              )}
+            </div>
           </section>
         ) : null}
 

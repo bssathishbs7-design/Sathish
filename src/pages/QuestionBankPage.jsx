@@ -263,7 +263,7 @@ const createOption = (label = '') => ({
 const createDescriptiveInsideQuestion = () => ({
   id: `descriptive-inside-${Date.now()}-${optionSequence++}`,
   questionText: '',
-  marks: '0',
+  marks: type === 'MCQ' ? '1' : '0',
 })
 
 const createDescriptiveSubQuestion = () => ({
@@ -656,6 +656,11 @@ const hasAssessmentTags = (question) => (
 )
 
 const hasVisibleMarks = (marks) => Number(marks) > 0
+
+const getQuestionMarksLabel = (question) => {
+  if (hasVisibleMarks(question?.marks)) return String(question.marks)
+  return question?.type === 'MCQ' ? '1' : ''
+}
 
 const isDefaultOptionalTagOnly = (values) => (
   !values?.length || (values.length === 1 && values[0] === DEFAULT_OPTIONAL_TAG)
@@ -1284,7 +1289,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setQuestions((current) => current.map((item) => (
       item.id === selectedQuestion.id
         ? {
-          ...(typeof updater === 'function' ? updater(item) : { ...item, ...updater }),
+          ...item,
+          ...(typeof updater === 'function' ? updater(item) : updater),
           revisionStatus: item.status === 'Created' ? 'Edited' : item.revisionStatus,
           editCount: item.status === 'Created' ? Math.max(Number(item.editCount ?? item.revisionCount ?? 1) || 1, 1) : item.editCount,
         }
@@ -1459,29 +1465,46 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     updateDescriptiveSections((sections) => sections.filter((section) => section.id !== sectionId))
   }
 
-  const addDescriptiveInsideQuestion = (sectionId) => {
-    updateDescriptiveSubQuestion(sectionId, (section) => ({
-      children: [...(section.children ?? []), createDescriptiveInsideQuestion()],
-    }))
+  const addDescriptiveInsideQuestion = (sectionId, sectionIndex) => {
+    updateDescriptiveSections((sections) => sections.map((section, index) => (
+      section.id === sectionId || index === sectionIndex
+        ? {
+          ...section,
+          children: [...(Array.isArray(section.children) ? section.children : []), createDescriptiveInsideQuestion()],
+        }
+        : section
+    )))
   }
 
-  const updateDescriptiveInsideQuestion = (sectionId, childId, updater) => {
-    updateDescriptiveSubQuestion(sectionId, (section) => ({
-      children: (section.children ?? []).map((child) => (
-        child.id === childId
-          ? {
-            ...child,
-            ...(typeof updater === 'function' ? updater(child) : updater),
-          }
-          : child
-      )),
-    }))
+  const updateDescriptiveInsideQuestion = (sectionId, childId, updater, sectionIndex, childIndex) => {
+    updateDescriptiveSections((sections) => sections.map((section, index) => (
+      section.id === sectionId || index === sectionIndex
+        ? {
+          ...section,
+          children: (Array.isArray(section.children) ? section.children : []).map((child, currentChildIndex) => (
+            child.id === childId || currentChildIndex === childIndex
+              ? {
+                ...child,
+                ...(typeof updater === 'function' ? updater(child) : updater),
+              }
+              : child
+          )),
+        }
+        : section
+    )))
   }
 
-  const deleteDescriptiveInsideQuestion = (sectionId, childId) => {
-    updateDescriptiveSubQuestion(sectionId, (section) => ({
-      children: (section.children ?? []).filter((child) => child.id !== childId),
-    }))
+  const deleteDescriptiveInsideQuestion = (sectionId, childId, sectionIndex, childIndex) => {
+    updateDescriptiveSections((sections) => sections.map((section, index) => (
+      section.id === sectionId || index === sectionIndex
+        ? {
+          ...section,
+          children: (Array.isArray(section.children) ? section.children : []).filter((child, currentChildIndex) => (
+            child.id !== childId && currentChildIndex !== childIndex
+          )),
+        }
+        : section
+    )))
   }
 
   const sendApprovedQuestionsToQuestionBank = (questionIds = approvedQuestionBankSelectedIds) => {
@@ -2581,7 +2604,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                           <label className="question-bank-descriptive-text">
                                             <RichMathEditor
                                               value={child.questionText}
-                                              onChange={(nextValue) => updateDescriptiveInsideQuestion(section.id, child.id, { questionText: nextValue })}
+                                              onChange={(nextValue) => updateDescriptiveInsideQuestion(section.id, child.id, { questionText: nextValue }, sectionIndex, childIndex)}
                                               placeholder="Enter your question"
                                               minRows={1}
                                               compact
@@ -2592,7 +2615,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                             <span>Marks</span>
                                             <input
                                               value={child.marks ?? '0'}
-                                              onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value })}
+                                              onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value }, sectionIndex, childIndex)}
                                               inputMode="decimal"
                                             />
                                           </label>
@@ -2602,7 +2625,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                             onPointerDown={(event) => {
                                               event.preventDefault()
                                               event.stopPropagation()
-                                              deleteDescriptiveInsideQuestion(section.id, child.id)
+                                              deleteDescriptiveInsideQuestion(section.id, child.id, sectionIndex, childIndex)
                                             }}
                                             onClick={(event) => event.stopPropagation()}
                                             aria-label={`Delete inside question ${childIndex + 1}`}
@@ -2617,7 +2640,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                       <button
                                         type="button"
                                         className="question-bank-secondary-btn"
-                                        onClick={() => addDescriptiveInsideQuestion(section.id)}
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          addDescriptiveInsideQuestion(section.id, sectionIndex)
+                                        }}
                                       >
                                         <Plus size={14} strokeWidth={2.2} />
                                         Inside
@@ -3262,6 +3288,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
                         const shouldShowStatusBadge = !(status === 'Approved' && isQuestionBankSent)
                         const shouldShowQuestionDetails = ['Created', 'Sent to Approval', 'Approved', 'Approval Rejected'].includes(status)
+                        const questionMarksLabel = getQuestionMarksLabel(question)
                         const curriculumMeta = [
                           question.year,
                           question.subject,
@@ -3373,9 +3400,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                     {shouldShowQuestionDetails && question.difficultyLevel ? (
                                       <span className="question-bank-badge soft">{question.difficultyLevel}</span>
                                     ) : null}
-                                    {shouldShowQuestionDetails && hasVisibleMarks(question.marks) ? (
+                                    {shouldShowQuestionDetails && questionMarksLabel ? (
                                       <span className="question-bank-badge soft">
-                                        {question.marks} mark{question.marks === '1' ? '' : 's'}
+                                        {questionMarksLabel} mark{questionMarksLabel === '1' ? '' : 's'}
                                       </span>
                                     ) : null}
                                     {activeQuestionTab === 'report' && reportReasonText ? (

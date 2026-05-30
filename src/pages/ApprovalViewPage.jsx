@@ -167,6 +167,12 @@ const isDescriptiveQuestion = (question) => (
   || String(question?.type ?? '').trim().toLowerCase().startsWith('desc ')
 )
 
+const getQuestionMarksLabel = (question) => {
+  const marks = question?.marks
+  if (Number(marks) > 0) return String(marks)
+  return getQuestionTypeLabel(question?.type) === 'MCQ' ? '1' : ''
+}
+
 const getVisibleTagValues = (values) => (Array.isArray(values) ? values : [])
   .map((value) => String(value ?? '').trim())
   .filter((value) => value && value !== 'N/A')
@@ -985,6 +991,7 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
               const isQuestionSelected = selectedReviewSet.has(questionId)
               const isDescriptive = isDescriptiveQuestion(question)
               const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
+              const questionMarksLabel = getQuestionMarksLabel(question)
 
               return (
                 <article key={questionId} className={`approval-view-qb-question-card is-${String(decision).toLowerCase()} ${isQuestionSelected ? 'is-selected' : ''}`}>
@@ -1007,9 +1014,9 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
                         {assessmentBadges.map((badge) => (
                           <span key={badge} className="approval-view-qb-pill">{badge}</span>
                         ))}
-                        {question.marks ? (
+                        {questionMarksLabel ? (
                           <span className="approval-view-qb-pill">
-                            {question.marks} mark{String(question.marks) === '1' ? '' : 's'}
+                            {questionMarksLabel} mark{questionMarksLabel === '1' ? '' : 's'}
                           </span>
                         ) : null}
                         {question.isCritical ? <span className="approval-view-qb-pill is-critical">Critical</span> : null}
