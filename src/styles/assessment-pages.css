@@ -1710,41 +1710,45 @@
 }
 
 .create-assessment-workspace .question-bank-author-grid {
-  grid-template-columns: minmax(0, 75fr) minmax(260px, 25fr);
-  gap: 12px;
+  grid-template-columns: minmax(620px, 1fr) minmax(280px, 340px);
+  gap: 16px;
+  align-items: start;
 }
 
 .create-assessment-workspace .question-bank-author-main,
 .create-assessment-workspace .question-bank-assessment-panel,
 .create-assessment-workspace .question-bank-side-panel {
-  gap: 8px;
+  gap: 12px;
 }
 
 .create-assessment-workspace .question-bank-soft-panel,
 .create-assessment-workspace .question-bank-assessment-panel {
-  padding: 8px;
+  padding: 14px;
+  border-radius: 10px;
 }
 
 .create-assessment-workspace .question-bank-curriculum-edit-card {
-  gap: 6px;
-  padding: 8px;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
 }
 
 .create-assessment-workspace .question-bank-curriculum-grid {
-  gap: 7px;
+  gap: 10px;
 }
 
 .create-assessment-workspace .question-bank-mapping-trigger {
-  min-height: 46px;
-  padding: 6px 8px;
+  min-height: 58px;
+  padding: 9px 12px;
+  border-radius: 9px;
 }
 
 .create-assessment-workspace .question-bank-mapping-trigger strong {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
 }
 
 .create-assessment-workspace .question-bank-mapping-trigger span {
-  font-size: 0.68rem;
+  font-size: 0.82rem;
 }
 
 .create-assessment-workspace .question-bank-author-type-strip .question-bank-type-select-panel {
@@ -1893,51 +1897,59 @@
 }
 
 .create-assessment-workspace .question-bank-answer-panel > .question-bank-section-head {
-  min-height: 28px;
-  margin-bottom: 4px;
+  min-height: 40px;
+  margin-bottom: 10px;
+  gap: 12px;
+  align-items: center;
 }
 
 .create-assessment-workspace .question-bank-answer-panel > .question-bank-section-head .question-bank-question-image-add {
-  height: 26px;
-  padding: 0 8px;
-  font-size: 0.68rem;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 0.8rem;
 }
 
 .create-assessment-workspace .question-bank-question-head-controls {
-  gap: 5px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .create-assessment-workspace .question-bank-question-head-field > span {
-  font-size: 0.58rem;
+  font-size: 0.7rem;
 }
 
 .create-assessment-workspace .question-bank-question-head-criticality .question-bank-criticality-toggle {
-  height: 26px;
-  min-height: 26px;
+  height: 32px;
+  min-height: 32px;
 }
 
 .create-assessment-workspace .question-bank-question-head-marks input {
-  width: 42px;
-  min-height: 26px;
-  font-size: 0.72rem;
+  width: 56px;
+  min-height: 34px;
+  border-radius: 9px;
+  font-size: 0.86rem;
 }
 
 .create-assessment-workspace .question-bank-field.rich > .rich-math-editor .rich-math-editor-surface {
-  min-height: 76px !important;
+  min-height: clamp(130px, 18vh, 220px) !important;
+  padding: 16px 18px;
+  font-size: 1rem !important;
+  line-height: 1.5;
 }
 
 .create-assessment-workspace .question-bank-options-block {
-  gap: 5px;
-  padding-top: 6px;
+  gap: 10px;
+  padding-top: 10px;
 }
 
 .create-assessment-workspace .question-bank-options-head {
-  min-height: 28px;
+  min-height: 34px;
 }
 
 .create-assessment-workspace .question-bank-options-head strong,
 .create-assessment-workspace .question-bank-step-title {
-  font-size: 0.72rem;
+  font-size: 0.86rem;
 }
 
 .create-assessment-workspace .question-bank-step-helper-badge {
@@ -1950,9 +1962,9 @@
 }
 
 .create-assessment-workspace .question-bank-option-mode-toggle button {
-  min-height: 23px;
-  padding: 0 8px;
-  font-size: 0.68rem;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 0.76rem;
 }
 
 .create-assessment-workspace .question-bank-choice-row {
@@ -1973,9 +1985,9 @@
 }
 
 .create-assessment-workspace .question-bank-choice-row .rich-math-editor-surface {
-  min-height: 28px !important;
-  padding: 6px 9px;
-  font-size: 0.78rem !important;
+  min-height: 36px !important;
+  padding: 8px 11px;
+  font-size: 0.86rem !important;
   line-height: 1.35;
 }
 
@@ -1985,62 +1997,69 @@
 }
 
 .create-assessment-workspace .question-bank-answer-block .rich-math-editor-surface {
-  min-height: 34px !important;
-  padding: 8px 10px;
-  font-size: 0.78rem !important;
+  min-height: 48px !important;
+  padding: 10px 12px;
+  font-size: 0.86rem !important;
 }
 
 .create-assessment-workspace .question-bank-ai-instruction-card {
-  gap: 5px;
-  margin-bottom: 8px;
-  padding: 8px 9px;
-  font-size: 0.64rem;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 0;
+  padding: 10px 12px;
+  border-style: dashed;
+  font-size: 0.72rem;
 }
 
 .create-assessment-workspace .question-bank-ai-instruction-card strong {
-  padding: 4px 7px;
-  font-size: 0.64rem;
-}
-
-.create-assessment-workspace .question-bank-ai-instruction-card ul {
-  gap: 4px;
-}
-
-.create-assessment-workspace .question-bank-ai-instruction-card li {
-  font-size: 0.64rem;
-  line-height: 1.3;
-}
-
-.create-assessment-workspace .question-bank-assessment-inline {
-  gap: 8px;
-}
-
-.create-assessment-workspace .question-bank-assessment-inline .question-bank-section-head {
-  padding-bottom: 5px;
-}
-
-.create-assessment-workspace .question-bank-assessment-title-btn {
-  min-height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   font-size: 0.76rem;
 }
 
+.create-assessment-workspace .question-bank-ai-instruction-card ul {
+  gap: 5px;
+}
+
+.create-assessment-workspace .question-bank-ai-instruction-card li {
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.create-assessment-workspace .question-bank-assessment-inline {
+  gap: 10px;
+  position: sticky;
+  top: 10px;
+}
+
+.create-assessment-workspace .question-bank-assessment-inline .question-bank-section-head {
+  padding-bottom: 8px;
+}
+
+.create-assessment-workspace .question-bank-assessment-title-btn {
+  min-height: 28px;
+  font-size: 0.9rem;
+}
+
 .create-assessment-workspace .question-bank-assessment-inline .question-bank-field {
-  gap: 4px;
+  gap: 6px;
 }
 
 .create-assessment-workspace .question-bank-assessment-inline .question-bank-field span {
-  font-size: 0.6rem;
+  font-size: 0.68rem;
 }
 
 .create-assessment-workspace .question-bank-assessment-inline .question-bank-field input,
 .create-assessment-workspace .question-bank-assessment-inline .question-bank-field select {
-  min-height: 28px;
-  font-size: 0.7rem;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 0.84rem;
 }
 
 .create-assessment-workspace .question-bank-optional-tags-badge {
-  min-height: 26px;
-  font-size: 0.7rem;
+  min-height: 32px;
+  font-size: 0.78rem;
 }
 
 .create-assessment-workspace .question-bank-assessment-actions .question-bank-primary-btn,
@@ -2048,6 +2067,20 @@
   min-height: 29px;
   padding: 0 8px;
   font-size: 0.72rem;
+}
+
+.create-assessment-workspace .create-assessment-card-actions {
+  grid-template-columns: minmax(92px, 0.9fr) minmax(118px, 1.1fr);
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.create-assessment-workspace .create-assessment-card-actions .question-bank-primary-btn,
+.create-assessment-workspace .create-assessment-card-actions .question-bank-secondary-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 0.86rem;
 }
 
 .create-assessment-workspace .question-bank-optional-tags-panel {
@@ -2085,51 +2118,57 @@
 }
 
 .create-assessment-workspace .question-bank-descriptive-builder {
-  gap: 7px;
-  padding-top: 6px;
+  gap: 10px;
+  padding-top: 10px;
 }
 
 .create-assessment-workspace .question-bank-descriptive-sub-card {
-  gap: 5px;
-  padding: 7px;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #ffffff;
 }
 
 .create-assessment-workspace .question-bank-descriptive-row {
-  grid-template-columns: 22px minmax(0, 1fr) 60px 28px;
-  gap: 6px;
+  grid-template-columns: 28px minmax(0, 1fr) 78px 34px;
+  gap: 10px;
 }
 
 .create-assessment-workspace .question-bank-descriptive-row.is-child {
-  grid-template-columns: 22px minmax(0, 1fr) 60px 28px;
-  margin-left: 30px;
+  grid-template-columns: 28px minmax(0, 1fr) 78px 34px;
+  margin-left: 42px;
+  padding-left: 12px;
+  border-left: 3px solid #d6f1e9;
 }
 
 .create-assessment-workspace .question-bank-descriptive-text .rich-math-editor-surface {
-  min-height: 30px !important;
-  padding: 7px 9px;
-  font-size: 0.78rem !important;
+  min-height: 42px !important;
+  padding: 10px 12px;
+  font-size: 0.9rem !important;
 }
 
 .create-assessment-workspace .question-bank-descriptive-marks input {
-  min-height: 30px;
-  font-size: 0.74rem;
+  min-height: 38px;
+  border-radius: 9px;
+  font-size: 0.86rem;
 }
 
 .create-assessment-workspace .question-bank-descriptive-builder .question-bank-secondary-btn {
-  min-height: 29px;
-  padding: 0 10px;
-  font-size: 0.72rem;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-size: 0.84rem;
 }
 
 .create-assessment-workspace .question-bank-descriptive-row .question-bank-icon-btn {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
 }
 
 .create-assessment-workspace .question-bank-author-card {
   border-color: #bfe2d8;
-  background: #fbfffd;
-  box-shadow: 0 8px 22px rgba(24, 55, 71, 0.08);
+  background: #f8fcfa;
+  box-shadow: none;
   animation: none;
 }
 
@@ -2208,7 +2247,7 @@
 
 .create-assessment-workspace .question-bank-ai-instruction-card strong {
   border-color: #bdded5;
-  background: #ffffff;
+  background: transparent;
   color: #0f665e;
   animation: none;
   box-shadow: none;
@@ -5700,7 +5739,7 @@
 .theme-dark .create-assessment-workspace .question-bank-author-card {
   border-color: rgba(45, 212, 191, 0.34);
   background: #0f172a;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
 .theme-dark .create-assessment-workspace .question-bank-soft-panel,
@@ -6683,6 +6722,14 @@
 
   .create-assessment-workspace-main:has(.create-assessment-question-bank-panel) {
     overflow: hidden;
+  }
+
+  .create-assessment-workspace .question-bank-author-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .create-assessment-workspace .question-bank-assessment-inline {
+    position: static;
   }
 
   .create-assessment-action-panel {

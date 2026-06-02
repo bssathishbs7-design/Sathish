@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Check,
   CheckCircle2,
@@ -73,6 +73,59 @@ const COGNITIVE_FUNCTION_OPTIONS = ['Attention & Cue Detection', 'Working Memory
 const SKILL_FOCUS_OPTIONS = ['Diagnosis', 'Investigation', 'Treatment', 'Management', 'Knowledge', 'Data Interpretation']
 const ORGAN_SYSTEM_OPTIONS = ['Nervous', 'Cardiovascular', 'Respiratory', 'Digestive', 'Skeletal', 'Muscular', 'N/A']
 const DEFAULT_OPTIONAL_TAG = 'Not Applicable'
+const DISTRACTOR_ERROR_GROUPS = [
+  {
+    heading: 'Simple Errors',
+    options: [
+      'Factual Recall Error',
+      'Terminology Confusion',
+      'Misclassification',
+      'Localization/Structural Error',
+      'Visual Recognition Error',
+      'Unit Error',
+      'Outdated Knowledge',
+      'False Association',
+      'Careless Mistake',
+      'Numerical Error',
+      'Language Misinterpretation',
+    ],
+  },
+  {
+    heading: 'Applied Errors',
+    options: [
+      'Mechanism Confusion',
+      'Sequential Ordering Error',
+      'Chronicity/Staging Error',
+      'Spatial Relationship Error',
+      'Concept Gap',
+      'Normalcy Bias',
+      'Misinterpretation',
+      'Cause-Effect Confusion',
+      'Overgeneralization',
+      'Superficial Match',
+      'Data-Concept Mismatch',
+    ],
+  },
+  {
+    heading: 'Complex Errors',
+    options: [
+      'Reasoning Flaw',
+      'Clinical Context Neglect',
+      'Guideline Mismatch',
+      'Misdiagnosis',
+      'Diagnostic Criteria Incompleteness',
+      'Contraindication Oversight',
+      'Wrong Investigation Choice',
+      'Treatment Misjudgment',
+      'Prognosis Misinterpretation',
+      'Cross-Discipline Confusion',
+      'Incomplete Synthesis',
+      'Failure to Prioritize',
+      'Risk/Benefit Miscalculation',
+      'Ethical/Professional Norm Violation',
+    ],
+  },
+]
 const SINGLE_OPTION_MIN_COUNT = 2
 const SINGLE_OPTION_MAX_COUNT = 6
 const MULTIPLE_OPTION_MIN_COUNT = 3
@@ -296,6 +349,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
+  const [openDistractorOptionId, setOpenDistractorOptionId] = useState(null)
+  const [openDistractorMenuOptionId, setOpenDistractorMenuOptionId] = useState(null)
   const [saveStatus, setSaveStatus] = useState('')
   const [activeCreateTab, setActiveCreateTab] = useState('create')
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(false)
@@ -354,6 +409,22 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   )
   const previewQuestionCount = previewQuestions.length
 
+  useEffect(() => {
+    if (!openDistractorOptionId && !openDistractorMenuOptionId) return undefined
+    if (typeof document === 'undefined') return undefined
+
+    const handleOutsideDistractorClick = (event) => {
+      if (event.target.closest?.('.question-bank-distractor-wrap')) return
+      setOpenDistractorOptionId(null)
+      setOpenDistractorMenuOptionId(null)
+    }
+
+    document.addEventListener('mousedown', handleOutsideDistractorClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideDistractorClick)
+    }
+  }, [openDistractorOptionId, openDistractorMenuOptionId])
+
   const updateQuestion = (patch) => {
     setQuestion((current) => current ? ({
       ...current,
@@ -386,6 +457,15 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     setQuestion(null)
     setIsQuestionTypePickerOpen(false)
     setIsDescriptiveTypePickerOpen(false)
+    setActiveMappingPicker(null)
+    setMappingSearchValue('')
+    setIsOptionalTagsOpen(false)
+    setSaveStatus('')
+  }
+
+  const resetCurrentQuestion = () => {
+    if (!question) return
+    setQuestion(createQuestion(setup, question.type))
     setActiveMappingPicker(null)
     setMappingSearchValue('')
     setIsOptionalTagsOpen(false)
@@ -607,6 +687,28 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         correctOptionIds: allowMultiple ? current.correctOptionIds : current.correctOptionIds.slice(0, 1),
       }
     })
+  }
+
+  const selectOptionDistractorError = (optionId, error) => {
+    updateQuestion((current) => ({
+      options: current.options.map((option) => (
+        option.id === optionId
+          ? { ...option, distractorErrors: [error] }
+          : option
+      )),
+    }))
+    setOpenDistractorMenuOptionId(null)
+  }
+
+  const clearOptionDistractorError = (optionId) => {
+    updateQuestion((current) => ({
+      options: current.options.map((option) => (
+        option.id === optionId
+          ? { ...option, distractorErrors: [] }
+          : option
+      )),
+    }))
+    setOpenDistractorMenuOptionId(null)
   }
 
   const handleAddOption = () => {
@@ -901,6 +1003,76 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                   ariaLabel={`Option ${String.fromCharCode(65 + index)}`}
                                 />
                                 <div className="question-bank-choice-actions">
+                                  <span className="question-bank-distractor-wrap">
+                                    <button
+                                      type="button"
+                                      className={`question-bank-icon-btn question-bank-distractor-trigger ${(option.distractorErrors ?? []).length ? 'has-selection' : ''}`}
+                                      onClick={() => {
+                                        setOpenDistractorOptionId((current) => (current === option.id ? null : option.id))
+                                        setOpenDistractorMenuOptionId(null)
+                                      }}
+                                      aria-label={`Distractor errors for option ${String.fromCharCode(65 + index)}`}
+                                      aria-expanded={openDistractorOptionId === option.id}
+                                      title="Distractor Error"
+                                    >
+                                      <Info size={14} strokeWidth={2.2} />
+                                    </button>
+                                    {openDistractorOptionId === option.id ? (
+                                      <span className="question-bank-distractor-popover" role="tooltip">
+                                        <strong className="question-bank-distractor-title">Distractor Error</strong>
+                                        {(option.distractorErrors ?? []).length ? (
+                                          <button
+                                            type="button"
+                                            className="question-bank-distractor-clear"
+                                            onClick={() => clearOptionDistractorError(option.id)}
+                                          >
+                                            Clear selected
+                                            <X size={11} strokeWidth={2.3} />
+                                          </button>
+                                        ) : null}
+                                        <span className="question-bank-distractor-dropdown">
+                                          <button
+                                            type="button"
+                                            className="question-bank-distractor-dropdown-trigger"
+                                            onClick={() => {
+                                              setOpenDistractorMenuOptionId((current) => (current === option.id ? null : option.id))
+                                            }}
+                                            aria-expanded={openDistractorMenuOptionId === option.id}
+                                          >
+                                            <span>{(option.distractorErrors ?? [])[0] ?? 'Select distractor error'}</span>
+                                            <ChevronDown size={14} strokeWidth={2.2} />
+                                          </button>
+                                          {openDistractorMenuOptionId === option.id ? (
+                                            <span className="question-bank-distractor-menu">
+                                              <span className="question-bank-distractor-menu-list">
+                                                {DISTRACTOR_ERROR_GROUPS.map((group) => (
+                                                  <span key={group.heading} className="question-bank-distractor-group">
+                                                    <strong>{group.heading}</strong>
+                                                    <span>
+                                                      {group.options.map((error) => {
+                                                        const isSelected = (option.distractorErrors ?? []).includes(error)
+                                                        return (
+                                                          <button
+                                                            key={error}
+                                                            type="button"
+                                                            className={isSelected ? 'is-active' : ''}
+                                                            onClick={() => selectOptionDistractorError(option.id, error)}
+                                                          >
+                                                            <span>{isSelected ? <Check size={12} strokeWidth={2.4} /> : null}</span>
+                                                            {error}
+                                                          </button>
+                                                        )
+                                                      })}
+                                                    </span>
+                                                  </span>
+                                                ))}
+                                              </span>
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                      </span>
+                                    ) : null}
+                                  </span>
                                   {!isMandatoryOption ? (
                                     <button
                                       type="button"
@@ -1082,6 +1254,26 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                         <span>Add More (Optional)</span>
                         <ChevronDown size={14} strokeWidth={2.4} />
                       </button>
+                      <div className="question-bank-assessment-actions create-assessment-card-actions">
+                        <button
+                          type="button"
+                          className="question-bank-secondary-btn"
+                          onClick={resetCurrentQuestion}
+                          disabled={!question}
+                        >
+                          <RotateCcw size={14} strokeWidth={2.2} />
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          className="question-bank-primary-btn"
+                          onClick={() => persistQuestion('Created')}
+                          disabled={!question || !canCreate}
+                        >
+                          <Sparkles size={14} strokeWidth={2.2} />
+                          Create
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <div className="question-bank-optional-tags-panel">
@@ -1121,6 +1313,26 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                         values={question.keyConcepts}
                         onChange={(values) => updateQuestion({ keyConcepts: values })}
                       />
+                      <div className="question-bank-assessment-actions create-assessment-card-actions">
+                        <button
+                          type="button"
+                          className="question-bank-secondary-btn"
+                          onClick={resetCurrentQuestion}
+                          disabled={!question}
+                        >
+                          <RotateCcw size={14} strokeWidth={2.2} />
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          className="question-bank-primary-btn"
+                          onClick={() => persistQuestion('Created')}
+                          disabled={!question || !canCreate}
+                        >
+                          <Sparkles size={14} strokeWidth={2.2} />
+                          Create
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

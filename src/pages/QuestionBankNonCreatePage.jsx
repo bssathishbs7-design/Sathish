@@ -481,12 +481,6 @@ const isDescriptiveQuestion = (question) => (
   getQuestionTypeBadgeClassName(question) === 'is-descriptive'
 )
 
-const getQuestionMarksLabel = (question) => {
-  const marks = question?.marks
-  if (Number(marks) > 0) return String(marks)
-  return getQuestionTypeLabel(question) === 'MCQ' ? '1' : ''
-}
-
 const getQuestionSourceType = (question) => (
   isMedsyQuestion(question) ? 'Uploaded' : 'Created'
 )
@@ -1058,11 +1052,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const renderQuestionTagBadges = (question) => (
     <>
       {renderSourceBadge(question, 'assessment-page-grid-author-label')}
-      {getQuestionMarksLabel(question) ? (
-        <span className="assessment-page-table-value-pill assessment-page-marks-badge">
-          {getQuestionMarksLabel(question)}M
-        </span>
-      ) : null}
       {question.difficultyLevel ? <span className="assessment-page-table-value-pill assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
       {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
     </>
@@ -1543,14 +1532,12 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
               const isDescriptive = isDescriptiveQuestion(question)
               const isMcq = getQuestionTypeLabel(question) === 'MCQ'
-              const questionMarksLabel = getQuestionMarksLabel(question)
 
               return (
                 <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
                   <div className="assessment-page-question-head">
                     <span className="assessment-page-question-type">{getQuestionTypeLabel(question)}</span>
                     {renderSourceBadge(question, 'assessment-page-question-author')}
-                    {questionMarksLabel ? <span className="assessment-page-marks-badge">{questionMarksLabel}M</span> : null}
                     {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{question.thinkingLevel}</span> : null}
                     {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
                     {isCardOpen && tagGroups.length ? (
