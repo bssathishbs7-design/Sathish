@@ -263,7 +263,7 @@ const createOption = (label = '') => ({
 const createDescriptiveInsideQuestion = () => ({
   id: `descriptive-inside-${Date.now()}-${optionSequence++}`,
   questionText: '',
-  marks: type === 'MCQ' ? '1' : '0',
+  marks: '0',
 })
 
 const createDescriptiveSubQuestion = () => ({
@@ -574,6 +574,7 @@ const getGeneratedQuestionDraft = (question) => {
       cognitiveLevel: 'Analyze',
       thinkingLevel: 'HoT',
       difficultyLevel: 'L3',
+      marks: '2',
       descriptiveGuide: createHtmlBlock('Look for accurate concepts, structured explanation, correct terminology, and clinical correlation.'),
     }
   }
@@ -647,20 +648,41 @@ const hasMcqOptions = (question) => (
   )
 )
 
+const hasVisibleMarks = (marks) => Number(marks) > 0
+
+const parseMarksValue = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const getDescriptiveQuestionMarksTotal = (question) => {
+  const rootMarks = parseMarksValue(question?.marks)
+  const sectionMarks = (question?.descriptiveSections ?? []).reduce((total, section) => {
+    const children = Array.isArray(section.children) ? section.children : []
+    const childMarks = children.reduce((sum, child) => sum + parseMarksValue(child.marks), 0)
+    const ownMarks = children.length ? 0 : parseMarksValue(section.marks)
+    return total + ownMarks + childMarks
+  }, 0)
+
+  return rootMarks + sectionMarks
+}
+
+const getQuestionMarksLabel = (question) => {
+  if (isDescriptiveQuestionType(question?.type)) {
+    const descriptiveTotal = getDescriptiveQuestionMarksTotal(question)
+    return descriptiveTotal > 0 ? String(descriptiveTotal) : ''
+  }
+  if (hasVisibleMarks(question?.marks)) return String(question.marks)
+  return question?.type === 'MCQ' ? '1' : ''
+}
+
 const hasAssessmentTags = (question) => (
-  Boolean(question?.marks)
+  (isDescriptiveQuestionType(question?.type) ? getDescriptiveQuestionMarksTotal(question) > 0 : Boolean(question?.marks))
   && Boolean(question?.questionCategory)
   && Boolean(question?.cognitiveLevel)
   && Boolean(question?.thinkingLevel)
   && Boolean(question?.difficultyLevel)
 )
-
-const hasVisibleMarks = (marks) => Number(marks) > 0
-
-const getQuestionMarksLabel = (question) => {
-  if (hasVisibleMarks(question?.marks)) return String(question.marks)
-  return question?.type === 'MCQ' ? '1' : ''
-}
 
 const isDefaultOptionalTagOnly = (values) => (
   !values?.length || (values.length === 1 && values[0] === DEFAULT_OPTIONAL_TAG)
@@ -691,7 +713,7 @@ const hasDraftContent = (question) => {
     || question.correctOptionIds.length > 0
     || question.fillBlankAnswers.some((answer) => Boolean(getRichTextPreview(answer)))
     || Boolean(getRichTextPreview(question.descriptiveGuide))
-    || hasVisibleMarks(question.marks)
+    || (isDescriptiveQuestionType(question.type) ? getDescriptiveQuestionMarksTotal(question) > 0 : hasVisibleMarks(question.marks))
     || question.isCritical
 }
 
@@ -1004,6 +1026,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [selectedApprovalReviewerIndex, setSelectedApprovalReviewerIndex] = useState(0)
   const [pendingEditQuestionId, setPendingEditQuestionId] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
+  const [editableDescriptiveFieldKeys, setEditableDescriptiveFieldKeys] = useState([])
+  const [activeDescriptiveAnswerTarget, setActiveDescriptiveAnswerTarget] = useState({ type: 'root' })
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
   const pendingEditQuestion = questions.find((item) => item.id === pendingEditQuestionId) ?? null
@@ -1154,6 +1178,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setOpenDistractorOptionId(null)
     setOpenDistractorMenuOptionId(null)
     setOpenOptionDistractorPreviewId(null)
+    setEditableDescriptiveFieldKeys([])
+    setActiveDescriptiveAnswerTarget({ type: 'root' })
     closeMappingPicker()
     const nextSelectedQuestion = questions.find((item) => item.id === selectedQuestionId)
     if (selectedQuestionId && nextSelectedQuestion) {
@@ -1239,6 +1265,26 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       document.removeEventListener('mousedown', handleOutsideDistractorClick)
     }
   }, [openDistractorOptionId, openDistractorMenuOptionId])
+
+  useEffect(() => {
+    if (!editableDescriptiveFieldKeys.length) return undefined
+    if (typeof document === 'undefined') return undefined
+
+    const handleOutsideDescriptiveEditClick = (event) => {
+      const target = event.target
+      if (target.closest?.('.question-bank-field-edit-btn')) return
+      if (target.closest?.('.question-bank-field.rich')) return
+      if (target.closest?.('.question-bank-descriptive-text')) return
+      if (target.closest?.('.question-bank-descriptive-marks')) return
+
+      setEditableDescriptiveFieldKeys([])
+    }
+
+    document.addEventListener('mousedown', handleOutsideDescriptiveEditClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideDescriptiveEditClick)
+    }
+  }, [editableDescriptiveFieldKeys])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -1446,6 +1492,103 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     }))
   }
 
+  const isDescriptiveFieldEditable = (fieldKey) => editableDescriptiveFieldKeys.includes(fieldKey)
+
+  const enableDescriptiveFieldEdit = (fieldKey) => {
+    setEditableDescriptiveFieldKeys((current) => (
+      current.includes(fieldKey) ? current : [...current, fieldKey]
+    ))
+  }
+
+  const getActiveDescriptiveAnswerValue = () => {
+    if (!selectedQuestion || activeDescriptiveAnswerTarget.type === 'root') return selectedQuestion?.answerKey ?? ''
+    const section = (selectedQuestion.descriptiveSections ?? []).find((item) => item.id === activeDescriptiveAnswerTarget.sectionId)
+    if (!section) return ''
+    if (activeDescriptiveAnswerTarget.type === 'section') return section.answerKey ?? ''
+    const child = (section.children ?? []).find((item) => item.id === activeDescriptiveAnswerTarget.childId)
+    return child?.answerKey ?? ''
+  }
+
+  const updateActiveDescriptiveAnswer = (answerKey) => {
+    if (!selectedQuestion) return
+    if (activeDescriptiveAnswerTarget.type === 'root') {
+      updateSelectedQuestion({ answerKey })
+      return
+    }
+
+    updateDescriptiveSections((sections) => sections.map((section) => {
+      if (section.id !== activeDescriptiveAnswerTarget.sectionId) return section
+      if (activeDescriptiveAnswerTarget.type === 'section') {
+        return { ...section, answerKey }
+      }
+      return {
+        ...section,
+        children: (section.children ?? []).map((child) => (
+          child.id === activeDescriptiveAnswerTarget.childId ? { ...child, answerKey } : child
+        )),
+      }
+    }))
+  }
+
+  const applyGeneratedDescriptiveAnswer = (question, answerKey) => {
+    if (!isDescriptiveQuestionType(question.type)) return { answerKey: getRichTextPreview(question.answerKey) ? question.answerKey : answerKey }
+    if (activeDescriptiveAnswerTarget.type === 'root') {
+      return { answerKey: getRichTextPreview(question.answerKey) ? question.answerKey : answerKey }
+    }
+
+    return {
+      descriptiveSections: (question.descriptiveSections ?? []).map((section) => {
+        if (section.id !== activeDescriptiveAnswerTarget.sectionId) return section
+        if (activeDescriptiveAnswerTarget.type === 'section') {
+          return {
+            ...section,
+            answerKey: getRichTextPreview(section.answerKey) ? section.answerKey : answerKey,
+          }
+        }
+        return {
+          ...section,
+          children: (section.children ?? []).map((child) => (
+            child.id === activeDescriptiveAnswerTarget.childId
+              ? { ...child, answerKey: getRichTextPreview(child.answerKey) ? child.answerKey : answerKey }
+              : child
+          )),
+        }
+      }),
+    }
+  }
+
+  const applyGeneratedDescriptiveMarks = (question, marks) => {
+    const generatedMarks = String(marks || '2')
+    if (!isDescriptiveQuestionType(question.type)) {
+      return { marks: hasVisibleMarks(question.marks) ? question.marks : generatedMarks }
+    }
+    if (activeDescriptiveAnswerTarget.type === 'root') {
+      return { marks: hasVisibleMarks(question.marks) ? question.marks : generatedMarks }
+    }
+
+    return {
+      descriptiveSections: (question.descriptiveSections ?? []).map((section) => {
+        if (section.id !== activeDescriptiveAnswerTarget.sectionId) return section
+        const children = Array.isArray(section.children) ? section.children : []
+        if (activeDescriptiveAnswerTarget.type === 'section') {
+          return {
+            ...section,
+            marks: children.length || hasVisibleMarks(section.marks) ? (children.length ? '0' : section.marks) : generatedMarks,
+          }
+        }
+        return {
+          ...section,
+          marks: children.length ? '0' : section.marks,
+          children: children.map((child) => (
+            child.id === activeDescriptiveAnswerTarget.childId
+              ? { ...child, marks: hasVisibleMarks(child.marks) ? child.marks : generatedMarks }
+              : child
+          )),
+        }
+      }),
+    }
+  }
+
   const addDescriptiveSubQuestion = () => {
     updateDescriptiveSections((sections) => [...sections, createDescriptiveSubQuestion()])
   }
@@ -1470,6 +1613,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       section.id === sectionId || index === sectionIndex
         ? {
           ...section,
+          marks: '0',
           children: [...(Array.isArray(section.children) ? section.children : []), createDescriptiveInsideQuestion()],
         }
         : section
@@ -1799,6 +1943,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         const autoFilledCurriculum = getAutoFilledCurriculum(item)
         const needsOptions = item.type === 'MCQ' && !hasMcqOptions(item)
         const needsAnswerKey = !getRichTextPreview(item.answerKey)
+        const isDescriptiveItem = isDescriptiveQuestionType(item.type)
+        const generatedDescriptiveAnswer = applyGeneratedDescriptiveAnswer(item, generatedDraft.answerKey)
+        const generatedDescriptiveMarks = isDescriptiveItem
+          ? applyGeneratedDescriptiveMarks({ ...item, ...generatedDescriptiveAnswer }, generatedDraft.marks)
+          : {}
         const generatedOptions = needsOptions
           ? [
             { ...createOption(createHtmlBlock('A clinically relevant application')), distractorErrors: getGeneratedDistractorErrors(0) },
@@ -1816,8 +1965,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         return {
           ...item,
           ...autoFilledCurriculum,
+          ...generatedDescriptiveAnswer,
+          ...generatedDescriptiveMarks,
           questionText: needsQuestion ? generatedDraft.questionText : item.questionText,
-          answerKey: needsAnswerKey ? generatedDraft.answerKey : item.answerKey,
+          ...(!isDescriptiveItem ? { answerKey: needsAnswerKey ? generatedDraft.answerKey : item.answerKey } : {}),
           questionCategory: item.questionCategory || generatedDraft.questionCategory || 'Application',
           cognitiveLevel: item.cognitiveLevel || generatedDraft.cognitiveLevel || 'Apply',
           thinkingLevel: item.thinkingLevel || generatedDraft.thinkingLevel || 'HoT',
@@ -2436,6 +2587,15 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         ) : null}
                       </section>
 
+                      {(() => {
+                        const isDescriptiveSelected = isDescriptiveQuestionType(selectedQuestion.type)
+                        const descriptiveSections = selectedQuestion.descriptiveSections ?? []
+                        const hasRootQuestionText = Boolean(getRichTextPreview(selectedQuestion.questionText))
+                        const rootFieldKey = `${selectedQuestion.id}:root`
+                        const shouldLockRootQuestion = isDescriptiveSelected && descriptiveSections.length > 0 && !isDescriptiveFieldEditable(rootFieldKey)
+                        const descriptiveMarksTotal = isDescriptiveSelected ? getDescriptiveQuestionMarksTotal(selectedQuestion) : 0
+
+                        return (
                       <section className="question-bank-soft-panel question-bank-answer-panel">
                         <div className="question-bank-section-head">
                           <div>
@@ -2471,8 +2631,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                             <label className="question-bank-question-head-field question-bank-question-head-marks">
                               <span>Marks</span>
                               <input
-                                value={selectedQuestion.marks}
+                                value={isDescriptiveSelected ? String(descriptiveMarksTotal) : selectedQuestion.marks}
                                 onChange={(event) => updateSelectedQuestion({ marks: event.target.value })}
+                                disabled={isDescriptiveSelected || shouldLockRootQuestion}
                               />
                             </label>
                           </div>
@@ -2485,12 +2646,28 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                               questionText: nextValue,
                               title: getRichTextPreview(nextValue).slice(0, 60) || selectedQuestion.title,
                             })}
+                            onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'root' })}
                             placeholder="Enter your question here"
                             minRows={5}
                             ariaLabel="Question text"
                             allowPastedImages={false}
+                            readOnly={shouldLockRootQuestion}
                             onPasteImageRejected={() => onAlert?.({ tone: 'warning', message: 'Images are not supported in question text.' })}
                           />
+                          {shouldLockRootQuestion ? (
+                            <button
+                              type="button"
+                              className="question-bank-field-edit-btn"
+                              onClick={() => {
+                                enableDescriptiveFieldEdit(rootFieldKey)
+                                setActiveDescriptiveAnswerTarget({ type: 'root' })
+                              }}
+                              aria-label="Edit main question"
+                              title="Edit main question"
+                            >
+                              <FilePenLine size={14} strokeWidth={2.2} />
+                            </button>
+                          ) : null}
                         </label>
 
                         {(selectedQuestion.images?.length ?? 0) ? (
@@ -2540,26 +2717,21 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         </div>
                         ) : null}
 
-                      {isDescriptiveQuestionType(selectedQuestion.type) ? (
+                      {isDescriptiveSelected ? (
                         <div className="question-bank-descriptive-builder">
                           <div className="question-bank-descriptive-builder-head">
                             <div>
                               <strong>Sub Questions</strong>
                             </div>
-                            <button
-                              type="button"
-                              className="question-bank-secondary-btn"
-                              onClick={addDescriptiveSubQuestion}
-                            >
-                              <Plus size={14} strokeWidth={2.2} />
-                              Sub Question
-                            </button>
                           </div>
 
-                          {(selectedQuestion.descriptiveSections ?? []).length ? (
+                          {descriptiveSections.length ? (
                             <div className="question-bank-descriptive-sub-list">
-                              {(selectedQuestion.descriptiveSections ?? []).map((section, sectionIndex) => {
+                              {descriptiveSections.map((section, sectionIndex) => {
                                 const sectionLabel = `${ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.`
+                                const sectionChildren = section.children ?? []
+                                const sectionFieldKey = `${selectedQuestion.id}:section:${section.id}`
+                                const shouldLockSectionQuestion = sectionChildren.length > 0 && !isDescriptiveFieldEditable(sectionFieldKey)
                                 return (
                                   <div key={section.id} className="question-bank-descriptive-sub-card">
                                     <div className="question-bank-descriptive-row">
@@ -2568,18 +2740,36 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                         <RichMathEditor
                                           value={section.questionText}
                                           onChange={(nextValue) => updateDescriptiveSubQuestion(section.id, { questionText: nextValue })}
+                                          onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'section', sectionId: section.id })}
                                           placeholder="Enter your question"
                                           minRows={1}
                                           compact
+                                          readOnly={shouldLockSectionQuestion}
                                           ariaLabel={`Sub question ${sectionIndex + 1}`}
                                         />
+                                        {shouldLockSectionQuestion ? (
+                                          <button
+                                            type="button"
+                                            className="question-bank-field-edit-btn"
+                                            onClick={() => {
+                                              enableDescriptiveFieldEdit(sectionFieldKey)
+                                              setActiveDescriptiveAnswerTarget({ type: 'section', sectionId: section.id })
+                                            }}
+                                            aria-label={`Edit sub question ${sectionIndex + 1}`}
+                                            title="Edit sub question"
+                                          >
+                                            <FilePenLine size={14} strokeWidth={2.2} />
+                                          </button>
+                                        ) : null}
                                       </label>
                                       <label className="question-bank-descriptive-marks">
                                         <span>Marks</span>
                                         <input
-                                          value={section.marks ?? '0'}
+                                          value={sectionChildren.length ? '0' : section.marks ?? '0'}
+                                          onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'section', sectionId: section.id })}
                                           onChange={(event) => updateDescriptiveSubQuestion(section.id, { marks: event.target.value })}
                                           inputMode="decimal"
+                                          disabled={sectionChildren.length > 0 || shouldLockSectionQuestion}
                                         />
                                       </label>
                                       <button
@@ -2598,13 +2788,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                     </div>
 
                                     <div className="question-bank-descriptive-inside-list">
-                                      {(section.children ?? []).map((child, childIndex) => (
+                                      {sectionChildren.map((child, childIndex) => (
                                         <div key={child.id} className="question-bank-descriptive-row is-child">
                                           <span className="question-bank-descriptive-index">{String.fromCharCode(97 + childIndex)}.</span>
                                           <label className="question-bank-descriptive-text">
                                             <RichMathEditor
                                               value={child.questionText}
                                               onChange={(nextValue) => updateDescriptiveInsideQuestion(section.id, child.id, { questionText: nextValue }, sectionIndex, childIndex)}
+                                              onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'inside', sectionId: section.id, childId: child.id })}
                                               placeholder="Enter your question"
                                               minRows={1}
                                               compact
@@ -2615,6 +2806,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                             <span>Marks</span>
                                             <input
                                               value={child.marks ?? '0'}
+                                              onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'inside', sectionId: section.id, childId: child.id })}
                                               onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value }, sectionIndex, childIndex)}
                                               inputMode="decimal"
                                             />
@@ -2646,7 +2838,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                         }}
                                       >
                                         <Plus size={14} strokeWidth={2.2} />
-                                        Inside
+                                        Add Inside Question
                                       </button>
                                     </div>
                                   </div>
@@ -2655,9 +2847,32 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                             </div>
                           ) : (
                             <div className="question-bank-descriptive-empty">
-                              No sub questions added.
+                              Enter the main question to add sub questions.
                             </div>
                           )}
+                          <div className="question-bank-descriptive-builder-foot">
+                            <button
+                              type="button"
+                              className="question-bank-secondary-btn"
+                              onClick={addDescriptiveSubQuestion}
+                              disabled={!hasRootQuestionText}
+                            >
+                              <Plus size={14} strokeWidth={2.2} />
+                              Add Sub Question
+                            </button>
+                          </div>
+                          <div className="question-bank-answer-block question-bank-descriptive-answer-block">
+                            <label className="question-bank-field">
+                              <span className="question-bank-inline-field-badge">Answer &amp; Explanation</span>
+                              <RichMathEditor
+                                value={getActiveDescriptiveAnswerValue()}
+                                onChange={updateActiveDescriptiveAnswer}
+                                placeholder="Add answer and explanation"
+                                minRows={3}
+                                ariaLabel="Descriptive answer and explanation"
+                              />
+                            </label>
+                          </div>
                         </div>
                       ) : null}
 
@@ -2855,7 +3070,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         </div>
                       ) : null}
 
-                      {!isDescriptiveQuestionType(selectedQuestion.type) ? (
+                      {!isDescriptiveSelected ? (
                         <div className="question-bank-answer-block">
                           <label className="question-bank-field">
                             <span className="question-bank-inline-field-badge">Answer &amp; Explanation</span>
@@ -2871,6 +3086,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                       ) : null}
 
                       </section>
+                        )
+                      })()}
 
                       {selectedQuestion.type === 'True or False' ? (
                         <section className="question-bank-soft-panel">
@@ -3536,6 +3753,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                         })}
                                       </span>
                                     ) : null}
+                                    {isDescriptiveCard && getRichTextPreview(question.answerKey) ? (
+                                      <span className="question-bank-created-descriptive-answer">
+                                        <b>Answer &amp; Explanation</b>
+                                        <span>{getRichTextPreview(question.answerKey)}</span>
+                                      </span>
+                                    ) : null}
                                     {isDescriptiveCard && descriptiveSections.length ? (
                                       <span className="question-bank-created-descriptive-list">
                                         {descriptiveSections.map((section, sectionIndex) => (
@@ -3543,13 +3766,27 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                             <span className="question-bank-created-descriptive-line">
                                               <b>{ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.</b>
                                               <span>{getRichTextPreview(section.questionText) || 'Question not added'}</span>
-                                              {hasVisibleMarks(section.marks) ? <em>{section.marks} marks</em> : null}
+                                              {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? <em>{section.marks} marks</em> : null}
                                             </span>
+                                            {getRichTextPreview(section.answerKey) ? (
+                                              <span className="question-bank-created-descriptive-answer is-section">
+                                                <b>Answer &amp; Explanation</b>
+                                                <span>{getRichTextPreview(section.answerKey)}</span>
+                                              </span>
+                                            ) : null}
                                             {(section.children ?? []).map((child, childIndex) => (
-                                              <span key={child.id ?? `${section.id}-child-${childIndex}`} className="question-bank-created-descriptive-line is-child">
-                                                <b>{String.fromCharCode(97 + childIndex)}.</b>
-                                                <span>{getRichTextPreview(child.questionText) || 'Question not added'}</span>
-                                                {hasVisibleMarks(child.marks) ? <em>{child.marks} marks</em> : null}
+                                              <span key={child.id ?? `${section.id}-child-${childIndex}`} className="question-bank-created-descriptive-child">
+                                                <span className="question-bank-created-descriptive-line is-child">
+                                                  <b>{String.fromCharCode(97 + childIndex)}.</b>
+                                                  <span>{getRichTextPreview(child.questionText) || 'Question not added'}</span>
+                                                  {hasVisibleMarks(child.marks) ? <em>{child.marks} marks</em> : null}
+                                                </span>
+                                                {getRichTextPreview(child.answerKey) ? (
+                                                  <span className="question-bank-created-descriptive-answer is-child">
+                                                    <b>Answer &amp; Explanation</b>
+                                                    <span>{getRichTextPreview(child.answerKey)}</span>
+                                                  </span>
+                                                ) : null}
                                               </span>
                                             ))}
                                           </span>

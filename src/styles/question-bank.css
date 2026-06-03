@@ -2555,6 +2555,14 @@
   transform: translateY(-1px);
 }
 
+.question-bank-question-head-marks input:disabled,
+.question-bank-descriptive-marks input:disabled {
+  border-color: #d7e5e0;
+  background: #eef5f2;
+  color: #8aa0ab;
+  cursor: not-allowed;
+}
+
 .question-bank-question-head-criticality .question-bank-criticality-toggle {
   height: 30px;
   min-height: 30px;
@@ -2710,8 +2718,50 @@
 
 .question-bank-descriptive-builder {
   display: grid;
-  gap: 9px;
+  gap: 10px;
   padding-top: 4px;
+}
+
+.question-bank-answer-panel .rich-math-editor.is-readonly,
+.question-bank-descriptive-builder .rich-math-editor.is-readonly {
+  border-color: #d7e5e0;
+  background: #f1f7f5;
+}
+
+.question-bank-answer-panel .rich-math-editor.is-readonly .rich-math-editor-surface,
+.question-bank-descriptive-builder .rich-math-editor.is-readonly .rich-math-editor-surface {
+  color: #6f8490;
+  cursor: not-allowed;
+}
+
+.question-bank-field.rich,
+.question-bank-descriptive-text {
+  position: relative;
+}
+
+.question-bank-field-edit-btn {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #bfe8dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #08776d;
+  cursor: pointer;
+}
+
+.question-bank-field-edit-btn:hover,
+.question-bank-field-edit-btn:focus-visible {
+  border-color: #10b9a8;
+  background: #ecfffb;
+  outline: none;
 }
 
 .question-bank-descriptive-builder-head {
@@ -2719,7 +2769,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-top: 2px;
+  padding: 2px 0 0;
 }
 
 .question-bank-descriptive-builder-head > div {
@@ -2742,16 +2792,16 @@
 
 .question-bank-descriptive-sub-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
+  border-top: 1px solid #e4f0ec;
 }
 
 .question-bank-descriptive-sub-card {
   display: grid;
-  gap: 7px;
-  padding: 8px 9px;
-  border: 1px solid #d7ece4;
-  border-radius: 8px;
-  background: #fbfffd;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e4f0ec;
+  background: transparent;
 }
 
 .question-bank-descriptive-row {
@@ -2763,7 +2813,7 @@
 
 .question-bank-descriptive-row.is-child {
   grid-template-columns: 26px minmax(0, 1fr) 74px 30px;
-  margin-left: 48px;
+  margin-left: 42px;
 }
 
 .question-bank-descriptive-index {
@@ -2820,7 +2870,19 @@
 
 .question-bank-descriptive-sub-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  margin-left: 75px;
+}
+
+.question-bank-descriptive-sub-actions > span {
+  color: #7a8d98;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.question-bank-descriptive-builder-foot {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .question-bank-descriptive-builder .question-bank-secondary-btn {
@@ -2828,6 +2890,10 @@
   padding: 0 12px;
   border-radius: 8px;
   font-size: 0.78rem;
+}
+
+.question-bank-descriptive-answer-block {
+  padding-top: 5px;
 }
 
 .question-bank-descriptive-row .question-bank-icon-btn {
@@ -4593,6 +4659,11 @@
   margin-left: 30px;
 }
 
+.question-bank-created-descriptive-child {
+  display: grid;
+  gap: 4px;
+}
+
 .question-bank-created-descriptive-line > b {
   color: #236073;
   font-weight: 900;
@@ -4609,6 +4680,30 @@
   font-style: normal;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.question-bank-created-descriptive-answer {
+  display: grid;
+  gap: 3px;
+  margin-top: 3px;
+  color: #405866;
+  font-size: 0.74rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.question-bank-created-descriptive-answer.is-section {
+  padding-left: 30px;
+}
+
+.question-bank-created-descriptive-answer.is-child {
+  padding-left: 60px;
+}
+
+.question-bank-created-descriptive-answer > b {
+  color: #17313b;
+  font-size: 0.7rem;
+  font-weight: 900;
 }
 
 .question-bank-created-answer {
@@ -5501,6 +5596,14 @@
   color: #8df0c7;
 }
 
+.theme-dark .question-bank-created-descriptive-answer {
+  color: #c3d4e8;
+}
+
+.theme-dark .question-bank-created-descriptive-answer > b {
+  color: #eef6ff;
+}
+
 .theme-dark .question-bank-created-image-thumb {
   border-color: rgba(94, 116, 145, 0.5);
   background: #132235;
@@ -6000,19 +6103,51 @@
   box-shadow: 0 0 0 3px rgba(88, 197, 157, 0.14);
 }
 
+.theme-dark .question-bank-question-head-marks input:disabled,
+.theme-dark .question-bank-descriptive-marks input:disabled {
+  border-color: rgba(94, 116, 145, 0.36);
+  background: rgba(15, 23, 42, 0.74);
+  color: #71839a;
+}
+
 .theme-dark .question-bank-descriptive-builder-head strong {
   color: #eef6ff;
 }
 
 .theme-dark .question-bank-descriptive-builder-head span,
 .theme-dark .question-bank-descriptive-empty,
-.theme-dark .question-bank-descriptive-index {
+.theme-dark .question-bank-descriptive-index,
+.theme-dark .question-bank-descriptive-sub-actions > span {
   color: #9fb0c2;
 }
 
+.theme-dark .question-bank-descriptive-sub-list,
 .theme-dark .question-bank-descriptive-sub-card {
-  border-color: rgba(94, 116, 145, 0.5);
+  border-color: rgba(94, 116, 145, 0.38);
+  background: transparent;
+}
+
+.theme-dark .question-bank-answer-panel .rich-math-editor.is-readonly,
+.theme-dark .question-bank-descriptive-builder .rich-math-editor.is-readonly {
+  border-color: rgba(94, 116, 145, 0.36);
+  background: rgba(15, 23, 42, 0.74);
+}
+
+.theme-dark .question-bank-answer-panel .rich-math-editor.is-readonly .rich-math-editor-surface,
+.theme-dark .question-bank-descriptive-builder .rich-math-editor.is-readonly .rich-math-editor-surface {
+  color: #9fb0c2;
+}
+
+.theme-dark .question-bank-field-edit-btn {
+  border-color: rgba(45, 212, 191, 0.42);
   background: #132235;
+  color: #8df0c7;
+}
+
+.theme-dark .question-bank-field-edit-btn:hover,
+.theme-dark .question-bank-field-edit-btn:focus-visible {
+  border-color: rgba(94, 234, 212, 0.68);
+  background: rgba(20, 184, 166, 0.18);
 }
 
 .theme-dark .question-bank-descriptive-text span,
@@ -6361,7 +6496,8 @@
   }
 
   .question-bank-descriptive-builder-head,
-  .question-bank-descriptive-sub-actions {
+  .question-bank-descriptive-sub-actions,
+  .question-bank-descriptive-builder-foot {
     align-items: stretch;
     flex-direction: column;
   }

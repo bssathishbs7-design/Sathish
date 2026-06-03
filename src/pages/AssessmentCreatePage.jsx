@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BadgeCheck, ChevronDown, ClipboardList, ClipboardPlus, Clock3, FileWarning, FolderPlus, Trash2 } from 'lucide-react'
+import { ArrowRight, BadgeCheck, ChevronDown, ClipboardList, ClipboardPlus, Clock3, FileWarning, FolderPlus, Trash2 } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -62,7 +62,7 @@ const selectOptions = {
     'Entrance/Screening Test',
   ],
   courses: ['India MBBS (NMC Syllabus)'],
-  years: ['Year 1', 'Year 2', 'Year 3', 'Year 4'],
+  years: ['First Year', 'Second Year', 'Third Year', 'Fourth Year'],
   academicYears: ['2024 - 2025', '2025 - 2026', '2026 - 2027', '2027 - 2028'],
 }
 
@@ -80,9 +80,29 @@ const initialForm = {
 const requiredAssessmentFields = ['collegeName', 'assessmentName', 'academicYear', 'examCategory', 'course', 'year']
 
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
+const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 
 const toCapitalizedCase = (value) =>
   value.replace(/[A-Za-z]+/g, (word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+
+const formatYearLabel = (value) => {
+  const yearMap = {
+    'Year 1': 'First Year',
+    'Year 2': 'Second Year',
+    'Year 3': 'Third Year',
+    'Year 4': 'Fourth Year',
+  }
+  return yearMap[value] || value || '-'
+}
+
+const readAssessmentDrafts = () => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_DRAFTS_STORAGE_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
 
 function SelectField({ label, value, options, placeholder, onChange, className = '' }) {
   return (
@@ -114,7 +134,12 @@ function UploadImageIcon() {
 
 export default function AssessmentCreatePage({ onNavigate }) {
   const [form, setForm] = useState(initialForm)
+  const [activeAssessmentTab, setActiveAssessmentTab] = useState('create')
+  const [draftAssessments] = useState(readAssessmentDrafts)
   const isCreateDisabled = requiredAssessmentFields.some((field) => !String(form[field] ?? '').trim())
+  const metrics = assessmentMetrics.map((metric) => (
+    metric.tone === 'draft' ? { ...metric, count: draftAssessments.length } : metric
+  ))
 
   const updateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -143,7 +168,17 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const createAssessment = () => {
     if (isCreateDisabled) return
 
-    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(form))
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({
+      ...form,
+      assessmentId: `assessment-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    }))
+    onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
+  }
+
+  const continueDraftAssessment = (draft) => {
+    if (!draft?.setup) return
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(draft.setup))
     onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
   }
 
@@ -153,11 +188,16 @@ export default function AssessmentCreatePage({ onNavigate }) {
         <PageNavigationHeader items={['My Pages', 'Assessment', 'Create']} />
 
         <section className="assessment-create-metrics" aria-label="Assessment create metrics">
-          {assessmentMetrics.map((metric) => {
+          {metrics.map((metric) => {
             const Icon = metric.icon
 
             return (
-              <article key={metric.label} className={`assessment-create-metric is-${metric.tone}`}>
+              <button
+                key={metric.label}
+                type="button"
+                className={`assessment-create-metric is-${metric.tone} ${activeAssessmentTab === metric.tone ? 'is-active' : ''}`}
+                onClick={() => setActiveAssessmentTab(metric.tone === 'draft' ? 'draft' : 'create')}
+              >
                 <span className="assessment-create-metric-icon" aria-hidden="true">
                   <Icon size={16} strokeWidth={2.2} />
                 </span>
@@ -165,11 +205,69 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   <strong>{metric.count}</strong>
                   <span>{metric.label}</span>
                 </span>
-              </article>
+              </button>
             )
           })}
         </section>
 
+        {activeAssessmentTab === 'draft' ? (
+          <section className="assessment-create-draft-shell" aria-label="Draft assessments">
+            <div className="assessment-create-card-heading">
+              <h2>Draft Assessment</h2>
+            </div>
+            {draftAssessments.length ? (
+              <div className="assessment-create-draft-grid">
+                {draftAssessments.map((draft) => (
+                  <article key={draft.id} className="assessment-create-draft-card">
+                    <div className="assessment-create-draft-profile">
+                      <span className="assessment-create-draft-avatar">
+                        {draft.setup?.logoPreview ? (
+                          <img src={draft.setup.logoPreview} alt={draft.setup.logoName || draft.assessmentName || 'Assessment logo'} />
+                        ) : (
+                          <ClipboardList size={20} strokeWidth={2.2} />
+                        )}
+                      </span>
+                      <div>
+                      <strong>{draft.assessmentName || 'Untitled Assessment'}</strong>
+                      <span>{draft.examCategory || 'Assessment'} by {draft.setup?.collegeName || 'Institution'}</span>
+                      <span>{draft.questionCount ?? 0} Questions · {draft.totalMarks ?? 0} Marks</span>
+                      </div>
+                    </div>
+                    <div className="assessment-create-draft-stats" aria-label="Draft summary">
+                      <span>
+                        <strong>{draft.questionCount ?? 0}</strong>
+                        <em>Questions</em>
+                      </span>
+                      <span>
+                        <strong>{draft.totalMarks ?? 0}</strong>
+                        <em>Total Marks</em>
+                      </span>
+                      <span>
+                        <strong>{formatYearLabel(draft.year)}</strong>
+                        <em>Year</em>
+                      </span>
+                    </div>
+                    <div className="assessment-create-draft-chips">
+                      <span>{draft.academicYear || '-'}</span>
+                      <span>{draft.course || '-'}</span>
+                    </div>
+                    <div className="assessment-create-draft-footer">
+                      <span>{draft.updatedAt ? `Saved ${new Date(draft.updatedAt).toLocaleDateString()}` : 'Draft saved'}</span>
+                      <button type="button" onClick={() => continueDraftAssessment(draft)}>
+                        Continue
+                        <ArrowRight size={14} strokeWidth={2.3} />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="assessment-create-placeholder">
+                <p>No draft assessments available.</p>
+              </div>
+            )}
+          </section>
+        ) : (
         <section className="assessment-create-form-shell" aria-label="Create assessment setup">
           <form className="assessment-create-form" onSubmit={(event) => event.preventDefault()}>
            
@@ -280,6 +378,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
               </aside>
           </form>
         </section>
+        )}
       </div>
     </section>
   )

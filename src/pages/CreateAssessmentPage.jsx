@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Check,
-  CheckCircle2,
   ArrowRight,
   ChevronDown,
   ChevronUp,
-  Clock3,
   Database,
   Eye,
   FilePenLine,
@@ -14,6 +12,7 @@ import {
   ListChecks,
   LogOut,
   Moon,
+  Pencil,
   Plus,
   RotateCcw,
   Save,
@@ -33,6 +32,9 @@ import '../styles/assessment-pages.css'
 
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
+const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
+const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
+const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 
 const SUBJECT_DIRECTORY = {
@@ -64,7 +66,7 @@ const SUBJECT_DIRECTORY = {
   },
 }
 
-const YEAR_OPTIONS = ['Year 1', 'Year 2', 'Year 3', 'Year 4']
+const YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year', 'Fourth Year']
 const QUESTION_CATEGORY_OPTIONS = ['Direct', 'Reasoning', 'Critical Thinking', 'Application']
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
@@ -202,12 +204,63 @@ const readCreateAssessmentSetup = () => {
   }
 }
 
-const readSavedAssessmentQuestions = () => {
+const getAssessmentStorageSuffix = (setup = {}) => {
+  if (setup.assessmentId) return String(setup.assessmentId)
+  const signature = [
+    setup.collegeName,
+    setup.assessmentName,
+    setup.academicYear,
+    setup.examCategory,
+    setup.course,
+    setup.year,
+  ].filter(Boolean).join('|')
+  return signature ? signature.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : 'draft'
+}
+
+const getAssessmentQuestionsStorageKey = (setup = {}) => (
+  `${CREATE_ASSESSMENT_QUESTIONS_KEY}:${getAssessmentStorageSuffix(setup)}`
+)
+
+const getAssessmentSectionTitlesStorageKey = (setup = {}) => (
+  `${CREATE_ASSESSMENT_SECTION_TITLES_KEY}:${getAssessmentStorageSuffix(setup)}`
+)
+
+const getAssessmentSectionOrderStorageKey = (setup = {}) => (
+  `${CREATE_ASSESSMENT_SECTION_ORDER_KEY}:${getAssessmentStorageSuffix(setup)}`
+)
+
+const readSavedAssessmentQuestions = (setup = {}) => {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(CREATE_ASSESSMENT_QUESTIONS_KEY) || '[]')
+    const parsed = JSON.parse(window.localStorage.getItem(getAssessmentQuestionsStorageKey(setup)) || '[]')
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
+  }
+}
+
+const readCreateAssessmentSectionTitles = (setup = {}) => {
+  const defaults = PREVIEW_SECTION_CONFIG.reduce((titles, section) => ({
+    ...titles,
+    [section.key]: section.defaultTitle,
+  }), {})
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(getAssessmentSectionTitlesStorageKey(setup)) || '{}')
+    return parsed && typeof parsed === 'object' ? { ...defaults, ...parsed } : defaults
+  } catch {
+    return defaults
+  }
+}
+
+const readCreateAssessmentSectionOrder = (setup = {}) => {
+  const defaultOrder = PREVIEW_SECTION_CONFIG.map((section) => section.key)
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(getAssessmentSectionOrderStorageKey(setup)) || '[]')
+    if (!Array.isArray(parsed)) return defaultOrder
+    const validKeys = parsed.filter((key) => PREVIEW_SECTION_KEY_SET.has(key))
+    return [...validKeys, ...defaultOrder.filter((key) => !validKeys.includes(key))]
+  } catch {
+    return defaultOrder
   }
 }
 
@@ -241,6 +294,83 @@ const getShortCompetencyLabel = (value) => String(value).split(/\s+/)[0] || valu
 const getSelectionSummary = (items, emptyLabel, formatter = (value) => value) => (
   items.length ? items.map(formatter).join(', ') : emptyLabel
 )
+const SUMMARY_TYPE_ORDER = ['MCQ', 'SAQs', 'MEQs', 'LAQs']
+const PREVIEW_SECTION_ROMAN_NUMERALS = ['I.', 'II.', 'III.', 'IV.', 'V.', 'VI.', 'VII.', 'VIII.', 'IX.', 'X.']
+const PREVIEW_SECTION_CONFIG = [
+  { key: 'MCQ', roman: 'I.', defaultTitle: 'Multiple Choice Question', type: 'MCQ' },
+  { key: 'SAQs', roman: 'II.', defaultTitle: 'Short Answer Questions', type: 'Desc Short Answer Questions (SAQs)' },
+  { key: 'MEQs', roman: 'III.', defaultTitle: 'Modified Essay Questions', type: 'Desc Modified Essay Questions (MEQs)' },
+  { key: 'LAQs', roman: 'IV.', defaultTitle: 'Long Answer Questions', type: 'Desc Long Answer Questions (LAQs)' },
+]
+const PREVIEW_SECTION_KEY_SET = new Set(PREVIEW_SECTION_CONFIG.map((section) => section.key))
+
+const formatSummaryNumber = (value) => String(value).padStart(2, '0')
+
+const getSummaryTypeLabel = (type) => {
+  if (type === 'MCQ') return 'MCQ'
+  if (String(type).includes('MEQs')) return 'MEQs'
+  if (String(type).includes('LAQs')) return 'LAQs'
+  if (String(type).includes('SAQs') || type === 'Descriptive Question') return 'SAQs'
+  return type || 'Question'
+}
+
+const getPreviewSectionKey = (item) => (
+  PREVIEW_SECTION_KEY_SET.has(item?.previewSectionKey) ? item.previewSectionKey : getSummaryTypeLabel(item?.type)
+)
+
+const parseMarksValue = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const getQuestionMarksTotal = (item) => {
+  if (isDescriptiveQuestionType(item?.type)) {
+    const sectionMarks = (item.descriptiveSections ?? []).reduce((total, section) => {
+      const children = Array.isArray(section.children) ? section.children : []
+      const childMarks = children.reduce((sum, child) => sum + parseMarksValue(child.marks), 0)
+      const ownMarks = children.length ? 0 : parseMarksValue(section.marks)
+      return total + ownMarks + childMarks
+    }, 0)
+
+    return parseMarksValue(item.marks) + sectionMarks
+  }
+
+  return parseMarksValue(item?.marks)
+}
+
+const getFirstValue = (value) => (Array.isArray(value) ? value[0] : value)
+
+const getPreviewQuestionText = (item) => (
+  getRichTextPreview(item.questionText)
+  || item.title
+  || item.question
+  || 'Untitled question'
+)
+
+const getPreviewCurriculumText = (item) => {
+  const values = [
+    item.year,
+    item.subject,
+    getFirstValue(item.topics),
+    getFirstValue(item.competencies) ? getShortCompetencyLabel(getFirstValue(item.competencies)) : '',
+  ].filter(Boolean)
+
+  return values.length ? values.join(' / ') : 'Curriculum not selected'
+}
+
+const getCorrectOptionTexts = (item) => (
+  (item.options ?? [])
+    .filter((option) => (item.correctOptionIds ?? []).includes(option.id))
+    .map((option) => getRichTextPreview(option.label))
+    .filter(Boolean)
+)
+
+const getThinkingBadgeClassName = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (normalized === 'hot') return 'assessment-page-thinking-hot'
+  if (normalized === 'lot') return 'assessment-page-thinking-lot'
+  return ''
+}
 
 const normalizeOptionalTagValues = (values) => {
   const cleanValues = (values ?? [])
@@ -343,7 +473,10 @@ function OptionalTagTextInput({ label, values, onChange }) {
 export default function CreateAssessmentPage({ onNavigate, theme = 'light', onToggleTheme }) {
   const [setup] = useState(readCreateAssessmentSetup)
   const [question, setQuestion] = useState(null)
-  const [savedQuestions, setSavedQuestions] = useState(readSavedAssessmentQuestions)
+  const assessmentQuestionsStorageKey = getAssessmentQuestionsStorageKey(setup)
+  const assessmentSectionTitlesStorageKey = getAssessmentSectionTitlesStorageKey(setup)
+  const assessmentSectionOrderStorageKey = getAssessmentSectionOrderStorageKey(setup)
+  const [savedQuestions, setSavedQuestions] = useState(() => readSavedAssessmentQuestions(setup))
   const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
@@ -351,10 +484,19 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
   const [openDistractorOptionId, setOpenDistractorOptionId] = useState(null)
   const [openDistractorMenuOptionId, setOpenDistractorMenuOptionId] = useState(null)
+  const [openPreviewTagsId, setOpenPreviewTagsId] = useState(null)
+  const [openPreviewCardIds, setOpenPreviewCardIds] = useState([])
   const [saveStatus, setSaveStatus] = useState('')
   const [activeCreateTab, setActiveCreateTab] = useState('create')
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(false)
   const [selectedCreateQuestionTypeLabel, setSelectedCreateQuestionTypeLabel] = useState('')
+  const [editingPreviewQuestionId, setEditingPreviewQuestionId] = useState(null)
+  const [previewSectionTitles, setPreviewSectionTitles] = useState(() => readCreateAssessmentSectionTitles(setup))
+  const [previewSectionOrder, setPreviewSectionOrder] = useState(() => readCreateAssessmentSectionOrder(setup))
+  const [editingPreviewSectionKey, setEditingPreviewSectionKey] = useState(null)
+  const [previewSectionTitleDraft, setPreviewSectionTitleDraft] = useState('')
+  const [draggedPreviewQuestionId, setDraggedPreviewQuestionId] = useState(null)
+  const [draggedPreviewSectionKey, setDraggedPreviewSectionKey] = useState(null)
 
   const detailItems = [setup.collegeName, setup.academicYear, setup.examCategory, setup.course, setup.year].filter(Boolean)
   const subjectDirectory = question ? SUBJECT_DIRECTORY[question.subject] ?? null : null
@@ -388,15 +530,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     Boolean(getRichTextPreview(question?.questionText ?? '')),
     isDescriptiveQuestionType(question?.type) ? true : (question?.correctOptionIds ?? []).length > 0,
   ].filter(Boolean).length
-  const hasDescriptiveContent = (question?.descriptiveSections ?? []).some((section) => (
-    getRichTextPreview(section.questionText)
-    || (section.children ?? []).some((child) => getRichTextPreview(child.questionText))
-  ))
-  const canSaveDraft = Boolean(
-    getRichTextPreview(question?.questionText ?? '')
-    || (question?.options ?? []).some((option) => getRichTextPreview(option.label))
-    || hasDescriptiveContent,
-  )
   const canCreate = requiredProgress === 6 && (
     isDescriptiveQuestionType(question?.type)
       ? true
@@ -404,26 +537,68 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   )
   const selectedQuestionTypeLabel = selectedCreateQuestionTypeLabel || 'Create New Question'
   const previewQuestions = useMemo(
-    () => [...(question ? [question] : []), ...savedQuestions.filter((item) => item.id !== question?.id)],
-    [question, savedQuestions],
+    () => savedQuestions,
+    [savedQuestions],
   )
   const previewQuestionCount = previewQuestions.length
+  const selectedAssessmentQuestionCount = savedQuestions.length
+  const canSaveAssessmentDraft = selectedAssessmentQuestionCount > 0
+  const assessmentSummary = useMemo(() => {
+    const rowsByType = savedQuestions.reduce((rows, item) => {
+      const typeLabel = getSummaryTypeLabel(item.type)
+      const current = rows[typeLabel] ?? { type: typeLabel, count: 0, marks: 0 }
+      rows[typeLabel] = {
+        ...current,
+        count: current.count + 1,
+        marks: current.marks + getQuestionMarksTotal(item),
+      }
+      return rows
+    }, {})
+
+    const rows = SUMMARY_TYPE_ORDER
+      .map((type) => rowsByType[type])
+      .filter(Boolean)
+
+    const extraRows = Object.values(rowsByType)
+      .filter((row) => !SUMMARY_TYPE_ORDER.includes(row.type))
+
+    return {
+      totalQuestions: selectedAssessmentQuestionCount,
+      totalMarks: savedQuestions.reduce((total, item) => total + getQuestionMarksTotal(item), 0),
+      rows: [...rows, ...extraRows],
+    }
+  }, [savedQuestions, selectedAssessmentQuestionCount])
+  const previewSections = useMemo(() => (
+    previewSectionOrder.map((sectionKey) => PREVIEW_SECTION_CONFIG.find((section) => section.key === sectionKey))
+      .filter(Boolean)
+      .map((section) => {
+      const questions = previewQuestions.filter((item) => getPreviewSectionKey(item) === section.key)
+      return {
+        ...section,
+        title: previewSectionTitles[section.key] || section.defaultTitle,
+        questions,
+        marks: questions.reduce((total, item) => total + getQuestionMarksTotal(item), 0),
+      }
+    }).filter((section) => section.questions.length)
+  ), [previewQuestions, previewSectionOrder, previewSectionTitles])
 
   useEffect(() => {
-    if (!openDistractorOptionId && !openDistractorMenuOptionId) return undefined
+    if (!openDistractorOptionId && !openDistractorMenuOptionId && !openPreviewTagsId) return undefined
     if (typeof document === 'undefined') return undefined
 
     const handleOutsideDistractorClick = (event) => {
       if (event.target.closest?.('.question-bank-distractor-wrap')) return
+      if (event.target.closest?.('.question-bank-created-tags-wrap')) return
       setOpenDistractorOptionId(null)
       setOpenDistractorMenuOptionId(null)
+      setOpenPreviewTagsId(null)
     }
 
     document.addEventListener('mousedown', handleOutsideDistractorClick)
     return () => {
       document.removeEventListener('mousedown', handleOutsideDistractorClick)
     }
-  }, [openDistractorOptionId, openDistractorMenuOptionId])
+  }, [openDistractorOptionId, openDistractorMenuOptionId, openPreviewTagsId])
 
   const updateQuestion = (patch) => {
     setQuestion((current) => current ? ({
@@ -435,9 +610,11 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
 
   const persistQuestion = (status) => {
     if (!question) return
+    const isEditingPreviewQuestion = Boolean(editingPreviewQuestionId)
 
     const nextQuestion = {
       ...question,
+      id: editingPreviewQuestionId || question.id,
       status,
       assessmentName: setup.assessmentName || 'Untitled Assessment',
       savedAt: new Date().toISOString(),
@@ -446,11 +623,19 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       thinkingLevel: question.thinkingLevel || 'LoT',
       difficultyLevel: question.difficultyLevel || 'L1',
     }
-    const nextQuestions = [nextQuestion, ...savedQuestions.filter((item) => item.id !== question.id)]
-    window.localStorage.setItem(CREATE_ASSESSMENT_QUESTIONS_KEY, JSON.stringify(nextQuestions))
+    const nextQuestions = isEditingPreviewQuestion
+      ? savedQuestions.map((item) => (item.id === editingPreviewQuestionId ? nextQuestion : item))
+      : [nextQuestion, ...savedQuestions.filter((item) => item.id !== question.id)]
+    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
     setSavedQuestions(nextQuestions)
     setQuestion(createQuestion(setup, question.type))
-    setSaveStatus(status === 'Draft' ? 'Draft saved.' : 'Question created.')
+    setEditingPreviewQuestionId(null)
+    if (isEditingPreviewQuestion) {
+      setActiveCreateTab('preview')
+      setHasSelectedCreateTab(true)
+      setSelectedCreateQuestionTypeLabel('')
+    }
+    setSaveStatus(isEditingPreviewQuestion ? 'Question updated.' : status === 'Draft' ? 'Draft saved.' : 'Question created.')
   }
 
   const clearQuestion = () => {
@@ -466,6 +651,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const resetCurrentQuestion = () => {
     if (!question) return
     setQuestion(createQuestion(setup, question.type))
+    setEditingPreviewQuestionId(null)
     setActiveMappingPicker(null)
     setMappingSearchValue('')
     setIsOptionalTagsOpen(false)
@@ -529,7 +715,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         (questionItem.id ?? questionItem.originalQuestionId) === (item.originalQuestionId ?? item.id)
       ))),
     ]
-    window.localStorage.setItem(CREATE_ASSESSMENT_QUESTIONS_KEY, JSON.stringify(nextQuestions))
+    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
     setSavedQuestions(nextQuestions)
     setSaveStatus(`${importedQuestions.length} question${importedQuestions.length === 1 ? '' : 's'} added to assessment.`)
   }
@@ -544,9 +730,147 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     }
 
     const nextQuestions = savedQuestions.filter((savedItem) => savedItem.id !== item.id)
-    window.localStorage.setItem(CREATE_ASSESSMENT_QUESTIONS_KEY, JSON.stringify(nextQuestions))
+    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
     setSavedQuestions(nextQuestions)
     setSaveStatus('Question removed from preview.')
+  }
+
+  const editPreviewQuestion = (item) => {
+    if (!item?.id) return
+    const nextTypeMeta = getQuestionTypeMeta(item.type)
+    setQuestion({
+      ...createQuestion(setup, item.type),
+      ...item,
+      options: Array.isArray(item.options) && item.options.length ? item.options : createQuestion(setup, item.type).options,
+      correctOptionIds: item.correctOptionIds ?? [],
+      descriptiveSections: item.descriptiveSections ?? [],
+      images: item.images ?? [],
+      topics: item.topics ?? [],
+      competencies: item.competencies ?? [],
+      organSubSystems: normalizeOptionalTagValues(item.organSubSystems),
+      diseaseTags: normalizeOptionalTagValues(item.diseaseTags),
+      keyConcepts: normalizeOptionalTagValues(item.keyConcepts),
+    })
+    setEditingPreviewQuestionId(item.id)
+    setActiveCreateTab('create')
+    setHasSelectedCreateTab(true)
+    setSelectedCreateQuestionTypeLabel(nextTypeMeta?.shortLabel ?? nextTypeMeta?.menuLabel ?? 'Create New Question')
+    setIsQuestionTypePickerOpen(false)
+    setIsDescriptiveTypePickerOpen(false)
+    setActiveMappingPicker(null)
+    setMappingSearchValue('')
+    setIsOptionalTagsOpen(false)
+    setSaveStatus('Editing preview question.')
+  }
+
+  const persistSavedQuestions = (nextQuestions, message = '') => {
+    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    setSavedQuestions(nextQuestions)
+    if (message) setSaveStatus(message)
+  }
+
+  const saveAssessmentDraft = () => {
+    if (!canSaveAssessmentDraft) return
+    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(savedQuestions))
+    const draftRow = {
+      id: setup.assessmentId || getAssessmentStorageSuffix(setup),
+      setup,
+      assessmentName: setup.assessmentName || 'Untitled Assessment',
+      academicYear: setup.academicYear || '',
+      examCategory: setup.examCategory || '',
+      course: setup.course || '',
+      year: setup.year || '',
+      questionCount: assessmentSummary.totalQuestions,
+      totalMarks: assessmentSummary.totalMarks,
+      updatedAt: new Date().toISOString(),
+    }
+    try {
+      const existingDrafts = JSON.parse(window.localStorage.getItem(ASSESSMENT_DRAFTS_STORAGE_KEY) || '[]')
+      const rows = Array.isArray(existingDrafts) ? existingDrafts : []
+      const nextDrafts = [draftRow, ...rows.filter((row) => row.id !== draftRow.id)]
+      window.localStorage.setItem(ASSESSMENT_DRAFTS_STORAGE_KEY, JSON.stringify(nextDrafts))
+    } catch {
+      window.localStorage.setItem(ASSESSMENT_DRAFTS_STORAGE_KEY, JSON.stringify([draftRow]))
+    }
+    setSaveStatus('Assessment draft saved.')
+  }
+
+  const startEditPreviewSectionTitle = (section) => {
+    setEditingPreviewSectionKey(section.key)
+    setPreviewSectionTitleDraft(section.title)
+  }
+
+  const commitPreviewSectionTitle = () => {
+    if (!editingPreviewSectionKey) return
+    const fallbackTitle = PREVIEW_SECTION_CONFIG.find((section) => section.key === editingPreviewSectionKey)?.defaultTitle ?? ''
+    const nextTitles = {
+      ...previewSectionTitles,
+      [editingPreviewSectionKey]: previewSectionTitleDraft.trim() || fallbackTitle,
+    }
+    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(nextTitles))
+    setPreviewSectionTitles(nextTitles)
+    setEditingPreviewSectionKey(null)
+    setPreviewSectionTitleDraft('')
+  }
+
+  const movePreviewQuestionToSection = (itemId, sectionKey) => {
+    const movingQuestion = savedQuestions.find((item) => item.id === itemId)
+    if (!movingQuestion) return
+
+    const nextQuestions = savedQuestions.filter((item) => item.id !== itemId)
+    const targetIndex = nextQuestions.reduce((lastIndex, item, index) => (
+      getPreviewSectionKey(item) === sectionKey ? index : lastIndex
+    ), -1)
+    nextQuestions.splice(targetIndex + 1, 0, {
+      ...movingQuestion,
+      previewSectionKey: sectionKey,
+    })
+    persistSavedQuestions(nextQuestions, 'Question order updated.')
+  }
+
+  const movePreviewQuestionBefore = (itemId, targetId) => {
+    if (itemId === targetId) return
+    const movingQuestion = savedQuestions.find((item) => item.id === itemId)
+    const targetQuestion = savedQuestions.find((item) => item.id === targetId)
+    if (!movingQuestion || !targetQuestion) return
+
+    const currentIndex = savedQuestions.findIndex((item) => item.id === itemId)
+    const targetIndex = savedQuestions.findIndex((item) => item.id === targetId)
+    const nextQuestions = [...savedQuestions]
+    const [movedQuestion] = nextQuestions.splice(currentIndex, 1)
+    const adjustedTargetIndex = currentIndex < targetIndex ? targetIndex - 1 : targetIndex
+    nextQuestions.splice(adjustedTargetIndex, 0, {
+      ...movedQuestion,
+      previewSectionKey: getPreviewSectionKey(targetQuestion),
+    })
+    persistSavedQuestions(nextQuestions, 'Question order updated.')
+  }
+
+  const movePreviewQuestionToOwnSection = (itemId) => {
+    const movingQuestion = savedQuestions.find((item) => item.id === itemId)
+    if (!movingQuestion) return
+
+    const ownSectionKey = getSummaryTypeLabel(movingQuestion.type)
+    if (!PREVIEW_SECTION_KEY_SET.has(ownSectionKey)) return
+
+    const nextQuestions = [
+      ...savedQuestions.filter((item) => item.id !== itemId),
+      {
+        ...movingQuestion,
+        previewSectionKey: ownSectionKey,
+      },
+    ]
+    persistSavedQuestions(nextQuestions, 'Question moved to its own section.')
+  }
+
+  const movePreviewSectionBefore = (sectionKey, targetSectionKey) => {
+    if (sectionKey === targetSectionKey) return
+    const nextOrder = previewSectionOrder.filter((key) => key !== sectionKey)
+    const targetIndex = nextOrder.findIndex((key) => key === targetSectionKey)
+    nextOrder.splice(targetIndex < 0 ? nextOrder.length : targetIndex, 0, sectionKey)
+    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(nextOrder))
+    setPreviewSectionOrder(nextOrder)
+    setSaveStatus('Section order updated.')
   }
 
   const handleQuestionTypeChange = (type) => {
@@ -614,7 +938,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const addDescriptiveInsideQuestion = (sectionId, sectionIndex) => {
     updateDescriptiveSections((sections) => sections.map((section, index) => (
       section.id === sectionId || index === sectionIndex
-        ? { ...section, children: [...(Array.isArray(section.children) ? section.children : []), createDescriptiveInsideQuestion()] }
+        ? { ...section, marks: '0', children: [...(Array.isArray(section.children) ? section.children : []), createDescriptiveInsideQuestion()] }
         : section
     )))
   }
@@ -711,6 +1035,14 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     setOpenDistractorMenuOptionId(null)
   }
 
+  const togglePreviewCard = (id) => {
+    setOpenPreviewCardIds((current) => (
+      current.includes(id)
+        ? current.filter((currentId) => currentId !== id)
+        : [...current, id]
+    ))
+  }
+
   const handleAddOption = () => {
     if (!question) return
 
@@ -734,14 +1066,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         </div>
 
         <div className="create-assessment-header-actions">
-          <span className="create-assessment-header-badge">
-            <CheckCircle2 size={15} strokeWidth={2.2} />
-            Questions: {savedQuestions.length}
-          </span>
-          <span className="create-assessment-header-badge">
-            <Clock3 size={15} strokeWidth={2.2} />
-            Duration: 00:00
-          </span>
           <button
             type="button"
             className="create-assessment-theme-btn"
@@ -782,26 +1106,297 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             </div>
             {previewQuestionCount ? (
               <div className="create-assessment-preview-list">
-                {previewQuestions.map((item, index) => (
-                  <article key={item.id} className="create-assessment-preview-card">
-                    <span className={`question-bank-badge type ${isDescriptiveQuestionType(item.type) ? 'is-desc' : 'is-mcq'}`}>
-                      {isDescriptiveQuestionType(item.type) ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}
-                    </span>
-                    <div>
-                      <strong>Q{index + 1}. {getRichTextPreview(item.questionText) || item.title || 'Untitled question'}</strong>
-                      <span>{[item.year, item.subject, item.topics?.[0]].filter(Boolean).join(' / ') || 'Curriculum not selected'}</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="create-assessment-preview-delete"
-                      onClick={() => deletePreviewQuestion(item)}
-                      aria-label={`Delete question ${index + 1} from preview`}
-                      title="Delete question"
+                {previewSections.map((section, sectionIndex) => (
+                  <section
+                    key={section.key}
+                    className={`create-assessment-preview-section-group type-${section.key.toLowerCase()} ${draggedPreviewQuestionId || draggedPreviewSectionKey ? 'is-drop-ready' : ''}`}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault()
+                      if (draggedPreviewSectionKey) {
+                        movePreviewSectionBefore(draggedPreviewSectionKey, section.key)
+                        setDraggedPreviewSectionKey(null)
+                        return
+                      }
+                      if (!draggedPreviewQuestionId) return
+                      movePreviewQuestionToSection(draggedPreviewQuestionId, section.key)
+                      setDraggedPreviewQuestionId(null)
+                    }}
+                  >
+                    <div
+                      className="create-assessment-preview-section-head"
+                      draggable
+                      onDragStart={(event) => {
+                        if (event.target.closest?.('button, input')) {
+                          event.preventDefault()
+                          return
+                        }
+                        setDraggedPreviewSectionKey(section.key)
+                      }}
+                      onDragEnd={() => setDraggedPreviewSectionKey(null)}
                     >
-                      <Trash2 size={15} strokeWidth={2.2} />
-                    </button>
-                  </article>
+                      <div className="create-assessment-preview-section-title">
+                        <strong>{PREVIEW_SECTION_ROMAN_NUMERALS[sectionIndex] ?? `${sectionIndex + 1}.`}</strong>
+                        {editingPreviewSectionKey === section.key ? (
+                          <input
+                            value={previewSectionTitleDraft}
+                            onChange={(event) => setPreviewSectionTitleDraft(event.target.value)}
+                            onBlur={commitPreviewSectionTitle}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') commitPreviewSectionTitle()
+                              if (event.key === 'Escape') {
+                                setEditingPreviewSectionKey(null)
+                                setPreviewSectionTitleDraft('')
+                              }
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span>{section.title}</span>
+                        )}
+                        <button
+                          type="button"
+                          className="create-assessment-preview-section-edit"
+                          onClick={() => startEditPreviewSectionTitle(section)}
+                          aria-label={`Edit ${section.title} title`}
+                          title="Edit title"
+                        >
+                          <Pencil size={13} strokeWidth={2.3} />
+                        </button>
+                      </div>
+                      <span className="create-assessment-preview-section-marks">{formatSummaryNumber(section.marks)} Marks</span>
+                    </div>
+                    <div className="create-assessment-preview-section-body">
+                      {section.questions.length ? section.questions.map((item) => {
+                  const index = previewQuestions.findIndex((previewQuestion) => previewQuestion.id === item.id)
+                  const isDescriptive = isDescriptiveQuestionType(item.type)
+                  const questionMarksTotal = getQuestionMarksTotal(item)
+                  const optionalTagGroups = getQuestionOptionalTagGroups(item)
+                    .map((group) => ({
+                      ...group,
+                      values: group.values.filter((value) => value && value !== DEFAULT_OPTIONAL_TAG),
+                    }))
+                    .filter((group) => group.values.length)
+                  const correctOptionTexts = getCorrectOptionTexts(item)
+                  const visibleOptions = (item.options ?? []).filter((option) => getRichTextPreview(option.label))
+                  const descriptiveSections = item.descriptiveSections ?? []
+                  const isPreviewCardOpen = openPreviewCardIds.includes(item.id)
+                  return (
+                    <article
+                      key={item.id}
+                      className={`create-assessment-preview-card ${isPreviewCardOpen ? 'is-open' : ''}`}
+                      draggable
+                      onDragStart={() => setDraggedPreviewQuestionId(item.id)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        if (!draggedPreviewQuestionId) return
+                        movePreviewQuestionBefore(draggedPreviewQuestionId, item.id)
+                        setDraggedPreviewQuestionId(null)
+                      }}
+                      onDragEnd={() => setDraggedPreviewQuestionId(null)}
+                    >
+                      <div className="create-assessment-preview-main">
+                        <div className="create-assessment-preview-title-row">
+                          <div>
+                            <strong>Q{index + 1}. {getPreviewQuestionText(item)}</strong>
+                            {!isPreviewCardOpen ? (
+                              <span className="create-assessment-preview-subline">
+                                <em className={`create-assessment-preview-type-text ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>
+                                  {isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}
+                                </em>
+                                <span>{getPreviewCurriculumText(item)}</span>
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {isPreviewCardOpen ? (
+                          <div className="create-assessment-preview-detail">
+                            {(item.images ?? []).length ? (
+                              <div className="create-assessment-preview-images" aria-label="Question images">
+                                {item.images.map((image, imageIndex) => (
+                                  <figure key={image.id ?? `${image.name}-${imageIndex}`}>
+                                    <span>{String.fromCharCode(65 + imageIndex)}</span>
+                                    <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
+                                  </figure>
+                                ))}
+                              </div>
+                            ) : null}
+
+                            {!isDescriptive && visibleOptions.length ? (
+                              <div className="create-assessment-preview-options">
+                                {visibleOptions.map((option, optionIndex) => {
+                                  const isCorrect = (item.correctOptionIds ?? []).includes(option.id)
+                                  const distractorError = (option.distractorErrors ?? [])[0]
+                                  return (
+                                    <span key={option.id} className={isCorrect ? 'is-correct' : ''}>
+                                      <strong>{String.fromCharCode(65 + optionIndex)}.</strong>
+                                      {getRichTextPreview(option.label)}
+                                      {distractorError ? <em>{distractorError}</em> : null}
+                                    </span>
+                                  )
+                                })}
+                              </div>
+                            ) : null}
+
+                            {!isDescriptive && correctOptionTexts.length ? (
+                              <p className="create-assessment-preview-answer">
+                                <strong>Answer</strong>
+                                <span>{correctOptionTexts.join(', ')}</span>
+                              </p>
+                            ) : null}
+
+                            {isDescriptive && descriptiveSections.length ? (
+                              <div className="create-assessment-preview-sections">
+                                {descriptiveSections.map((section, sectionIndex) => (
+                                  <div key={section.id ?? sectionIndex} className="create-assessment-preview-section">
+                                    <div>
+                                      <strong>{ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.</strong>
+                                      <span>{getRichTextPreview(section.questionText) || 'Sub question'}</span>
+                                      {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? <b>{section.marks} Marks</b> : null}
+                                    </div>
+                                    {(section.children ?? []).length ? (
+                                      <div className="create-assessment-preview-children">
+                                        {section.children.map((child, childIndex) => (
+                                          <span key={child.id ?? childIndex}>
+                                            <strong>{String.fromCharCode(97 + childIndex)}.</strong>
+                                            {getRichTextPreview(child.questionText) || 'Inside question'}
+                                            {hasVisibleMarks(child.marks) ? <b>{child.marks} Marks</b> : null}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+
+                            <div className="create-assessment-preview-bottom">
+                              <span className="create-assessment-preview-subline">
+                                <em className={`create-assessment-preview-type-text ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>
+                                  {isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}
+                                </em>
+                                <span>{getPreviewCurriculumText(item)}</span>
+                              </span>
+
+                              {(item.questionCategory || item.cognitiveLevel || item.isCritical || item.source || optionalTagGroups.length) ? (
+                                <div className="create-assessment-preview-meta">
+                                  {item.questionCategory ? <span className="question-bank-badge mint">{item.questionCategory}</span> : null}
+                                  {item.cognitiveLevel ? <span className="question-bank-badge blue">{item.cognitiveLevel}</span> : null}
+                                  {item.isCritical ? <span className="question-bank-badge soft">Critical</span> : null}
+                                  {item.source && item.source !== 'Create Assessment' ? <span className="question-bank-badge soft">{item.source}</span> : null}
+                                  {optionalTagGroups.length ? (
+                                    <span className="question-bank-created-tags-wrap">
+                                      <button
+                                        type="button"
+                                        className="question-bank-badge question-bank-created-tags-badge"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          setOpenPreviewTagsId((current) => (current === item.id ? null : item.id))
+                                        }}
+                                        aria-expanded={openPreviewTagsId === item.id}
+                                      >
+                                        <Info size={13} strokeWidth={2.2} />
+                                        View tags
+                                      </button>
+                                      <span
+                                        className={`question-bank-created-tags-tooltip ${openPreviewTagsId === item.id ? 'is-open' : ''}`}
+                                        role="tooltip"
+                                      >
+                                        {optionalTagGroups.map((group) => (
+                                          <span key={group.label} className="question-bank-created-tags-group">
+                                            <strong>{group.label}</strong>
+                                            <span>
+                                              {group.values.map((value) => (
+                                                <span key={value}>{value}</span>
+                                              ))}
+                                            </span>
+                                          </span>
+                                        ))}
+                                      </span>
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ) : null}
+
+                              {getRichTextPreview(item.answerKey) ? (
+                                <p className="create-assessment-preview-answer">
+                                  <strong>Explanation</strong>
+                                  <span>{getRichTextPreview(item.answerKey)}</span>
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="create-assessment-preview-actions">
+                        {(item.thinkingLevel || item.difficultyLevel || questionMarksTotal) ? (
+                          <span className="create-assessment-preview-action-badges">
+                            {item.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(item.thinkingLevel)}`}>{item.thinkingLevel}</span> : null}
+                            {item.difficultyLevel ? <span className="assessment-page-table-value-pill assessment-page-difficulty-badge">{item.difficultyLevel}</span> : null}
+                            {questionMarksTotal ? (
+                              <span className="create-assessment-preview-marks-badge">
+                                {questionMarksTotal}M
+                              </span>
+                            ) : (
+                              <span className="create-assessment-preview-marks-badge is-empty" aria-hidden="true">
+                                0M
+                              </span>
+                            )}
+                          </span>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="create-assessment-preview-edit"
+                          onClick={() => editPreviewQuestion(item)}
+                          aria-label={`Edit question ${index + 1}`}
+                          title="Edit question"
+                        >
+                          <FilePenLine size={15} strokeWidth={2.2} />
+                        </button>
+                        <button
+                          type="button"
+                          className="create-assessment-preview-delete"
+                          onClick={() => deletePreviewQuestion(item)}
+                          aria-label={`Delete question ${index + 1} from preview`}
+                          title="Delete question"
+                        >
+                          <Trash2 size={15} strokeWidth={2.2} />
+                        </button>
+                        <button
+                          type="button"
+                          className="create-assessment-preview-toggle"
+                          onClick={() => togglePreviewCard(item.id)}
+                          aria-expanded={isPreviewCardOpen}
+                          aria-label={`${isPreviewCardOpen ? 'Collapse' : 'Expand'} question ${index + 1}`}
+                          title={isPreviewCardOpen ? 'Collapse' : 'Expand'}
+                        >
+                          {isPreviewCardOpen ? <ChevronUp size={15} strokeWidth={2.2} /> : <ChevronDown size={15} strokeWidth={2.2} />}
+                        </button>
+                      </div>
+                    </article>
+                  )
+                }) : (
+                  <div className="create-assessment-preview-section-empty">Drop questions here.</div>
+                )}
+                    </div>
+                  </section>
                 ))}
+                {draggedPreviewQuestionId ? (
+                  <div
+                    className="create-assessment-preview-new-section-drop"
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault()
+                      movePreviewQuestionToOwnSection(draggedPreviewQuestionId)
+                      setDraggedPreviewQuestionId(null)
+                    }}
+                  >
+                    Drop outside to create the matching question section
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="assessment-create-placeholder">
@@ -908,7 +1503,11 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                       </label>
                       <label className="question-bank-question-head-field question-bank-question-head-marks">
                         <span>Marks</span>
-                        <input value={question.marks} onChange={(event) => updateQuestion({ marks: event.target.value })} />
+                        <input
+                          value={isDescriptiveQuestionType(question.type) ? String(getQuestionMarksTotal(question)) : question.marks}
+                          onChange={(event) => updateQuestion({ marks: event.target.value })}
+                          disabled={isDescriptiveQuestionType(question.type)}
+                        />
                       </label>
                     </div>
                   </div>
@@ -1142,7 +1741,12 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                 </label>
                                 <label className="question-bank-descriptive-marks">
                                   <span>Marks</span>
-                                  <input value={section.marks ?? '0'} onChange={(event) => updateDescriptiveSubQuestion(section.id, { marks: event.target.value })} inputMode="decimal" />
+                                  <input
+                                    value={(section.children ?? []).length ? '0' : section.marks ?? '0'}
+                                    onChange={(event) => updateDescriptiveSubQuestion(section.id, { marks: event.target.value })}
+                                    inputMode="decimal"
+                                    disabled={(section.children ?? []).length > 0}
+                                  />
                                 </label>
                                 <button type="button" className="question-bank-icon-btn question-bank-descriptive-delete-btn" onClick={() => deleteDescriptiveSubQuestion(section.id)} aria-label={`Delete sub question ${sectionIndex + 1}`}>
                                   <Trash2 size={14} strokeWidth={2.2} />
@@ -1270,8 +1874,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                           onClick={() => persistQuestion('Created')}
                           disabled={!question || !canCreate}
                         >
-                          <Sparkles size={14} strokeWidth={2.2} />
-                          Create
+                          {editingPreviewQuestionId ? <FilePenLine size={14} strokeWidth={2.2} /> : <Sparkles size={14} strokeWidth={2.2} />}
+                          {editingPreviewQuestionId ? 'Update' : 'Create'}
                         </button>
                       </div>
                     </>
@@ -1329,8 +1933,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                           onClick={() => persistQuestion('Created')}
                           disabled={!question || !canCreate}
                         >
-                          <Sparkles size={14} strokeWidth={2.2} />
-                          Create
+                          {editingPreviewQuestionId ? <FilePenLine size={14} strokeWidth={2.2} /> : <Sparkles size={14} strokeWidth={2.2} />}
+                          {editingPreviewQuestionId ? 'Update' : 'Create'}
                         </button>
                       </div>
                     </div>
@@ -1345,7 +1949,34 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         ) : null}
       </main>
 
-      <aside className="create-assessment-action-panel" aria-label="Create actions">
+      <aside className="create-assessment-right-rail" aria-label="Assessment actions and summary">
+        <div className="create-assessment-summary-card" aria-label="Assessment question summary">
+          <div className="create-assessment-summary-total-row">
+            <span>Total Marks</span>
+            <strong className="is-marks">{formatSummaryNumber(assessmentSummary.totalMarks)}</strong>
+          </div>
+          <div className="create-assessment-summary-total-row">
+            <span>No. of Question</span>
+            <strong className="is-questions">{formatSummaryNumber(assessmentSummary.totalQuestions)}</strong>
+          </div>
+          {assessmentSummary.rows.length ? (
+            <div className="create-assessment-summary-table">
+              <div className="create-assessment-summary-head">
+                <span />
+                <span>No. of Qus</span>
+                <span>Marks</span>
+              </div>
+              {assessmentSummary.rows.map((row) => (
+                <div className="create-assessment-summary-row" key={row.type}>
+                  <span>{row.type}</span>
+                  <strong className="is-questions">{formatSummaryNumber(row.count)}</strong>
+                  <strong className="is-marks">{formatSummaryNumber(row.marks)}</strong>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <div className="create-assessment-action-panel" aria-label="Create actions">
         <strong>Create Assessment</strong>
         <div className={`question-bank-type-select-panel ${isQuestionTypePickerOpen ? 'is-open' : ''}`}>
           <button
@@ -1442,12 +2073,12 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             setIsDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
-          disabled={!previewQuestionCount}
+          disabled={!selectedAssessmentQuestionCount}
           aria-pressed={activeCreateTab === 'preview'}
         >
           <Eye size={16} strokeWidth={2.2} />
           <span>Preview</span>
-          {previewQuestionCount ? <b className="create-assessment-action-count">{previewQuestionCount}</b> : null}
+          {selectedAssessmentQuestionCount ? <b className="create-assessment-action-count">{selectedAssessmentQuestionCount}</b> : null}
         </button>
         <button
           type="button"
@@ -1464,7 +2095,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
           <Settings size={16} strokeWidth={2.2} />
           <span>Configuration</span>
         </button>
-        <button type="button" className="create-assessment-action-btn" onClick={() => persistQuestion('Draft')} disabled={!question || !canSaveDraft}>
+        <button type="button" className="create-assessment-action-btn is-draft" onClick={saveAssessmentDraft} disabled={!canSaveAssessmentDraft}>
           <Save size={16} strokeWidth={2.2} />
           <span>Save as Draft</span>
         </button>
@@ -1472,6 +2103,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
           <ArrowRight size={16} strokeWidth={2.2} />
           <span>Send to Approval</span>
         </button>
+        </div>
       </aside>
       </div>
     </section>

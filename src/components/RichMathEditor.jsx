@@ -81,6 +81,7 @@ export default function RichMathEditor({
   onPasteImageRejected,
   toolbarActions = null,
   readOnly = false,
+  onFocus,
 }) {
   const editorRef = useRef(null)
   const toolbarRef = useRef(null)
@@ -296,6 +297,7 @@ export default function RichMathEditor({
         data-placeholder={placeholder}
         data-empty={plainText ? 'false' : 'true'}
         onInput={handleInput}
+        onFocus={onFocus}
         onBlur={handleBlur}
         onMouseUp={updateSelectionToolbar}
         onKeyUp={handleKeyUp}

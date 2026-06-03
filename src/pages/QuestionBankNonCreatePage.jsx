@@ -1645,7 +1645,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                               <div className="assessment-page-descriptive-line">
                                 <strong>{sectionIndex + 1}.</strong>
                                 <span>{stripHtml(section.questionText) || 'Question not added'}</span>
-                                {Number(section.marks ?? 0) > 0 ? <em>{section.marks} marks</em> : null}
+                                {!(section.children ?? []).length && Number(section.marks ?? 0) > 0 ? <em>{section.marks} marks</em> : null}
                               </div>
                               {(section.children ?? []).map((child, childIndex) => (
                                 <div key={child.id ?? `${section.id}-child-${childIndex}`} className="assessment-page-descriptive-line is-child">
@@ -1872,7 +1872,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                         <div className="assessment-page-descriptive-line">
                                           <strong>{sectionIndex + 1}.</strong>
                                           <span>{stripHtml(section.questionText) || 'Question not added'}</span>
-                                          {Number(section.marks ?? 0) > 0 ? <em>{section.marks} marks</em> : null}
+                                          {!(section.children ?? []).length && Number(section.marks ?? 0) > 0 ? <em>{section.marks} marks</em> : null}
                                         </div>
                                         {(section.children ?? []).map((child, childIndex) => (
                                           <div key={child.id ?? `${section.id}-table-child-${childIndex}`} className="assessment-page-descriptive-line is-child">
