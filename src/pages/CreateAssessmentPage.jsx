@@ -325,16 +325,19 @@ const parseMarksValue = (value) => {
 
 const getQuestionMarksTotal = (item) => {
   if (isDescriptiveQuestionType(item?.type)) {
-    const sectionMarks = (item.descriptiveSections ?? []).reduce((total, section) => {
+    const sections = item.descriptiveSections ?? []
+    const sectionMarks = sections.reduce((total, section) => {
       const children = Array.isArray(section.children) ? section.children : []
       const childMarks = children.reduce((sum, child) => sum + parseMarksValue(child.marks), 0)
       const ownMarks = children.length ? 0 : parseMarksValue(section.marks)
       return total + ownMarks + childMarks
     }, 0)
 
-    return parseMarksValue(item.marks) + sectionMarks
+    const totalMarks = (sections.length ? 0 : parseMarksValue(item.marks)) + sectionMarks
+    return totalMarks || (getPreviewQuestionText(item) ? 2 : 0)
   }
 
+  if (item?.type === 'MCQ' && !parseMarksValue(item?.marks)) return 1
   return parseMarksValue(item?.marks)
 }
 
@@ -928,6 +931,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   }
 
   const addDescriptiveSubQuestion = () => {
+    updateQuestion({ marks: '0' })
     updateDescriptiveSections((sections) => [...sections, createDescriptiveSubQuestion()])
   }
 
@@ -1257,13 +1261,25 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                       <span>{getRichTextPreview(section.questionText) || 'Sub question'}</span>
                                       {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? <b>{section.marks} Marks</b> : null}
                                     </div>
+                                    {!(section.children ?? []).length && (getRichTextPreview(section.answerKey) || getRichTextPreview(item.answerKey)) ? (
+                                      <p className="create-assessment-preview-answer is-nested">
+                                        <span>{getRichTextPreview(section.answerKey) || getRichTextPreview(item.answerKey)}</span>
+                                      </p>
+                                    ) : null}
                                     {(section.children ?? []).length ? (
                                       <div className="create-assessment-preview-children">
                                         {section.children.map((child, childIndex) => (
                                           <span key={child.id ?? childIndex}>
-                                            <strong>{String.fromCharCode(97 + childIndex)}.</strong>
-                                            {getRichTextPreview(child.questionText) || 'Inside question'}
-                                            {hasVisibleMarks(child.marks) ? <b>{child.marks} Marks</b> : null}
+                                            <span>
+                                              <strong>{String.fromCharCode(97 + childIndex)}.</strong>
+                                              {getRichTextPreview(child.questionText) || 'Inside question'}
+                                              {hasVisibleMarks(child.marks) ? <b>{child.marks} Marks</b> : null}
+                                            </span>
+                                            {getRichTextPreview(child.answerKey) || getRichTextPreview(section.answerKey) || getRichTextPreview(item.answerKey) ? (
+                                              <em className="create-assessment-preview-child-answer">
+                                                {getRichTextPreview(child.answerKey) || getRichTextPreview(section.answerKey) || getRichTextPreview(item.answerKey)}
+                                              </em>
+                                            ) : null}
                                           </span>
                                         ))}
                                       </div>
@@ -1321,7 +1337,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                 </div>
                               ) : null}
 
-                              {getRichTextPreview(item.answerKey) ? (
+                              {(!isDescriptive || !descriptiveSections.length) && getRichTextPreview(item.answerKey) ? (
                                 <p className="create-assessment-preview-answer">
                                   <strong>Explanation</strong>
                                   <span>{getRichTextPreview(item.answerKey)}</span>
@@ -1740,7 +1756,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                   />
                                 </label>
                                 <label className="question-bank-descriptive-marks">
-                                  <span>Marks</span>
                                   <input
                                     value={(section.children ?? []).length ? '0' : section.marks ?? '0'}
                                     onChange={(event) => updateDescriptiveSubQuestion(section.id, { marks: event.target.value })}
@@ -1768,7 +1783,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                       />
                                     </label>
                                     <label className="question-bank-descriptive-marks">
-                                      <span>Marks</span>
                                       <input value={child.marks ?? '0'} onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value }, sectionIndex, childIndex)} inputMode="decimal" />
                                     </label>
                                     <button type="button" className="question-bank-icon-btn question-bank-descriptive-delete-btn" onClick={() => deleteDescriptiveInsideQuestion(section.id, child.id, sectionIndex, childIndex)} aria-label={`Delete inside question ${childIndex + 1}`}>

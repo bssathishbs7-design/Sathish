@@ -1940,6 +1940,12 @@
   font-size: 0.74rem;
 }
 
+.create-assessment-preview-answer.is-nested {
+  padding-left: 20px;
+  color: #536879;
+  font-size: 0.7rem;
+}
+
 .create-assessment-preview-sections {
   display: grid;
 }
@@ -1977,6 +1983,22 @@
   display: grid;
   gap: 4px;
   padding-left: 18px;
+}
+
+.create-assessment-preview-child-answer {
+  display: flex;
+  gap: 5px;
+  padding-left: 18px;
+  color: #536879;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.create-assessment-preview-children .create-assessment-preview-child-answer b {
+  margin-left: 0;
+  color: #12313d;
+  font-size: 0.68rem;
 }
 
 .create-assessment-preview-delete {
@@ -5680,6 +5702,46 @@
 .assessment-page-question-answer strong {
   color: #17313b;
   font-weight: 850;
+}
+
+.assessment-page-question-answer.is-nested {
+  margin-left: 26px;
+  color: #536879;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.assessment-page-question-answer.is-nested.is-child {
+  margin-left: 54px;
+}
+
+.assessment-page-descriptive-answer-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #e0ebe7;
+  color: #405866;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.assessment-page-descriptive-answer-list > span {
+  display: grid;
+  gap: 5px;
+}
+
+.assessment-page-descriptive-answer-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.assessment-page-descriptive-answer-row b {
+  color: #08776d;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .assessment-page-question-tags-wrap {
