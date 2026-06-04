@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   ArrowRight,
@@ -7,6 +7,7 @@ import {
   Database,
   Eye,
   FilePenLine,
+  History,
   ImagePlus,
   Info,
   ListChecks,
@@ -394,6 +395,13 @@ const normalizeOptionalTagValues = (values) => {
   return cleanValues.length ? cleanValues : [DEFAULT_OPTIONAL_TAG]
 }
 
+const hasGeneratedTagValues = (values) => (
+  (values ?? []).some((value) => {
+    const normalized = String(value ?? '').trim()
+    return normalized && normalized !== DEFAULT_OPTIONAL_TAG
+  })
+)
+
 const getQuestionOptionalTagGroups = (item) => [
   { label: 'Cognitive Function', values: item.cognitiveFunction ? [item.cognitiveFunction] : [] },
   { label: 'Skill Focus', values: item.skillFocus ? [item.skillFocus] : [] },
@@ -401,7 +409,10 @@ const getQuestionOptionalTagGroups = (item) => [
   { label: 'Organ Sub System', values: item.organSubSystems ?? [] },
   { label: 'Disease Tags', values: item.diseaseTags ?? [] },
   { label: 'Key Concept', values: item.keyConcepts ?? [] },
-].filter((group) => group.values.length)
+].map((group) => ({
+  ...group,
+  values: group.values.filter((value) => value && value !== DEFAULT_OPTIONAL_TAG),
+})).filter((group) => group.values.length)
 
 function MappingSelectorPanel({ title, searchValue, onSearchChange, items, selected, onToggle, emptyLabel }) {
   const normalizedSearch = searchValue.trim().toLowerCase()
@@ -511,6 +522,10 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [previewSectionTitleDraft, setPreviewSectionTitleDraft] = useState('')
   const [draggedPreviewQuestionId, setDraggedPreviewQuestionId] = useState(null)
   const [draggedPreviewSectionKey, setDraggedPreviewSectionKey] = useState(null)
+  const [generationJobs, setGenerationJobs] = useState([])
+  const [generationTick, setGenerationTick] = useState(Date.now())
+  const generationTimersRef = useRef(new Map())
+  const isGeneratingQuestion = generationJobs.length > 0
 
   const detailItems = [setup.collegeName, setup.academicYear, setup.examCategory, setup.course, setup.year].filter(Boolean)
   const subjectDirectory = question ? SUBJECT_DIRECTORY[question.subject] ?? null : null
@@ -536,19 +551,36 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
           ? question?.competencies ?? []
           : []
 
+  const hasQuestionText = Boolean(getRichTextPreview(question?.questionText ?? ''))
+  const isMcqQuestion = question?.type === 'MCQ'
   const requiredProgress = [
     Boolean(question?.year),
     Boolean(question?.subject),
     (question?.topics ?? []).length > 0,
     (question?.competencies ?? []).length > 0,
-    Boolean(getRichTextPreview(question?.questionText ?? '')),
+    hasQuestionText,
     isDescriptiveQuestionType(question?.type) ? true : (question?.correctOptionIds ?? []).length > 0,
   ].filter(Boolean).length
-  const canCreate = requiredProgress === 6 && (
-    isDescriptiveQuestionType(question?.type)
+  const canCreate = isMcqQuestion
+    ? hasQuestionText
+    : requiredProgress === 6 && (
+      isDescriptiveQuestionType(question?.type)
       ? true
       : (question?.options ?? []).slice(0, 2).every((option) => getRichTextPreview(option.label))
-  )
+    )
+  const activeGenerationJob = generationJobs[0] ?? null
+  const generationElapsed = activeGenerationJob ? Math.max(0, generationTick - activeGenerationJob.startedAt) : 0
+  const generationPercent = activeGenerationJob
+    ? Math.min(99, Math.max(4, Math.round((generationElapsed / 15000) * 100)))
+    : 0
+  const generationRunningText = generationPercent < 25
+    ? 'Reading question text...'
+    : generationPercent < 50
+      ? 'Preparing distractors...'
+      : generationPercent < 75
+        ? 'Filling tags and answer...'
+        : 'Adding question to preview...'
+  const generationQueueLabel = generationJobs.length ? `Generating 1/${generationJobs.length}` : ''
   const selectedQuestionTypeLabel = selectedCreateQuestionTypeLabel || 'Create New Question'
   const previewQuestions = useMemo(
     () => savedQuestions,
@@ -614,6 +646,17 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     }
   }, [openDistractorOptionId, openDistractorMenuOptionId, openPreviewTagsId])
 
+  useEffect(() => () => {
+    generationTimersRef.current.forEach((timerId) => clearTimeout(timerId))
+    generationTimersRef.current.clear()
+  }, [])
+
+  useEffect(() => {
+    if (!generationJobs.length) return undefined
+    const intervalId = window.setInterval(() => setGenerationTick(Date.now()), 450)
+    return () => window.clearInterval(intervalId)
+  }, [generationJobs.length])
+
   const updateQuestion = (patch) => {
     setQuestion((current) => current ? ({
       ...current,
@@ -622,34 +665,153 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     setSaveStatus('')
   }
 
-  const persistQuestion = (status) => {
-    if (!question) return
-    const isEditingPreviewQuestion = Boolean(editingPreviewQuestionId)
+  const buildGeneratedMcqQuestion = (sourceQuestion) => {
+    const fallbackSubject = sourceQuestion.subject || Object.keys(SUBJECT_DIRECTORY)[0] || ''
+    const subjectData = SUBJECT_DIRECTORY[fallbackSubject] ?? {}
+    const fallbackTopics = sourceQuestion.topics?.length ? sourceQuestion.topics : (subjectData.topics?.[0] ? [subjectData.topics[0]] : [])
+    const fallbackCompetencies = sourceQuestion.competencies?.length
+      ? sourceQuestion.competencies
+      : (subjectData.competencies?.find((item) => !fallbackTopics.length || fallbackTopics.includes(item.topic))?.value
+        ? [subjectData.competencies.find((item) => !fallbackTopics.length || fallbackTopics.includes(item.topic)).value]
+        : [])
+    const questionText = getRichTextPreview(sourceQuestion.questionText) || 'Generated question'
+    const generatedOptionLabels = [
+      'A clinically relevant application',
+      'An unrelated basic recall point',
+      'A partially correct distractor',
+      'A non-specific explanation',
+    ]
+    const options = (sourceQuestion.options?.length ? sourceQuestion.options : [createOption(''), createOption(''), createOption(''), createOption('')])
+      .slice(0, 4)
+      .map((option, index) => ({
+        ...option,
+        label: getRichTextPreview(option.label) ? option.label : generatedOptionLabels[index] ?? `Option ${String.fromCharCode(65 + index)}`,
+        distractorErrors: (option.distractorErrors ?? []).length
+          ? option.distractorErrors
+          : index === 0 ? [] : ['Superficial Match'],
+      }))
+    const correctOptionIds = sourceQuestion.correctOptionIds?.length ? sourceQuestion.correctOptionIds : [options[0]?.id].filter(Boolean)
+
+    return {
+      ...sourceQuestion,
+      year: sourceQuestion.year || setup.year || YEAR_OPTIONS[0],
+      subject: fallbackSubject,
+      topics: fallbackTopics,
+      competencies: fallbackCompetencies,
+      questionCategory: sourceQuestion.questionCategory || 'Direct',
+      cognitiveLevel: sourceQuestion.cognitiveLevel || 'Apply',
+      thinkingLevel: sourceQuestion.thinkingLevel || 'HoT',
+      difficultyLevel: sourceQuestion.difficultyLevel || 'L2',
+      cognitiveFunction: sourceQuestion.cognitiveFunction || 'Pattern Recognition',
+      skillFocus: sourceQuestion.skillFocus || 'Diagnosis',
+      organSystem: sourceQuestion.organSystem || 'Nervous',
+      organSubSystems: hasGeneratedTagValues(sourceQuestion.organSubSystems) ? sourceQuestion.organSubSystems : ['Brain'],
+      diseaseTags: hasGeneratedTagValues(sourceQuestion.diseaseTags) ? sourceQuestion.diseaseTags : ['Clinical correlation'],
+      keyConcepts: hasGeneratedTagValues(sourceQuestion.keyConcepts) ? sourceQuestion.keyConcepts : ['Diagnostic clue', 'Core concept'],
+      marks: hasVisibleMarks(sourceQuestion.marks) ? sourceQuestion.marks : '1',
+      options,
+      correctOptionIds,
+      answerKey: getRichTextPreview(sourceQuestion.answerKey)
+        ? sourceQuestion.answerKey
+        : `The correct answer is ${getRichTextPreview(options[0]?.label ?? '') || 'Option A'} because it best addresses the key concept in "${questionText}".`,
+    }
+  }
+
+  const persistQuestion = (status, questionOverride = question, options = {}) => {
+    if (!questionOverride) return
+    const targetEditingPreviewQuestionId = options.editingPreviewQuestionId === undefined
+      ? editingPreviewQuestionId
+      : options.editingPreviewQuestionId
+    const isEditingPreviewQuestion = Boolean(targetEditingPreviewQuestionId)
 
     const nextQuestion = {
-      ...question,
-      id: editingPreviewQuestionId || question.id,
+      ...questionOverride,
+      id: targetEditingPreviewQuestionId || questionOverride.id,
       status,
       assessmentName: setup.assessmentName || 'Untitled Assessment',
       savedAt: new Date().toISOString(),
-      questionCategory: question.questionCategory || 'Direct',
-      cognitiveLevel: question.cognitiveLevel || 'Apply',
-      thinkingLevel: question.thinkingLevel || 'LoT',
-      difficultyLevel: question.difficultyLevel || 'L1',
+      questionCategory: questionOverride.questionCategory || 'Direct',
+      cognitiveLevel: questionOverride.cognitiveLevel || 'Apply',
+      thinkingLevel: questionOverride.thinkingLevel || 'LoT',
+      difficultyLevel: questionOverride.difficultyLevel || 'L1',
     }
-    const nextQuestions = isEditingPreviewQuestion
-      ? savedQuestions.map((item) => (item.id === editingPreviewQuestionId ? nextQuestion : item))
-      : [nextQuestion, ...savedQuestions.filter((item) => item.id !== question.id)]
-    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
-    setSavedQuestions(nextQuestions)
-    setQuestion(createQuestion(setup, question.type))
-    setEditingPreviewQuestionId(null)
-    if (isEditingPreviewQuestion) {
-      setActiveCreateTab('preview')
+    setSavedQuestions((currentQuestions) => {
+      const nextQuestions = isEditingPreviewQuestion
+        ? currentQuestions.map((item) => (item.id === targetEditingPreviewQuestionId ? nextQuestion : item))
+        : [nextQuestion, ...currentQuestions.filter((item) => item.id !== questionOverride.id)]
+      window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+      return nextQuestions
+    })
+    if (options.resetEditor !== false) {
+      setQuestion(createQuestion(setup, questionOverride.type))
+      setEditingPreviewQuestionId(null)
+      if (isEditingPreviewQuestion) {
+        setActiveCreateTab('preview')
+        setHasSelectedCreateTab(true)
+        setSelectedCreateQuestionTypeLabel('')
+      }
+    }
+    setSaveStatus(options.message ?? (isEditingPreviewQuestion ? 'Question updated.' : status === 'Draft' ? 'Draft saved.' : 'Question created.'))
+  }
+
+  const createQuestionWithGeneration = () => {
+    if (!question || !canCreate) return
+
+    if (editingPreviewQuestionId || question.type !== 'MCQ') {
+      persistQuestion('Created')
+      return
+    }
+
+    const sourceQuestion = {
+      ...question,
+      topics: [...(question.topics ?? [])],
+      competencies: [...(question.competencies ?? [])],
+      images: [...(question.images ?? [])],
+      options: (question.options ?? []).map((option) => ({
+        ...option,
+        distractorErrors: [...(option.distractorErrors ?? [])],
+      })),
+      correctOptionIds: [...(question.correctOptionIds ?? [])],
+      organSubSystems: [...(question.organSubSystems ?? [])],
+      diseaseTags: [...(question.diseaseTags ?? [])],
+      keyConcepts: [...(question.keyConcepts ?? [])],
+    }
+    const jobId = `mcq-generation-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const questionPreviewText = getRichTextPreview(sourceQuestion.questionText).slice(0, 54) || 'MCQ question'
+
+    const startedAt = Date.now()
+    setGenerationTick(startedAt)
+    setGenerationJobs((current) => [...current, { id: jobId, questionPreviewText, startedAt }])
+    setQuestion(createQuestion(setup, 'MCQ'))
+    setActiveCreateTab('create')
+    setHasSelectedCreateTab(true)
+    setSelectedCreateQuestionTypeLabel('MCQ')
+    setActiveMappingPicker(null)
+    setMappingSearchValue('')
+    setIsOptionalTagsOpen(false)
+    setSaveStatus('MCQ generation started. You can create the next question.')
+
+    const timerId = setTimeout(() => {
+      const latestText = getRichTextPreview(sourceQuestion.questionText)
+      if (!latestText) {
+        setGenerationJobs((current) => current.filter((job) => job.id !== jobId))
+        generationTimersRef.current.delete(jobId)
+        setSaveStatus('Enter question text to create.')
+        return
+      }
+      const generatedQuestion = buildGeneratedMcqQuestion(sourceQuestion)
+      persistQuestion('Created', generatedQuestion, {
+        resetEditor: false,
+        editingPreviewQuestionId: null,
+        message: 'MCQ generated and added to preview.',
+      })
+      setActiveCreateTab('create')
       setHasSelectedCreateTab(true)
-      setSelectedCreateQuestionTypeLabel('')
-    }
-    setSaveStatus(isEditingPreviewQuestion ? 'Question updated.' : status === 'Draft' ? 'Draft saved.' : 'Question created.')
+      setSelectedCreateQuestionTypeLabel('MCQ')
+      setGenerationJobs((current) => current.filter((job) => job.id !== jobId))
+      generationTimersRef.current.delete(jobId)
+    }, 15000)
+    generationTimersRef.current.set(jobId, timerId)
   }
 
   const clearQuestion = () => {
@@ -1278,8 +1440,18 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                   return (
                                     <span key={option.id} className={isCorrect ? 'is-correct' : ''}>
                                       <strong>{String.fromCharCode(65 + optionIndex)}.</strong>
-                                      {getRichTextPreview(option.label)}
-                                      {distractorError ? <em>{distractorError}</em> : null}
+                                      <span>{getRichTextPreview(option.label)}</span>
+                                      {distractorError ? (
+                                        <span className="create-assessment-preview-option-info">
+                                          <button type="button" aria-label={`View distractor error for option ${String.fromCharCode(65 + optionIndex)}`}>
+                                            <Info size={12} strokeWidth={2.2} />
+                                          </button>
+                                          <span className="create-assessment-preview-option-tooltip" role="tooltip">
+                                            <strong>Distractor Error</strong>
+                                            <span>{distractorError}</span>
+                                          </span>
+                                        </span>
+                                      ) : null}
                                     </span>
                                   )
                                 })}
@@ -1930,7 +2102,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                         <button
                           type="button"
                           className="question-bank-primary-btn"
-                          onClick={() => persistQuestion('Created')}
+                          onClick={createQuestionWithGeneration}
                           disabled={!question || !canCreate}
                         >
                           {editingPreviewQuestionId ? <FilePenLine size={14} strokeWidth={2.2} /> : <Sparkles size={14} strokeWidth={2.2} />}
@@ -1989,7 +2161,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                         <button
                           type="button"
                           className="question-bank-primary-btn"
-                          onClick={() => persistQuestion('Created')}
+                          onClick={createQuestionWithGeneration}
                           disabled={!question || !canCreate}
                         >
                           {editingPreviewQuestionId ? <FilePenLine size={14} strokeWidth={2.2} /> : <Sparkles size={14} strokeWidth={2.2} />}
@@ -2035,6 +2207,27 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             </div>
           ) : null}
         </div>
+        {isGeneratingQuestion ? (
+          <div className="create-assessment-generation-card" aria-live="polite">
+            <div className="create-assessment-generation-head">
+              <span className="create-assessment-generation-icon">
+                <Sparkles size={16} strokeWidth={2.2} />
+              </span>
+              <span>
+                <strong>Generating MCQ</strong>
+                <small>{activeGenerationJob?.questionPreviewText || 'Completing missing fields'}</small>
+              </span>
+              <b className="create-assessment-generation-percent">{generationPercent}%</b>
+            </div>
+            <span className="create-assessment-generation-bar" aria-hidden="true">
+              <i style={{ width: `${generationPercent}%` }} />
+            </span>
+            <p className="create-assessment-generation-running">
+              <span>{generationRunningText}</span>
+              <strong>{generationQueueLabel}</strong>
+            </p>
+          </div>
+        ) : null}
         <div className="create-assessment-action-panel" aria-label="Create actions">
         <strong>Create Assessment</strong>
         <div className={`question-bank-type-select-panel ${isQuestionTypePickerOpen ? 'is-open' : ''}`}>
@@ -2121,6 +2314,14 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         >
           <Database size={16} strokeWidth={2.2} />
           <span>Question Bank</span>
+        </button>
+        <button
+          type="button"
+          className="create-assessment-action-btn"
+          disabled
+        >
+          <History size={16} strokeWidth={2.2} />
+          <span>Assessment History</span>
         </button>
         <button
           type="button"
