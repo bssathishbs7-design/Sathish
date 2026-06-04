@@ -31,6 +31,7 @@ import '../styles/question-bank.css'
 import '../styles/assessment-pages.css'
 
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
+const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
 const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
@@ -201,6 +202,16 @@ const readCreateAssessmentSetup = () => {
     return row && typeof row === 'object' ? row : {}
   } catch {
     return {}
+  }
+}
+
+const readCreateAssessmentInitialTab = () => {
+  try {
+    const tab = window.localStorage.getItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY)
+    window.localStorage.removeItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY)
+    return ['create', 'questionBank', 'preview', 'configuration'].includes(tab) ? tab : 'create'
+  } catch {
+    return 'create'
   }
 }
 
@@ -490,7 +501,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [openPreviewTagsId, setOpenPreviewTagsId] = useState(null)
   const [openPreviewCardIds, setOpenPreviewCardIds] = useState([])
   const [saveStatus, setSaveStatus] = useState('')
-  const [activeCreateTab, setActiveCreateTab] = useState('create')
+  const [activeCreateTab, setActiveCreateTab] = useState(readCreateAssessmentInitialTab)
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(false)
   const [selectedCreateQuestionTypeLabel, setSelectedCreateQuestionTypeLabel] = useState('')
   const [editingPreviewQuestionId, setEditingPreviewQuestionId] = useState(null)

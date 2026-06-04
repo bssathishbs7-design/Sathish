@@ -1,16 +1,10 @@
 import { useState } from 'react'
-import { ArrowRight, BadgeCheck, ChevronDown, ClipboardList, ClipboardPlus, Clock3, FileWarning, FolderPlus, Trash2 } from 'lucide-react'
+import { ArrowRight, BadgeCheck, ChevronDown, ClipboardPlus, Clock3, FileWarning, FolderPlus, Plus, Trash2 } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 
 const assessmentMetrics = [
-  {
-    label: 'Created Assessment',
-    count: 0,
-    icon: ClipboardList,
-    tone: 'created',
-  },
   {
     label: 'Draft Assessment',
     count: 0,
@@ -80,6 +74,7 @@ const initialForm = {
 const requiredAssessmentFields = ['collegeName', 'assessmentName', 'academicYear', 'examCategory', 'course', 'year']
 
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
+const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 
 const toCapitalizedCase = (value) =>
@@ -135,7 +130,7 @@ function UploadImageIcon() {
 export default function AssessmentCreatePage({ onNavigate }) {
   const [form, setForm] = useState(initialForm)
   const [activeAssessmentTab, setActiveAssessmentTab] = useState('create')
-  const [draftAssessments] = useState(readAssessmentDrafts)
+  const [draftAssessments, setDraftAssessments] = useState(readAssessmentDrafts)
   const isCreateDisabled = requiredAssessmentFields.some((field) => !String(form[field] ?? '').trim())
   const metrics = assessmentMetrics.map((metric) => (
     metric.tone === 'draft' ? { ...metric, count: draftAssessments.length } : metric
@@ -179,35 +174,66 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const continueDraftAssessment = (draft) => {
     if (!draft?.setup) return
     window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(draft.setup))
+    window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'preview')
     onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
+  }
+
+  const deleteDraftAssessment = (draftId) => {
+    setDraftAssessments((current) => {
+      const nextDrafts = current.filter((draft) => draft.id !== draftId)
+      window.localStorage.setItem(ASSESSMENT_DRAFTS_STORAGE_KEY, JSON.stringify(nextDrafts))
+      if (!nextDrafts.length && activeAssessmentTab === 'draft') {
+        setActiveAssessmentTab('create')
+      }
+      return nextDrafts
+    })
   }
 
   return (
     <section className="vx-content assessment-page">
-      <div className="assessment-page-shell assessment-create-page-shell">
-        <PageNavigationHeader items={['My Pages', 'Assessment', 'Create']} />
+      <div className={`assessment-page-shell assessment-create-page-shell ${activeAssessmentTab === 'draft' ? 'is-draft-tab' : ''}`}>
+        <div className="assessment-create-page-header">
+          <PageNavigationHeader items={['My Pages', 'Assessment', 'Create']} />
+          <button
+            type="button"
+            className={`assessment-create-new-btn ${activeAssessmentTab === 'create' ? 'is-active' : ''}`}
+            onClick={() => setActiveAssessmentTab('create')}
+          >
+            <Plus size={17} strokeWidth={2.4} />
+            Create Assessment
+          </button>
+        </div>
 
-        <section className="assessment-create-metrics" aria-label="Assessment create metrics">
-          {metrics.map((metric) => {
-            const Icon = metric.icon
+        <section className="assessment-create-toolbar" aria-label="Assessment create actions">
+          <div className="assessment-create-metrics" aria-label="Assessment create metrics">
+            {metrics.map((metric) => {
+              const Icon = metric.icon
+              const isDisabledMetric = metric.count <= 0
+              const isActiveMetric = activeAssessmentTab === metric.tone && !isDisabledMetric
 
-            return (
-              <button
-                key={metric.label}
-                type="button"
-                className={`assessment-create-metric is-${metric.tone} ${activeAssessmentTab === metric.tone ? 'is-active' : ''}`}
-                onClick={() => setActiveAssessmentTab(metric.tone === 'draft' ? 'draft' : 'create')}
-              >
-                <span className="assessment-create-metric-icon" aria-hidden="true">
-                  <Icon size={16} strokeWidth={2.2} />
-                </span>
-                <span className="assessment-create-metric-copy">
-                  <strong>{metric.count}</strong>
-                  <span>{metric.label}</span>
-                </span>
-              </button>
-            )
-          })}
+              return (
+                <button
+                  key={metric.label}
+                  type="button"
+                  className={`assessment-create-metric is-${metric.tone} ${isActiveMetric ? 'is-active' : ''}`}
+                  onClick={() => {
+                    if (isDisabledMetric) return
+                    setActiveAssessmentTab(metric.tone)
+                  }}
+                  disabled={isDisabledMetric}
+                  aria-disabled={isDisabledMetric}
+                >
+                  <span className="assessment-create-metric-icon" aria-hidden="true">
+                    <Icon size={16} strokeWidth={2.2} />
+                  </span>
+                  <span className="assessment-create-metric-copy">
+                    <strong>{metric.count}</strong>
+                    <span>{metric.label}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </section>
 
         {activeAssessmentTab === 'draft' ? (
@@ -220,18 +246,19 @@ export default function AssessmentCreatePage({ onNavigate }) {
                 {draftAssessments.map((draft) => (
                   <article key={draft.id} className="assessment-create-draft-card">
                     <div className="assessment-create-draft-profile">
-                      <span className="assessment-create-draft-avatar">
-                        {draft.setup?.logoPreview ? (
-                          <img src={draft.setup.logoPreview} alt={draft.setup.logoName || draft.assessmentName || 'Assessment logo'} />
-                        ) : (
-                          <ClipboardList size={20} strokeWidth={2.2} />
-                        )}
-                      </span>
                       <div>
                       <strong>{draft.assessmentName || 'Untitled Assessment'}</strong>
-                      <span>{draft.examCategory || 'Assessment'} by {draft.setup?.collegeName || 'Institution'}</span>
+                      <span className="assessment-create-draft-category">{draft.examCategory || 'Assessment'}</span>
                       <span>{draft.questionCount ?? 0} Questions · {draft.totalMarks ?? 0} Marks</span>
                       </div>
+                      <button
+                        type="button"
+                        className="assessment-create-draft-delete"
+                        onClick={() => deleteDraftAssessment(draft.id)}
+                        aria-label={`Delete ${draft.assessmentName || 'draft assessment'}`}
+                      >
+                        <Trash2 size={15} strokeWidth={2.1} />
+                      </button>
                     </div>
                     <div className="assessment-create-draft-stats" aria-label="Draft summary">
                       <span>
@@ -249,7 +276,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                     </div>
                     <div className="assessment-create-draft-chips">
                       <span>{draft.academicYear || '-'}</span>
-                      <span>{draft.course || '-'}</span>
+                      <span>{(draft.course || '-').replace(/\s*\(NMC Syllabus\)\s*/i, '').trim() || '-'}</span>
                     </div>
                     <div className="assessment-create-draft-footer">
                       <span>{draft.updatedAt ? `Saved ${new Date(draft.updatedAt).toLocaleDateString()}` : 'Draft saved'}</span>
