@@ -1711,8 +1711,31 @@
 }
 
 .create-assessment-preview-card.is-open {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
   border-color: #b7e5d9;
   background: #fbfffd;
+}
+
+.create-assessment-preview-card.is-open .create-assessment-preview-title-row {
+  padding-right: min(260px, 34vw);
+}
+
+.create-assessment-preview-card.is-open .create-assessment-preview-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+@media (max-width: 760px) {
+  .create-assessment-preview-card.is-open .create-assessment-preview-title-row {
+    padding-right: 0;
+  }
+
+  .create-assessment-preview-card.is-open .create-assessment-preview-actions {
+    position: static;
+    justify-self: end;
+  }
 }
 
 .create-assessment-preview-main {
@@ -1940,6 +1963,35 @@
   font-size: 0.74rem;
 }
 
+.create-assessment-preview-answer-list {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #d9ebe6;
+}
+
+.create-assessment-preview-answer-list > span {
+  display: grid;
+  gap: 5px;
+}
+
+.create-assessment-preview-answer-row {
+  display: grid;
+  grid-template-columns: minmax(88px, auto) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.create-assessment-preview-answer-row b {
+  color: #007f75;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.create-assessment-preview-answer-row span {
+  min-width: 0;
+}
+
 .create-assessment-preview-answer.is-nested {
   padding-left: 20px;
   color: #536879;
@@ -1961,10 +2013,12 @@
 }
 
 .create-assessment-preview-section > div:first-child,
-.create-assessment-preview-children span {
-  display: flex;
+.create-assessment-preview-children > span > span {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
+  width: 100%;
   min-width: 0;
   color: #12313d;
   font-size: 0.74rem;
@@ -1973,7 +2027,6 @@
 
 .create-assessment-preview-section b,
 .create-assessment-preview-children b {
-  margin-left: auto;
   color: #08776d;
   font-size: 0.68rem;
   white-space: nowrap;
@@ -1983,6 +2036,11 @@
   display: grid;
   gap: 4px;
   padding-left: 18px;
+}
+
+.create-assessment-preview-children > span {
+  display: block;
+  min-width: 0;
 }
 
 .create-assessment-preview-child-answer {
@@ -6547,6 +6605,14 @@
 .theme-dark .create-assessment-preview-section > div:first-child,
 .theme-dark .create-assessment-preview-children span {
   color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-preview-answer-list {
+  border-top-color: rgba(94, 116, 145, 0.5);
+}
+
+.theme-dark .create-assessment-preview-answer-row b {
+  color: #8df0c7;
 }
 
 .theme-dark .create-assessment-preview-section b,

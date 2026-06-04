@@ -1184,6 +1184,36 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                   const correctOptionTexts = getCorrectOptionTexts(item)
                   const visibleOptions = (item.options ?? []).filter((option) => getRichTextPreview(option.label))
                   const descriptiveSections = item.descriptiveSections ?? []
+                  const rootDescriptiveAnswer = getRichTextPreview(item.answerKey)
+                  const descriptiveAnswerItems = isDescriptive
+                    ? descriptiveSections.length
+                      ? descriptiveSections.flatMap((section, sectionIndex) => {
+                        const sectionLabel = ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1
+                        const sectionChildren = section.children ?? []
+                        if (!sectionChildren.length) {
+                          const sectionAnswer = getRichTextPreview(section.answerKey) || rootDescriptiveAnswer
+                          return sectionAnswer ? [{
+                            key: `${section.id ?? `${item.id}-section-${sectionIndex}`}-answer`,
+                            label: `${sectionLabel}.`,
+                            text: sectionAnswer,
+                          }] : []
+                        }
+
+                        return sectionChildren.map((child, childIndex) => {
+                          const childAnswer = getRichTextPreview(child.answerKey) || getRichTextPreview(section.answerKey) || rootDescriptiveAnswer
+                          return childAnswer ? {
+                            key: `${child.id ?? `${section.id ?? sectionIndex}-child-${childIndex}`}-answer`,
+                            label: `${sectionLabel}.${String.fromCharCode(97 + childIndex)}.`,
+                            text: childAnswer,
+                          } : null
+                        }).filter(Boolean)
+                      })
+                      : rootDescriptiveAnswer ? [{
+                        key: `${item.id}-main-answer`,
+                        label: 'Main question',
+                        text: rootDescriptiveAnswer,
+                      }] : []
+                    : []
                   const isPreviewCardOpen = openPreviewCardIds.includes(item.id)
                   return (
                     <article
@@ -1261,11 +1291,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                       <span>{getRichTextPreview(section.questionText) || 'Sub question'}</span>
                                       {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? <b>{section.marks} Marks</b> : null}
                                     </div>
-                                    {!(section.children ?? []).length && (getRichTextPreview(section.answerKey) || getRichTextPreview(item.answerKey)) ? (
-                                      <p className="create-assessment-preview-answer is-nested">
-                                        <span>{getRichTextPreview(section.answerKey) || getRichTextPreview(item.answerKey)}</span>
-                                      </p>
-                                    ) : null}
                                     {(section.children ?? []).length ? (
                                       <div className="create-assessment-preview-children">
                                         {section.children.map((child, childIndex) => (
@@ -1275,11 +1300,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                               {getRichTextPreview(child.questionText) || 'Inside question'}
                                               {hasVisibleMarks(child.marks) ? <b>{child.marks} Marks</b> : null}
                                             </span>
-                                            {getRichTextPreview(child.answerKey) || getRichTextPreview(section.answerKey) || getRichTextPreview(item.answerKey) ? (
-                                              <em className="create-assessment-preview-child-answer">
-                                                {getRichTextPreview(child.answerKey) || getRichTextPreview(section.answerKey) || getRichTextPreview(item.answerKey)}
-                                              </em>
-                                            ) : null}
                                           </span>
                                         ))}
                                       </div>
@@ -1337,7 +1357,21 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                 </div>
                               ) : null}
 
-                              {(!isDescriptive || !descriptiveSections.length) && getRichTextPreview(item.answerKey) ? (
+                              {isDescriptive && descriptiveAnswerItems.length ? (
+                                <p className="create-assessment-preview-answer create-assessment-preview-answer-list">
+                                  <strong>Answer &amp; Explanation</strong>
+                                  <span>
+                                    {descriptiveAnswerItems.map((answerItem) => (
+                                      <span key={answerItem.key} className="create-assessment-preview-answer-row">
+                                        <b>{answerItem.label}</b>
+                                        <span>{answerItem.text}</span>
+                                      </span>
+                                    ))}
+                                  </span>
+                                </p>
+                              ) : null}
+
+                              {!isDescriptive && getRichTextPreview(item.answerKey) ? (
                                 <p className="create-assessment-preview-answer">
                                   <strong>Explanation</strong>
                                   <span>{getRichTextPreview(item.answerKey)}</span>

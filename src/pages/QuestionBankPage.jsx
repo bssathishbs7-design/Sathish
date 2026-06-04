@@ -3914,11 +3914,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                               <span>{getRichTextPreview(section.questionText) || 'Question not added'}</span>
                                               {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? <em>{section.marks} marks</em> : null}
                                             </span>
-                                            {!(section.children ?? []).length && (getRichTextPreview(section.answerKey) || getRichTextPreview(question.answerKey)) ? (
-                                              <span className="question-bank-created-descriptive-answer is-section">
-                                                <span>{getRichTextPreview(section.answerKey) || getRichTextPreview(question.answerKey)}</span>
-                                              </span>
-                                            ) : null}
                                             {(section.children ?? []).map((child, childIndex) => (
                                               <span key={child.id ?? `${section.id}-child-${childIndex}`} className="question-bank-created-descriptive-child">
                                                 <span className="question-bank-created-descriptive-line is-child">
@@ -3926,22 +3921,53 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                                   <span>{getRichTextPreview(child.questionText) || 'Question not added'}</span>
                                                   {hasVisibleMarks(child.marks) ? <em>{child.marks} marks</em> : null}
                                                 </span>
-                                                {getRichTextPreview(child.answerKey) || getRichTextPreview(section.answerKey) || getRichTextPreview(question.answerKey) ? (
-                                                  <span className="question-bank-created-descriptive-answer is-child">
-                                                    <span>{getRichTextPreview(child.answerKey) || getRichTextPreview(section.answerKey) || getRichTextPreview(question.answerKey)}</span>
-                                                  </span>
-                                                ) : null}
                                               </span>
                                             ))}
                                           </span>
                                         ))}
                                       </span>
                                     ) : null}
-                                    {isDescriptiveCard && !descriptiveSections.length && getRichTextPreview(question.answerKey) ? (
-                                      <span className="question-bank-created-descriptive-answer">
-                                        <span>{getRichTextPreview(question.answerKey)}</span>
-                                      </span>
-                                    ) : null}
+                                    {isDescriptiveCard ? (() => {
+                                      const rootAnswer = getRichTextPreview(question.answerKey)
+                                      const descriptiveAnswerItems = descriptiveSections.length
+                                        ? descriptiveSections.flatMap((section, sectionIndex) => {
+                                          const sectionLabel = ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1
+                                          const sectionChildren = section.children ?? []
+                                          if (!sectionChildren.length) {
+                                            const sectionAnswer = getRichTextPreview(section.answerKey) || rootAnswer
+                                            return sectionAnswer ? [{
+                                              key: `${section.id ?? `${question.id}-section-${sectionIndex}`}-answer`,
+                                              label: `${sectionLabel}.`,
+                                              text: sectionAnswer,
+                                            }] : []
+                                          }
+                                          return sectionChildren.map((child, childIndex) => {
+                                            const childAnswer = getRichTextPreview(child.answerKey) || getRichTextPreview(section.answerKey) || rootAnswer
+                                            return childAnswer ? {
+                                              key: `${child.id ?? `${section.id ?? sectionIndex}-child-${childIndex}`}-answer`,
+                                              label: `${sectionLabel}.${String.fromCharCode(97 + childIndex)}.`,
+                                              text: childAnswer,
+                                            } : null
+                                          }).filter(Boolean)
+                                        })
+                                        : rootAnswer ? [{
+                                          key: `${question.id}-main-answer`,
+                                          label: 'Main question',
+                                          text: rootAnswer,
+                                        }] : []
+
+                                      return descriptiveAnswerItems.length ? (
+                                        <span className="question-bank-created-descriptive-answer is-bottom">
+                                          <b>Answer &amp; Explanation</b>
+                                          {descriptiveAnswerItems.map((answerItem) => (
+                                            <span key={answerItem.key}>
+                                              <strong>{answerItem.label}</strong>
+                                              <span>{answerItem.text}</span>
+                                            </span>
+                                          ))}
+                                        </span>
+                                      ) : null
+                                    })() : null}
                                     {!isDescriptiveCard && getRichTextPreview(question.answerKey) ? (
                                       <span className="question-bank-created-answer">
                                         <b>Answer & Explanation</b>
