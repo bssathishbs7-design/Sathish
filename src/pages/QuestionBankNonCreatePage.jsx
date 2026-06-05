@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, X } from 'lucide-react'
+import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import { APP_PAGES } from '../config/appPages'
 import medsyIcon from '../assets/medsy-icon.svg'
@@ -657,6 +657,14 @@ const hasBooleanFilterMatch = (selectedValues, isMatch) => {
   return selectedValues.includes(isMatch ? 'Yes' : 'No')
 }
 
+const applyFilterSetToQuestion = (question, filterSet) => {
+  if (!hasFilterMatch(filterSet.years ?? [], question.year)) return false
+  if (!hasFilterMatch(filterSet.subjects ?? [], question.subject)) return false
+  if (!hasFilterMatch(filterSet.topics ?? [], question.topics ?? [])) return false
+  if (!hasFilterMatch(filterSet.competencies ?? [], question.competencies ?? [])) return false
+  return true
+}
+
 const nonCreateHighlights = [
   {
     title: 'Question review',
@@ -704,6 +712,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [isEmbeddedSelectionBarVisible, setIsEmbeddedSelectionBarVisible] = useState(false)
   const [expandedCardRows, setExpandedCardRows] = useState([])
   const [activeMetric, setActiveMetric] = useState('total')
+  const [showMetricsLanding, setShowMetricsLanding] = useState(true)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
   const [createdReportedQuestionRecords, setCreatedReportedQuestionRecords] = useState(() => readCreatedReportedQuestionRecords())
   const [reportQuestion, setReportQuestion] = useState(null)
@@ -776,6 +785,28 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     diseaseTags: getValueCounts(metricFilteredQuestions, (question) => question.diseaseTags ?? []),
     keyConcepts: getValueCounts(metricFilteredQuestions, (question) => question.keyConcepts ?? []),
   }), [metricFilteredQuestions])
+
+  const landingFilterOptions = useMemo(() => ({
+    years: getUniqueValues(publishedQuestions, (question) => question.year),
+    subjects: getUniqueValues(publishedQuestions, (question) => question.subject),
+    topics: getUniqueValues(publishedQuestions, (question) => question.topics ?? []),
+    competencies: getUniqueValues(publishedQuestions, (question) => question.competencies ?? []),
+  }), [publishedQuestions])
+
+  const landingQuestions = useMemo(() => (
+    publishedQuestions.filter((question) => applyFilterSetToQuestion(question, filters))
+  ), [filters, publishedQuestions])
+
+  const landingValueCounts = useMemo(() => ({
+    types: getValueCounts(landingQuestions, (question) => getQuestionTypeFilterLabel(question)),
+    subjects: getValueCounts(landingQuestions, (question) => question.subject),
+    topics: getValueCounts(landingQuestions, (question) => question.topics ?? []),
+    competencies: getValueCounts(landingQuestions, (question) => question.competencies ?? []),
+    categories: getValueCounts(landingQuestions, (question) => question.questionCategory),
+    cognitiveLevels: getValueCounts(landingQuestions, (question) => question.cognitiveLevel),
+    thinkingLevels: getValueCounts(landingQuestions, (question) => question.thinkingLevel),
+    difficultyLevels: getValueCounts(landingQuestions, (question) => question.difficultyLevel),
+  }), [landingQuestions])
 
   const toggleFilterValue = (filterKey, value) => {
     setFilters((current) => {
@@ -868,6 +899,12 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     ['topics', 'Topic', filterOptions.topics],
     ['competencies', 'Competency', filterOptions.competencies],
   ].filter(([, , options]) => options.length)
+  const landingFilterDefinitions = [
+    ['years', 'Year', landingFilterOptions.years],
+    ['subjects', 'Subject', landingFilterOptions.subjects],
+    ['topics', 'Topic', landingFilterOptions.topics],
+    ['competencies', 'Competency', landingFilterOptions.competencies],
+  ].filter(([, , options]) => options.length)
   const moreFilterGroups = [
     {
       label: 'Curriculum',
@@ -901,26 +938,251 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   })).filter((group) => group.filters.length)
   const advancedFilterDefinitions = moreFilterGroups.flatMap((group) => group.filters)
   const searchableFilterKeys = ['subjects', 'topics', 'competencies', 'organSystems', 'organSubSystems', 'diseaseTags', 'keyConcepts']
+  const createDistribution = (counts, preferredOrder = []) => {
+    const entries = Object.entries(counts)
+      .filter(([, count]) => count > 0)
+      .sort((first, second) => {
+        const firstOrder = preferredOrder.indexOf(first[0])
+        const secondOrder = preferredOrder.indexOf(second[0])
+        if (firstOrder !== -1 || secondOrder !== -1) {
+          return (firstOrder === -1 ? Number.MAX_SAFE_INTEGER : firstOrder) - (secondOrder === -1 ? Number.MAX_SAFE_INTEGER : secondOrder)
+        }
+        return second[1] - first[1] || first[0].localeCompare(second[0])
+      })
+      .slice(0, 4)
+    const maxCount = Math.max(1, ...entries.map(([, count]) => count))
+
+    return entries.map(([label, count]) => ({
+      label,
+      count,
+      width: Math.max(8, Math.round((count / maxCount) * 100)),
+    }))
+  }
+  const createSplitCounts = (counts, preferredOrder = [], limit = 5) => (
+    Object.entries(counts)
+      .filter(([, count]) => count > 0)
+      .sort((first, second) => {
+        const firstOrder = preferredOrder.indexOf(first[0])
+        const secondOrder = preferredOrder.indexOf(second[0])
+        if (firstOrder !== -1 || secondOrder !== -1) {
+          return (firstOrder === -1 ? Number.MAX_SAFE_INTEGER : firstOrder) - (secondOrder === -1 ? Number.MAX_SAFE_INTEGER : secondOrder)
+        }
+        return second[1] - first[1] || first[0].localeCompare(second[0])
+      })
+      .slice(0, limit)
+      .map(([label, count]) => ({ label, count }))
+  )
+  const createDonutDistribution = (counts, preferredOrder = []) => {
+    const colors = ['#6d5dfc', '#2563eb', '#fb7c3f', '#38bdf8', '#20c7ad']
+    const entries = Object.entries(counts)
+      .filter(([, count]) => count > 0)
+      .sort((first, second) => {
+        const firstOrder = preferredOrder.indexOf(first[0])
+        const secondOrder = preferredOrder.indexOf(second[0])
+        if (firstOrder !== -1 || secondOrder !== -1) {
+          return (firstOrder === -1 ? Number.MAX_SAFE_INTEGER : firstOrder) - (secondOrder === -1 ? Number.MAX_SAFE_INTEGER : secondOrder)
+        }
+        return second[1] - first[1] || first[0].localeCompare(second[0])
+      })
+      .slice(0, 5)
+    const total = entries.reduce((sum, [, count]) => sum + count, 0)
+    let cursor = 0
+    const segments = entries.map(([label, count], index) => {
+      const start = cursor
+      const size = total ? (count / total) * 100 : 0
+      cursor += size
+      return {
+        label,
+        count,
+        color: colors[index % colors.length],
+        start,
+        end: cursor,
+        percent: total ? Math.round((count / total) * 100) : 0,
+      }
+    })
+    const gradient = segments.length
+      ? segments.map((item) => `${item.color} ${item.start}% ${item.end}%`).join(', ')
+      : '#e5eef0 0 100%'
+
+    return { segments, total, gradient }
+  }
+
   const questionMetrics = [
+    {
+      key: 'total',
+      label: 'Total Question',
+      value: landingQuestions.length,
+      icon: ClipboardList,
+      tone: 'total',
+      filters: {},
+      distribution: createDistribution(landingValueCounts.types, ['MCQ', 'Descriptive (SAQs)', 'Descriptive (LAQs)', 'Descriptive (MEQs)']),
+    },
+    {
+      key: 'medsy',
+      label: 'Medsy Question',
+      value: landingQuestions.filter(isMedsyQuestion).length,
+      icon: FileSearch,
+      tone: 'medsy',
+      activeMetricKey: 'medsy',
+      distribution: createDistribution(getValueCounts(landingQuestions.filter(isMedsyQuestion), (question) => getQuestionTypeFilterLabel(question))),
+    },
+    {
+      key: 'created',
+      label: 'Institute Questions',
+      value: landingQuestions.filter((question) => !isMedsyQuestion(question)).length,
+      icon: ListChecks,
+      tone: 'created',
+      activeMetricKey: 'created',
+      distribution: createDistribution(getValueCounts(landingQuestions.filter((question) => !isMedsyQuestion(question)), (question) => getQuestionTypeFilterLabel(question))),
+    },
+    {
+      key: 'mcq',
+      label: 'Multiple Choice (MCQ)',
+      value: landingValueCounts.types.MCQ ?? 0,
+      icon: BookOpenCheck,
+      tone: 'type',
+      filters: { types: ['MCQ'] },
+      distribution: createDistribution({ MCQ: landingValueCounts.types.MCQ ?? 0 }),
+    },
+    {
+      key: 'descriptive',
+      label: 'Descriptive',
+      value: (landingValueCounts.types['Descriptive (LAQs)'] ?? 0)
+        + (landingValueCounts.types['Descriptive (SAQs)'] ?? 0)
+        + (landingValueCounts.types['Descriptive (MEQs)'] ?? 0),
+      icon: BookOpenCheck,
+      tone: 'type',
+      filters: { types: ['Descriptive (LAQs)', 'Descriptive (SAQs)', 'Descriptive (MEQs)'] },
+      splits: [
+        { label: 'LAQs', count: landingValueCounts.types['Descriptive (LAQs)'] ?? 0 },
+        { label: 'SAQs', count: landingValueCounts.types['Descriptive (SAQs)'] ?? 0 },
+        { label: 'MEQs', count: landingValueCounts.types['Descriptive (MEQs)'] ?? 0 },
+      ],
+      distribution: createDistribution({
+        LAQs: landingValueCounts.types['Descriptive (LAQs)'] ?? 0,
+        SAQs: landingValueCounts.types['Descriptive (SAQs)'] ?? 0,
+        MEQs: landingValueCounts.types['Descriptive (MEQs)'] ?? 0,
+      }, ['LAQs', 'SAQs', 'MEQs']),
+    },
+    {
+      key: 'categories',
+      label: 'Question Category',
+      value: landingQuestions.filter((question) => question.questionCategory).length,
+      icon: Tags,
+      tone: 'category',
+      filters: { categories: Object.keys(landingValueCounts.categories) },
+      donut: createDonutDistribution(landingValueCounts.categories, ['Application', 'Direct', 'Reasoning', 'Critical Thinking']),
+      distribution: createDistribution(landingValueCounts.categories),
+    },
+    {
+      key: 'cognitive',
+      label: 'Cognitive Level',
+      value: landingQuestions.filter((question) => question.cognitiveLevel).length,
+      icon: Brain,
+      tone: 'cognitive',
+      filters: { cognitiveLevels: Object.keys(landingValueCounts.cognitiveLevels) },
+      splits: createSplitCounts(landingValueCounts.cognitiveLevels),
+      distribution: createDistribution(landingValueCounts.cognitiveLevels),
+    },
+    {
+      key: 'thinking',
+      label: 'Thinking Level',
+      value: landingQuestions.filter((question) => question.thinkingLevel).length,
+      icon: BarChart3,
+      tone: 'thinking',
+      filters: { thinkingLevels: Object.keys(landingValueCounts.thinkingLevels) },
+      splits: createSplitCounts(landingValueCounts.thinkingLevels, ['HoT', 'LoT']),
+      distribution: createDistribution(landingValueCounts.thinkingLevels, ['HoT', 'LoT']),
+    },
+    {
+      key: 'difficulty',
+      label: 'Difficulty Level',
+      value: landingQuestions.filter((question) => question.difficultyLevel).length,
+      icon: Gauge,
+      tone: 'difficulty',
+      filters: { difficultyLevels: Object.keys(landingValueCounts.difficultyLevels) },
+      splits: createSplitCounts(landingValueCounts.difficultyLevels, ['L1', 'L2', 'L3', 'L4', 'L5'], 5),
+      distribution: createDistribution(landingValueCounts.difficultyLevels, ['L1', 'L2', 'L3', 'L4', 'L5']),
+    },
+  ]
+  const visibleQuestionMetrics = questionMetrics
+  const questionListSummaryMetrics = [
     { key: 'total', label: 'Total Question', value: publishedQuestions.length, icon: ClipboardList, tone: 'total' },
-    { key: 'medsy', label: 'Medsy Question', value: publishedQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy' },
-    { key: 'created', label: 'Created Question', value: publishedQuestions.filter((question) => !isMedsyQuestion(question)).length, icon: ListChecks, tone: 'created' },
-    { key: 'favorites', label: 'Favorites', value: publishedQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites' },
-    { key: 'shared', label: 'Share to Students', value: publishedQuestions.filter(isSharedToStudentsQuestion).length, icon: Share2, tone: 'shared' },
+    { key: 'medsy', label: 'Medsy Question', value: publishedQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy', activeMetricKey: 'medsy' },
+    { key: 'created', label: 'Institute Questions', value: publishedQuestions.filter((question) => !isMedsyQuestion(question)).length, icon: ListChecks, tone: 'created', activeMetricKey: 'created' },
+    { key: 'favorites', label: 'Favorites', value: publishedQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites', activeMetricKey: 'favorites' },
+    { key: 'shared', label: 'Share to Students', value: publishedQuestions.filter(isSharedToStudentsQuestion).length, icon: Share2, tone: 'shared', activeMetricKey: 'shared' },
     { key: 'suggested', label: 'Report Question', value: [
       ...reportedQuestionRecords,
       ...createdReportedQuestionRecords,
-    ].filter((record) => !isResolvedReportRecord(record)).length, icon: Flag, tone: 'suggested' },
+    ].filter((record) => !isResolvedReportRecord(record)).length, icon: Flag, tone: 'suggested', activeMetricKey: 'suggested' },
   ]
-  const visibleQuestionMetrics = isEditable
-    ? questionMetrics
-    : questionMetrics.filter((metric) => !['shared', 'suggested'].includes(metric.key))
   const activeMetricLabel = questionMetrics.find((metric) => metric.key === activeMetric)?.label ?? 'questions'
   const isReportMetricActive = activeMetric === 'suggested'
   const hasEmbeddedAssessmentSelection = embedded && typeof onAddToAssessment === 'function' && !isReportMetricActive
   const footerResultSummary = hasSelectedFilters(filters)
     ? `${formatMetricCount(filteredQuestions.length)} filtered of ${formatMetricCount(metricFilteredQuestions.length)} ${activeMetricLabel.toLowerCase()}`
     : `Showing ${formatMetricCount(pagedQuestions.length)} of ${formatMetricCount(metricFilteredQuestions.length)}`
+
+  const openQuestionList = (metric = null) => {
+    const curriculumFilters = {
+      years: filters.years,
+      subjects: filters.subjects,
+      topics: filters.topics,
+      competencies: filters.competencies,
+    }
+    setActiveMetric(metric?.activeMetricKey ?? 'total')
+    setFilters({
+      ...createEmptyFilters(),
+      ...curriculumFilters,
+      ...(metric?.filters ?? {}),
+    })
+    setShowMetricsLanding(false)
+    setOpenFilterKey('')
+    setShowAdvancedFilters(false)
+  }
+
+  const viewAllQuestions = () => {
+    const curriculumFilters = {
+      years: filters.years,
+      subjects: filters.subjects,
+      topics: filters.topics,
+      competencies: filters.competencies,
+    }
+    setActiveMetric('total')
+    setFilters({
+      ...createEmptyFilters(),
+      ...curriculumFilters,
+    })
+    setShowMetricsLanding(false)
+    setOpenFilterKey('')
+    setShowAdvancedFilters(false)
+  }
+
+  const resetLandingFilters = () => {
+    setFilters(createEmptyFilters())
+    setActiveMetric('total')
+    setOpenFilterKey('')
+    setShowAdvancedFilters(false)
+  }
+
+  const backToMetrics = () => {
+    const curriculumFilters = {
+      years: filters.years,
+      subjects: filters.subjects,
+      topics: filters.topics,
+      competencies: filters.competencies,
+    }
+    setShowMetricsLanding(true)
+    setActiveMetric('total')
+    setFilters({
+      ...createEmptyFilters(),
+      ...curriculumFilters,
+    })
+    setSelectedGridAction('')
+    setSelectedGridQuestionIds([])
+    setExpandedTableRows([])
+  }
 
   const expandAllVisibleRows = () => {
     setExpandedTableRows((current) => Array.from(new Set([...current, ...pagedQuestionIds])))
@@ -1446,36 +1708,160 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   return (
     <section className={`vx-content assessment-page ${embedded ? 'is-embedded' : ''} is-${resolvedMode}-mode`}>
       <div className={`assessment-page-shell question-bank-overview-shell ${selectedGridAction ? 'has-selection-bar' : ''}`}>
-        <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
-          {visibleQuestionMetrics.map((metric) => {
-            const Icon = metric.icon
-            const isActive = activeMetric === metric.key
+        {showMetricsLanding ? (
+          <section className="question-bank-metrics-landing" aria-label="Question bank metrics overview">
+            <div className="question-bank-metrics-hero">
+              <div>
+                <span>Question Bank Intelligence</span>
+                <strong>{formatMetricCount(landingQuestions.length)} questions ready to explore</strong>
+              </div>
+              <div className="question-bank-metrics-actions">
+                <button type="button" className="is-secondary" onClick={resetLandingFilters}>
+                  Set Default Filter
+                </button>
+                <button type="button" onClick={viewAllQuestions} disabled={!publishedQuestions.length}>
+                  View All Questions
+                </button>
+              </div>
+            </div>
 
-            return (
-              <button
-                key={metric.key}
-                type="button"
-                className={`is-${metric.tone} ${isActive ? 'is-active' : ''}`}
-                onClick={() => {
-                  if (!metric.value) return
-                  setActiveMetric(metric.key)
-                }}
-                disabled={!metric.value}
-                aria-pressed={isActive}
-              >
-                <span className="assessment-page-metric-icon" aria-hidden="true">
-                  <Icon size={15} strokeWidth={2.2} />
-                </span>
-                <span className="assessment-page-metric-copy">
-                  <strong title={formatMetricCount(metric.value)}>{formatCompactMetricCount(metric.value)}</strong>
-                  <span>{metric.label}</span>
-                </span>
-              </button>
-            )
-          })}
-        </section>
+            <div className="question-bank-metrics-filter-card" aria-label="Question bank metric filters">
+              <span className="question-bank-metrics-filter-copy">
+                <strong>Curriculum filter</strong>
+                <span>Refine the metrics by year, subject, topic, and competency before opening questions.</span>
+              </span>
+              <span className="question-bank-metrics-filter-controls">
+                {landingFilterDefinitions.map(renderFilterDropdown)}
+              </span>
+            </div>
 
-        {publishedQuestions.length ? (
+            {hasSelectedFilters(filters) ? (
+              <div className="assessment-page-active-filters question-bank-metrics-active-filters">
+                {['years', 'subjects', 'topics', 'competencies'].flatMap((filterKey) => (
+                  (filters[filterKey] ?? []).map((value) => (
+                    <button key={`${filterKey}-${value}`} type="button" onClick={() => clearFilterValue(filterKey, value)}>
+                      {filterKey === 'competencies' ? getCompetencyCode(value) : value}
+                      <X size={12} strokeWidth={2.4} />
+                    </button>
+                  ))
+                ))}
+                <button
+                  type="button"
+                  className="assessment-page-active-filters-clear"
+                  onClick={resetLandingFilters}
+                >
+                  Clear all
+                </button>
+              </div>
+            ) : null}
+
+            <div className="question-bank-metrics-grid">
+              {visibleQuestionMetrics.map((metric) => {
+                const Icon = metric.icon
+                const isEmpty = !metric.value
+
+                if (metric.key === 'categories' && metric.donut) {
+                  return (
+                    <article key={metric.key} className="question-bank-category-chart-card">
+                      <strong className="question-bank-category-chart-title">Question Category</strong>
+                      <span className="question-bank-metric-donut" aria-label={`${metric.label} distribution`}>
+                        <span className="question-bank-metric-donut-ring" aria-hidden="true">
+                          <svg viewBox="0 0 120 120" focusable="false">
+                            <circle className="question-bank-metric-donut-track" cx="60" cy="60" r="45" pathLength="100" />
+                            {metric.donut.segments.map((segment) => (
+                              <circle
+                                key={segment.label}
+                                className="question-bank-metric-donut-segment"
+                                cx="60"
+                                cy="60"
+                                r="45"
+                                pathLength="100"
+                                stroke={segment.color}
+                                strokeDasharray={`${Math.max(0, segment.end - segment.start)} ${100 - Math.max(0, segment.end - segment.start)}`}
+                                strokeDashoffset={-segment.start}
+                              >
+                                <title>{`${segment.label}: ${formatMetricCount(segment.count)}`}</title>
+                              </circle>
+                            ))}
+                          </svg>
+                          <strong>{formatMetricCount(metric.donut.total)}</strong>
+                          <span>Total</span>
+                        </span>
+                        <span className="question-bank-metric-donut-legend">
+                          {metric.donut.segments.map((segment) => (
+                            <span key={segment.label}>
+                              <i style={{ background: segment.color }} />
+                              <span>{segment.label}</span>
+                              <strong>{formatMetricCount(segment.count)}</strong>
+                            </span>
+                          ))}
+                        </span>
+                      </span>
+                    </article>
+                  )
+                }
+
+                return (
+                  <article
+                    key={metric.key}
+                    className={`question-bank-metric-card is-${metric.tone} ${metric.splits?.length ? 'has-splits' : ''} ${isEmpty ? 'is-empty' : ''}`}
+                  >
+                    <span className="question-bank-metric-card-head">
+                      <span className="question-bank-metric-card-icon" aria-hidden="true">
+                        <Icon size={17} strokeWidth={2.2} />
+                      </span>
+                      <span>
+                        <strong title={formatMetricCount(metric.value)}>{formatMetricCount(metric.value)}</strong>
+                        <span>{metric.label}</span>
+                      </span>
+                    </span>
+                    {metric.splits?.length ? (
+                      <span className="question-bank-metric-splits" aria-label={`${metric.label} split counts`}>
+                        {metric.splits.map((split) => (
+                          <span key={split.label}>
+                            <strong>{split.label}</strong>
+                            <em>{formatMetricCount(split.count)}</em>
+                          </span>
+                        ))}
+                      </span>
+                    ) : null}
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+        ) : (
+          <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
+            {questionListSummaryMetrics.map((metric) => {
+              const Icon = metric.icon
+              const isActive = activeMetric === (metric.activeMetricKey ?? metric.key)
+
+              return (
+                <button
+                  key={metric.key}
+                  type="button"
+                  className={`is-${metric.tone} ${isActive ? 'is-active' : ''}`}
+                  onClick={() => {
+                    if (!metric.value) return
+                    openQuestionList(metric)
+                  }}
+                  disabled={!metric.value}
+                  aria-pressed={isActive}
+                >
+                  <span className="assessment-page-metric-icon" aria-hidden="true">
+                    <Icon size={15} strokeWidth={2.2} />
+                  </span>
+                  <span className="assessment-page-metric-copy">
+                    <strong title={formatMetricCount(metric.value)}>{formatCompactMetricCount(metric.value)}</strong>
+                    <span>{metric.label}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </section>
+        )}
+
+        {publishedQuestions.length && !showMetricsLanding ? (
           <section
             ref={filterHeaderRef}
             className={`assessment-page-bank-controls ${activeView === 'grid' ? 'is-grid-attached' : ''} ${isFilterHeaderCompact ? 'is-compact' : ''} ${isCompactFilterTrayOpen ? 'is-filter-tray-open' : ''}`}
@@ -1522,34 +1908,43 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   </span>
                 ) : null}
               </span>
-              {isEditable ? (
-                <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
-                  <button
-                    type="button"
-                    className={selectedGridAction === 'assessment' ? 'is-active' : ''}
-                    onClick={() => setSelectedGridAction('assessment')}
-                    disabled={selectedGridAction === 'learn' || isReportMetricActive}
-                  >
-                    <ListChecks size={14} strokeWidth={2.3} />
-                    Add to Assessment
-                    {selectedGridAction === 'assessment' && selectedGridQuestionIds.length ? (
-                      <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
-                    ) : null}
-                  </button>
-                  <button
-                    type="button"
-                    className={selectedGridAction === 'learn' ? 'is-active' : ''}
-                    onClick={() => setSelectedGridAction('learn')}
-                    disabled={selectedGridAction === 'assessment' || isReportMetricActive}
-                  >
-                    <Share2 size={14} strokeWidth={2.3} />
-                    Share to Students
-                    {selectedGridAction === 'learn' && selectedGridQuestionIds.length ? (
-                      <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
-                    ) : null}
-                  </button>
-                </span>
-              ) : null}
+              <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
+                <button
+                  type="button"
+                  onClick={backToMetrics}
+                >
+                  <BarChart3 size={14} strokeWidth={2.3} />
+                  Back to Metrics
+                </button>
+                {isEditable ? (
+                  <>
+                    <button
+                      type="button"
+                      className={selectedGridAction === 'assessment' ? 'is-active' : ''}
+                      onClick={() => setSelectedGridAction('assessment')}
+                      disabled={selectedGridAction === 'learn' || isReportMetricActive}
+                    >
+                      <ListChecks size={14} strokeWidth={2.3} />
+                      Add to Assessment
+                      {selectedGridAction === 'assessment' && selectedGridQuestionIds.length ? (
+                        <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
+                      ) : null}
+                    </button>
+                    <button
+                      type="button"
+                      className={selectedGridAction === 'learn' ? 'is-active' : ''}
+                      onClick={() => setSelectedGridAction('learn')}
+                      disabled={selectedGridAction === 'assessment' || isReportMetricActive}
+                    >
+                      <Share2 size={14} strokeWidth={2.3} />
+                      Share to Students
+                      {selectedGridAction === 'learn' && selectedGridQuestionIds.length ? (
+                        <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
+                      ) : null}
+                    </button>
+                  </>
+                ) : null}
+              </span>
               <span className="assessment-page-expand-toggle" role="group" aria-label="Expand or collapse all visible questions">
                 <button
                   type="button"
@@ -1595,7 +1990,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           </section>
         ) : null}
 
-        {pagedQuestions.length && activeView === 'card' ? (
+        {pagedQuestions.length && activeView === 'card' && !showMetricsLanding ? (
           <section className="assessment-page-question-list" aria-label="Sent question bank questions">
             {pagedQuestions.map((question, index) => {
               const questionNumber = pageStartIndex + index + 1
@@ -1770,7 +2165,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           </section>
         ) : null}
 
-        {pagedQuestions.length && activeView === 'grid' ? (
+        {pagedQuestions.length && activeView === 'grid' && !showMetricsLanding ? (
           <section className="assessment-page-table-wrap" aria-label="Sent question bank table">
             <div className="assessment-page-grid-scroll">
               <table className="assessment-page-question-table assessment-page-grid-table">
@@ -2270,7 +2665,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           document.body,
         ) : null}
 
-        {publishedQuestions.length && !pagedQuestions.length ? (
+        {publishedQuestions.length && !pagedQuestions.length && !showMetricsLanding ? (
           <section className="assessment-page-empty">
             <Info size={18} strokeWidth={2.2} />
             <strong>No matching questions</strong>
@@ -2278,7 +2673,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           </section>
         ) : null}
 
-        {!publishedQuestions.length ? (
+        {!publishedQuestions.length && !showMetricsLanding ? (
           <section className="assessment-page-empty">
             <Info size={18} strokeWidth={2.2} />
             <strong>No sent questions yet</strong>
