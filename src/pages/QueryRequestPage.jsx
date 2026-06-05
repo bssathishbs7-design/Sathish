@@ -194,22 +194,24 @@ export default function QueryRequestPage() {
       <div className="assessment-page-shell query-request-shell">
         <section className="assessment-page-bank-controls is-grid-attached" aria-label="Query request controls">
           <div className="assessment-page-filter-strip" aria-label="Query request filters">
-            <button type="button" className="assessment-page-filter-toggle" aria-label="Filter query requests">
-              <Filter size={17} strokeWidth={2.2} />
-            </button>
-            {filterLabels.map((label) => (
-              <span key={label} className="assessment-page-filter-dropdown">
-                <button type="button" aria-expanded="false">
-                  <span>{label}</span>
-                  <ChevronDown size={14} strokeWidth={2.4} />
+            <span className="assessment-page-filter-controls">
+              <button type="button" className="assessment-page-filter-toggle" aria-label="Filter query requests">
+                <Filter size={17} strokeWidth={2.2} />
+              </button>
+              {filterLabels.map((label) => (
+                <span key={label} className="assessment-page-filter-dropdown">
+                  <button type="button" aria-expanded="false">
+                    <span>{label}</span>
+                    <ChevronDown size={14} strokeWidth={2.4} />
+                  </button>
+                </span>
+              ))}
+              <span className="assessment-page-more-filters-wrap">
+                <button type="button" className="assessment-page-more-filters-btn" aria-expanded="false">
+                  <Plus size={15} strokeWidth={2.3} />
+                  More
                 </button>
               </span>
-            ))}
-            <span className="assessment-page-more-filters-wrap">
-              <button type="button" className="assessment-page-more-filters-btn" aria-expanded="false">
-                <Plus size={15} strokeWidth={2.3} />
-                More
-              </button>
             </span>
             <span className="assessment-page-expand-toggle" role="group" aria-label="Expand query request rows">
               <button
