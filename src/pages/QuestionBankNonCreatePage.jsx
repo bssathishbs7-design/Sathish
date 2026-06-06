@@ -594,12 +594,13 @@ const formatMetricCount = (value) => (
   new Intl.NumberFormat('en-IN').format(Number(value) || 0)
 )
 
-const formatCompactMetricCount = (value) => (
-  new Intl.NumberFormat('en-IN', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(Number(value) || 0)
-)
+const getMetricCountSizeClass = (value) => {
+  const formattedLength = formatMetricCount(value).length
+  if (formattedLength >= 10) return 'is-count-xxl'
+  if (formattedLength >= 8) return 'is-count-xl'
+  if (formattedLength >= 6) return 'is-count-lg'
+  return ''
+}
 
 const PAGE_SIZE = 20
 
@@ -713,6 +714,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [expandedCardRows, setExpandedCardRows] = useState([])
   const [activeMetric, setActiveMetric] = useState('total')
   const [showMetricsLanding, setShowMetricsLanding] = useState(true)
+  const [metricTooltip, setMetricTooltip] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
   const [createdReportedQuestionRecords, setCreatedReportedQuestionRecords] = useState(() => readCreatedReportedQuestionRecords())
   const [reportQuestion, setReportQuestion] = useState(null)
@@ -972,8 +974,17 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       .slice(0, limit)
       .map(([label, count]) => ({ label, count }))
   )
-  const createDonutDistribution = (counts, preferredOrder = []) => {
-    const colors = ['#6d5dfc', '#2563eb', '#fb7c3f', '#38bdf8', '#20c7ad']
+  const getSplitColor = (metricKey, index) => {
+    const colorMap = {
+      descriptive: ['#f59e0b', '#14b8a6', '#ef4444'],
+      thinking: ['#7c3aed', '#14b8a6'],
+      difficulty: ['#22c55e', '#f59e0b', '#f97316', '#ef4444', '#8b5cf6'],
+      cognitive: ['#2563eb', '#06b6d4', '#14b8a6', '#f59e0b', '#8b5cf6'],
+    }
+
+    return colorMap[metricKey]?.[index % colorMap[metricKey].length] ?? '#14b8a6'
+  }
+  const createDonutDistribution = (counts, preferredOrder = [], colors = ['#6d5dfc', '#2563eb', '#fb7c3f', '#38bdf8', '#20c7ad']) => {
     const entries = Object.entries(counts)
       .filter(([, count]) => count > 0)
       .sort((first, second) => {
@@ -1058,6 +1069,11 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
         { label: 'SAQs', count: landingValueCounts.types['Descriptive (SAQs)'] ?? 0 },
         { label: 'MEQs', count: landingValueCounts.types['Descriptive (MEQs)'] ?? 0 },
       ],
+      donut: createDonutDistribution({
+        LAQs: landingValueCounts.types['Descriptive (LAQs)'] ?? 0,
+        SAQs: landingValueCounts.types['Descriptive (SAQs)'] ?? 0,
+        MEQs: landingValueCounts.types['Descriptive (MEQs)'] ?? 0,
+      }, ['LAQs', 'SAQs', 'MEQs'], ['#f59e0b', '#14b8a6', '#ef4444']),
       distribution: createDistribution({
         LAQs: landingValueCounts.types['Descriptive (LAQs)'] ?? 0,
         SAQs: landingValueCounts.types['Descriptive (SAQs)'] ?? 0,
@@ -1071,7 +1087,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       icon: Tags,
       tone: 'category',
       filters: { categories: Object.keys(landingValueCounts.categories) },
-      donut: createDonutDistribution(landingValueCounts.categories, ['Application', 'Direct', 'Reasoning', 'Critical Thinking']),
+      donut: createDonutDistribution(landingValueCounts.categories, ['Application', 'Direct', 'Reasoning', 'Critical Thinking'], ['#6d5dfc', '#2563eb', '#fb7c3f', '#38bdf8']),
       distribution: createDistribution(landingValueCounts.categories),
     },
     {
@@ -1105,7 +1121,18 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       distribution: createDistribution(landingValueCounts.difficultyLevels, ['L1', 'L2', 'L3', 'L4', 'L5']),
     },
   ]
-  const visibleQuestionMetrics = questionMetrics
+  const visibleQuestionMetrics = []
+  const questionMetricByKey = Object.fromEntries(questionMetrics.map((metric) => [metric.key, metric]))
+  const questionTypeDonut = createDonutDistribution({
+    MCQ: landingValueCounts.types.MCQ ?? 0,
+    LAQs: landingValueCounts.types['Descriptive (LAQs)'] ?? 0,
+    SAQs: landingValueCounts.types['Descriptive (SAQs)'] ?? 0,
+    MEQs: landingValueCounts.types['Descriptive (MEQs)'] ?? 0,
+  }, ['MCQ', 'LAQs', 'SAQs', 'MEQs'], ['#2563eb', '#f59e0b', '#14b8a6', '#8b5cf6'])
+  const questionTypeLabelItems = ['MCQ', 'LAQs', 'SAQs', 'MEQs'].map((label) => ({
+    label,
+    color: questionTypeDonut.segments.find((segment) => segment.label === label)?.color ?? '#cbd5e1',
+  }))
   const questionListSummaryMetrics = [
     { key: 'total', label: 'Total Question', value: publishedQuestions.length, icon: ClipboardList, tone: 'total' },
     { key: 'medsy', label: 'Medsy Question', value: publishedQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy', activeMetricKey: 'medsy' },
@@ -1710,28 +1737,20 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       <div className={`assessment-page-shell question-bank-overview-shell ${selectedGridAction ? 'has-selection-bar' : ''}`}>
         {showMetricsLanding ? (
           <section className="question-bank-metrics-landing" aria-label="Question bank metrics overview">
-            <div className="question-bank-metrics-hero">
-              <div>
-                <span>Question Bank Intelligence</span>
-                <strong>{formatMetricCount(landingQuestions.length)} questions ready to explore</strong>
-              </div>
-              <div className="question-bank-metrics-actions">
-                <button type="button" className="is-secondary" onClick={resetLandingFilters}>
-                  Set Default Filter
-                </button>
-                <button type="button" onClick={viewAllQuestions} disabled={!publishedQuestions.length}>
-                  View All Questions
-                </button>
-              </div>
-            </div>
-
             <div className="question-bank-metrics-filter-card" aria-label="Question bank metric filters">
               <span className="question-bank-metrics-filter-copy">
-                <strong>Curriculum filter</strong>
-                <span>Refine the metrics by year, subject, topic, and competency before opening questions.</span>
+                <strong>Question Bank</strong>
               </span>
               <span className="question-bank-metrics-filter-controls">
                 {landingFilterDefinitions.map(renderFilterDropdown)}
+              </span>
+              <span className="question-bank-metrics-actions">
+                <button type="button" className="is-secondary" onClick={resetLandingFilters}>
+                  Set Default
+                </button>
+                <button type="button" onClick={viewAllQuestions} disabled={!publishedQuestions.length}>
+                  View all
+                </button>
               </span>
             </div>
 
@@ -1755,6 +1774,116 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               </div>
             ) : null}
 
+            <div className="question-bank-overview-grid">
+              <article className="question-bank-overview-card is-ownership">
+                <div>
+                  <strong className="question-bank-overview-total">{formatMetricCount(questionMetricByKey.total?.value)}</strong>
+                  <span>Total Question</span>
+                </div>
+                <div className="question-bank-ownership-splits">
+                  <span>
+                    <img src={medsyIcon} alt="" aria-hidden="true" />
+                    <strong>{formatMetricCount(questionMetricByKey.medsy?.value)}</strong>
+                    <em>Medsy.ai</em>
+                  </span>
+                  <span>
+                    <ListChecks size={16} strokeWidth={2.2} />
+                    <strong>{formatMetricCount(questionMetricByKey.created?.value)}</strong>
+                    <em>Institute/College</em>
+                  </span>
+                </div>
+              </article>
+
+              <article className="question-bank-overview-card is-types">
+                <strong className="question-bank-overview-title">Question types</strong>
+                <div className="question-bank-type-pie-layout">
+                  <span
+                    className="question-bank-type-pie"
+                    style={{ '--question-type-pie': questionTypeDonut.gradient }}
+                    aria-label={`Question types total ${formatMetricCount(questionTypeDonut.total)}`}
+                    onMouseLeave={() => setMetricTooltip(null)}
+                  >
+                    {questionTypeDonut.segments.map((segment, segmentIndex) => (
+                      <span
+                        key={segment.label}
+                        className={`question-bank-type-pie-label is-label-${segmentIndex}`}
+                        onMouseEnter={() => setMetricTooltip({ key: 'types', ...segment })}
+                        onFocus={() => setMetricTooltip({ key: 'types', ...segment })}
+                        onBlur={() => setMetricTooltip(null)}
+                        tabIndex="0"
+                      >
+                        <span className="sr-only">{`${segment.label}: ${formatMetricCount(segment.count)}`}</span>
+                      </span>
+                    ))}
+                    <span className="question-bank-type-pie-total">
+                      <strong>{formatMetricCount(questionTypeDonut.total)}</strong>
+                      <em>Total</em>
+                    </span>
+                    {metricTooltip?.key === 'types' ? (
+                      <span className="question-bank-chart-tooltip" role="tooltip">
+                        <i style={{ background: metricTooltip.color }} />
+                        <span>{metricTooltip.label}</span>
+                        <strong>{formatMetricCount(metricTooltip.count)}</strong>
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="question-bank-type-pie-labels" aria-label="Question type labels">
+                    {questionTypeLabelItems.map((segment) => (
+                      <span key={segment.label}>
+                        <i style={{ background: segment.color }} />
+                        <em>{segment.label}</em>
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              </article>
+
+              <article className="question-bank-overview-card is-category">
+                <strong className="question-bank-overview-title">Question category</strong>
+                <span className="question-bank-overview-icon" aria-hidden="true">
+                  <Tags size={17} strokeWidth={2.2} />
+                </span>
+                <strong className="question-bank-overview-total">{formatMetricCount(questionMetricByKey.categories?.value)}</strong>
+                <span className="question-bank-overview-list is-plain">
+                  {(questionMetricByKey.categories?.donut?.segments ?? []).map((segment) => (
+                    <span key={segment.label}>
+                      <i style={{ background: segment.color }} />
+                      <strong>{formatMetricCount(segment.count)}</strong>
+                      <em>{segment.label}</em>
+                    </span>
+                  ))}
+                </span>
+              </article>
+
+              <article className="question-bank-overview-card is-difficulty">
+                <strong className="question-bank-overview-title">Difficulty level</strong>
+                <span className="question-bank-overview-icon" aria-hidden="true">
+                  <Gauge size={17} strokeWidth={2.2} />
+                </span>
+                <strong className="question-bank-overview-total">{formatMetricCount(questionMetricByKey.difficulty?.value)}</strong>
+                <span className="question-bank-level-tiles">
+                  {(questionMetricByKey.difficulty?.splits ?? []).map((split, splitIndex) => (
+                    <span key={split.label} style={{ '--metric-split-color': getSplitColor('difficulty', splitIndex) }}>
+                      <strong>{formatMetricCount(split.count)}</strong>
+                      <em>{split.label}</em>
+                    </span>
+                  ))}
+                </span>
+              </article>
+
+              {(questionMetricByKey.thinking?.splits ?? []).map((split, splitIndex) => (
+                <article key={split.label} className={`question-bank-overview-card is-thinking-mini is-thinking-${splitIndex}`}>
+                  <strong className="question-bank-overview-title">Thinking level</strong>
+                  <span className="question-bank-overview-icon" aria-hidden="true">
+                    <Brain size={17} strokeWidth={2.2} />
+                  </span>
+                  <strong className="question-bank-overview-total">{formatMetricCount(split.count)}</strong>
+                  <span>{split.label}</span>
+                </article>
+              ))}
+
+            </div>
+
             <div className="question-bank-metrics-grid">
               {visibleQuestionMetrics.map((metric) => {
                 const Icon = metric.icon
@@ -1763,9 +1892,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 if (metric.key === 'categories' && metric.donut) {
                   return (
                     <article key={metric.key} className="question-bank-category-chart-card">
-                      <strong className="question-bank-category-chart-title">Question Category</strong>
+                      <strong className="question-bank-category-chart-title">Question category</strong>
                       <span className="question-bank-metric-donut" aria-label={`${metric.label} distribution`}>
-                        <span className="question-bank-metric-donut-ring" aria-hidden="true">
+                        <span className="question-bank-metric-donut-ring" aria-label={`${metric.label} chart`}>
                           <svg viewBox="0 0 120 120" focusable="false">
                             <circle className="question-bank-metric-donut-track" cx="60" cy="60" r="45" pathLength="100" />
                             {metric.donut.segments.map((segment) => (
@@ -1779,17 +1908,33 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                 stroke={segment.color}
                                 strokeDasharray={`${Math.max(0, segment.end - segment.start)} ${100 - Math.max(0, segment.end - segment.start)}`}
                                 strokeDashoffset={-segment.start}
-                              >
-                                <title>{`${segment.label}: ${formatMetricCount(segment.count)}`}</title>
-                              </circle>
+                                tabIndex="0"
+                                onFocus={() => setMetricTooltip({ key: metric.key, ...segment })}
+                                onBlur={() => setMetricTooltip(null)}
+                                onMouseEnter={() => setMetricTooltip({ key: metric.key, ...segment })}
+                                onMouseLeave={() => setMetricTooltip(null)}
+                              />
                             ))}
                           </svg>
-                          <strong>{formatMetricCount(metric.donut.total)}</strong>
+                          {metricTooltip?.key === metric.key ? (
+                            <span className="question-bank-chart-tooltip" role="tooltip">
+                              <i style={{ background: metricTooltip.color }} />
+                              <span>{metricTooltip.label}</span>
+                              <strong>{formatMetricCount(metricTooltip.count)}</strong>
+                            </span>
+                          ) : null}
+                          <strong className={`question-bank-donut-count ${getMetricCountSizeClass(metric.donut.total)}`}>{formatMetricCount(metric.donut.total)}</strong>
                           <span>Total</span>
                         </span>
                         <span className="question-bank-metric-donut-legend">
                           {metric.donut.segments.map((segment) => (
-                            <span key={segment.label}>
+                            <span
+                              key={segment.label}
+                              style={{
+                                '--segment-color': segment.color,
+                                '--segment-width': `${metric.donut.total ? Math.max(8, Math.round((segment.count / metric.donut.total) * 100)) : 0}%`,
+                              }}
+                            >
                               <i style={{ background: segment.color }} />
                               <span>{segment.label}</span>
                               <strong>{formatMetricCount(segment.count)}</strong>
@@ -1801,14 +1946,58 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   )
                 }
 
+                if (metric.key === 'descriptive' && metric.donut) {
+                  return (
+                    <article key={metric.key} className="question-bank-metric-card is-type is-descriptive has-splits">
+                      <strong className="question-bank-mini-chart-title">Descriptive question</strong>
+                      <span className="question-bank-descriptive-donut-wrap">
+                        <span className="question-bank-metric-gauge-ring" aria-label={`${metric.label} chart`}>
+                          <svg viewBox="0 0 160 100" focusable="false">
+                            <path className="question-bank-metric-gauge-track" d="M 20 82 A 60 60 0 0 1 140 82" pathLength="100" />
+                            {metric.donut.segments.map((segment) => (
+                              <path
+                                key={segment.label}
+                                className="question-bank-metric-gauge-segment"
+                                d="M 20 82 A 60 60 0 0 1 140 82"
+                                pathLength="100"
+                                stroke={segment.color}
+                                strokeDasharray={`${Math.max(0, segment.end - segment.start)} ${100 - Math.max(0, segment.end - segment.start)}`}
+                                strokeDashoffset={-segment.start}
+                                tabIndex="0"
+                                onFocus={() => setMetricTooltip({ key: metric.key, ...segment })}
+                                onBlur={() => setMetricTooltip(null)}
+                                onMouseEnter={() => setMetricTooltip({ key: metric.key, ...segment })}
+                                onMouseLeave={() => setMetricTooltip(null)}
+                              />
+                            ))}
+                          </svg>
+                          {metricTooltip?.key === metric.key ? (
+                            <span className="question-bank-chart-tooltip" role="tooltip">
+                              <i style={{ background: metricTooltip.color }} />
+                              <span>{metricTooltip.label}</span>
+                              <strong>{formatMetricCount(metricTooltip.count)}</strong>
+                            </span>
+                          ) : null}
+                          <strong className={`question-bank-gauge-count ${getMetricCountSizeClass(metric.value)}`}>{formatMetricCount(metric.value)}</strong>
+                          <span>Total Descriptive</span>
+                        </span>
+                      </span>
+                    </article>
+                  )
+                }
+
                 return (
                   <article
                     key={metric.key}
-                    className={`question-bank-metric-card is-${metric.tone} ${metric.splits?.length ? 'has-splits' : ''} ${isEmpty ? 'is-empty' : ''}`}
+                    className={`question-bank-metric-card is-${metric.tone} is-${metric.key} ${metric.splits?.length ? 'has-splits' : ''} ${isEmpty ? 'is-empty' : ''}`}
                   >
                     <span className="question-bank-metric-card-head">
                       <span className="question-bank-metric-card-icon" aria-hidden="true">
-                        <Icon size={17} strokeWidth={2.2} />
+                        {metric.key === 'medsy' ? (
+                          <img className="question-bank-metric-logo" src={medsyIcon} alt="" aria-hidden="true" />
+                        ) : (
+                          <Icon size={17} strokeWidth={2.2} />
+                        )}
                       </span>
                       <span>
                         <strong title={formatMetricCount(metric.value)}>{formatMetricCount(metric.value)}</strong>
@@ -1817,8 +2006,15 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                     </span>
                     {metric.splits?.length ? (
                       <span className="question-bank-metric-splits" aria-label={`${metric.label} split counts`}>
-                        {metric.splits.map((split) => (
-                          <span key={split.label}>
+                        {metric.splits.map((split, splitIndex) => (
+                          <span
+                            key={split.label}
+                            style={{
+                              '--metric-split-color': getSplitColor(metric.key, splitIndex),
+                              '--metric-split-width': `${metric.value ? Math.max(8, Math.round((split.count / metric.value) * 100)) : 0}%`,
+                            }}
+                            title={`${split.label}: ${formatMetricCount(split.count)}`}
+                          >
                             <strong>{split.label}</strong>
                             <em>{formatMetricCount(split.count)}</em>
                           </span>
@@ -1829,6 +2025,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 )
               })}
             </div>
+
           </section>
         ) : (
           <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
@@ -1849,10 +2046,14 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   aria-pressed={isActive}
                 >
                   <span className="assessment-page-metric-icon" aria-hidden="true">
-                    <Icon size={15} strokeWidth={2.2} />
+                    {metric.key === 'medsy' ? (
+                      <img className="assessment-page-metric-logo" src={medsyIcon} alt="" aria-hidden="true" />
+                    ) : (
+                      <Icon size={15} strokeWidth={2.2} />
+                    )}
                   </span>
                   <span className="assessment-page-metric-copy">
-                    <strong title={formatMetricCount(metric.value)}>{formatCompactMetricCount(metric.value)}</strong>
+                    <strong title={formatMetricCount(metric.value)}>{formatMetricCount(metric.value)}</strong>
                     <span>{metric.label}</span>
                   </span>
                 </button>
