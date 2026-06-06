@@ -2526,7 +2526,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
               role="tab"
               aria-selected={activeQuestionTab === 'create'}
             >
-              Create Question
+              Create Ques
             </button>
             <button
               type="button"
@@ -2545,7 +2545,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
               role="tab"
               aria-selected={activeQuestionTab === 'uploaded'}
             >
-              Upload Question
+              Upload Ques
               <span>{uploadedQuestionCards.length}</span>
             </button>
             <button
@@ -2565,7 +2565,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
               role="tab"
               aria-selected={activeQuestionTab === 'sent'}
             >
-              Pending Approval
+              Pending
               <span>{sentApprovalQuestionCards.length}</span>
             </button>
             <button
