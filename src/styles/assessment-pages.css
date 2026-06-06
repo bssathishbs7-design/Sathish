@@ -3873,6 +3873,136 @@
   opacity: 0.58;
 }
 
+.question-bank-dashboard-toast {
+  position: fixed;
+  right: 28px;
+  bottom: 24px;
+  z-index: 90;
+  display: grid;
+  grid-template-columns: 6px 42px minmax(240px, 1fr) auto 34px;
+  align-items: center;
+  gap: 14px;
+  width: min(760px, calc(100vw - 56px));
+  min-height: 88px;
+  padding: 16px 16px 16px 0;
+  border: 1px solid #dbe7ef;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+  animation: question-bank-toast-rise 240ms ease-out both;
+}
+
+.question-bank-dashboard-toast-accent {
+  align-self: stretch;
+  width: 6px;
+  border-radius: 12px 0 0 12px;
+  background: #2f80ed;
+}
+
+.question-bank-dashboard-toast-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: #2f80ed;
+  color: #ffffff;
+}
+
+.question-bank-dashboard-toast-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.question-bank-dashboard-toast-copy strong {
+  color: #09283a;
+  font-size: 1rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.question-bank-dashboard-toast-copy span {
+  color: #607380;
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.question-bank-dashboard-toast-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.question-bank-dashboard-toast-actions button,
+.question-bank-dashboard-toast-close {
+  border: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.question-bank-dashboard-toast-actions button {
+  min-height: 34px;
+  padding: 0 14px;
+  border-color: #14b8a6;
+  border-radius: 9px;
+  background: #14b8a6;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.question-bank-dashboard-toast-actions button.is-secondary {
+  border-color: #cfdfe3;
+  background: #ffffff;
+  color: #123044;
+}
+
+.question-bank-dashboard-toast-close {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  color: #93a2ad;
+}
+
+.question-bank-dashboard-toast-actions button:hover,
+.question-bank-dashboard-toast-actions button:focus-visible {
+  border-color: #08776d;
+  background: #0f8f75;
+  color: #ffffff;
+  outline: none;
+}
+
+.question-bank-dashboard-toast-actions button.is-secondary:hover,
+.question-bank-dashboard-toast-actions button.is-secondary:focus-visible {
+  border-color: #2f80ed;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.question-bank-dashboard-toast-close:hover,
+.question-bank-dashboard-toast-close:focus-visible {
+  background: #f1f6f8;
+  color: #344b5a;
+  outline: none;
+}
+
+@keyframes question-bank-toast-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .question-bank-metrics-active-filters {
   padding-inline: 2px;
 }
@@ -5809,6 +5939,31 @@
   font-size: 0.72rem;
   font-weight: 800;
   cursor: pointer;
+}
+
+.assessment-page-more-filter-default-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  width: 100%;
+  padding: 0 12px;
+  border: 1px solid #bfe8df;
+  border-radius: 9px;
+  background: #f0fdfa;
+  color: #08776d;
+  font-size: 0.76rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.assessment-page-more-filter-default-btn:hover,
+.assessment-page-more-filter-default-btn:focus-visible {
+  border-color: #14b8a6;
+  background: #dcfced;
+  color: #075f54;
+  outline: none;
 }
 
 .assessment-page-more-filter-group {
@@ -8014,6 +8169,49 @@
   border-color: rgba(255, 255, 255, 0.16);
   background: #2a2b29;
   color: #f5f3ee;
+}
+
+.theme-dark .question-bank-dashboard-toast {
+  border-color: rgba(96, 125, 153, 0.42);
+  background: #101827;
+  box-shadow: 0 18px 48px rgba(2, 8, 23, 0.52);
+}
+
+.theme-dark .question-bank-dashboard-toast-copy strong {
+  color: #eef6ff;
+}
+
+.theme-dark .question-bank-dashboard-toast-copy span {
+  color: #c3d4e8;
+}
+
+.theme-dark .question-bank-dashboard-toast-actions button.is-secondary {
+  border-color: rgba(96, 125, 153, 0.56);
+  background: #17263a;
+  color: #d9e8f8;
+}
+
+.theme-dark .question-bank-dashboard-toast-close {
+  color: #9fb0c8;
+}
+
+.theme-dark .question-bank-dashboard-toast-close:hover,
+.theme-dark .question-bank-dashboard-toast-close:focus-visible {
+  background: #17263a;
+  color: #eef6ff;
+}
+
+.theme-dark .assessment-page-more-filter-default-btn {
+  border-color: rgba(45, 212, 191, 0.34);
+  background: rgba(20, 184, 166, 0.13);
+  color: #8df0c7;
+}
+
+.theme-dark .assessment-page-more-filter-default-btn:hover,
+.theme-dark .assessment-page-more-filter-default-btn:focus-visible {
+  border-color: rgba(45, 212, 191, 0.64);
+  background: rgba(20, 184, 166, 0.22);
+  color: #d7fff4;
 }
 
 .theme-dark .question-bank-metrics-landing .question-bank-metric-card,
@@ -11079,5 +11277,654 @@
   .assessment-page-question-options,
   .assessment-page-table-options {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Create Assessment responsive stabilization */
+.create-assessment-workspace {
+  --create-page-gutter: clamp(8px, 1.1vw, 14px);
+}
+
+.create-assessment-workspace,
+.create-assessment-workspace * {
+  min-width: 0;
+}
+
+.create-assessment-workspace-header {
+  min-width: 0;
+}
+
+.create-assessment-title-copy h1,
+.create-assessment-title-copy p,
+.create-assessment-action-btn span,
+.create-assessment-preview-title-row,
+.create-assessment-preview-title-row strong,
+.create-assessment-preview-subline,
+.create-assessment-preview-meta {
+  overflow-wrap: anywhere;
+}
+
+.create-assessment-right-rail {
+  overscroll-behavior: contain;
+}
+
+.create-assessment-action-panel {
+  align-content: start;
+}
+
+.create-assessment-workspace .question-bank-overview-shell,
+.create-assessment-workspace .assessment-page-shell {
+  min-width: 0;
+}
+
+@media (min-width: 1200px) {
+  .create-assessment-workspace-body {
+    grid-template-columns: minmax(0, 1fr) clamp(260px, 18vw, 292px);
+    gap: 14px;
+    padding: var(--create-page-gutter);
+  }
+
+  .create-assessment-workspace-main {
+    padding: 14px;
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .create-assessment-workspace-body {
+    grid-template-columns: minmax(0, 1fr) 250px;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .create-assessment-workspace-main {
+    padding: 10px;
+  }
+
+  .create-assessment-action-panel {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .create-assessment-action-btn {
+    min-height: 36px;
+    padding-inline: 10px;
+    font-size: 0.74rem;
+  }
+
+  .create-assessment-summary-table {
+    padding: 6px;
+  }
+
+  .create-assessment-workspace .assessment-page-metrics-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .create-assessment-workspace {
+    height: auto;
+    min-height: 100svh;
+    overflow: auto;
+    padding-top: 0;
+  }
+
+  .create-assessment-workspace-header {
+    position: sticky;
+    top: 0;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .create-assessment-title-row {
+    align-items: flex-start;
+  }
+
+  .create-assessment-title-copy p {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .create-assessment-header-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .create-assessment-workspace-body {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px 14px 14px;
+    overflow: visible;
+  }
+
+  .create-assessment-workspace-main,
+  .create-assessment-workspace-main:has(.create-assessment-question-bank-panel) {
+    overflow: visible;
+    padding: 10px;
+  }
+
+  .create-assessment-workspace-body:has(.create-assessment-question-bank-panel) {
+    grid-template-rows: auto auto;
+    overflow: visible;
+  }
+
+  .create-assessment-right-rail {
+    position: static;
+    grid-row: 1;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .create-assessment-action-panel {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .create-assessment-summary-card,
+  .create-assessment-action-panel > strong {
+    grid-column: 1 / -1;
+  }
+
+  .create-assessment-action-panel .question-bank-type-select-panel,
+  .create-assessment-action-btn.is-primary,
+  .create-assessment-action-btn.is-draft {
+    grid-column: span 2;
+  }
+
+  .create-assessment-workspace .assessment-page.is-embedded {
+    height: auto;
+    min-height: 68svh;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .create-assessment-workspace .question-bank-overview-shell {
+    height: auto;
+    overflow: visible;
+  }
+}
+
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .create-assessment-workspace {
+    height: auto;
+    min-height: 100svh;
+    overflow: auto;
+    padding-top: 0;
+  }
+
+  .create-assessment-workspace-header {
+    position: sticky;
+    top: 0;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .create-assessment-logo {
+    width: 42px;
+    height: 42px;
+  }
+
+  .create-assessment-title-row {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .create-assessment-title-copy h1 {
+    font-size: 1.18rem;
+  }
+
+  .create-assessment-title-copy p {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .create-assessment-header-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .create-assessment-workspace-body {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 8px 12px 12px;
+    overflow: visible;
+  }
+
+  .create-assessment-workspace-body:has(.create-assessment-question-bank-panel) {
+    grid-template-rows: auto auto;
+    overflow: visible;
+  }
+
+  .create-assessment-workspace-main,
+  .create-assessment-workspace-main:has(.create-assessment-question-bank-panel) {
+    overflow: visible;
+    padding: 8px;
+  }
+
+  .create-assessment-right-rail {
+    position: static;
+    grid-row: 1;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .create-assessment-action-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .create-assessment-summary-card,
+  .create-assessment-action-panel > strong,
+  .create-assessment-action-panel .question-bank-type-select-panel,
+  .create-assessment-action-btn.is-primary,
+  .create-assessment-action-btn.is-draft {
+    grid-column: 1 / -1;
+  }
+
+  .create-assessment-tab-panel,
+  .create-assessment-workspace .question-bank-soft-panel,
+  .create-assessment-workspace .question-bank-assessment-panel,
+  .create-assessment-workspace .question-bank-curriculum-edit-card {
+    padding: 10px;
+  }
+
+  .create-assessment-preview-card,
+  .create-assessment-preview-card.is-open {
+    grid-template-columns: 1fr;
+  }
+
+  .create-assessment-preview-actions,
+  .create-assessment-preview-card.is-open .create-assessment-preview-actions {
+    position: static;
+    justify-self: end;
+    flex-wrap: wrap;
+  }
+
+  .create-assessment-workspace .assessment-page.is-embedded {
+    height: auto;
+    min-height: 70svh;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .create-assessment-workspace .question-bank-overview-shell {
+    height: auto;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .create-assessment-workspace {
+    height: auto;
+    min-height: 100svh;
+    overflow: auto;
+    padding-top: 0;
+  }
+
+  .create-assessment-workspace-header {
+    position: sticky;
+    top: 0;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .create-assessment-title-row {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+    gap: 9px;
+  }
+
+  .create-assessment-logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+  }
+
+  .create-assessment-title-copy > span {
+    font-size: 0.62rem;
+  }
+
+  .create-assessment-title-copy h1 {
+    font-size: 1.06rem;
+    line-height: 1.18;
+  }
+
+  .create-assessment-title-copy p {
+    max-width: 100%;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .create-assessment-header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .create-assessment-header-actions .create-assessment-theme-btn {
+    width: 100%;
+  }
+
+  .create-assessment-header-badge,
+  .create-assessment-header-actions button {
+    justify-content: center;
+    min-height: 34px;
+    font-size: 0.68rem;
+  }
+
+  .create-assessment-workspace-body {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 8px;
+    overflow: visible;
+  }
+
+  .create-assessment-workspace-body:has(.create-assessment-question-bank-panel) {
+    grid-template-rows: auto auto;
+    overflow: visible;
+  }
+
+  .create-assessment-workspace-main,
+  .create-assessment-workspace-main:has(.create-assessment-question-bank-panel) {
+    overflow: visible;
+    padding: 6px;
+  }
+
+  .create-assessment-right-rail {
+    position: static;
+    grid-row: 1;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .create-assessment-summary-card,
+  .create-assessment-action-panel,
+  .create-assessment-tab-panel {
+    border-radius: 8px;
+  }
+
+  .create-assessment-action-panel {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .create-assessment-action-btn {
+    min-height: 40px;
+    justify-content: center;
+    padding-inline: 10px;
+    font-size: 0.74rem;
+  }
+
+  .create-assessment-action-btn span {
+    flex: 0 1 auto;
+  }
+
+  .create-assessment-action-btn.is-create svg:last-child {
+    margin-left: 0;
+  }
+
+  .create-assessment-tab-panel,
+  .create-assessment-workspace .question-bank-soft-panel,
+  .create-assessment-workspace .question-bank-assessment-panel,
+  .create-assessment-workspace .question-bank-curriculum-edit-card {
+    padding: 8px;
+  }
+
+  .create-assessment-preview-section-head,
+  .create-assessment-preview-card,
+  .create-assessment-preview-card.is-open {
+    grid-template-columns: 1fr;
+  }
+
+  .create-assessment-preview-section-marks {
+    justify-self: start;
+  }
+
+  .create-assessment-preview-actions,
+  .create-assessment-preview-card.is-open .create-assessment-preview-actions {
+    position: static;
+    justify-self: stretch;
+    flex-wrap: wrap;
+  }
+
+  .create-assessment-preview-actions > button,
+  .create-assessment-preview-action-badges {
+    flex: 1 1 auto;
+  }
+
+  .create-assessment-workspace .assessment-page.is-embedded {
+    height: auto;
+    min-height: 74svh;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .create-assessment-workspace .question-bank-overview-shell,
+  .create-assessment-workspace .assessment-page-shell {
+    height: auto;
+    overflow: visible;
+  }
+
+  .create-assessment-workspace .question-bank-question-head-controls,
+  .create-assessment-workspace .question-bank-options-head,
+  .create-assessment-workspace .question-bank-answer-panel > .question-bank-section-head {
+    align-items: stretch;
+  }
+
+  .create-assessment-workspace .question-bank-choice-row {
+    grid-template-columns: 24px 26px minmax(0, 1fr);
+  }
+
+  .create-assessment-workspace .question-bank-choice-actions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-self: stretch;
+  }
+
+  .create-assessment-workspace .create-assessment-card-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Assessment create setup responsive stabilization */
+.assessment-create-page-shell,
+.assessment-create-toolbar,
+.assessment-create-form-shell,
+.assessment-create-form,
+.assessment-create-setup-card,
+.assessment-create-guidance {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.assessment-create-page-shell {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.assessment-create-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.assessment-create-setup-top {
+  grid-template-columns: 104px minmax(0, 1fr) minmax(220px, 0.46fr);
+}
+
+.assessment-create-side-fields,
+.assessment-create-field,
+.assessment-create-field input,
+.assessment-create-field select,
+.assessment-create-select-wrap,
+.assessment-create-multiselect-control {
+  min-width: 0;
+}
+
+.assessment-create-form-actions {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.assessment-create-guidance p {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1199.98px) {
+  .assessment-create-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .assessment-create-setup-top {
+    grid-template-columns: 92px minmax(0, 1fr) minmax(210px, 0.48fr);
+    gap: 9px 10px;
+  }
+
+  .assessment-create-upload strong {
+    width: 86px;
+    height: 86px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .assessment-create-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .assessment-create-setup-top {
+    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-areas:
+      "logo college"
+      "logo name"
+      ". year"
+      "side side";
+  }
+
+  .assessment-create-side-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  .assessment-page {
+    padding-inline: 8px;
+    overflow-x: hidden;
+  }
+
+  .assessment-create-page-header {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-create-new-btn {
+    justify-self: stretch;
+  }
+
+  .assessment-create-setup-card {
+    padding: 12px;
+  }
+
+  .assessment-create-setup-top {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "logo"
+      "college"
+      "name"
+      "year"
+      "side";
+  }
+
+  .assessment-create-upload {
+    justify-self: start;
+  }
+
+  .assessment-create-side-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-create-form-actions {
+    justify-content: stretch;
+  }
+
+  .assessment-create-form-actions button {
+    flex: 1 1 160px;
+  }
+}
+
+@media (max-width: 480px) {
+  .assessment-create-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-create-setup-card {
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  .assessment-create-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .assessment-create-form-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .question-bank-dashboard-toast {
+    right: 12px;
+    bottom: 12px;
+    grid-template-columns: 5px 36px minmax(0, 1fr) 32px;
+    gap: 10px;
+    width: calc(100vw - 24px);
+    min-height: 0;
+    padding: 12px 12px 12px 0;
+  }
+
+  .question-bank-dashboard-toast-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .question-bank-dashboard-toast-copy strong {
+    font-size: 0.92rem;
+  }
+
+  .question-bank-dashboard-toast-copy span {
+    font-size: 0.78rem;
+  }
+
+  .question-bank-dashboard-toast-actions {
+    grid-column: 3 / 5;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .question-bank-dashboard-toast {
+    grid-template-columns: 5px 34px minmax(0, 1fr) 30px;
+    border-radius: 10px;
+  }
+
+  .question-bank-dashboard-toast-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .question-bank-dashboard-toast-actions button {
+    width: 100%;
   }
 }

@@ -12,6 +12,7 @@ const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
 const QUESTION_BANK_CREATED_REPORTED_KEY = 'vx-question-bank-created-reported-questions'
 const QUESTION_BANK_EDIT_HANDOFF_KEY = 'vx-question-bank-edit-handoff'
+const QUESTION_BANK_DASHBOARD_WELCOME_DISMISSED_KEY = 'vx-question-bank-dashboard-welcome-dismissed'
 const QUESTION_BANK_FAVORITE_STORAGE_KEYS = [QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY, QUESTION_BANK_STORAGE_KEY]
 const REPORT_REASON_OPTIONS = [
   'Wrong answer',
@@ -684,6 +685,11 @@ const nonCreateHighlights = [
   },
 ]
 
+const isQuestionBankDashboardWelcomeDismissed = () => {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(QUESTION_BANK_DASHBOARD_WELCOME_DISMISSED_KEY) === 'true'
+}
+
 export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly', embedded = false, onAddToAssessment }) {
   const resolvedMode = mode === 'editable' ? 'editable' : 'readonly'
   const isEditable = resolvedMode === 'editable'
@@ -696,6 +702,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const activeView = 'grid'
   const [filterSearchTerms, setFilterSearchTerms] = useState({})
   const [filters, setFilters] = useState(() => createEmptyFilters())
+  const [landingFilters, setLandingFilters] = useState(() => createEmptyFilters())
   const [openFilterKey, setOpenFilterKey] = useState('')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [moreFiltersPanelStyle, setMoreFiltersPanelStyle] = useState({})
@@ -713,7 +720,8 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [isEmbeddedSelectionBarVisible, setIsEmbeddedSelectionBarVisible] = useState(false)
   const [expandedCardRows, setExpandedCardRows] = useState([])
   const [activeMetric, setActiveMetric] = useState('total')
-  const [showMetricsLanding, setShowMetricsLanding] = useState(true)
+  const [showMetricsLanding, setShowMetricsLanding] = useState(() => embedded || !isQuestionBankDashboardWelcomeDismissed())
+  const [showDashboardWelcomeToast, setShowDashboardWelcomeToast] = useState(() => !embedded && !isQuestionBankDashboardWelcomeDismissed())
   const [metricTooltip, setMetricTooltip] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
   const [createdReportedQuestionRecords, setCreatedReportedQuestionRecords] = useState(() => readCreatedReportedQuestionRecords())
@@ -795,9 +803,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     competencies: getUniqueValues(publishedQuestions, (question) => question.competencies ?? []),
   }), [publishedQuestions])
 
-  const landingQuestions = useMemo(() => (
-    publishedQuestions.filter((question) => applyFilterSetToQuestion(question, filters))
-  ), [filters, publishedQuestions])
+  const landingQuestions = publishedQuestions
 
   const landingValueCounts = useMemo(() => ({
     types: getValueCounts(landingQuestions, (question) => getQuestionTypeFilterLabel(question)),
@@ -810,8 +816,10 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     difficultyLevels: getValueCounts(landingQuestions, (question) => question.difficultyLevel),
   }), [landingQuestions])
 
+  const updateActiveFilters = showMetricsLanding ? setLandingFilters : setFilters
+
   const toggleFilterValue = (filterKey, value) => {
-    setFilters((current) => {
+    updateActiveFilters((current) => {
       const selectedValues = current[filterKey] ?? []
       return {
         ...current,
@@ -823,7 +831,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }
 
   const clearFilterValue = (filterKey, value) => {
-    setFilters((current) => ({
+    updateActiveFilters((current) => ({
       ...current,
       [filterKey]: (current[filterKey] ?? []).filter((item) => item !== value),
     }))
@@ -1152,16 +1160,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     : `Showing ${formatMetricCount(pagedQuestions.length)} of ${formatMetricCount(metricFilteredQuestions.length)}`
 
   const openQuestionList = (metric = null) => {
-    const curriculumFilters = {
-      years: filters.years,
-      subjects: filters.subjects,
-      topics: filters.topics,
-      competencies: filters.competencies,
-    }
     setActiveMetric(metric?.activeMetricKey ?? 'total')
     setFilters({
       ...createEmptyFilters(),
-      ...curriculumFilters,
       ...(metric?.filters ?? {}),
     })
     setShowMetricsLanding(false)
@@ -1170,45 +1171,58 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }
 
   const viewAllQuestions = () => {
-    const curriculumFilters = {
-      years: filters.years,
-      subjects: filters.subjects,
-      topics: filters.topics,
-      competencies: filters.competencies,
-    }
+    setActiveMetric('total')
+    setFilters(createEmptyFilters())
+    setShowMetricsLanding(false)
+    setOpenFilterKey('')
+    setShowAdvancedFilters(false)
+  }
+
+  const applyLandingFilters = () => {
     setActiveMetric('total')
     setFilters({
       ...createEmptyFilters(),
-      ...curriculumFilters,
+      years: landingFilters.years,
+      subjects: landingFilters.subjects,
+      topics: landingFilters.topics,
+      competencies: landingFilters.competencies,
     })
     setShowMetricsLanding(false)
     setOpenFilterKey('')
     setShowAdvancedFilters(false)
   }
 
-  const resetLandingFilters = () => {
-    setFilters(createEmptyFilters())
-    setActiveMetric('total')
+  const clearLandingFilters = () => {
+    setLandingFilters(createEmptyFilters())
     setOpenFilterKey('')
-    setShowAdvancedFilters(false)
+  }
+
+  const closeDashboardWelcomeToast = () => {
+    setShowDashboardWelcomeToast(false)
+  }
+
+  const dismissDashboardWelcomePermanently = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(QUESTION_BANK_DASHBOARD_WELCOME_DISMISSED_KEY, 'true')
+    }
+    setShowDashboardWelcomeToast(false)
+    viewAllQuestions()
   }
 
   const backToMetrics = () => {
-    const curriculumFilters = {
-      years: filters.years,
-      subjects: filters.subjects,
-      topics: filters.topics,
-      competencies: filters.competencies,
-    }
     setShowMetricsLanding(true)
     setActiveMetric('total')
-    setFilters({
-      ...createEmptyFilters(),
-      ...curriculumFilters,
-    })
+    setFilters(createEmptyFilters())
+    setLandingFilters(createEmptyFilters())
+    setCurrentPage(1)
     setSelectedGridAction('')
     setSelectedGridQuestionIds([])
     setExpandedTableRows([])
+    setExpandedCardRows([])
+    setOpenFilterKey('')
+    setShowAdvancedFilters(false)
+    setIsCompactFilterTrayOpen(false)
+    setShowDashboardWelcomeToast(!embedded)
   }
 
   const expandAllVisibleRows = () => {
@@ -1498,7 +1512,8 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }
 
   const renderFilterDropdown = ([filterKey, label, options]) => {
-    const selectedValues = filters[filterKey]
+    const activeFilters = showMetricsLanding ? landingFilters : filters
+    const selectedValues = activeFilters[filterKey]
     const isOpen = openFilterKey === filterKey
     const isSearchableFilter = searchableFilterKeys.includes(filterKey)
     const filterSearchTerm = filterSearchTerms[filterKey] ?? ''
@@ -1523,7 +1538,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
             <div>
               <strong>{label}</strong>
               {selectedValues.length ? (
-                <button type="button" onClick={() => setFilters((current) => ({ ...current, [filterKey]: [] }))}>
+                <button type="button" onClick={() => updateActiveFilters((current) => ({ ...current, [filterKey]: [] }))}>
                   Clear
                 </button>
               ) : null}
@@ -1745,7 +1760,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 {landingFilterDefinitions.map(renderFilterDropdown)}
               </span>
               <span className="question-bank-metrics-actions">
-                <button type="button" className="is-secondary" onClick={resetLandingFilters}>
+                <button type="button" className="is-secondary" onClick={applyLandingFilters}>
                   Set Default
                 </button>
                 <button type="button" onClick={viewAllQuestions} disabled={!publishedQuestions.length}>
@@ -1754,10 +1769,10 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               </span>
             </div>
 
-            {hasSelectedFilters(filters) ? (
+            {hasSelectedFilters(landingFilters) ? (
               <div className="assessment-page-active-filters question-bank-metrics-active-filters">
                 {['years', 'subjects', 'topics', 'competencies'].flatMap((filterKey) => (
-                  (filters[filterKey] ?? []).map((value) => (
+                  (landingFilters[filterKey] ?? []).map((value) => (
                     <button key={`${filterKey}-${value}`} type="button" onClick={() => clearFilterValue(filterKey, value)}>
                       {filterKey === 'competencies' ? getCompetencyCode(value) : value}
                       <X size={12} strokeWidth={2.4} />
@@ -1767,7 +1782,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 <button
                   type="button"
                   className="assessment-page-active-filters-clear"
-                  onClick={resetLandingFilters}
+                  onClick={clearLandingFilters}
                 >
                   Clear all
                 </button>
@@ -2103,6 +2118,14 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                             ))}</span>
                           </span>
                         ))}
+                        <button
+                          type="button"
+                          className="assessment-page-more-filter-default-btn"
+                          onClick={backToMetrics}
+                        >
+                          <BarChart3 size={14} strokeWidth={2.3} />
+                          Set as Default
+                        </button>
                       </span>,
                       document.body,
                     ) : null}
@@ -2110,13 +2133,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 ) : null}
               </span>
               <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
-                <button
-                  type="button"
-                  onClick={backToMetrics}
-                >
-                  <BarChart3 size={14} strokeWidth={2.3} />
-                  Back to Metrics
-                </button>
                 {isEditable ? (
                   <>
                     <button
@@ -2880,6 +2896,35 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
             <strong>No sent questions yet</strong>
             <p>Approved questions sent to Question Bank will appear here.</p>
           </section>
+        ) : null}
+
+        {!embedded && showDashboardWelcomeToast ? (
+          <aside className="question-bank-dashboard-toast" role="status" aria-live="polite">
+            <span className="question-bank-dashboard-toast-accent" aria-hidden="true" />
+            <span className="question-bank-dashboard-toast-icon" aria-hidden="true">
+              <Info size={22} strokeWidth={2.5} />
+            </span>
+            <span className="question-bank-dashboard-toast-copy">
+              <strong>Welcome to your Question Bank Dashboard!</strong>
+              <span>Track total questions, analyze difficulty levels, and filter by subject or topic in one place.</span>
+            </span>
+            <span className="question-bank-dashboard-toast-actions">
+              <button type="button" className="is-secondary" onClick={dismissDashboardWelcomePermanently}>
+                Don't show again
+              </button>
+              <button type="button" onClick={closeDashboardWelcomeToast}>
+                Close
+              </button>
+            </span>
+            <button
+              type="button"
+              className="question-bank-dashboard-toast-close"
+              onClick={closeDashboardWelcomeToast}
+              aria-label="Close welcome message"
+            >
+              <X size={22} strokeWidth={2.2} />
+            </button>
+          </aside>
         ) : null}
       </div>
     </section>
