@@ -386,6 +386,13 @@ const readUploadedQuestionBankQuestions = () => {
   }
 }
 
+const readExcelUploadedQuestionBankQuestions = () => (
+  readUploadedQuestionBankQuestions().filter((question) => (
+    question?.source === 'Excel Upload'
+    || Boolean(question?.uploadBatchId)
+  ))
+)
+
 const readReportedQuestionRecords = () => {
   if (typeof window === 'undefined') return []
 
@@ -500,6 +507,277 @@ const getQuestionAuthorName = (question) => (
 )
 
 const createHtmlBlock = (value) => `<div>${String(value ?? '')}</div>`
+
+const EXCEL_UPLOAD_TYPE_CONFIG = {
+  MCQ: {
+    label: 'MCQ',
+    type: 'MCQ',
+    columns: ['question_type', 'question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'answer_explanation', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
+    sample: ['MCQ', 'Which plane divides the body into superior and inferior parts?', 'Transverse plane', 'Sagittal plane', 'Coronal plane', 'Median plane', 'A', 'The transverse plane divides the body into superior and inferior parts.', '1', 'Year 1', 'Human Anatomy', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Direct', 'Recall', 'LoT', 'L1'],
+  },
+  LAQs: {
+    label: 'LAQs',
+    type: 'Desc Long Answer Questions (LAQs)',
+    columns: ['question_type', 'question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
+    sample: ['LAQs', 'Describe the boundaries and clinical importance of the anatomical snuffbox.', 'Include boundaries, contents, clinical relevance, and scaphoid fracture correlation.', '10', 'Year 1', 'Human Anatomy', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Application', 'Analyze', 'HoT', 'L3'],
+  },
+  SAQs: {
+    label: 'SAQs',
+    type: 'Desc Short Answer Questions (SAQs)',
+    columns: ['question_type', 'question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
+    sample: ['SAQs', 'Define anatomical position and mention two key features.', 'Standing erect, facing forward, upper limbs by side, palms forward.', '2', 'Year 1', 'Human Anatomy', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Direct', 'Remember', 'LoT', 'L1'],
+  },
+  MEQs: {
+    label: 'MEQs',
+    type: 'Desc Modified Essay Questions (MEQs)',
+    columns: ['question_type', 'question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level', 'sub_question_1', 'sub_answer_1', 'sub_marks_1', 'sub_question_2', 'sub_answer_2', 'sub_marks_2'],
+    sample: ['MEQs', 'A patient has shoulder weakness after surgical neck fracture. Analyze the anatomical basis.', 'Discuss axillary nerve relation, deltoid involvement, sensory loss, and clinical findings.', '6', 'Year 1', 'Human Anatomy', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Reasoning', 'Analyze', 'HoT', 'L3', 'Name the nerve at risk.', 'Axillary nerve.', '2', 'Mention one motor deficit.', 'Weak shoulder abduction due to deltoid involvement.', '2'],
+  },
+}
+
+const EXCEL_UPLOAD_REQUIRED_COLUMNS = {
+  MCQ: ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option'],
+  LAQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
+  SAQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
+  MEQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
+}
+
+const normalizeUploadHeader = (value) => String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+
+const escapeCsvValue = (value) => {
+  const text = String(value ?? '')
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+}
+
+const parseCsvText = (text) => {
+  const rows = []
+  let cell = ''
+  let row = []
+  let isQuoted = false
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]
+    const nextChar = text[index + 1]
+
+    if (char === '"' && isQuoted && nextChar === '"') {
+      cell += '"'
+      index += 1
+    } else if (char === '"') {
+      isQuoted = !isQuoted
+    } else if (char === ',' && !isQuoted) {
+      row.push(cell)
+      cell = ''
+    } else if ((char === '\n' || char === '\r') && !isQuoted) {
+      if (char === '\r' && nextChar === '\n') index += 1
+      row.push(cell)
+      if (row.some((item) => String(item).trim())) rows.push(row)
+      row = []
+      cell = ''
+    } else {
+      cell += char
+    }
+  }
+
+  row.push(cell)
+  if (row.some((item) => String(item).trim())) rows.push(row)
+  return rows
+}
+
+const getUploadTemplateCsv = (typeKey) => {
+  const config = EXCEL_UPLOAD_TYPE_CONFIG[typeKey]
+  if (!config) return ''
+  return [
+    config.columns.map(escapeCsvValue).join(','),
+    config.sample.map(escapeCsvValue).join(','),
+  ].join('\n')
+}
+
+const downloadCsvTemplate = (typeKey) => {
+  if (typeof document === 'undefined') return
+  const csv = getUploadTemplateCsv(typeKey)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${typeKey.toLowerCase()}-question-upload-template.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+const getUploadQuestionTypeKey = (value, fallback = '') => {
+  const normalized = String(value || fallback || '').trim().toLowerCase()
+  if (normalized.includes('mcq') || normalized === 'multiple choice') return 'MCQ'
+  if (normalized.includes('laq') || normalized.includes('long')) return 'LAQs'
+  if (normalized.includes('meq') || normalized.includes('modified')) return 'MEQs'
+  if (normalized.includes('saq') || normalized.includes('short') || normalized.includes('descriptive')) return 'SAQs'
+  return ''
+}
+
+const getUploadCell = (row, key) => String(row[key] ?? '').trim()
+
+const getUploadRowObjects = (csvText) => {
+  const parsedRows = parseCsvText(csvText)
+  if (!parsedRows.length) {
+    return { headers: [], rows: [], errors: ['The uploaded file is empty.'] }
+  }
+  const headers = parsedRows[0].map(normalizeUploadHeader)
+  const uniqueHeaders = new Set(headers.filter(Boolean))
+  if (!uniqueHeaders.size) {
+    return { headers, rows: [], errors: ['Header row is missing. Use one of the sample templates.'] }
+  }
+
+  const rows = parsedRows.slice(1).map((cells, rowIndex) => {
+    const row = { __rowNumber: rowIndex + 2 }
+    headers.forEach((header, cellIndex) => {
+      if (header) row[header] = String(cells[cellIndex] ?? '').trim()
+    })
+    return row
+  }).filter((row) => (
+    Object.entries(row).some(([key, value]) => key !== '__rowNumber' && String(value).trim())
+  ))
+
+  return { headers, rows, errors: [] }
+}
+
+const validateExcelUploadRows = (csvText) => {
+  const { headers, rows, errors } = getUploadRowObjects(csvText)
+  if (errors.length) return { questions: [], errors, rowsCount: 0 }
+  if (!rows.length) return { questions: [], errors: ['No question rows found below the header.'], rowsCount: 0 }
+
+  const headerSet = new Set(headers)
+  const batchId = `upload-${Date.now()}`
+  const questions = []
+  const validationErrors = []
+
+  rows.forEach((row, rowIndex) => {
+    const typeKey = getUploadQuestionTypeKey(row.question_type)
+    if (!typeKey || !EXCEL_UPLOAD_TYPE_CONFIG[typeKey]) {
+      validationErrors.push(`Row ${row.__rowNumber}: question_type must be MCQ, LAQs, SAQs, or MEQs.`)
+      return
+    }
+
+    const missingHeaders = EXCEL_UPLOAD_REQUIRED_COLUMNS[typeKey].filter((column) => !headerSet.has(column))
+    if (missingHeaders.length) {
+      validationErrors.push(`Row ${row.__rowNumber}: missing template columns ${missingHeaders.join(', ')}.`)
+      return
+    }
+
+    const missingValues = EXCEL_UPLOAD_REQUIRED_COLUMNS[typeKey].filter((column) => !getUploadCell(row, column))
+    if (missingValues.length) {
+      validationErrors.push(`Row ${row.__rowNumber}: required values missing for ${missingValues.join(', ')}.`)
+      return
+    }
+
+    const marks = getUploadCell(row, 'marks')
+    const marksNumber = Number(marks)
+    if ((typeKey !== 'MCQ' || marks) && (!Number.isFinite(marksNumber) || marksNumber <= 0)) {
+      validationErrors.push(`Row ${row.__rowNumber}: marks must be a positive number.`)
+      return
+    }
+
+    if (typeKey === 'MCQ') {
+      const correctOption = getUploadCell(row, 'correct_option').toUpperCase()
+      if (!['A', 'B', 'C', 'D'].includes(correctOption)) {
+        validationErrors.push(`Row ${row.__rowNumber}: correct_option must be A, B, C, or D.`)
+        return
+      }
+    }
+
+    questions.push(buildExcelUploadQuestion(row, typeKey, batchId, row.__rowNumber, rowIndex))
+  })
+
+  return {
+    questions,
+    errors: validationErrors,
+    rowsCount: rows.length,
+  }
+}
+
+const buildExcelUploadQuestion = (row, typeKey, batchId, rowNumber, questionIndex) => {
+  const config = EXCEL_UPLOAD_TYPE_CONFIG[typeKey]
+  const question = createQuestion(config.type, {
+    title: `${config.label} Upload ${questionIndex + 1}`,
+  })
+  const autoFilledCurriculum = getAutoFilledCurriculum({
+    ...question,
+    year: getUploadCell(row, 'year'),
+    subject: getUploadCell(row, 'subject'),
+    topics: [getUploadCell(row, 'topic')].filter(Boolean),
+    competencies: [getUploadCell(row, 'competency')].filter(Boolean),
+  })
+  const optionalTags = getGeneratedOptionalTags(config.type)
+  const marks = getUploadCell(row, 'marks') || (typeKey === 'MCQ' ? '1' : '')
+  const answerExplanation = getUploadCell(row, 'answer_explanation')
+  const correctOption = getUploadCell(row, 'correct_option').toUpperCase()
+  const baseQuestion = {
+    ...question,
+    questionText: createHtmlBlock(getUploadCell(row, 'question_text')),
+    answerKey: createHtmlBlock(typeKey === 'MCQ'
+      ? answerExplanation || `Correct option: ${correctOption}.`
+      : getUploadCell(row, 'answer_key')),
+    year: autoFilledCurriculum.year || getUploadCell(row, 'year'),
+    subject: autoFilledCurriculum.subject || getUploadCell(row, 'subject'),
+    topics: autoFilledCurriculum.topics?.length ? autoFilledCurriculum.topics : [getUploadCell(row, 'topic')].filter(Boolean),
+    competencies: autoFilledCurriculum.competencies?.length ? autoFilledCurriculum.competencies : [getUploadCell(row, 'competency')].filter(Boolean),
+    questionCategory: getUploadCell(row, 'question_category') || (typeKey === 'MCQ' ? 'Direct' : ''),
+    cognitiveLevel: getUploadCell(row, 'cognitive_level') || (typeKey === 'MCQ' ? 'Recall' : ''),
+    thinkingLevel: getUploadCell(row, 'thinking_level') || (typeKey === 'MCQ' ? 'LoT' : ''),
+    difficultyLevel: getUploadCell(row, 'difficulty_level') || (typeKey === 'MCQ' ? 'L1' : ''),
+    cognitiveFunction: optionalTags.cognitiveFunction,
+    skillFocus: optionalTags.skillFocus,
+    organSystem: optionalTags.organSystem,
+    organSubSystems: optionalTags.organSubSystems,
+    diseaseTags: optionalTags.diseaseTags,
+    keyConcepts: optionalTags.keyConcepts,
+    marks,
+    status: 'Created',
+    revisionStatus: 'Created',
+    source: 'Excel Upload',
+    authorName: 'Institute/College',
+    uploadedAt: new Date().toISOString(),
+    uploadBatchId: batchId,
+    uploadRowNumber: rowNumber,
+  }
+
+  if (typeKey === 'MCQ') {
+    const optionValues = ['option_a', 'option_b', 'option_c', 'option_d'].map((key) => getUploadCell(row, key))
+    const options = optionValues.map((value, optionIndex) => ({
+      id: `${baseQuestion.id}-option-${optionIndex + 1}`,
+      label: value,
+      distractorErrors: getGeneratedDistractorErrors(optionIndex),
+    }))
+    const correctIndex = ['A', 'B', 'C', 'D'].indexOf(correctOption)
+    return {
+      ...baseQuestion,
+      options,
+      correctOptionIds: correctIndex >= 0 ? [options[correctIndex].id] : [],
+    }
+  }
+
+  const descriptiveSections = typeKey === 'MEQs'
+    ? [1, 2, 3, 4, 5].map((index) => {
+      const questionText = getUploadCell(row, `sub_question_${index}`)
+      if (!questionText) return null
+      return {
+        id: `${baseQuestion.id}-section-${index}`,
+        type: 'text',
+        questionText: createHtmlBlock(questionText),
+        marks: getUploadCell(row, `sub_marks_${index}`) || '0',
+        answerKey: createHtmlBlock(getUploadCell(row, `sub_answer_${index}`)),
+        children: [],
+      }
+    }).filter(Boolean)
+    : []
+
+  return {
+    ...baseQuestion,
+    options: [],
+    correctOptionIds: [],
+    descriptiveSections,
+  }
+}
 
 const getGeneratedOptionalTags = (type) => {
   if (isDescriptiveQuestionType(type)) {
@@ -1050,7 +1328,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [selectedApprovalReviewerIndex, setSelectedApprovalReviewerIndex] = useState(0)
   const [pendingEditQuestionId, setPendingEditQuestionId] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
-  const [uploadedQuestionCount, setUploadedQuestionCount] = useState(() => readUploadedQuestionBankQuestions().length)
+  const [uploadedQuestionCount, setUploadedQuestionCount] = useState(() => readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent).length)
+  const [uploadImportResult, setUploadImportResult] = useState(null)
   const [editableDescriptiveFieldKeys, setEditableDescriptiveFieldKeys] = useState([])
   const [activeDescriptiveAnswerTarget, setActiveDescriptiveAnswerTarget] = useState({ type: 'root' })
 
@@ -1104,7 +1383,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     ...questions.filter((item) => isReportedQuestion(item) && hasQuestionContent(item)),
   ].map((question) => [question.id ?? getQuestionPreview(question), question])).values())
   const uploadedQuestionCards = useMemo(() => (
-    readUploadedQuestionBankQuestions().filter(hasQuestionContent)
+    readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent)
   ), [uploadedQuestionCount])
   const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
   const totalCount = visibleQuestionCards.length
@@ -1231,7 +1510,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const activePreviewImage = previewImages[previewIndex] ?? null
   const hasPreviewNavigation = previewImages.length > 1
   const activePreviewLetter = activePreviewImage ? String.fromCharCode(65 + previewIndex) : ''
-  const isListQuestionTab = ['created', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab)
+  const isListQuestionTab = ['created', 'uploaded', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab)
 
   useEffect(() => {
     setIsGeneratingQuestion(false)
@@ -1306,7 +1585,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
     const syncQuestionBankExternalCounts = () => {
       setReportedQuestionRecords(readReportedQuestionRecords())
-      setUploadedQuestionCount(readUploadedQuestionBankQuestions().length)
+      setUploadedQuestionCount(readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent).length)
     }
 
     window.addEventListener('storage', syncQuestionBankExternalCounts)
@@ -1429,6 +1708,81 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setIsDescriptiveTypePickerOpen(false)
   }
 
+  const handleDownloadUploadTemplate = (typeKey) => {
+    downloadCsvTemplate(typeKey)
+    onAlert?.({ tone: 'secondary', message: `${typeKey} upload template downloaded.` })
+  }
+
+  const handleUploadQuestionFile = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    const extension = file.name.split('.').pop()?.toLowerCase()
+    if (['xls', 'xlsx'].includes(extension)) {
+      setUploadImportResult({
+        status: 'error',
+        fileName: file.name,
+        questions: [],
+        rowsCount: 0,
+        errors: ['Please open the Excel file and save it as CSV before upload. This project currently validates CSV templates directly.'],
+      })
+      return
+    }
+
+    try {
+      const text = await file.text()
+      const result = validateExcelUploadRows(text)
+      setUploadImportResult({
+        status: result.errors.length ? 'error' : 'ready',
+        fileName: file.name,
+        ...result,
+      })
+      if (!result.errors.length) {
+        onAlert?.({ tone: 'success', message: `${result.questions.length} uploaded question rows verified.` })
+      }
+    } catch {
+      setUploadImportResult({
+        status: 'error',
+        fileName: file.name,
+        questions: [],
+        rowsCount: 0,
+        errors: ['Unable to read this file. Please upload a CSV exported from the sample template.'],
+      })
+    }
+  }
+
+  const importVerifiedUploadQuestions = () => {
+    const nextQuestions = uploadImportResult?.questions ?? []
+    if (!nextQuestions.length || typeof window === 'undefined') return
+
+    const existingUploadedQuestions = readUploadedQuestionBankQuestions()
+    const mergedUploadedQuestions = [...existingUploadedQuestions, ...nextQuestions]
+    window.localStorage.setItem(QUESTION_BANK_UPLOADED_KEY, JSON.stringify(mergedUploadedQuestions))
+    window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+
+    setQuestions((current) => {
+      const existingIds = new Set(current.map((item) => item.id))
+      return [
+        ...current,
+        ...nextQuestions.filter((question) => !existingIds.has(question.id)),
+      ]
+    })
+    setUploadedQuestionCount(mergedUploadedQuestions.filter((question) => (
+      hasQuestionContent(question)
+      && (question?.source === 'Excel Upload' || Boolean(question?.uploadBatchId))
+    )).length)
+    setUploadImportResult({
+      status: 'imported',
+      fileName: uploadImportResult.fileName,
+      rowsCount: uploadImportResult.rowsCount,
+      questions: [],
+      errors: [],
+    })
+    setActiveQuestionTab('uploaded')
+    onAlert?.({ tone: 'success', message: `${nextQuestions.length} uploaded questions added to My Questions flow.` })
+  }
+
   const openEditQuestionFlow = (questionId) => {
     setOpenCreatedTagsId(null)
     const question = questions.find((item) => item.id === questionId)
@@ -1525,6 +1879,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     if (!selectedQuestion) return
     if (selectedQuestion.status === 'Sent to Approval') return
     const nextQuestions = questions.filter((item) => item.id !== selectedQuestion.id)
+    deleteQuestionFromStorage(selectedQuestion.id)
+    setUploadedQuestionCount(readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent).length)
     setQuestions(nextQuestions)
     setSelectedQuestionId(nextQuestions[0]?.id ?? null)
     onAlert?.({ tone: 'warning', message: 'Question removed.' })
@@ -1532,8 +1888,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
   const handleDeleteQuestionById = (questionId) => {
     const question = questions.find((item) => item.id === questionId)
+      ?? readUploadedQuestionBankQuestions().find((item) => item.id === questionId)
     if (question?.status === 'Sent to Approval') return
     const nextQuestions = questions.filter((item) => item.id !== questionId)
+    deleteQuestionFromStorage(questionId)
+    setUploadedQuestionCount(readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent).length)
     setQuestions(nextQuestions)
     setApprovalSelectedIds((current) => current.filter((id) => id !== questionId))
     if (selectedQuestionId === questionId) {
@@ -2599,6 +2958,85 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
               <span>{reportQuestionCards.length}</span>
             </button>
           </div>
+
+          {activeQuestionTab === 'uploaded' ? (
+            <section className="question-bank-upload-import-panel" aria-label="Upload questions from Excel template">
+              <div className="question-bank-upload-import-copy">
+                <span className="question-bank-upload-import-icon">
+                  <Upload size={18} strokeWidth={2.3} />
+                </span>
+                <div>
+                  <strong>Upload questions</strong>
+                  <p>Download the matching CSV template, fill it in Excel, save as CSV, then verify and import.</p>
+                </div>
+              </div>
+
+              <div className="question-bank-upload-template-grid" aria-label="Question upload templates">
+                {Object.entries(EXCEL_UPLOAD_TYPE_CONFIG).map(([typeKey, config]) => (
+                  <button
+                    key={typeKey}
+                    type="button"
+                    className="question-bank-secondary-btn"
+                    onClick={() => handleDownloadUploadTemplate(typeKey)}
+                  >
+                    <Upload size={14} strokeWidth={2.2} />
+                    {config.label} Template
+                  </button>
+                ))}
+              </div>
+
+              <div className="question-bank-upload-import-actions">
+                <label className="question-bank-upload-file-btn">
+                  <input
+                    type="file"
+                    accept=".csv,.txt"
+                    onChange={handleUploadQuestionFile}
+                  />
+                  <Upload size={15} strokeWidth={2.3} />
+                  Choose CSV file
+                </label>
+                {uploadImportResult?.fileName ? (
+                  <span className="question-bank-upload-file-name">{uploadImportResult.fileName}</span>
+                ) : null}
+              </div>
+
+              {uploadImportResult ? (
+                <div className={`question-bank-upload-validation is-${uploadImportResult.status}`}>
+                  <strong>
+                    {uploadImportResult.status === 'ready'
+                      ? `${uploadImportResult.questions.length} questions verified`
+                      : uploadImportResult.status === 'imported'
+                        ? 'Upload completed'
+                        : 'Upload needs correction'}
+                  </strong>
+                  {uploadImportResult.status === 'ready' ? (
+                    <>
+                      <p>All required fields are present. Import now to create full question cards.</p>
+                      <button
+                        type="button"
+                        className="question-bank-primary-btn"
+                        onClick={importVerifiedUploadQuestions}
+                      >
+                        <CheckCircle2 size={14} strokeWidth={2.2} />
+                        Import Questions
+                      </button>
+                    </>
+                  ) : uploadImportResult.status === 'imported' ? (
+                    <p>Questions are available in Upload Ques and My Questions for approval flow.</p>
+                  ) : (
+                    <>
+                      <p>Fix these rows in Excel, save as CSV, and upload again.</p>
+                      <ul>
+                        {(uploadImportResult.errors ?? []).slice(0, 8).map((error) => (
+                          <li key={error}>{error}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           {activeQuestionTab === 'create' && !selectedQuestion ? (
             <div className={`question-bank-create-strip ${!selectedQuestion ? 'has-empty-state' : ''}`}>

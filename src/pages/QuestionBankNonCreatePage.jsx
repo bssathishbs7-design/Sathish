@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, X } from 'lucide-react'
+import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, Upload, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import { APP_PAGES } from '../config/appPages'
 import medsyIcon from '../assets/medsy-icon.svg'
@@ -258,6 +258,14 @@ const isEditedQuestion = (question) => Boolean(
 const isMedsyQuestion = (question) => (
   getQuestionAuthorName(question).trim().toLowerCase() === 'medsy'
   && !isEditedQuestion(question)
+)
+
+const isExcelUploadedQuestion = (question) => (
+  !isMedsyQuestion(question)
+  && (
+    question?.source === 'Excel Upload'
+    || Boolean(question?.uploadBatchId)
+  )
 )
 
 const isApprovedQuestion = (question) => (
@@ -560,19 +568,29 @@ const getQuestionMarksTotal = (question) => {
 }
 
 const getQuestionSourceType = (question) => (
-  isMedsyQuestion(question) ? 'Uploaded' : 'Created'
+  isMedsyQuestion(question) || isExcelUploadedQuestion(question) ? 'Uploaded' : 'Created'
 )
 
 const getAuthorBadgeClassName = (question) => (
-  getQuestionSourceType(question) === 'Uploaded' ? 'is-uploaded-author' : 'is-created-author'
+  isExcelUploadedQuestion(question)
+    ? 'is-excel-uploaded-author'
+    : getQuestionSourceType(question) === 'Uploaded'
+      ? 'is-uploaded-author'
+      : 'is-created-author'
 )
 
 const getAuthorBadgeInitial = (question) => (
-  isMedsyQuestion(question) ? 'M' : 'C'
+  isMedsyQuestion(question) ? 'M' : isExcelUploadedQuestion(question) ? '' : 'C'
 )
 
 const getAuthorBadgeTooltip = (question) => (
-  isEditedQuestion(question) ? 'Edited question' : isMedsyQuestion(question) ? 'Medsy' : getQuestionAuthorName(question)
+  isEditedQuestion(question)
+    ? 'Edited question'
+    : isExcelUploadedQuestion(question)
+      ? 'Uploaded question'
+      : isMedsyQuestion(question)
+        ? 'Medsy'
+        : getQuestionAuthorName(question)
 )
 
 const renderSourceBadge = (question, className) => (
@@ -583,6 +601,8 @@ const renderSourceBadge = (question, className) => (
   >
     {isEditedQuestion(question) ? (
       <Shuffle size={14} strokeWidth={2.4} />
+    ) : isExcelUploadedQuestion(question) ? (
+      <Upload size={14} strokeWidth={2.4} />
     ) : isMedsyQuestion(question) ? (
       <img className="assessment-page-medsy-mark" src={medsyIcon} alt="" aria-hidden="true" />
     ) : (
