@@ -720,7 +720,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [isEmbeddedSelectionBarVisible, setIsEmbeddedSelectionBarVisible] = useState(false)
   const [expandedCardRows, setExpandedCardRows] = useState([])
   const [activeMetric, setActiveMetric] = useState('total')
-  const [showMetricsLanding, setShowMetricsLanding] = useState(() => embedded || !isQuestionBankDashboardWelcomeDismissed())
+  const [showMetricsLanding, setShowMetricsLanding] = useState(() => !embedded && !isQuestionBankDashboardWelcomeDismissed())
   const [showDashboardWelcomeToast, setShowDashboardWelcomeToast] = useState(() => !embedded && !isQuestionBankDashboardWelcomeDismissed())
   const [metricTooltip, setMetricTooltip] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
@@ -1155,6 +1155,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const activeMetricLabel = questionMetrics.find((metric) => metric.key === activeMetric)?.label ?? 'questions'
   const isReportMetricActive = activeMetric === 'suggested'
   const hasEmbeddedAssessmentSelection = embedded && typeof onAddToAssessment === 'function' && !isReportMetricActive
+  const visibleQuestionListSummaryMetrics = embedded
+    ? questionListSummaryMetrics.filter((metric) => !['shared', 'suggested'].includes(metric.key))
+    : questionListSummaryMetrics
   const footerResultSummary = hasSelectedFilters(filters)
     ? `${formatMetricCount(filteredQuestions.length)} filtered of ${formatMetricCount(metricFilteredQuestions.length)} ${activeMetricLabel.toLowerCase()}`
     : `Showing ${formatMetricCount(pagedQuestions.length)} of ${formatMetricCount(metricFilteredQuestions.length)}`
@@ -2044,7 +2047,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           </section>
         ) : (
           <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
-            {questionListSummaryMetrics.map((metric) => {
+            {visibleQuestionListSummaryMetrics.map((metric) => {
               const Icon = metric.icon
               const isActive = activeMetric === (metric.activeMetricKey ?? metric.key)
 
@@ -2118,14 +2121,16 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                             ))}</span>
                           </span>
                         ))}
-                        <button
-                          type="button"
-                          className="assessment-page-more-filter-default-btn"
-                          onClick={backToMetrics}
-                        >
-                          <BarChart3 size={14} strokeWidth={2.3} />
-                          Set as Default
-                        </button>
+                        {!embedded ? (
+                          <button
+                            type="button"
+                            className="assessment-page-more-filter-default-btn"
+                            onClick={backToMetrics}
+                          >
+                            <BarChart3 size={14} strokeWidth={2.3} />
+                            Set as Default
+                          </button>
+                        ) : null}
                       </span>,
                       document.body,
                     ) : null}

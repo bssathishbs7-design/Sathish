@@ -24,6 +24,7 @@ import {
   Sigma,
   Sparkles,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react'
 import RichMathEditor from '../components/RichMathEditor'
@@ -368,6 +369,17 @@ const readPublishedQuestionBankQuestions = () => {
 
   try {
     const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_PUBLISHED_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const readUploadedQuestionBankQuestions = () => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_UPLOADED_KEY) ?? '[]')
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
@@ -1038,6 +1050,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [selectedApprovalReviewerIndex, setSelectedApprovalReviewerIndex] = useState(0)
   const [pendingEditQuestionId, setPendingEditQuestionId] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
+  const [uploadedQuestionCount, setUploadedQuestionCount] = useState(() => readUploadedQuestionBankQuestions().length)
   const [editableDescriptiveFieldKeys, setEditableDescriptiveFieldKeys] = useState([])
   const [activeDescriptiveAnswerTarget, setActiveDescriptiveAnswerTarget] = useState({ type: 'root' })
 
@@ -1090,6 +1103,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       .filter(Boolean),
     ...questions.filter((item) => isReportedQuestion(item) && hasQuestionContent(item)),
   ].map((question) => [question.id ?? getQuestionPreview(question), question])).values())
+  const uploadedQuestionCards = useMemo(() => (
+    readUploadedQuestionBankQuestions().filter(hasQuestionContent)
+  ), [uploadedQuestionCount])
   const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
   const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
@@ -1117,15 +1133,17 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     ? draftQuestionCards
     : activeQuestionTab === 'created'
       ? createdQuestionCards
-      : activeQuestionTab === 'sent'
-        ? sentApprovalQuestionCards
-        : activeQuestionTab === 'approved'
-          ? approvedQuestionCards
-          : activeQuestionTab === 'rejected'
-            ? rejectedQuestionCards
-            : activeQuestionTab === 'report'
-              ? reportQuestionCards
-              : []
+      : activeQuestionTab === 'uploaded'
+        ? uploadedQuestionCards
+        : activeQuestionTab === 'sent'
+          ? sentApprovalQuestionCards
+          : activeQuestionTab === 'approved'
+            ? approvedQuestionCards
+            : activeQuestionTab === 'rejected'
+              ? rejectedQuestionCards
+              : activeQuestionTab === 'report'
+                ? reportQuestionCards
+                : []
 
   const curriculumQuestion = isCurriculumEditing && curriculumDraft ? curriculumDraft : selectedQuestion
   const availableSubjects = curriculumQuestion ? getSubjectsForYear(curriculumQuestion.year) : []
@@ -1172,6 +1190,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       progress: generationProcessPercent,
       isLoading: generatingCount > 0,
       targetTab: 'created',
+    },
+    {
+      label: 'Upload Question',
+      value: uploadedQuestionCount,
+      detail: 'Added to question bank',
+      icon: Upload,
+      tone: 'upload',
+      targetTab: 'uploaded',
     },
   ]
   const canCreateSelectedQuestion = canCreateQuestion(selectedQuestion)
@@ -1278,14 +1304,19 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
 
-    const syncReportedQuestions = () => setReportedQuestionRecords(readReportedQuestionRecords())
+    const syncQuestionBankExternalCounts = () => {
+      setReportedQuestionRecords(readReportedQuestionRecords())
+      setUploadedQuestionCount(readUploadedQuestionBankQuestions().length)
+    }
 
-    window.addEventListener('storage', syncReportedQuestions)
-    window.addEventListener('question-bank-created-reported-questions', syncReportedQuestions)
+    window.addEventListener('storage', syncQuestionBankExternalCounts)
+    window.addEventListener('question-bank-created-reported-questions', syncQuestionBankExternalCounts)
+    window.addEventListener('question-bank-uploaded-questions', syncQuestionBankExternalCounts)
 
     return () => {
-      window.removeEventListener('storage', syncReportedQuestions)
-      window.removeEventListener('question-bank-created-reported-questions', syncReportedQuestions)
+      window.removeEventListener('storage', syncQuestionBankExternalCounts)
+      window.removeEventListener('question-bank-created-reported-questions', syncQuestionBankExternalCounts)
+      window.removeEventListener('question-bank-uploaded-questions', syncQuestionBankExternalCounts)
     }
   }, [])
 
@@ -2509,6 +2540,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             </button>
             <button
               type="button"
+              className={activeQuestionTab === 'uploaded' ? 'is-active' : ''}
+              onClick={() => setActiveQuestionTab('uploaded')}
+              role="tab"
+              aria-selected={activeQuestionTab === 'uploaded'}
+            >
+              Upload Question
+              <span>{uploadedQuestionCards.length}</span>
+            </button>
+            <button
+              type="button"
               className={activeQuestionTab === 'draft' ? 'is-active' : ''}
               onClick={() => setActiveQuestionTab('draft')}
               role="tab"
@@ -3516,7 +3557,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
                 ) : null}
 
-                {['created', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && activeQuestionCards.length ? (
+                {['created', 'uploaded', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && activeQuestionCards.length ? (
                   <section className="question-bank-created-panel">
                     <div className="question-bank-section-head">
                       <div>
@@ -3545,6 +3586,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                           <span className="question-bank-eyebrow">
                             {activeQuestionTab === 'draft'
                               ? 'Draft Questions'
+                              : activeQuestionTab === 'uploaded'
+                                ? 'Upload Questions'
                               : activeQuestionTab === 'sent'
                                 ? 'Sent to Approval'
                                 : activeQuestionTab === 'approved'
@@ -4038,12 +4081,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                   </section>
                 ) : null}
 
-                {['created', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && !activeQuestionCards.length ? (
+                {['created', 'uploaded', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && !activeQuestionCards.length ? (
                   <div className="question-bank-empty-state question-bank-tab-empty-state">
                     <FilePenLine size={24} strokeWidth={2} />
                     <strong>
                       {activeQuestionTab === 'draft'
                         ? 'No draft questions yet'
+                        : activeQuestionTab === 'uploaded'
+                          ? 'No uploaded questions yet'
                         : activeQuestionTab === 'sent'
                           ? 'No questions sent to approval yet'
                           : activeQuestionTab === 'approved'
@@ -4055,6 +4100,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                     <p>
                       {activeQuestionTab === 'draft'
                         ? 'Save a question as draft to see it here.'
+                        : activeQuestionTab === 'uploaded'
+                          ? 'Uploaded questions will appear here.'
                         : activeQuestionTab === 'sent'
                           ? 'Send created questions for approval to see them here.'
                           : activeQuestionTab === 'approved'

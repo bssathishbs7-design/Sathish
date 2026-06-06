@@ -131,7 +131,7 @@
 
 .question-bank-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -307,6 +307,16 @@
 .question-bank-metric-card.is-process .question-bank-metric-icon {
   background: #ccfbf1;
   color: #0f766e;
+}
+
+.question-bank-metric-card.is-upload {
+  border-color: #c7d2fe;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f7ff 100%);
+}
+
+.question-bank-metric-card.is-upload .question-bank-metric-icon {
+  background: #e0e7ff;
+  color: #4f46e5;
 }
 
 @keyframes question-bank-metric-pulse {
@@ -5249,6 +5259,16 @@
 .theme-dark .question-bank-metric-card.is-process .question-bank-metric-icon {
   background: rgba(15, 118, 110, 0.28);
   color: #8df0c7;
+}
+
+.theme-dark .question-bank-metric-card.is-upload {
+  border-color: rgba(129, 140, 248, 0.42);
+  background: linear-gradient(180deg, #1c2440 0%, #182139 100%);
+}
+
+.theme-dark .question-bank-metric-card.is-upload .question-bank-metric-icon {
+  background: rgba(79, 70, 229, 0.24);
+  color: #c4b5fd;
 }
 
 .theme-dark .question-bank-tabs button {
