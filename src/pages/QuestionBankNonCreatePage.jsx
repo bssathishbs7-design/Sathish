@@ -13,6 +13,10 @@ const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
 const QUESTION_BANK_CREATED_REPORTED_KEY = 'vx-question-bank-created-reported-questions'
 const QUESTION_BANK_EDIT_HANDOFF_KEY = 'vx-question-bank-edit-handoff'
 const QUESTION_BANK_DASHBOARD_WELCOME_DISMISSED_KEY = 'vx-question-bank-dashboard-welcome-dismissed'
+const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
+const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
+const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
+const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const QUESTION_BANK_FAVORITE_STORAGE_KEYS = [QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY, QUESTION_BANK_STORAGE_KEY]
 const REPORT_REASON_OPTIONS = [
   'Wrong answer',
@@ -29,6 +33,16 @@ const REPORT_AUTHOR_ACTION_OPTIONS = [
 ]
 const OLD_DEFAULT_ANSWER_TEXT = 'Correct answer: Review the selected option and add the supporting rationale.'
 const CURRENT_DEFAULT_ANSWER_TEXT = 'Add the correct option and explanation.'
+const DEFAULT_ASSESSMENT_SETUP = {
+  collegeName: '',
+  logoName: '',
+  logoPreview: '',
+  assessmentName: '',
+  academicYear: '2025 - 2026',
+  examCategory: '',
+  course: '',
+  year: '',
+}
 const DESCRIPTIVE_TYPE_LABELS = new Map([
   ['desc long answer questions (laqs)', 'LAQs'],
   ['desc short answer questions (saqs)', 'SAQs'],
@@ -717,6 +731,55 @@ const isQuestionBankDashboardWelcomeDismissed = () => {
   return window.localStorage.getItem(QUESTION_BANK_DASHBOARD_WELCOME_DISMISSED_KEY) === 'true'
 }
 
+const readAssessmentDrafts = () => {
+  if (typeof window === 'undefined') return []
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_DRAFTS_STORAGE_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const getAssessmentStorageSuffix = (setup = {}) => {
+  if (setup.assessmentId) return String(setup.assessmentId)
+  const signature = [
+    setup.collegeName,
+    setup.assessmentName,
+    setup.academicYear,
+    setup.examCategory,
+    setup.course,
+    setup.year,
+  ].filter(Boolean).join('|')
+  return signature ? signature.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : 'draft'
+}
+
+const getAssessmentQuestionsStorageKey = (setup = {}) => (
+  `${CREATE_ASSESSMENT_QUESTIONS_KEY}:${getAssessmentStorageSuffix(setup)}`
+)
+
+const readAssessmentQuestionsForSetup = (setup = {}) => {
+  if (typeof window === 'undefined') return []
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(getAssessmentQuestionsStorageKey(setup)) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const createImportedAssessmentQuestions = (questions = [], setup = {}) => (
+  questions.map((item, index) => ({
+    ...item,
+    id: `assessment-imported-${item.id ?? Date.now()}-${index}`,
+    originalQuestionId: item.id ?? item.originalQuestionId,
+    status: 'Created',
+    source: item.source || 'Question Bank',
+    assessmentName: setup.assessmentName || 'Untitled Assessment',
+    savedAt: new Date().toISOString(),
+  }))
+)
+
 export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly', embedded = false, onAddToAssessment }) {
   const resolvedMode = mode === 'editable' ? 'editable' : 'readonly'
   const isEditable = resolvedMode === 'editable'
@@ -758,13 +821,21 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [reportAuthorAction, setReportAuthorAction] = useState('')
   const [editQuestion, setEditQuestion] = useState(null)
   const [editQuestionMode, setEditQuestionMode] = useState('overwrite')
+  const [assessmentChooserOpen, setAssessmentChooserOpen] = useState(false)
+  const [draftAssessmentOptions, setDraftAssessmentOptions] = useState(() => readAssessmentDrafts())
 
   useEffect(() => {
     if (!isReadonly || embedded) return
     setSelectedGridAction('')
     setSelectedGridQuestionIds([])
     setSelectionBarPosition(null)
+    setAssessmentChooserOpen(false)
   }, [embedded, isReadonly])
+
+  useEffect(() => {
+    if (selectedGridQuestionIds.length) return
+    setAssessmentChooserOpen(false)
+  }, [selectedGridQuestionIds.length])
 
   const metricFilteredQuestions = useMemo(() => {
     if (activeMetric === 'suggested') {
@@ -1273,15 +1344,87 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     ))
   }
 
-  const addSelectedQuestionsToAssessment = () => {
-    if (!selectedGridQuestionIds.length) return
-    const selectedQuestions = publishedQuestions.filter((item) => selectedGridQuestionIds.includes(item.id))
-    onAddToAssessment?.(selectedQuestions)
+  const resetAssessmentSelection = () => {
     setSelectedGridQuestionIds([])
     setSelectedGridAction('')
     setSelectionBarPosition(null)
     setIsEmbeddedSelectionBarClosed(false)
     setIsEmbeddedSelectionBarVisible(false)
+    setAssessmentChooserOpen(false)
+  }
+
+  const getSelectedAssessmentQuestions = () => (
+    publishedQuestions.filter((item) => selectedGridQuestionIds.includes(item.id))
+  )
+
+  const addSelectedQuestionsToEmbeddedAssessment = () => {
+    if (!selectedGridQuestionIds.length) return
+    const selectedQuestions = getSelectedAssessmentQuestions()
+    onAddToAssessment?.(selectedQuestions)
+    resetAssessmentSelection()
+  }
+
+  const openAssessmentChooser = () => {
+    if (!selectedGridQuestionIds.length) return
+    setDraftAssessmentOptions(readAssessmentDrafts())
+    setAssessmentChooserOpen((current) => !current)
+  }
+
+  const persistSelectedQuestionsToAssessment = (setup, draft = null) => {
+    if (!setup || typeof window === 'undefined') return
+    const selectedQuestions = getSelectedAssessmentQuestions()
+    const importedQuestions = createImportedAssessmentQuestions(selectedQuestions, setup)
+    if (!importedQuestions.length) return
+
+    const existingQuestions = readAssessmentQuestionsForSetup(setup)
+    const nextQuestions = [
+      ...importedQuestions,
+      ...existingQuestions.filter((item) => !selectedQuestions.some((questionItem) => (
+        (questionItem.id ?? questionItem.originalQuestionId) === (item.originalQuestionId ?? item.id)
+      ))),
+    ]
+    window.localStorage.setItem(getAssessmentQuestionsStorageKey(setup), JSON.stringify(nextQuestions))
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(setup))
+    window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'preview')
+
+    if (draft) {
+      const totalMarks = nextQuestions.reduce((total, item) => total + getQuestionMarksTotal(item), 0)
+      const nextDraft = {
+        ...draft,
+        setup,
+        assessmentName: setup.assessmentName || draft.assessmentName || 'Untitled Draft Assessment',
+        academicYear: setup.academicYear || draft.academicYear || '',
+        examCategory: setup.examCategory || draft.examCategory || '',
+        course: setup.course || draft.course || '',
+        year: setup.year || draft.year || '',
+        questionCount: nextQuestions.length,
+        totalMarks,
+        updatedAt: new Date().toISOString(),
+      }
+      const drafts = readAssessmentDrafts()
+      window.localStorage.setItem(ASSESSMENT_DRAFTS_STORAGE_KEY, JSON.stringify([
+        nextDraft,
+        ...drafts.filter((item) => item.id !== nextDraft.id),
+      ]))
+    }
+
+    resetAssessmentSelection()
+    onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
+  }
+
+  const addSelectedQuestionsToDraftAssessment = (draft) => {
+    if (!draft?.setup) return
+    persistSelectedQuestionsToAssessment(draft.setup, draft)
+  }
+
+  const addSelectedQuestionsToNewAssessment = () => {
+    const now = Date.now()
+    persistSelectedQuestionsToAssessment({
+      ...DEFAULT_ASSESSMENT_SETUP,
+      assessmentId: `assessment-${now}`,
+      assessmentName: `Assessment ${new Date(now).toLocaleDateString('en-IN')}`,
+      createdAt: new Date(now).toISOString(),
+    })
   }
 
   const toggleQuestionFavorite = (questionId) => {
@@ -1499,6 +1642,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     setSelectionBarPosition(null)
     setIsEmbeddedSelectionBarClosed(false)
     setIsEmbeddedSelectionBarVisible(false)
+    setAssessmentChooserOpen(false)
   }
 
   const handleSelectionBarPointerDown = (event) => {
@@ -2751,34 +2895,59 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 : `selected for ${selectedGridAction === 'assessment' ? 'Assessment' : 'Learn'}`}
             </span>
             <div className="assessment-page-selection-bar-actions">
-              <button type="button" onClick={() => setSelectedGridQuestionIds([])}>
+              <button type="button" className="is-clear" onClick={() => setSelectedGridQuestionIds([])}>
                 Clear
               </button>
-              {hasEmbeddedAssessmentSelection ? (
-                <button
-                  type="button"
-                  className="is-primary"
-                  onClick={addSelectedQuestionsToAssessment}
-                  disabled={!selectedGridQuestionIds.length}
-                >
-                  Add to Assessment
-                </button>
+              {hasEmbeddedAssessmentSelection || selectedGridAction === 'assessment' ? (
+                <>
+                  <button
+                    type="button"
+                    className="is-primary"
+                    onClick={hasEmbeddedAssessmentSelection ? addSelectedQuestionsToEmbeddedAssessment : openAssessmentChooser}
+                    disabled={!selectedGridQuestionIds.length}
+                    aria-expanded={!hasEmbeddedAssessmentSelection && assessmentChooserOpen}
+                  >
+                    Add to Assessment
+                  </button>
+                  {!hasEmbeddedAssessmentSelection && assessmentChooserOpen ? (
+                    <span
+                      className="assessment-page-add-assessment-popover"
+                      role="tooltip"
+                      onPointerDown={(event) => event.stopPropagation()}
+                    >
+                      <strong>Add to Assessment</strong>
+                      <button type="button" onClick={addSelectedQuestionsToNewAssessment}>
+                        <Plus size={14} strokeWidth={2.4} />
+                        <span>Create New Assessment</span>
+                      </button>
+                      {draftAssessmentOptions.length ? (
+                        <span className="assessment-page-add-assessment-drafts">
+                          <small>Draft assessment</small>
+                          {draftAssessmentOptions.map((draft) => (
+                            <button
+                              key={draft.id}
+                              type="button"
+                              onClick={() => addSelectedQuestionsToDraftAssessment(draft)}
+                            >
+                              <ClipboardList size={14} strokeWidth={2.3} />
+                              <span>{draft.assessmentName || draft.setup?.assessmentName || 'Untitled Draft Assessment'}</span>
+                            </button>
+                          ))}
+                        </span>
+                      ) : null}
+                    </span>
+                    ) : null}
+                </>
               ) : null}
-              {hasEmbeddedAssessmentSelection ? (
-                <button
-                  type="button"
-                  className="is-icon-only"
-                  onClick={() => setIsEmbeddedSelectionBarClosed(true)}
-                  aria-label="Close selection card"
-                  title="Close"
-                >
-                  <X size={15} strokeWidth={2.4} />
-                </button>
-              ) : (
-                <button type="button" onClick={clearGridActionState}>
-                  Cancel
-                </button>
-              )}
+              <button
+                type="button"
+                className="is-icon-only"
+                onClick={hasEmbeddedAssessmentSelection ? () => setIsEmbeddedSelectionBarClosed(true) : clearGridActionState}
+                aria-label="Close selection card"
+                title="Close"
+              >
+                <X size={15} strokeWidth={2.4} />
+              </button>
             </div>
           </section>
         ) : null}
