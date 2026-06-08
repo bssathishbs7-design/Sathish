@@ -2200,6 +2200,19 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     onAlert?.({ tone: 'warning', message: 'Question removed from Question Bank.' })
   }
 
+  const deleteApprovedQuestionEverywhere = (questionId) => {
+    if (!questionId) return
+
+    deleteQuestionFromStorage(questionId)
+    setQuestions((current) => current.filter((item) => item.id !== questionId))
+    setApprovedQuestionBankSelectedIds((current) => current.filter((id) => id !== questionId))
+    setApprovalSelectedIds((current) => current.filter((id) => id !== questionId))
+    if (selectedQuestionId === questionId) {
+      setSelectedQuestionId(null)
+    }
+    onAlert?.({ tone: 'warning', message: 'Approved question deleted from Question Bank and All Questions.' })
+  }
+
   const selectAllApprovedQuestionBankQuestions = () => {
     setApprovedQuestionBankSelectedIds(approvedQuestionBankPendingIds)
   }
@@ -4485,10 +4498,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                     className="question-bank-icon-btn"
                                     onClick={(event) => {
                                       event.stopPropagation()
-                                      removeApprovedQuestionFromQuestionBank(question.id)
+                                      deleteApprovedQuestionEverywhere(question.id)
                                     }}
-                                    aria-label="Delete from question bank"
-                                    title="Delete from Question Bank"
+                                    aria-label="Delete approved question"
+                                    title="Delete approved question"
                                   >
                                     <Trash2 size={14} strokeWidth={2} />
                                   </button>
