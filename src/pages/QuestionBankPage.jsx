@@ -12,6 +12,7 @@ import {
   Eye,
   FilePenLine,
   IdCard,
+  Download,
   FolderTree,
   ImagePlus,
   Info,
@@ -1319,6 +1320,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [activeQuestionTab, setActiveQuestionTab] = useState('create')
   const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
+  const [isUploadTemplateMenuOpen, setIsUploadTemplateMenuOpen] = useState(false)
   const [selectedQuestionTypeLabel, setSelectedQuestionTypeLabel] = useState('')
   const [isApprovalSelectMode, setIsApprovalSelectMode] = useState(false)
   const [approvalSelectedIds, setApprovalSelectedIds] = useState([])
@@ -1614,6 +1616,21 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       document.removeEventListener('mousedown', handleOutsideDistractorClick)
     }
   }, [openDistractorOptionId, openDistractorMenuOptionId])
+
+  useEffect(() => {
+    if (!isUploadTemplateMenuOpen) return undefined
+    if (typeof document === 'undefined') return undefined
+
+    const handleOutsideUploadTemplateClick = (event) => {
+      if (event.target.closest?.('.question-bank-upload-template-menu-wrap')) return
+      setIsUploadTemplateMenuOpen(false)
+    }
+
+    document.addEventListener('mousedown', handleOutsideUploadTemplateClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideUploadTemplateClick)
+    }
+  }, [isUploadTemplateMenuOpen])
 
   useEffect(() => {
     if (!editableDescriptiveFieldKeys.length) return undefined
@@ -2974,28 +2991,59 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
           {activeQuestionTab === 'uploaded' ? (
             <section className="question-bank-upload-import-panel" aria-label="Upload questions from Excel template">
-              <div className="question-bank-upload-import-copy">
-                <span className="question-bank-upload-import-icon">
-                  <Upload size={18} strokeWidth={2.3} />
-                </span>
-                <div>
-                  <strong>Upload questions</strong>
-                  <p>Download the matching CSV template, fill it in Excel, save as CSV, then verify and import.</p>
+              <div className="question-bank-upload-import-head">
+                <div className="question-bank-upload-import-copy">
+                  <span className="question-bank-upload-import-icon">
+                    <Upload size={18} strokeWidth={2.3} />
+                  </span>
+                  <div>
+                    <strong>Upload questions</strong>
+                    <p>Download a template, complete it in Excel, then upload the CSV for validation.</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="question-bank-upload-template-grid" aria-label="Question upload templates">
-                {Object.entries(EXCEL_UPLOAD_TYPE_CONFIG).map(([typeKey, config]) => (
+                <div className="question-bank-upload-template-grid" aria-label="Question upload templates">
+                  <span className="question-bank-upload-template-label">Download :</span>
                   <button
-                    key={typeKey}
                     type="button"
-                    className="question-bank-secondary-btn"
-                    onClick={() => handleDownloadUploadTemplate(typeKey)}
+                    className="question-bank-upload-template-btn"
+                    onClick={() => handleDownloadUploadTemplate('MCQ')}
                   >
-                    <Upload size={14} strokeWidth={2.2} />
-                    {config.label} Template
+                    <Download size={13} strokeWidth={2.2} />
+                    MCQ Sample Excel
                   </button>
-                ))}
+                  <span className="question-bank-upload-template-menu-wrap">
+                    <button
+                      type="button"
+                      className="question-bank-upload-template-btn"
+                      onClick={() => setIsUploadTemplateMenuOpen((current) => !current)}
+                      aria-expanded={isUploadTemplateMenuOpen}
+                      aria-haspopup="menu"
+                    >
+                      <Download size={13} strokeWidth={2.2} />
+                      Descriptive Sample Excel
+                      <ChevronDown size={13} strokeWidth={2.3} />
+                    </button>
+                    {isUploadTemplateMenuOpen ? (
+                      <span className="question-bank-upload-template-menu" role="menu">
+                        {['LAQs', 'SAQs', 'MEQs'].map((typeKey) => (
+                          <button
+                            key={typeKey}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              handleDownloadUploadTemplate(typeKey)
+                              setIsUploadTemplateMenuOpen(false)
+                            }}
+                          >
+                            <Download size={13} strokeWidth={2.2} />
+                            {typeKey} Sample Excel
+                          </button>
+                        ))}
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
               </div>
 
               <div className="question-bank-upload-import-actions">
@@ -3005,8 +3053,13 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                     accept=".csv,.txt"
                     onChange={handleUploadQuestionFile}
                   />
-                  <Upload size={15} strokeWidth={2.3} />
-                  Choose CSV file
+                  <span className="question-bank-upload-file-icon">
+                    <Upload size={18} strokeWidth={2.4} />
+                  </span>
+                  <span>
+                    <strong>Choose CSV file</strong>
+                    <small>Only CSV exported from Excel templates</small>
+                  </span>
                 </label>
                 {uploadImportResult?.fileName ? (
                   <span className="question-bank-upload-file-name">{uploadImportResult.fileName}</span>

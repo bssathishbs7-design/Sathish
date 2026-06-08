@@ -8168,23 +8168,36 @@
 }
 
 .theme-dark .question-bank-metrics-landing {
-  background: #242523;
+  background: linear-gradient(180deg, #07111f 0%, #0b1626 100%);
 }
 
 .theme-dark .question-bank-metrics-filter-card {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: #2f302d;
-  box-shadow: none;
+  border-color: rgba(74, 222, 128, 0.16);
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: 0 18px 40px rgba(2, 8, 23, 0.34);
 }
 
 .theme-dark .question-bank-metrics-filter-copy strong {
-  color: #f5f3ee;
+  color: #f8fafc;
 }
 
 .theme-dark .question-bank-metrics-actions button.is-secondary {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: #2a2b29;
-  color: #f5f3ee;
+  border-color: rgba(148, 163, 184, 0.34);
+  background: rgba(15, 23, 42, 0.82);
+  color: #e2e8f0;
+}
+
+.theme-dark .question-bank-metrics-filter-card .assessment-page-filter-dropdown > button {
+  border-color: rgba(96, 165, 250, 0.32);
+  background: #0f2138;
+  color: #dbeafe;
+}
+
+.theme-dark .question-bank-metrics-filter-card .assessment-page-filter-dropdown > button:hover,
+.theme-dark .question-bank-metrics-filter-card .assessment-page-filter-dropdown > button:focus-visible {
+  border-color: rgba(45, 212, 191, 0.54);
+  background: #12304a;
+  color: #ecfeff;
 }
 
 .theme-dark .question-bank-dashboard-toast {
@@ -8232,17 +8245,35 @@
 
 .theme-dark .question-bank-metrics-landing .question-bank-metric-card,
 .theme-dark .question-bank-metrics-landing .question-bank-category-chart-card {
-  border-color: rgba(255, 255, 255, 0.13);
-  background: #30312e;
-  color: #f7f3ea;
-  box-shadow: none;
+  border-color: rgba(96, 125, 153, 0.28);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--metric-accent, #14b8a6) 15%, transparent), transparent 38%),
+    linear-gradient(145deg, #101b2d 0%, #0f1726 100%);
+  color: #eaf3ff;
+  box-shadow: 0 18px 34px rgba(2, 8, 23, 0.28);
+}
+
+.theme-dark .question-bank-metrics-landing .question-bank-metric-card::before {
+  background: linear-gradient(180deg, var(--metric-accent, #14b8a6), transparent);
+  opacity: 0.75;
+}
+
+.theme-dark .question-bank-metrics-landing .question-bank-metric-card-icon {
+  background: color-mix(in srgb, var(--metric-accent, #14b8a6) 18%, #0f172a);
+  color: color-mix(in srgb, var(--metric-accent, #14b8a6) 80%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--metric-accent, #14b8a6) 32%, transparent);
+}
+
+.theme-dark .question-bank-metrics-landing .question-bank-metric-splits > span {
+  border-color: rgba(96, 125, 153, 0.3);
+  background: rgba(15, 23, 42, 0.72);
 }
 
 .theme-dark .question-bank-metrics-landing .question-bank-metric-card-head strong,
 .theme-dark .question-bank-metrics-landing .question-bank-metric-donut-ring > strong,
 .theme-dark .question-bank-metrics-landing .question-bank-metric-splits em,
 .theme-dark .question-bank-metrics-landing .question-bank-metric-donut-legend strong {
-  color: #fffaf0;
+  color: #f8fafc;
 }
 
 .theme-dark .question-bank-metrics-landing .question-bank-metric-card-head span span,
@@ -8251,47 +8282,170 @@
 .theme-dark .question-bank-metrics-landing .question-bank-metric-splits strong,
 .theme-dark .question-bank-metrics-landing .question-bank-metric-donut-ring > span:not(.question-bank-chart-tooltip),
 .theme-dark .question-bank-metrics-landing .question-bank-metric-donut-legend span span {
-  color: #d8d2c7;
+  color: #b7c7d9;
 }
 
 .theme-dark .question-bank-chart-tooltip {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: #191b1f;
-  color: #faf8f2;
+  border-color: rgba(148, 163, 184, 0.26);
+  background: #0b1220;
+  color: #f8fafc;
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
 }
 
 .theme-dark .question-bank-chart-tooltip::after {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: #191b1f;
+  border-color: rgba(148, 163, 184, 0.26);
+  background: #0b1220;
 }
 
 .theme-dark .question-bank-chart-tooltip span,
 .theme-dark .question-bank-chart-tooltip strong {
-  color: #faf8f2;
+  color: #f8fafc;
 }
 
 .theme-dark .question-bank-metrics-landing .question-bank-metric-card.is-thinking .question-bank-metric-splits > span,
 .theme-dark .question-bank-metrics-landing .question-bank-metric-card.is-difficulty .question-bank-metric-splits > span,
 .theme-dark .question-bank-metrics-landing .question-bank-metric-card.is-cognitive .question-bank-metric-splits > span {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: #282a27;
+  border-color: color-mix(in srgb, var(--metric-split-color, var(--metric-accent)) 36%, rgba(96, 125, 153, 0.34));
+  background: rgba(15, 23, 42, 0.72);
 }
 
 .theme-dark .question-bank-metrics-landing .question-bank-metric-donut-track {
-  stroke: rgba(0, 0, 0, 0.22);
+  stroke: rgba(148, 163, 184, 0.18);
 }
 
 .theme-dark .question-bank-metric-gauge-track {
-  stroke: rgba(0, 0, 0, 0.22);
+  stroke: rgba(148, 163, 184, 0.18);
 }
 
 .theme-dark .question-bank-gauge-count {
-  color: #fffaf0;
+  color: #f8fafc;
 }
 
 .theme-dark .question-bank-metric-gauge-ring > span:not(.question-bank-chart-tooltip) {
-  color: #d8d2c7;
+  color: #b7c7d9;
+}
+
+.theme-dark .question-bank-overview-card {
+  border-color: rgba(96, 125, 153, 0.34);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--overview-accent, #14b8a6) 14%, transparent), transparent 40%),
+    linear-gradient(145deg, #111c2e 0%, #0f1726 100%);
+  color: #eaf3ff;
+  box-shadow: 0 18px 34px rgba(2, 8, 23, 0.34);
+}
+
+.theme-dark .question-bank-overview-card::before {
+  opacity: 0.52;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--overview-accent, #14b8a6) 20%, transparent), transparent 60%);
+}
+
+.theme-dark .question-bank-overview-card:hover,
+.theme-dark .question-bank-overview-card:focus-within {
+  border-color: color-mix(in srgb, var(--overview-accent, #14b8a6) 46%, rgba(96, 125, 153, 0.34));
+  box-shadow: 0 20px 40px rgba(2, 8, 23, 0.42);
+}
+
+.theme-dark .question-bank-overview-title,
+.theme-dark .question-bank-overview-card.is-thinking-mini .question-bank-overview-title {
+  color: #e2e8f0;
+}
+
+.theme-dark .question-bank-overview-total,
+.theme-dark .question-bank-type-pie-total strong,
+.theme-dark .question-bank-overview-list strong,
+.theme-dark .question-bank-level-tiles strong,
+.theme-dark .question-bank-cognitive-total strong {
+  color: #f8fafc;
+}
+
+.theme-dark .question-bank-overview-card.is-category .question-bank-overview-total {
+  color: #a78bfa;
+}
+
+.theme-dark .question-bank-overview-card.is-difficulty .question-bank-overview-total {
+  color: #fb923c;
+}
+
+.theme-dark .question-bank-overview-card.is-thinking-mini .question-bank-overview-total {
+  color: #2dd4bf;
+}
+
+.theme-dark .question-bank-overview-card.is-thinking-1 .question-bank-overview-total {
+  color: #60a5fa;
+}
+
+.theme-dark .question-bank-overview-card.is-ownership > div:first-child {
+  border-bottom-color: rgba(148, 163, 184, 0.34);
+}
+
+.theme-dark .question-bank-overview-card.is-ownership > div:first-child > span,
+.theme-dark .question-bank-cognitive-total > span:last-child {
+  color: #cbd5e1;
+}
+
+.theme-dark .question-bank-ownership-splits > span,
+.theme-dark .question-bank-level-tiles > span {
+  border-color: rgba(96, 125, 153, 0.36);
+  background: rgba(15, 23, 42, 0.82);
+}
+
+.theme-dark .question-bank-ownership-splits > span:first-child {
+  border-color: rgba(45, 212, 191, 0.34);
+  background: rgba(13, 148, 136, 0.12);
+}
+
+.theme-dark .question-bank-ownership-splits > span:last-child {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.theme-dark .question-bank-ownership-splits strong {
+  color: #f8fafc;
+}
+
+.theme-dark .question-bank-ownership-splits em,
+.theme-dark .question-bank-overview-list em,
+.theme-dark .question-bank-level-tiles em,
+.theme-dark .question-bank-cognitive-list em,
+.theme-dark .question-bank-overview-card.is-thinking-mini > span,
+.theme-dark .question-bank-type-pie-labels > span,
+.theme-dark .question-bank-type-pie-total em {
+  color: #b7c7d9;
+}
+
+.theme-dark .question-bank-ownership-splits > span:first-child em {
+  color: #99f6e4;
+}
+
+.theme-dark .question-bank-ownership-splits > span:last-child em {
+  color: #bfdbfe;
+}
+
+.theme-dark .question-bank-ownership-splits img,
+.theme-dark .question-bank-ownership-splits svg {
+  background: rgba(240, 253, 250, 0.96);
+  color: #0f766e;
+}
+
+.theme-dark .question-bank-type-pie {
+  background:
+    radial-gradient(circle at center, #0f1726 0 42%, transparent 43%),
+    conic-gradient(from 0deg, var(--question-type-pie));
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.16), 0 18px 34px rgba(2, 8, 23, 0.32);
+}
+
+.theme-dark .question-bank-type-pie::after {
+  background: #0f1726;
+}
+
+.theme-dark .question-bank-type-pie-total {
+  color: #f8fafc;
+}
+
+.theme-dark .question-bank-overview-icon {
+  border-color: color-mix(in srgb, var(--overview-accent, #14b8a6) 34%, rgba(96, 125, 153, 0.4));
+  background: color-mix(in srgb, var(--overview-accent, #14b8a6) 18%, #0f172a);
+  color: color-mix(in srgb, var(--overview-accent, #14b8a6) 78%, #ffffff);
 }
 
 .theme-dark .assessment-page-question-card,
