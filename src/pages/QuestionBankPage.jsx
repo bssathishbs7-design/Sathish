@@ -394,6 +394,18 @@ const readExcelUploadedQuestionBankQuestions = () => (
   ))
 )
 
+const isExcelUploadedQuestion = (question) => (
+  question?.source === 'Excel Upload'
+  || Boolean(question?.uploadBatchId)
+)
+
+const getThinkingLevelLabel = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (normalized === 'hot') return 'HoT'
+  if (normalized === 'lot') return 'LoT'
+  return value
+}
+
 const readReportedQuestionRecords = () => {
   if (typeof window === 'undefined') return []
 
@@ -542,6 +554,8 @@ const EXCEL_UPLOAD_REQUIRED_COLUMNS = {
   SAQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
   MEQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
 }
+
+const EXCEL_UPLOAD_ANALYZE_SECONDS = 60
 
 const normalizeUploadHeader = (value) => String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
 
@@ -695,6 +709,29 @@ const validateExcelUploadRows = (csvText) => {
     rowsCount: rows.length,
   }
 }
+
+const formatUploadWizardTime = (seconds) => {
+  const safeSeconds = Math.max(0, Math.ceil(Number(seconds) || 0))
+  const minutes = Math.floor(safeSeconds / 60)
+  const remainingSeconds = safeSeconds % 60
+  if (!minutes) return `${remainingSeconds}s`
+  return `${minutes}m ${String(remainingSeconds).padStart(2, '0')}s`
+}
+
+const getUploadErrorRows = (errors = []) => (
+  errors.map((error, index) => {
+    const text = String(error)
+    const rowMatch = text.match(/^Row\s+(\d+):\s*(.*)$/i)
+    const issueText = rowMatch ? rowMatch[2] : text
+    const fieldMatch = issueText.match(/^(.*?)(?:\s+must\s+|\s+missing\s+|\s+is\s+|$)/i)
+    return {
+      id: `${index}-${text}`,
+      row: rowMatch ? rowMatch[1] : '-',
+      field: fieldMatch?.[1]?.replace(/[:.]+$/, '').trim() || 'File',
+      message: issueText,
+    }
+  })
+)
 
 const buildExcelUploadQuestion = (row, typeKey, batchId, rowNumber, questionIndex) => {
   const config = EXCEL_UPLOAD_TYPE_CONFIG[typeKey]
@@ -1328,10 +1365,20 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
   const [approvalNote, setApprovalNote] = useState('')
   const [selectedApprovalReviewerIndex, setSelectedApprovalReviewerIndex] = useState(0)
+  const [pendingUploadApprovalQuestions, setPendingUploadApprovalQuestions] = useState([])
   const [pendingEditQuestionId, setPendingEditQuestionId] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
   const [uploadedQuestionCount, setUploadedQuestionCount] = useState(() => readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent).length)
   const [uploadImportResult, setUploadImportResult] = useState(null)
+  const [uploadWizard, setUploadWizard] = useState({
+    isOpen: false,
+    status: 'idle',
+    fileName: '',
+    generatedCount: 0,
+    totalSeconds: 0,
+    remainingSeconds: 0,
+    startedAt: 0,
+  })
   const [editableDescriptiveFieldKeys, setEditableDescriptiveFieldKeys] = useState([])
   const [activeDescriptiveAnswerTarget, setActiveDescriptiveAnswerTarget] = useState({ type: 'root' })
 
@@ -1364,7 +1411,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const pendingEditQuestion = questions.find((item) => item.id === pendingEditQuestionId) ?? null
   const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
   const draftQuestionCards = questions.filter((item) => item.status === 'Draft')
-  const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status))
+  const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status) && !isExcelUploadedQuestion(item))
   const sentApprovalQuestionCards = questions.filter((item) => item.status === 'Sent to Approval' && hasQuestionContent(item))
   const approvedQuestionCards = questions
     .filter((item) => item.status === 'Approved' && hasQuestionContent(item))
@@ -1384,9 +1431,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       .filter(Boolean),
     ...questions.filter((item) => isReportedQuestion(item) && hasQuestionContent(item)),
   ].map((question) => [question.id ?? getQuestionPreview(question), question])).values())
-  const uploadedQuestionCards = useMemo(() => (
-    readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent)
-  ), [uploadedQuestionCount])
+  const uploadedQuestionCards = useMemo(() => {
+    const uploadedById = new Map()
+    readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent).forEach((question) => {
+      uploadedById.set(question.id, question)
+    })
+    questions.filter((question) => isExcelUploadedQuestion(question) && hasQuestionContent(question)).forEach((question) => {
+      uploadedById.set(question.id, question)
+    })
+    return Array.from(uploadedById.values()).filter((question) => ['Created', 'Generating'].includes(question.status))
+  }, [questions, uploadedQuestionCount])
   const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
   const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
@@ -1399,7 +1453,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const generationProcessPercent = generationProcessTotal
     ? Math.round((readyCount / generationProcessTotal) * 100)
     : 0
-  const approvableQuestionIds = createdQuestionCards
+  const activeApprovableCards = activeQuestionTab === 'uploaded' ? uploadedQuestionCards : createdQuestionCards
+  const approvableQuestionIds = activeApprovableCards
     .filter((item) => item.status === 'Created')
     .map((item) => item.id)
   const approvedQuestionBankPendingIds = approvedQuestionBankPendingCards.map((item) => item.id)
@@ -1513,6 +1568,13 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const hasPreviewNavigation = previewImages.length > 1
   const activePreviewLetter = activePreviewImage ? String.fromCharCode(65 + previewIndex) : ''
   const isListQuestionTab = ['created', 'uploaded', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab)
+  const uploadWizardQuestionCount = uploadImportResult?.questions?.length ?? 0
+  const uploadWizardProgress = uploadWizardQuestionCount
+    ? Math.round((uploadWizard.generatedCount / uploadWizardQuestionCount) * 100)
+    : 0
+  const uploadWizardErrorRows = getUploadErrorRows(uploadImportResult?.errors ?? [])
+  const isUploadWizardLocked = ['analyzing', 'generating', 'complete'].includes(uploadWizard.status)
+  const approvalModalQuestionCount = pendingUploadApprovalQuestions.length || approvalSelectedIds.length
 
   useEffect(() => {
     setIsGeneratingQuestion(false)
@@ -1692,6 +1754,125 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     }
   }, [questions])
 
+  useEffect(() => {
+    if (uploadWizard.status !== 'analyzing') return undefined
+    if (!uploadWizard.startedAt || !uploadImportResult) return undefined
+
+    const finishAnalyze = () => {
+      setUploadWizard((current) => {
+        if (current.status !== 'analyzing') return current
+
+        if (uploadImportResult.extension && ['xls', 'xlsx'].includes(uploadImportResult.extension)) {
+          setUploadImportResult({
+            status: 'error',
+            fileName: uploadImportResult.fileName,
+            questions: [],
+            rowsCount: 0,
+            errors: ['Please open the Excel file and save it as CSV before upload. This project currently validates CSV templates directly.'],
+          })
+          return { ...current, status: 'error', remainingSeconds: 0 }
+        }
+
+        if (uploadImportResult.readError) {
+          setUploadImportResult({
+            status: 'error',
+            fileName: uploadImportResult.fileName,
+            questions: [],
+            rowsCount: 0,
+            errors: ['Unable to read this file. Please upload a CSV exported from the sample template.'],
+          })
+          return { ...current, status: 'error', remainingSeconds: 0 }
+        }
+
+        const result = validateExcelUploadRows(uploadImportResult.csvText ?? '')
+        setUploadImportResult({
+          status: result.errors.length ? 'error' : 'ready',
+          fileName: uploadImportResult.fileName,
+          ...result,
+        })
+
+        return {
+          ...current,
+          status: result.errors.length ? 'error' : 'generating',
+          generatedCount: 0,
+          totalSeconds: result.errors.length ? 0 : result.questions.length * 15,
+          remainingSeconds: result.errors.length ? 0 : result.questions.length * 15,
+          startedAt: result.errors.length ? 0 : Date.now(),
+        }
+      })
+    }
+
+    const updateAnalyzeProgress = () => {
+      const elapsedSeconds = Math.floor((Date.now() - uploadWizard.startedAt) / 1000)
+      const remainingSeconds = Math.max(0, EXCEL_UPLOAD_ANALYZE_SECONDS - elapsedSeconds)
+
+      setUploadWizard((current) => (
+        current.status === 'analyzing'
+          ? {
+            ...current,
+            totalSeconds: EXCEL_UPLOAD_ANALYZE_SECONDS,
+            remainingSeconds,
+          }
+          : current
+      ))
+
+      if (remainingSeconds <= 0) finishAnalyze()
+    }
+
+    updateAnalyzeProgress()
+    const intervalId = window.setInterval(updateAnalyzeProgress, 1000)
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [uploadWizard.status, uploadWizard.startedAt, uploadImportResult])
+
+  useEffect(() => {
+    if (uploadWizard.status !== 'generating') return undefined
+    const questionsToGenerate = uploadImportResult?.questions ?? []
+    if (!questionsToGenerate.length || !uploadWizard.startedAt) return undefined
+
+    const totalQuestions = questionsToGenerate.length
+    const totalSeconds = totalQuestions * 15
+    let didComplete = false
+
+    const updateGenerationProgress = () => {
+      const elapsedSeconds = Math.floor((Date.now() - uploadWizard.startedAt) / 1000)
+      const generatedCount = Math.min(totalQuestions, Math.floor(elapsedSeconds / 15))
+      const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds)
+
+      setUploadWizard((current) => (
+        current.status === 'generating'
+          ? {
+            ...current,
+            generatedCount,
+            totalSeconds,
+            remainingSeconds,
+          }
+          : current
+      ))
+
+      if (generatedCount >= totalQuestions && !didComplete) {
+        didComplete = true
+        setUploadWizard((current) => (
+          current.status === 'generating'
+            ? {
+              ...current,
+              status: 'complete',
+              generatedCount: totalQuestions,
+              remainingSeconds: 0,
+            }
+            : current
+        ))
+      }
+    }
+
+    updateGenerationProgress()
+    const intervalId = window.setInterval(updateGenerationProgress, 1000)
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [uploadWizard.status, uploadWizard.startedAt, uploadImportResult])
+
   const updateSelectedQuestion = (updater) => {
     if (!selectedQuestion) return
     if (['Sent to Approval', 'Approved'].includes(selectedQuestion.status)) return
@@ -1730,41 +1911,80 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     onAlert?.({ tone: 'secondary', message: `${typeKey} upload template downloaded.` })
   }
 
+  const resetUploadWizard = () => {
+    setUploadImportResult(null)
+    setUploadWizard({
+      isOpen: true,
+      status: 'idle',
+      fileName: '',
+      generatedCount: 0,
+      totalSeconds: 0,
+      remainingSeconds: 0,
+      startedAt: 0,
+    })
+  }
+
+  const openUploadWizard = () => {
+    resetUploadWizard()
+  }
+
+  const closeUploadWizard = () => {
+    if (['analyzing', 'generating', 'complete'].includes(uploadWizard.status)) return
+    setUploadWizard((current) => ({ ...current, isOpen: false }))
+  }
+
+  const stopUploadGeneration = () => {
+    setUploadImportResult(null)
+    setUploadWizard({
+      isOpen: false,
+      status: 'idle',
+      fileName: '',
+      generatedCount: 0,
+      totalSeconds: 0,
+      remainingSeconds: 0,
+      startedAt: 0,
+    })
+    onAlert?.({ tone: 'warning', message: 'Upload question generation stopped.' })
+  }
+
   const handleUploadQuestionFile = async (event) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
 
+    setUploadImportResult(null)
+    setUploadWizard((current) => ({
+      ...current,
+      status: 'analyzing',
+      fileName: file.name,
+      generatedCount: 0,
+      totalSeconds: EXCEL_UPLOAD_ANALYZE_SECONDS,
+      remainingSeconds: EXCEL_UPLOAD_ANALYZE_SECONDS,
+      startedAt: Date.now(),
+    }))
+
     const extension = file.name.split('.').pop()?.toLowerCase()
-    if (['xls', 'xlsx'].includes(extension)) {
-      setUploadImportResult({
-        status: 'error',
-        fileName: file.name,
-        questions: [],
-        rowsCount: 0,
-        errors: ['Please open the Excel file and save it as CSV before upload. This project currently validates CSV templates directly.'],
-      })
-      return
-    }
 
     try {
-      const text = await file.text()
-      const result = validateExcelUploadRows(text)
+      const csvText = ['xls', 'xlsx'].includes(extension) ? '' : await file.text()
       setUploadImportResult({
-        status: result.errors.length ? 'error' : 'ready',
+        status: 'analyzing',
         fileName: file.name,
-        ...result,
-      })
-      if (!result.errors.length) {
-        onAlert?.({ tone: 'success', message: `${result.questions.length} uploaded question rows verified.` })
-      }
-    } catch {
-      setUploadImportResult({
-        status: 'error',
-        fileName: file.name,
+        csvText,
+        extension,
         questions: [],
         rowsCount: 0,
-        errors: ['Unable to read this file. Please upload a CSV exported from the sample template.'],
+        errors: [],
+      })
+    } catch {
+      setUploadImportResult({
+        status: 'analyzing',
+        fileName: file.name,
+        extension,
+        readError: true,
+        questions: [],
+        rowsCount: 0,
+        errors: [],
       })
     }
   }
@@ -1796,8 +2016,169 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       questions: [],
       errors: [],
     })
+    setUploadWizard((current) => ({
+      ...current,
+      status: 'complete',
+      generatedCount: nextQuestions.length,
+      remainingSeconds: 0,
+    }))
     setActiveQuestionTab('uploaded')
-    onAlert?.({ tone: 'success', message: `${nextQuestions.length} uploaded questions added to My Questions flow.` })
+    onAlert?.({ tone: 'success', message: `${nextQuestions.length} uploaded questions generated.` })
+  }
+
+  const saveGeneratedUploadQuestionsForLater = () => {
+    const nextQuestions = uploadImportResult?.questions ?? []
+    if (!nextQuestions.length || typeof window === 'undefined') return
+
+    const existingUploadedQuestions = readUploadedQuestionBankQuestions()
+    const mergedUploadedQuestions = [...existingUploadedQuestions, ...nextQuestions]
+    window.localStorage.setItem(QUESTION_BANK_UPLOADED_KEY, JSON.stringify(mergedUploadedQuestions))
+    window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+
+    setQuestions((current) => {
+      const existingIds = new Set(current.map((item) => item.id))
+      return [
+        ...current,
+        ...nextQuestions.filter((question) => !existingIds.has(question.id)),
+      ]
+    })
+    setUploadedQuestionCount(mergedUploadedQuestions.filter((question) => (
+      hasQuestionContent(question)
+      && (question?.source === 'Excel Upload' || Boolean(question?.uploadBatchId))
+    )).length)
+    setUploadImportResult(null)
+    setUploadWizard({
+      isOpen: false,
+      status: 'idle',
+      fileName: '',
+      generatedCount: 0,
+      totalSeconds: 0,
+      remainingSeconds: 0,
+      startedAt: 0,
+    })
+    setActiveQuestionTab('uploaded')
+    onAlert?.({ tone: 'secondary', message: `${nextQuestions.length} uploaded questions saved for approval later.` })
+  }
+
+  const openGeneratedUploadApprovalModal = () => {
+    const generatedQuestions = uploadImportResult?.questions ?? []
+    if (!generatedQuestions.length) return
+    setPendingUploadApprovalQuestions(generatedQuestions)
+    setApprovalNote('')
+    setIsApprovalModalOpen(true)
+  }
+
+  const confirmGeneratedUploadQuestionsToApproval = () => {
+    const generatedQuestions = pendingUploadApprovalQuestions
+    if (!generatedQuestions.length || typeof window === 'undefined') return
+
+    const approvalId = `question-bank-upload-${Date.now()}`
+    const sentQuestions = generatedQuestions.map((question) => ({
+      ...question,
+      status: 'Sent to Approval',
+      questionBankStatus: undefined,
+      questionBankSentAt: undefined,
+    }))
+    const yearValues = [...new Set(sentQuestions.map((item) => item.year).filter(Boolean))]
+    const subjectValues = [...new Set(sentQuestions.map((item) => item.subject).filter(Boolean))]
+    const questionTypeSummary = sentQuestions.reduce((summary, question) => ({
+      ...summary,
+      [getQuestionTypeMeta(question.type).shortLabel]: (summary[getQuestionTypeMeta(question.type).shortLabel] ?? 0) + 1,
+    }), {})
+    const questionTypeSummaryText = Object.entries(questionTypeSummary)
+      .map(([type, count]) => `${type}: ${count}`)
+      .join(', ')
+
+    onSendToApproval?.({
+      activityId: approvalId,
+      activityName: `Question Bank Upload - ${sentQuestions.length} Questions`,
+      activityType: 'Question Bank',
+      approvalStatus: 'Pending Approval',
+      status: 'Pending Approval',
+      totalStudents: sentQuestions.length,
+      totalQuestions: sentQuestions.length,
+      questionTypeSummary,
+      questionTypeSummaryText,
+      questionRevisionStatus: 'Created',
+      questionChangeStatus: 'Created',
+      questionEditCount: 0,
+      year: yearValues.length === 1 ? yearValues[0] : yearValues.length ? `${yearValues.length} years` : 'Question Bank',
+      sgt: subjectValues.length === 1 ? subjectValues[0] : subjectValues.length ? `${subjectValues.length} subjects` : 'Questions',
+      facultyName: selectedApprovalReviewer.facultyName,
+      employeeId: selectedApprovalReviewer.employeeId,
+      designation: selectedApprovalReviewer.designation,
+      note: approvalNote,
+      questionRows: sentQuestions.map((question, index) => ({
+        id: question.id,
+        questionNumber: index + 1,
+        title: getQuestionPreview(question),
+        authorName: getQuestionAuthorName(question),
+        type: question.type,
+        year: question.year,
+        subject: question.subject,
+        topics: question.topics,
+        competencies: question.competencies,
+        isCritical: question.isCritical,
+        revisionStatus: question.revisionStatus || 'Created',
+        editCount: question.editCount ?? question.revisionCount ?? 0,
+        marks: question.marks,
+        questionCategory: question.questionCategory,
+        cognitiveLevel: question.cognitiveLevel,
+        thinkingLevel: question.thinkingLevel,
+        difficultyLevel: question.difficultyLevel,
+        cognitiveFunction: question.cognitiveFunction,
+        skillFocus: question.skillFocus,
+        organSystem: question.organSystem,
+        organSubSystems: question.organSubSystems,
+        diseaseTags: question.diseaseTags,
+        keyConcepts: question.keyConcepts,
+        images: question.images,
+        questionText: question.questionText,
+        options: question.options,
+        correctOptionIds: question.correctOptionIds,
+        trueFalseAnswer: question.trueFalseAnswer,
+        fillBlankAnswers: question.fillBlankAnswers,
+        descriptiveGuide: question.descriptiveGuide,
+        descriptiveSections: question.descriptiveSections,
+        answerKey: question.answerKey,
+      })),
+    })
+
+    const existingUploadedQuestions = readUploadedQuestionBankQuestions()
+    const sentQuestionById = new Map(sentQuestions.map((question) => [question.id, question]))
+    const mergedUploadedQuestions = [
+      ...existingUploadedQuestions.map((question) => sentQuestionById.get(question.id) ?? question),
+      ...sentQuestions.filter((question) => !existingUploadedQuestions.some((item) => item?.id === question.id)),
+    ]
+    window.localStorage.setItem(QUESTION_BANK_UPLOADED_KEY, JSON.stringify(mergedUploadedQuestions))
+    window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+
+    setQuestions((current) => {
+      const existingIds = new Set(current.map((item) => item.id))
+      return [
+        ...current.map((question) => sentQuestionById.get(question.id) ?? question),
+        ...sentQuestions.filter((question) => !existingIds.has(question.id)),
+      ]
+    })
+    setUploadedQuestionCount(mergedUploadedQuestions.filter((question) => (
+      hasQuestionContent(question)
+      && (question?.source === 'Excel Upload' || Boolean(question?.uploadBatchId))
+    )).length)
+    setUploadImportResult(null)
+    setPendingUploadApprovalQuestions([])
+    setIsApprovalModalOpen(false)
+    setApprovalNote('')
+    setUploadWizard({
+      isOpen: false,
+      status: 'idle',
+      fileName: '',
+      generatedCount: 0,
+      totalSeconds: 0,
+      remainingSeconds: 0,
+      startedAt: 0,
+    })
+    setActiveQuestionTab('sent')
+    onAlert?.({ tone: 'success', message: `${sentQuestions.length} uploaded questions sent to approval.` })
   }
 
   const openEditQuestionFlow = (questionId) => {
@@ -2253,7 +2634,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
   const startApprovalSelection = () => {
     if (!hasApprovableQuestions) return
-    setActiveQuestionTab('created')
+    setActiveQuestionTab(activeQuestionTab === 'uploaded' ? 'uploaded' : 'created')
     setIsApprovalSelectMode(true)
     setApprovalSelectedIds(approvableQuestionIds)
   }
@@ -2285,7 +2666,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setIsApprovalModalOpen(true)
   }
 
+  const closeApprovalModal = () => {
+    setIsApprovalModalOpen(false)
+    setPendingUploadApprovalQuestions([])
+  }
+
   const confirmSendSelectedQuestionsToApproval = () => {
+    if (pendingUploadApprovalQuestions.length) {
+      confirmGeneratedUploadQuestionsToApproval()
+      return
+    }
     if (!approvalSelectedIds.length) return
     const selectedIds = new Set(approvalSelectedIds)
     const selectedQuestions = questions.filter((item) => selectedIds.has(item.id))
@@ -2364,16 +2754,17 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       })),
     })
 
-    setQuestions((current) => current.map((item) => (
-      selectedIds.has(item.id)
-        ? {
-          ...item,
-          status: 'Sent to Approval',
-          questionBankStatus: undefined,
-          questionBankSentAt: undefined,
-        }
-        : item
-    )))
+    const sentQuestions = selectedQuestions.map((question) => ({
+      ...question,
+      status: 'Sent to Approval',
+      questionBankStatus: undefined,
+      questionBankSentAt: undefined,
+    }))
+    setQuestions((current) => current.map((item) => {
+      const sentQuestion = sentQuestions.find((question) => question.id === item.id)
+      return sentQuestion ?? item
+    }))
+    sentQuestions.filter(isExcelUploadedQuestion).forEach(replaceQuestionInStorage)
     setActiveQuestionTab('sent')
     setSelectedQuestionId((currentId) => {
       if (!selectedIds.has(currentId)) return currentId
@@ -3001,7 +3392,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                     <p>Download a template, complete it in Excel, then upload the CSV for validation.</p>
                   </div>
                 </div>
+              </div>
 
+              <div className="question-bank-upload-import-actions">
                 <div className="question-bank-upload-template-grid" aria-label="Question upload templates">
                   <span className="question-bank-upload-template-label">Download :</span>
                   <button
@@ -3044,63 +3437,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                     ) : null}
                   </span>
                 </div>
+                <button type="button" className="question-bank-upload-question-btn" onClick={openUploadWizard}>
+                  <Upload size={15} strokeWidth={2.4} />
+                  Upload Question
+                </button>
               </div>
-
-              <div className="question-bank-upload-import-actions">
-                <label className="question-bank-upload-file-btn">
-                  <input
-                    type="file"
-                    accept=".csv,.txt"
-                    onChange={handleUploadQuestionFile}
-                  />
-                  <span className="question-bank-upload-file-icon">
-                    <Upload size={18} strokeWidth={2.4} />
-                  </span>
-                  <span>
-                    <strong>Choose CSV file</strong>
-                    <small>Only CSV exported from Excel templates</small>
-                  </span>
-                </label>
-                {uploadImportResult?.fileName ? (
-                  <span className="question-bank-upload-file-name">{uploadImportResult.fileName}</span>
-                ) : null}
-              </div>
-
-              {uploadImportResult ? (
-                <div className={`question-bank-upload-validation is-${uploadImportResult.status}`}>
-                  <strong>
-                    {uploadImportResult.status === 'ready'
-                      ? `${uploadImportResult.questions.length} questions verified`
-                      : uploadImportResult.status === 'imported'
-                        ? 'Upload completed'
-                        : 'Upload needs correction'}
-                  </strong>
-                  {uploadImportResult.status === 'ready' ? (
-                    <>
-                      <p>All required fields are present. Import now to create full question cards.</p>
-                      <button
-                        type="button"
-                        className="question-bank-primary-btn"
-                        onClick={importVerifiedUploadQuestions}
-                      >
-                        <CheckCircle2 size={14} strokeWidth={2.2} />
-                        Import Questions
-                      </button>
-                    </>
-                  ) : uploadImportResult.status === 'imported' ? (
-                    <p>Questions are available in Upload Ques and My Questions for approval flow.</p>
-                  ) : (
-                    <>
-                      <p>Fix these rows in Excel, save as CSV, and upload again.</p>
-                      <ul>
-                        {(uploadImportResult.errors ?? []).slice(0, 8).map((error) => (
-                          <li key={error}>{error}</li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                </div>
-              ) : null}
             </section>
           ) : null}
 
@@ -4071,7 +4412,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                               {approvedQuestionBankSelectedIds.length} selected
                             </span>
                           </span>
-                        ) : isApprovalSelectMode && activeQuestionTab === 'created' ? (
+                        ) : isApprovalSelectMode && ['created', 'uploaded'].includes(activeQuestionTab) ? (
                           <span className="question-bank-approval-selection-head">
                             <button
                               type="button"
@@ -4102,7 +4443,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                           </span>
                         )}
                       </div>
-                      {activeQuestionTab === 'created' || activeQuestionTab === 'approved' ? (
+                      {['created', 'uploaded', 'approved'].includes(activeQuestionTab) ? (
                         <div className="question-bank-created-panel-actions">
                           {activeQuestionTab === 'approved' ? (
                             <>
@@ -4311,7 +4652,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                       <span className="question-bank-badge blue">{question.cognitiveLevel}</span>
                                     ) : null}
                                     {shouldShowQuestionDetails && question.thinkingLevel ? (
-                                      <span className="question-bank-badge lilac">{question.thinkingLevel}</span>
+                                      <span className="question-bank-badge lilac">{getThinkingLevelLabel(question.thinkingLevel)}</span>
                                     ) : null}
                                     {shouldShowQuestionDetails && question.difficultyLevel ? (
                                       <span className="question-bank-badge soft">{question.difficultyLevel}</span>
@@ -4625,6 +4966,164 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         </main>
       </div>
 
+      {uploadWizard.isOpen && typeof document !== 'undefined' ? createPortal((
+        <div className="question-bank-upload-wizard" role="dialog" aria-modal="true" aria-labelledby="question-bank-upload-wizard-title">
+          <div className="question-bank-upload-wizard-backdrop" />
+          <div className="question-bank-upload-wizard-card">
+            <div className="question-bank-upload-wizard-head">
+              <span className="question-bank-upload-import-icon">
+                <Upload size={18} strokeWidth={2.3} />
+              </span>
+              <div>
+                <span className="question-bank-upload-wizard-eyebrow">Question Bank Upload</span>
+                <h2 id="question-bank-upload-wizard-title">Upload question file</h2>
+                <p>Analyze the Excel CSV template, generate questions, then add them to Upload Ques.</p>
+              </div>
+              {!isUploadWizardLocked ? (
+                <button
+                  type="button"
+                  className="question-bank-upload-wizard-close"
+                  onClick={closeUploadWizard}
+                  aria-label="Close upload wizard"
+                >
+                  <X size={16} strokeWidth={2.4} />
+                </button>
+              ) : <span />}
+            </div>
+
+            <div className="question-bank-upload-wizard-steps" aria-label="Upload progress">
+              {['Upload', 'Analyze', 'Generate', 'Complete'].map((stepLabel, stepIndex) => {
+                const currentStep = uploadWizard.status === 'idle'
+                  ? 0
+                  : uploadWizard.status === 'analyzing' || uploadWizard.status === 'error'
+                    ? 1
+                    : uploadWizard.status === 'generating'
+                      ? 2
+                      : 3
+                return (
+                  <span key={stepLabel} className={stepIndex <= currentStep ? 'is-active' : ''}>
+                    <b>{stepIndex + 1}</b>
+                    <em>{stepLabel}</em>
+                  </span>
+                )
+              })}
+            </div>
+
+            {uploadWizard.status === 'idle' ? (
+              <label className="question-bank-upload-wizard-drop">
+                <input type="file" accept=".csv,.txt" onChange={handleUploadQuestionFile} />
+                <span className="question-bank-upload-wizard-drop-icon">
+                  <Upload size={24} strokeWidth={2.3} />
+                </span>
+                <span className="question-bank-upload-wizard-drop-copy">
+                  <strong>Choose Excel CSV file</strong>
+                  <span>Use the sample templates and save from Excel as CSV.</span>
+                </span>
+                <span className="question-bank-upload-wizard-drop-action">Browse file</span>
+              </label>
+            ) : null}
+
+            {uploadWizard.status === 'analyzing' ? (
+              <div className="question-bank-upload-wizard-state">
+                <LoaderCircle size={24} strokeWidth={2.3} className="question-bank-spin-icon" />
+                <strong>Analyzing file</strong>
+                <span>{uploadWizard.fileName || 'Checking rows and required fields...'}</span>
+                <span className="question-bank-upload-generation-progress">
+                  <span style={{ width: `${Math.round(((EXCEL_UPLOAD_ANALYZE_SECONDS - uploadWizard.remainingSeconds) / EXCEL_UPLOAD_ANALYZE_SECONDS) * 100)}%` }} />
+                </span>
+                <em>{formatUploadWizardTime(uploadWizard.remainingSeconds)} remaining</em>
+              </div>
+            ) : null}
+
+            {uploadWizard.status === 'error' ? (
+              <div className="question-bank-upload-validation is-error">
+                <strong>Upload needs correction</strong>
+                <p>Fix these rows in Excel, save as CSV, and upload again.</p>
+                <div className="question-bank-upload-error-table-wrap">
+                  <table className="question-bank-upload-error-table">
+                    <thead>
+                      <tr>
+                        <th>Row</th>
+                        <th>Field</th>
+                        <th>Issue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uploadWizardErrorRows.map((errorRow) => (
+                        <tr key={errorRow.id}>
+                          <td>{errorRow.row}</td>
+                          <td>{errorRow.field}</td>
+                          <td>{errorRow.message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+
+            {uploadWizard.status === 'generating' ? (
+              <div className="question-bank-upload-generation-panel">
+                <div>
+                  <strong>Generating questions</strong>
+                  <span>{uploadWizard.generatedCount} of {uploadWizardQuestionCount} generated</span>
+                </div>
+                <span className="question-bank-upload-generation-progress">
+                  <span style={{ width: `${uploadWizardProgress}%` }} />
+                </span>
+                <div className="question-bank-upload-generation-meta">
+                  <span>
+                    <strong>{formatUploadWizardTime(uploadWizard.remainingSeconds)}</strong>
+                    <em>Remaining time</em>
+                  </span>
+                  <span>
+                    <strong>{formatUploadWizardTime(uploadWizard.totalSeconds)}</strong>
+                    <em>Total estimated</em>
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            {uploadWizard.status === 'complete' ? (
+              <div className="question-bank-upload-wizard-state is-complete">
+                <CheckCircle2 size={28} strokeWidth={2.3} />
+                <strong>Question generation completed</strong>
+                <span>{uploadWizard.generatedCount} questions are ready for approval.</span>
+              </div>
+            ) : null}
+
+            <div className="question-bank-upload-wizard-actions">
+              {uploadWizard.status === 'idle' || uploadWizard.status === 'error' ? (
+                <>
+                  <button type="button" className="question-bank-secondary-btn" onClick={closeUploadWizard}>
+                    Close
+                  </button>
+                  <button type="button" className="question-bank-secondary-btn" onClick={resetUploadWizard}>
+                    Reset Upload
+                  </button>
+                </>
+              ) : null}
+              {uploadWizard.status === 'generating' ? (
+                <button type="button" className="question-bank-primary-btn danger" onClick={stopUploadGeneration}>
+                  Stop Generation
+                </button>
+              ) : null}
+              {uploadWizard.status === 'complete' ? (
+                <>
+                  <button type="button" className="question-bank-secondary-btn" onClick={saveGeneratedUploadQuestionsForLater}>
+                    Approval Later
+                  </button>
+                  <button type="button" className="question-bank-primary-btn" onClick={openGeneratedUploadApprovalModal}>
+                    <Send size={15} strokeWidth={2.2} />
+                    Sent to Approval
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ), document.body) : null}
+
       {selectedQuestion && activeQuestionTab === 'create' ? (
         <div className={`question-bank-progress-widget ${isProgressWidgetOpen ? 'is-open' : ''}`}>
           {isProgressWidgetOpen ? (
@@ -4717,23 +5216,23 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       ) : null}
 
       {isApprovalModalOpen && typeof document !== 'undefined' ? createPortal((
-        <div className="question-bank-approval-modal" role="dialog" aria-modal="true" aria-labelledby="question-bank-approval-title">
+        <div className={`question-bank-approval-modal ${pendingUploadApprovalQuestions.length ? 'is-upload-approval' : ''}`} role="dialog" aria-modal="true" aria-labelledby="question-bank-approval-title">
           <button
             type="button"
             className="question-bank-approval-modal-backdrop"
-            onClick={() => setIsApprovalModalOpen(false)}
+            onClick={closeApprovalModal}
             aria-label="Close send to approval"
           />
           <div className="question-bank-approval-modal-card">
             <div className="question-bank-approval-modal-head">
               <div>
                 <h2 id="question-bank-approval-title">Send to Approval</h2>
-                <p>{approvalSelectedIds.length} selected question{approvalSelectedIds.length === 1 ? '' : 's'} will be sent for review</p>
+                <p>{approvalModalQuestionCount} selected question{approvalModalQuestionCount === 1 ? '' : 's'} will be sent for review</p>
               </div>
               <button
                 type="button"
                 className="question-bank-icon-btn"
-                onClick={() => setIsApprovalModalOpen(false)}
+                onClick={closeApprovalModal}
                 aria-label="Close send to approval"
               >
                 <X size={17} strokeWidth={2.2} />
@@ -4800,7 +5299,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             </div>
 
             <div className="question-bank-approval-modal-actions">
-              <button type="button" className="question-bank-secondary-btn" onClick={() => setIsApprovalModalOpen(false)}>
+              <button type="button" className="question-bank-secondary-btn" onClick={closeApprovalModal}>
                 Cancel
               </button>
               <button type="button" className="question-bank-primary-btn" onClick={confirmSendSelectedQuestionsToApproval}>

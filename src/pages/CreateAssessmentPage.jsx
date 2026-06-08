@@ -69,6 +69,38 @@ const SUBJECT_DIRECTORY = {
 }
 
 const YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year', 'Fourth Year']
+const CREATE_ASSESSMENT_SELECT_OPTIONS = {
+  colleges: [
+    'Sri Ramachandra Institute of Higher Education and Research',
+    'Saveetha Institute of Medical and Technical Sciences',
+    'SRM Medical College Hospital and Research Centre',
+    'Sri Manakula Vinayagar Medical College and Hospital',
+  ],
+  examCategories: [
+    'Internal Assessment',
+    'University Exam',
+    'Formative Assessment',
+    'Summative Assessment',
+    'Theory Exam',
+    'Practical Exam',
+    'Viva Voce',
+    'Mock Test',
+    'Entrance/Screening Test',
+  ],
+  courses: ['India MBBS (NMC Syllabus)'],
+  years: YEAR_OPTIONS,
+  academicYears: ['2024 - 2025', '2025 - 2026', '2026 - 2027', '2027 - 2028'],
+}
+const CREATE_ASSESSMENT_DEFAULT_SETUP = {
+  collegeName: '',
+  logoName: '',
+  logoPreview: '',
+  assessmentName: '',
+  academicYear: '2025 - 2026',
+  examCategory: '',
+  course: '',
+  year: '',
+}
 const QUESTION_CATEGORY_OPTIONS = ['Direct', 'Reasoning', 'Critical Thinking', 'Application']
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
@@ -154,6 +186,26 @@ const createOption = (label = '') => ({
   label,
   distractorErrors: [],
 })
+
+const toCapitalizedCase = (value) =>
+  value.replace(/[A-Za-z]+/g, (word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+
+function AssessmentSetupSelectField({ label, value, options, placeholder, onChange, className = '' }) {
+  return (
+    <label className={`assessment-create-field ${className}`.trim()}>
+      <span>{label}</span>
+      <span className="assessment-create-select-wrap">
+        <select value={value} onChange={(event) => onChange(event.target.value)}>
+          <option value="">{placeholder || label}</option>
+          {options.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+        <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
+      </span>
+    </label>
+  )
+}
 
 const createDescriptiveInsideQuestion = () => ({
   id: `assessment-descriptive-inside-${Date.now()}-${descriptiveSequence++}`,
@@ -496,7 +548,14 @@ function OptionalTagTextInput({ label, values, onChange }) {
 }
 
 export default function CreateAssessmentPage({ onNavigate, theme = 'light', onToggleTheme }) {
-  const [setup] = useState(readCreateAssessmentSetup)
+  const [setup, setSetup] = useState(() => ({
+    ...CREATE_ASSESSMENT_DEFAULT_SETUP,
+    ...readCreateAssessmentSetup(),
+  }))
+  const [setupDraft, setSetupDraft] = useState(() => ({
+    ...CREATE_ASSESSMENT_DEFAULT_SETUP,
+    ...readCreateAssessmentSetup(),
+  }))
   const [question, setQuestion] = useState(null)
   const assessmentQuestionsStorageKey = getAssessmentQuestionsStorageKey(setup)
   const assessmentSectionTitlesStorageKey = getAssessmentSectionTitlesStorageKey(setup)
@@ -550,6 +609,52 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         : activeMappingPicker === 'competencies'
           ? question?.competencies ?? []
           : []
+
+  const updateSetupDraft = (field, value) => {
+    setSetupDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  const clearSetupDraft = () => {
+    setSetupDraft({
+      ...CREATE_ASSESSMENT_DEFAULT_SETUP,
+      assessmentId: setup.assessmentId,
+      createdAt: setup.createdAt,
+    })
+  }
+
+  const uploadSetupLogo = (file) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      setSetupDraft((current) => ({
+        ...current,
+        logoName: file.name,
+        logoPreview: String(reader.result ?? ''),
+      }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeSetupLogo = () => {
+    setSetupDraft((current) => ({
+      ...current,
+      logoName: '',
+      logoPreview: '',
+    }))
+  }
+
+  const saveSetupConfiguration = () => {
+    const nextSetup = {
+      ...setupDraft,
+      assessmentId: setupDraft.assessmentId || setup.assessmentId || `assessment-${Date.now()}`,
+      createdAt: setupDraft.createdAt || setup.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
+    setSetup(nextSetup)
+    setSetupDraft(nextSetup)
+    setSaveStatus('Configuration saved')
+  }
 
   const hasQuestionText = Boolean(getRichTextPreview(question?.questionText ?? ''))
   const isMcqQuestion = question?.type === 'MCQ'
@@ -1644,20 +1749,98 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             <div className="create-assessment-tab-panel-head">
               <strong>Configuration</strong>
             </div>
-            <div className="create-assessment-configuration-grid">
-              {[
-                ['College', setup.collegeName],
-                ['Academic Year', setup.academicYear],
-                ['Exam Category', setup.examCategory],
-                ['Course', setup.course],
-                ['Year', setup.year],
-                ['Assessment', setup.assessmentName || 'Untitled Assessment'],
-              ].map(([label, value]) => (
-                <span key={label} className="create-assessment-configuration-item">
-                  <small>{label}</small>
-                  <strong>{value || 'Not configured'}</strong>
-                </span>
-              ))}
+            <div className="create-assessment-configuration-form">
+              <div className="assessment-create-setup-top">
+                <label
+                  className="assessment-create-field assessment-create-upload"
+                  data-tooltip="Upload logo in PNG, JPG, or SVG format. Square or 1:1 aspect ratio recommended. Max 2MB."
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => uploadSetupLogo(event.target.files?.[0])}
+                  />
+                  <strong>
+                    {setupDraft.logoPreview ? (
+                      <img src={setupDraft.logoPreview} alt={setupDraft.logoName || 'Uploaded logo'} />
+                    ) : (
+                      <ImagePlus size={30} strokeWidth={2.1} />
+                    )}
+                  </strong>
+                  {setupDraft.logoPreview ? (
+                    <button type="button" onClick={removeSetupLogo} aria-label="Remove logo">
+                      <Trash2 size={13} strokeWidth={2.2} />
+                    </button>
+                  ) : null}
+                </label>
+
+                <AssessmentSetupSelectField
+                  className="assessment-create-college-field"
+                  label="Select College Name"
+                  value={setupDraft.collegeName}
+                  options={CREATE_ASSESSMENT_SELECT_OPTIONS.colleges}
+                  placeholder="Select College Name"
+                  onChange={(value) => updateSetupDraft('collegeName', value)}
+                />
+
+                <AssessmentSetupSelectField
+                  className="assessment-create-year-field"
+                  label="Academic Year"
+                  value={setupDraft.academicYear}
+                  options={CREATE_ASSESSMENT_SELECT_OPTIONS.academicYears}
+                  placeholder="Academic Year"
+                  onChange={(value) => updateSetupDraft('academicYear', value)}
+                />
+
+                <label className="assessment-create-field assessment-create-name-field">
+                  <span>Assessment Name</span>
+                  <input
+                    type="text"
+                    value={setupDraft.assessmentName}
+                    placeholder="Assessment Name"
+                    onChange={(event) => updateSetupDraft('assessmentName', toCapitalizedCase(event.target.value))}
+                  />
+                </label>
+
+                <div className="assessment-create-side-fields">
+                  <AssessmentSetupSelectField
+                    label="Exam Category"
+                    value={setupDraft.examCategory}
+                    options={CREATE_ASSESSMENT_SELECT_OPTIONS.examCategories}
+                    placeholder="Exam Category"
+                    onChange={(value) => updateSetupDraft('examCategory', value)}
+                  />
+
+                  <AssessmentSetupSelectField
+                    label="Select Course"
+                    value={setupDraft.course}
+                    options={CREATE_ASSESSMENT_SELECT_OPTIONS.courses}
+                    placeholder="Select Course"
+                    onChange={(value) => updateSetupDraft('course', value)}
+                  />
+
+                  <AssessmentSetupSelectField
+                    label="Select Year"
+                    value={setupDraft.year}
+                    options={CREATE_ASSESSMENT_SELECT_OPTIONS.years}
+                    placeholder="Select Year"
+                    onChange={(value) => updateSetupDraft('year', value)}
+                  />
+                </div>
+              </div>
+
+              <div className="assessment-create-setup-divider" />
+
+              <div className="assessment-create-form-actions">
+                <button type="button" className="is-clear" onClick={clearSetupDraft}>
+                  <RotateCcw size={15} strokeWidth={2.2} />
+                  Clear
+                </button>
+                <button type="button" className="is-primary" onClick={saveSetupConfiguration}>
+                  <Save size={15} strokeWidth={2.2} />
+                  Save Configuration
+                </button>
+              </div>
             </div>
           </section>
         ) : null}

@@ -443,6 +443,13 @@ const getThinkingBadgeClassName = (value) => {
   return ''
 }
 
+const getThinkingLevelLabel = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (normalized === 'hot') return 'HoT'
+  if (normalized === 'lot') return 'LoT'
+  return value
+}
+
 const hasFilledOptions = (question) => (
   Array.isArray(question?.options)
   && question.options.some((option) => stripHtml(option?.label ?? option?.content).trim())
@@ -786,7 +793,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     topics: getUniqueValues(metricFilteredQuestions, (question) => question.topics ?? []),
     competencies: getUniqueValues(metricFilteredQuestions, (question) => question.competencies ?? []),
     categories: getUniqueValues(metricFilteredQuestions, (question) => question.questionCategory),
-    thinkingLevels: getUniqueValues(metricFilteredQuestions, (question) => question.thinkingLevel),
+    thinkingLevels: getUniqueValues(metricFilteredQuestions, (question) => getThinkingLevelLabel(question.thinkingLevel)),
     difficultyLevels: getUniqueValues(metricFilteredQuestions, (question) => question.difficultyLevel),
     cognitiveLevels: getUniqueValues(metricFilteredQuestions, (question) => question.cognitiveLevel),
     cognitiveFunctions: getUniqueValues(metricFilteredQuestions, (question) => question.cognitiveFunction),
@@ -805,7 +812,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     topics: getValueCounts(metricFilteredQuestions, (question) => question.topics ?? []),
     competencies: getValueCounts(metricFilteredQuestions, (question) => question.competencies ?? []),
     categories: getValueCounts(metricFilteredQuestions, (question) => question.questionCategory),
-    thinkingLevels: getValueCounts(metricFilteredQuestions, (question) => question.thinkingLevel),
+    thinkingLevels: getValueCounts(metricFilteredQuestions, (question) => getThinkingLevelLabel(question.thinkingLevel)),
     difficultyLevels: getValueCounts(metricFilteredQuestions, (question) => question.difficultyLevel),
     cognitiveLevels: getValueCounts(metricFilteredQuestions, (question) => question.cognitiveLevel),
     cognitiveFunctions: getValueCounts(metricFilteredQuestions, (question) => question.cognitiveFunction),
@@ -832,7 +839,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     competencies: getValueCounts(landingQuestions, (question) => question.competencies ?? []),
     categories: getValueCounts(landingQuestions, (question) => question.questionCategory),
     cognitiveLevels: getValueCounts(landingQuestions, (question) => question.cognitiveLevel),
-    thinkingLevels: getValueCounts(landingQuestions, (question) => question.thinkingLevel),
+    thinkingLevels: getValueCounts(landingQuestions, (question) => getThinkingLevelLabel(question.thinkingLevel)),
     difficultyLevels: getValueCounts(landingQuestions, (question) => question.difficultyLevel),
   }), [landingQuestions])
 
@@ -899,7 +906,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       if (!hasFilterMatch(filters.topics, question.topics ?? [])) return false
       if (!hasFilterMatch(filters.competencies, question.competencies ?? [])) return false
       if (!hasFilterMatch(filters.categories, question.questionCategory)) return false
-      if (!hasFilterMatch(filters.thinkingLevels, question.thinkingLevel)) return false
+      if (!hasFilterMatch(filters.thinkingLevels, getThinkingLevelLabel(question.thinkingLevel))) return false
       if (!hasFilterMatch(filters.difficultyLevels, question.difficultyLevel)) return false
       if (!hasFilterMatch(filters.cognitiveLevels, question.cognitiveLevel)) return false
       if (!hasFilterMatch(filters.cognitiveFunctions, question.cognitiveFunction)) return false
@@ -1461,7 +1468,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
         </span>
       ) : null}
       {question.difficultyLevel ? <span className="assessment-page-table-value-pill assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
-      {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{question.thinkingLevel}</span> : null}
+      {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
     </>
   )
 
@@ -2258,7 +2265,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   <div className="assessment-page-question-head">
                     <span className="assessment-page-question-type">{getQuestionTypeLabel(question)}</span>
                     {renderSourceBadge(question, 'assessment-page-question-author')}
-                    {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{question.thinkingLevel}</span> : null}
+                    {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
                     {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
                     {isCardOpen && tagGroups.length ? (
                       <span className="assessment-page-question-tags-wrap">
