@@ -3530,15 +3530,35 @@
 }
 
 .create-assessment-workspace .question-bank-descriptive-row {
-  grid-template-columns: 28px minmax(0, 1fr) 78px 34px;
-  gap: 10px;
+  grid-template-columns: 28px minmax(0, 1fr) 112px 58px 34px;
+  gap: 8px;
+  align-items: center;
 }
 
 .create-assessment-workspace .question-bank-descriptive-row.is-child {
-  grid-template-columns: 28px minmax(0, 1fr) 78px 34px;
+  grid-template-columns: 28px minmax(0, 1fr) 112px 58px 34px;
   margin-left: 42px;
   padding-left: 12px;
   border-left: 3px solid #d6f1e9;
+}
+
+.create-assessment-workspace .question-bank-descriptive-text {
+  grid-column: 2;
+}
+
+.create-assessment-workspace .question-bank-descriptive-competency-btn,
+.create-assessment-workspace .question-bank-descriptive-competency-chip {
+  grid-column: 3;
+  width: 100%;
+  min-width: 0;
+}
+
+.create-assessment-workspace .question-bank-descriptive-marks {
+  grid-column: 4;
+}
+
+.create-assessment-workspace .question-bank-descriptive-row .question-bank-descriptive-delete-btn {
+  grid-column: 5;
 }
 
 .create-assessment-workspace .question-bank-descriptive-text .rich-math-editor-surface {
