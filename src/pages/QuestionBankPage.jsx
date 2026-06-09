@@ -80,7 +80,7 @@ const DESCRIPTIVE_QUESTION_TYPES = [
 ]
 const DESCRIPTIVE_QUESTION_TYPE_SET = new Set(['Descriptive Question', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type)])
 const QUESTION_TYPE_OPTIONS = ['MCQ', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type), 'True or False', 'Fill in the Blanks']
-const QUESTION_CATEGORY_OPTIONS = ['Direct', 'Reasoning', 'Critical Thinking', 'Application']
+const QUESTION_CATEGORY_OPTIONS = ['Direct', 'Reasoning', 'Aetcom', 'Application']
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
 const DIFFICULTY_LEVEL_OPTIONS = ['L1', 'L2', 'L3']

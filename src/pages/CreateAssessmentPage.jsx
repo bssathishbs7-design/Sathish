@@ -36,6 +36,7 @@ const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
 const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
+const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-sections'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 
@@ -101,7 +102,7 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   course: '',
   year: '',
 }
-const QUESTION_CATEGORY_OPTIONS = ['Direct', 'Reasoning', 'Critical Thinking', 'Application']
+const QUESTION_CATEGORY_OPTIONS = ['Direct', 'Reasoning', 'Aetcom', 'Application']
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
 const DIFFICULTY_LEVEL_OPTIONS = ['L1', 'L2', 'L3']
@@ -168,9 +169,9 @@ const MULTIPLE_OPTION_MIN_COUNT = 3
 const MULTIPLE_OPTION_MAX_COUNT = 8
 const ROMAN_NUMERALS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']
 const DESCRIPTIVE_QUESTION_TYPES = [
-  { type: 'Desc Long Answer Questions (LAQs)', shortLabel: 'LAQs', menuLabel: 'Descriptive Long (LAQs)' },
-  { type: 'Desc Short Answer Questions (SAQs)', shortLabel: 'SAQs', menuLabel: 'Descriptive Short (SAQs)' },
-  { type: 'Desc Modified Essay Questions (MEQs)', shortLabel: 'MEQs', menuLabel: 'Descriptive Essay (MEQs)' },
+  { type: 'Desc Long Answer Questions (LAQs)', shortLabel: 'LAQs', menuLabel: 'Long Answer Questions (LAQs)' },
+  { type: 'Desc Short Answer Questions (SAQs)', shortLabel: 'SAQs', menuLabel: 'Short Answer Questions (SAQs)' },
+  { type: 'Desc Modified Essay Questions (MEQs)', shortLabel: 'MEQs', menuLabel: 'Modified Essay Questions (MEQs)' },
 ]
 const DESCRIPTIVE_QUESTION_TYPE_SET = new Set(['Descriptive Question', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type)])
 const QUESTION_TYPE_CARDS = [
@@ -211,12 +212,17 @@ const createDescriptiveInsideQuestion = () => ({
   id: `assessment-descriptive-inside-${Date.now()}-${descriptiveSequence++}`,
   questionText: '',
   marks: '0',
+  answerKey: '',
 })
 
 const createDescriptiveSubQuestion = () => ({
   id: `assessment-descriptive-sub-${Date.now()}-${descriptiveSequence++}`,
+  type: 'text',
   questionText: '',
   marks: '0',
+  answerKey: '',
+  options: [createOption(''), createOption(''), createOption(''), createOption('')],
+  correctOptionIds: [],
   children: [],
 })
 
@@ -293,6 +299,10 @@ const getAssessmentSectionOrderStorageKey = (setup = {}) => (
   `${CREATE_ASSESSMENT_SECTION_ORDER_KEY}:${getAssessmentStorageSuffix(setup)}`
 )
 
+const getAssessmentCustomSectionsStorageKey = (setup = {}) => (
+  `${CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY}:${getAssessmentStorageSuffix(setup)}`
+)
+
 const readSavedAssessmentQuestions = (setup = {}) => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(getAssessmentQuestionsStorageKey(setup)) || '[]')
@@ -316,15 +326,36 @@ const readCreateAssessmentSectionTitles = (setup = {}) => {
   }
 }
 
+const isCustomPreviewSectionKey = (key) => String(key ?? '').startsWith('custom-section-')
+
 const readCreateAssessmentSectionOrder = (setup = {}) => {
   const defaultOrder = PREVIEW_SECTION_CONFIG.map((section) => section.key)
   try {
     const parsed = JSON.parse(window.localStorage.getItem(getAssessmentSectionOrderStorageKey(setup)) || '[]')
     if (!Array.isArray(parsed)) return defaultOrder
-    const validKeys = parsed.filter((key) => PREVIEW_SECTION_KEY_SET.has(key))
+    const validKeys = parsed.filter((key) => PREVIEW_SECTION_KEY_SET.has(key) || isCustomPreviewSectionKey(key))
     return [...validKeys, ...defaultOrder.filter((key) => !validKeys.includes(key))]
   } catch {
     return defaultOrder
+  }
+}
+
+const readCreateAssessmentCustomSections = (setup = {}) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(getAssessmentCustomSectionsStorageKey(setup)) || '[]')
+    if (!Array.isArray(parsed)) return []
+
+    return parsed
+      .filter((section) => isCustomPreviewSectionKey(section?.key))
+      .map((section) => ({
+        key: section.key,
+        defaultTitle: section.defaultTitle || 'New Section',
+        title: section.title || section.defaultTitle || 'New Section',
+        type: 'custom',
+        isCustom: true,
+      }))
+  } catch {
+    return []
   }
 }
 
@@ -355,10 +386,20 @@ const getOptionModeConfig = (allowMultiple) => ({
   maxCount: allowMultiple ? MULTIPLE_OPTION_MAX_COUNT : SINGLE_OPTION_MAX_COUNT,
 })
 const getShortCompetencyLabel = (value) => String(value).split(/\s+/)[0] || value
+const getQuestionCategorySectionLabel = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (normalized === 'critical thinking' || normalized === 'critical_thinking' || normalized === 'aetcom') return 'Aetcom'
+  if (normalized === 'application') return 'Application'
+  if (normalized === 'direct') return 'Direct'
+  if (normalized === 'reasoning') return 'Reasoning'
+  return String(value ?? '').trim() || 'Direct'
+}
+const getNmcSaqSectionTitle = (label) => `${label} Answer Questions`
 const getSelectionSummary = (items, emptyLabel, formatter = (value) => value) => (
   items.length ? items.map(formatter).join(', ') : emptyLabel
 )
 const SUMMARY_TYPE_ORDER = ['MCQ', 'SAQs', 'MEQs', 'LAQs']
+const NMC_SAQ_CATEGORY_ORDER = ['Aetcom', 'Application', 'Direct', 'Reasoning']
 const PREVIEW_SECTION_ROMAN_NUMERALS = ['I.', 'II.', 'III.', 'IV.', 'V.', 'VI.', 'VII.', 'VIII.', 'IX.', 'X.']
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', roman: 'I.', defaultTitle: 'Multiple Choice Question', type: 'MCQ' },
@@ -379,7 +420,9 @@ const getSummaryTypeLabel = (type) => {
 }
 
 const getPreviewSectionKey = (item) => (
-  PREVIEW_SECTION_KEY_SET.has(item?.previewSectionKey) ? item.previewSectionKey : getSummaryTypeLabel(item?.type)
+  PREVIEW_SECTION_KEY_SET.has(item?.previewSectionKey) || isCustomPreviewSectionKey(item?.previewSectionKey)
+    ? item.previewSectionKey
+    : getSummaryTypeLabel(item?.type)
 )
 
 const parseMarksValue = (value) => {
@@ -560,9 +603,12 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const assessmentQuestionsStorageKey = getAssessmentQuestionsStorageKey(setup)
   const assessmentSectionTitlesStorageKey = getAssessmentSectionTitlesStorageKey(setup)
   const assessmentSectionOrderStorageKey = getAssessmentSectionOrderStorageKey(setup)
+  const assessmentCustomSectionsStorageKey = getAssessmentCustomSectionsStorageKey(setup)
   const [savedQuestions, setSavedQuestions] = useState(() => readSavedAssessmentQuestions(setup))
   const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
+  const [isActionQuestionTypePickerOpen, setIsActionQuestionTypePickerOpen] = useState(false)
+  const [isActionDescriptiveTypePickerOpen, setIsActionDescriptiveTypePickerOpen] = useState(false)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
@@ -577,6 +623,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [editingPreviewQuestionId, setEditingPreviewQuestionId] = useState(null)
   const [previewSectionTitles, setPreviewSectionTitles] = useState(() => readCreateAssessmentSectionTitles(setup))
   const [previewSectionOrder, setPreviewSectionOrder] = useState(() => readCreateAssessmentSectionOrder(setup))
+  const [customPreviewSections, setCustomPreviewSections] = useState(() => readCreateAssessmentCustomSections(setup))
   const [editingPreviewSectionKey, setEditingPreviewSectionKey] = useState(null)
   const [previewSectionTitleDraft, setPreviewSectionTitleDraft] = useState('')
   const [draggedPreviewQuestionId, setDraggedPreviewQuestionId] = useState(null)
@@ -719,19 +766,28 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       rows: [...rows, ...extraRows],
     }
   }, [savedQuestions, selectedAssessmentQuestionCount])
-  const previewSections = useMemo(() => (
-    previewSectionOrder.map((sectionKey) => PREVIEW_SECTION_CONFIG.find((section) => section.key === sectionKey))
+  const fullPreviewSectionConfig = useMemo(() => ([
+    ...PREVIEW_SECTION_CONFIG,
+    ...customPreviewSections,
+  ]), [customPreviewSections])
+  const previewSections = useMemo(() => {
+    const sectionOrder = [
+      ...previewSectionOrder.filter((sectionKey) => fullPreviewSectionConfig.some((section) => section.key === sectionKey)),
+      ...fullPreviewSectionConfig.map((section) => section.key).filter((sectionKey) => !previewSectionOrder.includes(sectionKey)),
+    ]
+
+    return sectionOrder.map((sectionKey) => fullPreviewSectionConfig.find((section) => section.key === sectionKey))
       .filter(Boolean)
       .map((section) => {
       const questions = previewQuestions.filter((item) => getPreviewSectionKey(item) === section.key)
       return {
         ...section,
-        title: previewSectionTitles[section.key] || section.defaultTitle,
+        title: previewSectionTitles[section.key] || section.title || section.defaultTitle,
         questions,
         marks: questions.reduce((total, item) => total + getQuestionMarksTotal(item), 0),
       }
-    }).filter((section) => section.questions.length)
-  ), [previewQuestions, previewSectionOrder, previewSectionTitles])
+    }).filter((section) => section.questions.length || section.isCustom)
+  }, [fullPreviewSectionConfig, previewQuestions, previewSectionOrder, previewSectionTitles])
   const previewQuestionDisplayNumbers = useMemo(() => {
     let displayNumber = 1
     return previewSections.reduce((numbers, section) => {
@@ -1093,7 +1149,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
 
   const commitPreviewSectionTitle = () => {
     if (!editingPreviewSectionKey) return
-    const fallbackTitle = PREVIEW_SECTION_CONFIG.find((section) => section.key === editingPreviewSectionKey)?.defaultTitle ?? ''
+    const fallbackTitle = fullPreviewSectionConfig.find((section) => section.key === editingPreviewSectionKey)?.defaultTitle ?? 'New Section'
     const nextTitles = {
       ...previewSectionTitles,
       [editingPreviewSectionKey]: previewSectionTitleDraft.trim() || fallbackTitle,
@@ -1102,6 +1158,154 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     setPreviewSectionTitles(nextTitles)
     setEditingPreviewSectionKey(null)
     setPreviewSectionTitleDraft('')
+  }
+
+  const createPreviewSection = () => {
+    const sectionKey = `custom-section-${Date.now()}`
+    const nextSection = {
+      key: sectionKey,
+      defaultTitle: 'New Section',
+      title: 'New Section',
+      type: 'custom',
+      isCustom: true,
+    }
+    const nextCustomSections = [...customPreviewSections, nextSection]
+    const nextOrder = [...previewSectionOrder.filter((key) => key !== sectionKey), sectionKey]
+    const nextTitles = {
+      ...previewSectionTitles,
+      [sectionKey]: nextSection.title,
+    }
+
+    window.localStorage.setItem(assessmentCustomSectionsStorageKey, JSON.stringify(nextCustomSections))
+    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(nextOrder))
+    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(nextTitles))
+    setCustomPreviewSections(nextCustomSections)
+    setPreviewSectionOrder(nextOrder)
+    setPreviewSectionTitles(nextTitles)
+    setEditingPreviewSectionKey(sectionKey)
+    setPreviewSectionTitleDraft(nextSection.title)
+    setSaveStatus('Section created.')
+  }
+
+  const deletePreviewSection = (section) => {
+    if (!section?.isCustom) return
+    const nextCustomSections = customPreviewSections.filter((item) => item.key !== section.key)
+    const nextOrder = previewSectionOrder.filter((key) => key !== section.key)
+    const nextTitles = Object.fromEntries(
+      Object.entries(previewSectionTitles).filter(([key]) => key !== section.key),
+    )
+    const nextQuestions = savedQuestions.map((item) => (
+      getPreviewSectionKey(item) === section.key
+        ? { ...item, previewSectionKey: getSummaryTypeLabel(item.type) }
+        : item
+    ))
+
+    window.localStorage.setItem(assessmentCustomSectionsStorageKey, JSON.stringify(nextCustomSections))
+    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(nextOrder))
+    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(nextTitles))
+    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    setCustomPreviewSections(nextCustomSections)
+    setPreviewSectionOrder(nextOrder)
+    setPreviewSectionTitles(nextTitles)
+    setSavedQuestions(nextQuestions)
+    if (editingPreviewSectionKey === section.key) {
+      setEditingPreviewSectionKey(null)
+      setPreviewSectionTitleDraft('')
+    }
+    setSaveStatus('Section deleted. Questions moved back to their question type section.')
+  }
+
+  const resetPreviewSections = () => {
+    const defaultTitles = PREVIEW_SECTION_CONFIG.reduce((titles, section) => ({
+      ...titles,
+      [section.key]: section.defaultTitle,
+    }), {})
+    const defaultOrder = PREVIEW_SECTION_CONFIG.map((section) => section.key)
+    const nextQuestions = savedQuestions.map((item) => ({
+      ...item,
+      previewSectionKey: getSummaryTypeLabel(item.type),
+    }))
+
+    window.localStorage.setItem(assessmentCustomSectionsStorageKey, JSON.stringify([]))
+    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(defaultOrder))
+    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(defaultTitles))
+    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    setCustomPreviewSections([])
+    setPreviewSectionOrder(defaultOrder)
+    setPreviewSectionTitles(defaultTitles)
+    setSavedQuestions(nextQuestions)
+    setEditingPreviewSectionKey(null)
+    setPreviewSectionTitleDraft('')
+    setDraggedPreviewQuestionId(null)
+    setDraggedPreviewSectionKey(null)
+    setSaveStatus('Preview sections reset.')
+  }
+
+  const createNmcSaqSections = () => {
+    const saqQuestions = savedQuestions.filter((item) => getSummaryTypeLabel(item.type) === 'SAQs')
+    if (!saqQuestions.length) {
+      setSaveStatus('No SAQs available for NMC sections.')
+      return
+    }
+
+    const usedCategoryLabels = Array.from(new Set(saqQuestions.map((item) => (
+      getQuestionCategorySectionLabel(item.questionCategory)
+    ))))
+    const orderedCategoryLabels = [
+      ...NMC_SAQ_CATEGORY_ORDER.filter((label) => usedCategoryLabels.includes(label)),
+      ...usedCategoryLabels.filter((label) => !NMC_SAQ_CATEGORY_ORDER.includes(label)).sort(),
+    ]
+    const nmcSectionKeys = orderedCategoryLabels.map((label) => (
+      `custom-section-nmc-saqs-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+    ))
+    const nmcSectionKeySet = new Set(nmcSectionKeys)
+    const isNmcSectionKey = (key) => String(key ?? '').startsWith('custom-section-nmc-saqs-')
+
+    const nextNmcSections = orderedCategoryLabels.map((label, index) => ({
+      key: nmcSectionKeys[index],
+      defaultTitle: getNmcSaqSectionTitle(label),
+      title: getNmcSaqSectionTitle(label),
+      type: 'custom',
+      isCustom: true,
+      isNmc: true,
+    }))
+    const nextCustomSections = [
+      ...customPreviewSections.filter((section) => !isNmcSectionKey(section.key)),
+      ...nextNmcSections,
+    ]
+    const nextTitles = {
+      ...Object.fromEntries(Object.entries(previewSectionTitles).filter(([key]) => !isNmcSectionKey(key))),
+      ...Object.fromEntries(nextNmcSections.map((section) => [section.key, section.title])),
+    }
+    const cleanOrder = previewSectionOrder.filter((key) => !isNmcSectionKey(key) && !nmcSectionKeySet.has(key))
+    const saqOrderIndex = cleanOrder.indexOf('SAQs')
+    const nextOrder = [...cleanOrder]
+    nextOrder.splice(saqOrderIndex < 0 ? nextOrder.length : saqOrderIndex + 1, 0, ...nmcSectionKeys)
+    const categoryKeyByLabel = Object.fromEntries(orderedCategoryLabels.map((label, index) => [label, nmcSectionKeys[index]]))
+    const nextQuestions = savedQuestions.map((item) => {
+      if (getSummaryTypeLabel(item.type) === 'SAQs') {
+        return {
+          ...item,
+          previewSectionKey: categoryKeyByLabel[getQuestionCategorySectionLabel(item.questionCategory)] ?? 'SAQs',
+        }
+      }
+
+      return isNmcSectionKey(getPreviewSectionKey(item))
+        ? { ...item, previewSectionKey: getSummaryTypeLabel(item.type) }
+        : item
+    })
+
+    window.localStorage.setItem(assessmentCustomSectionsStorageKey, JSON.stringify(nextCustomSections))
+    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(nextOrder))
+    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(nextTitles))
+    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    setCustomPreviewSections(nextCustomSections)
+    setPreviewSectionOrder(nextOrder)
+    setPreviewSectionTitles(nextTitles)
+    setSavedQuestions(nextQuestions)
+    setEditingPreviewSectionKey(null)
+    setPreviewSectionTitleDraft('')
+    setSaveStatus('NMC SAQ sections created.')
   }
 
   const movePreviewQuestionToSection = (itemId, sectionKey) => {
@@ -1185,11 +1389,85 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     }) : createQuestion(setup, type))
     setIsQuestionTypePickerOpen(false)
     setIsDescriptiveTypePickerOpen(false)
+    setIsActionQuestionTypePickerOpen(false)
+    setIsActionDescriptiveTypePickerOpen(false)
     setActiveCreateTab('create')
     setHasSelectedCreateTab(true)
     setSelectedCreateQuestionTypeLabel(nextTypeMeta?.menuLabel ?? nextTypeMeta?.shortLabel ?? 'Create New Question')
     setSaveStatus('')
   }
+
+  const renderQuestionTypePicker = (triggerClassName = 'question-bank-type-select-trigger') => (
+    <div className={`question-bank-type-select-panel ${isQuestionTypePickerOpen ? 'is-open' : ''}`}>
+      <button
+        type="button"
+        className={triggerClassName}
+        onClick={() => {
+          if (isQuestionTypePickerOpen) setIsDescriptiveTypePickerOpen(false)
+          setIsQuestionTypePickerOpen((current) => !current)
+        }}
+        aria-expanded={isQuestionTypePickerOpen}
+      >
+        <span className="question-bank-type-picker-icon">
+          <ListChecks size={15} strokeWidth={2} />
+        </span>
+        <strong>{question ? getQuestionTypeMeta(question.type).shortLabel : selectedQuestionTypeLabel}</strong>
+        <ChevronDown size={16} strokeWidth={2.4} />
+      </button>
+
+      {isQuestionTypePickerOpen ? (
+        <div className="question-bank-type-picker">
+          {QUESTION_TYPE_CARDS.slice(0, 1).map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.type}
+                type="button"
+                className="question-bank-type-picker-item"
+                onClick={() => handleQuestionTypeChange(item.type)}
+              >
+                <span className="question-bank-type-picker-icon">
+                  <Icon size={15} strokeWidth={2} />
+                </span>
+                <span>{item.menuLabel ?? item.shortLabel}</span>
+              </button>
+            )
+          })}
+          <div className={`question-bank-type-picker-group ${isDescriptiveTypePickerOpen ? 'is-open' : ''}`}>
+            <button
+              type="button"
+              className="question-bank-type-picker-item question-bank-type-picker-menu-trigger"
+              onClick={() => setIsDescriptiveTypePickerOpen((current) => !current)}
+              aria-expanded={isDescriptiveTypePickerOpen}
+            >
+              <span className="question-bank-type-picker-icon">
+                <FilePenLine size={15} strokeWidth={2} />
+              </span>
+              <span>Descriptive</span>
+              <ChevronDown size={15} strokeWidth={2.4} />
+            </button>
+            {isDescriptiveTypePickerOpen ? (
+              <div className="question-bank-type-picker-menu">
+                {DESCRIPTIVE_QUESTION_TYPES.map((item) => (
+                  <button
+                    key={item.type}
+                    type="button"
+                    className="question-bank-type-picker-menu-item"
+                    onClick={() => handleQuestionTypeChange(item.type)}
+                  >
+                    <span className="question-bank-type-picker-icon">
+                      <FilePenLine size={15} strokeWidth={2} />
+                    </span>
+                    <span>{item.menuLabel}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
 
   const updateDescriptiveSections = (updater) => {
     updateQuestion((current) => ({
@@ -1395,13 +1673,43 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
           <section className="create-assessment-tab-panel" aria-label="Assessment preview">
             <div className="create-assessment-tab-panel-head">
               <strong>Preview</strong>
+              <span className="create-assessment-preview-section-actions">
+                <button
+                  type="button"
+                  className="create-assessment-preview-reset-section"
+                  onClick={resetPreviewSections}
+                  disabled={!previewQuestionCount && !customPreviewSections.length}
+                >
+                  <RotateCcw size={14} strokeWidth={2.2} />
+                  <span>Reset Sections</span>
+                </button>
+                <button
+                  type="button"
+                  className="create-assessment-preview-nmc-section"
+                  onClick={createNmcSaqSections}
+                  disabled={!savedQuestions.some((item) => getSummaryTypeLabel(item.type) === 'SAQs')}
+                >
+                  <ListChecks size={14} strokeWidth={2.2} />
+                  <span>NMC Section</span>
+                </button>
+                <button
+                  type="button"
+                  className="create-assessment-preview-add-section"
+                  onClick={createPreviewSection}
+                >
+                  <Plus size={14} strokeWidth={2.2} />
+                  <span>Create New Section</span>
+                </button>
+              </span>
             </div>
-            {previewQuestionCount ? (
+            {previewQuestionCount || customPreviewSections.length ? (
               <div className="create-assessment-preview-list">
-                {previewSections.map((section, sectionIndex) => (
+                {previewSections.map((section, sectionIndex) => {
+                  const sectionToneClass = section.isCustom ? 'type-custom' : `type-${section.key.toLowerCase()}`
+                  return (
                   <section
                     key={section.key}
-                    className={`create-assessment-preview-section-group type-${section.key.toLowerCase()} ${draggedPreviewQuestionId || draggedPreviewSectionKey ? 'is-drop-ready' : ''}`}
+                    className={`create-assessment-preview-section-group ${sectionToneClass} ${draggedPreviewQuestionId || draggedPreviewSectionKey ? 'is-drop-ready' : ''}`}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
                       event.preventDefault()
@@ -1456,7 +1764,20 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                           <Pencil size={13} strokeWidth={2.3} />
                         </button>
                       </div>
-                      <span className="create-assessment-preview-section-marks">{formatSummaryNumber(section.marks)} Marks</span>
+                      <span className="create-assessment-preview-section-tools">
+                        <span className="create-assessment-preview-section-marks">{formatSummaryNumber(section.marks)} Marks</span>
+                        {section.isCustom ? (
+                          <button
+                            type="button"
+                            className="create-assessment-preview-section-delete"
+                            onClick={() => deletePreviewSection(section)}
+                            aria-label={`Delete ${section.title} section`}
+                            title="Delete section"
+                          >
+                            <Trash2 size={13} strokeWidth={2.3} />
+                          </button>
+                        ) : null}
+                      </span>
                     </div>
                     <div className="create-assessment-preview-section-body">
                       {section.questions.length ? section.questions.map((item) => {
@@ -1732,7 +2053,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                 )}
                     </div>
                   </section>
-                ))}
+                )})}
                 {draggedPreviewQuestionId ? (
                   <div
                     className="create-assessment-preview-new-section-drop"
@@ -1858,6 +2179,17 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
 
         {activeCreateTab === 'create' ? (
           <>
+        {!question ? (
+          <div className="question-bank-create-strip has-empty-state">
+            {renderQuestionTypePicker()}
+            <div className="question-bank-empty-state question-bank-create-empty-state">
+              <FilePenLine size={24} strokeWidth={2} />
+              <strong>Create your first question</strong>
+              <p>Choose MCQ or Descriptive from Select Question Type.</p>
+            </div>
+          </div>
+        ) : null}
+
         {question ? (
           <section className={`question-bank-author-card ${question.isCritical ? 'is-critical' : ''}`}>
             <div className="question-bank-author-grid">
@@ -1933,7 +2265,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                         <input
                           value={isDescriptiveQuestionType(question.type) ? String(getQuestionMarksTotal(question)) : question.marks}
                           onChange={(event) => updateQuestion({ marks: event.target.value })}
-                          disabled={isDescriptiveQuestionType(question.type)}
+                          disabled={isDescriptiveQuestionType(question.type) && (question.descriptiveSections ?? []).length > 0}
                         />
                       </label>
                     </div>
@@ -2143,11 +2475,10 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                       <div className="question-bank-descriptive-builder-head">
                         <div>
                           <strong>Sub Questions</strong>
+                          {!(question.descriptiveSections ?? []).length ? (
+                            <span>Enter the main question to add sub questions.</span>
+                          ) : null}
                         </div>
-                        <button type="button" className="question-bank-secondary-btn" onClick={addDescriptiveSubQuestion}>
-                          <Plus size={14} strokeWidth={2.2} />
-                          Sub Question
-                        </button>
                       </div>
 
                       {(question.descriptiveSections ?? []).length ? (
@@ -2160,6 +2491,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                   <RichMathEditor
                                     value={section.questionText}
                                     onChange={(nextValue) => updateDescriptiveSubQuestion(section.id, { questionText: nextValue })}
+                                    onFocus={() => updateQuestion({ answerKey: question.answerKey ?? '' })}
                                     placeholder="Enter your question"
                                     minRows={1}
                                     compact
@@ -2213,15 +2545,38 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                                   }}
                                 >
                                   <Plus size={14} strokeWidth={2.2} />
-                                  Inside
+                                  Add Inside Question
                                 </button>
                               </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="question-bank-descriptive-empty">No sub questions added.</div>
+                        null
                       )}
+                      <div className="question-bank-descriptive-builder-foot">
+                        <button
+                          type="button"
+                          className="question-bank-secondary-btn"
+                          onClick={addDescriptiveSubQuestion}
+                          disabled={!getRichTextPreview(question.questionText)}
+                        >
+                          <Plus size={14} strokeWidth={2.2} />
+                          Add Sub Question
+                        </button>
+                      </div>
+                      <div className="question-bank-answer-block question-bank-descriptive-answer-block">
+                        <label className="question-bank-field">
+                          <span className="question-bank-inline-field-badge">Answer &amp; Explanation</span>
+                          <RichMathEditor
+                            value={question.answerKey}
+                            onChange={(nextValue) => updateQuestion({ answerKey: nextValue })}
+                            placeholder="Add answer and explanation"
+                            minRows={3}
+                            ariaLabel="Descriptive answer and explanation"
+                          />
+                        </label>
+                      </div>
                     </div>
                   )}
                 </section>
@@ -2424,17 +2779,19 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         ) : null}
         <div className="create-assessment-action-panel" aria-label="Create actions">
         <strong>Create Assessment</strong>
-        <div className={`question-bank-type-select-panel ${isQuestionTypePickerOpen ? 'is-open' : ''}`}>
+        <div className={`question-bank-type-select-panel ${isActionQuestionTypePickerOpen ? 'is-open' : ''}`}>
           <button
             type="button"
             className={`create-assessment-action-btn is-create ${hasSelectedCreateTab && activeCreateTab === 'create' ? 'is-active' : ''}`}
             onClick={() => {
               setActiveCreateTab('create')
               setHasSelectedCreateTab(true)
-              if (isQuestionTypePickerOpen) setIsDescriptiveTypePickerOpen(false)
-              setIsQuestionTypePickerOpen((current) => !current)
+              setIsQuestionTypePickerOpen(false)
+              setIsDescriptiveTypePickerOpen(false)
+              if (isActionQuestionTypePickerOpen) setIsActionDescriptiveTypePickerOpen(false)
+              setIsActionQuestionTypePickerOpen((current) => !current)
             }}
-            aria-expanded={isQuestionTypePickerOpen}
+            aria-expanded={isActionQuestionTypePickerOpen}
             aria-pressed={hasSelectedCreateTab && activeCreateTab === 'create'}
           >
             <ListChecks size={16} strokeWidth={2.2} />
@@ -2442,7 +2799,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             <ChevronDown size={15} strokeWidth={2.4} />
           </button>
 
-          {isQuestionTypePickerOpen ? (
+          {isActionQuestionTypePickerOpen ? (
             <div className="question-bank-type-picker">
               {QUESTION_TYPE_CARDS.slice(0, 1).map((item) => {
                 const Icon = item.icon
@@ -2460,12 +2817,12 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                   </button>
                 )
               })}
-              <div className={`question-bank-type-picker-group ${isDescriptiveTypePickerOpen ? 'is-open' : ''}`}>
+              <div className={`question-bank-type-picker-group ${isActionDescriptiveTypePickerOpen ? 'is-open' : ''}`}>
                 <button
                   type="button"
                   className="question-bank-type-picker-item question-bank-type-picker-menu-trigger"
-                  onClick={() => setIsDescriptiveTypePickerOpen((current) => !current)}
-                  aria-expanded={isDescriptiveTypePickerOpen}
+                  onClick={() => setIsActionDescriptiveTypePickerOpen((current) => !current)}
+                  aria-expanded={isActionDescriptiveTypePickerOpen}
                 >
                   <span className="question-bank-type-picker-icon">
                     <FilePenLine size={15} strokeWidth={2} />
@@ -2473,7 +2830,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                   <span>Descriptive</span>
                   <ChevronDown size={15} strokeWidth={2.4} />
                 </button>
-                {isDescriptiveTypePickerOpen ? (
+                {isActionDescriptiveTypePickerOpen ? (
                   <div className="question-bank-type-picker-menu">
                     {DESCRIPTIVE_QUESTION_TYPES.map((item) => (
                       <button
@@ -2502,6 +2859,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             setHasSelectedCreateTab(true)
             setIsQuestionTypePickerOpen(false)
             setIsDescriptiveTypePickerOpen(false)
+            setIsActionQuestionTypePickerOpen(false)
+            setIsActionDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
           aria-pressed={activeCreateTab === 'questionBank'}
@@ -2525,6 +2884,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             setHasSelectedCreateTab(true)
             setIsQuestionTypePickerOpen(false)
             setIsDescriptiveTypePickerOpen(false)
+            setIsActionQuestionTypePickerOpen(false)
+            setIsActionDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
           disabled={!selectedAssessmentQuestionCount}
@@ -2542,6 +2903,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             setHasSelectedCreateTab(true)
             setIsQuestionTypePickerOpen(false)
             setIsDescriptiveTypePickerOpen(false)
+            setIsActionQuestionTypePickerOpen(false)
+            setIsActionDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
           aria-pressed={activeCreateTab === 'configuration'}

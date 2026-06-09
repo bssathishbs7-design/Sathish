@@ -1808,6 +1808,64 @@
   font-weight: 900;
 }
 
+.create-assessment-preview-section-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.create-assessment-preview-add-section,
+.create-assessment-preview-reset-section,
+.create-assessment-preview-nmc-section {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid #a7ded4;
+  border-radius: 8px;
+  background: #ecfffb;
+  color: #08776d;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.create-assessment-preview-reset-section {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.create-assessment-preview-nmc-section {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.create-assessment-preview-add-section:hover,
+.create-assessment-preview-add-section:focus-visible,
+.create-assessment-preview-reset-section:hover,
+.create-assessment-preview-reset-section:focus-visible,
+.create-assessment-preview-nmc-section:hover,
+.create-assessment-preview-nmc-section:focus-visible {
+  border-color: #14b8a6;
+  background: #dffbf6;
+  color: #075f54;
+  outline: none;
+}
+
+.create-assessment-preview-reset-section:disabled,
+.create-assessment-preview-nmc-section:disabled {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 .create-assessment-preview-list,
 .create-assessment-configuration-grid {
   display: grid;
@@ -1871,6 +1929,12 @@
   background: #f0fdf4;
 }
 
+.create-assessment-preview-section-group.type-custom .create-assessment-preview-section-head {
+  border-color: #99f6e4;
+  border-left-color: #0f766e;
+  background: #f0fdfa;
+}
+
 .create-assessment-preview-section-title {
   display: flex;
   align-items: center;
@@ -1914,7 +1978,16 @@
   white-space: nowrap;
 }
 
-.create-assessment-preview-section-edit {
+.create-assessment-preview-section-tools {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+
+.create-assessment-preview-section-edit,
+.create-assessment-preview-section-delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1928,7 +2001,8 @@
   cursor: pointer;
 }
 
-.create-assessment-preview-section-edit {
+.create-assessment-preview-section-edit,
+.create-assessment-preview-section-delete {
   width: 30px;
   height: 30px;
   border-radius: 999px;
@@ -1940,6 +2014,19 @@
   border-color: #10b9a8;
   background: #ecfffb;
   color: #075f54;
+  outline: none;
+}
+
+.create-assessment-preview-section-delete {
+  border-color: #fecdd3;
+  color: #e11d48;
+}
+
+.create-assessment-preview-section-delete:hover,
+.create-assessment-preview-section-delete:focus-visible {
+  border-color: #fb7185;
+  background: #fff1f2;
+  color: #be123c;
   outline: none;
 }
 
@@ -9211,6 +9298,32 @@
   color: #99f6e4;
 }
 
+.theme-dark .create-assessment-preview-add-section,
+.theme-dark .create-assessment-preview-reset-section,
+.theme-dark .create-assessment-preview-nmc-section {
+  border-color: rgba(45, 212, 191, 0.5);
+  background: rgba(20, 184, 166, 0.15);
+  color: #99f6e4;
+}
+
+.theme-dark .create-assessment-preview-add-section:hover,
+.theme-dark .create-assessment-preview-add-section:focus-visible,
+.theme-dark .create-assessment-preview-reset-section:hover,
+.theme-dark .create-assessment-preview-reset-section:focus-visible,
+.theme-dark .create-assessment-preview-nmc-section:hover,
+.theme-dark .create-assessment-preview-nmc-section:focus-visible {
+  border-color: rgba(94, 234, 212, 0.72);
+  background: rgba(20, 184, 166, 0.24);
+  color: #ccfbf1;
+}
+
+.theme-dark .create-assessment-preview-reset-section:disabled,
+.theme-dark .create-assessment-preview-nmc-section:disabled {
+  border-color: rgba(94, 116, 145, 0.38);
+  background: rgba(15, 23, 42, 0.48);
+  color: #64748b;
+}
+
 .theme-dark .create-assessment-preview-section-group.type-mcq .create-assessment-preview-section-head {
   border-color: rgba(96, 165, 250, 0.46);
   border-left-color: #60a5fa;
@@ -9235,6 +9348,12 @@
   background: #13261f;
 }
 
+.theme-dark .create-assessment-preview-section-group.type-custom .create-assessment-preview-section-head {
+  border-color: rgba(45, 212, 191, 0.52);
+  border-left-color: #2dd4bf;
+  background: #10231f;
+}
+
 .theme-dark .create-assessment-preview-section-title > strong,
 .theme-dark .create-assessment-preview-section-title > span,
 .theme-dark .create-assessment-preview-section-marks {
@@ -9245,6 +9364,18 @@
   border-color: rgba(45, 212, 191, 0.5);
   background: #101827;
   color: #eef6ff;
+}
+
+.theme-dark .create-assessment-preview-section-edit {
+  border-color: rgba(45, 212, 191, 0.34);
+  background: rgba(15, 23, 42, 0.72);
+  color: #99f6e4;
+}
+
+.theme-dark .create-assessment-preview-section-delete {
+  border-color: rgba(251, 113, 133, 0.38);
+  background: rgba(15, 23, 42, 0.72);
+  color: #fda4af;
 }
 
 .theme-dark .create-assessment-preview-title-row span:not(.question-bank-badge),
@@ -10538,7 +10669,7 @@
   }
 
   .create-assessment-workspace .question-bank-author-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+    /* grid-template-columns: minmax(0, 1fr) minmax(320px, 360px); */
     gap: 12px;
   }
 
@@ -12051,13 +12182,35 @@
     padding: 8px;
   }
 
+  .create-assessment-tab-panel-head {
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .create-assessment-preview-add-section {
+    min-height: 34px;
+    padding-inline: 9px;
+  }
+
+  .create-assessment-preview-section-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .create-assessment-preview-add-section,
+  .create-assessment-preview-reset-section,
+  .create-assessment-preview-nmc-section {
+    padding-inline: 8px;
+  }
+
   .create-assessment-preview-section-head,
   .create-assessment-preview-card,
   .create-assessment-preview-card.is-open {
     grid-template-columns: 1fr;
   }
 
-  .create-assessment-preview-section-marks {
+  .create-assessment-preview-section-tools {
     justify-self: start;
   }
 
