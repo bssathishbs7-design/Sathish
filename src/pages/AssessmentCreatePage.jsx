@@ -132,10 +132,10 @@ export default function AssessmentCreatePage({ onNavigate }) {
   }
 
   return (
-    <section className="vx-content assessment-page">
+    <section className="vx-content assessment-page assessment-create-tracker-page">
       <div className={`assessment-page-shell assessment-create-page-shell ${activeAssessmentTab === 'draft' ? 'is-draft-tab' : ''}`}>
         <div className="assessment-create-page-header">
-          <PageNavigationHeader items={['My Pages', 'Assessment', 'Create']} />
+          <PageNavigationHeader items={['My Pages', 'Assessment', 'My Progress']} />
           <button
             type="button"
             className={`assessment-create-new-btn ${activeAssessmentTab === 'create' ? 'is-active' : ''}`}
@@ -191,7 +191,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                       <div>
                       <strong>{draft.assessmentName || 'Untitled Assessment'}</strong>
                       <span className="assessment-create-draft-category">{draft.examCategory || 'Assessment'}</span>
-                      <span>{draft.questionCount ?? 0} Questions · {draft.totalMarks ?? 0} Marks</span>
+                      <span>{draft.questionCount ?? 0} Questions | {draft.totalMarks ?? 0} Marks</span>
                       </div>
                       <button
                         type="button"

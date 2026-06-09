@@ -732,6 +732,16 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       }
     }).filter((section) => section.questions.length)
   ), [previewQuestions, previewSectionOrder, previewSectionTitles])
+  const previewQuestionDisplayNumbers = useMemo(() => {
+    let displayNumber = 1
+    return previewSections.reduce((numbers, section) => {
+      section.questions.forEach((item) => {
+        numbers[item.id] = displayNumber
+        displayNumber += 1
+      })
+      return numbers
+    }, {})
+  }, [previewSections])
 
   useEffect(() => {
     if (!openDistractorOptionId && !openDistractorMenuOptionId && !openPreviewTagsId) return undefined
@@ -1451,6 +1461,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                     <div className="create-assessment-preview-section-body">
                       {section.questions.length ? section.questions.map((item) => {
                   const index = previewQuestions.findIndex((previewQuestion) => previewQuestion.id === item.id)
+                  const displayNumber = previewQuestionDisplayNumbers[item.id] ?? index + 1
                   const isDescriptive = isDescriptiveQuestionType(item.type)
                   const questionMarksTotal = getQuestionMarksTotal(item)
                   const optionalTagGroups = getQuestionOptionalTagGroups(item)
@@ -1512,7 +1523,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                       <div className="create-assessment-preview-main">
                         <div className="create-assessment-preview-title-row">
                           <div>
-                            <strong>Q{index + 1}. {getPreviewQuestionText(item)}</strong>
+                            <strong>{displayNumber}. {getPreviewQuestionText(item)}</strong>
                             {!isPreviewCardOpen ? (
                               <span className="create-assessment-preview-subline">
                                 <em className={`create-assessment-preview-type-text ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>
@@ -1689,7 +1700,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                           type="button"
                           className="create-assessment-preview-edit"
                           onClick={() => editPreviewQuestion(item)}
-                          aria-label={`Edit question ${index + 1}`}
+                          aria-label={`Edit question ${displayNumber}`}
                           title="Edit question"
                         >
                           <FilePenLine size={15} strokeWidth={2.2} />
@@ -1698,7 +1709,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                           type="button"
                           className="create-assessment-preview-delete"
                           onClick={() => deletePreviewQuestion(item)}
-                          aria-label={`Delete question ${index + 1} from preview`}
+                          aria-label={`Delete question ${displayNumber} from preview`}
                           title="Delete question"
                         >
                           <Trash2 size={15} strokeWidth={2.2} />
@@ -1708,7 +1719,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                           className="create-assessment-preview-toggle"
                           onClick={() => togglePreviewCard(item.id)}
                           aria-expanded={isPreviewCardOpen}
-                          aria-label={`${isPreviewCardOpen ? 'Collapse' : 'Expand'} question ${index + 1}`}
+                          aria-label={`${isPreviewCardOpen ? 'Collapse' : 'Expand'} question ${displayNumber}`}
                           title={isPreviewCardOpen ? 'Collapse' : 'Expand'}
                         >
                           {isPreviewCardOpen ? <ChevronUp size={15} strokeWidth={2.2} /> : <ChevronDown size={15} strokeWidth={2.2} />}

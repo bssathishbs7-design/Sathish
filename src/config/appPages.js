@@ -99,7 +99,7 @@ export const SIDEBAR_MENU = [
         label: 'Assessment',
         icon: TrendingUp,
         children: [
-          { label: APP_PAGES.ASSESSMENT_CREATE, navLabel: 'Create', icon: SlidersHorizontal },
+          { label: APP_PAGES.ASSESSMENT_CREATE, navLabel: 'My Progress', icon: SlidersHorizontal },
           { label: APP_PAGES.ASSESSMENT_EVALUATION, navLabel: 'Evaluation', icon: ClipboardCheck },
           { label: APP_PAGES.ASSESSMENT_DASHBOARD, navLabel: 'Dashboard', icon: BarChart3 },
         ],
