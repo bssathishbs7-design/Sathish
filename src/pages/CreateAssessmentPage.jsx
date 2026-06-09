@@ -1685,15 +1685,6 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                 </button>
                 <button
                   type="button"
-                  className="create-assessment-preview-nmc-section"
-                  onClick={createNmcSaqSections}
-                  disabled={!savedQuestions.some((item) => getSummaryTypeLabel(item.type) === 'SAQs')}
-                >
-                  <ListChecks size={14} strokeWidth={2.2} />
-                  <span>NMC Section</span>
-                </button>
-                <button
-                  type="button"
                   className="create-assessment-preview-add-section"
                   onClick={createPreviewSection}
                 >
@@ -1765,6 +1756,17 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                         </button>
                       </div>
                       <span className="create-assessment-preview-section-tools">
+                        {section.key === 'SAQs' ? (
+                          <button
+                            type="button"
+                            className="create-assessment-preview-nmc-section"
+                            onClick={createNmcSaqSections}
+                            disabled={!savedQuestions.some((item) => getSummaryTypeLabel(item.type) === 'SAQs')}
+                          >
+                            <ListChecks size={14} strokeWidth={2.2} />
+                            <span>NMC Section</span>
+                          </button>
+                        ) : null}
                         <span className="create-assessment-preview-section-marks">{formatSummaryNumber(section.marks)} Marks</span>
                         {section.isCustom ? (
                           <button
