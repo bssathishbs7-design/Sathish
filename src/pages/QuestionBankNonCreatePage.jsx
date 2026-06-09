@@ -59,13 +59,16 @@ const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 
 
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
 const getCompetencyCode = (value) => String(value ?? '').trim().split(/\s+/)[0] || value
-const getQuestionCategoryLabel = (value) => {
+const getQuestionCategoryLabel = (value, questionOrType) => {
   const normalized = String(value ?? '').trim().toLowerCase()
-  if (normalized === 'critical thinking' || normalized === 'critical_thinking') return 'Aetcom'
+  const typeLabel = questionOrType ? getQuestionTypeLabel(questionOrType) : ''
+  const isMcq = typeLabel === 'MCQ'
+  if (normalized === 'critical thinking' || normalized === 'critical_thinking' || normalized === 'aetcom') {
+    return isMcq ? 'Critical Thinking' : 'Aetcom'
+  }
   if (normalized === 'direct') return 'Direct'
   if (normalized === 'reasoning') return 'Reasoning'
   if (normalized === 'application') return 'Application'
-  if (normalized === 'aetcom') return 'Aetcom'
   return value
 }
 
@@ -432,7 +435,7 @@ const getTableTagSummary = (question) => {
 }
 
 const getOptionalTagGroups = (question) => [
-  { label: 'Category', values: [getQuestionCategoryLabel(question?.questionCategory)].filter(Boolean) },
+  { label: 'Category', values: [getQuestionCategoryLabel(question?.questionCategory, question)].filter(Boolean) },
   { label: 'Thinking Level', values: [question?.thinkingLevel].filter(Boolean) },
   { label: 'Difficulty Level', values: [question?.difficultyLevel].filter(Boolean) },
   { label: 'Cognitive Level', values: [question?.cognitiveLevel].filter(Boolean) },
@@ -872,7 +875,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     subjects: getUniqueValues(metricFilteredQuestions, (question) => question.subject),
     topics: getUniqueValues(metricFilteredQuestions, (question) => question.topics ?? []),
     competencies: getUniqueValues(metricFilteredQuestions, (question) => question.competencies ?? []),
-    categories: getUniqueValues(metricFilteredQuestions, (question) => getQuestionCategoryLabel(question.questionCategory)),
+    categories: getUniqueValues(metricFilteredQuestions, (question) => getQuestionCategoryLabel(question.questionCategory, question)),
     thinkingLevels: getUniqueValues(metricFilteredQuestions, (question) => getThinkingLevelLabel(question.thinkingLevel)),
     difficultyLevels: getUniqueValues(metricFilteredQuestions, (question) => question.difficultyLevel),
     cognitiveLevels: getUniqueValues(metricFilteredQuestions, (question) => question.cognitiveLevel),
@@ -891,7 +894,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     subjects: getValueCounts(metricFilteredQuestions, (question) => question.subject),
     topics: getValueCounts(metricFilteredQuestions, (question) => question.topics ?? []),
     competencies: getValueCounts(metricFilteredQuestions, (question) => question.competencies ?? []),
-    categories: getValueCounts(metricFilteredQuestions, (question) => getQuestionCategoryLabel(question.questionCategory)),
+    categories: getValueCounts(metricFilteredQuestions, (question) => getQuestionCategoryLabel(question.questionCategory, question)),
     thinkingLevels: getValueCounts(metricFilteredQuestions, (question) => getThinkingLevelLabel(question.thinkingLevel)),
     difficultyLevels: getValueCounts(metricFilteredQuestions, (question) => question.difficultyLevel),
     cognitiveLevels: getValueCounts(metricFilteredQuestions, (question) => question.cognitiveLevel),
@@ -917,7 +920,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     subjects: getValueCounts(landingQuestions, (question) => question.subject),
     topics: getValueCounts(landingQuestions, (question) => question.topics ?? []),
     competencies: getValueCounts(landingQuestions, (question) => question.competencies ?? []),
-    categories: getValueCounts(landingQuestions, (question) => getQuestionCategoryLabel(question.questionCategory)),
+    categories: getValueCounts(landingQuestions, (question) => getQuestionCategoryLabel(question.questionCategory, question)),
     cognitiveLevels: getValueCounts(landingQuestions, (question) => question.cognitiveLevel),
     thinkingLevels: getValueCounts(landingQuestions, (question) => getThinkingLevelLabel(question.thinkingLevel)),
     difficultyLevels: getValueCounts(landingQuestions, (question) => question.difficultyLevel),
@@ -985,7 +988,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       if (!hasFilterMatch(filters.subjects, question.subject)) return false
       if (!hasFilterMatch(filters.topics, question.topics ?? [])) return false
       if (!hasFilterMatch(filters.competencies, question.competencies ?? [])) return false
-      if (!hasFilterMatch(filters.categories, getQuestionCategoryLabel(question.questionCategory))) return false
+      if (!hasFilterMatch(filters.categories, getQuestionCategoryLabel(question.questionCategory, question))) return false
       if (!hasFilterMatch(filters.thinkingLevels, getThinkingLevelLabel(question.thinkingLevel))) return false
       if (!hasFilterMatch(filters.difficultyLevels, question.difficultyLevel)) return false
       if (!hasFilterMatch(filters.cognitiveLevels, question.cognitiveLevel)) return false
@@ -1202,7 +1205,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       icon: Tags,
       tone: 'category',
       filters: { categories: Object.keys(landingValueCounts.categories) },
-      donut: createDonutDistribution(landingValueCounts.categories, ['Application', 'Direct', 'Reasoning', 'Aetcom'], ['#6d5dfc', '#2563eb', '#fb7c3f', '#38bdf8']),
+      donut: createDonutDistribution(landingValueCounts.categories, ['Application', 'Direct', 'Reasoning', 'Critical Thinking', 'Aetcom'], ['#6d5dfc', '#2563eb', '#fb7c3f', '#38bdf8', '#14b8a6']),
       distribution: createDistribution(landingValueCounts.categories),
     },
     {

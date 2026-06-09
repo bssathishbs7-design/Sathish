@@ -27,6 +27,13 @@ import {
 import RichMathEditor from '../components/RichMathEditor'
 import { APP_PAGES } from '../config/appPages'
 import { stripHtml } from '../utils/mathText'
+import {
+  DESCRIPTIVE_QUESTION_TYPES,
+  DESCRIPTIVE_QUESTION_TYPE_SET,
+  QUESTION_CATEGORY_OPTIONS,
+  getQuestionCategorySelectOptions,
+  getQuestionCategorySelectValue,
+} from '../utils/questionAuthoring'
 import QuestionBankNonCreatePage from './QuestionBankNonCreatePage'
 import '../styles/question-bank.css'
 import '../styles/assessment-pages.css'
@@ -102,7 +109,6 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   course: '',
   year: '',
 }
-const QUESTION_CATEGORY_OPTIONS = ['Direct', 'Reasoning', 'Aetcom', 'Application']
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
 const DIFFICULTY_LEVEL_OPTIONS = ['L1', 'L2', 'L3']
@@ -168,12 +174,6 @@ const SINGLE_OPTION_MAX_COUNT = 6
 const MULTIPLE_OPTION_MIN_COUNT = 3
 const MULTIPLE_OPTION_MAX_COUNT = 8
 const ROMAN_NUMERALS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']
-const DESCRIPTIVE_QUESTION_TYPES = [
-  { type: 'Desc Long Answer Questions (LAQs)', shortLabel: 'LAQs', menuLabel: 'Long Answer Questions (LAQs)' },
-  { type: 'Desc Short Answer Questions (SAQs)', shortLabel: 'SAQs', menuLabel: 'Short Answer Questions (SAQs)' },
-  { type: 'Desc Modified Essay Questions (MEQs)', shortLabel: 'MEQs', menuLabel: 'Modified Essay Questions (MEQs)' },
-]
-const DESCRIPTIVE_QUESTION_TYPE_SET = new Set(['Descriptive Question', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type)])
 const QUESTION_TYPE_CARDS = [
   { type: 'MCQ', shortLabel: 'MCQ', icon: ListChecks },
   ...DESCRIPTIVE_QUESTION_TYPES.map((item) => ({ ...item, icon: FilePenLine })),
@@ -2609,9 +2609,13 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                     <>
                       <label className="question-bank-field">
                         <span>Question Category</span>
-                        <select className={!question.questionCategory ? 'is-placeholder' : ''} value={question.questionCategory} onChange={(event) => updateQuestion({ questionCategory: event.target.value })}>
+                        <select
+                          className={!question.questionCategory ? 'is-placeholder' : ''}
+                          value={getQuestionCategorySelectValue(question.type, question.questionCategory)}
+                          onChange={(event) => updateQuestion({ questionCategory: event.target.value })}
+                        >
                           <option value="" disabled>Select Category</option>
-                          {QUESTION_CATEGORY_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                          {getQuestionCategorySelectOptions(question.type).map((option) => <option key={option} value={option}>{option}</option>)}
                         </select>
                       </label>
                       <label className="question-bank-field">

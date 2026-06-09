@@ -511,6 +511,90 @@
   box-shadow: 0 8px 16px rgba(20, 184, 166, 0.12);
 }
 
+.question-bank-upload-template-btn:disabled {
+  transform: none;
+  border-color: #dbe7e2;
+  background: #f4f8f6;
+  color: #8aa0ac;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.question-bank-next-action {
+  position: relative;
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+}
+
+.question-bank-descriptive-map-btn.has-selection {
+  border-color: #8ddfd1;
+  background: #ecfffb;
+  color: #08776d;
+}
+
+.question-bank-descriptive-map-popover {
+  display: grid;
+  gap: 10px;
+  margin: 6px 48px 10px 40px;
+  padding: 10px;
+  border: 1px solid #cce8df;
+  border-radius: 8px;
+  background: #fbfffd;
+  box-shadow: 0 10px 20px rgba(21, 71, 62, 0.08);
+}
+
+.question-bank-descriptive-map-popover.is-child {
+  margin-left: 72px;
+}
+
+.question-bank-descriptive-map-popover > div {
+  display: grid;
+  gap: 6px;
+}
+
+.question-bank-descriptive-map-popover strong {
+  color: #16313c;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.question-bank-descriptive-map-popover span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.question-bank-descriptive-map-popover button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid #d8e8e2;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #25475a;
+  font-size: 0.74rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.question-bank-descriptive-map-popover button.is-active {
+  border-color: #14b8a6;
+  background: #dffbf6;
+  color: #075f54;
+}
+
+.question-bank-created-descriptive-map {
+  display: block;
+  margin: 2px 0 6px 24px;
+  color: #4e6575;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.question-bank-created-descriptive-map.is-child {
+  margin-left: 28px;
+}
+
 .question-bank-upload-template-menu-wrap {
   position: relative;
   display: inline-flex;

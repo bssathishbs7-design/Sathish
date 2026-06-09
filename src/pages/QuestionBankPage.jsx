@@ -30,6 +30,13 @@ import {
 } from 'lucide-react'
 import RichMathEditor from '../components/RichMathEditor'
 import { stripHtml } from '../utils/mathText'
+import {
+  DESCRIPTIVE_QUESTION_TYPES,
+  DESCRIPTIVE_QUESTION_TYPE_SET,
+  QUESTION_CATEGORY_OPTIONS,
+  getQuestionCategorySelectOptions,
+  getQuestionCategorySelectValue,
+} from '../utils/questionAuthoring'
 import '../styles/question-bank.css'
 
 const SUBJECT_DIRECTORY = {
@@ -61,26 +68,6 @@ const SUBJECT_DIRECTORY = {
   },
 }
 
-const DESCRIPTIVE_QUESTION_TYPES = [
-  {
-    type: 'Desc Long Answer Questions (LAQs)',
-    shortLabel: 'LAQs',
-    menuLabel: 'Long Answer Questions (LAQs)',
-  },
-  {
-    type: 'Desc Short Answer Questions (SAQs)',
-    shortLabel: 'SAQs',
-    menuLabel: 'Short Answer Questions (SAQs)',
-  },
-  {
-    type: 'Desc Modified Essay Questions (MEQs)',
-    shortLabel: 'MEQs',
-    menuLabel: 'Modified Essay Questions (MEQs)',
-  },
-]
-const DESCRIPTIVE_QUESTION_TYPE_SET = new Set(['Descriptive Question', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type)])
-const QUESTION_TYPE_OPTIONS = ['MCQ', ...DESCRIPTIVE_QUESTION_TYPES.map((item) => item.type), 'True or False', 'Fill in the Blanks']
-const QUESTION_CATEGORY_OPTIONS = ['Direct', 'Reasoning', 'Aetcom', 'Application']
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
 const DIFFICULTY_LEVEL_OPTIONS = ['L1', 'L2', 'L3']
@@ -266,6 +253,8 @@ const createDescriptiveInsideQuestion = () => ({
   id: `descriptive-inside-${Date.now()}-${optionSequence++}`,
   questionText: '',
   marks: '0',
+  topics: [],
+  competencies: [],
 })
 
 const createDescriptiveSubQuestion = () => ({
@@ -275,6 +264,8 @@ const createDescriptiveSubQuestion = () => ({
   marks: '0',
   options: [createOption(''), createOption(''), createOption(''), createOption('')],
   correctOptionIds: [],
+  topics: [],
+  competencies: [],
   children: [],
 })
 
@@ -1255,6 +1246,11 @@ const getSelectionSummary = (selected, emptyLabel, formatter = (value) => value)
   return remaining > 0 ? `${visible} +${remaining} more` : visible
 }
 
+const getDescriptiveMappingSummary = (item) => [
+  (item?.topics ?? []).length ? `Topics: ${(item.topics ?? []).join(', ')}` : '',
+  (item?.competencies ?? []).length ? `Competency: ${(item.competencies ?? []).map(getShortCompetencyLabel).join(', ')}` : '',
+].filter(Boolean).join('  ')
+
 const getCurriculumStatusLabel = (question) => [
   question.year ? getYearDisplayLabel(question.year) : 'Select year',
   question.subject || 'Select subject',
@@ -1381,6 +1377,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   })
   const [editableDescriptiveFieldKeys, setEditableDescriptiveFieldKeys] = useState([])
   const [activeDescriptiveAnswerTarget, setActiveDescriptiveAnswerTarget] = useState({ type: 'root' })
+  const [activeDescriptiveMappingTarget, setActiveDescriptiveMappingTarget] = useState(null)
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
   const getInitialDescriptiveAnswerTarget = (question) => {
@@ -1538,6 +1535,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   ]
   const canCreateSelectedQuestion = canCreateQuestion(selectedQuestion)
   const canSaveSelectedDraft = selectedQuestion?.status !== 'Sent to Approval' && hasDraftContent(selectedQuestion)
+  const shouldShowSelectedCurriculumPanel = selectedQuestion
+    && (!isDescriptiveQuestionType(selectedQuestion.type) || !(selectedQuestion.descriptiveSections ?? []).length)
   const isUpdatingSelectedQuestion = selectedQuestion
     ? selectedQuestion.questionBankEditMode === 'duplicate'
       ? false
@@ -2537,6 +2536,57 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     )))
   }
 
+  const getDescriptiveMappingKey = (target = activeDescriptiveMappingTarget) => {
+    if (!target) return ''
+    return target.type === 'inside'
+      ? `inside:${target.sectionId}:${target.childId}`
+      : `section:${target.sectionId}`
+  }
+
+  const toggleDescriptiveMapping = (target) => {
+    const targetKey = getDescriptiveMappingKey(target)
+    setActiveDescriptiveMappingTarget((current) => (
+      getDescriptiveMappingKey(current) === targetKey ? null : target
+    ))
+  }
+
+  const getDescriptiveMappingOptions = (item) => {
+    if (!selectedQuestion) return { topics: [], competencies: [] }
+    const topics = getAvailableTopics(selectedQuestion)
+    const itemTopics = item?.topics ?? []
+    const competencies = getAvailableCompetencies({
+      ...selectedQuestion,
+      topics: itemTopics.length ? itemTopics : selectedQuestion.topics,
+    })
+    return { topics, competencies }
+  }
+
+  const updateDescriptiveMappingTarget = (target, patch) => {
+    if (!target) return
+    if (target.type === 'section') {
+      updateDescriptiveSubQuestion(target.sectionId, patch)
+      return
+    }
+    updateDescriptiveInsideQuestion(target.sectionId, target.childId, patch, target.sectionIndex, target.childIndex)
+  }
+
+  const toggleDescriptiveTopic = (target, item, topic) => {
+    const nextTopics = toggleSelection(item.topics ?? [], topic)
+    const nextCompetencies = (item.competencies ?? []).filter((competency) => (
+      getAvailableCompetencies({ ...selectedQuestion, topics: nextTopics }).some((entry) => entry.value === competency)
+    ))
+    updateDescriptiveMappingTarget(target, {
+      topics: nextTopics,
+      competencies: nextCompetencies,
+    })
+  }
+
+  const toggleDescriptiveCompetency = (target, item, competency) => {
+    updateDescriptiveMappingTarget(target, {
+      competencies: toggleSelection(item.competencies ?? [], competency),
+    })
+  }
+
   const sendApprovedQuestionsToQuestionBank = (questionIds = approvedQuestionBankSelectedIds) => {
     if (!questionIds.length || typeof window === 'undefined') return
 
@@ -3412,6 +3462,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                       onClick={() => setIsUploadTemplateMenuOpen((current) => !current)}
                       aria-expanded={isUploadTemplateMenuOpen}
                       aria-haspopup="menu"
+                      disabled
                     >
                       <Download size={13} strokeWidth={2.2} />
                       Descriptive Sample Excel
@@ -3474,6 +3525,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
                   <div className="question-bank-author-grid">
                     <div className="question-bank-author-main">
+                      {shouldShowSelectedCurriculumPanel ? (
                       <section className="question-bank-curriculum-panel">
                         {isCurriculumEditing ? (
                           <div className="question-bank-curriculum-edit-card">
@@ -3573,6 +3625,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                           </div>
                         ) : null}
                       </section>
+                      ) : null}
 
                       {(() => {
                         const isDescriptiveSelected = isDescriptiveQuestionType(selectedQuestion.type)
@@ -3744,11 +3797,21 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                 const sectionChildren = section.children ?? []
                                 const sectionFieldKey = `${selectedQuestion.id}:section:${section.id}`
                                 const shouldLockSectionQuestion = sectionChildren.length > 0 && !isDescriptiveFieldEditable(sectionFieldKey)
+                                const sectionTarget = { type: 'section', sectionId: section.id }
+                                const sectionMappingOptions = getDescriptiveMappingOptions(section)
+                                const isSectionActive = activeDescriptiveAnswerTarget.type === 'section' && activeDescriptiveAnswerTarget.sectionId === section.id
+                                const shouldShowSectionControls = isSectionActive && !sectionChildren.length
+                                const isSectionMappingOpen = getDescriptiveMappingKey(activeDescriptiveMappingTarget) === getDescriptiveMappingKey(sectionTarget)
+                                const hasSectionText = Boolean(getRichTextPreview(section.questionText))
+                                const hasSectionMapping = Boolean((section.topics ?? []).length || (section.competencies ?? []).length)
+                                const shouldHighlightSectionText = !hasSectionText
+                                const shouldHighlightSectionMapping = shouldShowSectionControls && hasSectionText && !hasSectionMapping
+                                const shouldHighlightSectionMarks = shouldShowSectionControls && hasSectionText && hasSectionMapping && !hasVisibleMarks(section.marks)
                                 return (
                                   <div key={section.id} className="question-bank-descriptive-sub-card">
                                     <div className="question-bank-descriptive-row">
                                       <span className="question-bank-descriptive-index">{sectionLabel}</span>
-                                      <label className="question-bank-descriptive-text">
+                                      <label className={`question-bank-descriptive-text ${shouldHighlightSectionText ? 'question-bank-next-action' : ''}`}>
                                         <RichMathEditor
                                           value={section.questionText}
                                           onChange={(nextValue) => updateDescriptiveSubQuestion(section.id, (currentSection) => {
@@ -3790,15 +3853,29 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                           </button>
                                         ) : null}
                                       </label>
-                                      <label className="question-bank-descriptive-marks">
-                                        <input
-                                          value={sectionChildren.length ? '0' : section.marks ?? '0'}
-                                          onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'section', sectionId: section.id })}
-                                          onChange={(event) => updateDescriptiveSubQuestion(section.id, { marks: event.target.value })}
-                                          inputMode="decimal"
-                                          disabled={sectionChildren.length > 0 || shouldLockSectionQuestion}
-                                        />
-                                      </label>
+                                      {shouldShowSectionControls ? (
+                                        <label className={`question-bank-descriptive-marks ${shouldHighlightSectionMarks ? 'question-bank-next-action' : ''}`}>
+                                          <input
+                                            value={section.marks ?? '0'}
+                                            onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'section', sectionId: section.id })}
+                                            onChange={(event) => updateDescriptiveSubQuestion(section.id, { marks: event.target.value })}
+                                            inputMode="decimal"
+                                            disabled={shouldLockSectionQuestion}
+                                          />
+                                        </label>
+                                      ) : null}
+                                      {shouldShowSectionControls && (sectionMappingOptions.topics.length || sectionMappingOptions.competencies.length) ? (
+                                        <button
+                                          type="button"
+                                          className={`question-bank-icon-btn question-bank-descriptive-map-btn ${hasSectionMapping ? 'has-selection' : ''} ${shouldHighlightSectionMapping ? 'question-bank-next-action' : ''}`}
+                                          onClick={() => toggleDescriptiveMapping(sectionTarget)}
+                                          aria-label={`Map topics and competency for sub question ${sectionIndex + 1}`}
+                                          aria-expanded={isSectionMappingOpen}
+                                          title="Topics and competency"
+                                        >
+                                          <Info size={14} strokeWidth={2.2} />
+                                        </button>
+                                      ) : null}
                                       <button
                                         type="button"
                                         className="question-bank-icon-btn question-bank-descriptive-delete-btn"
@@ -3813,12 +3890,63 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                         <Trash2 size={14} strokeWidth={2.2} />
                                       </button>
                                     </div>
+                                    {shouldShowSectionControls && isSectionMappingOpen ? (
+                                      <div className="question-bank-descriptive-map-popover">
+                                        {sectionMappingOptions.topics.length ? (
+                                          <div>
+                                            <strong>Topics</strong>
+                                            <span>
+                                              {sectionMappingOptions.topics.map((topic) => (
+                                                <button
+                                                  key={topic}
+                                                  type="button"
+                                                  className={(section.topics ?? []).includes(topic) ? 'is-active' : ''}
+                                                  onClick={() => toggleDescriptiveTopic(sectionTarget, section, topic)}
+                                                >
+                                                  {topic}
+                                                </button>
+                                              ))}
+                                            </span>
+                                          </div>
+                                        ) : null}
+                                        {sectionMappingOptions.competencies.length ? (
+                                          <div>
+                                            <strong>Competency</strong>
+                                            <span>
+                                              {sectionMappingOptions.competencies.map((competency) => (
+                                                <button
+                                                  key={competency.value}
+                                                  type="button"
+                                                  className={(section.competencies ?? []).includes(competency.value) ? 'is-active' : ''}
+                                                  onClick={() => toggleDescriptiveCompetency(sectionTarget, section, competency.value)}
+                                                >
+                                                  {getShortCompetencyLabel(competency.value)}
+                                                </button>
+                                              ))}
+                                            </span>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
 
                                     <div className="question-bank-descriptive-inside-list">
-                                      {sectionChildren.map((child, childIndex) => (
-                                        <div key={child.id} className="question-bank-descriptive-row is-child">
+                                      {sectionChildren.map((child, childIndex) => {
+                                        const childTarget = { type: 'inside', sectionId: section.id, childId: child.id, sectionIndex, childIndex }
+                                        const childMappingOptions = getDescriptiveMappingOptions(child)
+                                        const isChildActive = activeDescriptiveAnswerTarget.type === 'inside'
+                                          && activeDescriptiveAnswerTarget.sectionId === section.id
+                                          && activeDescriptiveAnswerTarget.childId === child.id
+                                        const isChildMappingOpen = getDescriptiveMappingKey(activeDescriptiveMappingTarget) === getDescriptiveMappingKey(childTarget)
+                                        const hasChildText = Boolean(getRichTextPreview(child.questionText))
+                                        const hasChildMapping = Boolean((child.topics ?? []).length || (child.competencies ?? []).length)
+                                        const shouldHighlightChildText = !hasChildText
+                                        const shouldHighlightChildMapping = isChildActive && hasChildText && !hasChildMapping
+                                        const shouldHighlightChildMarks = isChildActive && hasChildText && hasChildMapping && !hasVisibleMarks(child.marks)
+                                        return (
+                                        <div key={child.id}>
+                                        <div className="question-bank-descriptive-row is-child">
                                           <span className="question-bank-descriptive-index">{String.fromCharCode(97 + childIndex)}.</span>
-                                          <label className="question-bank-descriptive-text">
+                                          <label className={`question-bank-descriptive-text ${shouldHighlightChildText ? 'question-bank-next-action' : ''}`}>
                                             <RichMathEditor
                                               value={child.questionText}
                                               onChange={(nextValue) => updateDescriptiveInsideQuestion(section.id, child.id, (currentChild) => {
@@ -3841,14 +3969,28 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                               ariaLabel={`Inside question ${childIndex + 1}`}
                                             />
                                           </label>
-                                          <label className="question-bank-descriptive-marks">
-                                            <input
-                                              value={child.marks ?? '0'}
-                                              onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'inside', sectionId: section.id, childId: child.id })}
-                                              onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value }, sectionIndex, childIndex)}
-                                              inputMode="decimal"
-                                            />
-                                          </label>
+                                          {isChildActive ? (
+                                            <label className={`question-bank-descriptive-marks ${shouldHighlightChildMarks ? 'question-bank-next-action' : ''}`}>
+                                              <input
+                                                value={child.marks ?? '0'}
+                                                onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'inside', sectionId: section.id, childId: child.id })}
+                                                onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value }, sectionIndex, childIndex)}
+                                                inputMode="decimal"
+                                              />
+                                            </label>
+                                          ) : null}
+                                          {isChildActive && (childMappingOptions.topics.length || childMappingOptions.competencies.length) ? (
+                                            <button
+                                              type="button"
+                                              className={`question-bank-icon-btn question-bank-descriptive-map-btn ${hasChildMapping ? 'has-selection' : ''} ${shouldHighlightChildMapping ? 'question-bank-next-action' : ''}`}
+                                              onClick={() => toggleDescriptiveMapping(childTarget)}
+                                              aria-label={`Map topics and competency for inside question ${childIndex + 1}`}
+                                              aria-expanded={isChildMappingOpen}
+                                              title="Topics and competency"
+                                            >
+                                              <Info size={14} strokeWidth={2.2} />
+                                            </button>
+                                          ) : null}
                                           <button
                                             type="button"
                                             className="question-bank-icon-btn question-bank-descriptive-delete-btn"
@@ -3863,13 +4005,53 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                             <Trash2 size={14} strokeWidth={2.2} />
                                           </button>
                                         </div>
-                                      ))}
+                                        {isChildActive && isChildMappingOpen ? (
+                                          <div className="question-bank-descriptive-map-popover is-child">
+                                            {childMappingOptions.topics.length ? (
+                                              <div>
+                                                <strong>Topics</strong>
+                                                <span>
+                                                  {childMappingOptions.topics.map((topic) => (
+                                                    <button
+                                                      key={topic}
+                                                      type="button"
+                                                      className={(child.topics ?? []).includes(topic) ? 'is-active' : ''}
+                                                      onClick={() => toggleDescriptiveTopic(childTarget, child, topic)}
+                                                    >
+                                                      {topic}
+                                                    </button>
+                                                  ))}
+                                                </span>
+                                              </div>
+                                            ) : null}
+                                            {childMappingOptions.competencies.length ? (
+                                              <div>
+                                                <strong>Competency</strong>
+                                                <span>
+                                                  {childMappingOptions.competencies.map((competency) => (
+                                                    <button
+                                                      key={competency.value}
+                                                      type="button"
+                                                      className={(child.competencies ?? []).includes(competency.value) ? 'is-active' : ''}
+                                                      onClick={() => toggleDescriptiveCompetency(childTarget, child, competency.value)}
+                                                    >
+                                                      {getShortCompetencyLabel(competency.value)}
+                                                    </button>
+                                                  ))}
+                                                </span>
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        ) : null}
+                                        </div>
+                                        )
+                                      })}
                                     </div>
 
                                     <div className="question-bank-descriptive-sub-actions">
                                       <button
                                         type="button"
-                                        className="question-bank-secondary-btn"
+                                        className={`question-bank-secondary-btn ${hasSectionText && hasSectionMapping && (sectionChildren.length || hasVisibleMarks(section.marks)) ? 'question-bank-next-action' : ''}`}
                                         onClick={(event) => {
                                           event.stopPropagation()
                                           addDescriptiveInsideQuestion(section.id, sectionIndex)
@@ -3889,7 +4071,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                           <div className="question-bank-descriptive-builder-foot">
                             <button
                               type="button"
-                              className="question-bank-secondary-btn"
+                              className={`question-bank-secondary-btn ${hasRootQuestionText && !descriptiveSections.length ? 'question-bank-next-action' : ''}`}
                               onClick={addDescriptiveSubQuestion}
                               disabled={!hasRootQuestionText}
                             >
@@ -4228,11 +4410,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                               <span>Question Category</span>
                               <select
                                 className={!selectedQuestion.questionCategory ? 'is-placeholder' : ''}
-                                value={selectedQuestion.questionCategory}
+                                value={getQuestionCategorySelectValue(selectedQuestion.type, selectedQuestion.questionCategory)}
                                 onChange={(event) => updateSelectedQuestion({ questionCategory: event.target.value })}
                               >
                                 <option value="" disabled>Select Category</option>
-                                {QUESTION_CATEGORY_OPTIONS.map((option) => (
+                                {getQuestionCategorySelectOptions(selectedQuestion.type).map((option) => (
                                   <option key={option} value={option}>{option}</option>
                                 ))}
                               </select>
@@ -4802,6 +4984,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                               <span>{getRichTextPreview(section.questionText) || 'Question not added'}</span>
                                               {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? <em>{section.marks} marks</em> : null}
                                             </span>
+                                            {getDescriptiveMappingSummary(section) ? (
+                                              <span className="question-bank-created-descriptive-map">
+                                                {getDescriptiveMappingSummary(section)}
+                                              </span>
+                                            ) : null}
                                             {(section.children ?? []).map((child, childIndex) => (
                                               <span key={child.id ?? `${section.id}-child-${childIndex}`} className="question-bank-created-descriptive-child">
                                                 <span className="question-bank-created-descriptive-line is-child">
@@ -4809,6 +4996,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                                   <span>{getRichTextPreview(child.questionText) || 'Question not added'}</span>
                                                   {hasVisibleMarks(child.marks) ? <em>{child.marks} marks</em> : null}
                                                 </span>
+                                                {getDescriptiveMappingSummary(child) ? (
+                                                  <span className="question-bank-created-descriptive-map is-child">
+                                                    {getDescriptiveMappingSummary(child)}
+                                                  </span>
+                                                ) : null}
                                               </span>
                                             ))}
                                           </span>
