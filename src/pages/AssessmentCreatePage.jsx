@@ -109,7 +109,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
       assessmentId: `assessment-${Date.now()}`,
       createdAt: new Date().toISOString(),
     }))
-    window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'configuration')
+    window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'create')
     onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
   }
 

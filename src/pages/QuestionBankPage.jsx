@@ -459,7 +459,7 @@ const cloneQuestionForCreate = (question, mode) => {
 const getQuestionTypeMeta = (type) => (
   QUESTION_TYPE_CARDS.find((item) => item.type === type)
   ?? DESCRIPTIVE_QUESTION_TYPES.find((item) => item.type === type)
-  ?? (type === 'Descriptive Question' ? { type, shortLabel: 'SAQs', menuLabel: 'Short Answer Questions (SAQs)', icon: FilePenLine } : QUESTION_TYPE_CARDS[0])
+  ?? (type === 'Descriptive Question' ? { type, shortLabel: 'SAQs', menuLabel: 'Descriptive SAQs', icon: FilePenLine } : QUESTION_TYPE_CARDS[0])
 )
 
 const getRichTextPreview = (value) => stripHtml(value)
@@ -5360,7 +5360,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                               <b>{ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.</b>
                                               <span>
                                                 <span>{getRichTextPreview(section.questionText) || 'Question not added'}</span>
-                                                {getDescriptiveCompetencyCode(section) ? (
+                                                {!(section.children ?? []).length && hasVisibleMarks(section.marks) && getDescriptiveCompetencyCode(section) ? (
                                                   <span className="question-bank-created-descriptive-code">{getDescriptiveCompetencyCode(section)}</span>
                                                 ) : null}
                                               </span>
@@ -5372,7 +5372,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                                   <b>{String.fromCharCode(97 + childIndex)}.</b>
                                                   <span>
                                                     <span>{getRichTextPreview(child.questionText) || 'Question not added'}</span>
-                                                    {getDescriptiveCompetencyCode(child) ? (
+                                                    {hasVisibleMarks(child.marks) && getDescriptiveCompetencyCode(child) ? (
                                                       <span className="question-bank-created-descriptive-code">{getDescriptiveCompetencyCode(child)}</span>
                                                     ) : null}
                                                   </span>

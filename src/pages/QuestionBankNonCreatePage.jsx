@@ -29,7 +29,7 @@ const REPORT_REASON_OPTIONS = [
 ]
 const REPORT_AUTHOR_ACTION_OPTIONS = [
   'Delete this question',
-  'Regenerate this question',
+  'Review and Update',
 ]
 const OLD_DEFAULT_ANSWER_TEXT = 'Correct answer: Review the selected option and add the supporting rationale.'
 const CURRENT_DEFAULT_ANSWER_TEXT = 'Add the correct option and explanation.'
@@ -1934,7 +1934,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }, [])
 
   return (
-    <section className={`vx-content assessment-page ${embedded ? 'is-embedded' : ''} is-${resolvedMode}-mode`}>
+    <section className={`vx-content assessment-page question-bank-non-create-page ${embedded ? 'is-embedded' : ''} is-${resolvedMode}-mode is-${activeView}-view`}>
       <div className={`assessment-page-shell question-bank-overview-shell ${selectedGridAction ? 'has-selection-bar' : ''}`}>
         {showMetricsLanding ? (
           <section className="question-bank-metrics-landing" aria-label="Question bank metrics overview">
@@ -3010,7 +3010,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 </span>
               </label>
               <label className="assessment-page-report-field">
-                <span>Assign to Author</span>
+                <span>Select your action</span>
                 <select value={reportAuthorAction} onChange={(event) => setReportAuthorAction(event.target.value)}>
                   <option value="">Select action</option>
                   {REPORT_AUTHOR_ACTION_OPTIONS.map((action) => (
@@ -3036,7 +3036,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   onClick={submitReportQuestion}
                   disabled={!reportReasons.length || !reportAuthorAction}
                 >
-                  Assign to Author
+                  Select your action
                 </button>
               </footer>
             </div>

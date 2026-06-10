@@ -2,17 +2,17 @@ export const DESCRIPTIVE_QUESTION_TYPES = [
   {
     type: 'Desc Long Answer Questions (LAQs)',
     shortLabel: 'LAQs',
-    menuLabel: 'Long Answer Questions (LAQs)',
+    menuLabel: 'Descriptive LAQs',
   },
   {
     type: 'Desc Short Answer Questions (SAQs)',
     shortLabel: 'SAQs',
-    menuLabel: 'Short Answer Questions (SAQs)',
+    menuLabel: 'Descriptive SAQs',
   },
   {
     type: 'Desc Modified Essay Questions (MEQs)',
     shortLabel: 'MEQs',
-    menuLabel: 'Modified Essay Questions (MEQs)',
+    menuLabel: 'Descriptive MEQs',
   },
 ]
 
@@ -42,7 +42,7 @@ export const getBaseQuestionTypeMeta = (type) => (
     ? { type: 'MCQ', shortLabel: 'MCQ', menuLabel: 'Multiple Choice Question' }
     : DESCRIPTIVE_QUESTION_TYPES.find((item) => item.type === type)
       ?? (type === 'Descriptive Question'
-        ? { type, shortLabel: 'SAQs', menuLabel: 'Short Answer Questions (SAQs)' }
+        ? { type, shortLabel: 'SAQs', menuLabel: 'Descriptive SAQs' }
         : { type: 'MCQ', shortLabel: 'MCQ', menuLabel: 'Multiple Choice Question' })
 )
 

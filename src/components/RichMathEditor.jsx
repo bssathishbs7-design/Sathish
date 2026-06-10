@@ -41,18 +41,51 @@ const escapeHtml = (value) => String(value ?? '')
   .replaceAll("'", '&#39;')
 
 const formulaLinePattern = /([=+\-*/^_{}()[\]\\]|\b(frac|sqrt|Delta|alpha|beta|gamma|theta|lambda|mu|pi|sigma|Omega)\b|[\u00b0-\u00b3\u00b5\u00b9\u00bc-\u00be\u2070-\u209c\u2113\u2126\u2190-\u21ff\u2200-\u22ff\u03b1-\u03c9\u0391-\u03a9])/
+const pastedAcronyms = new Set(['AI', 'AETCOM', 'AN', 'CM', 'ECG', 'LAQ', 'LAQS', 'MBBS', 'MCQ', 'MCQS', 'MEQ', 'MEQS', 'NMC', 'PA', 'PY', 'SAQ', 'SAQS', 'SN'])
+
+const shouldNormalizeUppercasePaste = (line) => {
+  const letters = line.match(/[A-Za-z]/g) ?? []
+  if (letters.length < 18) return false
+  const uppercaseLetters = letters.filter((letter) => letter === letter.toUpperCase())
+  return uppercaseLetters.length / letters.length > 0.82
+}
+
+const normalizeUppercasePasteLine = (line) => {
+  if (!shouldNormalizeUppercasePaste(line)) return line
+  const lowered = line.toLowerCase()
+  const sentenceCased = lowered.replace(/(^\s*[a-z])|([.!?]\s+[a-z])/g, (match) => match.toUpperCase())
+  return sentenceCased.replace(/\b[A-Za-z]{2,6}\b/g, (word) => {
+    const upperWord = word.toUpperCase()
+    return pastedAcronyms.has(upperWord) ? upperWord : word
+  })
+}
+
+const shouldRenderPasteLineAsFormula = (line) => {
+  if (!formulaLinePattern.test(line)) return false
+  if (shouldNormalizeUppercasePaste(line)) return false
+
+  const words = line.trim().split(/\s+/).filter(Boolean)
+  const letters = line.match(/[A-Za-z]/g) ?? []
+  const formulaSymbols = line.match(/[=+\-*/^_{}()[\]\\\u00b0-\u00b3\u00b5\u00b9\u00bc-\u00be\u2070-\u209c\u2113\u2126\u2190-\u21ff\u2200-\u22ff\u03b1-\u03c9\u0391-\u03a9]/g) ?? []
+
+  if (words.length > 10 && formulaSymbols.length <= 4) return false
+  if (letters.length > 40 && formulaSymbols.length / letters.length < 0.12) return false
+
+  return true
+}
 
 const renderPlainTextPaste = (text) => text
   .split(/\r?\n/)
   .map((line) => {
-    const trimmedLine = line.trim()
+    const normalizedPasteLine = normalizeUppercasePasteLine(line)
+    const trimmedLine = normalizedPasteLine.trim()
     if (!trimmedLine) return '<div><br></div>'
 
-    if (!formulaLinePattern.test(trimmedLine)) {
-      return `<div>${escapeHtml(line)}</div>`
+    if (!shouldRenderPasteLineAsFormula(line)) {
+      return `<div>${escapeHtml(normalizedPasteLine)}</div>`
     }
 
-    const normalizedLine = normalizeFormulaText(line)
+    const normalizedLine = normalizeFormulaText(normalizedPasteLine)
     return [
       '<div>',
       `<span class="rich-math-editor-formula math-text" data-math="${encodeAttribute(normalizedLine)}">`,

@@ -1112,6 +1112,7 @@
 }
 
 .create-assessment-workspace {
+  --create-page-gutter: 12px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -1135,8 +1136,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 14px 18px;
+  gap: var(--create-page-gutter);
+  padding: 14px var(--create-page-gutter);
   border-bottom: 1px solid #d7e8e2;
   background: #ffffff;
 }
@@ -1144,7 +1145,7 @@
 .create-assessment-title-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--create-page-gutter);
   min-width: 0;
 }
 
@@ -1245,10 +1246,10 @@
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(240px, 18vw, 280px);
-  gap: 12px;
+  gap: var(--create-page-gutter);
   min-height: 0;
   min-width: 0;
-  padding: 10px;
+  padding: var(--create-page-gutter);
   overflow: hidden;
 }
 
@@ -1287,6 +1288,139 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+.create-assessment-workspace .question-bank-create-strip.has-empty-state {
+  display: grid;
+  align-items: center;
+  min-height: 180px;
+  padding: 0;
+  overflow: visible;
+}
+
+.create-assessment-workspace .question-bank-create-empty-state {
+  position: relative;
+  gap: 12px;
+  width: 100%;
+  min-height: 178px;
+  margin-top: 0;
+  padding: 38px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  overflow: visible;
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .question-bank-type-select-panel {
+  position: relative;
+  z-index: 5;
+  width: min(300px, 100%);
+  padding: 2px 0 0;
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .create-assessment-empty-type-trigger {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 18px;
+  align-items: center;
+  justify-content: stretch;
+  width: 100%;
+  min-height: 64px;
+  padding: 0 16px;
+  gap: 12px;
+  border-color: #afe3d8;
+  border-radius: 9px;
+  background: #fafffd;
+  color: #005f55;
+  font-size: 0.92rem;
+  box-shadow: 0 16px 34px rgba(15, 118, 110, 0.08);
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .create-assessment-empty-type-trigger .question-bank-type-picker-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  background: #d9fbf2;
+  color: #00796b;
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .create-assessment-empty-type-trigger strong {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 900;
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .create-assessment-empty-type-trigger > svg:last-child {
+  display: block;
+  justify-self: end;
+  width: 16px;
+  height: 16px;
+  color: #08776d;
+  opacity: 1;
+}
+
+.question-bank-type-select-panel.is-open .create-assessment-empty-type-trigger svg:last-child {
+  transform: none;
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .create-assessment-empty-type-trigger:hover,
+.create-assessment-workspace .question-bank-create-empty-state .create-assessment-empty-type-trigger:focus-visible {
+  border-color: #64cdbc;
+  background: #effff9;
+  color: #064f48;
+  outline: none;
+  box-shadow: 0 18px 38px rgba(15, 118, 110, 0.12);
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .question-bank-type-picker {
+  left: 50%;
+  top: calc(100% + 8px);
+  width: min(300px, calc(100vw - 96px));
+  max-height: none;
+  overflow: visible;
+  transform: translateX(-50%);
+  animation: create-assessment-empty-type-picker-enter 180ms ease both;
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .question-bank-type-picker-group {
+  display: grid;
+  gap: 5px;
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .question-bank-type-picker-menu {
+  position: static;
+  z-index: auto;
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+.create-assessment-workspace .question-bank-create-empty-state .question-bank-type-picker-menu-item {
+  min-height: 40px;
+}
+
+@keyframes create-assessment-empty-type-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
 }
 
 .create-assessment-workspace .assessment-page-metrics-strip {
@@ -1367,13 +1501,13 @@
 
 .create-assessment-right-rail {
   position: sticky;
-  top: 10px;
+  top: var(--create-page-gutter);
   align-self: start;
   display: grid;
   gap: 10px;
   min-width: 0;
   width: 100%;
-  max-height: calc(100svh - 94px);
+  max-height: calc(100svh - 82px - (var(--create-page-gutter) * 2));
   overflow-y: auto;
   padding-right: 2px;
   scrollbar-gutter: stable;
@@ -3111,7 +3245,7 @@
 .create-assessment-workspace .question-bank-author-main,
 .create-assessment-workspace .question-bank-assessment-panel,
 .create-assessment-workspace .question-bank-side-panel {
-  gap: 12px;
+  gap: var(--create-page-gutter);
 }
 
 .create-assessment-workspace .question-bank-soft-panel,
@@ -3292,7 +3426,7 @@
 .create-assessment-workspace .question-bank-answer-panel > .question-bank-section-head {
   min-height: 40px;
   margin-bottom: 10px;
-  gap: 12px;
+  gap: var(--create-page-gutter);
   align-items: center;
 }
 
@@ -3427,7 +3561,7 @@
   grid-template-columns: 1fr;
   min-width: 0;
   position: sticky;
-  top: 10px;
+  top: var(--create-page-gutter);
   overflow: hidden;
 }
 
@@ -4422,7 +4556,7 @@
   display: grid;
   grid-template-columns: minmax(180px, 0.9fr) minmax(130px, 0.7fr);
   align-items: center;
-  gap: 18px;
+  gap: 12px;
 }
 
 .question-bank-overview-card.is-types {
@@ -6500,6 +6634,22 @@
   box-shadow: 0 8px 22px rgba(13, 55, 38, 0.045);
   scrollbar-width: thin;
   scrollbar-color: #bdd8cf transparent;
+}
+
+.question-bank-non-create-page.is-grid-view:not(.is-embedded) {
+  overflow: hidden;
+  padding-bottom: 10px;
+}
+
+.question-bank-non-create-page.is-grid-view:not(.is-embedded) .question-bank-overview-shell {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.question-bank-non-create-page.is-grid-view:not(.is-embedded) .assessment-page-table-wrap {
+  height: 100%;
+  min-height: 0;
 }
 
 .assessment-page-grid-scroll {
@@ -10687,12 +10837,12 @@
 @media (min-width: 1400px) {
   .create-assessment-workspace-body {
     grid-template-columns: minmax(0, 1fr) 280px;
-    gap: 12px;
+    gap: var(--create-page-gutter);
   }
 
   .create-assessment-workspace .question-bank-author-grid {
     grid-template-columns: minmax(0, 1fr) minmax(250px, 290px);
-    gap: 12px;
+    gap: var(--create-page-gutter);
   }
 
   .create-assessment-workspace .question-bank-curriculum-grid {
@@ -10711,12 +10861,12 @@
   }
 
   .create-assessment-workspace-main {
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-workspace .question-bank-author-grid {
     grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
-    gap: 12px;
+    gap: var(--create-page-gutter);
   }
 
   .create-assessment-workspace .question-bank-side-panel {
@@ -10763,7 +10913,7 @@
   }
 
   .create-assessment-workspace-main {
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-action-panel {
@@ -11007,7 +11157,7 @@
   .create-assessment-action-panel {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: end;
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-summary-card,
@@ -11179,7 +11329,7 @@
   .create-assessment-action-panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: end;
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-summary-card,
@@ -11592,7 +11742,7 @@
 
   .create-assessment-action-panel {
     grid-template-columns: 1fr;
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-summary-card,
@@ -11632,7 +11782,7 @@
   .create-assessment-workspace .question-bank-soft-panel,
   .create-assessment-workspace .question-bank-assessment-panel,
   .create-assessment-workspace .question-bank-curriculum-edit-card {
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-workspace .question-bank-answer-panel > .question-bank-section-head,
@@ -11828,7 +11978,7 @@
 
 /* Create Assessment responsive stabilization */
 .create-assessment-workspace {
-  --create-page-gutter: clamp(8px, 1.1vw, 14px);
+  --create-page-gutter: 12px;
 }
 
 .create-assessment-workspace,
@@ -11879,16 +12029,16 @@
   .create-assessment-workspace-body {
     grid-template-columns: minmax(0, 1fr) 250px;
     gap: 10px;
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-workspace-main {
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-action-panel {
     gap: 8px;
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-action-btn {
@@ -11947,7 +12097,7 @@
   .create-assessment-workspace-main,
   .create-assessment-workspace-main:has(.create-assessment-question-bank-panel) {
     overflow: visible;
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-workspace-body:has(.create-assessment-question-bank-panel) {
@@ -12062,7 +12212,7 @@
   .create-assessment-action-panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-summary-card,
@@ -12077,7 +12227,7 @@
   .create-assessment-workspace .question-bank-soft-panel,
   .create-assessment-workspace .question-bank-assessment-panel,
   .create-assessment-workspace .question-bank-curriculum-edit-card {
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-preview-card,
@@ -12119,7 +12269,7 @@
     align-items: stretch;
     flex-direction: column;
     gap: 10px;
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-title-row {
@@ -12203,7 +12353,7 @@
   .create-assessment-action-panel {
     grid-template-columns: 1fr;
     gap: 8px;
-    padding: 10px;
+    padding: var(--create-page-gutter);
   }
 
   .create-assessment-action-btn {
@@ -12438,7 +12588,7 @@
 
   .assessment-create-setup-card {
     border-radius: 10px;
-    padding: 10px;
+    padding: 12px;
   }
 
   .assessment-create-form-actions {
