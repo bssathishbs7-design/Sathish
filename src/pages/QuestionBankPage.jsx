@@ -950,6 +950,29 @@ const getDescriptiveQuestionMarksTotal = (question) => {
   return rootMarks + sectionMarks
 }
 
+const isDescriptiveLeafRowComplete = (row) => (
+  Boolean(getRichTextPreview(row?.questionText))
+  && (row?.competencies ?? []).length > 0
+  && hasVisibleMarks(row?.marks)
+  && Boolean(getRichTextPreview(row?.answerKey))
+)
+
+const isDescriptiveSectionComplete = (section) => {
+  const children = Array.isArray(section?.children) ? section.children : []
+  if (!getRichTextPreview(section?.questionText)) return false
+  return children.length
+    ? children.every(isDescriptiveLeafRowComplete)
+    : isDescriptiveLeafRowComplete(section)
+}
+
+const isDescriptiveQuestionComplete = (question) => {
+  const sections = question?.descriptiveSections ?? []
+  if (!getRichTextPreview(question?.questionText)) return false
+  return sections.length
+    ? sections.every(isDescriptiveSectionComplete)
+    : true
+}
+
 const getQuestionMarksLabel = (question) => {
   if (isDescriptiveQuestionType(question?.type)) {
     const descriptiveTotal = getDescriptiveQuestionMarksTotal(question)
@@ -1039,6 +1062,7 @@ const getAutoFilledCurriculum = (question) => {
 
 const canCreateQuestion = (question) => {
   if (!question || ['Generating', 'Sent to Approval', 'Approved'].includes(question.status)) return false
+  if (isDescriptiveQuestionType(question.type)) return isDescriptiveQuestionComplete(question)
   return hasQuestionContent(question)
 }
 
@@ -1352,7 +1376,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     const syncTooltipPosition = () => {
       setDescriptiveCompetencyDraft((current) => (
         current?.anchorElement
-          ? { ...current, position: getDescriptiveTooltipPosition(current.anchorElement) }
+          ? { ...current, position: getDescriptiveTooltipPosition(current.anchorElement, Boolean(current.openDropdown)) }
           : current
       ))
     }
@@ -2598,20 +2622,23 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     return { years: YEAR_OPTIONS, subjects: Array.from(new Set(subjects)), topics, competencies }
   }
 
-  const getDescriptiveTooltipPosition = (anchorElement = null) => {
+  const getDescriptiveTooltipPosition = (anchorElement = null, hasOpenDropdown = false) => {
     const rect = anchorElement?.getBoundingClientRect?.()
     const tooltipWidth = 360
-    const tooltipHeight = 260
+    const tooltipHeight = hasOpenDropdown ? 420 : 320
     const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : tooltipWidth
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : tooltipHeight
+    const usableTooltipHeight = Math.min(tooltipHeight, Math.max(260, viewportHeight - 24))
     const left = rect ? Math.min(Math.max(12, rect.left), Math.max(12, viewportWidth - tooltipWidth - 12)) : 24
-    const opensAbove = rect ? rect.bottom + tooltipHeight + 12 > viewportHeight : false
+    const opensAbove = rect ? rect.bottom + usableTooltipHeight + 12 > viewportHeight : false
     const top = rect
-      ? (opensAbove ? Math.max(12, rect.top - tooltipHeight - 8) : rect.bottom + 8)
+      ? (opensAbove
+        ? Math.max(12, rect.top - usableTooltipHeight - 8)
+        : Math.min(rect.bottom + 8, Math.max(12, viewportHeight - usableTooltipHeight - 12)))
       : 24
     const arrowLeft = rect ? Math.min(Math.max(18, rect.left + (rect.width / 2) - left), tooltipWidth - 18) : 24
 
-    return { top, left, arrowLeft, opensAbove }
+    return { top, left, arrowLeft, opensAbove, maxHeight: usableTooltipHeight }
   }
 
   const updateDescriptiveMappingTarget = (target, patch) => {
@@ -2766,7 +2793,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   }
 
   const updateDescriptiveCompetencyDraft = (patch) => {
-    setDescriptiveCompetencyDraft((current) => (current ? { ...current, ...patch } : current))
+    setDescriptiveCompetencyDraft((current) => {
+      if (!current) return current
+      const next = { ...current, ...patch }
+      if (Object.prototype.hasOwnProperty.call(patch, 'openDropdown')) {
+        next.position = getDescriptiveTooltipPosition(next.anchorElement, Boolean(next.openDropdown))
+      }
+      return next
+    })
   }
 
   const clearDescriptiveCompetencyDraft = () => {
@@ -3435,7 +3469,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       return (
         <button
           type="button"
-          className={`question-bank-secondary-btn question-bank-descriptive-competency-btn ${shouldHighlight ? 'question-bank-next-action' : ''}`}
+          className={`question-bank-secondary-btn question-bank-descriptive-competency-btn is-icon-only ${shouldHighlight ? 'question-bank-next-action' : ''}`}
           onClick={(event) => {
             setActiveDescriptiveAnswerTarget(target.type === 'inside'
               ? { type: 'inside', sectionId: target.sectionId, childId: target.childId }
@@ -3443,9 +3477,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             openDescriptiveCompetencyTooltip(target, item, event.currentTarget)
           }}
           aria-expanded={isOpen}
+          aria-label="Add Competency"
+          data-tooltip="Add Competency"
           disabled={disabled}
         >
-          Add Competency
+          <Plus size={16} strokeWidth={2.4} />
         </button>
       )
     }
@@ -3485,6 +3521,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         style={{
           top: `${draft.position?.top ?? 24}px`,
           left: `${draft.position?.left ?? 24}px`,
+          maxHeight: `${draft.position?.maxHeight ?? 420}px`,
           '--question-bank-tooltip-arrow-left': `${draft.position?.arrowLeft ?? 24}px`,
         }}
         role="dialog"
@@ -4078,8 +4115,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         const canAddSubQuestion = hasRootQuestionText && (
                           !lastDescriptiveSection
                           || (lastDescriptiveSectionChildren.length
-                            ? Boolean(getRichTextPreview(lastDescriptiveInsideQuestion?.questionText))
-                            : Boolean(getRichTextPreview(lastDescriptiveSection.questionText)))
+                            ? isDescriptiveLeafRowComplete(lastDescriptiveInsideQuestion)
+                            : isDescriptiveSectionComplete(lastDescriptiveSection))
                         )
 
                         return (
@@ -4240,7 +4277,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                 const shouldHighlightSectionMapping = shouldShowSectionControls && hasSectionText && !hasSectionMapping
                                 const shouldHighlightSectionMarks = shouldShowSectionControls && hasSectionText && hasSectionMapping && !hasVisibleMarks(section.marks)
                                 const lastInsideQuestion = sectionChildren[sectionChildren.length - 1]
-                                const canAddInsideQuestion = !lastInsideQuestion || Boolean(getRichTextPreview(lastInsideQuestion.questionText))
+                                const canAddInsideQuestion = hasSectionText && (!lastInsideQuestion || isDescriptiveLeafRowComplete(lastInsideQuestion))
                                 return (
                                   <div key={section.id} className="question-bank-descriptive-sub-card">
                                     <div className="question-bank-descriptive-row">
