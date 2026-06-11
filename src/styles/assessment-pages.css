@@ -1999,7 +1999,8 @@
 
 .create-assessment-preview-add-section,
 .create-assessment-preview-reset-section,
-.create-assessment-preview-nmc-section {
+.create-assessment-preview-nmc-section,
+.create-assessment-preview-expand-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2013,6 +2014,15 @@
   font-size: 0.78rem;
   font-weight: 900;
   cursor: pointer;
+}
+
+.create-assessment-preview-expand-toggle {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
 }
 
 .create-assessment-preview-reset-section {
@@ -2029,6 +2039,8 @@
 
 .create-assessment-preview-add-section:hover,
 .create-assessment-preview-add-section:focus-visible,
+.create-assessment-preview-expand-toggle:hover,
+.create-assessment-preview-expand-toggle:focus-visible,
 .create-assessment-preview-reset-section:hover,
 .create-assessment-preview-reset-section:focus-visible,
 .create-assessment-preview-nmc-section:hover,
@@ -2040,7 +2052,8 @@
 }
 
 .create-assessment-preview-reset-section:disabled,
-.create-assessment-preview-nmc-section:disabled {
+.create-assessment-preview-nmc-section:disabled,
+.create-assessment-preview-expand-toggle:disabled {
   border-color: #e2e8f0;
   background: #f8fafc;
   color: #94a3b8;
@@ -9772,7 +9785,8 @@
 
 .theme-dark .create-assessment-preview-add-section,
 .theme-dark .create-assessment-preview-reset-section,
-.theme-dark .create-assessment-preview-nmc-section {
+.theme-dark .create-assessment-preview-nmc-section,
+.theme-dark .create-assessment-preview-expand-toggle {
   border-color: rgba(45, 212, 191, 0.5);
   background: rgba(20, 184, 166, 0.15);
   color: #99f6e4;
@@ -9783,14 +9797,17 @@
 .theme-dark .create-assessment-preview-reset-section:hover,
 .theme-dark .create-assessment-preview-reset-section:focus-visible,
 .theme-dark .create-assessment-preview-nmc-section:hover,
-.theme-dark .create-assessment-preview-nmc-section:focus-visible {
+.theme-dark .create-assessment-preview-nmc-section:focus-visible,
+.theme-dark .create-assessment-preview-expand-toggle:hover,
+.theme-dark .create-assessment-preview-expand-toggle:focus-visible {
   border-color: rgba(94, 234, 212, 0.72);
   background: rgba(20, 184, 166, 0.24);
   color: #ccfbf1;
 }
 
 .theme-dark .create-assessment-preview-reset-section:disabled,
-.theme-dark .create-assessment-preview-nmc-section:disabled {
+.theme-dark .create-assessment-preview-nmc-section:disabled,
+.theme-dark .create-assessment-preview-expand-toggle:disabled {
   border-color: rgba(94, 116, 145, 0.38);
   background: rgba(15, 23, 42, 0.48);
   color: #64748b;

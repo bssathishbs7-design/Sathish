@@ -11,6 +11,7 @@ import {
   History,
   ImagePlus,
   Info,
+  LayoutGrid,
   ListChecks,
   LogOut,
   Moon,
@@ -832,6 +833,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       return numbers
     }, {})
   }, [previewSections])
+  const areAllPreviewCardsOpen = previewQuestionCount > 0 && previewQuestions.every((item) => openPreviewCardIds.includes(item.id))
 
   useEffect(() => {
     if (!openDistractorOptionId && !openDistractorMenuOptionId && !openPreviewTagsId) return undefined
@@ -2110,6 +2112,10 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     ))
   }
 
+  const toggleAllPreviewCards = () => {
+    setOpenPreviewCardIds(areAllPreviewCardsOpen ? [] : previewQuestions.map((item) => item.id))
+  }
+
   const handleAddOption = () => {
     if (!question) return
 
@@ -2178,6 +2184,16 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                 </span>
               </span>
               <span className="create-assessment-preview-section-actions">
+                <button
+                  type="button"
+                  className="create-assessment-preview-expand-toggle"
+                  onClick={toggleAllPreviewCards}
+                  disabled={!previewQuestionCount}
+                  aria-label={areAllPreviewCardsOpen ? 'Collapse all preview questions' : 'Expand all preview questions'}
+                  title={areAllPreviewCardsOpen ? 'Collapse all' : 'Expand all'}
+                >
+                  {areAllPreviewCardsOpen ? <LayoutGrid size={15} strokeWidth={2.2} /> : <ListChecks size={15} strokeWidth={2.2} />}
+                </button>
                 <button
                   type="button"
                   className="create-assessment-preview-reset-section"
