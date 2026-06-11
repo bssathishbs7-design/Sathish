@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, Upload, X } from 'lucide-react'
+import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, Upload, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import { APP_PAGES } from '../config/appPages'
 import medsyIcon from '../assets/medsy-icon.svg'
@@ -861,7 +861,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [isEmbeddedSelectionBarVisible, setIsEmbeddedSelectionBarVisible] = useState(false)
   const [expandedCardRows, setExpandedCardRows] = useState([])
   const [activeMetric, setActiveMetric] = useState('total')
-  const [showMetricsLanding, setShowMetricsLanding] = useState(() => !embedded && !isQuestionBankDashboardWelcomeDismissed())
+  const [showMetricsLanding, setShowMetricsLanding] = useState(() => !embedded)
   const [showDashboardWelcomeToast, setShowDashboardWelcomeToast] = useState(() => !embedded && !isQuestionBankDashboardWelcomeDismissed())
   const [metricTooltip, setMetricTooltip] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
@@ -1290,6 +1290,44 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     label,
     color: questionTypeDonut.segments.find((segment) => segment.label === label)?.color ?? '#cbd5e1',
   }))
+  const createBarRows = (items, colors = [], options = {}) => {
+    const allRows = items.map((item, index) => ({
+      ...item,
+      color: colors[index % colors.length] ?? '#6f8f8a',
+    }))
+    const rows = options.includeZero ? allRows : allRows.filter((item) => item.count > 0)
+    const total = allRows.reduce((sum, item) => sum + item.count, 0)
+
+    return rows.map((item, index) => ({
+      ...item,
+      color: item.color ?? colors[index % colors.length] ?? '#6f8f8a',
+      percent: total ? Math.round((item.count / total) * 100) : 0,
+      width: `${item.count && total ? Math.max(6, Math.round((item.count / total) * 100)) : 0}%`,
+    }))
+  }
+  const questionTypeRows = createBarRows([
+    { label: 'MCQ', count: landingValueCounts.types.MCQ ?? 0 },
+    { label: 'LAQs', count: landingValueCounts.types['Descriptive (LAQs)'] ?? 0 },
+    { label: 'SAQs', count: landingValueCounts.types['Descriptive (SAQs)'] ?? 0 },
+    { label: 'MEQs', count: landingValueCounts.types['Descriptive (MEQs)'] ?? 0 },
+  ], ['#0f766e', '#7f91a8', '#f1bd68', '#86a995'], { includeZero: true })
+  const categoryRows = createBarRows(
+    ['Application', 'Direct', 'Reasoning', 'Critical Thinking', 'Aetcom'].map((label) => ({
+      label,
+      count: landingValueCounts.categories[label] ?? 0,
+    })),
+    ['#7f6f9f', '#4f7396', '#f1bd68', '#6094a4', '#6f9a84'],
+    { includeZero: true },
+  )
+  const difficultyRows = createBarRows(
+    ['L1', 'L2', 'L3', 'L4', 'L5'].map((label) => ({
+      label,
+      count: landingValueCounts.difficultyLevels[label] ?? 0,
+    })),
+    ['#0f766e', '#f1bd68', '#b17858', '#9c6666', '#7f8794'],
+    { includeZero: true },
+  )
+  const thinkingRows = createBarRows(createSplitCounts(landingValueCounts.thinkingLevels, ['HoT', 'LoT']), ['#0f766e', '#4f7396'])
   const questionListSummaryMetrics = [
     { key: 'total', label: 'Total Question', value: publishedQuestions.length, icon: ClipboardList, tone: 'total' },
     { key: 'medsy', label: 'Medsy Question', value: publishedQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy', activeMetricKey: 'medsy' },
@@ -1983,17 +2021,25 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           <section className="question-bank-metrics-landing" aria-label="Question bank metrics overview">
             <div className="question-bank-metrics-filter-card" aria-label="Question bank metric filters">
               <span className="question-bank-metrics-filter-copy">
-                <strong>Question Bank</strong>
+                <span className="question-bank-metrics-title-icon" aria-hidden="true">
+                  <ClipboardList size={22} strokeWidth={2.1} />
+                </span>
+                <span>
+                  <strong>Question Bank Metrics</strong>
+                  <em>Track question coverage and filter insights</em>
+                </span>
               </span>
               <span className="question-bank-metrics-filter-controls">
                 {landingFilterDefinitions.map(renderFilterDropdown)}
               </span>
               <span className="question-bank-metrics-actions">
                 <button type="button" className="is-secondary" onClick={saveLandingFiltersAsMetricDefault}>
+                  <Filter size={15} strokeWidth={2.3} />
                   Set Default
                 </button>
                 <button type="button" onClick={viewAllQuestions} disabled={!publishedQuestions.length}>
                   View all
+                  <ChevronRight size={15} strokeWidth={2.4} />
                 </button>
               </span>
             </div>
@@ -2018,114 +2064,130 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               </div>
             ) : null}
 
-            <div className="question-bank-overview-grid">
-              <article className="question-bank-overview-card is-ownership">
-                <div>
-                  <strong className="question-bank-overview-total">{formatMetricCount(questionMetricByKey.total?.value)}</strong>
-                  <span>Total Question</span>
-                </div>
-                <div className="question-bank-ownership-splits">
-                  <span>
-                    <img src={medsyIcon} alt="" aria-hidden="true" />
-                    <strong>{formatMetricCount(questionMetricByKey.medsy?.value)}</strong>
-                    <em>Medsy.ai</em>
-                  </span>
-                  <span>
-                    <ListChecks size={16} strokeWidth={2.2} />
-                    <strong>{formatMetricCount(questionMetricByKey.created?.value)}</strong>
-                    <em>Institute/College</em>
-                  </span>
-                </div>
-              </article>
-
-              <article className="question-bank-overview-card is-types">
-                <strong className="question-bank-overview-title">Question types</strong>
-                <div className="question-bank-type-pie-layout">
-                  <span
-                    className="question-bank-type-pie"
-                    style={{ '--question-type-pie': questionTypeDonut.gradient }}
-                    aria-label={`Question types total ${formatMetricCount(questionTypeDonut.total)}`}
-                    onMouseLeave={() => setMetricTooltip(null)}
-                  >
-                    {questionTypeDonut.segments.map((segment, segmentIndex) => (
-                      <span
-                        key={segment.label}
-                        className={`question-bank-type-pie-label is-label-${segmentIndex}`}
-                        onMouseEnter={() => setMetricTooltip({ key: 'types', ...segment })}
-                        onFocus={() => setMetricTooltip({ key: 'types', ...segment })}
-                        onBlur={() => setMetricTooltip(null)}
-                        tabIndex="0"
-                      >
-                        <span className="sr-only">{`${segment.label}: ${formatMetricCount(segment.count)}`}</span>
-                      </span>
-                    ))}
-                    <span className="question-bank-type-pie-total">
-                      <strong>{formatMetricCount(questionTypeDonut.total)}</strong>
-                      <em>Total</em>
+            <section className="question-bank-metrics-kpi-strip" aria-label="Question bank metric totals">
+              {[
+                { key: 'total', label: 'Total Questions', helper: 'All questions in the bank', value: questionMetricByKey.total?.value, icon: ClipboardList },
+                { key: 'medsy', label: 'Medsy Questions', helper: 'Questions from Medsy.ai', value: questionMetricByKey.medsy?.value, logo: true },
+                { key: 'created', label: 'Institute Questions', helper: 'Questions from institute', value: questionMetricByKey.created?.value, icon: BookOpenCheck },
+                { key: 'filtered', label: 'Active Filters', helper: 'Filters applied', value: Object.values(landingFilters).reduce((total, values) => total + values.length, 0), icon: Filter },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <article key={item.key} className={`question-bank-overview-card is-kpi is-${item.key}`}>
+                    <span className="question-bank-overview-icon" aria-hidden="true">
+                      {item.logo ? <img src={medsyIcon} alt="" aria-hidden="true" /> : <Icon size={21} strokeWidth={2.1} />}
                     </span>
-                    {metricTooltip?.key === 'types' ? (
-                      <span className="question-bank-chart-tooltip" role="tooltip">
-                        <i style={{ background: metricTooltip.color }} />
-                        <span>{metricTooltip.label}</span>
-                        <strong>{formatMetricCount(metricTooltip.count)}</strong>
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="question-bank-type-pie-labels" aria-label="Question type labels">
-                    {questionTypeLabelItems.map((segment) => (
-                      <span key={segment.label}>
-                        <i style={{ background: segment.color }} />
-                        <em>{segment.label}</em>
-                      </span>
-                    ))}
-                  </span>
-                </div>
-              </article>
+                    <span>
+                      <em>{item.label}</em>
+                      <strong>{formatMetricCount(item.value)}</strong>
+                      <small>{item.helper}</small>
+                    </span>
+                  </article>
+                )
+              })}
+            </section>
 
-              <article className="question-bank-overview-card is-category">
-                <strong className="question-bank-overview-title">Question category</strong>
-                <span className="question-bank-overview-icon" aria-hidden="true">
-                  <Tags size={17} strokeWidth={2.2} />
+            <div className="question-bank-overview-grid is-calm">
+              <article className="question-bank-overview-card is-bars is-types">
+                <span className="question-bank-overview-card-head">
+                  <span>
+                    <strong>Question Mix</strong>
+                    <small>Distribution by question type</small>
+                  </span>
+                  <em>Total {formatMetricCount(questionTypeRows.reduce((total, item) => total + item.count, 0))}</em>
                 </span>
-                <strong className="question-bank-overview-total">{formatMetricCount(questionMetricByKey.categories?.value)}</strong>
-                <span className="question-bank-overview-list is-plain">
-                  {(questionMetricByKey.categories?.donut?.segments ?? []).map((segment) => (
-                    <span key={segment.label}>
-                      <i style={{ background: segment.color }} />
-                      <strong>{formatMetricCount(segment.count)}</strong>
-                      <em>{segment.label}</em>
+                <span className="question-bank-stacked-bar" aria-label="Question type split">
+                  {questionTypeRows.map((item) => (
+                    <span key={item.label} style={{ width: item.width, background: item.color }}>
+                      {item.percent >= 10 ? `${item.percent}%` : ''}
+                    </span>
+                  ))}
+                </span>
+                <span className="question-bank-mix-legend">
+                  {questionTypeRows.map((item) => (
+                    <span key={item.label}>
+                      <i style={{ background: item.color }} />
+                      <em>{item.label}</em>
+                      <strong>{formatMetricCount(item.count)} ({item.percent}%)</strong>
                     </span>
                   ))}
                 </span>
               </article>
 
-              <article className="question-bank-overview-card is-difficulty">
-                <strong className="question-bank-overview-title">Difficulty level</strong>
-                <span className="question-bank-overview-icon" aria-hidden="true">
-                  <Gauge size={17} strokeWidth={2.2} />
+              <article className="question-bank-overview-card is-bars is-category">
+                <span className="question-bank-overview-card-head">
+                  <span>
+                    <strong>Category Distribution</strong>
+                    <small>By question category</small>
+                  </span>
+                  <em>Total {formatMetricCount(categoryRows.reduce((total, item) => total + item.count, 0))}</em>
                 </span>
-                <strong className="question-bank-overview-total">{formatMetricCount(questionMetricByKey.difficulty?.value)}</strong>
-                <span className="question-bank-level-tiles">
-                  {(questionMetricByKey.difficulty?.splits ?? []).map((split, splitIndex) => (
-                    <span key={split.label} style={{ '--metric-split-color': getSplitColor('difficulty', splitIndex) }}>
-                      <strong>{formatMetricCount(split.count)}</strong>
-                      <em>{split.label}</em>
+                <span className="question-bank-bar-list">
+                  {categoryRows.map((item) => (
+                    <span key={item.label} className="question-bank-bar-row">
+                      <span>
+                        <em>{item.label}</em>
+                        <strong>{formatMetricCount(item.count)} <small>({item.percent}%)</small></strong>
+                      </span>
+                      <i>
+                        <b style={{ width: item.width, background: item.color }} />
+                      </i>
                     </span>
                   ))}
                 </span>
               </article>
 
-              {(questionMetricByKey.thinking?.splits ?? []).map((split, splitIndex) => (
-                <article key={split.label} className={`question-bank-overview-card is-thinking-mini is-thinking-${splitIndex}`}>
-                  <strong className="question-bank-overview-title">Thinking level</strong>
-                  <span className="question-bank-overview-icon" aria-hidden="true">
-                    <Brain size={17} strokeWidth={2.2} />
+              <article className="question-bank-overview-card is-bars is-difficulty">
+                <span className="question-bank-overview-card-head">
+                  <span>
+                    <strong>Difficulty</strong>
+                    <small>Distribution by difficulty level</small>
                   </span>
-                  <strong className="question-bank-overview-total">{formatMetricCount(split.count)}</strong>
-                  <span>{split.label}</span>
-                </article>
-              ))}
+                  <em>Total {formatMetricCount(difficultyRows.reduce((total, item) => total + item.count, 0))}</em>
+                </span>
+                <span className="question-bank-stacked-bar" aria-label="Difficulty split">
+                  {difficultyRows.map((item) => (
+                    <span key={item.label} style={{ width: item.width, background: item.color }}>
+                      {item.percent >= 10 ? `${item.percent}%` : ''}
+                    </span>
+                  ))}
+                </span>
+                <span className="question-bank-difficulty-tiles">
+                  {difficultyRows.map((item) => (
+                    <span key={item.label}>
+                      <em>{item.label}</em>
+                      <strong>{formatMetricCount(item.count)}</strong>
+                    </span>
+                  ))}
+                </span>
+              </article>
 
+              <article className="question-bank-overview-card is-bars is-thinking">
+                <span className="question-bank-overview-card-head">
+                  <span>
+                    <strong>Thinking Level</strong>
+                    <small>Distribution by thinking level</small>
+                  </span>
+                  <em>Total {formatMetricCount(thinkingRows.reduce((total, item) => total + item.count, 0))}</em>
+                </span>
+                <span className="question-bank-bar-list is-compact">
+                  {thinkingRows.map((item) => (
+                    <span key={item.label} className="question-bank-bar-row">
+                      <span>
+                        <em>
+                          {item.label}
+                          {item.label === 'HoT' ? <small>Higher order thinking</small> : null}
+                          {item.label === 'LoT' ? <small>Lower order thinking</small> : null}
+                        </em>
+                        <strong>{formatMetricCount(item.count)} <small>({item.percent}%)</small></strong>
+                      </span>
+                      <i>
+                        <b style={{ width: item.width, background: item.color }} />
+                      </i>
+                    </span>
+                  ))}
+                </span>
+              </article>
             </div>
 
             <div className="question-bank-metrics-grid">
