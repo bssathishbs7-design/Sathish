@@ -13,6 +13,7 @@ const QUESTION_BANK_REPORTED_KEY = 'vx-question-bank-reported-questions'
 const QUESTION_BANK_CREATED_REPORTED_KEY = 'vx-question-bank-created-reported-questions'
 const QUESTION_BANK_EDIT_HANDOFF_KEY = 'vx-question-bank-edit-handoff'
 const QUESTION_BANK_DASHBOARD_WELCOME_DISMISSED_KEY = 'vx-question-bank-dashboard-welcome-dismissed'
+const QUESTION_BANK_METRIC_DEFAULT_FILTERS_KEY = 'vx-question-bank-metric-default-filters'
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
 const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
@@ -679,6 +680,29 @@ const createEmptyFilters = () => ({
   usedInAssessment: [],
 })
 
+const normalizeFilters = (filters = {}) => {
+  const emptyFilters = createEmptyFilters()
+  return Object.fromEntries(Object.keys(emptyFilters).map((key) => [
+    key,
+    Array.isArray(filters[key]) ? [...filters[key]].filter(Boolean) : [],
+  ]))
+}
+
+const readMetricDefaultFilters = () => {
+  if (typeof window === 'undefined') return createEmptyFilters()
+
+  try {
+    return normalizeFilters(JSON.parse(window.localStorage.getItem(QUESTION_BANK_METRIC_DEFAULT_FILTERS_KEY) ?? '{}'))
+  } catch {
+    return createEmptyFilters()
+  }
+}
+
+const writeMetricDefaultFilters = (filters) => {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(QUESTION_BANK_METRIC_DEFAULT_FILTERS_KEY, JSON.stringify(normalizeFilters(filters)))
+}
+
 const getUniqueValues = (questions, getter) => (
   Array.from(new Set(questions.flatMap((question) => {
     const value = getter(question)
@@ -713,10 +737,24 @@ const hasBooleanFilterMatch = (selectedValues, isMatch) => {
 }
 
 const applyFilterSetToQuestion = (question, filterSet) => {
+  if (!hasFilterMatch(filterSet.authors ?? [], getQuestionAuthorName(question))) return false
+  if (!hasFilterMatch(filterSet.types ?? [], getQuestionTypeFilterLabel(question))) return false
   if (!hasFilterMatch(filterSet.years ?? [], question.year)) return false
   if (!hasFilterMatch(filterSet.subjects ?? [], question.subject)) return false
   if (!hasFilterMatch(filterSet.topics ?? [], question.topics ?? [])) return false
   if (!hasFilterMatch(filterSet.competencies ?? [], question.competencies ?? [])) return false
+  if (!hasFilterMatch(filterSet.categories ?? [], getQuestionCategoryLabel(question.questionCategory, question))) return false
+  if (!hasFilterMatch(filterSet.thinkingLevels ?? [], getThinkingLevelLabel(question.thinkingLevel))) return false
+  if (!hasFilterMatch(filterSet.difficultyLevels ?? [], question.difficultyLevel)) return false
+  if (!hasFilterMatch(filterSet.cognitiveLevels ?? [], question.cognitiveLevel)) return false
+  if (!hasFilterMatch(filterSet.cognitiveFunctions ?? [], question.cognitiveFunction)) return false
+  if (!hasFilterMatch(filterSet.skillFocuses ?? [], question.skillFocus)) return false
+  if (!hasFilterMatch(filterSet.organSystems ?? [], question.organSystem)) return false
+  if (!hasFilterMatch(filterSet.organSubSystems ?? [], question.organSubSystems ?? [])) return false
+  if (!hasFilterMatch(filterSet.diseaseTags ?? [], question.diseaseTags ?? [])) return false
+  if (!hasFilterMatch(filterSet.keyConcepts ?? [], question.keyConcepts ?? [])) return false
+  if (!hasBooleanFilterMatch(filterSet.sharedToStudents ?? [], isSharedToStudentsQuestion(question))) return false
+  if (!hasBooleanFilterMatch(filterSet.usedInAssessment ?? [], isUsedInAssessmentQuestion(question))) return false
   return true
 }
 
@@ -803,8 +841,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [publishedQuestions, setPublishedQuestions] = useState(() => readAllQuestionBankQuestions())
   const activeView = 'grid'
   const [filterSearchTerms, setFilterSearchTerms] = useState({})
-  const [filters, setFilters] = useState(() => createEmptyFilters())
-  const [landingFilters, setLandingFilters] = useState(() => createEmptyFilters())
+  const [metricDefaultFilters, setMetricDefaultFilters] = useState(() => readMetricDefaultFilters())
+  const [filters, setFilters] = useState(() => readMetricDefaultFilters())
+  const [landingFilters, setLandingFilters] = useState(() => readMetricDefaultFilters())
   const [openFilterKey, setOpenFilterKey] = useState('')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [moreFiltersPanelStyle, setMoreFiltersPanelStyle] = useState({})
@@ -1291,22 +1330,24 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     setShowAdvancedFilters(false)
   }
 
-  const applyLandingFilters = () => {
-    setActiveMetric('total')
-    setFilters({
-      ...createEmptyFilters(),
-      years: landingFilters.years,
-      subjects: landingFilters.subjects,
-      topics: landingFilters.topics,
-      competencies: landingFilters.competencies,
-    })
-    setShowMetricsLanding(false)
+  const saveLandingFiltersAsMetricDefault = () => {
+    const nextDefaultFilters = normalizeFilters(landingFilters)
+    setMetricDefaultFilters(nextDefaultFilters)
+    writeMetricDefaultFilters(nextDefaultFilters)
     setOpenFilterKey('')
-    setShowAdvancedFilters(false)
   }
 
   const clearLandingFilters = () => {
     setLandingFilters(createEmptyFilters())
+    setOpenFilterKey('')
+  }
+
+  const setCurrentFiltersAsMetricDefault = () => {
+    const nextDefaultFilters = normalizeFilters(filters)
+    setMetricDefaultFilters(nextDefaultFilters)
+    writeMetricDefaultFilters(nextDefaultFilters)
+    setLandingFilters(nextDefaultFilters)
+    setShowAdvancedFilters(false)
     setOpenFilterKey('')
   }
 
@@ -1323,10 +1364,12 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }
 
   const backToMetrics = () => {
+    const nextLandingFilters = hasSelectedFilters(metricDefaultFilters)
+      ? metricDefaultFilters
+      : normalizeFilters(filters)
     setShowMetricsLanding(true)
     setActiveMetric('total')
-    setFilters(createEmptyFilters())
-    setLandingFilters(createEmptyFilters())
+    setLandingFilters(nextLandingFilters)
     setCurrentPage(1)
     setSelectedGridAction('')
     setSelectedGridQuestionIds([])
@@ -1946,7 +1989,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 {landingFilterDefinitions.map(renderFilterDropdown)}
               </span>
               <span className="question-bank-metrics-actions">
-                <button type="button" className="is-secondary" onClick={applyLandingFilters}>
+                <button type="button" className="is-secondary" onClick={saveLandingFiltersAsMetricDefault}>
                   Set Default
                 </button>
                 <button type="button" onClick={viewAllQuestions} disabled={!publishedQuestions.length}>
@@ -1957,8 +2000,8 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
 
             {hasSelectedFilters(landingFilters) ? (
               <div className="assessment-page-active-filters question-bank-metrics-active-filters">
-                {['years', 'subjects', 'topics', 'competencies'].flatMap((filterKey) => (
-                  (landingFilters[filterKey] ?? []).map((value) => (
+                {Object.entries(landingFilters).flatMap(([filterKey, values]) => (
+                  (values ?? []).map((value) => (
                     <button key={`${filterKey}-${value}`} type="button" onClick={() => clearFilterValue(filterKey, value)}>
                       {filterKey === 'competencies' ? getCompetencyCode(value) : value}
                       <X size={12} strokeWidth={2.4} />
@@ -2305,14 +2348,24 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           </span>
                         ))}
                         {!embedded ? (
-                          <button
-                            type="button"
-                            className="assessment-page-more-filter-default-btn"
-                            onClick={backToMetrics}
-                          >
-                            <BarChart3 size={14} strokeWidth={2.3} />
-                            Set as Default
-                          </button>
+                          <span className="assessment-page-more-filter-actions">
+                            <button
+                              type="button"
+                              className="assessment-page-more-filter-default-btn"
+                              onClick={backToMetrics}
+                            >
+                              <BarChart3 size={14} strokeWidth={2.3} />
+                              Metrics
+                            </button>
+                            <button
+                              type="button"
+                              className="assessment-page-more-filter-default-btn is-secondary"
+                              onClick={setCurrentFiltersAsMetricDefault}
+                            >
+                              <Shuffle size={14} strokeWidth={2.3} />
+                              Set as Default
+                            </button>
+                          </span>
                         ) : null}
                       </span>,
                       document.body,

@@ -6245,12 +6245,31 @@
   cursor: pointer;
 }
 
+.assessment-page-more-filter-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.assessment-page-more-filter-default-btn.is-secondary {
+  border-color: #dbe7e2;
+  background: #ffffff;
+  color: #405866;
+}
+
 .assessment-page-more-filter-default-btn:hover,
 .assessment-page-more-filter-default-btn:focus-visible {
   border-color: #14b8a6;
   background: #dcfced;
   color: #075f54;
   outline: none;
+}
+
+.assessment-page-more-filter-default-btn.is-secondary:hover,
+.assessment-page-more-filter-default-btn.is-secondary:focus-visible {
+  border-color: #9bd9c7;
+  background: #f8fffc;
+  color: #08776d;
 }
 
 .assessment-page-more-filter-group {
