@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Check,
@@ -479,8 +479,8 @@ const EXCEL_UPLOAD_TYPE_CONFIG = {
   MCQ: {
     label: 'MCQ',
     type: 'MCQ',
-    columns: ['question_type', 'question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'answer_explanation', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
-    sample: ['MCQ', 'Which plane divides the body into superior and inferior parts?', 'Transverse plane', 'Sagittal plane', 'Coronal plane', 'Median plane', 'A', 'The transverse plane divides the body into superior and inferior parts.', '1', 'Year 1', 'Human Anatomy', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Direct', 'Recall', 'LoT', 'L1'],
+    columns: ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'answer_explanation', 'marks', 'topic', 'competency', 'uploaded_by', 'author_by'],
+    sample: ['Which plane divides the body into superior and inferior parts?', 'Transverse plane', 'Sagittal plane', 'Coronal plane', 'Median plane', 'A', 'The transverse plane divides the body into superior and inferior parts.', '1', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Karthik Subramanian', 'Dr. Author Name'],
   },
   LAQs: {
     label: 'LAQs',
@@ -503,13 +503,21 @@ const EXCEL_UPLOAD_TYPE_CONFIG = {
 }
 
 const EXCEL_UPLOAD_REQUIRED_COLUMNS = {
-  MCQ: ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option'],
+  MCQ: ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'topic', 'uploaded_by', 'author_by'],
   LAQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
   SAQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
   MEQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
 }
 
-const EXCEL_UPLOAD_ANALYZE_SECONDS = 60
+const EXCEL_UPLOAD_ANALYZE_SECONDS = 20
+const UPLOAD_MBBS_YEAR_SUBJECTS = {
+  'First Year': ['Anatomy', 'Physiology', 'Biochemistry'],
+  'Second Year': ['Pathology', 'Pharmacology', 'Microbiology', 'Forensic Medicine'],
+  'Third Year': ['Community Medicine', 'ENT', 'Ophthalmology'],
+  'Fourth Year': ['Medicine', 'Surgery', 'Obstetrics and Gynaecology', 'Pediatrics', 'Orthopedics', 'Psychiatry', 'Dermatology', 'Anesthesiology', 'Radiology'],
+}
+const UPLOAD_MBBS_YEAR_OPTIONS = Object.keys(UPLOAD_MBBS_YEAR_SUBJECTS)
+const UPLOAD_QUESTION_TYPE_OPTIONS = [{ value: 'MCQ', label: 'MCQ' }]
 
 const normalizeUploadHeader = (value) => String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
 
@@ -610,7 +618,7 @@ const getUploadRowObjects = (csvText) => {
   return { headers, rows, errors: [] }
 }
 
-const validateExcelUploadRows = (csvText) => {
+const validateExcelUploadRows = (csvText, uploadMeta = {}) => {
   const { headers, rows, errors } = getUploadRowObjects(csvText)
   if (errors.length) return { questions: [], errors, rowsCount: 0 }
   if (!rows.length) return { questions: [], errors: ['No question rows found below the header.'], rowsCount: 0 }
@@ -621,7 +629,7 @@ const validateExcelUploadRows = (csvText) => {
   const validationErrors = []
 
   rows.forEach((row, rowIndex) => {
-    const typeKey = getUploadQuestionTypeKey(row.question_type)
+    const typeKey = getUploadQuestionTypeKey(row.question_type, uploadMeta.questionType)
     if (!typeKey || !EXCEL_UPLOAD_TYPE_CONFIG[typeKey]) {
       validationErrors.push(`Row ${row.__rowNumber}: question_type must be MCQ, LAQs, SAQs, or MEQs.`)
       return
@@ -648,13 +656,13 @@ const validateExcelUploadRows = (csvText) => {
 
     if (typeKey === 'MCQ') {
       const correctOption = getUploadCell(row, 'correct_option').toUpperCase()
-      if (!['A', 'B', 'C', 'D'].includes(correctOption)) {
+      if (correctOption && !['A', 'B', 'C', 'D'].includes(correctOption)) {
         validationErrors.push(`Row ${row.__rowNumber}: correct_option must be A, B, C, or D.`)
         return
       }
     }
 
-    questions.push(buildExcelUploadQuestion(row, typeKey, batchId, row.__rowNumber, rowIndex))
+    questions.push(buildExcelUploadQuestion(row, typeKey, batchId, row.__rowNumber, rowIndex, uploadMeta))
   })
 
   return {
@@ -687,30 +695,46 @@ const getUploadErrorRows = (errors = []) => (
   })
 )
 
-const buildExcelUploadQuestion = (row, typeKey, batchId, rowNumber, questionIndex) => {
+const getGeneratedMcqCorrectOption = () => 'A'
+
+const getGeneratedMcqAnswerExplanation = (row, correctOption) => {
+  const optionKey = `option_${correctOption.toLowerCase()}`
+  const correctAnswer = getUploadCell(row, optionKey)
+  return correctAnswer
+    ? `Correct option: ${correctOption}. ${correctAnswer} is the best answer based on the question stem.`
+    : `Correct option: ${correctOption}.`
+}
+
+const buildExcelUploadQuestion = (row, typeKey, batchId, rowNumber, questionIndex, uploadMeta = {}) => {
   const config = EXCEL_UPLOAD_TYPE_CONFIG[typeKey]
+  const uploadYear = uploadMeta.year || getUploadCell(row, 'year')
+  const uploadSubject = uploadMeta.subject || getUploadCell(row, 'subject')
   const question = createQuestion(config.type, {
     title: `${config.label} Upload ${questionIndex + 1}`,
   })
   const autoFilledCurriculum = getAutoFilledCurriculum({
     ...question,
-    year: getUploadCell(row, 'year'),
-    subject: getUploadCell(row, 'subject'),
+    year: uploadYear,
+    subject: uploadSubject,
     topics: [getUploadCell(row, 'topic')].filter(Boolean),
     competencies: [getUploadCell(row, 'competency')].filter(Boolean),
   })
   const optionalTags = getGeneratedOptionalTags(config.type)
   const marks = getUploadCell(row, 'marks') || (typeKey === 'MCQ' ? '1' : '')
-  const answerExplanation = getUploadCell(row, 'answer_explanation')
-  const correctOption = getUploadCell(row, 'correct_option').toUpperCase()
+  const correctOption = typeKey === 'MCQ'
+    ? getUploadCell(row, 'correct_option').toUpperCase() || getGeneratedMcqCorrectOption(row)
+    : getUploadCell(row, 'correct_option').toUpperCase()
+  const answerExplanation = getUploadCell(row, 'answer_explanation') || (typeKey === 'MCQ'
+    ? getGeneratedMcqAnswerExplanation(row, correctOption)
+    : '')
   const baseQuestion = {
     ...question,
     questionText: createHtmlBlock(getUploadCell(row, 'question_text')),
     answerKey: createHtmlBlock(typeKey === 'MCQ'
-      ? answerExplanation || `Correct option: ${correctOption}.`
+      ? answerExplanation || (correctOption ? `Correct option: ${correctOption}.` : '')
       : getUploadCell(row, 'answer_key')),
-    year: autoFilledCurriculum.year || getUploadCell(row, 'year'),
-    subject: autoFilledCurriculum.subject || getUploadCell(row, 'subject'),
+    year: autoFilledCurriculum.year || uploadYear,
+    subject: autoFilledCurriculum.subject || uploadSubject,
     topics: autoFilledCurriculum.topics?.length ? autoFilledCurriculum.topics : [getUploadCell(row, 'topic')].filter(Boolean),
     competencies: autoFilledCurriculum.competencies?.length ? autoFilledCurriculum.competencies : [getUploadCell(row, 'competency')].filter(Boolean),
     questionCategory: getUploadCell(row, 'question_category') || (typeKey === 'MCQ' ? 'Direct' : ''),
@@ -727,7 +751,9 @@ const buildExcelUploadQuestion = (row, typeKey, batchId, rowNumber, questionInde
     status: 'Created',
     revisionStatus: 'Created',
     source: 'Excel Upload',
-    authorName: 'Institute/College',
+    authorName: getUploadCell(row, 'author_by') || 'Institute/College',
+    createdByName: getUploadCell(row, 'author_by') || 'Institute/College',
+    uploadedByName: getUploadCell(row, 'uploaded_by'),
     uploadedAt: new Date().toISOString(),
     uploadBatchId: batchId,
     uploadRowNumber: rowNumber,
@@ -1359,11 +1385,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     isOpen: false,
     status: 'idle',
     fileName: '',
+    questionType: '',
+    year: '',
+    subject: '',
     generatedCount: 0,
     totalSeconds: 0,
     remainingSeconds: 0,
     startedAt: 0,
   })
+  const uploadYearSelectRef = useRef(null)
+  const uploadSubjectSelectRef = useRef(null)
   const [editableDescriptiveFieldKeys, setEditableDescriptiveFieldKeys] = useState([])
   const [activeDescriptiveAnswerTarget, setActiveDescriptiveAnswerTarget] = useState({ type: 'root' })
   const [activeDescriptiveMappingTarget, setActiveDescriptiveMappingTarget] = useState(null)
@@ -1596,6 +1627,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     ? Math.round((uploadWizard.generatedCount / uploadWizardQuestionCount) * 100)
     : 0
   const uploadWizardErrorRows = getUploadErrorRows(uploadImportResult?.errors ?? [])
+  const uploadWizardSubjectOptions = uploadWizard.year ? (UPLOAD_MBBS_YEAR_SUBJECTS[uploadWizard.year] ?? []) : []
+  const canBrowseUploadFile = Boolean(uploadWizard.questionType && uploadWizard.year && uploadWizard.subject)
   const isUploadWizardLocked = ['analyzing', 'generating', 'complete'].includes(uploadWizard.status)
   const approvalModalQuestionCount = pendingUploadApprovalQuestions.length || approvalSelectedIds.length
 
@@ -1807,7 +1840,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
           return { ...current, status: 'error', remainingSeconds: 0 }
         }
 
-        const result = validateExcelUploadRows(uploadImportResult.csvText ?? '')
+        const result = validateExcelUploadRows(uploadImportResult.csvText ?? '', {
+          questionType: uploadImportResult.questionType,
+          year: uploadImportResult.year,
+          subject: uploadImportResult.subject,
+        })
         setUploadImportResult({
           status: result.errors.length ? 'error' : 'ready',
           fileName: uploadImportResult.fileName,
@@ -1816,11 +1853,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
         return {
           ...current,
-          status: result.errors.length ? 'error' : 'generating',
+          status: result.errors.length ? 'error' : 'ready',
           generatedCount: 0,
           totalSeconds: result.errors.length ? 0 : result.questions.length * 15,
           remainingSeconds: result.errors.length ? 0 : result.questions.length * 15,
-          startedAt: result.errors.length ? 0 : Date.now(),
+          startedAt: 0,
         }
       })
     }
@@ -1940,6 +1977,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       isOpen: true,
       status: 'idle',
       fileName: '',
+      questionType: '',
+      year: '',
+      subject: '',
       generatedCount: 0,
       totalSeconds: 0,
       remainingSeconds: 0,
@@ -1962,12 +2002,52 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       isOpen: false,
       status: 'idle',
       fileName: '',
+      questionType: '',
+      year: '',
+      subject: '',
       generatedCount: 0,
       totalSeconds: 0,
       remainingSeconds: 0,
       startedAt: 0,
     })
     onAlert?.({ tone: 'warning', message: 'Upload question generation stopped.' })
+  }
+
+  const openUploadWizardSelect = (selectRef) => {
+    if (typeof window === 'undefined') return
+    window.setTimeout(() => {
+      const selectElement = selectRef.current
+      if (!selectElement) return
+      selectElement.focus()
+      selectElement.showPicker?.()
+    }, 0)
+  }
+
+  const updateUploadWizardField = (field, value) => {
+    setUploadWizard((current) => ({
+      ...current,
+      [field]: value,
+      ...(field === 'year' ? { subject: '' } : {}),
+    }))
+    if (field === 'questionType' && value) {
+      openUploadWizardSelect(uploadYearSelectRef)
+    }
+    if (field === 'year' && value) {
+      openUploadWizardSelect(uploadSubjectSelectRef)
+    }
+  }
+
+  const startUploadGeneration = () => {
+    const questionsToGenerate = uploadImportResult?.questions ?? []
+    if (!questionsToGenerate.length) return
+    setUploadWizard((current) => ({
+      ...current,
+      status: 'generating',
+      generatedCount: 0,
+      totalSeconds: questionsToGenerate.length * 15,
+      remainingSeconds: questionsToGenerate.length * 15,
+      startedAt: Date.now(),
+    }))
   }
 
   const handleUploadQuestionFile = async (event) => {
@@ -1995,6 +2075,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         fileName: file.name,
         csvText,
         extension,
+        questionType: uploadWizard.questionType,
+        year: uploadWizard.year,
+        subject: uploadWizard.subject,
         questions: [],
         rowsCount: 0,
         errors: [],
@@ -2004,6 +2087,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         status: 'analyzing',
         fileName: file.name,
         extension,
+        questionType: uploadWizard.questionType,
+        year: uploadWizard.year,
+        subject: uploadWizard.subject,
         readError: true,
         questions: [],
         rowsCount: 0,
@@ -5544,8 +5630,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                 <Upload size={18} strokeWidth={2.3} />
               </span>
               <div>
-                <span className="question-bank-upload-wizard-eyebrow">Question Bank Upload</span>
-                <h2 id="question-bank-upload-wizard-title">Upload question file</h2>
+                <span id="question-bank-upload-wizard-title" className="question-bank-upload-wizard-eyebrow">Question Bank Upload</span>
                 <p>Analyze the Excel CSV template, generate questions, then add them to Upload Ques.</p>
               </div>
               {!isUploadWizardLocked ? (
@@ -5566,7 +5651,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                   ? 0
                   : uploadWizard.status === 'analyzing' || uploadWizard.status === 'error'
                     ? 1
-                    : uploadWizard.status === 'generating'
+                    : uploadWizard.status === 'ready' || uploadWizard.status === 'generating'
                       ? 2
                       : 3
                 return (
@@ -5579,17 +5664,45 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             </div>
 
             {uploadWizard.status === 'idle' ? (
-              <label className="question-bank-upload-wizard-drop">
-                <input type="file" accept=".csv,.txt" onChange={handleUploadQuestionFile} />
-                <span className="question-bank-upload-wizard-drop-icon">
-                  <Upload size={24} strokeWidth={2.3} />
-                </span>
-                <span className="question-bank-upload-wizard-drop-copy">
-                  <strong>Choose Excel CSV file</strong>
-                  <span>Use the sample templates and save from Excel as CSV.</span>
-                </span>
-                <span className="question-bank-upload-wizard-drop-action">Browse file</span>
-              </label>
+              <>
+                <div className="question-bank-upload-wizard-fields">
+                  <label>
+                    <select value={uploadWizard.questionType} onChange={(event) => updateUploadWizardField('questionType', event.target.value)}>
+                      <option value="">Select question type</option>
+                      {UPLOAD_QUESTION_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <select ref={uploadYearSelectRef} value={uploadWizard.year} onChange={(event) => updateUploadWizardField('year', event.target.value)} disabled={!uploadWizard.questionType}>
+                      <option value="">Select Year</option>
+                      {UPLOAD_MBBS_YEAR_OPTIONS.map((year) => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <select ref={uploadSubjectSelectRef} value={uploadWizard.subject} onChange={(event) => updateUploadWizardField('subject', event.target.value)} disabled={!uploadWizard.year}>
+                      <option value="">Select Subject</option>
+                      {uploadWizardSubjectOptions.map((subject) => (
+                        <option key={subject} value={subject}>{subject}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <label className={`question-bank-upload-wizard-drop ${!canBrowseUploadFile ? 'is-disabled' : ''}`}>
+                  <input type="file" accept=".csv,.txt,.xls,.xlsx" onChange={handleUploadQuestionFile} disabled={!canBrowseUploadFile} />
+                  <span className="question-bank-upload-wizard-drop-icon">
+                    <Upload size={24} strokeWidth={2.3} />
+                  </span>
+                  <span className="question-bank-upload-wizard-drop-copy">
+                    <strong>Choose Excel CSV file</strong>
+                    <span>{canBrowseUploadFile ? 'Use the sample templates and save from Excel as CSV.' : 'Select question type, year, and subject before browsing.'}</span>
+                  </span>
+                  <span className="question-bank-upload-wizard-drop-action">Browse file</span>
+                </label>
+              </>
             ) : null}
 
             {uploadWizard.status === 'analyzing' ? (
@@ -5627,6 +5740,28 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            ) : null}
+
+            {uploadWizard.status === 'ready' ? (
+              <div className="question-bank-upload-generation-panel">
+                <div>
+                  <strong>Ready to generate</strong>
+                  <span>{uploadWizardQuestionCount} question{uploadWizardQuestionCount === 1 ? '' : 's'} validated from {uploadWizard.fileName}</span>
+                </div>
+                <span className="question-bank-upload-generation-progress">
+                  <span style={{ width: '100%' }} />
+                </span>
+                <div className="question-bank-upload-generation-meta">
+                  <span>
+                    <strong>{formatUploadWizardTime(uploadWizard.totalSeconds)}</strong>
+                    <em>Estimated generation</em>
+                  </span>
+                  <span>
+                    <strong>{uploadWizard.questionType || 'Template'}</strong>
+                    <em>{uploadWizard.year} / {uploadWizard.subject}</em>
+                  </span>
                 </div>
               </div>
             ) : null}
@@ -5675,6 +5810,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
               {uploadWizard.status === 'generating' ? (
                 <button type="button" className="question-bank-primary-btn danger" onClick={stopUploadGeneration}>
                   Stop Generation
+                </button>
+              ) : null}
+              {uploadWizard.status === 'ready' ? (
+                <button type="button" className="question-bank-primary-btn" onClick={startUploadGeneration}>
+                  <Sparkles size={15} strokeWidth={2.2} />
+                  Start Generate
                 </button>
               ) : null}
               {uploadWizard.status === 'complete' ? (

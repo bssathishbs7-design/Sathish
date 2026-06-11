@@ -821,6 +821,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       }
     }).filter((section) => section.questions.length || section.isCustom)
   }, [fullPreviewSectionConfig, previewQuestions, previewSectionOrder, previewSectionTitles])
+  const previewSectionCount = previewSections.length
   const previewQuestionDisplayNumbers = useMemo(() => {
     let displayNumber = 1
     return previewSections.reduce((numbers, section) => {
@@ -2168,7 +2169,14 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         {activeCreateTab === 'preview' ? (
           <section className="create-assessment-tab-panel" aria-label="Assessment preview">
             <div className="create-assessment-tab-panel-head">
-              <strong>Preview</strong>
+              <span className="create-assessment-preview-head-copy">
+                <strong>Preview</strong>
+                <span>
+                  <b>{formatSummaryNumber(assessmentSummary.totalQuestions)} questions</b>
+                  <b>{formatSummaryNumber(assessmentSummary.totalMarks)} marks</b>
+                  <b>{formatSummaryNumber(previewSectionCount)} sections</b>
+                </span>
+              </span>
               <span className="create-assessment-preview-section-actions">
                 <button
                   type="button"

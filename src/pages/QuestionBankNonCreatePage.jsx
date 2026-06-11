@@ -627,11 +627,33 @@ const getAuthorBadgeTooltip = (question) => (
         : getQuestionAuthorName(question)
 )
 
-const renderSourceBadge = (question, className) => (
+const getQuestionUploadedByName = (question) => (
+  question?.uploadedByName
+  ?? question?.uploadedBy
+  ?? question?.uploaded_by
+  ?? 'Not set'
+)
+
+const getUploadSourceTooltipData = (question) => ({
+  authorBy: getQuestionAuthorName(question) || 'Not set',
+  uploadedBy: getQuestionUploadedByName(question),
+})
+
+const renderSourceBadge = (question, className, tooltipHandlers = {}) => (
   <span
     className={`${className} assessment-page-source-badge ${getAuthorBadgeClassName(question)} ${isEditedQuestion(question) ? 'is-edited-author' : ''}`}
     title={getAuthorBadgeTooltip(question)}
     aria-label={getAuthorBadgeTooltip(question)}
+    tabIndex={isExcelUploadedQuestion(question) ? 0 : undefined}
+    onMouseEnter={(event) => tooltipHandlers.onOpen?.(event, question)}
+    onMouseLeave={tooltipHandlers.onClose}
+    onFocus={(event) => tooltipHandlers.onOpen?.(event, question)}
+    onBlur={tooltipHandlers.onClose}
+    onClick={(event) => {
+      if (!isExcelUploadedQuestion(question)) return
+      event.stopPropagation()
+      tooltipHandlers.onOpen?.(event, question)
+    }}
   >
     {isEditedQuestion(question) ? (
       <Shuffle size={14} strokeWidth={2.4} />
@@ -862,8 +884,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [expandedCardRows, setExpandedCardRows] = useState([])
   const [activeMetric, setActiveMetric] = useState('total')
   const [showMetricsLanding, setShowMetricsLanding] = useState(() => !embedded)
-  const [showDashboardWelcomeToast, setShowDashboardWelcomeToast] = useState(() => !embedded && !isQuestionBankDashboardWelcomeDismissed())
+  const [showDashboardWelcomeToast, setShowDashboardWelcomeToast] = useState(() => !embedded)
   const [metricTooltip, setMetricTooltip] = useState(null)
+  const [sourceBadgeTooltip, setSourceBadgeTooltip] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
   const [createdReportedQuestionRecords, setCreatedReportedQuestionRecords] = useState(() => readCreatedReportedQuestionRecords())
   const [reportQuestion, setReportQuestion] = useState(null)
@@ -984,6 +1007,10 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
       ...current,
       [filterKey]: (current[filterKey] ?? []).filter((item) => item !== value),
     }))
+  }
+
+  const clearFilterGroup = (filterKey) => {
+    updateActiveFilters((current) => ({ ...current, [filterKey]: [] }))
   }
 
   const clearMoreFilters = () => {
@@ -1366,12 +1393,19 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     setShowMetricsLanding(false)
     setOpenFilterKey('')
     setShowAdvancedFilters(false)
+    setShowDashboardWelcomeToast(false)
   }
 
   const saveLandingFiltersAsMetricDefault = () => {
     const nextDefaultFilters = normalizeFilters(landingFilters)
     setMetricDefaultFilters(nextDefaultFilters)
     writeMetricDefaultFilters(nextDefaultFilters)
+    setActiveMetric('total')
+    setFilters(nextDefaultFilters)
+    setShowMetricsLanding(false)
+    setShowAdvancedFilters(false)
+    setShowDashboardWelcomeToast(false)
+    setCurrentPage(1)
     setOpenFilterKey('')
   }
 
@@ -1695,9 +1729,29 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     )
   }
 
+  const openSourceBadgeTooltip = (event, question) => {
+    if (!isExcelUploadedQuestion(question)) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    setSourceBadgeTooltip({
+      id: question.id ?? getQuestionPreview(question),
+      top: rect.bottom + 10,
+      left: rect.left + (rect.width / 2),
+      ...getUploadSourceTooltipData(question),
+    })
+  }
+
+  const closeSourceBadgeTooltip = () => {
+    setSourceBadgeTooltip(null)
+  }
+
+  const sourceBadgeTooltipHandlers = {
+    onOpen: openSourceBadgeTooltip,
+    onClose: closeSourceBadgeTooltip,
+  }
+
   const renderQuestionTagBadges = (question) => (
     <>
-      {renderSourceBadge(question, 'assessment-page-grid-author-label')}
+      {renderSourceBadge(question, 'assessment-page-grid-author-label', sourceBadgeTooltipHandlers)}
       {getQuestionMarksTotal(question) > 0 ? (
         <span className="assessment-page-table-value-pill assessment-page-marks-badge">
           {getQuestionMarksTotal(question)}M
@@ -1805,7 +1859,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
             <div>
               <strong>{label}</strong>
               {selectedValues.length ? (
-                <button type="button" onClick={() => updateActiveFilters((current) => ({ ...current, [filterKey]: [] }))}>
+                <button type="button" onClick={() => clearFilterGroup(filterKey)}>
                   Clear
                 </button>
               ) : null}
@@ -2043,26 +2097,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 </button>
               </span>
             </div>
-
-            {hasSelectedFilters(landingFilters) ? (
-              <div className="assessment-page-active-filters question-bank-metrics-active-filters">
-                {Object.entries(landingFilters).flatMap(([filterKey, values]) => (
-                  (values ?? []).map((value) => (
-                    <button key={`${filterKey}-${value}`} type="button" onClick={() => clearFilterValue(filterKey, value)}>
-                      {filterKey === 'competencies' ? getCompetencyCode(value) : value}
-                      <X size={12} strokeWidth={2.4} />
-                    </button>
-                  ))
-                ))}
-                <button
-                  type="button"
-                  className="assessment-page-active-filters-clear"
-                  onClick={clearLandingFilters}
-                >
-                  Clear all
-                </button>
-              </div>
-            ) : null}
 
             <section className="question-bank-metrics-kpi-strip" aria-label="Question bank metric totals">
               {[
@@ -2535,7 +2569,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                 <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
                   <div className="assessment-page-question-head">
                     <span className="assessment-page-question-type">{getQuestionTypeLabel(question)}</span>
-                    {renderSourceBadge(question, 'assessment-page-question-author')}
+                    {renderSourceBadge(question, 'assessment-page-question-author', sourceBadgeTooltipHandlers)}
                     {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
                     {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
                     {isCardOpen && tagGroups.length ? (
@@ -3218,6 +3252,28 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           </section>
         ) : null}
 
+        {sourceBadgeTooltip && typeof document !== 'undefined' ? createPortal(
+          <div
+            className="assessment-page-upload-source-tooltip"
+            role="tooltip"
+            style={{
+              top: `${sourceBadgeTooltip.top}px`,
+              left: `${sourceBadgeTooltip.left}px`,
+            }}
+          >
+            <span className="assessment-page-upload-source-tooltip-arrow" aria-hidden="true" />
+            <span className="assessment-page-upload-source-tooltip-row">
+              <strong>Author By</strong>
+              <span>{sourceBadgeTooltip.authorBy}</span>
+            </span>
+            <span className="assessment-page-upload-source-tooltip-row">
+              <strong>Uploaded By</strong>
+              <span>{sourceBadgeTooltip.uploadedBy}</span>
+            </span>
+          </div>,
+          document.body,
+        ) : null}
+
         {!publishedQuestions.length && !showMetricsLanding ? (
           <section className="assessment-page-empty">
             <Info size={18} strokeWidth={2.2} />
@@ -3226,7 +3282,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           </section>
         ) : null}
 
-        {!embedded && showDashboardWelcomeToast ? (
+        {!embedded && showMetricsLanding && showDashboardWelcomeToast ? (
           <aside className="question-bank-dashboard-toast" role="status" aria-live="polite">
             <span className="question-bank-dashboard-toast-accent" aria-hidden="true" />
             <span className="question-bank-dashboard-toast-icon" aria-hidden="true">
