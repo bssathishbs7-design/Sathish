@@ -51,6 +51,7 @@ const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
 const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
 const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-sections'
+const CREATE_ASSESSMENT_CUSTOM_EXAM_CATEGORIES_KEY = 'vx-create-assessment-custom-exam-categories'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 
@@ -84,30 +85,17 @@ const SUBJECT_DIRECTORY = {
 }
 
 const YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year', 'Fourth Year']
+const DEFAULT_EXAM_CATEGORIES = ['Internal', 'Midterm', 'Final', 'Viva']
+const DEFAULT_COLLEGE_NAME = 'Sri Manakula Vinayagar Medical College and Hospital'
 const CREATE_ASSESSMENT_SELECT_OPTIONS = {
-  colleges: [
-    'Sri Ramachandra Institute of Higher Education and Research',
-    'Saveetha Institute of Medical and Technical Sciences',
-    'SRM Medical College Hospital and Research Centre',
-    'Sri Manakula Vinayagar Medical College and Hospital',
-  ],
-  examCategories: [
-    'Internal Assessment',
-    'University Exam',
-    'Formative Assessment',
-    'Summative Assessment',
-    'Theory Exam',
-    'Practical Exam',
-    'Viva Voce',
-    'Mock Test',
-    'Entrance/Screening Test',
-  ],
+  colleges: [DEFAULT_COLLEGE_NAME],
+  examCategories: DEFAULT_EXAM_CATEGORIES,
   courses: ['India MBBS (NMC Syllabus)'],
   years: YEAR_OPTIONS,
   academicYears: ['2024 - 2025', '2025 - 2026', '2026 - 2027', '2027 - 2028'],
 }
 const CREATE_ASSESSMENT_DEFAULT_SETUP = {
-  collegeName: '',
+  collegeName: DEFAULT_COLLEGE_NAME,
   logoName: '',
   logoPreview: '',
   assessmentName: '',
@@ -191,10 +179,10 @@ const createOption = (label = '') => createAuthoringOption({ idPrefix: 'assessme
 const toCapitalizedCase = (value) =>
   value.replace(/[A-Za-z]+/g, (word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
 
-function AssessmentSetupSelectField({ label, value, options, placeholder, onChange, className = '' }) {
+function AssessmentSetupSelectField({ label, value, options, placeholder, onChange, className = '', required = false }) {
   return (
     <label className={`assessment-create-field ${className}`.trim()}>
-      <span>{label}</span>
+      <span>{label}{required ? <em className="assessment-create-required-mark">*</em> : null}</span>
       <span className="assessment-create-select-wrap">
         <select value={value} onChange={(event) => onChange(event.target.value)}>
           <option value="">{placeholder || label}</option>
@@ -230,7 +218,7 @@ const createQuestion = (setup = {}, type = 'MCQ') => createAuthoringQuestion({
 const readCreateAssessmentSetup = () => {
   try {
     const row = JSON.parse(window.localStorage.getItem(CREATE_ASSESSMENT_SETUP_KEY) || '{}')
-    return row && typeof row === 'object' ? row : {}
+    return row && typeof row === 'object' ? { ...row, collegeName: DEFAULT_COLLEGE_NAME } : {}
   } catch {
     return {}
   }
@@ -326,6 +314,15 @@ const readCreateAssessmentCustomSections = (setup = {}) => {
         type: 'custom',
         isCustom: true,
       }))
+  } catch {
+    return []
+  }
+}
+
+const readCreateAssessmentCustomExamCategories = () => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CREATE_ASSESSMENT_CUSTOM_EXAM_CATEGORIES_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : []
   } catch {
     return []
   }
@@ -598,6 +595,10 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     ...CREATE_ASSESSMENT_DEFAULT_SETUP,
     ...readCreateAssessmentSetup(),
   }))
+  const [customExamCategories, setCustomExamCategories] = useState(readCreateAssessmentCustomExamCategories)
+  const [isExamCategoryTooltipOpen, setIsExamCategoryTooltipOpen] = useState(false)
+  const [examCategoryDraft, setExamCategoryDraft] = useState('')
+  const [isConfigurationSummaryVisible, setIsConfigurationSummaryVisible] = useState(true)
   const [question, setQuestion] = useState(null)
   const assessmentQuestionsStorageKey = getAssessmentQuestionsStorageKey(setup)
   const assessmentSectionTitlesStorageKey = getAssessmentSectionTitlesStorageKey(setup)
@@ -634,6 +635,10 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const isGeneratingQuestion = generationJobs.length > 0
 
   const detailItems = [setup.collegeName, setup.academicYear, setup.examCategory, setup.course, setup.year].filter(Boolean)
+  const examCategoryOptions = useMemo(() => (
+    [...CREATE_ASSESSMENT_SELECT_OPTIONS.examCategories, ...customExamCategories]
+      .filter((item, index, items) => items.findIndex((current) => current.toLowerCase() === item.toLowerCase()) === index)
+  ), [customExamCategories])
   const subjectDirectory = question ? SUBJECT_DIRECTORY[question.subject] ?? null : null
   const competencyOptions = (subjectDirectory?.competencies ?? [])
     .filter((item) => !question?.topics.length || question.topics.includes(item.topic))
@@ -695,6 +700,31 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     setSetupDraft((current) => ({ ...current, [field]: value }))
   }
 
+  const clearExamCategoryDraft = () => {
+    setExamCategoryDraft('')
+  }
+
+  const addExamCategoryOption = () => {
+    const nextCategory = toCapitalizedCase(examCategoryDraft.trim())
+    if (!nextCategory) return
+
+    const alreadyExists = examCategoryOptions.some((item) => item.toLowerCase() === nextCategory.toLowerCase())
+    const nextCustomCategories = alreadyExists
+      ? customExamCategories
+      : [...customExamCategories, nextCategory]
+
+    if (!alreadyExists) {
+      setCustomExamCategories(nextCustomCategories)
+      window.localStorage.setItem(CREATE_ASSESSMENT_CUSTOM_EXAM_CATEGORIES_KEY, JSON.stringify(nextCustomCategories))
+    }
+
+    updateSetupDraft('examCategory', alreadyExists
+      ? examCategoryOptions.find((item) => item.toLowerCase() === nextCategory.toLowerCase()) ?? nextCategory
+      : nextCategory)
+    setExamCategoryDraft('')
+    setIsExamCategoryTooltipOpen(false)
+  }
+
   const clearSetupDraft = () => {
     setSetupDraft({
       ...CREATE_ASSESSMENT_DEFAULT_SETUP,
@@ -735,6 +765,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     setSetup(nextSetup)
     setSetupDraft(nextSetup)
     setSaveStatus('Configuration saved')
+    setIsConfigurationSummaryVisible(true)
   }
 
   const hasQuestionText = Boolean(getRichTextPreview(question?.questionText ?? ''))
@@ -800,6 +831,39 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       rows: [...rows, ...extraRows],
     }
   }, [savedQuestions, selectedAssessmentQuestionCount])
+  const configurationQuestionSummary = useMemo(() => {
+    const mcqQuestions = savedQuestions.filter((item) => item.type === 'MCQ')
+    const descriptiveQuestions = savedQuestions.filter((item) => isDescriptiveQuestionType(item.type))
+    const mcqMarks = mcqQuestions.reduce((total, item) => total + getQuestionMarksTotal(item), 0)
+    const descriptiveMarks = descriptiveQuestions.reduce((total, item) => total + getQuestionMarksTotal(item), 0)
+    const hasMcq = mcqQuestions.length > 0
+    const hasDescriptive = descriptiveQuestions.length > 0
+    const examType = hasMcq && hasDescriptive
+      ? 'Hybrid'
+      : hasMcq
+        ? 'MCQ'
+        : hasDescriptive
+          ? 'Descriptive'
+          : 'Not selected'
+    const totalMarks = mcqMarks + descriptiveMarks
+    const totalMarksDetail = hasMcq && hasDescriptive
+      ? `${formatSummaryNumber(descriptiveMarks)} Descriptive + ${formatSummaryNumber(mcqMarks)} MCQ`
+      : hasDescriptive
+        ? `${formatSummaryNumber(descriptiveMarks)} Descriptive`
+        : `${formatSummaryNumber(mcqMarks)} MCQ`
+
+    return {
+      descriptiveCount: descriptiveQuestions.length,
+      descriptiveMarks,
+      examType,
+      hasDescriptive,
+      hasMcq,
+      mcqCount: mcqQuestions.length,
+      mcqMarks,
+      totalMarks,
+      totalMarksDetail,
+    }
+  }, [savedQuestions])
   const fullPreviewSectionConfig = useMemo(() => ([
     ...PREVIEW_SECTION_CONFIG,
     ...customPreviewSections,
@@ -2610,9 +2674,12 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         ) : null}
 
         {activeCreateTab === 'configuration' ? (
-          <section className="create-assessment-tab-panel" aria-label="Assessment configuration">
+          <section className="create-assessment-tab-panel create-assessment-configuration-panel" aria-label="Assessment configuration">
             <div className="create-assessment-tab-panel-head">
-              <strong>Configuration</strong>
+              <strong>
+                <Settings size={16} strokeWidth={2.2} />
+                Configuration
+              </strong>
             </div>
             <div className="create-assessment-configuration-form">
               <div className="assessment-create-setup-top">
@@ -2620,6 +2687,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                   className="assessment-create-field assessment-create-upload"
                   data-tooltip="Upload logo in PNG, JPG, or SVG format. Square or 1:1 aspect ratio recommended. Max 2MB."
                 >
+                  <span>Upload</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -2646,19 +2714,11 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                   options={CREATE_ASSESSMENT_SELECT_OPTIONS.colleges}
                   placeholder="Select College Name"
                   onChange={(value) => updateSetupDraft('collegeName', value)}
-                />
-
-                <AssessmentSetupSelectField
-                  className="assessment-create-year-field"
-                  label="Academic Year"
-                  value={setupDraft.academicYear}
-                  options={CREATE_ASSESSMENT_SELECT_OPTIONS.academicYears}
-                  placeholder="Academic Year"
-                  onChange={(value) => updateSetupDraft('academicYear', value)}
+                  required
                 />
 
                 <label className="assessment-create-field assessment-create-name-field">
-                  <span>Assessment Name</span>
+                  <span>Assessment Name<em className="assessment-create-required-mark">*</em></span>
                   <input
                     type="text"
                     value={setupDraft.assessmentName}
@@ -2668,33 +2728,87 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                 </label>
 
                 <div className="assessment-create-side-fields">
-                  <AssessmentSetupSelectField
-                    label="Exam Category"
-                    value={setupDraft.examCategory}
-                    options={CREATE_ASSESSMENT_SELECT_OPTIONS.examCategories}
-                    placeholder="Exam Category"
-                    onChange={(value) => updateSetupDraft('examCategory', value)}
-                  />
+                  <div className="assessment-create-field assessment-create-exam-category-field">
+                    <span>Exam Category<em className="assessment-create-required-mark">*</em></span>
+                    <span className="assessment-create-exam-category-row">
+                      <span className="assessment-create-select-wrap">
+                        <select value={setupDraft.examCategory} onChange={(event) => updateSetupDraft('examCategory', event.target.value)}>
+                          <option value="" disabled hidden>Select Exam Category</option>
+                          {examCategoryOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
+                      </span>
+                      <span className="assessment-create-category-add-wrap">
+                        <button
+                          type="button"
+                          className="assessment-create-category-add-btn"
+                          onClick={() => setIsExamCategoryTooltipOpen((current) => !current)}
+                          aria-label="Add exam category"
+                          aria-expanded={isExamCategoryTooltipOpen}
+                        >
+                          <Plus size={15} strokeWidth={2.4} />
+                        </button>
+                        {isExamCategoryTooltipOpen ? (
+                          <span className="assessment-create-category-tooltip" role="tooltip">
+                            <input
+                              type="text"
+                              value={examCategoryDraft}
+                              placeholder="Add Category"
+                              onChange={(event) => setExamCategoryDraft(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault()
+                                  addExamCategoryOption()
+                                }
+                              }}
+                              autoFocus
+                            />
+                            <span>
+                              <button type="button" className="is-secondary" onClick={clearExamCategoryDraft}>
+                                Clear
+                              </button>
+                              <button type="button" onClick={addExamCategoryOption} disabled={!examCategoryDraft.trim()}>
+                                Add
+                              </button>
+                            </span>
+                          </span>
+                        ) : null}
+                      </span>
+                    </span>
+                  </div>
 
                   <AssessmentSetupSelectField
-                    label="Select Course"
-                    value={setupDraft.course}
-                    options={CREATE_ASSESSMENT_SELECT_OPTIONS.courses}
-                    placeholder="Select Course"
-                    onChange={(value) => updateSetupDraft('course', value)}
-                  />
-
-                  <AssessmentSetupSelectField
-                    label="Select Year"
-                    value={setupDraft.year}
-                    options={CREATE_ASSESSMENT_SELECT_OPTIONS.years}
-                    placeholder="Select Year"
-                    onChange={(value) => updateSetupDraft('year', value)}
+                    className="assessment-create-year-field"
+                    label="Academic Year"
+                    value={setupDraft.academicYear}
+                    options={CREATE_ASSESSMENT_SELECT_OPTIONS.academicYears}
+                    placeholder="Academic Year"
+                    onChange={(value) => updateSetupDraft('academicYear', value)}
+                    required
                   />
                 </div>
               </div>
 
               <div className="assessment-create-setup-divider" />
+
+              {isConfigurationSummaryVisible ? (
+                <div className="create-assessment-configuration-summary" aria-label="Assessment configuration summary">
+                  <span className="create-assessment-configuration-badge">
+                    <strong>Exam Type :</strong>
+                    <em>{configurationQuestionSummary.examType}</em>
+                  </span>
+                  <span className="create-assessment-configuration-badge">
+                    <strong>Total Marks :</strong>
+                    <em>
+                      {formatSummaryNumber(configurationQuestionSummary.totalMarks)}
+                      {' '}
+                      ({configurationQuestionSummary.totalMarksDetail})
+                    </em>
+                  </span>
+                </div>
+              ) : null}
 
               <div className="assessment-create-form-actions">
                 <button type="button" className="is-clear" onClick={clearSetupDraft}>
@@ -2703,7 +2817,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                 </button>
                 <button type="button" className="is-primary" onClick={saveSetupConfiguration}>
                   <Save size={15} strokeWidth={2.2} />
-                  Save Configuration
+                  Save &amp; Continue
                 </button>
               </div>
             </div>
