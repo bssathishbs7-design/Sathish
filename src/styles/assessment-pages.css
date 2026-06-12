@@ -3036,6 +3036,657 @@
   text-overflow: ellipsis;
 }
 
+.create-assessment-schedule-block {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #d7e8e2;
+  border-radius: 12px;
+  background: #fbfefd;
+}
+
+.create-assessment-threshold-block {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #d7e8e2;
+  border-radius: 12px;
+  background: #fbfefd;
+}
+
+.create-assessment-threshold-card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 18px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.create-assessment-assign-card {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #d7e8e2;
+  border-radius: 12px;
+  background: #fbfefd;
+}
+
+.create-assessment-assign-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  min-width: 0;
+}
+
+.create-assessment-assign-select {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.create-assessment-assign-select select {
+  appearance: none;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+.create-assessment-assign-select select:disabled {
+  background: #f2f7f5;
+  color: #7d929d;
+  cursor: not-allowed;
+}
+
+.create-assessment-assign-select svg {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  color: #08776d;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.create-assessment-assign-select select:disabled + svg {
+  color: #95a8b2;
+}
+
+.create-assessment-schedule-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.create-assessment-schedule-head > strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.create-assessment-schedule-head > strong svg {
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.create-assessment-threshold-fields {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.create-assessment-threshold-layout {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(220px, 0.38fr);
+  gap: 18px;
+  align-items: start;
+  min-width: 0;
+}
+
+.create-assessment-default-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid #bfe2d8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #08776d;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.create-assessment-default-btn:hover,
+.create-assessment-default-btn:focus-visible {
+  border-color: #10b9a8;
+  background: #f2fffb;
+  outline: none;
+}
+
+.create-assessment-attainment-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.create-assessment-attainment-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.create-assessment-attainment-head > strong {
+  color: #10251f;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.create-assessment-attainment-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.create-assessment-attainment-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(82px, 0.62fr) auto minmax(82px, 0.62fr) 42px 42px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.create-assessment-attainment-row > span {
+  color: #08776d;
+  font-size: 0.95rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.create-assessment-attainment-row input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #bfe2d8;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #10251f;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 750;
+  outline: none;
+}
+
+.create-assessment-attainment-row input:focus {
+  border-color: #10b9a8;
+  box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.08);
+}
+
+.create-assessment-attainment-row > button {
+  display: inline-grid;
+  place-items: center;
+  justify-self: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid #d5e4e0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #e11d48;
+  cursor: pointer;
+}
+
+.create-assessment-attainment-row > button.is-add {
+  border-color: #bfe2d8;
+  color: #08776d;
+}
+
+.create-assessment-attainment-row > button:hover,
+.create-assessment-attainment-row > button:focus-visible {
+  border-color: #10b9a8;
+  background: #f2fffb;
+  outline: none;
+}
+
+.create-assessment-attainment-row > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.create-assessment-attainment-list.has-error .create-assessment-attainment-row input {
+  border-color: #f4a7b5;
+  background: #fff8f9;
+}
+
+.create-assessment-threshold-error {
+  color: #be123c;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.create-assessment-mode-toggle {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(78px, max-content));
+  align-items: center;
+  justify-self: start;
+  min-height: 34px;
+  padding: 3px;
+  border: 1px solid #bfe2d8;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.create-assessment-mode-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #526978;
+  font-size: 0.75rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.create-assessment-mode-toggle button.is-active {
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(20, 184, 166, 0.18);
+}
+
+.create-assessment-mode-toggle button.is-active.is-online {
+  background: #16a34a;
+  box-shadow: 0 6px 14px rgba(22, 163, 74, 0.18);
+}
+
+.create-assessment-mode-toggle button.is-active.is-offline {
+  background: #dc2626;
+  box-shadow: 0 6px 14px rgba(220, 38, 38, 0.18);
+}
+
+.create-assessment-mode-toggle button:focus-visible {
+  outline: 2px solid rgba(16, 185, 168, 0.24);
+  outline-offset: 2px;
+}
+
+.create-assessment-schedule-grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.05fr) minmax(210px, 1fr) repeat(2, minmax(190px, 1fr));
+  gap: 14px;
+  align-items: end;
+  min-width: 0;
+}
+
+.create-assessment-schedule-grid.is-offline {
+  grid-template-columns: minmax(190px, 1.05fr) minmax(210px, 1fr) minmax(190px, 1fr);
+}
+
+.create-assessment-schedule-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: #466170;
+  font-size: 0.66rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.create-assessment-schedule-field > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-assessment-schedule-field em {
+  color: #e11d48;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.create-assessment-schedule-field input,
+.create-assessment-schedule-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #bfe2d8;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #10251f;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  outline: none;
+}
+
+.create-assessment-schedule-field input:focus,
+.create-assessment-schedule-field select:focus {
+  border-color: #10b9a8;
+  box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.08);
+}
+
+.create-assessment-schedule-field small {
+  color: #be123c;
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.create-assessment-schedule-field.has-error input,
+.create-assessment-schedule-field.has-error select {
+  border-color: #f4a7b5;
+  background: #fff8f9;
+}
+
+.create-assessment-date-input {
+  position: relative;
+  display: block;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid #bfe2d8;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.create-assessment-date-input input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  padding-right: 38px;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.create-assessment-date-input input {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: transparent;
+  user-select: none;
+}
+
+.create-assessment-date-input > em {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  z-index: 1;
+  color: #10251f;
+  font-size: 0.84rem;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1;
+  pointer-events: none;
+  text-transform: uppercase;
+  transform: translateY(-50%);
+}
+
+.create-assessment-date-input > svg {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  z-index: 1;
+  color: #08776d;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.create-assessment-date-input input::-webkit-datetime-edit,
+.create-assessment-date-input input::-webkit-datetime-edit-day-field,
+.create-assessment-date-input input::-webkit-datetime-edit-month-field,
+.create-assessment-date-input input::-webkit-datetime-edit-year-field,
+.create-assessment-date-input input::-webkit-datetime-edit-text {
+  color: transparent;
+}
+
+.create-assessment-date-input input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0;
+}
+
+.create-assessment-date-input:hover,
+.create-assessment-date-input:focus-within {
+  border-color: #10b9a8;
+  box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.08);
+}
+
+.create-assessment-schedule-field.has-error .create-assessment-date-input {
+  border-color: #f4a7b5;
+  background: #fff8f9;
+}
+
+.create-assessment-time-stepper {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.create-assessment-time-stepper-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #bfe2d8;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #10251f;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.create-assessment-time-stepper-trigger > svg {
+  flex: 0 0 auto;
+  color: #08776d;
+}
+
+.create-assessment-time-stepper-trigger > span {
+  min-width: 0;
+}
+
+.create-assessment-time-stepper-trigger:hover,
+.create-assessment-time-stepper-trigger:focus-visible {
+  border-color: #10b9a8;
+  box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.08);
+  outline: none;
+}
+
+.create-assessment-time-stepper-popover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 45;
+  display: grid;
+  gap: 9px;
+  width: 228px;
+  padding: 10px;
+  border: 1px solid #c8e2db;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 42, 54, 0.16);
+}
+
+.create-assessment-time-stepper-popover::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 22px;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid #c8e2db;
+  border-top: 1px solid #c8e2db;
+  background: #ffffff;
+  transform: rotate(45deg);
+}
+
+.create-assessment-time-stepper-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 7px;
+}
+
+.create-assessment-time-stepper-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 7px;
+}
+
+.create-assessment-time-stepper-body > .create-assessment-time-stepper-columns:only-child {
+  grid-column: 1 / -1;
+}
+
+.create-assessment-time-stepper-columns > b {
+  align-self: center;
+  color: #08776d;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.create-assessment-time-stepper-column {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.create-assessment-time-stepper-column strong {
+  color: #526978;
+  font-size: 0.6rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.create-assessment-time-stepper-column > button {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: #edf8f5;
+  color: #08776d;
+  cursor: pointer;
+}
+
+.create-assessment-time-stepper-column > button:hover,
+.create-assessment-time-stepper-column > button:focus-visible {
+  background: #d8f4ee;
+  outline: none;
+}
+
+.create-assessment-time-stepper-column input {
+  width: 52px;
+  min-height: 38px;
+  padding: 0;
+  text-align: center;
+}
+
+.create-assessment-time-stepper-period {
+  display: grid;
+  grid-template-rows: repeat(2, 24px);
+  align-self: center;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #c8d5dc;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.create-assessment-time-stepper-period button {
+  min-height: 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #334856;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.create-assessment-time-stepper-period button + button {
+  border-top: 1px solid #c8d5dc;
+}
+
+.create-assessment-time-stepper-period button.is-active {
+  background: #10b9a8;
+  color: #ffffff;
+}
+
+.create-assessment-time-stepper-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.create-assessment-time-stepper-actions button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d3e2de;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #385260;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.create-assessment-time-stepper-actions button.is-primary {
+  border-color: #10b9a8;
+  background: #10b9a8;
+  color: #ffffff;
+}
+
+.create-assessment-schedule-field.has-error .create-assessment-time-stepper-trigger {
+  border-color: #f4a7b5;
+  background: #fff8f9;
+}
+
 .create-assessment-configuration-form .assessment-create-setup-top {
   grid-template-columns: 112px minmax(260px, 1.35fr) minmax(260px, 0.9fr);
 }
@@ -9749,6 +10400,222 @@
   color: #d9e8f8;
 }
 
+.theme-dark .create-assessment-mode-toggle {
+  border-color: rgba(45, 212, 191, 0.38);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.theme-dark .create-assessment-schedule-block {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.theme-dark .create-assessment-threshold-block {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.theme-dark .create-assessment-assign-card {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.theme-dark .create-assessment-schedule-head > strong {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+}
+
+.theme-dark .create-assessment-schedule-head > strong svg {
+  color: #93c5fd;
+}
+
+.theme-dark .create-assessment-attainment-head > strong {
+  color: #eef6ff;
+}
+
+.theme-dark .create-assessment-attainment-row > span {
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-attainment-row input {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: rgba(15, 23, 42, 0.72);
+  color: #eef6ff;
+}
+
+.theme-dark .create-assessment-attainment-row input:focus {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.08);
+}
+
+.theme-dark .create-assessment-attainment-row > button {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: rgba(15, 23, 42, 0.52);
+  color: #fca5a5;
+}
+
+.theme-dark .create-assessment-attainment-row > button.is-add {
+  border-color: rgba(45, 212, 191, 0.42);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-default-btn {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(15, 23, 42, 0.52);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-default-btn:hover,
+.theme-dark .create-assessment-default-btn:focus-visible {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.12);
+}
+
+.theme-dark .create-assessment-assign-select select:disabled {
+  background: rgba(15, 23, 42, 0.4);
+  color: #8396ab;
+}
+
+.theme-dark .create-assessment-assign-select svg {
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-assign-select select:disabled + svg {
+  color: #6f8299;
+}
+
+.theme-dark .create-assessment-attainment-list.has-error .create-assessment-attainment-row input {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.theme-dark .create-assessment-threshold-error {
+  color: #fca5a5;
+}
+
+.theme-dark .create-assessment-mode-toggle button {
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-mode-toggle button.is-active {
+  color: #ffffff;
+}
+
+.theme-dark .create-assessment-mode-toggle button.is-active.is-online {
+  background: #15803d;
+}
+
+.theme-dark .create-assessment-mode-toggle button.is-active.is-offline {
+  background: #b91c1c;
+}
+
+.theme-dark .create-assessment-schedule-field {
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-schedule-field input,
+.theme-dark .create-assessment-schedule-field select {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: rgba(15, 23, 42, 0.72);
+  color: #eef6ff;
+}
+
+.theme-dark .create-assessment-date-input {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.theme-dark .create-assessment-date-input:hover,
+.theme-dark .create-assessment-date-input:focus-within {
+  border-color: rgba(45, 212, 191, 0.62);
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.12);
+}
+
+.theme-dark .create-assessment-date-input:not(.has-value) input {
+  color: transparent;
+}
+
+.theme-dark .create-assessment-date-input > em {
+  color: #eef6ff;
+}
+
+.theme-dark .create-assessment-date-input > svg,
+.theme-dark .create-assessment-time-stepper-trigger > svg {
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-time-stepper-trigger,
+.theme-dark .create-assessment-time-stepper-popover {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: #132235;
+  color: #eef6ff;
+}
+
+.theme-dark .create-assessment-time-stepper-popover::before {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: #132235;
+}
+
+.theme-dark .create-assessment-time-stepper-column strong {
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-time-stepper-column > button {
+  background: rgba(20, 184, 166, 0.16);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-time-stepper-actions button {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: rgba(15, 23, 42, 0.52);
+  color: #d9e8f8;
+}
+
+.theme-dark .create-assessment-time-stepper-period {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.theme-dark .create-assessment-time-stepper-period button {
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-time-stepper-period button + button {
+  border-top-color: rgba(94, 116, 145, 0.58);
+}
+
+.theme-dark .create-assessment-time-stepper-period button.is-active {
+  background: #0f8f75;
+  color: #ffffff;
+}
+
+.theme-dark .create-assessment-time-stepper-actions button.is-primary {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: #0f8f75;
+  color: #ffffff;
+}
+
+.theme-dark .create-assessment-schedule-field.has-error input,
+.theme-dark .create-assessment-schedule-field.has-error select {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.theme-dark .create-assessment-schedule-field.has-error .create-assessment-date-input {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.theme-dark .create-assessment-schedule-field.has-error .create-assessment-time-stepper-trigger {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.theme-dark .create-assessment-schedule-field small {
+  color: #fca5a5;
+}
+
 .theme-dark .assessment-create-upload strong,
 .theme-dark .assessment-create-selected-chips button {
   border-color: rgba(45, 212, 191, 0.48);
@@ -13218,6 +14085,22 @@
   .assessment-create-upload strong {
     min-height: 92px;
   }
+
+  .create-assessment-schedule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .create-assessment-schedule-grid.is-offline {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .create-assessment-threshold-card-grid {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+
+  .create-assessment-assign-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 991.98px) {
@@ -13236,6 +14119,23 @@
 
   .assessment-create-side-fields {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .create-assessment-schedule-grid,
+  .create-assessment-schedule-grid.is-offline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .create-assessment-threshold-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .create-assessment-threshold-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .create-assessment-assign-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -13275,11 +14175,53 @@
     grid-template-columns: 1fr;
   }
 
+  .create-assessment-schedule-grid,
+  .create-assessment-schedule-grid.is-offline {
+    grid-template-columns: 1fr;
+  }
+
+  .create-assessment-threshold-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .create-assessment-attainment-row {
+    grid-template-columns: minmax(0, 1fr) minmax(74px, 0.62fr) auto minmax(74px, 0.62fr) 38px 38px;
+    gap: 6px;
+  }
+
+  .create-assessment-attainment-row input,
+  .create-assessment-attainment-row > button {
+    min-height: 38px;
+  }
+
+  .create-assessment-attainment-row > button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .create-assessment-schedule-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .create-assessment-mode-toggle {
+    justify-self: stretch;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .assessment-create-form-actions {
     justify-content: stretch;
   }
 
+  .create-assessment-assign-actions {
+    justify-content: stretch;
+  }
+
   .assessment-create-form-actions button {
+    flex: 1 1 160px;
+  }
+
+  .create-assessment-assign-actions button {
     flex: 1 1 160px;
   }
 }

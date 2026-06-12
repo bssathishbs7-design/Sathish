@@ -3,8 +3,11 @@ import { createPortal } from 'react-dom'
 import {
   Check,
   ArrowRight,
+  CalendarDays,
+  CalendarClock,
   ChevronDown,
   ChevronUp,
+  Clock3,
   Database,
   Eye,
   FilePenLine,
@@ -21,9 +24,11 @@ import {
   Save,
   Search,
   Settings,
+  SlidersHorizontal,
   Sparkles,
   Sun,
   Trash2,
+  UsersRound,
   X,
 } from 'lucide-react'
 import RichMathEditor from '../components/RichMathEditor'
@@ -87,11 +92,18 @@ const SUBJECT_DIRECTORY = {
 const YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year', 'Fourth Year']
 const DEFAULT_EXAM_CATEGORIES = ['Internal', 'Midterm', 'Final', 'Viva']
 const DEFAULT_COLLEGE_NAME = 'Sri Manakula Vinayagar Medical College and Hospital'
+const DEFAULT_ATTAINMENT_LEVELS = [
+  { id: 'attainment-0', minPercentage: '0', maxPercentage: '30', level: '0' },
+  { id: 'attainment-1', minPercentage: '31', maxPercentage: '49', level: '1' },
+  { id: 'attainment-2', minPercentage: '50', maxPercentage: '70', level: '2' },
+  { id: 'attainment-3', minPercentage: '71', maxPercentage: '100', level: '3' },
+]
 const CREATE_ASSESSMENT_SELECT_OPTIONS = {
   colleges: [DEFAULT_COLLEGE_NAME],
   examCategories: DEFAULT_EXAM_CATEGORIES,
   courses: ['India MBBS (NMC Syllabus)'],
   years: YEAR_OPTIONS,
+  sgtGroups: ['SGT Group A', 'SGT Group B', 'Class A', 'Class B'],
   academicYears: ['2024 - 2025', '2025 - 2026', '2026 - 2027', '2027 - 2028'],
 }
 const CREATE_ASSESSMENT_DEFAULT_SETUP = {
@@ -103,6 +115,19 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   examCategory: '',
   course: '',
   year: '',
+  examDeliveryMode: 'Online',
+  examDate: '',
+  startTime: '',
+  startPeriod: 'AM',
+  mcqTimeLimit: '',
+  descriptiveTimeLimit: '',
+  offlineDuration: '',
+  lotThreshold: '70',
+  hotThreshold: '60',
+  attainmentLevels: DEFAULT_ATTAINMENT_LEVELS,
+  assignCourse: '',
+  assignYear: '',
+  assignGroup: '',
 }
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
@@ -194,6 +219,155 @@ function AssessmentSetupSelectField({ label, value, options, placeholder, onChan
       </span>
     </label>
   )
+}
+
+function TimeStepperSelect({ value, onChange, emptyLabel = '--:--', maxHour = 23, minHour = 0, period = '', onPeriodChange }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const match = String(value || '').match(/^(\d{1,2}):([0-5]\d)$/)
+  const hour = match ? Number(match[1]) : minHour
+  const minute = match ? Number(match[2]) : 0
+  const displayValue = value ? `${value}${period ? ` ${period}` : ''}` : emptyLabel
+  const [hourDraft, setHourDraft] = useState(String(hour).padStart(2, '0'))
+  const [minuteDraft, setMinuteDraft] = useState(String(minute).padStart(2, '0'))
+
+  useEffect(() => {
+    if (!isOpen) return
+    setHourDraft(String(hour).padStart(2, '0'))
+    setMinuteDraft(String(minute).padStart(2, '0'))
+  }, [isOpen])
+
+  const setTimePart = (nextHour, nextMinute) => {
+    const safeHour = Math.max(minHour, Math.min(maxHour, nextHour))
+    const safeMinute = Math.max(0, Math.min(59, nextMinute))
+    setHourDraft(String(safeHour).padStart(2, '0'))
+    setMinuteDraft(String(safeMinute).padStart(2, '0'))
+    onChange(`${String(safeHour).padStart(2, '0')}:${String(safeMinute).padStart(2, '0')}`)
+  }
+
+  const updateHourDraft = (rawValue) => {
+    const nextDraft = rawValue.replace(/\D/g, '').slice(0, 2)
+    setHourDraft(nextDraft)
+    if (nextDraft) {
+      const safeHour = Math.max(minHour, Math.min(maxHour, Number(nextDraft)))
+      onChange(`${String(safeHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
+    }
+  }
+
+  const updateMinuteDraft = (rawValue) => {
+    const nextDraft = rawValue.replace(/\D/g, '').slice(0, 2)
+    setMinuteDraft(nextDraft)
+    if (nextDraft) {
+      const safeMinute = Math.max(0, Math.min(59, Number(nextDraft)))
+      onChange(`${String(hour).padStart(2, '0')}:${String(safeMinute).padStart(2, '0')}`)
+    }
+  }
+
+  const commitDrafts = () => {
+    setTimePart(Number(hourDraft || minHour), Number(minuteDraft || 0))
+  }
+
+  return (
+    <span className="create-assessment-time-stepper">
+      <button type="button" className="create-assessment-time-stepper-trigger" onClick={() => setIsOpen((current) => !current)} aria-expanded={isOpen}>
+        <Clock3 size={16} strokeWidth={2.2} aria-hidden="true" />
+        <span>{displayValue}</span>
+      </button>
+      {isOpen ? (
+        <span className="create-assessment-time-stepper-popover" role="dialog" aria-label="Select time">
+          <span className="create-assessment-time-stepper-body">
+            <span className="create-assessment-time-stepper-columns">
+              <span className="create-assessment-time-stepper-column">
+                <strong>Hours</strong>
+                <button type="button" aria-label="Increase hours" onClick={() => setTimePart(hour + 1, minute)}>
+                  <ChevronUp size={14} strokeWidth={2.4} />
+                </button>
+                <input
+                  aria-label="Hours"
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                value={hourDraft}
+                onFocus={(event) => event.target.select()}
+                onChange={(event) => updateHourDraft(event.target.value)}
+                onBlur={commitDrafts}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.currentTarget.blur()
+                  }
+                }}
+              />
+                <button type="button" aria-label="Decrease hours" onClick={() => setTimePart(hour - 1, minute)}>
+                  <ChevronDown size={14} strokeWidth={2.4} />
+                </button>
+              </span>
+              <b aria-hidden="true">:</b>
+              <span className="create-assessment-time-stepper-column">
+                <strong>Minutes</strong>
+                <button type="button" aria-label="Increase minutes" onClick={() => setTimePart(hour, minute + 1)}>
+                  <ChevronUp size={14} strokeWidth={2.4} />
+                </button>
+                <input
+                  aria-label="Minutes"
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                value={minuteDraft}
+                onFocus={(event) => event.target.select()}
+                onChange={(event) => updateMinuteDraft(event.target.value)}
+                onBlur={commitDrafts}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.currentTarget.blur()
+                  }
+                }}
+              />
+                <button type="button" aria-label="Decrease minutes" onClick={() => setTimePart(hour, minute - 1)}>
+                  <ChevronDown size={14} strokeWidth={2.4} />
+                </button>
+              </span>
+            </span>
+            {onPeriodChange ? (
+              <span className="create-assessment-time-stepper-period" role="group" aria-label="Select period">
+                {['AM', 'PM'].map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={(period || 'AM') === option ? 'is-active' : ''}
+                    onClick={() => onPeriodChange(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </span>
+            ) : null}
+          </span>
+          <span className="create-assessment-time-stepper-actions">
+            <button type="button" onClick={() => {
+              setHourDraft(String(minHour).padStart(2, '0'))
+              setMinuteDraft('00')
+              onChange('')
+            }}>
+              Clear
+            </button>
+            <button type="button" className="is-primary" onClick={() => {
+              commitDrafts()
+              setIsOpen(false)
+            }}>
+              Set
+            </button>
+          </span>
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
+function StartTimeSelect({ value, period, onChange, onPeriodChange }) {
+  return <TimeStepperSelect value={value} onChange={onChange} emptyLabel="--:--" minHour={1} maxHour={12} period={period} onPeriodChange={onPeriodChange} />
+}
+
+function DurationTimeSelect({ value, onChange }) {
+  return <TimeStepperSelect value={value} onChange={onChange} emptyLabel="00:00" maxHour={23} />
 }
 
 const createDescriptiveInsideQuestion = (source = {}) => createAuthoringDescriptiveInsideQuestion({
@@ -403,6 +577,43 @@ const PREVIEW_SECTION_KEY_SET = new Set(PREVIEW_SECTION_CONFIG.map((section) => 
 
 const formatSummaryNumber = (value) => String(value).padStart(2, '0')
 
+const getLocalDateInputValue = (date = new Date()) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const formatDateInputDisplay = (value) => {
+  const [year, month, day] = String(value || '').split('-')
+  return year && month && day ? `${day}/${month}/${year}` : 'DD/MM/YYYY'
+}
+
+const getTimeValueMinutes = (value) => {
+  const match = String(value || '').match(/^([0-1]\d|2[0-3]):([0-5]\d)$/)
+  if (!match) return 0
+  return Number(match[1]) * 60 + Number(match[2])
+}
+
+const formatDurationValue = (totalMinutes) => {
+  const safeMinutes = Math.max(0, Number(totalMinutes) || 0)
+  const hours = Math.floor(safeMinutes / 60)
+  const minutes = safeMinutes % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+const TIME_LIMIT_PATTERN = /^([0-1]\d|2[0-3]):([0-5]\d)$/
+const START_TIME_PATTERN = /^(0?[1-9]|1[0-2]):([0-5]\d)$/
+
+const getScheduledStartDate = (examDate, startTime, startPeriod) => {
+  if (!examDate || !START_TIME_PATTERN.test(startTime || '')) return null
+  const [, hourValue, minuteValue] = String(startTime).match(START_TIME_PATTERN)
+  const [year, month, day] = examDate.split('-').map(Number)
+  let hours = Number(hourValue) % 12
+  if (startPeriod === 'PM') hours += 12
+  return new Date(year, month - 1, day, hours, Number(minuteValue), 0, 0)
+}
+
 const getSummaryTypeLabel = (type) => {
   if (type === 'MCQ') return 'MCQ'
   if (String(type).includes('MEQs')) return 'MEQs'
@@ -599,6 +810,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [isExamCategoryTooltipOpen, setIsExamCategoryTooltipOpen] = useState(false)
   const [examCategoryDraft, setExamCategoryDraft] = useState('')
   const [isConfigurationSummaryVisible, setIsConfigurationSummaryVisible] = useState(true)
+  const [setupErrors, setSetupErrors] = useState({})
   const [question, setQuestion] = useState(null)
   const assessmentQuestionsStorageKey = getAssessmentQuestionsStorageKey(setup)
   const assessmentSectionTitlesStorageKey = getAssessmentSectionTitlesStorageKey(setup)
@@ -698,6 +910,134 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
 
   const updateSetupDraft = (field, value) => {
     setSetupDraft((current) => ({ ...current, [field]: value }))
+    setSetupErrors((current) => {
+      if (!current[field]) return current
+      const { [field]: _removed, ...rest } = current
+      return rest
+    })
+  }
+
+  const updateAttainmentLevel = (rowId, field, value) => {
+    const nextValue = field === 'level'
+      ? value.slice(0, 32)
+      : value.replace(/[^\d]/g, '').slice(0, 3)
+    setSetupDraft((current) => ({
+      ...current,
+      attainmentLevels: (current.attainmentLevels ?? DEFAULT_ATTAINMENT_LEVELS).map((row) => (
+        row.id === rowId ? { ...row, [field]: nextValue } : row
+      )),
+    }))
+    setSetupErrors((current) => {
+      if (!current.attainmentLevels) return current
+      const { attainmentLevels: _removed, ...rest } = current
+      return rest
+    })
+  }
+
+  const addAttainmentLevel = () => {
+    setSetupDraft((current) => ({
+      ...current,
+      attainmentLevels: [
+        ...(current.attainmentLevels ?? DEFAULT_ATTAINMENT_LEVELS),
+        { id: `attainment-${Date.now()}`, minPercentage: '', maxPercentage: '', level: '' },
+      ],
+    }))
+  }
+
+  const deleteAttainmentLevel = (rowId) => {
+    setSetupDraft((current) => {
+      const rows = current.attainmentLevels ?? DEFAULT_ATTAINMENT_LEVELS
+      if (rows.length <= 1) return current
+      return {
+        ...current,
+        attainmentLevels: rows.filter((row) => row.id !== rowId),
+      }
+    })
+  }
+
+  const resetAttainmentLevelsToDefault = () => {
+    setSetupDraft((current) => ({
+      ...current,
+      attainmentLevels: DEFAULT_ATTAINMENT_LEVELS.map((row) => ({ ...row })),
+    }))
+    setSetupErrors((current) => {
+      if (!current.attainmentLevels) return current
+      const { attainmentLevels: _removed, ...rest } = current
+      return rest
+    })
+  }
+
+  const resetThinkingThresholdsToDefault = () => {
+    setSetupDraft((current) => ({
+      ...current,
+      lotThreshold: '70',
+      hotThreshold: '60',
+    }))
+    setSetupErrors((current) => {
+      const { lotThreshold: _lot, hotThreshold: _hot, ...rest } = current
+      return rest
+    })
+  }
+
+  const validateSetupDraft = (draft = setupDraft) => {
+    const errors = {}
+    const todayValue = getLocalDateInputValue()
+    const mode = draft.examDeliveryMode || 'Online'
+
+    if (!draft.collegeName) errors.collegeName = 'Select college name.'
+    if (!String(draft.assessmentName || '').trim()) errors.assessmentName = 'Enter assessment name.'
+    if (!draft.examCategory) errors.examCategory = 'Select exam category.'
+    if (!draft.academicYear) errors.academicYear = 'Select academic year.'
+    if (!draft.examDate) {
+      errors.examDate = 'Select exam date.'
+    } else if (draft.examDate < todayValue) {
+      errors.examDate = 'Previous dates are not allowed.'
+    }
+
+    if (!START_TIME_PATTERN.test(draft.startTime || '')) {
+      errors.startTime = 'Enter start time in HH:MM format.'
+    } else {
+      const scheduledStartDate = getScheduledStartDate(draft.examDate, draft.startTime, draft.startPeriod)
+      const minimumStartDate = new Date(Date.now() + 5 * 60 * 1000)
+      if (scheduledStartDate && scheduledStartDate < minimumStartDate) {
+        errors.startTime = 'Start time must be at least 5 minutes from current time.'
+      }
+    }
+
+    if (mode === 'Online') {
+      const hasMcqQuestions = savedQuestions.some((item) => item.type === 'MCQ')
+      const hasDescriptiveQuestions = savedQuestions.some((item) => isDescriptiveQuestionType(item.type))
+      if (hasMcqQuestions && !TIME_LIMIT_PATTERN.test(draft.mcqTimeLimit || '')) errors.mcqTimeLimit = 'Enter MCQ time limit as HH:MM.'
+      if (hasDescriptiveQuestions && !TIME_LIMIT_PATTERN.test(draft.descriptiveTimeLimit || '')) errors.descriptiveTimeLimit = 'Enter descriptive time limit as HH:MM.'
+    } else if (!TIME_LIMIT_PATTERN.test(draft.offlineDuration || '')) {
+      errors.offlineDuration = 'Enter duration as HH:MM.'
+    }
+
+    if (!String(draft.lotThreshold || '').trim()) {
+      errors.lotThreshold = 'Enter LoT threshold.'
+    } else if (Number(draft.lotThreshold) < 0 || Number(draft.lotThreshold) > 100) {
+      errors.lotThreshold = 'LoT threshold must be 0 to 100.'
+    }
+
+    if (!String(draft.hotThreshold || '').trim()) {
+      errors.hotThreshold = 'Enter HoT threshold.'
+    } else if (Number(draft.hotThreshold) < 0 || Number(draft.hotThreshold) > 100) {
+      errors.hotThreshold = 'HoT threshold must be 0 to 100.'
+    }
+
+    const attainmentRows = draft.attainmentLevels ?? []
+    if (!attainmentRows.length || attainmentRows.some((row) => (
+      !String(row.minPercentage || '').trim()
+      || !String(row.maxPercentage || '').trim()
+      || !String(row.level || '').trim()
+      || Number(row.minPercentage) < 0
+      || Number(row.maxPercentage) > 100
+      || Number(row.minPercentage) > Number(row.maxPercentage)
+    ))) {
+      errors.attainmentLevels = 'Complete valid attainment level rows.'
+    }
+
+    return errors
   }
 
   const clearExamCategoryDraft = () => {
@@ -755,6 +1095,13 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   }
 
   const saveSetupConfiguration = () => {
+    const errors = validateSetupDraft()
+    setSetupErrors(errors)
+    if (Object.keys(errors).length) {
+      setSaveStatus('Complete required configuration fields.')
+      return
+    }
+
     const nextSetup = {
       ...setupDraft,
       assessmentId: setupDraft.assessmentId || setup.assessmentId || `assessment-${Date.now()}`,
@@ -864,6 +1211,22 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       totalMarksDetail,
     }
   }, [savedQuestions])
+  const configurationDurationLabel = useMemo(() => {
+    if ((setupDraft.examDeliveryMode || 'Online') === 'Offline') {
+      return formatDurationValue(getTimeValueMinutes(setupDraft.offlineDuration))
+    }
+
+    const mcqMinutes = configurationQuestionSummary.hasMcq ? getTimeValueMinutes(setupDraft.mcqTimeLimit) : 0
+    const descriptiveMinutes = configurationQuestionSummary.hasDescriptive ? getTimeValueMinutes(setupDraft.descriptiveTimeLimit) : 0
+    return formatDurationValue(mcqMinutes + descriptiveMinutes)
+  }, [
+    configurationQuestionSummary.hasDescriptive,
+    configurationQuestionSummary.hasMcq,
+    setupDraft.descriptiveTimeLimit,
+    setupDraft.examDeliveryMode,
+    setupDraft.mcqTimeLimit,
+    setupDraft.offlineDuration,
+  ])
   const fullPreviewSectionConfig = useMemo(() => ([
     ...PREVIEW_SECTION_CONFIG,
     ...customPreviewSections,
@@ -2678,7 +3041,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
             <div className="create-assessment-tab-panel-head">
               <strong>
                 <Settings size={16} strokeWidth={2.2} />
-                Configuration
+                Assessment Publication Settings
               </strong>
             </div>
             <div className="create-assessment-configuration-form">
@@ -2807,8 +3170,255 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                       ({configurationQuestionSummary.totalMarksDetail})
                     </em>
                   </span>
+                  <span className="create-assessment-configuration-badge">
+                    <strong>Duration :</strong>
+                    <em>{configurationDurationLabel}</em>
+                  </span>
                 </div>
               ) : null}
+
+              <div className="create-assessment-schedule-block" aria-label="Exam schedule">
+                <div className="create-assessment-schedule-head">
+                  <strong>
+                    <CalendarClock size={14} strokeWidth={2.2} />
+                    Exam Timing
+                  </strong>
+                  <div className="create-assessment-mode-toggle" role="group" aria-label="Exam mode">
+                    {['Online', 'Offline'].map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={`${setupDraft.examDeliveryMode === mode ? 'is-active' : ''} is-${mode.toLowerCase()}`.trim()}
+                        onClick={() => {
+                          updateSetupDraft('examDeliveryMode', mode)
+                          setSetupErrors((current) => {
+                            const { mcqTimeLimit: _mcq, descriptiveTimeLimit: _descriptive, offlineDuration: _offline, ...rest } = current
+                            return rest
+                          })
+                        }}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={`create-assessment-schedule-grid is-${String(setupDraft.examDeliveryMode || 'Online').toLowerCase()}`}>
+                  <label className={`create-assessment-schedule-field ${setupErrors.examDate ? 'has-error' : ''}`}>
+                    <span>Exam Date <em>*</em></span>
+                    <span className={`create-assessment-date-input ${setupDraft.examDate ? 'has-value' : ''}`}>
+                      <input
+                        type="date"
+                        value={setupDraft.examDate}
+                        min={getLocalDateInputValue()}
+                        aria-label="Exam date"
+                        onClick={(event) => event.currentTarget.showPicker?.()}
+                        onChange={(event) => updateSetupDraft('examDate', event.target.value)}
+                      />
+                      <em aria-hidden="true">{formatDateInputDisplay(setupDraft.examDate)}</em>
+                      <CalendarDays size={16} strokeWidth={2.2} aria-hidden="true" />
+                    </span>
+                    {setupErrors.examDate ? <small>{setupErrors.examDate}</small> : null}
+                  </label>
+
+                  <label className={`create-assessment-schedule-field ${setupErrors.startTime ? 'has-error' : ''}`}>
+                    <span>Start Time <em>*</em></span>
+                    <StartTimeSelect
+                      value={setupDraft.startTime}
+                      period={setupDraft.startPeriod}
+                      onChange={(value) => updateSetupDraft('startTime', value)}
+                      onPeriodChange={(value) => updateSetupDraft('startPeriod', value)}
+                    />
+                    {setupErrors.startTime ? <small>{setupErrors.startTime}</small> : null}
+                  </label>
+
+                  {setupDraft.examDeliveryMode === 'Online' ? (
+                    <>
+                      {configurationQuestionSummary.hasMcq ? (
+                        <label className={`create-assessment-schedule-field ${setupErrors.mcqTimeLimit ? 'has-error' : ''}`}>
+                          <span>MCQ Time Limit (Max) <em>*</em></span>
+                          <DurationTimeSelect value={setupDraft.mcqTimeLimit} onChange={(value) => updateSetupDraft('mcqTimeLimit', value)} />
+                          {setupErrors.mcqTimeLimit ? <small>{setupErrors.mcqTimeLimit}</small> : null}
+                        </label>
+                      ) : null}
+
+                      {configurationQuestionSummary.hasDescriptive ? (
+                        <label className={`create-assessment-schedule-field ${setupErrors.descriptiveTimeLimit ? 'has-error' : ''}`}>
+                          <span>Descriptive Time Limit (Max) <em>*</em></span>
+                          <DurationTimeSelect value={setupDraft.descriptiveTimeLimit} onChange={(value) => updateSetupDraft('descriptiveTimeLimit', value)} />
+                          {setupErrors.descriptiveTimeLimit ? <small>{setupErrors.descriptiveTimeLimit}</small> : null}
+                        </label>
+                      ) : null}
+                    </>
+                  ) : (
+                    <label className={`create-assessment-schedule-field ${setupErrors.offlineDuration ? 'has-error' : ''}`}>
+                      <span>Set Duration (Max) <em>*</em></span>
+                      <DurationTimeSelect value={setupDraft.offlineDuration} onChange={(value) => updateSetupDraft('offlineDuration', value)} />
+                      {setupErrors.offlineDuration ? <small>{setupErrors.offlineDuration}</small> : null}
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div className="create-assessment-threshold-card-grid" aria-label="Threshold configuration">
+                <div className="create-assessment-threshold-block" aria-label="Attainment levels threshold">
+                  <div className="create-assessment-schedule-head">
+                    <strong>
+                      <SlidersHorizontal size={14} strokeWidth={2.2} />
+                      Attainment Levels Threshold
+                    </strong>
+                    <button type="button" className="create-assessment-default-btn" onClick={resetAttainmentLevelsToDefault}>
+                      Set as Default
+                    </button>
+                  </div>
+
+                  <div className={`create-assessment-attainment-list ${setupErrors.attainmentLevels ? 'has-error' : ''}`}>
+                    {(setupDraft.attainmentLevels ?? DEFAULT_ATTAINMENT_LEVELS).map((row, rowIndex, rows) => (
+                      <div className="create-assessment-attainment-row" key={row.id}>
+                        <input
+                          type="text"
+                          value={row.level}
+                          aria-label="Attainment level"
+                          onChange={(event) => updateAttainmentLevel(row.id, 'level', event.target.value)}
+                        />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={3}
+                          value={row.minPercentage}
+                          aria-label="Minimum percentage"
+                          onChange={(event) => updateAttainmentLevel(row.id, 'minPercentage', event.target.value)}
+                        />
+                        <span aria-hidden="true">-</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={3}
+                          value={row.maxPercentage}
+                          aria-label="Maximum percentage"
+                          onChange={(event) => updateAttainmentLevel(row.id, 'maxPercentage', event.target.value)}
+                        />
+                        <button
+                          type="button"
+                          aria-label="Delete attainment level"
+                          disabled={rows.length <= 1}
+                          onClick={() => deleteAttainmentLevel(row.id)}
+                        >
+                          <Trash2 size={14} strokeWidth={2.2} />
+                        </button>
+                        {rowIndex === rows.length - 1 ? (
+                          <button type="button" className="is-add" aria-label="Add attainment level" onClick={addAttainmentLevel}>
+                            <Plus size={15} strokeWidth={2.3} />
+                          </button>
+                        ) : (
+                          <span aria-hidden="true" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {setupErrors.attainmentLevels ? <small className="create-assessment-threshold-error">{setupErrors.attainmentLevels}</small> : null}
+                </div>
+
+                <div className="create-assessment-threshold-block" aria-label="Thinking level threshold">
+                  <div className="create-assessment-schedule-head">
+                    <strong>
+                      <Settings size={14} strokeWidth={2.2} />
+                      Thinking Level Threshold
+                    </strong>
+                    <button type="button" className="create-assessment-default-btn" onClick={resetThinkingThresholdsToDefault}>
+                      Set as Default
+                    </button>
+                  </div>
+
+                  <div className="create-assessment-threshold-fields">
+                    <label className={`create-assessment-schedule-field ${setupErrors.lotThreshold ? 'has-error' : ''}`}>
+                      <span>LoT Threshold <em>*</em></span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={3}
+                        value={setupDraft.lotThreshold ?? ''}
+                        onChange={(event) => updateSetupDraft('lotThreshold', event.target.value.replace(/[^\d]/g, '').slice(0, 3))}
+                      />
+                      {setupErrors.lotThreshold ? <small>{setupErrors.lotThreshold}</small> : null}
+                    </label>
+
+                    <label className={`create-assessment-schedule-field ${setupErrors.hotThreshold ? 'has-error' : ''}`}>
+                      <span>HoT Threshold <em>*</em></span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={3}
+                        value={setupDraft.hotThreshold ?? ''}
+                        onChange={(event) => updateSetupDraft('hotThreshold', event.target.value.replace(/[^\d]/g, '').slice(0, 3))}
+                      />
+                      {setupErrors.hotThreshold ? <small>{setupErrors.hotThreshold}</small> : null}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="create-assessment-assign-card" aria-label="Assign information">
+                <div className="create-assessment-schedule-head">
+                  <strong>
+                    <UsersRound size={14} strokeWidth={2.2} />
+                    Assign Information
+                  </strong>
+                </div>
+
+                <div className="create-assessment-assign-grid">
+                  <label className="create-assessment-schedule-field">
+                    <span>Select Course</span>
+                    <span className="create-assessment-assign-select">
+                      <select
+                        value={setupDraft.assignCourse ?? ''}
+                        disabled
+                        onChange={(event) => updateSetupDraft('assignCourse', event.target.value)}
+                      >
+                        <option value="">Select Course</option>
+                        {CREATE_ASSESSMENT_SELECT_OPTIONS.courses.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+                    </span>
+                  </label>
+
+                  <label className="create-assessment-schedule-field">
+                    <span>Select Year</span>
+                    <span className="create-assessment-assign-select">
+                      <select
+                        value={setupDraft.assignYear ?? ''}
+                        onChange={(event) => updateSetupDraft('assignYear', event.target.value)}
+                      >
+                        <option value="">Select Year</option>
+                        {CREATE_ASSESSMENT_SELECT_OPTIONS.years.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+                    </span>
+                  </label>
+
+                  <label className="create-assessment-schedule-field">
+                    <span>Select SGT Group or Class</span>
+                    <span className="create-assessment-assign-select">
+                      <select
+                        value={setupDraft.assignGroup ?? ''}
+                        disabled
+                        onChange={(event) => updateSetupDraft('assignGroup', event.target.value)}
+                      >
+                        <option value="">Select SGT Group or Class</option>
+                        {CREATE_ASSESSMENT_SELECT_OPTIONS.sgtGroups.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+                    </span>
+                  </label>
+                </div>
+
+              </div>
 
               <div className="assessment-create-form-actions">
                 <button type="button" className="is-clear" onClick={clearSetupDraft}>
