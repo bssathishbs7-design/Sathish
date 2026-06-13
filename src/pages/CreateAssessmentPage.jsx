@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Check,
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   ArrowRight,
+  Bold,
   CalendarDays,
   CalendarClock,
   ChevronDown,
@@ -14,10 +19,13 @@ import {
   History,
   ImagePlus,
   Info,
+  Italic,
   LayoutGrid,
   ListChecks,
   LogOut,
   Moon,
+  List,
+  ListOrdered,
   Pencil,
   Plus,
   RotateCcw,
@@ -26,8 +34,10 @@ import {
   Settings,
   SlidersHorizontal,
   Sparkles,
+  Strikethrough,
   Sun,
   Trash2,
+  Underline,
   UsersRound,
   X,
 } from 'lucide-react'
@@ -98,6 +108,12 @@ const DEFAULT_ATTAINMENT_LEVELS = [
   { id: 'attainment-2', minPercentage: '50', maxPercentage: '70', level: '2' },
   { id: 'attainment-3', minPercentage: '71', maxPercentage: '100', level: '3' },
 ]
+const DEFAULT_STUDENT_INSTRUCTIONS = [
+  '<h3>[Header] Mid-Term Market Analysis Quiz</h3>',
+  '<p><strong><em>[Description]</em></strong><br>This quiz evaluates your understanding of strategic frameworks from Modules 1-4. It consists of 20 multiple-choice questions and accounts for 15% of your final grade.</p>',
+  '<p><strong><em>[Instructions]</em></strong></p>',
+  '<ul><li><strong>Time Limit :</strong> <em>60 minutes once started (cannot be paused).</em></li></ul>',
+].join('')
 const CREATE_ASSESSMENT_SELECT_OPTIONS = {
   colleges: [DEFAULT_COLLEGE_NAME],
   examCategories: DEFAULT_EXAM_CATEGORIES,
@@ -122,6 +138,8 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   mcqTimeLimit: '',
   descriptiveTimeLimit: '',
   offlineDuration: '',
+  provideStudentInstructions: 'No',
+  studentInstructions: DEFAULT_STUDENT_INSTRUCTIONS,
   lotThreshold: '70',
   hotThreshold: '60',
   attainmentLevels: DEFAULT_ATTAINMENT_LEVELS,
@@ -809,6 +827,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const [customExamCategories, setCustomExamCategories] = useState(readCreateAssessmentCustomExamCategories)
   const [isExamCategoryTooltipOpen, setIsExamCategoryTooltipOpen] = useState(false)
   const [examCategoryDraft, setExamCategoryDraft] = useState('')
+  const [isStudentInstructionsOpen, setIsStudentInstructionsOpen] = useState(false)
+  const studentInstructionsEditorRef = useRef(null)
   const [isConfigurationSummaryVisible, setIsConfigurationSummaryVisible] = useState(true)
   const [setupErrors, setSetupErrors] = useState({})
   const [question, setQuestion] = useState(null)
@@ -915,6 +935,24 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       const { [field]: _removed, ...rest } = current
       return rest
     })
+  }
+
+  useEffect(() => {
+    if (!isStudentInstructionsOpen) return
+    const editor = studentInstructionsEditorRef.current
+    if (editor && editor.innerHTML !== (setupDraft.studentInstructions ?? '')) {
+      editor.innerHTML = setupDraft.studentInstructions ?? ''
+    }
+  }, [isStudentInstructionsOpen, setupDraft.studentInstructions])
+
+  const emitStudentInstructionsChange = () => {
+    updateSetupDraft('studentInstructions', studentInstructionsEditorRef.current?.innerHTML ?? '')
+  }
+
+  const runStudentInstructionCommand = (command, value = null) => {
+    studentInstructionsEditorRef.current?.focus()
+    document.execCommand(command, false, value)
+    emitStudentInstructionsChange()
   }
 
   const updateAttainmentLevel = (rowId, field, value) => {
@@ -3249,6 +3287,31 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                           {setupErrors.descriptiveTimeLimit ? <small>{setupErrors.descriptiveTimeLimit}</small> : null}
                         </label>
                       ) : null}
+
+                      <div className="create-assessment-instructions-row">
+                        <span>Provide student instructions and assessment description?</span>
+                        <span className="create-assessment-yes-no-toggle" role="group" aria-label="Provide student instructions and assessment description">
+                          {['Yes', 'No'].map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              className={(setupDraft.provideStudentInstructions || 'No') === option ? 'is-active' : ''}
+                              onClick={() => {
+                                setSetupDraft((current) => ({
+                                  ...current,
+                                  provideStudentInstructions: option,
+                                  studentInstructions: option === 'Yes' && !stripHtml(current.studentInstructions ?? '').trim()
+                                    ? DEFAULT_STUDENT_INSTRUCTIONS
+                                    : current.studentInstructions,
+                                }))
+                                setIsStudentInstructionsOpen(option === 'Yes')
+                              }}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </span>
+                      </div>
                     </>
                   ) : (
                     <label className={`create-assessment-schedule-field ${setupErrors.offlineDuration ? 'has-error' : ''}`}>
@@ -3259,6 +3322,111 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                   )}
                 </div>
               </div>
+
+              {isStudentInstructionsOpen ? (
+                <div className="create-assessment-modal-backdrop" role="presentation">
+                  <div className="create-assessment-instructions-modal" role="dialog" aria-modal="true" aria-label="Student instructions">
+                    <div className="create-assessment-instructions-modal-head">
+                      <strong>Student Instructions &amp; Assessment Description</strong>
+                      <button
+                        type="button"
+                        className="create-assessment-instructions-close"
+                        aria-label="Close student instructions"
+                        onClick={() => setIsStudentInstructionsOpen(false)}
+                      >
+                        <X size={16} strokeWidth={2.2} />
+                      </button>
+                    </div>
+                    <div className="create-assessment-instructions-editor">
+                      <div className="create-assessment-instructions-toolbar" aria-label="Instruction formatting toolbar">
+                        {[
+                          ['Bold', Bold, 'bold'],
+                          ['Italic', Italic, 'italic'],
+                          ['Underline', Underline, 'underline'],
+                          ['Strike', Strikethrough, 'strikeThrough'],
+                        ].map(([label, Icon, command]) => (
+                          <button
+                            key={label}
+                            type="button"
+                            aria-label={label}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => runStudentInstructionCommand(command)}
+                          >
+                            <Icon size={16} strokeWidth={2.2} />
+                          </button>
+                        ))}
+                        <select
+                          aria-label="Paragraph style"
+                          defaultValue="Normal"
+                          onChange={(event) => {
+                            const tagName = event.target.value === 'Heading'
+                              ? 'h3'
+                              : event.target.value === 'Subheading'
+                                ? 'h4'
+                                : 'p'
+                            runStudentInstructionCommand('formatBlock', tagName)
+                          }}
+                        >
+                          <option>Normal</option>
+                          <option>Heading</option>
+                          <option>Subheading</option>
+                        </select>
+                        <select
+                          aria-label="Font size"
+                          defaultValue="16"
+                          onChange={(event) => {
+                            const sizeMap = { 14: '2', 16: '3', 18: '4', 20: '5' }
+                            runStudentInstructionCommand('fontSize', sizeMap[event.target.value] ?? '3')
+                          }}
+                        >
+                          <option>14</option>
+                          <option>16</option>
+                          <option>18</option>
+                          <option>20</option>
+                        </select>
+                        {[
+                          ['Bulleted list', List, 'insertUnorderedList'],
+                          ['Numbered list', ListOrdered, 'insertOrderedList'],
+                          ['Align left', AlignLeft, 'justifyLeft'],
+                          ['Align center', AlignCenter, 'justifyCenter'],
+                          ['Align right', AlignRight, 'justifyRight'],
+                          ['Justify', AlignJustify, 'justifyFull'],
+                        ].map(([label, Icon, command]) => (
+                          <button
+                            key={label}
+                            type="button"
+                            aria-label={label}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => runStudentInstructionCommand(command)}
+                          >
+                            <Icon size={16} strokeWidth={2.2} />
+                          </button>
+                        ))}
+                      </div>
+                      <div
+                        ref={studentInstructionsEditorRef}
+                        className="create-assessment-instructions-surface"
+                        contentEditable
+                        suppressContentEditableWarning
+                        role="textbox"
+                        aria-label="Student instructions and assessment description"
+                        data-empty={!stripHtml(setupDraft.studentInstructions ?? '').trim()}
+                        onInput={emitStudentInstructionsChange}
+                        onBlur={emitStudentInstructionsChange}
+                        placeholder="Students will see these instructions during the assessment."
+                      />
+                    </div>
+                    <div className="create-assessment-instructions-actions">
+                      <button type="button" className="is-clear" onClick={() => updateSetupDraft('studentInstructions', '')}>
+                        Clear
+                      </button>
+                      <button type="button" className="is-primary" onClick={() => setIsStudentInstructionsOpen(false)}>
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="create-assessment-threshold-card-grid" aria-label="Threshold configuration">
                 <div className="create-assessment-threshold-block" aria-label="Attainment levels threshold">
