@@ -1026,6 +1026,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     if (!String(draft.assessmentName || '').trim()) errors.assessmentName = 'Enter assessment name.'
     if (!draft.examCategory) errors.examCategory = 'Select exam category.'
     if (!draft.academicYear) errors.academicYear = 'Select academic year.'
+    if (!draft.assignYear) errors.assignYear = 'Select year.'
     if (!draft.examDate) {
       errors.examDate = 'Select exam date.'
     } else if (draft.examDate < todayValue) {
@@ -3552,8 +3553,8 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                     </span>
                   </label>
 
-                  <label className="create-assessment-schedule-field">
-                    <span>Select Year</span>
+                  <label className={`create-assessment-schedule-field ${setupErrors.assignYear ? 'has-error' : ''}`}>
+                    <span>Select Year <em>*</em></span>
                     <span className="create-assessment-assign-select">
                       <select
                         value={setupDraft.assignYear ?? ''}
@@ -3566,6 +3567,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                       </select>
                       <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
                     </span>
+                    {setupErrors.assignYear ? <small>{setupErrors.assignYear}</small> : null}
                   </label>
 
                   <label className="create-assessment-schedule-field">
