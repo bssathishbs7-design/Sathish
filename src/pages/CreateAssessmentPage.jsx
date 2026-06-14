@@ -67,6 +67,7 @@ const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-title
 const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
 const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-sections'
 const CREATE_ASSESSMENT_CUSTOM_EXAM_CATEGORIES_KEY = 'vx-create-assessment-custom-exam-categories'
+const CREATE_ASSESSMENT_TEMPLATES_KEY = 'vx-create-assessment-templates'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 
@@ -520,6 +521,15 @@ const readCreateAssessmentCustomExamCategories = () => {
   }
 }
 
+const readCreateAssessmentTemplates = () => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CREATE_ASSESSMENT_TEMPLATES_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed.filter((item) => item?.id && item?.name) : []
+  } catch {
+    return []
+  }
+}
+
 const readImageFile = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader()
   reader.onload = () => resolve({
@@ -618,6 +628,28 @@ const formatDurationValue = (totalMinutes) => {
   const hours = Math.floor(safeMinutes / 60)
   const minutes = safeMinutes % 60
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+const CONFIGURATION_ERROR_LABELS = {
+  collegeName: 'Select College Name',
+  assessmentName: 'Assessment Name',
+  examCategory: 'Exam Category',
+  academicYear: 'Academic Year',
+  assignYear: 'Select Year',
+  examDate: 'Exam Date',
+  startTime: 'Start Time',
+  mcqTimeLimit: 'MCQ Time Limit',
+  descriptiveTimeLimit: 'Descriptive Time Limit',
+  offlineDuration: 'Set Duration',
+  lotThreshold: 'LoT Threshold',
+  hotThreshold: 'HoT Threshold',
+  attainmentLevels: 'Attainment Levels',
+}
+
+const getConfigurationErrorMessage = (errors = {}) => {
+  const firstKey = Object.keys(errors)[0]
+  const label = CONFIGURATION_ERROR_LABELS[firstKey] || 'required fields'
+  return `Please complete ${label}.`
 }
 
 const TIME_LIMIT_PATTERN = /^([0-1]\d|2[0-3]):([0-5]\d)$/
@@ -825,9 +857,17 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     ...readCreateAssessmentSetup(),
   }))
   const [customExamCategories, setCustomExamCategories] = useState(readCreateAssessmentCustomExamCategories)
+  const [savedTemplates, setSavedTemplates] = useState(readCreateAssessmentTemplates)
   const [isExamCategoryTooltipOpen, setIsExamCategoryTooltipOpen] = useState(false)
   const [examCategoryDraft, setExamCategoryDraft] = useState('')
   const [isStudentInstructionsOpen, setIsStudentInstructionsOpen] = useState(false)
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
+  const [approvalDraft, setApprovalDraft] = useState({
+    facultyName: 'Dr. Meera Nair',
+    employeeId: 'EMP1021',
+    designation: 'Professor',
+    note: '',
+  })
   const studentInstructionsEditorRef = useRef(null)
   const [isConfigurationSummaryVisible, setIsConfigurationSummaryVisible] = useState(true)
   const [setupErrors, setSetupErrors] = useState({})
@@ -1133,14 +1173,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     }))
   }
 
-  const saveSetupConfiguration = () => {
-    const errors = validateSetupDraft()
-    setSetupErrors(errors)
-    if (Object.keys(errors).length) {
-      setSaveStatus('Complete required configuration fields.')
-      return
-    }
-
+  const persistSetupDraft = (nextStatus = 'Configuration saved') => {
     const nextSetup = {
       ...setupDraft,
       assessmentId: setupDraft.assessmentId || setup.assessmentId || `assessment-${Date.now()}`,
@@ -1150,8 +1183,72 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
     setSetup(nextSetup)
     setSetupDraft(nextSetup)
-    setSaveStatus('Configuration saved')
+    setSaveStatus(nextStatus)
     setIsConfigurationSummaryVisible(true)
+    return nextSetup
+  }
+
+  const saveAssessmentTemplate = () => {
+    const errors = validateSetupDraft()
+    setSetupErrors(errors)
+    if (Object.keys(errors).length) {
+      setSaveStatus(getConfigurationErrorMessage(errors))
+      return
+    }
+
+    const nextSetup = persistSetupDraft('Template saved')
+    const templateName = String(nextSetup.assessmentName || '').trim()
+    const templateId = templateName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `template-${Date.now()}`
+    const template = {
+      id: templateId,
+      name: templateName,
+      setup: nextSetup,
+      savedAt: new Date().toISOString(),
+    }
+    const nextTemplates = [
+      template,
+      ...savedTemplates.filter((item) => item.id !== templateId),
+    ]
+    window.localStorage.setItem(CREATE_ASSESSMENT_TEMPLATES_KEY, JSON.stringify(nextTemplates))
+    setSavedTemplates(nextTemplates)
+  }
+
+  const loadAssessmentTemplate = (templateId) => {
+    const template = savedTemplates.find((item) => item.id === templateId)
+    if (!template) return
+
+    const nextSetup = {
+      ...CREATE_ASSESSMENT_DEFAULT_SETUP,
+      ...(template.setup ?? {}),
+      updatedAt: new Date().toISOString(),
+    }
+    setSetup(nextSetup)
+    setSetupDraft(nextSetup)
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
+
+    setSetupErrors({})
+    setIsConfigurationSummaryVisible(true)
+    setSaveStatus('Template loaded')
+  }
+
+  const openApprovalModal = () => {
+    const errors = validateSetupDraft()
+    setSetupErrors(errors)
+    if (Object.keys(errors).length) {
+      setSaveStatus(getConfigurationErrorMessage(errors))
+      return
+    }
+    if (!savedQuestions.length || !previewSections.length) {
+      setSaveStatus('Add questions in Preview before sending to approval.')
+      return
+    }
+
+    setIsApprovalModalOpen(true)
+  }
+
+  const sendAssessmentToApproval = () => {
+    persistSetupDraft('Sent to approval')
+    setIsApprovalModalOpen(false)
   }
 
   const hasQuestionText = Boolean(getRichTextPreview(question?.questionText ?? ''))
@@ -1289,6 +1386,9 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     }).filter((section) => section.questions.length || section.isCustom)
   }, [fullPreviewSectionConfig, previewQuestions, previewSectionOrder, previewSectionTitles])
   const previewSectionCount = previewSections.length
+  const canSendAssessmentForApproval = useMemo(() => (
+    Object.keys(validateSetupDraft(setupDraft)).length === 0 && savedQuestions.length > 0 && previewSections.length > 0
+  ), [previewSections.length, savedQuestions.length, setupDraft])
   const previewQuestionDisplayNumbers = useMemo(() => {
     let displayNumber = 1
     return previewSections.reduce((numbers, section) => {
@@ -1329,6 +1429,12 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     const intervalId = window.setInterval(() => setGenerationTick(Date.now()), 450)
     return () => window.clearInterval(intervalId)
   }, [generationJobs.length])
+
+  useEffect(() => {
+    if (!saveStatus) return undefined
+    const timeoutId = window.setTimeout(() => setSaveStatus(''), 3600)
+    return () => window.clearTimeout(timeoutId)
+  }, [saveStatus])
 
   const updateQuestion = (patch) => {
     setQuestion((current) => current ? ({
@@ -2625,6 +2731,106 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
         </div>
       </header>
 
+      {saveStatus ? (
+        <div className="create-assessment-status-toast" role="status" aria-live="polite">
+          <span className="create-assessment-status-toast-icon">
+            <Info size={16} strokeWidth={2.2} />
+          </span>
+          <span>{saveStatus}</span>
+          <button type="button" aria-label="Close message" onClick={() => setSaveStatus('')}>
+            <X size={14} strokeWidth={2.2} />
+          </button>
+        </div>
+      ) : null}
+
+      {isApprovalModalOpen ? (
+        <div className="create-assessment-approval-backdrop" role="presentation">
+          <section className="create-assessment-approval-modal" role="dialog" aria-modal="true" aria-labelledby="create-assessment-approval-title">
+            <header className="create-assessment-approval-head">
+              <span>
+                <strong id="create-assessment-approval-title">Send to Approval</strong>
+                <em>{selectedAssessmentQuestionCount || savedQuestions.length} selected question will be sent for review</em>
+              </span>
+              <button type="button" aria-label="Close send to approval" onClick={() => setIsApprovalModalOpen(false)}>
+                <X size={17} strokeWidth={2.2} />
+              </button>
+            </header>
+
+            <div className="create-assessment-approval-body">
+              <div className="create-assessment-approval-grid">
+                <label>
+                  <span>Faculty Name</span>
+                  <span className="create-assessment-approval-select">
+                    <UsersRound size={16} strokeWidth={2.2} />
+                    <select
+                      value={approvalDraft.facultyName}
+                      onChange={(event) => setApprovalDraft((current) => ({ ...current, facultyName: event.target.value }))}
+                    >
+                      <option value="Dr. Meera Nair">Dr. Meera Nair</option>
+                      <option value="Dr. Arjun Menon">Dr. Arjun Menon</option>
+                      <option value="Dr. Kavitha Rao">Dr. Kavitha Rao</option>
+                    </select>
+                    <ChevronDown size={15} strokeWidth={2.2} />
+                  </span>
+                </label>
+
+                <label>
+                  <span>Employee ID</span>
+                  <span className="create-assessment-approval-select">
+                    <Database size={16} strokeWidth={2.2} />
+                    <select
+                      value={approvalDraft.employeeId}
+                      onChange={(event) => setApprovalDraft((current) => ({ ...current, employeeId: event.target.value }))}
+                    >
+                      <option value="EMP1021">EMP1021</option>
+                      <option value="EMP1048">EMP1048</option>
+                      <option value="EMP1120">EMP1120</option>
+                    </select>
+                    <ChevronDown size={15} strokeWidth={2.2} />
+                  </span>
+                </label>
+
+                <label>
+                  <span>Designation</span>
+                  <span className="create-assessment-approval-select">
+                    <Settings size={16} strokeWidth={2.2} />
+                    <select
+                      value={approvalDraft.designation}
+                      onChange={(event) => setApprovalDraft((current) => ({ ...current, designation: event.target.value }))}
+                    >
+                      <option value="Professor">Professor</option>
+                      <option value="Associate Professor">Associate Professor</option>
+                      <option value="Assistant Professor">Assistant Professor</option>
+                    </select>
+                    <ChevronDown size={15} strokeWidth={2.2} />
+                  </span>
+                </label>
+              </div>
+
+              <label className="create-assessment-approval-note">
+                <span>Note</span>
+                <textarea
+                  value={approvalDraft.note}
+                  onChange={(event) => setApprovalDraft((current) => ({ ...current, note: event.target.value }))}
+                  placeholder="Add approval note"
+                  rows={5}
+                />
+              </label>
+            </div>
+
+            <footer className="create-assessment-approval-actions">
+              <button type="button" className="is-cancel" onClick={() => setIsApprovalModalOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="is-send" onClick={sendAssessmentToApproval}>
+                <ArrowRight size={16} strokeWidth={2.2} />
+                Send
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
       <div className="create-assessment-workspace-body">
       <main className="create-assessment-workspace-main">
         {activeCreateTab === 'questionBank' ? (
@@ -3082,6 +3288,23 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                 <Settings size={16} strokeWidth={2.2} />
                 Assessment Publication Settings
               </strong>
+              <span className="create-assessment-template-select">
+                <select
+                  value=""
+                  onChange={(event) => {
+                    loadAssessmentTemplate(event.target.value)
+                    event.target.value = ''
+                  }}
+                  disabled={!savedTemplates.length}
+                  aria-label="Saved templates"
+                >
+                  <option value="">{savedTemplates.length ? 'Saved Templates' : 'No templates saved'}</option>
+                  {savedTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>{template.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+              </span>
             </div>
             <div className="create-assessment-configuration-form">
               <div className="assessment-create-setup-top">
@@ -3591,13 +3814,18 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
               </div>
 
               <div className="assessment-create-form-actions">
+                <button type="button" className="is-template" onClick={saveAssessmentTemplate}>
+                  <Save size={15} strokeWidth={2.2} />
+                  Save Template
+                </button>
+                <span className="assessment-create-form-actions-spacer" aria-hidden="true" />
                 <button type="button" className="is-clear" onClick={clearSetupDraft}>
                   <RotateCcw size={15} strokeWidth={2.2} />
                   Clear
                 </button>
-                <button type="button" className="is-primary" onClick={saveSetupConfiguration}>
-                  <Save size={15} strokeWidth={2.2} />
-                  Save &amp; Continue
+                <button type="button" className="is-primary" onClick={openApprovalModal} disabled={!canSendAssessmentForApproval}>
+                  <ArrowRight size={15} strokeWidth={2.2} />
+                  Send to Approval
                 </button>
               </div>
             </div>
@@ -4397,7 +4625,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
           <Save size={16} strokeWidth={2.2} />
           <span>Save as Draft</span>
         </button>
-        <button type="button" className="create-assessment-action-btn is-primary" onClick={() => persistQuestion('Created')} disabled={!question || !canCreate}>
+        <button type="button" className="create-assessment-action-btn is-primary" onClick={openApprovalModal} disabled={!canSendAssessmentForApproval}>
           <ArrowRight size={16} strokeWidth={2.2} />
           <span>Send to Approval</span>
         </button>
