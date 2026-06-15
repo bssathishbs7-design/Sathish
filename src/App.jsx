@@ -1243,6 +1243,7 @@ function App() {
             <CreateAssessmentPage
               onNavigate={navigateToPage}
               onAlert={showAlert}
+              onSendToApproval={handleSendToApproval}
               theme={theme}
               onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
             />

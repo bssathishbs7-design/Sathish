@@ -128,6 +128,120 @@
   color: #2757b8;
 }
 
+.review-approve-type-chip.assessment {
+  border-color: #bfe8dd;
+  background: #ecfffb;
+  color: #08776d;
+}
+
+.review-approve-assessment-card {
+  grid-column: auto;
+  align-content: start;
+  gap: 12px;
+  min-height: 290px;
+  padding: 16px;
+  border-color: #cfe8df;
+  background: #ffffff;
+}
+
+.review-approve-assessment-card .review-approve-card-title h3 {
+  font-size: 1rem;
+  line-height: 1.18;
+}
+
+.review-approve-assessment-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.review-approve-assessment-badges span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  max-width: 100%;
+  padding: 0 9px;
+  border: 1px solid #cfe8df;
+  border-radius: 999px;
+  background: #f2fffb;
+  color: #08776d;
+  font-size: 0.66rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.review-approve-assessment-badges span.is-mode-online {
+  border-color: #b8eccf;
+  background: #ecfdf5;
+  color: #15803d;
+}
+
+.review-approve-assessment-badges span.is-mode-offline {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.review-approve-assessment-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 10px 0 2px;
+  border-top: 1px solid #edf2ef;
+}
+
+.review-approve-assessment-item {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.review-approve-assessment-item span {
+  overflow: hidden;
+  color: #65796f;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-approve-assessment-item span::after {
+  content: ":";
+  margin-left: 1px;
+}
+
+.review-approve-assessment-item strong {
+  overflow: hidden;
+  color: #173126;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.22;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-approve-assessment-card .review-approve-card-date-row {
+  margin-top: 0;
+  padding: 0 2px;
+}
+
+.review-approve-assessment-card .review-approve-card-footer {
+  margin-top: auto;
+  justify-content: flex-end;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .review-approve-question-bank-card {
   gap: 14px;
   min-height: 220px;
@@ -609,6 +723,7 @@
 
 .theme-dark .review-approve-card-title h3,
 .theme-dark .review-approve-card-meta-item strong,
+.theme-dark .review-approve-assessment-item strong,
 .theme-dark .review-approve-qb-count strong,
 .theme-dark .review-approve-card-action-cell strong,
 .theme-dark .review-approve-tooltip strong {
@@ -619,9 +734,28 @@
 .theme-dark .review-approve-qb-submitted,
 .theme-dark .review-approve-qb-submitted-label,
 .theme-dark .review-approve-qb-submitted-date,
+.theme-dark .review-approve-assessment-item span,
 .theme-dark .review-approve-tooltip span,
 .theme-dark .review-approve-tooltip small {
   color: #9fb4ab;
+}
+
+.theme-dark .review-approve-assessment-badges span {
+  border-color: rgba(45, 212, 191, 0.3);
+  background: rgba(20, 184, 166, 0.13);
+  color: #99f6e4;
+}
+
+.theme-dark .review-approve-assessment-badges span.is-mode-online {
+  border-color: rgba(74, 222, 128, 0.36);
+  background: rgba(22, 101, 52, 0.2);
+  color: #86efac;
+}
+
+.theme-dark .review-approve-assessment-badges span.is-mode-offline {
+  border-color: rgba(248, 113, 113, 0.38);
+  background: rgba(127, 29, 29, 0.24);
+  color: #fca5a5;
 }
 
 .theme-dark .review-approve-qb-submitted-name {
@@ -651,6 +785,21 @@
 .theme-dark .review-approve-card-footer-chip {
   border-color: #243652;
   background: rgba(15, 24, 40, 0.9);
+}
+
+.theme-dark .review-approve-assessment-grid {
+  border-top-color: rgba(94, 116, 145, 0.38);
+}
+
+.theme-dark .review-approve-assessment-card .review-approve-card-footer,
+.theme-dark .review-approve-assessment-item {
+  border-color: transparent;
+  background: transparent;
+}
+
+.theme-dark .review-approve-assessment-card {
+  border-color: #244a53;
+  background: rgba(17, 28, 48, 0.98);
 }
 
 .theme-dark .review-approve-qb-count,
@@ -736,6 +885,12 @@
   border-color: rgba(96, 165, 250, 0.3);
   background: rgba(30, 58, 138, 0.28);
   color: #bfdbfe;
+}
+
+.theme-dark .review-approve-type-chip.assessment {
+  border-color: rgba(45, 212, 191, 0.32);
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
 }
 
 .theme-dark .review-approve-question-state {

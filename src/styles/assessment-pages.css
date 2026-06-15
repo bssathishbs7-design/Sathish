@@ -3195,6 +3195,82 @@
   min-width: 0;
 }
 
+.create-assessment-threshold-section {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  border: 1px solid #d7e8e2;
+  border-radius: 12px;
+  background: #fbfefd;
+  overflow: hidden;
+}
+
+.create-assessment-threshold-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: #1e3a8a;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.create-assessment-threshold-section-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-assessment-threshold-section-head svg {
+  flex: 0 0 auto;
+}
+
+.create-assessment-threshold-section-head > span svg {
+  color: #2563eb;
+}
+
+.create-assessment-threshold-section-head:hover,
+.create-assessment-threshold-section-head:focus-visible {
+  background: #f5fffb;
+  outline: none;
+}
+
+.create-assessment-threshold-section.is-open .create-assessment-threshold-section-head {
+  border-bottom: 1px solid #d7e8e2;
+}
+
+.create-assessment-threshold-section-body {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+  animation: createAssessmentThresholdOpen 180ms ease-out;
+}
+
+@keyframes createAssessmentThresholdOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .create-assessment-assign-card {
   display: grid;
   gap: 14px;
@@ -3278,6 +3354,45 @@
   align-content: start;
   gap: 12px;
   min-width: 0;
+}
+
+.create-assessment-threshold-fields.is-blooms {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.create-assessment-threshold-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #cfe8df;
+  border-radius: 999px;
+  background: #f7fcfa;
+}
+
+.create-assessment-threshold-mode-toggle button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #526978;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.create-assessment-threshold-mode-toggle button.is-active {
+  background: #10b9a8;
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(16, 185, 168, 0.16);
+}
+
+.create-assessment-threshold-mode-toggle button:focus-visible {
+  outline: 2px solid rgba(16, 185, 168, 0.28);
+  outline-offset: 2px;
 }
 
 .create-assessment-threshold-layout {
@@ -11158,6 +11273,28 @@
   background: rgba(15, 23, 42, 0.42);
 }
 
+.theme-dark .create-assessment-threshold-section {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.theme-dark .create-assessment-threshold-section-head {
+  color: #bfdbfe;
+}
+
+.theme-dark .create-assessment-threshold-section-head > span svg {
+  color: #93c5fd;
+}
+
+.theme-dark .create-assessment-threshold-section-head:hover,
+.theme-dark .create-assessment-threshold-section-head:focus-visible {
+  background: rgba(20, 184, 166, 0.08);
+}
+
+.theme-dark .create-assessment-threshold-section.is-open .create-assessment-threshold-section-head {
+  border-bottom-color: rgba(94, 116, 145, 0.5);
+}
+
 .theme-dark .create-assessment-assign-card {
   border-color: rgba(94, 116, 145, 0.5);
   background: rgba(15, 23, 42, 0.42);
@@ -11213,6 +11350,20 @@
 .theme-dark .create-assessment-default-btn:focus-visible {
   border-color: rgba(45, 212, 191, 0.62);
   background: rgba(20, 184, 166, 0.12);
+}
+
+.theme-dark .create-assessment-threshold-mode-toggle {
+  border-color: rgba(94, 116, 145, 0.58);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.theme-dark .create-assessment-threshold-mode-toggle button {
+  color: #a9b8c9;
+}
+
+.theme-dark .create-assessment-threshold-mode-toggle button.is-active {
+  background: #0f8f75;
+  color: #ffffff;
 }
 
 .theme-dark .create-assessment-assign-select select:disabled {
@@ -14940,6 +15091,10 @@
 
   .create-assessment-threshold-fields {
     grid-template-columns: 1fr;
+  }
+
+  .create-assessment-threshold-fields.is-blooms {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .create-assessment-assign-grid {

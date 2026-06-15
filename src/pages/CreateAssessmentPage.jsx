@@ -109,6 +109,20 @@ const DEFAULT_ATTAINMENT_LEVELS = [
   { id: 'attainment-2', minPercentage: '50', maxPercentage: '70', level: '2' },
   { id: 'attainment-3', minPercentage: '71', maxPercentage: '100', level: '3' },
 ]
+const BLOOMS_THRESHOLD_FIELDS = [
+  { key: 'applyThreshold', label: 'Apply' },
+  { key: 'rememberThreshold', label: 'Remember' },
+  { key: 'understandThreshold', label: 'Understand' },
+  { key: 'analyzeThreshold', label: 'Analyze' },
+  { key: 'evaluateThreshold', label: 'Evaluate' },
+]
+const DEFAULT_BLOOMS_THRESHOLDS = {
+  applyThreshold: '55',
+  rememberThreshold: '75',
+  understandThreshold: '60',
+  analyzeThreshold: '45',
+  evaluateThreshold: '80',
+}
 const DEFAULT_STUDENT_INSTRUCTIONS = [
   '<h3>[Header] Mid-Term Market Analysis Quiz</h3>',
   '<p><strong><em>[Description]</em></strong><br>This quiz evaluates your understanding of strategic frameworks from Modules 1-4. It consists of 20 multiple-choice questions and accounts for 15% of your final grade.</p>',
@@ -141,8 +155,10 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   offlineDuration: '',
   provideStudentInstructions: 'No',
   studentInstructions: DEFAULT_STUDENT_INSTRUCTIONS,
+  thinkingThresholdMode: 'hotlot',
   lotThreshold: '70',
   hotThreshold: '60',
+  ...DEFAULT_BLOOMS_THRESHOLDS,
   attainmentLevels: DEFAULT_ATTAINMENT_LEVELS,
   assignCourse: '',
   assignYear: '',
@@ -643,6 +659,11 @@ const CONFIGURATION_ERROR_LABELS = {
   offlineDuration: 'Set Duration',
   lotThreshold: 'LoT Threshold',
   hotThreshold: 'HoT Threshold',
+  applyThreshold: 'Apply Threshold',
+  rememberThreshold: 'Remember Threshold',
+  understandThreshold: 'Understand Threshold',
+  analyzeThreshold: 'Analyze Threshold',
+  evaluateThreshold: 'Evaluate Threshold',
   attainmentLevels: 'Attainment Levels',
 }
 
@@ -847,7 +868,7 @@ function OptionalTagTextInput({ label, values, onChange }) {
   )
 }
 
-export default function CreateAssessmentPage({ onNavigate, theme = 'light', onToggleTheme }) {
+export default function CreateAssessmentPage({ onNavigate, onSendToApproval, theme = 'light', onToggleTheme }) {
   const [setup, setSetup] = useState(() => ({
     ...CREATE_ASSESSMENT_DEFAULT_SETUP,
     ...readCreateAssessmentSetup(),
@@ -870,6 +891,7 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   })
   const studentInstructionsEditorRef = useRef(null)
   const [isConfigurationSummaryVisible, setIsConfigurationSummaryVisible] = useState(true)
+  const [isThresholdSectionOpen, setIsThresholdSectionOpen] = useState(false)
   const [setupErrors, setSetupErrors] = useState({})
   const [question, setQuestion] = useState(null)
   const assessmentQuestionsStorageKey = getAssessmentQuestionsStorageKey(setup)
@@ -977,6 +999,33 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
     })
   }
 
+  const updateThinkingThresholdMode = (value) => {
+    setSetupDraft((current) => {
+      const nextDraft = { ...current, thinkingThresholdMode: value }
+      if (value === 'blooms') {
+        BLOOMS_THRESHOLD_FIELDS.forEach((field) => {
+          if (!String(nextDraft[field.key] || '').trim()) {
+            nextDraft[field.key] = DEFAULT_BLOOMS_THRESHOLDS[field.key]
+          }
+        })
+      }
+      return nextDraft
+    })
+    setSetupErrors((current) => {
+      const {
+        lotThreshold: _lot,
+        hotThreshold: _hot,
+        applyThreshold: _apply,
+        rememberThreshold: _remember,
+        understandThreshold: _understand,
+        analyzeThreshold: _analyze,
+        evaluateThreshold: _evaluate,
+        ...rest
+      } = current
+      return rest
+    })
+  }
+
   useEffect(() => {
     if (!isStudentInstructionsOpen) return
     const editor = studentInstructionsEditorRef.current
@@ -1048,11 +1097,22 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   const resetThinkingThresholdsToDefault = () => {
     setSetupDraft((current) => ({
       ...current,
+      thinkingThresholdMode: 'hotlot',
       lotThreshold: '70',
       hotThreshold: '60',
+      ...DEFAULT_BLOOMS_THRESHOLDS,
     }))
     setSetupErrors((current) => {
-      const { lotThreshold: _lot, hotThreshold: _hot, ...rest } = current
+      const {
+        lotThreshold: _lot,
+        hotThreshold: _hot,
+        applyThreshold: _apply,
+        rememberThreshold: _remember,
+        understandThreshold: _understand,
+        analyzeThreshold: _analyze,
+        evaluateThreshold: _evaluate,
+        ...rest
+      } = current
       return rest
     })
   }
@@ -1092,16 +1152,26 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
       errors.offlineDuration = 'Enter duration as HH:MM.'
     }
 
-    if (!String(draft.lotThreshold || '').trim()) {
-      errors.lotThreshold = 'Enter LoT threshold.'
-    } else if (Number(draft.lotThreshold) < 0 || Number(draft.lotThreshold) > 100) {
-      errors.lotThreshold = 'LoT threshold must be 0 to 100.'
-    }
+    if ((draft.thinkingThresholdMode || 'hotlot') === 'blooms') {
+      BLOOMS_THRESHOLD_FIELDS.forEach((field) => {
+        if (!String(draft[field.key] || '').trim()) {
+          errors[field.key] = `Enter ${field.label} threshold.`
+        } else if (Number(draft[field.key]) < 0 || Number(draft[field.key]) > 100) {
+          errors[field.key] = `${field.label} threshold must be 0 to 100.`
+        }
+      })
+    } else {
+      if (!String(draft.lotThreshold || '').trim()) {
+        errors.lotThreshold = 'Enter LoT threshold.'
+      } else if (Number(draft.lotThreshold) < 0 || Number(draft.lotThreshold) > 100) {
+        errors.lotThreshold = 'LoT threshold must be 0 to 100.'
+      }
 
-    if (!String(draft.hotThreshold || '').trim()) {
-      errors.hotThreshold = 'Enter HoT threshold.'
-    } else if (Number(draft.hotThreshold) < 0 || Number(draft.hotThreshold) > 100) {
-      errors.hotThreshold = 'HoT threshold must be 0 to 100.'
+      if (!String(draft.hotThreshold || '').trim()) {
+        errors.hotThreshold = 'Enter HoT threshold.'
+      } else if (Number(draft.hotThreshold) < 0 || Number(draft.hotThreshold) > 100) {
+        errors.hotThreshold = 'HoT threshold must be 0 to 100.'
+      }
     }
 
     const attainmentRows = draft.attainmentLevels ?? []
@@ -1247,7 +1317,37 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
   }
 
   const sendAssessmentToApproval = () => {
-    persistSetupDraft('Sent to approval')
+    const nextSetup = persistSetupDraft('Sent to approval')
+    const assessmentName = String(nextSetup.assessmentName || '').trim() || 'Untitled Assessment'
+    const assignmentTarget = String(nextSetup.assignGroup || '').trim()
+      || String(nextSetup.assignYear || '').trim()
+      || 'Not assigned'
+
+    onSendToApproval?.({
+      activityId: `assessment-${nextSetup.assessmentId || Date.now()}`,
+      activityName: assessmentName,
+      activityType: 'Assessment',
+      approvalStatus: 'Pending Approval',
+      status: 'Pending Approval',
+      assessmentName,
+      assessmentMode: nextSetup.examDeliveryMode || 'Online',
+      examCategory: nextSetup.examCategory || 'Not set',
+      academicYear: nextSetup.academicYear || 'Not set',
+      assignTo: assignmentTarget,
+      year: nextSetup.assignYear || nextSetup.year || 'Not set',
+      sgt: nextSetup.assignGroup || 'Not set',
+      examDate: nextSetup.examDate || 'Not set',
+      startTime: [nextSetup.startTime, nextSetup.startPeriod].filter(Boolean).join(' ') || 'Not set',
+      examType: configurationQuestionSummary.examType,
+      totalMarks: assessmentSummary.totalMarks,
+      totalMarksDetail: configurationQuestionSummary.totalMarksDetail,
+      duration: configurationDurationLabel,
+      questionCount: assessmentSummary.totalQuestions,
+      questionRows: savedQuestions,
+      previewSections,
+      setup: nextSetup,
+      approvalFaculty: approvalDraft,
+    })
     setIsApprovalModalOpen(false)
   }
 
@@ -3652,6 +3752,85 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                 </div>
               ) : null}
 
+              <div className="create-assessment-assign-card" aria-label="Assign information">
+                <div className="create-assessment-schedule-head">
+                  <strong>
+                    <UsersRound size={14} strokeWidth={2.2} />
+                    Assign Information
+                  </strong>
+                </div>
+
+                <div className="create-assessment-assign-grid">
+                  <label className="create-assessment-schedule-field">
+                    <span>Select Course</span>
+                    <span className="create-assessment-assign-select">
+                      <select
+                        value={setupDraft.assignCourse ?? ''}
+                        disabled
+                        onChange={(event) => updateSetupDraft('assignCourse', event.target.value)}
+                      >
+                        <option value="">Select Course</option>
+                        {CREATE_ASSESSMENT_SELECT_OPTIONS.courses.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+                    </span>
+                  </label>
+
+                  <label className={`create-assessment-schedule-field ${setupErrors.assignYear ? 'has-error' : ''}`}>
+                    <span>Select Year <em>*</em></span>
+                    <span className="create-assessment-assign-select">
+                      <select
+                        value={setupDraft.assignYear ?? ''}
+                        onChange={(event) => updateSetupDraft('assignYear', event.target.value)}
+                      >
+                        <option value="">Select Year</option>
+                        {CREATE_ASSESSMENT_SELECT_OPTIONS.years.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+                    </span>
+                    {setupErrors.assignYear ? <small>{setupErrors.assignYear}</small> : null}
+                  </label>
+
+                  <label className="create-assessment-schedule-field">
+                    <span>Select SGT Group or Class</span>
+                    <span className="create-assessment-assign-select">
+                      <select
+                        value={setupDraft.assignGroup ?? ''}
+                        disabled
+                        onChange={(event) => updateSetupDraft('assignGroup', event.target.value)}
+                      >
+                        <option value="">Select SGT Group or Class</option>
+                        {CREATE_ASSESSMENT_SELECT_OPTIONS.sgtGroups.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+                    </span>
+                  </label>
+                </div>
+
+              </div>
+
+              <div className={`create-assessment-threshold-section ${isThresholdSectionOpen ? 'is-open' : ''}`}>
+                <button
+                  type="button"
+                  className="create-assessment-threshold-section-head"
+                  onClick={() => setIsThresholdSectionOpen((current) => !current)}
+                  aria-expanded={isThresholdSectionOpen}
+                >
+                  <span>
+                    <SlidersHorizontal size={14} strokeWidth={2.2} />
+                    Attainment Levels &amp; Thinking Level Threshold
+                  </span>
+                  {isThresholdSectionOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
+                </button>
+
+                {isThresholdSectionOpen ? (
+                  <div className="create-assessment-threshold-section-body">
               <div className="create-assessment-threshold-card-grid" aria-label="Threshold configuration">
                 <div className="create-assessment-threshold-block" aria-label="Attainment levels threshold">
                   <div className="create-assessment-schedule-head">
@@ -3722,95 +3901,70 @@ export default function CreateAssessmentPage({ onNavigate, theme = 'light', onTo
                     </button>
                   </div>
 
-                  <div className="create-assessment-threshold-fields">
-                    <label className={`create-assessment-schedule-field ${setupErrors.lotThreshold ? 'has-error' : ''}`}>
-                      <span>LoT Threshold <em>*</em></span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={3}
-                        value={setupDraft.lotThreshold ?? ''}
-                        onChange={(event) => updateSetupDraft('lotThreshold', event.target.value.replace(/[^\d]/g, '').slice(0, 3))}
-                      />
-                      {setupErrors.lotThreshold ? <small>{setupErrors.lotThreshold}</small> : null}
-                    </label>
-
-                    <label className={`create-assessment-schedule-field ${setupErrors.hotThreshold ? 'has-error' : ''}`}>
-                      <span>HoT Threshold <em>*</em></span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={3}
-                        value={setupDraft.hotThreshold ?? ''}
-                        onChange={(event) => updateSetupDraft('hotThreshold', event.target.value.replace(/[^\d]/g, '').slice(0, 3))}
-                      />
-                      {setupErrors.hotThreshold ? <small>{setupErrors.hotThreshold}</small> : null}
-                    </label>
+                  <div className="create-assessment-threshold-mode-toggle" role="tablist" aria-label="Thinking threshold type">
+                    {[
+                      { value: 'hotlot', label: 'HoT / LoT' },
+                      { value: 'blooms', label: 'Blooms' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={(setupDraft.thinkingThresholdMode || 'hotlot') === option.value ? 'is-active' : ''}
+                        onClick={() => updateThinkingThresholdMode(option.value)}
+                        aria-pressed={(setupDraft.thinkingThresholdMode || 'hotlot') === option.value}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
+
+                  {(setupDraft.thinkingThresholdMode || 'hotlot') === 'blooms' ? (
+                    <div className="create-assessment-threshold-fields is-blooms">
+                      {BLOOMS_THRESHOLD_FIELDS.map((field) => (
+                        <label key={field.key} className={`create-assessment-schedule-field ${setupErrors[field.key] ? 'has-error' : ''}`}>
+                          <span>{field.label} <em>*</em></span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={3}
+                            value={setupDraft[field.key] ?? ''}
+                            onChange={(event) => updateSetupDraft(field.key, event.target.value.replace(/[^\d]/g, '').slice(0, 3))}
+                          />
+                          {setupErrors[field.key] ? <small>{setupErrors[field.key]}</small> : null}
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="create-assessment-threshold-fields">
+                      <label className={`create-assessment-schedule-field ${setupErrors.lotThreshold ? 'has-error' : ''}`}>
+                        <span>LoT Threshold <em>*</em></span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={3}
+                          value={setupDraft.lotThreshold ?? ''}
+                          onChange={(event) => updateSetupDraft('lotThreshold', event.target.value.replace(/[^\d]/g, '').slice(0, 3))}
+                        />
+                        {setupErrors.lotThreshold ? <small>{setupErrors.lotThreshold}</small> : null}
+                      </label>
+
+                      <label className={`create-assessment-schedule-field ${setupErrors.hotThreshold ? 'has-error' : ''}`}>
+                        <span>HoT Threshold <em>*</em></span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={3}
+                          value={setupDraft.hotThreshold ?? ''}
+                          onChange={(event) => updateSetupDraft('hotThreshold', event.target.value.replace(/[^\d]/g, '').slice(0, 3))}
+                        />
+                        {setupErrors.hotThreshold ? <small>{setupErrors.hotThreshold}</small> : null}
+                      </label>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              <div className="create-assessment-assign-card" aria-label="Assign information">
-                <div className="create-assessment-schedule-head">
-                  <strong>
-                    <UsersRound size={14} strokeWidth={2.2} />
-                    Assign Information
-                  </strong>
-                </div>
-
-                <div className="create-assessment-assign-grid">
-                  <label className="create-assessment-schedule-field">
-                    <span>Select Course</span>
-                    <span className="create-assessment-assign-select">
-                      <select
-                        value={setupDraft.assignCourse ?? ''}
-                        disabled
-                        onChange={(event) => updateSetupDraft('assignCourse', event.target.value)}
-                      >
-                        <option value="">Select Course</option>
-                        {CREATE_ASSESSMENT_SELECT_OPTIONS.courses.map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-                    </span>
-                  </label>
-
-                  <label className={`create-assessment-schedule-field ${setupErrors.assignYear ? 'has-error' : ''}`}>
-                    <span>Select Year <em>*</em></span>
-                    <span className="create-assessment-assign-select">
-                      <select
-                        value={setupDraft.assignYear ?? ''}
-                        onChange={(event) => updateSetupDraft('assignYear', event.target.value)}
-                      >
-                        <option value="">Select Year</option>
-                        {CREATE_ASSESSMENT_SELECT_OPTIONS.years.map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-                    </span>
-                    {setupErrors.assignYear ? <small>{setupErrors.assignYear}</small> : null}
-                  </label>
-
-                  <label className="create-assessment-schedule-field">
-                    <span>Select SGT Group or Class</span>
-                    <span className="create-assessment-assign-select">
-                      <select
-                        value={setupDraft.assignGroup ?? ''}
-                        disabled
-                        onChange={(event) => updateSetupDraft('assignGroup', event.target.value)}
-                      >
-                        <option value="">Select SGT Group or Class</option>
-                        {CREATE_ASSESSMENT_SELECT_OPTIONS.sgtGroups.map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-                    </span>
-                  </label>
-                </div>
-
+                  </div>
+                ) : null}
               </div>
 
               <div className="assessment-create-form-actions">

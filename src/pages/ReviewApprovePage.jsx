@@ -81,6 +81,7 @@ const getActivityMeta = (row) => ({
 })
 
 const isQuestionBankRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'question bank'
+const isAssessmentRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'assessment'
 
 const getQuestionEditCount = (question) => {
   const explicitCount = Number(question?.editCount ?? question?.revisionCount ?? 0)
@@ -161,6 +162,78 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
   const activityType = row.activityType ?? 'Activity'
   const hasInfo = Boolean(sender.name || sender.id || sender.designation)
   const receivedDateTime = `${receivedAt.date}${receivedAt.time ? ` ${receivedAt.time}` : ''}`
+
+  if (isAssessmentRow(row)) {
+    const assessmentMode = row.assessmentMode ?? 'Not set'
+    const primaryDetails = [
+      { label: 'Category', value: row.examCategory ?? 'Not set' },
+      { label: 'Assign to', value: row.assignTo ?? 'Not assigned' },
+      { label: 'Exam Date', value: row.examDate ?? 'Not set' },
+      { label: 'Start Time', value: row.startTime ?? 'Not set' },
+    ]
+
+    return (
+      <article className="review-approve-card review-approve-assessment-card">
+        <div className="review-approve-card-top">
+          <div className="review-approve-card-topline">
+            <span className={`review-approve-type-chip ${getActivityToneClass(activityType)}`}>{activityType}</span>
+            <span className={`review-approve-status-pill ${getDecisionTone(decision)}`}>{decision}</span>
+          </div>
+          <div className="review-approve-card-title">
+            <h3>{row.assessmentName ?? row.activityName ?? 'Untitled Assessment'}</h3>
+          </div>
+          <div className="review-approve-assessment-badges">
+            <span className={`is-mode-${String(assessmentMode).trim().toLowerCase()}`}>{assessmentMode}</span>
+            <span>{row.examType ?? 'Not selected'}</span>
+            <span>{row.duration ?? '00:00'}</span>
+          </div>
+        </div>
+
+        <div className="review-approve-assessment-grid">
+          {primaryDetails.map((item) => (
+            <div key={item.label} className="review-approve-assessment-item">
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+
+        <div className="review-approve-card-date-row">
+          <div className="review-approve-card-date">
+            <CalendarClock size={12} strokeWidth={2} />
+            {receivedDateTime}
+          </div>
+          {hasInfo ? (
+            <div className="review-approve-tooltip-wrap">
+              <button
+                type="button"
+                className="review-approve-tooltip-btn"
+                onClick={onToggleInfo}
+                aria-expanded={isInfoOpen}
+                aria-label="View creator details"
+              >
+                <Info size={12} strokeWidth={2.2} />
+              </button>
+              {isInfoOpen ? (
+                <div className="review-approve-tooltip" role="tooltip">
+                  <small className="review-approve-tooltip-label">Created By</small>
+                  <strong>{sender.name}</strong>
+                  <span>{sender.id}</span>
+                  {sender.designation ? <span>{sender.designation}</span> : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="review-approve-card-footer">
+          <button type="button" className="tool-btn eval-view-btn review-approve-card-view-btn" onClick={onView}>
+            View
+          </button>
+        </div>
+      </article>
+    )
+  }
 
   if (isQuestionBankRow(row)) {
     const questionRevisionStatus = getQuestionRevisionStatus(row)
@@ -335,6 +408,14 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
       const matchesSearch = !needle || [
         row.activityName,
         row.activityType,
+        row.assessmentName,
+        row.assessmentMode,
+        row.examCategory,
+        row.academicYear,
+        row.assignTo,
+        row.examDate,
+        row.startTime,
+        row.examType,
         sender.name,
         sender.id,
         meta.year,
