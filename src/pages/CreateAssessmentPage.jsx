@@ -3997,13 +3997,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
                   <label className={`create-assessment-schedule-toggle-field ${setupErrors.supervisionType ? 'has-error' : ''}`}>
                     <span>Supervision Type <em>*</em></span>
-                    <div className="create-assessment-mode-toggle" role="group" aria-label="Supervision type">
+                    <div className={`create-assessment-mode-toggle ${setupDraft.examDeliveryMode === 'Offline' ? 'is-disabled' : ''}`} role="group" aria-label="Supervision type">
                       {['Practice Exam', 'Proctored Exams'].map((option) => (
                         <button
                           key={option}
                           type="button"
                           className={setupDraft.supervisionType === option ? 'is-active' : ''}
+                          disabled={setupDraft.examDeliveryMode === 'Offline'}
                           onClick={() => {
+                            if (setupDraft.examDeliveryMode === 'Offline') return
                             updateSetupDraft('supervisionType', option)
                             setSetupErrors((current) => {
                               const {
@@ -4065,7 +4067,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           {renderScheduleStartTimeField('practiceEndTime', 'practiceEndPeriod', 'End Time')}
                         </div>
 
-                        <div className="create-assessment-type-schedule-list">
+                        <div className="create-assessment-type-schedule-list is-display-only">
                           {configurationQuestionSummary.hasMcq ? (
                             <div className="create-assessment-type-schedule-row is-display-only">
                               <span className="create-assessment-type-badge">MCQ</span>
