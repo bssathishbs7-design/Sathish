@@ -115,7 +115,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
 
   const continueDraftAssessment = (draft) => {
     if (!draft?.setup) return
-    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(draft.setup))
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({
+      ...draft.setup,
+      sourceDraftId: draft.id,
+      sourceDraftName: draft.assessmentName || draft.setup?.assessmentName || 'Untitled Assessment',
+    }))
     window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'preview')
     onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
   }
