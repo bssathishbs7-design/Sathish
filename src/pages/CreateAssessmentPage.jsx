@@ -166,6 +166,8 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   descriptiveDisplayType: 'Read-Only',
   mcqAutoPublish: 'Off',
   descriptiveEvaluationRequired: 'Yes',
+  proctoredTotalDuration: '',
+  splitProctoredDuration: false,
   mcqTimeLimit: '',
   descriptiveTimeLimit: '',
   offlineDuration: '',
@@ -272,7 +274,7 @@ function AssessmentSetupSelectField({ label, value, options, placeholder, onChan
   )
 }
 
-function TimeStepperSelect({ value, onChange, emptyLabel = '--:--', maxHour = 23, minHour = 0, period = '', onPeriodChange }) {
+function TimeStepperSelect({ value, onChange, emptyLabel = '--:--', maxHour = 23, minHour = 0, period = '', onPeriodChange, disabled = false }) {
   const [isOpen, setIsOpen] = useState(false)
   const match = String(value || '').match(/^(\d{1,2}):([0-5]\d)$/)
   const hour = match ? Number(match[1]) : minHour
@@ -319,7 +321,10 @@ function TimeStepperSelect({ value, onChange, emptyLabel = '--:--', maxHour = 23
 
   return (
     <span className="create-assessment-time-stepper">
-      <button type="button" className="create-assessment-time-stepper-trigger" onClick={() => setIsOpen((current) => !current)} aria-expanded={isOpen}>
+      <button type="button" className="create-assessment-time-stepper-trigger" onClick={() => {
+        if (disabled) return
+        setIsOpen((current) => !current)
+      }} aria-expanded={isOpen} disabled={disabled}>
         <Clock3 size={16} strokeWidth={2.2} aria-hidden="true" />
         <span>{displayValue}</span>
       </button>
@@ -417,8 +422,8 @@ function StartTimeSelect({ value, period, onChange, onPeriodChange }) {
   return <TimeStepperSelect value={value} onChange={onChange} emptyLabel="--:--" minHour={1} maxHour={12} period={period} onPeriodChange={onPeriodChange} />
 }
 
-function DurationTimeSelect({ value, onChange }) {
-  return <TimeStepperSelect value={value} onChange={onChange} emptyLabel="00:00" maxHour={23} />
+function DurationTimeSelect({ value, onChange, disabled = false, emptyLabel = '00:00' }) {
+  return <TimeStepperSelect value={value} onChange={onChange} emptyLabel={emptyLabel} maxHour={12} disabled={disabled} />
 }
 
 const createDescriptiveInsideQuestion = (source = {}) => createAuthoringDescriptiveInsideQuestion({
@@ -681,6 +686,7 @@ const CONFIGURATION_ERROR_LABELS = {
   descriptiveStartTime: 'Descriptive Start Time',
   mcqDisplayType: 'MCQ Display Type',
   descriptiveDisplayType: 'Descriptive Display Type',
+  proctoredTotalDuration: 'Total Duration',
   mcqTimeLimit: 'MCQ Time Limit',
   descriptiveTimeLimit: 'Descriptive Time Limit',
   offlineDuration: 'Set Duration',
@@ -1066,6 +1072,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         descriptiveStartTime: _descriptiveStartTime,
         mcqTimeLimit: _mcq,
         descriptiveTimeLimit: _descriptive,
+        proctoredTotalDuration: _proctoredTotalDuration,
         mcqDisplayType: _mcqDisplayType,
         descriptiveDisplayType: _descriptiveDisplayType,
         supervisionType: _supervisionType,
@@ -1266,23 +1273,32 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         } else if (draft.examDate < todayValue) {
           errors.examDate = 'Previous dates are not allowed.'
         }
+        if (!START_TIME_PATTERN.test(draft.startTime || '')) {
+          errors.startTime = 'Enter start time in HH:MM format.'
+        } else if (isScheduledStartTooSoon(draft.examDate, draft.startTime, draft.startPeriod)) {
+          errors.startTime = 'Start time must be at least 5 minutes from current time.'
+        }
+        if (!TIME_LIMIT_PATTERN.test(draft.proctoredTotalDuration || '') || getTimeValueMinutes(draft.proctoredTotalDuration) <= 0) {
+          errors.proctoredTotalDuration = 'Enter total duration as HH:MM.'
+        }
         if (hasMcqQuestions) {
-          if (!START_TIME_PATTERN.test(draft.mcqStartTime || '')) {
-            errors.mcqStartTime = 'Enter MCQ start time in HH:MM format.'
-          } else if (isScheduledStartTooSoon(draft.examDate, draft.mcqStartTime, draft.mcqStartPeriod)) {
-            errors.mcqStartTime = 'Start time must be at least 5 minutes from current time.'
-          }
-          if (!TIME_LIMIT_PATTERN.test(draft.mcqTimeLimit || '')) errors.mcqTimeLimit = 'Enter MCQ time limit as HH:MM.'
+          if (String(draft.mcqTimeLimit || '').trim() && !TIME_LIMIT_PATTERN.test(draft.mcqTimeLimit || '')) errors.mcqTimeLimit = 'Enter MCQ time limit as HH:MM.'
           if (!draft.mcqDisplayType) errors.mcqDisplayType = 'Select MCQ display type.'
         }
         if (hasDescriptiveQuestions) {
-          if (!START_TIME_PATTERN.test(draft.descriptiveStartTime || '')) {
-            errors.descriptiveStartTime = 'Enter descriptive start time in HH:MM format.'
-          } else if (isScheduledStartTooSoon(draft.examDate, draft.descriptiveStartTime, draft.descriptiveStartPeriod)) {
-            errors.descriptiveStartTime = 'Start time must be at least 5 minutes from current time.'
-          }
-          if (!TIME_LIMIT_PATTERN.test(draft.descriptiveTimeLimit || '')) errors.descriptiveTimeLimit = 'Enter descriptive time limit as HH:MM.'
+          if (String(draft.descriptiveTimeLimit || '').trim() && !TIME_LIMIT_PATTERN.test(draft.descriptiveTimeLimit || '')) errors.descriptiveTimeLimit = 'Enter descriptive time limit as HH:MM.'
           if (draft.descriptiveDisplayType !== 'Read-Only') errors.descriptiveDisplayType = 'Descriptive must be Read-Only.'
+        }
+        if (
+          TIME_LIMIT_PATTERN.test(draft.proctoredTotalDuration || '')
+          && TIME_LIMIT_PATTERN.test(draft.mcqTimeLimit || '')
+          && TIME_LIMIT_PATTERN.test(draft.descriptiveTimeLimit || '')
+          && hasMcqQuestions
+          && hasDescriptiveQuestions
+          && draft.splitProctoredDuration
+          && getTimeValueMinutes(draft.mcqTimeLimit) + getTimeValueMinutes(draft.descriptiveTimeLimit) !== getTimeValueMinutes(draft.proctoredTotalDuration)
+        ) {
+          errors.proctoredTotalDuration = 'MCQ and descriptive duration must match Total Duration.'
         }
       }
     } else {
@@ -1609,9 +1625,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       return formatDurationValue(Math.round((endDate.getTime() - startDate.getTime()) / 60000))
     }
 
-    const mcqMinutes = configurationQuestionSummary.hasMcq ? getTimeValueMinutes(setupDraft.mcqTimeLimit) : 0
-    const descriptiveMinutes = configurationQuestionSummary.hasDescriptive ? getTimeValueMinutes(setupDraft.descriptiveTimeLimit) : 0
-    return formatDurationValue(mcqMinutes + descriptiveMinutes)
+    return formatDurationValue(getTimeValueMinutes(setupDraft.proctoredTotalDuration))
   }, [
     configurationQuestionSummary.hasDescriptive,
     configurationQuestionSummary.hasMcq,
@@ -1625,6 +1639,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setupDraft.practiceStartDate,
     setupDraft.practiceStartPeriod,
     setupDraft.practiceStartTime,
+    setupDraft.proctoredTotalDuration,
     setupDraft.supervisionType,
   ])
   const isSchedulingDetailsComplete = useMemo(() => {
@@ -1654,17 +1669,22 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
 
     if (setupDraft.supervisionType === 'Proctored Exams') {
+      const hasMcqSplit = TIME_LIMIT_PATTERN.test(setupDraft.mcqTimeLimit || '')
+      const hasDescriptiveSplit = TIME_LIMIT_PATTERN.test(setupDraft.descriptiveTimeLimit || '')
+      const splitMatchesTotal = !setupDraft.splitProctoredDuration || !hasMcq || !hasDescriptive || !hasMcqSplit || !hasDescriptiveSplit || (
+        getTimeValueMinutes(setupDraft.mcqTimeLimit) + getTimeValueMinutes(setupDraft.descriptiveTimeLimit) === getTimeValueMinutes(setupDraft.proctoredTotalDuration)
+      )
       return Boolean(
         setupDraft.examDate
+        && START_TIME_PATTERN.test(setupDraft.startTime || '')
+        && TIME_LIMIT_PATTERN.test(setupDraft.proctoredTotalDuration || '')
+        && getTimeValueMinutes(setupDraft.proctoredTotalDuration) > 0
+        && splitMatchesTotal
         && (!hasMcq || (
-          START_TIME_PATTERN.test(setupDraft.mcqStartTime || '')
-          && TIME_LIMIT_PATTERN.test(setupDraft.mcqTimeLimit || '')
-          && setupDraft.mcqDisplayType
+          setupDraft.mcqDisplayType
         ))
         && (!hasDescriptive || (
-          START_TIME_PATTERN.test(setupDraft.descriptiveStartTime || '')
-          && TIME_LIMIT_PATTERN.test(setupDraft.descriptiveTimeLimit || '')
-          && setupDraft.descriptiveDisplayType === 'Read-Only'
+          setupDraft.descriptiveDisplayType === 'Read-Only'
         ))
       )
     }
@@ -1690,6 +1710,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setupDraft.practiceStartDate,
     setupDraft.practiceStartPeriod,
     setupDraft.practiceStartTime,
+    setupDraft.proctoredTotalDuration,
     setupDraft.startTime,
     setupDraft.supervisionType,
   ])
@@ -1818,10 +1839,77 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     </label>
   )
 
-  const renderScheduleDurationField = (field, label, errorKey = field) => (
-    <label className={`create-assessment-schedule-field ${setupErrors[errorKey] ? 'has-error' : ''}`}>
-      <span>{label} <em>*</em></span>
-      <DurationTimeSelect value={setupDraft[field]} onChange={(value) => updateSetupDraft(field, value)} />
+  const updateProctoredDurationSplit = (field, value) => {
+    setSetupDraft((current) => {
+      const nextDraft = { ...current, [field]: value }
+      const totalMinutes = getTimeValueMinutes(nextDraft.proctoredTotalDuration)
+      const hasValidTotal = TIME_LIMIT_PATTERN.test(nextDraft.proctoredTotalDuration || '') && totalMinutes > 0
+      if (!hasValidTotal || !configurationQuestionSummary.hasMcq || !configurationQuestionSummary.hasDescriptive || !TIME_LIMIT_PATTERN.test(value || '')) {
+        return nextDraft
+      }
+
+      const requestedMinutes = getTimeValueMinutes(value)
+      const safeMinutes = Math.min(requestedMinutes, totalMinutes)
+      nextDraft[field] = formatDurationValue(safeMinutes)
+      const remainingMinutes = Math.max(0, totalMinutes - safeMinutes)
+      if (field === 'mcqTimeLimit') nextDraft.descriptiveTimeLimit = formatDurationValue(remainingMinutes)
+      if (field === 'descriptiveTimeLimit') nextDraft.mcqTimeLimit = formatDurationValue(remainingMinutes)
+      return nextDraft
+    })
+    setSetupErrors((current) => {
+      const { [field]: removed, proctoredTotalDuration: _proctoredTotalDuration, ...rest } = current
+      return rest
+    })
+  }
+
+  const updateProctoredTotalDuration = (value) => {
+    setSetupDraft((current) => ({
+      ...current,
+      proctoredTotalDuration: value,
+      splitProctoredDuration: false,
+      mcqTimeLimit: '',
+      descriptiveTimeLimit: '',
+    }))
+    setSetupErrors((current) => {
+      const {
+        proctoredTotalDuration: _proctoredTotalDuration,
+        mcqTimeLimit: _mcqTimeLimit,
+        descriptiveTimeLimit: _descriptiveTimeLimit,
+        ...rest
+      } = current
+      return rest
+    })
+  }
+
+  const updateSplitProctoredDuration = (checked) => {
+    setSetupDraft((current) => ({
+      ...current,
+      splitProctoredDuration: checked,
+      mcqTimeLimit: checked ? current.mcqTimeLimit : '',
+      descriptiveTimeLimit: checked ? current.descriptiveTimeLimit : '',
+    }))
+    if (!checked) {
+      setSetupErrors((current) => {
+        const {
+          mcqTimeLimit: _mcqTimeLimit,
+          descriptiveTimeLimit: _descriptiveTimeLimit,
+          proctoredTotalDuration: _proctoredTotalDuration,
+          ...rest
+        } = current
+        return rest
+      })
+    }
+  }
+
+  const renderScheduleDurationField = (field, label, errorKey = field, options = {}) => (
+    <label className={`create-assessment-schedule-field ${setupErrors[errorKey] ? 'has-error' : ''} ${options.disabled ? 'is-disabled' : ''}`.trim()}>
+      <span>{label}{options.required === false ? null : <> <em>*</em></>}</span>
+      <DurationTimeSelect
+        value={setupDraft[field]}
+        onChange={options.onChange || ((value) => updateSetupDraft(field, value))}
+        disabled={options.disabled}
+        emptyLabel={options.emptyLabel}
+      />
       {setupErrors[errorKey] ? <small>{setupErrors[errorKey]}</small> : null}
     </label>
   )
@@ -3988,6 +4076,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               descriptiveStartTime: _descriptiveStartTime,
                               mcqTimeLimit: _mcq,
                               descriptiveTimeLimit: _descriptive,
+                              proctoredTotalDuration: _proctoredTotalDuration,
                               offlineDuration: _offline,
                               mcqDisplayType: _mcqDisplayType,
                               descriptiveDisplayType: _descriptiveDisplayType,
@@ -4076,20 +4165,69 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                       </>
                     ) : setupDraft.supervisionType === 'Proctored Exams' ? (
                       <>
-                        <div className="create-assessment-type-schedule-list">
+                        <div className="create-assessment-schedule-grid is-proctored-shared">
+                          {renderScheduleDateField('examDate', 'Exam Date')}
+                          {renderScheduleStartTimeField('startTime', 'startPeriod', 'Start Time')}
+                          {renderScheduleDurationField('proctoredTotalDuration', 'Total Duration', 'proctoredTotalDuration', {
+                            onChange: updateProctoredTotalDuration,
+                          })}
+                        </div>
+
+                        {configurationQuestionSummary.hasMcq
+                        && configurationQuestionSummary.hasDescriptive
+                        && TIME_LIMIT_PATTERN.test(setupDraft.proctoredTotalDuration || '')
+                        && getTimeValueMinutes(setupDraft.proctoredTotalDuration) > 0 ? (
+                          <label className="create-assessment-split-duration-check">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(setupDraft.splitProctoredDuration)}
+                              onChange={(event) => updateSplitProctoredDuration(event.target.checked)}
+                            />
+                            <span>
+                              <strong>Customize MCQ &amp; Descriptive Time</strong>
+                              <small>Set separate time limits within the Total Duration.</small>
+                            </span>
+                          </label>
+                        ) : null}
+
+                        {configurationQuestionSummary.hasMcq
+                        && configurationQuestionSummary.hasDescriptive
+                        && TIME_LIMIT_PATTERN.test(setupDraft.proctoredTotalDuration || '')
+                        && getTimeValueMinutes(setupDraft.proctoredTotalDuration) > 0
+                        && setupDraft.splitProctoredDuration ? (
+                          <>
+                            <div className="create-assessment-type-schedule-list is-proctored-duration">
+                              <div className="create-assessment-type-schedule-row is-proctored">
+                                {renderScheduleDurationField('mcqTimeLimit', 'MCQ Duration', 'mcqTimeLimit', {
+                                  required: false,
+                                  emptyLabel: '--:--',
+                                  onChange: (value) => updateProctoredDurationSplit('mcqTimeLimit', value),
+                                })}
+                              </div>
+                              <div className="create-assessment-type-schedule-row is-proctored">
+                                {renderScheduleDurationField('descriptiveTimeLimit', 'Descriptive Duration', 'descriptiveTimeLimit', {
+                                  required: false,
+                                  emptyLabel: '--:--',
+                                  onChange: (value) => updateProctoredDurationSplit('descriptiveTimeLimit', value),
+                                })}
+                              </div>
+                            </div>
+                            <p className="create-assessment-duration-note">
+                              Split the Total Duration between MCQ and Descriptive. Enter one duration and the remaining time will be filled automatically.
+                            </p>
+                          </>
+                        ) : null}
+
+                        <div className="create-assessment-type-schedule-list is-display-only">
                           {configurationQuestionSummary.hasMcq ? (
-                            <div className="create-assessment-type-schedule-row is-proctored">
-                              {renderScheduleDateField('examDate', 'Exam Date')}
-                              {renderScheduleStartTimeField('mcqStartTime', 'mcqStartPeriod', 'Start Time')}
-                              {renderScheduleDurationField('mcqTimeLimit', 'MCQ Duration')}
+                            <div className="create-assessment-type-schedule-row is-display-only">
+                              <span className="create-assessment-type-badge">MCQ</span>
                               {renderDisplayTypeToggle('MCQ', 'mcqDisplayType')}
                             </div>
                           ) : null}
                           {configurationQuestionSummary.hasDescriptive ? (
-                            <div className="create-assessment-type-schedule-row is-proctored">
-                              {renderScheduleDateField('examDate', 'Exam Date')}
-                              {renderScheduleStartTimeField('descriptiveStartTime', 'descriptiveStartPeriod', 'Start Time')}
-                              {renderScheduleDurationField('descriptiveTimeLimit', 'Descriptive Duration')}
+                            <div className="create-assessment-type-schedule-row is-display-only">
+                              <span className="create-assessment-type-badge is-descriptive">Descriptive</span>
                               {renderDisplayTypeToggle('Descriptive', 'descriptiveDisplayType')}
                             </div>
                           ) : null}

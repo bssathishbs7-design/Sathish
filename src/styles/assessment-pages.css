@@ -3896,6 +3896,10 @@
   grid-template-columns: repeat(4, minmax(180px, 1fr));
 }
 
+.create-assessment-schedule-grid.is-proctored-shared {
+  grid-template-columns: minmax(210px, 1fr) minmax(210px, 1fr) minmax(210px, 1fr);
+}
+
 .create-assessment-schedule-grid.is-proctored-date {
   grid-template-columns: minmax(220px, 0.34fr);
 }
@@ -3913,6 +3917,56 @@
   justify-content: start;
 }
 
+.create-assessment-type-schedule-list.is-proctored-duration {
+  grid-template-columns: repeat(2, minmax(240px, 0.32fr));
+  align-items: stretch;
+  justify-content: start;
+}
+
+.create-assessment-split-duration-check {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-self: start;
+  gap: 8px;
+  width: fit-content;
+  min-height: 42px;
+  padding: 7px 12px;
+  border: 1px solid #bfe2d8;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #214552;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.create-assessment-split-duration-check input {
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  accent-color: #10b9a8;
+  cursor: pointer;
+}
+
+.create-assessment-split-duration-check > span {
+  display: grid;
+  gap: 2px;
+}
+
+.create-assessment-split-duration-check strong {
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.create-assessment-split-duration-check small {
+  color: #607984;
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
 .create-assessment-type-schedule-row {
   display: grid;
   grid-template-columns: minmax(220px, 0.42fr);
@@ -3926,8 +3980,23 @@
 }
 
 .create-assessment-type-schedule-row.is-proctored {
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: minmax(220px, 1fr);
+}
+
+.create-assessment-duration-note {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: min(100%, 720px);
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  background: #f0f9ff;
+  color: #075985;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .create-assessment-type-schedule-row.is-display-only {
@@ -3980,6 +4049,14 @@
   color: #95a8b2;
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.create-assessment-schedule-field.is-disabled {
+  opacity: 0.62;
+}
+
+.create-assessment-time-stepper-trigger:disabled {
+  cursor: not-allowed;
 }
 
 .create-assessment-schedule-empty {
@@ -11668,6 +11745,22 @@
   color: #c3d4e8;
 }
 
+.theme-dark .create-assessment-duration-note {
+  border-color: rgba(56, 189, 248, 0.38);
+  background: rgba(14, 116, 144, 0.18);
+  color: #bae6fd;
+}
+
+.theme-dark .create-assessment-split-duration-check {
+  border-color: rgba(45, 212, 191, 0.38);
+  background: rgba(15, 23, 42, 0.36);
+  color: #d9e8f8;
+}
+
+.theme-dark .create-assessment-split-duration-check small {
+  color: #adc0d2;
+}
+
 .theme-dark .create-assessment-type-badge {
   border-color: rgba(52, 211, 153, 0.42);
   background: rgba(16, 185, 129, 0.14);
@@ -15666,12 +15759,13 @@
 
   .create-assessment-schedule-grid.is-offline,
   .create-assessment-schedule-grid.is-practice,
+  .create-assessment-schedule-grid.is-proctored-shared,
   .create-assessment-schedule-grid.is-proctored-date {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .create-assessment-type-schedule-row.is-proctored {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .create-assessment-threshold-card-grid {
@@ -15709,6 +15803,7 @@
   .create-assessment-schedule-grid,
   .create-assessment-schedule-grid.is-offline,
   .create-assessment-schedule-grid.is-practice,
+  .create-assessment-schedule-grid.is-proctored-shared,
   .create-assessment-schedule-grid.is-proctored-date {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -15723,6 +15818,10 @@
   }
 
   .create-assessment-type-schedule-list.is-display-only {
+    grid-template-columns: 1fr;
+  }
+
+  .create-assessment-type-schedule-list.is-proctored-duration {
     grid-template-columns: 1fr;
   }
 
@@ -15787,6 +15886,7 @@
   .create-assessment-schedule-grid,
   .create-assessment-schedule-grid.is-offline,
   .create-assessment-schedule-grid.is-practice,
+  .create-assessment-schedule-grid.is-proctored-shared,
   .create-assessment-schedule-grid.is-proctored-date {
     grid-template-columns: 1fr;
   }
