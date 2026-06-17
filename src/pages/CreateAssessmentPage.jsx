@@ -4143,127 +4143,95 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
                 {setupDraft.examDeliveryMode === 'Online' ? (
                   <>
-                    <div className="create-assessment-schedule-options" aria-label="Assessment scheduling options">
-                      <label className={`create-assessment-schedule-toggle-field ${setupErrors.supervisionType ? 'has-error' : ''}`}>
-                        <span>Supervision Type <em>*</em></span>
-                        <div className="create-assessment-mode-toggle" role="group" aria-label="Supervision type">
-                          {['Practice Exam', 'Proctored Exams'].map((option) => (
-                            <button
-                              key={option}
-                              type="button"
-                              className={setupDraft.supervisionType === option ? 'is-active' : ''}
-                              onClick={() => updateSupervisionType(option)}
-                            >
-                              {option}
-                            </button>
-                          ))}
-                        </div>
-                        {setupErrors.supervisionType ? <small>{setupErrors.supervisionType}</small> : null}
-                      </label>
-                    </div>
-
-                    <div className="create-assessment-schedule-options-divider" aria-hidden="true" />
-                  </>
-                ) : null}
-
-                {setupDraft.examDeliveryMode === 'Online' ? (
-                  <>
-                    {setupDraft.supervisionType === 'Practice Exam' ? (
-                      <>
-                        <div className="create-assessment-schedule-grid is-practice">
-                          {renderScheduleDateField('practiceStartDate', 'Start Date')}
-                          {renderScheduleStartTimeField('practiceStartTime', 'practiceStartPeriod', 'Start Time')}
-                          {renderScheduleDateField('practiceEndDate', 'End Date')}
-                          {renderScheduleStartTimeField('practiceEndTime', 'practiceEndPeriod', 'End Time')}
-                        </div>
-
-                        {renderAnswerModePanel()}
-                      </>
-                    ) : setupDraft.supervisionType === 'Proctored Exams' ? (
-                      <>
-                        <div className="create-assessment-schedule-grid is-proctored-shared">
-                          {renderScheduleDateField('examDate', 'Exam Date')}
-                          {renderScheduleStartTimeField('startTime', 'startPeriod', 'Start Time')}
-                          {renderScheduleDurationField('proctoredTotalDuration', 'Total Duration', 'proctoredTotalDuration', {
-                            onChange: updateProctoredTotalDuration,
-                          })}
-                        </div>
-
-                        {configurationQuestionSummary.hasMcq
-                        && configurationQuestionSummary.hasDescriptive
-                        && TIME_LIMIT_PATTERN.test(setupDraft.proctoredTotalDuration || '')
-                        && getTimeValueMinutes(setupDraft.proctoredTotalDuration) > 0 ? (
-                          <label className="create-assessment-split-duration-check">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(setupDraft.splitProctoredDuration)}
-                              onChange={(event) => updateSplitProctoredDuration(event.target.checked)}
-                            />
-                            <span>
-                              <strong>Customize MCQ &amp; Descriptive Time</strong>
-                              <small>Set separate time limits within the Total Duration.</small>
-                            </span>
-                          </label>
-                        ) : null}
-
-                        {configurationQuestionSummary.hasMcq
-                        && configurationQuestionSummary.hasDescriptive
-                        && TIME_LIMIT_PATTERN.test(setupDraft.proctoredTotalDuration || '')
-                        && getTimeValueMinutes(setupDraft.proctoredTotalDuration) > 0
-                        && setupDraft.splitProctoredDuration ? (
-                          <>
-                            <div className="create-assessment-type-schedule-list is-proctored-duration">
-                              <div className="create-assessment-type-schedule-row is-proctored">
-                                {renderScheduleDurationField('mcqTimeLimit', 'MCQ Duration', 'mcqTimeLimit', {
-                                  required: false,
-                                  emptyLabel: '--:--',
-                                  onChange: (value) => updateProctoredDurationSplit('mcqTimeLimit', value),
-                                })}
-                              </div>
-                              <div className="create-assessment-type-schedule-row is-proctored">
-                                {renderScheduleDurationField('descriptiveTimeLimit', 'Descriptive Duration', 'descriptiveTimeLimit', {
-                                  required: false,
-                                  emptyLabel: '--:--',
-                                  onChange: (value) => updateProctoredDurationSplit('descriptiveTimeLimit', value),
-                                })}
-                              </div>
+                    <div className="create-assessment-schedule-layout">
+                      <section className="create-assessment-timing-panel" aria-label="Exam timing">
+                        <div className="create-assessment-timing-panel-head">
+                          <strong>Exam Timing</strong>
+                          <label className={`create-assessment-schedule-toggle-field is-inline ${setupErrors.supervisionType ? 'has-error' : ''}`}>
+                            <span>Supervision Type <em>*</em></span>
+                            <div className="create-assessment-mode-toggle" role="group" aria-label="Supervision type">
+                              {['Practice Exam', 'Proctored Exams'].map((option) => (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  className={setupDraft.supervisionType === option ? 'is-active' : ''}
+                                  onClick={() => updateSupervisionType(option)}
+                                >
+                                  {option}
+                                </button>
+                              ))}
                             </div>
-                            <p className="create-assessment-duration-note">
-                              Split the Total Duration between MCQ and Descriptive. Enter one duration and the remaining time will be filled automatically.
-                            </p>
+                            {setupErrors.supervisionType ? <small>{setupErrors.supervisionType}</small> : null}
+                          </label>
+                        </div>
+
+                        {setupDraft.supervisionType === 'Practice Exam' ? (
+                          <div className="create-assessment-schedule-grid is-practice">
+                            {renderScheduleDateField('practiceStartDate', 'Start Date')}
+                            {renderScheduleStartTimeField('practiceStartTime', 'practiceStartPeriod', 'Start Time')}
+                            {renderScheduleDateField('practiceEndDate', 'End Date')}
+                            {renderScheduleStartTimeField('practiceEndTime', 'practiceEndPeriod', 'End Time')}
+                          </div>
+                        ) : setupDraft.supervisionType === 'Proctored Exams' ? (
+                          <>
+                            <div className="create-assessment-schedule-grid is-proctored-shared">
+                              {renderScheduleDateField('examDate', 'Exam Date')}
+                              {renderScheduleStartTimeField('startTime', 'startPeriod', 'Start Time')}
+                              {renderScheduleDurationField('proctoredTotalDuration', 'Total Duration', 'proctoredTotalDuration', {
+                                onChange: updateProctoredTotalDuration,
+                              })}
+                            </div>
+
+                            {configurationQuestionSummary.hasMcq
+                            && configurationQuestionSummary.hasDescriptive
+                            && TIME_LIMIT_PATTERN.test(setupDraft.proctoredTotalDuration || '')
+                            && getTimeValueMinutes(setupDraft.proctoredTotalDuration) > 0 ? (
+                              setupDraft.splitProctoredDuration ? (
+                                <section className="create-assessment-duration-split-panel" aria-label="Duration split">
+                                  <div className="create-assessment-duration-split-head">
+                                    <strong>Duration Split</strong>
+                                    <span>Total Duration: {setupDraft.proctoredTotalDuration}</span>
+                                  </div>
+                                  <div className="create-assessment-proctored-split-row">
+                                    {renderScheduleDurationField('mcqTimeLimit', 'MCQ Duration', 'mcqTimeLimit', {
+                                      required: false,
+                                      emptyLabel: '--:--',
+                                      onChange: (value) => updateProctoredDurationSplit('mcqTimeLimit', value),
+                                    })}
+                                    {renderScheduleDurationField('descriptiveTimeLimit', 'Descriptive Duration', 'descriptiveTimeLimit', {
+                                      required: false,
+                                      emptyLabel: '--:--',
+                                      onChange: (value) => updateProctoredDurationSplit('descriptiveTimeLimit', value),
+                                    })}
+                                  </div>
+                                  <div className="create-assessment-duration-split-footer">
+                                    <p className="create-assessment-duration-note">
+                                      <Info size={14} strokeWidth={2.2} />
+                                      Enter one duration and the remaining time will be filled automatically.
+                                    </p>
+                                    <button type="button" onClick={() => updateSplitProctoredDuration(false)}>
+                                      Clear Split
+                                    </button>
+                                  </div>
+                                </section>
+                              ) : (
+                                <div className="create-assessment-duration-split-prompt">
+                                  <span>Need separate MCQ &amp; Descriptive time?</span>
+                                  <button type="button" onClick={() => updateSplitProctoredDuration(true)}>
+                                    Configure Split
+                                  </button>
+                                </div>
+                              )
+                            ) : null}
                           </>
-                        ) : null}
+                        ) : (
+                          <div className="create-assessment-schedule-empty">Select a supervision type to configure schedule details.</div>
+                        )}
+                      </section>
 
-                        {renderAnswerModePanel()}
-                      </>
-                    ) : (
-                      <div className="create-assessment-schedule-empty">Select a supervision type to configure schedule details.</div>
-                    )}
-
-                    <div className="create-assessment-instructions-row">
-                      <span>Provide student instructions and assessment description?</span>
-                      <span className="create-assessment-yes-no-toggle" role="group" aria-label="Provide student instructions and assessment description">
-                        {['Yes', 'No'].map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            className={(setupDraft.provideStudentInstructions || 'No') === option ? 'is-active' : ''}
-                            onClick={() => {
-                              setSetupDraft((current) => ({
-                                ...current,
-                                provideStudentInstructions: option,
-                                studentInstructions: option === 'Yes' && !stripHtml(current.studentInstructions ?? '').trim()
-                                  ? DEFAULT_STUDENT_INSTRUCTIONS
-                                  : current.studentInstructions,
-                              }))
-                              setIsStudentInstructionsOpen(option === 'Yes')
-                            }}
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </span>
+                      {renderAnswerModePanel()}
                     </div>
+
                   </>
                 ) : (
                   <div className="create-assessment-schedule-grid is-offline">
@@ -4275,20 +4243,45 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
               </div>
 
-              {isStudentInstructionsOpen ? (
-                <div className="create-assessment-modal-backdrop" role="presentation">
-                  <div className="create-assessment-instructions-modal" role="dialog" aria-modal="true" aria-label="Student instructions">
-                    <div className="create-assessment-instructions-modal-head">
-                      <strong>Student Instructions &amp; Assessment Description</strong>
-                      <button
-                        type="button"
-                        className="create-assessment-instructions-close"
-                        aria-label="Close student instructions"
-                        onClick={() => setIsStudentInstructionsOpen(false)}
-                      >
-                        <X size={16} strokeWidth={2.2} />
-                      </button>
-                    </div>
+              {setupDraft.examDeliveryMode === 'Online' ? (
+                <section className={`create-assessment-threshold-section create-assessment-instructions-section ${isStudentInstructionsOpen ? 'is-open' : ''}`} aria-label="Student instructions and assessment description">
+                  <div className="create-assessment-instructions-section-head">
+                    <button
+                      type="button"
+                      className="create-assessment-threshold-section-head"
+                      onClick={() => setIsStudentInstructionsOpen((current) => !current)}
+                      aria-expanded={isStudentInstructionsOpen}
+                    >
+                      <span>
+                        <Info size={14} strokeWidth={2.2} />
+                        Student Instructions &amp; Assessment Description
+                      </span>
+                    </button>
+                    <span className="create-assessment-yes-no-toggle" role="group" aria-label="Provide student instructions and assessment description">
+                      {['Yes', 'No'].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          className={(setupDraft.provideStudentInstructions || 'No') === option ? 'is-active' : ''}
+                          onClick={() => {
+                            setSetupDraft((current) => ({
+                              ...current,
+                              provideStudentInstructions: option,
+                              studentInstructions: option === 'Yes' && !stripHtml(current.studentInstructions ?? '').trim()
+                                ? DEFAULT_STUDENT_INSTRUCTIONS
+                                : current.studentInstructions,
+                            }))
+                            setIsStudentInstructionsOpen(option === 'Yes')
+                          }}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+
+                  {isStudentInstructionsOpen ? (
+                    <div className="create-assessment-instructions-inline-body">
                     <div className="create-assessment-instructions-editor">
                       <div className="create-assessment-instructions-toolbar" aria-label="Instruction formatting toolbar">
                         {[
@@ -4372,12 +4365,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                       <button type="button" className="is-clear" onClick={() => updateSetupDraft('studentInstructions', '')}>
                         Clear
                       </button>
-                      <button type="button" className="is-primary" onClick={() => setIsStudentInstructionsOpen(false)}>
+                      <button type="button" className="is-primary" onClick={() => {
+                        updateSetupDraft('provideStudentInstructions', 'Yes')
+                        setIsStudentInstructionsOpen(false)
+                      }}>
                         Save
                       </button>
                     </div>
-                  </div>
-                </div>
+                    </div>
+                  ) : null}
+                </section>
               ) : null}
 
               {(
