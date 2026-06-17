@@ -931,6 +931,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const studentInstructionsEditorRef = useRef(null)
   const [isConfigurationSummaryVisible, setIsConfigurationSummaryVisible] = useState(true)
   const [isThresholdSectionOpen, setIsThresholdSectionOpen] = useState(false)
+  const [isAssignSectionOpen, setIsAssignSectionOpen] = useState(true)
+  const [isResultPublishSectionOpen, setIsResultPublishSectionOpen] = useState(false)
   const [isConfigurationChecklistOpen, setIsConfigurationChecklistOpen] = useState(false)
   const [setupErrors, setSetupErrors] = useState({})
   const [question, setQuestion] = useState(null)
@@ -1777,22 +1779,24 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       target: 'assessment-scheduling-details-section',
     },
     {
-      id: 'assign',
-      label: 'Assign Information',
-      complete: Boolean(setupDraft.assignYear),
-      target: 'assessment-assign-information-section',
-    },
-    {
       id: 'threshold',
       label: 'Threshold Settings',
       complete: isThresholdSettingsComplete,
       target: 'assessment-threshold-settings-section',
       onBeforeScroll: () => setIsThresholdSectionOpen(true),
     },
+    {
+      id: 'assign',
+      label: 'Assign Information',
+      complete: Boolean(setupDraft.assignYear),
+      target: 'assessment-assign-information-section',
+      onBeforeScroll: () => setIsAssignSectionOpen(true),
+    },
   ]), [
     isPublicationHeaderComplete,
     isSchedulingDetailsComplete,
     isThresholdSettingsComplete,
+    setIsAssignSectionOpen,
     setupDraft.assignYear,
   ])
   const configurationChecklistCompletedCount = configurationChecklistItems.filter((item) => item.complete).length
@@ -1935,6 +1939,53 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         </div>
         {setupErrors[errorKey] ? <small>{setupErrors[errorKey]}</small> : null}
       </label>
+    )
+  }
+
+  const renderAnswerModePanel = () => {
+    if (!configurationQuestionSummary.hasMcq && !configurationQuestionSummary.hasDescriptive) return null
+
+    const rows = [
+      configurationQuestionSummary.hasMcq
+        ? { type: 'MCQ', field: 'mcqDisplayType', badgeClass: '' }
+        : null,
+      configurationQuestionSummary.hasDescriptive
+        ? { type: 'Descriptive', field: 'descriptiveDisplayType', badgeClass: 'is-descriptive' }
+        : null,
+    ].filter(Boolean)
+
+    return (
+      <section className="create-assessment-answer-mode-panel" aria-label="Answer mode">
+        <div className="create-assessment-answer-mode-head">
+          <strong>Answer Mode <em>*</em></strong>
+          <small>Choose how students interact with each question type.</small>
+        </div>
+        <div className="create-assessment-answer-mode-list">
+          {rows.map((row) => {
+            const isDescriptive = row.type === 'Descriptive'
+            const value = isDescriptive ? 'Read-Only' : (setupDraft[row.field] || '')
+            return (
+              <div className="create-assessment-answer-mode-row" key={row.type}>
+                <span className={`create-assessment-type-badge ${row.badgeClass}`.trim()}>{row.type}</span>
+                <span className="create-assessment-mode-toggle" role="group" aria-label={`${row.type} display type`}>
+                  {['Answer Input', 'Read-Only'].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={value === option ? 'is-active' : ''}
+                      disabled={isDescriptive && option === 'Answer Input'}
+                      onClick={() => updateDisplayType(row.field, option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </span>
+                {setupErrors[row.field] ? <small>{setupErrors[row.field]}</small> : null}
+              </div>
+            )
+          })}
+        </div>
+      </section>
     )
   }
 
@@ -4051,91 +4102,69 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     {isSchedulingDetailsComplete ? <Check size={14} strokeWidth={2.4} /> : <CalendarClock size={14} strokeWidth={2.2} />}
                     Assessment Scheduling Details
                   </strong>
-                </div>
-
-                <div className="create-assessment-schedule-options" aria-label="Assessment scheduling options">
-                  <label className={`create-assessment-schedule-toggle-field ${setupErrors.examDeliveryMode ? 'has-error' : ''}`}>
-                    <span>Select Exam Mode <em>*</em></span>
+                  <div className={`create-assessment-schedule-head-toggle ${setupErrors.examDeliveryMode ? 'has-error' : ''}`}>
                     <div className="create-assessment-mode-toggle" role="group" aria-label="Select exam mode">
-                    {['Online', 'Offline'].map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        className={`${setupDraft.examDeliveryMode === mode ? 'is-active' : ''} is-${mode.toLowerCase()}`.trim()}
-                        onClick={() => {
-                          updateSetupDraft('examDeliveryMode', mode)
-                          setSetupErrors((current) => {
-                            const {
-                              examDate: _examDate,
-                              startTime: _startTime,
-                              practiceStartDate: _practiceStartDate,
-                              practiceStartTime: _practiceStartTime,
-                              practiceEndDate: _practiceEndDate,
-                              practiceEndTime: _practiceEndTime,
-                              mcqStartTime: _mcqStartTime,
-                              descriptiveStartTime: _descriptiveStartTime,
-                              mcqTimeLimit: _mcq,
-                              descriptiveTimeLimit: _descriptive,
-                              proctoredTotalDuration: _proctoredTotalDuration,
-                              offlineDuration: _offline,
-                              mcqDisplayType: _mcqDisplayType,
-                              descriptiveDisplayType: _descriptiveDisplayType,
-                              ...rest
-                            } = current
-                            return rest
-                          })
-                        }}
-                      >
-                        {mode}
-                      </button>
-                    ))}
-                    </div>
-                    {setupErrors.examDeliveryMode ? <small>{setupErrors.examDeliveryMode}</small> : null}
-                  </label>
-
-                  <label className={`create-assessment-schedule-toggle-field ${setupErrors.supervisionType ? 'has-error' : ''}`}>
-                    <span>Supervision Type <em>*</em></span>
-                    <div className={`create-assessment-mode-toggle ${setupDraft.examDeliveryMode === 'Offline' ? 'is-disabled' : ''}`} role="group" aria-label="Supervision type">
-                      {['Practice Exam', 'Proctored Exams'].map((option) => (
+                      {['Online', 'Offline'].map((mode) => (
                         <button
-                          key={option}
+                          key={mode}
                           type="button"
-                          className={setupDraft.supervisionType === option ? 'is-active' : ''}
-                          disabled={setupDraft.examDeliveryMode === 'Offline'}
+                          className={`${setupDraft.examDeliveryMode === mode ? 'is-active' : ''} is-${mode.toLowerCase()}`.trim()}
                           onClick={() => {
-                            if (setupDraft.examDeliveryMode === 'Offline') return
-                            updateSupervisionType(option)
+                            updateSetupDraft('examDeliveryMode', mode)
+                            setSetupErrors((current) => {
+                              const {
+                                examDate: _examDate,
+                                startTime: _startTime,
+                                practiceStartDate: _practiceStartDate,
+                                practiceStartTime: _practiceStartTime,
+                                practiceEndDate: _practiceEndDate,
+                                practiceEndTime: _practiceEndTime,
+                                mcqStartTime: _mcqStartTime,
+                                descriptiveStartTime: _descriptiveStartTime,
+                                mcqTimeLimit: _mcq,
+                                descriptiveTimeLimit: _descriptive,
+                                proctoredTotalDuration: _proctoredTotalDuration,
+                                offlineDuration: _offline,
+                                mcqDisplayType: _mcqDisplayType,
+                                descriptiveDisplayType: _descriptiveDisplayType,
+                                ...rest
+                              } = current
+                              return rest
+                            })
                           }}
                         >
-                          {option}
+                          {mode}
                         </button>
                       ))}
                     </div>
-                    {setupErrors.supervisionType ? <small>{setupErrors.supervisionType}</small> : null}
-                  </label>
-
-                  <label className={`create-assessment-schedule-toggle-field ${setupErrors.approvalFlow ? 'has-error' : ''}`}>
-                    <span>Sent to <em>*</em></span>
-                    <div className="create-assessment-mode-toggle" role="group" aria-label="Send option">
-                      {[
-                        { value: 'Direct Publish', label: 'Direct Publish' },
-                        { value: 'Send to Approval', label: 'Send to Approval' },
-                      ].map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          className={setupDraft.approvalFlow === option.value ? 'is-active' : ''}
-                          onClick={() => updateSetupDraft('approvalFlow', option.value)}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                    {setupErrors.approvalFlow ? <small>{setupErrors.approvalFlow}</small> : null}
-                  </label>
+                    {setupErrors.examDeliveryMode ? <small>{setupErrors.examDeliveryMode}</small> : null}
+                  </div>
                 </div>
 
-                <div className="create-assessment-schedule-options-divider" aria-hidden="true" />
+                {setupDraft.examDeliveryMode === 'Online' ? (
+                  <>
+                    <div className="create-assessment-schedule-options" aria-label="Assessment scheduling options">
+                      <label className={`create-assessment-schedule-toggle-field ${setupErrors.supervisionType ? 'has-error' : ''}`}>
+                        <span>Supervision Type <em>*</em></span>
+                        <div className="create-assessment-mode-toggle" role="group" aria-label="Supervision type">
+                          {['Practice Exam', 'Proctored Exams'].map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              className={setupDraft.supervisionType === option ? 'is-active' : ''}
+                              onClick={() => updateSupervisionType(option)}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                        {setupErrors.supervisionType ? <small>{setupErrors.supervisionType}</small> : null}
+                      </label>
+                    </div>
+
+                    <div className="create-assessment-schedule-options-divider" aria-hidden="true" />
+                  </>
+                ) : null}
 
                 {setupDraft.examDeliveryMode === 'Online' ? (
                   <>
@@ -4148,20 +4177,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           {renderScheduleStartTimeField('practiceEndTime', 'practiceEndPeriod', 'End Time')}
                         </div>
 
-                        <div className="create-assessment-type-schedule-list is-display-only">
-                          {configurationQuestionSummary.hasMcq ? (
-                            <div className="create-assessment-type-schedule-row is-display-only">
-                              <span className="create-assessment-type-badge">MCQ</span>
-                              {renderDisplayTypeToggle('MCQ', 'mcqDisplayType')}
-                            </div>
-                          ) : null}
-                          {configurationQuestionSummary.hasDescriptive ? (
-                            <div className="create-assessment-type-schedule-row is-display-only">
-                              <span className="create-assessment-type-badge is-descriptive">Descriptive</span>
-                              {renderDisplayTypeToggle('Descriptive', 'descriptiveDisplayType')}
-                            </div>
-                          ) : null}
-                        </div>
+                        {renderAnswerModePanel()}
                       </>
                     ) : setupDraft.supervisionType === 'Proctored Exams' ? (
                       <>
@@ -4218,74 +4234,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           </>
                         ) : null}
 
-                        <div className="create-assessment-type-schedule-list is-display-only">
-                          {configurationQuestionSummary.hasMcq ? (
-                            <div className="create-assessment-type-schedule-row is-display-only">
-                              <span className="create-assessment-type-badge">MCQ</span>
-                              {renderDisplayTypeToggle('MCQ', 'mcqDisplayType')}
-                            </div>
-                          ) : null}
-                          {configurationQuestionSummary.hasDescriptive ? (
-                            <div className="create-assessment-type-schedule-row is-display-only">
-                              <span className="create-assessment-type-badge is-descriptive">Descriptive</span>
-                              {renderDisplayTypeToggle('Descriptive', 'descriptiveDisplayType')}
-                            </div>
-                          ) : null}
-                        </div>
+                        {renderAnswerModePanel()}
                       </>
                     ) : (
                       <div className="create-assessment-schedule-empty">Select a supervision type to configure schedule details.</div>
                     )}
-
-                    {(
-                      (configurationQuestionSummary.hasMcq && setupDraft.mcqDisplayType !== 'Read-Only')
-                      || (configurationQuestionSummary.hasDescriptive && setupDraft.descriptiveDisplayType !== 'Read-Only')
-                    ) ? (
-                      <section className="create-assessment-result-publish-card" aria-label="Result publish settings">
-                        <div className="create-assessment-result-publish-head">
-                          <strong>
-                            <Sparkles size={14} strokeWidth={2.2} />
-                            Result Publish
-                          </strong>
-                        </div>
-                        <div className="create-assessment-result-publish-options">
-                          {configurationQuestionSummary.hasMcq ? (
-                            <label className="create-assessment-result-publish-option">
-                              <span>MCQ Auto Publish</span>
-                              <span className="create-assessment-yes-no-toggle" role="group" aria-label="MCQ auto publish">
-                                {['On', 'Off'].map((option) => (
-                                  <button
-                                    key={option}
-                                    type="button"
-                                    className={(setupDraft.mcqAutoPublish || 'Off') === option ? 'is-active' : ''}
-                                    onClick={() => updateSetupDraft('mcqAutoPublish', option)}
-                                  >
-                                    {option}
-                                  </button>
-                                ))}
-                              </span>
-                            </label>
-                          ) : null}
-                          {configurationQuestionSummary.hasDescriptive ? (
-                            <label className="create-assessment-result-publish-option">
-                              <span>Descriptive - Evaluation Required</span>
-                              <span className="create-assessment-yes-no-toggle" role="group" aria-label="Descriptive evaluation required">
-                                {['Yes', 'No'].map((option) => (
-                                  <button
-                                    key={option}
-                                    type="button"
-                                    className={(setupDraft.descriptiveEvaluationRequired || 'Yes') === option ? 'is-active' : ''}
-                                    onClick={() => updateSetupDraft('descriptiveEvaluationRequired', option)}
-                                  >
-                                    {option}
-                                  </button>
-                                ))}
-                              </span>
-                            </label>
-                          ) : null}
-                        </div>
-                      </section>
-                    ) : null}
 
                     <div className="create-assessment-instructions-row">
                       <span>Provide student instructions and assessment description?</span>
@@ -4320,69 +4273,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   </div>
                 )}
 
-                <div className="create-assessment-schedule-options-divider" aria-hidden="true" />
-
-                <div className="create-assessment-assign-section" id="assessment-assign-information-section" aria-label="Assign information">
-                  <div className="create-assessment-schedule-head">
-                    <strong>
-                      <UsersRound size={14} strokeWidth={2.2} />
-                      Assign Information
-                    </strong>
-                  </div>
-
-                  <div className="create-assessment-assign-grid">
-                    <label className="create-assessment-schedule-field">
-                      <span>Select Course</span>
-                      <span className="create-assessment-assign-select">
-                        <select
-                          value={setupDraft.assignCourse ?? ''}
-                          disabled
-                          onChange={(event) => updateSetupDraft('assignCourse', event.target.value)}
-                        >
-                          <option value="">Select Course</option>
-                          {CREATE_ASSESSMENT_SELECT_OPTIONS.courses.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-                      </span>
-                    </label>
-
-                    <label className={`create-assessment-schedule-field ${setupErrors.assignYear ? 'has-error' : ''}`}>
-                      <span>Select Year <em>*</em></span>
-                      <span className="create-assessment-assign-select">
-                        <select
-                          value={setupDraft.assignYear ?? ''}
-                          onChange={(event) => updateSetupDraft('assignYear', event.target.value)}
-                        >
-                          <option value="">Select Year</option>
-                          {CREATE_ASSESSMENT_SELECT_OPTIONS.years.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-                      </span>
-                      {setupErrors.assignYear ? <small>{setupErrors.assignYear}</small> : null}
-                    </label>
-
-                    <label className="create-assessment-schedule-field">
-                      <span>Select SGT Group or Class</span>
-                      <span className="create-assessment-assign-select">
-                        <select
-                          value={setupDraft.assignGroup ?? ''}
-                          disabled
-                          onChange={(event) => updateSetupDraft('assignGroup', event.target.value)}
-                        >
-                          <option value="">Select SGT Group or Class</option>
-                          {CREATE_ASSESSMENT_SELECT_OPTIONS.sgtGroups.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-                      </span>
-                    </label>
-                  </div>
-                </div>
               </div>
 
               {isStudentInstructionsOpen ? (
@@ -4488,6 +4378,70 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     </div>
                   </div>
                 </div>
+              ) : null}
+
+              {(
+                setupDraft.examDeliveryMode === 'Online'
+                && (
+                  (configurationQuestionSummary.hasMcq && setupDraft.mcqDisplayType !== 'Read-Only')
+                  || (configurationQuestionSummary.hasDescriptive && setupDraft.descriptiveDisplayType !== 'Read-Only')
+                )
+              ) ? (
+                <section className={`create-assessment-threshold-section create-assessment-result-publish-collapse ${isResultPublishSectionOpen ? 'is-open' : ''}`} aria-label="Result publish settings">
+                  <button
+                    type="button"
+                    className="create-assessment-threshold-section-head"
+                    onClick={() => setIsResultPublishSectionOpen((current) => !current)}
+                    aria-expanded={isResultPublishSectionOpen}
+                  >
+                    <span>
+                      <Sparkles size={14} strokeWidth={2.2} />
+                      Auto Result Publish
+                    </span>
+                    {isResultPublishSectionOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
+                  </button>
+
+                  {isResultPublishSectionOpen ? (
+                    <div className="create-assessment-threshold-section-body">
+                      <div className="create-assessment-result-publish-options">
+                        {configurationQuestionSummary.hasMcq ? (
+                          <label className="create-assessment-result-publish-option">
+                            <span>MCQ Auto Publish</span>
+                            <span className="create-assessment-yes-no-toggle" role="group" aria-label="MCQ auto publish">
+                              {['On', 'Off'].map((option) => (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  className={(setupDraft.mcqAutoPublish || 'Off') === option ? 'is-active' : ''}
+                                  onClick={() => updateSetupDraft('mcqAutoPublish', option)}
+                                >
+                                  {option}
+                                </button>
+                              ))}
+                            </span>
+                          </label>
+                        ) : null}
+                        {configurationQuestionSummary.hasDescriptive ? (
+                          <label className="create-assessment-result-publish-option">
+                            <span>Descriptive - Evaluation Required</span>
+                            <span className="create-assessment-yes-no-toggle" role="group" aria-label="Descriptive evaluation required">
+                              {['Yes', 'No'].map((option) => (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  className={(setupDraft.descriptiveEvaluationRequired || 'Yes') === option ? 'is-active' : ''}
+                                  onClick={() => updateSetupDraft('descriptiveEvaluationRequired', option)}
+                                >
+                                  {option}
+                                </button>
+                              ))}
+                            </span>
+                          </label>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
               ) : null}
 
               <div className={`create-assessment-threshold-section ${isThresholdSectionOpen ? 'is-open' : ''}`} id="assessment-threshold-settings-section">
@@ -4638,6 +4592,98 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   )}
                 </div>
               </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className={`create-assessment-threshold-section create-assessment-assign-collapse ${isAssignSectionOpen ? 'is-open' : ''}`} id="assessment-assign-information-section" aria-label="Assign information">
+                <button
+                  type="button"
+                  className="create-assessment-threshold-section-head"
+                  onClick={() => setIsAssignSectionOpen((current) => !current)}
+                  aria-expanded={isAssignSectionOpen}
+                >
+                  <span>
+                    <UsersRound size={14} strokeWidth={2.2} />
+                    Assign Information
+                  </span>
+                  {isAssignSectionOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
+                </button>
+
+                {isAssignSectionOpen ? (
+                  <div className="create-assessment-threshold-section-body">
+                    <div className="create-assessment-assign-grid">
+                      <label className="create-assessment-schedule-field">
+                        <span>Select Course</span>
+                        <span className="create-assessment-assign-select">
+                          <select
+                            value={setupDraft.assignCourse ?? ''}
+                            disabled
+                            onChange={(event) => updateSetupDraft('assignCourse', event.target.value)}
+                          >
+                            <option value="">Select Course</option>
+                            {CREATE_ASSESSMENT_SELECT_OPTIONS.courses.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                          <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+                        </span>
+                      </label>
+
+                      <label className={`create-assessment-schedule-field ${setupErrors.assignYear ? 'has-error' : ''}`}>
+                        <span>Select Year <em>*</em></span>
+                        <span className="create-assessment-assign-select">
+                          <select
+                            value={setupDraft.assignYear ?? ''}
+                            onChange={(event) => updateSetupDraft('assignYear', event.target.value)}
+                          >
+                            <option value="">Select Year</option>
+                            {CREATE_ASSESSMENT_SELECT_OPTIONS.years.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                          <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+                        </span>
+                        {setupErrors.assignYear ? <small>{setupErrors.assignYear}</small> : null}
+                      </label>
+
+                      <label className="create-assessment-schedule-field">
+                        <span>Select SGT Group or Class</span>
+                        <span className="create-assessment-assign-select">
+                          <select
+                            value={setupDraft.assignGroup ?? ''}
+                            disabled
+                            onChange={(event) => updateSetupDraft('assignGroup', event.target.value)}
+                          >
+                            <option value="">Select SGT Group or Class</option>
+                            {CREATE_ASSESSMENT_SELECT_OPTIONS.sgtGroups.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                          <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
+                        </span>
+                      </label>
+
+                      <label className={`create-assessment-schedule-toggle-field create-assessment-assign-sent-toggle ${setupErrors.approvalFlow ? 'has-error' : ''}`}>
+                        <span>Sent to <em>*</em></span>
+                        <div className="create-assessment-mode-toggle" role="group" aria-label="Send option">
+                          {[
+                            { value: 'Direct Publish', label: 'Direct Publish' },
+                            { value: 'Send to Approval', label: 'Send to Approval' },
+                          ].map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={setupDraft.approvalFlow === option.value ? 'is-active' : ''}
+                              onClick={() => updateSetupDraft('approvalFlow', option.value)}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                        {setupErrors.approvalFlow ? <small>{setupErrors.approvalFlow}</small> : null}
+                      </label>
+                    </div>
                   </div>
                 ) : null}
               </div>

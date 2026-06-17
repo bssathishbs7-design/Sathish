@@ -3507,9 +3507,18 @@
 
 .create-assessment-assign-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(280px, max-content);
   gap: 14px;
   min-width: 0;
+}
+
+.create-assessment-assign-sent-toggle .create-assessment-mode-toggle {
+  grid-template-columns: repeat(2, max-content);
+}
+
+.create-assessment-assign-sent-toggle .create-assessment-mode-toggle button {
+  min-width: 112px;
+  white-space: nowrap;
 }
 
 .create-assessment-assign-select {
@@ -3767,7 +3776,7 @@
 
 .create-assessment-schedule-options {
   display: grid;
-  grid-template-columns: minmax(190px, 0.75fr) minmax(260px, 1fr) minmax(340px, 1.3fr);
+  grid-template-columns: minmax(260px, 0.32fr);
   gap: 12px;
   align-items: start;
   min-width: 0;
@@ -3776,6 +3785,24 @@
   border-radius: 12px;
   background: #fbfffd;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.create-assessment-schedule-head-toggle {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.create-assessment-schedule-head-toggle small {
+  color: #be123c;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.create-assessment-schedule-head-toggle.has-error .create-assessment-mode-toggle {
+  border-color: #f4a7b5;
+  background: #fff8f9;
 }
 
 .create-assessment-schedule-options-divider {
@@ -4043,6 +4070,68 @@
 
 .create-assessment-type-schedule-row.is-display-only .create-assessment-mode-toggle {
   min-width: 0;
+}
+
+.create-assessment-answer-mode-panel {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 680px);
+  padding: 12px;
+  border: 1px solid #d7ebe5;
+  border-radius: 12px;
+  background: #fbfffd;
+}
+
+.create-assessment-answer-mode-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.create-assessment-answer-mode-head strong {
+  color: #214552;
+  font-size: 0.82rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.create-assessment-answer-mode-head em {
+  color: #e11d48;
+  font-style: normal;
+}
+
+.create-assessment-answer-mode-head small {
+  color: #607984;
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.create-assessment-answer-mode-list {
+  display: grid;
+  gap: 8px;
+}
+
+.create-assessment-answer-mode-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.42fr) max-content;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #e1eee9;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.create-assessment-answer-mode-row > small {
+  grid-column: 1 / -1;
+  color: #be123c;
+  font-size: 0.68rem;
+  font-weight: 750;
 }
 
 .create-assessment-mode-toggle button:disabled {
@@ -11751,6 +11840,24 @@
   color: #bae6fd;
 }
 
+.theme-dark .create-assessment-answer-mode-panel {
+  border-color: rgba(94, 116, 145, 0.42);
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.theme-dark .create-assessment-answer-mode-head strong {
+  color: #d9e8f8;
+}
+
+.theme-dark .create-assessment-answer-mode-head small {
+  color: #adc0d2;
+}
+
+.theme-dark .create-assessment-answer-mode-row {
+  border-color: rgba(94, 116, 145, 0.42);
+  background: rgba(15, 23, 42, 0.36);
+}
+
 .theme-dark .create-assessment-split-duration-check {
   border-color: rgba(45, 212, 191, 0.38);
   background: rgba(15, 23, 42, 0.36);
@@ -15830,6 +15937,24 @@
     width: fit-content;
   }
 
+  .create-assessment-answer-mode-panel {
+    width: 100%;
+  }
+
+  .create-assessment-answer-mode-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .create-assessment-answer-mode-head small {
+    text-align: left;
+  }
+
+  .create-assessment-answer-mode-row {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
   .create-assessment-threshold-card-grid {
     grid-template-columns: 1fr;
   }
@@ -15917,6 +16042,11 @@
   .create-assessment-schedule-head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .create-assessment-schedule-head-toggle {
+    justify-items: start;
+    margin-left: 0;
   }
 
   .create-assessment-mode-toggle {
