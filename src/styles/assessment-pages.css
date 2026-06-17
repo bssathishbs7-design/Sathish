@@ -3812,7 +3812,7 @@
 
 .create-assessment-schedule-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(330px, 0.85fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.95fr);
   gap: 14px;
   align-items: start;
   min-width: 0;
@@ -3822,6 +3822,7 @@
   display: grid;
   gap: 12px;
   min-width: 0;
+  overflow: hidden;
   padding: 12px;
   border: 1px solid #d7ebe5;
   border-radius: 12px;
@@ -3833,6 +3834,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
+}
+
+.create-assessment-timing-panel .create-assessment-schedule-field,
+.create-assessment-timing-panel .create-assessment-time-stepper,
+.create-assessment-timing-panel .create-assessment-date-control {
   min-width: 0;
 }
 
@@ -3971,7 +3978,7 @@
 }
 
 .create-assessment-schedule-grid.is-proctored-shared {
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .create-assessment-schedule-grid.is-proctored-date {
