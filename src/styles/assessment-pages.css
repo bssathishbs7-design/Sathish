@@ -3819,10 +3819,11 @@
 }
 
 .create-assessment-timing-panel {
+  position: relative;
   display: grid;
   gap: 12px;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   padding: 12px;
   border: 1px solid #d7ebe5;
   border-radius: 12px;
@@ -3841,6 +3842,10 @@
 .create-assessment-timing-panel .create-assessment-time-stepper,
 .create-assessment-timing-panel .create-assessment-date-control {
   min-width: 0;
+}
+
+.create-assessment-timing-panel .create-assessment-time-stepper-popover {
+  z-index: 40;
 }
 
 .create-assessment-timing-panel-head > strong {

@@ -4243,6 +4243,70 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
               </div>
 
+              {(
+                setupDraft.examDeliveryMode === 'Online'
+                && (
+                  (configurationQuestionSummary.hasMcq && setupDraft.mcqDisplayType !== 'Read-Only')
+                  || (configurationQuestionSummary.hasDescriptive && setupDraft.descriptiveDisplayType !== 'Read-Only')
+                )
+              ) ? (
+                <section className={`create-assessment-threshold-section create-assessment-result-publish-collapse ${isResultPublishSectionOpen ? 'is-open' : ''}`} aria-label="Result publish settings">
+                  <button
+                    type="button"
+                    className="create-assessment-threshold-section-head"
+                    onClick={() => setIsResultPublishSectionOpen((current) => !current)}
+                    aria-expanded={isResultPublishSectionOpen}
+                  >
+                    <span>
+                      <Sparkles size={14} strokeWidth={2.2} />
+                      Auto Result Publish
+                    </span>
+                    {isResultPublishSectionOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
+                  </button>
+
+                  {isResultPublishSectionOpen ? (
+                    <div className="create-assessment-threshold-section-body">
+                      <div className="create-assessment-result-publish-options">
+                        {configurationQuestionSummary.hasMcq ? (
+                          <label className="create-assessment-result-publish-option">
+                            <span>MCQ Auto Publish</span>
+                            <span className="create-assessment-yes-no-toggle" role="group" aria-label="MCQ auto publish">
+                              {['On', 'Off'].map((option) => (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  className={(setupDraft.mcqAutoPublish || 'Off') === option ? 'is-active' : ''}
+                                  onClick={() => updateSetupDraft('mcqAutoPublish', option)}
+                                >
+                                  {option}
+                                </button>
+                              ))}
+                            </span>
+                          </label>
+                        ) : null}
+                        {configurationQuestionSummary.hasDescriptive ? (
+                          <label className="create-assessment-result-publish-option">
+                            <span>Descriptive - Evaluation Required</span>
+                            <span className="create-assessment-yes-no-toggle" role="group" aria-label="Descriptive evaluation required">
+                              {['Yes', 'No'].map((option) => (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  className={(setupDraft.descriptiveEvaluationRequired || 'Yes') === option ? 'is-active' : ''}
+                                  onClick={() => updateSetupDraft('descriptiveEvaluationRequired', option)}
+                                >
+                                  {option}
+                                </button>
+                              ))}
+                            </span>
+                          </label>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
               {setupDraft.examDeliveryMode === 'Online' ? (
                 <section className={`create-assessment-threshold-section create-assessment-instructions-section ${isStudentInstructionsOpen ? 'is-open' : ''}`} aria-label="Student instructions and assessment description">
                   <div className="create-assessment-instructions-section-head">
@@ -4372,70 +4436,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         Save
                       </button>
                     </div>
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
-
-              {(
-                setupDraft.examDeliveryMode === 'Online'
-                && (
-                  (configurationQuestionSummary.hasMcq && setupDraft.mcqDisplayType !== 'Read-Only')
-                  || (configurationQuestionSummary.hasDescriptive && setupDraft.descriptiveDisplayType !== 'Read-Only')
-                )
-              ) ? (
-                <section className={`create-assessment-threshold-section create-assessment-result-publish-collapse ${isResultPublishSectionOpen ? 'is-open' : ''}`} aria-label="Result publish settings">
-                  <button
-                    type="button"
-                    className="create-assessment-threshold-section-head"
-                    onClick={() => setIsResultPublishSectionOpen((current) => !current)}
-                    aria-expanded={isResultPublishSectionOpen}
-                  >
-                    <span>
-                      <Sparkles size={14} strokeWidth={2.2} />
-                      Auto Result Publish
-                    </span>
-                    {isResultPublishSectionOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
-                  </button>
-
-                  {isResultPublishSectionOpen ? (
-                    <div className="create-assessment-threshold-section-body">
-                      <div className="create-assessment-result-publish-options">
-                        {configurationQuestionSummary.hasMcq ? (
-                          <label className="create-assessment-result-publish-option">
-                            <span>MCQ Auto Publish</span>
-                            <span className="create-assessment-yes-no-toggle" role="group" aria-label="MCQ auto publish">
-                              {['On', 'Off'].map((option) => (
-                                <button
-                                  key={option}
-                                  type="button"
-                                  className={(setupDraft.mcqAutoPublish || 'Off') === option ? 'is-active' : ''}
-                                  onClick={() => updateSetupDraft('mcqAutoPublish', option)}
-                                >
-                                  {option}
-                                </button>
-                              ))}
-                            </span>
-                          </label>
-                        ) : null}
-                        {configurationQuestionSummary.hasDescriptive ? (
-                          <label className="create-assessment-result-publish-option">
-                            <span>Descriptive - Evaluation Required</span>
-                            <span className="create-assessment-yes-no-toggle" role="group" aria-label="Descriptive evaluation required">
-                              {['Yes', 'No'].map((option) => (
-                                <button
-                                  key={option}
-                                  type="button"
-                                  className={(setupDraft.descriptiveEvaluationRequired || 'Yes') === option ? 'is-active' : ''}
-                                  onClick={() => updateSetupDraft('descriptiveEvaluationRequired', option)}
-                                >
-                                  {option}
-                                </button>
-                              ))}
-                            </span>
-                          </label>
-                        ) : null}
-                      </div>
                     </div>
                   ) : null}
                 </section>
