@@ -6421,6 +6421,10 @@
   background: #dbeafe;
 }
 
+.question-bank-non-create-page.is-full-page .assessment-page-metrics-strip button:not(.is-active) {
+  background: #ffffff;
+}
+
 .question-bank-metrics-landing {
   display: grid;
   gap: 12px;
@@ -17069,15 +17073,17 @@
   justify-content: space-between;
   gap: 14px;
   width: 100%;
+  min-height: 38px;
 }
 
 .question-bank-list-breadcrumb {
   display: inline-flex;
   align-items: center;
   min-height: 38px;
-  padding: 0 14px 0 8px;
+  gap: 6px;
+  padding: 0;
   border-radius: 0;
-  background: #f8fbfa;
+  background: transparent;
   color: #718392;
   font-size: 0.92rem;
   font-weight: 650;
@@ -17106,7 +17112,7 @@
 .question-bank-list-breadcrumb > span {
   width: 1px;
   height: 22px;
-  margin: 0 12px 0 5px;
+  margin: 0 8px 0 3px;
   background: #e3ece8;
 }
 
@@ -17179,6 +17185,10 @@
 
 .question-bank-non-create-page.is-full-page .assessment-page-metrics-strip button {
   min-height: 58px;
+}
+
+.question-bank-non-create-page.is-full-page .assessment-page-metrics-strip button:not(.is-active) {
+  background: #ffffff;
 }
 
 .question-bank-non-create-page:not(.is-embedded) .assessment-page-metrics-strip button {
@@ -17511,12 +17521,15 @@ body > .assessment-page-filter-menu {
   border-radius: 8px;
 }
 
-.theme-dark .question-bank-list-breadcrumb,
 .theme-dark .question-bank-list-head-actions button,
 .theme-dark .question-bank-non-create-page:not(.is-embedded) .assessment-page-bank-controls.is-grid-attached,
 .theme-dark .question-bank-non-create-page:not(.is-embedded) .assessment-page-bank-controls.is-grid-attached + .assessment-page-table-wrap {
   border-color: #263a44;
   background: #10202b;
+}
+
+.theme-dark .question-bank-list-breadcrumb {
+  background: transparent;
 }
 
 .theme-dark .question-bank-list-breadcrumb strong,
