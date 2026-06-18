@@ -17149,6 +17149,18 @@
   transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
+.question-bank-list-head-actions button:first-child {
+  border-color: #a5b4fc;
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.question-bank-list-head-actions button:last-child {
+  border-color: #bfdbfe;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
 .question-bank-list-head-actions button:hover,
 .question-bank-list-head-actions button:focus-visible,
 .question-bank-list-head-actions button.is-active {
@@ -17156,6 +17168,22 @@
   background: #f0fdfa;
   color: #08776d;
   outline: none;
+}
+
+.question-bank-list-head-actions button:first-child:hover,
+.question-bank-list-head-actions button:first-child:focus-visible,
+.question-bank-list-head-actions button:first-child.is-active {
+  border-color: #818cf8;
+  background: #c7d2fe;
+  color: #312e81;
+}
+
+.question-bank-list-head-actions button:last-child:hover,
+.question-bank-list-head-actions button:last-child:focus-visible,
+.question-bank-list-head-actions button:last-child.is-active {
+  border-color: #93c5fd;
+  background: #bfdbfe;
+  color: #1e40af;
 }
 
 .question-bank-list-head-actions button:hover {
@@ -17540,6 +17568,34 @@ body > .assessment-page-filter-menu {
 .theme-dark .question-bank-list-breadcrumb,
 .theme-dark .question-bank-list-head-actions button {
   color: #b7c7cf;
+}
+
+.theme-dark .question-bank-list-head-actions button:first-child {
+  border-color: rgba(129, 140, 248, 0.62);
+  background: rgba(79, 70, 229, 0.22);
+  color: #c7d2fe;
+}
+
+.theme-dark .question-bank-list-head-actions button:last-child {
+  border-color: rgba(96, 165, 250, 0.58);
+  background: rgba(37, 99, 235, 0.2);
+  color: #bfdbfe;
+}
+
+.theme-dark .question-bank-list-head-actions button:first-child:hover,
+.theme-dark .question-bank-list-head-actions button:first-child:focus-visible,
+.theme-dark .question-bank-list-head-actions button:first-child.is-active {
+  border-color: rgba(165, 180, 252, 0.82);
+  background: rgba(79, 70, 229, 0.34);
+  color: #e0e7ff;
+}
+
+.theme-dark .question-bank-list-head-actions button:last-child:hover,
+.theme-dark .question-bank-list-head-actions button:last-child:focus-visible,
+.theme-dark .question-bank-list-head-actions button:last-child.is-active {
+  border-color: rgba(147, 197, 253, 0.78);
+  background: rgba(37, 99, 235, 0.32);
+  color: #dbeafe;
 }
 
 .theme-dark .question-bank-non-create-page.is-full-page .assessment-page-bank-controls.is-grid-attached,
