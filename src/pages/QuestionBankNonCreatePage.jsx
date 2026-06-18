@@ -1832,15 +1832,119 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     selectionBarRef.current?.releasePointerCapture(event.pointerId)
   }
 
-  const renderFilterDropdown = ([filterKey, label, options]) => {
+  const renderFilterDropdown = ([filterKey, label, options], renderOptions = {}) => {
     const activeFilters = showMetricsLanding ? landingFilters : filters
-    const selectedValues = activeFilters[filterKey]
+    const selectedValues = activeFilters[filterKey] ?? []
     const isOpen = openFilterKey === filterKey
     const isSearchableFilter = searchableFilterKeys.includes(filterKey)
     const filterSearchTerm = filterSearchTerms[filterKey] ?? ''
     const visibleOptions = isSearchableFilter
       ? options.filter((option) => option.toLowerCase().includes(filterSearchTerm.trim().toLowerCase()))
       : options
+    const isCompetencyFilter = filterKey === 'competencies'
+    const hasVisibleCompetencies = isCompetencyFilter && visibleOptions.length > 0
+    const areAllVisibleCompetenciesSelected = hasVisibleCompetencies
+      && visibleOptions.every((option) => selectedValues.includes(option))
+    const hasPartialCompetencySelection = hasVisibleCompetencies
+      && selectedValues.length > 0
+      && !areAllVisibleCompetenciesSelected
+
+    const toggleVisibleCompetencies = () => {
+      updateActiveFilters((current) => {
+        const currentValues = current[filterKey] ?? []
+        const nextValues = areAllVisibleCompetenciesSelected
+          ? currentValues.filter((value) => !visibleOptions.includes(value))
+          : Array.from(new Set([...currentValues, ...visibleOptions]))
+
+        return {
+          ...current,
+          [filterKey]: nextValues,
+        }
+      })
+    }
+    const getFilterMenuPosition = () => {
+      if (typeof document === 'undefined') return undefined
+      const trigger = document.querySelector(`.question-bank-non-create-page.is-full-page .assessment-page-filter-dropdown[data-filter-key="${filterKey}"] > button`)
+      if (!trigger) return undefined
+
+      const rect = trigger.getBoundingClientRect()
+      const menuWidth = Math.min(320, window.innerWidth - 36)
+      const left = Math.min(Math.max(18, rect.left), window.innerWidth - menuWidth - 18)
+      return {
+        position: 'fixed',
+        top: `${rect.bottom + 7}px`,
+        left: `${left}px`,
+        width: `${menuWidth}px`,
+      }
+    }
+
+    const shouldPortalFilterMenu = renderOptions.portal !== false && !embedded && !showMetricsLanding
+    const filterMenu = isOpen ? (
+      <div
+        className={`assessment-page-filter-menu ${shouldPortalFilterMenu ? 'is-portaled-filter-menu' : ''}`}
+        role="menu"
+        data-filter-key={filterKey}
+        style={shouldPortalFilterMenu ? getFilterMenuPosition() : undefined}
+      >
+        <div>
+          <strong>{label}</strong>
+          <span className="assessment-page-filter-menu-actions">
+            {hasVisibleCompetencies ? (
+              <button
+                type="button"
+                className="assessment-page-filter-select-all"
+                onClick={toggleVisibleCompetencies}
+              >
+                {areAllVisibleCompetenciesSelected ? 'Clear All' : 'Select All'}
+              </button>
+            ) : null}
+            {hasPartialCompetencySelection ? (
+              <button type="button" onClick={() => clearFilterGroup(filterKey)}>
+                Clear
+              </button>
+            ) : null}
+            {selectedValues.length && !isCompetencyFilter ? (
+              <button type="button" onClick={() => clearFilterGroup(filterKey)}>
+                Clear
+              </button>
+            ) : null}
+          </span>
+        </div>
+        {isSearchableFilter ? (
+          <label className="assessment-page-filter-menu-search">
+            <Search size={14} strokeWidth={2.2} />
+            <input
+              type="search"
+              value={filterSearchTerm}
+              onChange={(event) => setFilterSearchTerms((current) => ({
+                ...current,
+                [filterKey]: event.target.value,
+              }))}
+              placeholder={`Search ${label.toLowerCase()}...`}
+            />
+          </label>
+        ) : null}
+        <div>
+          {visibleOptions.map((option) => {
+            const isSelected = selectedValues.includes(option)
+            return (
+              <label key={option} className="assessment-page-filter-option">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleFilterValue(filterKey, option)}
+                />
+                <span>{option}</span>
+                <strong>{filterOptionCounts[filterKey]?.[option] ?? 0}</strong>
+              </label>
+            )
+          })}
+          {!visibleOptions.length ? (
+            <span className="assessment-page-filter-menu-empty">No matches</span>
+          ) : null}
+        </div>
+      </div>
+    ) : null
 
     return (
       <div key={filterKey} className="assessment-page-filter-dropdown" data-filter-key={filterKey}>
@@ -1854,51 +1958,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           {selectedValues.length ? <strong>{selectedValues.length}</strong> : null}
           <ChevronDown size={14} strokeWidth={2.3} />
         </button>
-        {isOpen ? (
-          <div className="assessment-page-filter-menu" role="menu">
-            <div>
-              <strong>{label}</strong>
-              {selectedValues.length ? (
-                <button type="button" onClick={() => clearFilterGroup(filterKey)}>
-                  Clear
-                </button>
-              ) : null}
-            </div>
-            {isSearchableFilter ? (
-              <label className="assessment-page-filter-menu-search">
-                <Search size={14} strokeWidth={2.2} />
-                <input
-                  type="search"
-                  value={filterSearchTerm}
-                  onChange={(event) => setFilterSearchTerms((current) => ({
-                    ...current,
-                    [filterKey]: event.target.value,
-                  }))}
-                  placeholder={`Search ${label.toLowerCase()}...`}
-                />
-              </label>
-            ) : null}
-            <div>
-              {visibleOptions.map((option) => {
-                const isSelected = selectedValues.includes(option)
-                return (
-                  <label key={option} className="assessment-page-filter-option">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleFilterValue(filterKey, option)}
-                    />
-                    <span>{option}</span>
-                    <strong>{filterOptionCounts[filterKey]?.[option] ?? 0}</strong>
-                  </label>
-                )
-              })}
-              {!visibleOptions.length ? (
-                <span className="assessment-page-filter-menu-empty">No matches</span>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+        {filterMenu && shouldPortalFilterMenu && typeof document !== 'undefined'
+          ? createPortal(filterMenu, document.body)
+          : filterMenu}
       </div>
     )
   }
@@ -1994,6 +2056,8 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     const handleOutsideFilterClick = (event) => {
       const activeDropdown = event.target.closest?.('.assessment-page-filter-dropdown')
       if (activeDropdown?.dataset?.filterKey === openFilterKey) return
+      const activePortaledMenu = event.target.closest?.('.is-portaled-filter-menu')
+      if (activePortaledMenu?.dataset?.filterKey === openFilterKey) return
       if (event.target.closest?.('.assessment-page-filter-toggle')) return
       if (event.target.closest?.('.assessment-page-filter-advanced-row')) {
         setOpenFilterKey('')
@@ -2069,7 +2133,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }, [])
 
   return (
-    <section className={`vx-content assessment-page question-bank-non-create-page ${embedded ? 'is-embedded' : ''} is-${resolvedMode}-mode is-${activeView}-view`}>
+    <section className={`vx-content assessment-page question-bank-non-create-page ${embedded ? 'is-embedded' : 'is-full-page'} is-${resolvedMode}-mode is-${activeView}-view`}>
       <div className={`assessment-page-shell question-bank-overview-shell ${selectedGridAction ? 'has-selection-bar' : ''}`}>
         {showMetricsLanding ? (
           <section className="question-bank-metrics-landing" aria-label="Question bank metrics overview">
@@ -2368,38 +2432,82 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
 
           </section>
         ) : (
-          <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
-            {visibleQuestionListSummaryMetrics.map((metric) => {
-              const Icon = metric.icon
-              const isActive = activeMetric === (metric.activeMetricKey ?? metric.key)
+          <>
+            {!embedded ? (
+              <section className="question-bank-list-page-head" aria-label="Question bank page navigation">
+                <span className="question-bank-list-breadcrumb">
+                  <button type="button" aria-label="Previous page">
+                    <ChevronLeft size={17} strokeWidth={2.3} />
+                  </button>
+                  <button type="button" aria-label="Next page">
+                    <ChevronRight size={17} strokeWidth={2.3} />
+                  </button>
+                  <span aria-hidden="true" />
+                  <em>My Pages</em>
+                  <ChevronRight size={14} strokeWidth={2.4} />
+                  <em>Assessment</em>
+                  <ChevronRight size={14} strokeWidth={2.4} />
+                  <strong>My Progress</strong>
+                </span>
+                <span className="question-bank-list-head-actions" role="group" aria-label="Question bank actions">
+                  {isEditable ? (
+                    <>
+                      <button
+                        type="button"
+                        className={selectedGridAction === 'assessment' ? 'is-active' : ''}
+                        onClick={() => setSelectedGridAction('assessment')}
+                        disabled={selectedGridAction === 'learn' || isReportMetricActive}
+                      >
+                        <ListChecks size={15} strokeWidth={2.3} />
+                        Add to Assessment
+                      </button>
+                      <button
+                        type="button"
+                        className={selectedGridAction === 'learn' ? 'is-active' : ''}
+                        onClick={() => setSelectedGridAction('learn')}
+                        disabled={selectedGridAction === 'assessment' || isReportMetricActive}
+                      >
+                        <Share2 size={15} strokeWidth={2.3} />
+                        Share to Students
+                      </button>
+                    </>
+                  ) : null}
+                </span>
+              </section>
+            ) : null}
+            <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
+              {visibleQuestionListSummaryMetrics.map((metric) => {
+                const Icon = metric.icon
+                const isActive = activeMetric === (metric.activeMetricKey ?? metric.key)
 
-              return (
-                <button
-                  key={metric.key}
-                  type="button"
-                  className={`is-${metric.tone} ${isActive ? 'is-active' : ''}`}
-                  onClick={() => {
-                    if (!metric.value) return
-                    openQuestionList(metric)
-                  }}
-                  disabled={!metric.value}
-                  aria-pressed={isActive}
-                >
-                  <span className="assessment-page-metric-icon" aria-hidden="true">
-                    {metric.key === 'medsy' ? (
-                      <img className="assessment-page-metric-logo" src={medsyIcon} alt="" aria-hidden="true" />
-                    ) : (
-                      <Icon size={15} strokeWidth={2.2} />
-                    )}
-                  </span>
-                  <span className="assessment-page-metric-copy">
-                    <strong title={formatMetricCount(metric.value)}>{formatMetricCount(metric.value)}</strong>
-                    <span>{metric.label}</span>
-                  </span>
-                </button>
-              )
-            })}
-          </section>
+                return (
+                  <button
+                    key={metric.key}
+                    type="button"
+                    className={`is-${metric.tone} ${isActive ? 'is-active' : ''}`}
+                    onClick={() => {
+                      if (!metric.value) return
+                      openQuestionList(metric)
+                    }}
+                    disabled={!metric.value}
+                    aria-pressed={isActive}
+                  >
+                    <span className="assessment-page-metric-icon" aria-hidden="true">
+                      {metric.key === 'medsy' ? (
+                        <img className="assessment-page-metric-logo" src={medsyIcon} alt="" aria-hidden="true" />
+                      ) : (
+                        <Icon size={15} strokeWidth={2.2} />
+                      )}
+                    </span>
+                    <span className="assessment-page-metric-copy">
+                      <strong title={formatMetricCount(metric.value)}>{formatMetricCount(metric.value)}</strong>
+                      <span>{metric.label}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </section>
+          </>
         )}
 
         {publishedQuestions.length && !showMetricsLanding ? (
@@ -2439,7 +2547,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           <span key={group.label} className="assessment-page-more-filter-group">
                             <strong>{group.label}</strong>
                             <span>{group.filters.map((filter) => (
-                              filter[3] === 'boolean' ? renderBooleanFilterDropdown(filter) : renderFilterDropdown(filter)
+                              filter[3] === 'boolean' ? renderBooleanFilterDropdown(filter) : renderFilterDropdown(filter, { portal: false })
                             ))}</span>
                           </span>
                         ))}
@@ -2469,8 +2577,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   </span>
                 ) : null}
               </span>
-              <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
-                {isEditable ? (
+              {embedded ? (
+                <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
+                  {isEditable ? (
                   <>
                     <button
                       type="button"
@@ -2497,8 +2606,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                       ) : null}
                     </button>
                   </>
-                ) : null}
-              </span>
+                  ) : null}
+                </span>
+              ) : null}
               <span className="assessment-page-expand-toggle" role="group" aria-label="Expand or collapse all visible questions">
                 <button
                   type="button"
@@ -2787,7 +2897,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                 </label>
                               ) : null}
                               <span className="assessment-page-grid-question-content">
-                                <strong>Q{questionNumber}. {getQuestionPreview(question)}</strong>
+                                <strong title={`Q${questionNumber}. ${getQuestionPreview(question)}`}>Q{questionNumber}. {getQuestionPreview(question)}</strong>
                               </span>
                             </span>
                           </td>
