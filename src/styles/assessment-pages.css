@@ -9659,24 +9659,25 @@
 
 .assessment-page-selection-bar {
   position: fixed;
-  right: max(16px, calc((100vw - 1560px) / 2 + 16px));
+  right: auto;
   bottom: 58px;
-  left: max(16px, calc((100vw - 1560px) / 2 + 16px));
+  left: 50%;
   z-index: 80;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  width: min(960px, calc(100vw - 32px));
-  max-width: 960px;
-  min-height: 44px;
-  margin: 0 auto;
-  padding: 8px 12px;
-  border: 1px solid #bde6dc;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 44px rgba(13, 55, 38, 0.18);
-  backdrop-filter: blur(10px);
+  gap: 18px;
+  width: fit-content;
+  min-width: 420px;
+  max-width: min(720px, calc(100vw - 32px));
+  min-height: 42px;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: #1f2937;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.28);
+  transform: translateX(-50%);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -9686,37 +9687,41 @@
   cursor: grabbing;
 }
 
+.assessment-page-selection-bar.is-positioned {
+  transform: none;
+}
+
 .assessment-page-selection-bar span {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
   min-width: 0;
-  color: #405866;
+  color: #f8fafc;
   font-size: 0.78rem;
-  font-weight: 750;
+  font-weight: 800;
 }
 
 .assessment-page-selection-bar strong {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: #10b9a8;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: #2563eb;
   color: #ffffff;
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   font-weight: 900;
 }
 
 .assessment-page-selection-bar button {
   min-height: 32px;
   padding: 0 12px;
-  border: 1px solid #d7e8e2;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #405866;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  background: #374151;
+  color: #f8fafc;
   font-size: 0.76rem;
   font-weight: 800;
   cursor: pointer;
@@ -9724,25 +9729,25 @@
 }
 
 .assessment-page-selection-bar button.is-clear {
-  border-color: #f6d59b;
-  background: #fff8eb;
-  color: #9a5b00;
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
 }
 
 .assessment-page-selection-bar button.is-clear:hover,
 .assessment-page-selection-bar button.is-clear:focus-visible {
-  border-color: #f59e0b;
-  background: #ffefd3;
-  color: #7c4300;
+  border-color: rgba(245, 158, 11, 0.46);
+  background: rgba(245, 158, 11, 0.2);
+  color: #ffffff;
   outline: none;
 }
 
 .assessment-page-selection-bar.is-assessment-picker {
-  right: max(20px, calc((100vw - 1160px) / 2 + 20px));
+  right: auto;
   bottom: 22px;
-  left: auto;
-  width: auto;
-  min-width: min(520px, calc(100vw - 40px));
+  left: 50%;
+  width: fit-content;
+  min-width: 420px;
   cursor: move;
   touch-action: none;
 }
@@ -9860,8 +9865,8 @@
 }
 
 .assessment-page-selection-bar button.is-primary {
-  border-color: #0fb9a8;
-  background: #10b9a8;
+  border-color: rgba(20, 184, 166, 0.34);
+  background: #0f766e;
   color: #ffffff;
 }
 
@@ -9872,30 +9877,30 @@
   width: 32px;
   min-width: 32px;
   padding: 0;
-  border-color: #d7e8e2;
-  background: #ffffff;
-  color: #607380;
+  border-color: rgba(148, 163, 184, 0.2);
+  background: transparent;
+  color: #cbd5e1;
 }
 
 .assessment-page-selection-bar button.is-icon-only:hover,
 .assessment-page-selection-bar button.is-icon-only:focus-visible {
-  border-color: #f1c9d0;
-  background: #fff7f8;
-  color: #8f1d2c;
+  border-color: rgba(248, 113, 113, 0.38);
+  background: rgba(248, 113, 113, 0.12);
+  color: #fecaca;
   outline: none;
 }
 
 .assessment-page-selection-bar button.is-primary:hover,
 .assessment-page-selection-bar button.is-primary:focus-visible {
-  border-color: #0f9f92;
-  background: #0fafa1;
+  border-color: rgba(45, 212, 191, 0.48);
+  background: #115e59;
   outline: none;
 }
 
 .assessment-page-selection-bar button.is-primary:disabled {
-  border-color: #d7e8e2;
-  background: #d8ebe6;
-  color: #7f95a0;
+  border-color: rgba(148, 163, 184, 0.16);
+  background: #334155;
+  color: #94a3b8;
   cursor: not-allowed;
   opacity: 0.75;
 }
@@ -13846,32 +13851,32 @@
 }
 
 .theme-dark .assessment-page-selection-bar {
-  border-color: rgba(45, 212, 191, 0.38);
-  background: rgba(16, 24, 39, 0.96);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  border-color: rgba(148, 163, 184, 0.24);
+  background: #1f2937;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
 }
 
 .theme-dark .assessment-page-selection-bar span {
-  color: #c3d4e8;
+  color: #f8fafc;
 }
 
 .theme-dark .assessment-page-selection-bar button {
-  border-color: rgba(94, 116, 145, 0.5);
-  background: #132235;
-  color: #d6e7f3;
+  border-color: rgba(148, 163, 184, 0.2);
+  background: #374151;
+  color: #f8fafc;
 }
 
 .theme-dark .assessment-page-selection-bar button.is-clear {
-  border-color: rgba(245, 158, 11, 0.48);
-  background: rgba(180, 83, 9, 0.16);
-  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
 }
 
 .theme-dark .assessment-page-selection-bar button.is-clear:hover,
 .theme-dark .assessment-page-selection-bar button.is-clear:focus-visible {
-  border-color: rgba(251, 191, 36, 0.68);
-  background: rgba(180, 83, 9, 0.28);
-  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.46);
+  background: rgba(245, 158, 11, 0.2);
+  color: #ffffff;
 }
 
 .theme-dark .assessment-page-add-assessment-popover {
@@ -15088,9 +15093,12 @@
     right: 10px;
     bottom: 52px;
     left: 10px;
+    width: auto;
+    min-width: 0;
     max-width: none;
     margin-right: 0;
     margin-left: 0;
+    transform: none;
   }
 
   .assessment-page-question-options {
@@ -15513,9 +15521,12 @@
     right: 10px;
     bottom: 52px;
     left: 10px;
+    width: auto;
+    min-width: 0;
     max-width: none;
     margin-right: 0;
     margin-left: 0;
+    transform: none;
   }
 
   .assessment-page-question-options,

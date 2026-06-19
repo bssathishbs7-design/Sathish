@@ -3147,7 +3147,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
         {(isEditable && selectedGridAction) || (hasEmbeddedAssessmentSelection && isEmbeddedSelectionBarVisible && !isEmbeddedSelectionBarClosed) ? (
           <section
             ref={selectionBarRef}
-            className={`assessment-page-selection-bar ${hasEmbeddedAssessmentSelection ? 'is-assessment-picker' : ''}`}
+            className={`assessment-page-selection-bar ${hasEmbeddedAssessmentSelection ? 'is-assessment-picker' : ''} ${selectionBarPosition ? 'is-positioned' : ''}`}
             style={selectionBarPosition ? {
               top: `${selectionBarPosition.y}px`,
               right: 'auto',
@@ -3163,9 +3163,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           >
             <span>
               <strong>{selectedGridQuestionIds.length}</strong>
-              {hasEmbeddedAssessmentSelection
-                ? `question${selectedGridQuestionIds.length === 1 ? '' : 's'} selected`
-                : `selected for ${selectedGridAction === 'assessment' ? 'Assessment' : 'Learn'}`}
+              Selected
             </span>
             <div className="assessment-page-selection-bar-actions">
               <button type="button" className="is-clear" onClick={() => setSelectedGridQuestionIds([])}>
