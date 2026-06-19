@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, BadgeCheck, Clock3, EyeOff, FileWarning, FolderPlus, Info, Monitor, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ArrowRight, BadgeCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, Monitor, Pencil, Plus, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -173,6 +173,377 @@ const getQuestionMarksTotal = (item) => {
   return parseMarksValue(item?.marks)
 }
 
+const normalizePdfText = (value) => String(value ?? '')
+  .normalize('NFKD')
+  .replace(/[^\x20-\x7E]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+const escapePdfText = (value) => normalizePdfText(value)
+  .replace(/\\/g, '\\\\')
+  .replace(/\(/g, '\\(')
+  .replace(/\)/g, '\\)')
+
+const sanitizeFileName = (value) => normalizePdfText(value)
+  .replace(/[^a-z0-9]+/gi, '-')
+  .replace(/^-+|-+$/g, '')
+  .toLowerCase()
+  || 'question-paper'
+
+const wrapPdfText = (value, maxLength = 88) => {
+  const words = normalizePdfText(value).split(' ').filter(Boolean)
+  const lines = []
+
+  words.forEach((word) => {
+    const currentLine = lines[lines.length - 1] ?? ''
+    const nextLine = currentLine ? `${currentLine} ${word}` : word
+
+    if (nextLine.length <= maxLength) {
+      if (lines.length) lines[lines.length - 1] = nextLine
+      else lines.push(nextLine)
+      return
+    }
+
+    if (word.length > maxLength) {
+      lines.push(`${word.slice(0, maxLength - 1)}-`)
+      return
+    }
+
+    lines.push(word)
+  })
+
+  return lines.length ? lines : ['-']
+}
+
+const getPdfSectionKey = (item) => {
+  if (item?.previewSectionKey) return item.previewSectionKey
+  if (!isDescriptiveQuestionType(item?.type)) return 'MCQ'
+  if (String(item?.type).includes('MEQs')) return 'MEQs'
+  if (String(item?.type).includes('LAQs')) return 'LAQs'
+  if (String(item?.type).toLowerCase().includes('reasoning')) return 'Reasoning'
+  return 'SAQs'
+}
+
+const getPdfSectionTitle = (key) => {
+  const map = {
+    MCQ: 'Multiple Choice Question',
+    SAQs: 'Short Answer Questions',
+    MEQs: 'Modified Essay Questions',
+    LAQs: 'Long Answer Questions',
+    Reasoning: 'Reasoning Answer Questions',
+  }
+  if (map[key]) return map[key]
+
+  const readableKey = String(key ?? '')
+    .replace(/^custom-section-/i, '')
+    .replace(/^nmc-/i, '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+    .replace(/\bSaqs\b/g, 'SAQs')
+    .replace(/\bMeqs\b/g, 'MEQs')
+    .replace(/\bLaqs\b/g, 'LAQs')
+    .trim()
+
+  return readableKey ? `${readableKey} Questions` : 'Questions'
+}
+
+const PDF_SECTION_ORDER = ['MCQ', 'SAQs', 'MEQs', 'LAQs', 'Reasoning']
+const PDF_ROMAN_NUMERALS = ['I.', 'II.', 'III.', 'IV.', 'V.', 'VI.', 'VII.', 'VIII.', 'IX.', 'X.']
+
+const loadPdfLogoImage = (logoPreview) => new Promise((resolve) => {
+  if (!logoPreview) {
+    resolve(null)
+    return
+  }
+
+  const image = new Image()
+  image.onload = () => {
+    const canvas = document.createElement('canvas')
+    const maxSize = 180
+    const scale = Math.min(maxSize / image.naturalWidth, maxSize / image.naturalHeight, 1)
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      resolve(null)
+      return
+    }
+
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+    const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92)
+    const base64 = jpegDataUrl.split(',')[1]
+    resolve({
+      data: atob(base64),
+      width: canvas.width,
+      height: canvas.height,
+    })
+  }
+  image.onerror = () => resolve(null)
+  image.src = logoPreview
+})
+
+const getPublishedQuestionRows = (assessment) => (
+  Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
+)
+
+const getPdfQuestionText = (item) => (
+  stripHtml(item?.questionText)
+  || item?.title
+  || item?.question
+  || 'Untitled question'
+)
+
+const getPdfOptionText = (option) => stripHtml(option?.label ?? option?.content ?? option)
+
+const getPdfMarksSummary = (questions) => {
+  const mcqMarks = questions
+    .filter((item) => !isDescriptiveQuestionType(item?.type))
+    .reduce((total, item) => total + getQuestionMarksTotal(item), 0)
+  const descriptiveMarks = questions
+    .filter((item) => isDescriptiveQuestionType(item?.type))
+    .reduce((total, item) => total + getQuestionMarksTotal(item), 0)
+  return {
+    mcqMarks,
+    descriptiveMarks,
+    totalMarks: mcqMarks + descriptiveMarks,
+  }
+}
+
+const buildQuestionPaperPdf = async (assessment) => {
+  const questions = getPublishedQuestionRows(assessment)
+  const setup = assessment?.setup ?? {}
+  const logoImage = await loadPdfLogoImage(setup.logoPreview)
+  const marksSummary = getPdfMarksSummary(questions)
+  const pageWidth = 595.28
+  const pageHeight = 841.89
+  const margin = 28
+  const contentWidth = pageWidth - (margin * 2)
+  const pages = []
+  let commands = []
+  let y = pageHeight - 30
+
+  const approximateTextWidth = (text, size) => normalizePdfText(text).length * size * 0.47
+  const addCommand = (command) => commands.push(command)
+  const addText = ({ text, x, y: textY, size = 12, font = 'F1' }) => {
+    addCommand(`BT /${font} ${size} Tf ${x.toFixed(2)} ${textY.toFixed(2)} Td (${escapePdfText(text)}) Tj ET`)
+  }
+  const addCenteredText = ({ text, y: textY, size = 12, font = 'F1' }) => {
+    addText({ text, x: (pageWidth - approximateTextWidth(text, size)) / 2, y: textY, size, font })
+  }
+  const addCenteredTextInBox = ({ text, centerX, y: textY, size = 12, font = 'F1' }) => {
+    addText({ text, x: centerX - (approximateTextWidth(text, size) / 2), y: textY, size, font })
+  }
+  const addRightText = ({ text, x, y: textY, size = 12, font = 'F1' }) => {
+    addText({ text, x: x - approximateTextWidth(text, size), y: textY, size, font })
+  }
+  const addLine = (x1, y1, x2, y2) => addCommand(`0 0 0 RG ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`)
+  const addRect = (x, rectY, width, height) => addCommand(`0 0 0 RG ${x.toFixed(2)} ${rectY.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re S`)
+  const finishPage = () => {
+    pages.push(commands.join('\n'))
+    commands = []
+    y = pageHeight - 26
+  }
+  const ensureSpace = (height) => {
+    if (y - height > margin) return
+    finishPage()
+  }
+  const addWrappedText = ({ text, x, maxLength, size = 12, font = 'F1', lineHeight = 15, indent = 0 }) => {
+    const lines = wrapPdfText(text, maxLength)
+    lines.forEach((line, index) => {
+      ensureSpace(lineHeight + 6)
+      addText({ text: line, x: x + (index ? indent : 0), y, size, font })
+      y -= lineHeight
+    })
+  }
+  const getWrappedTextHeight = (text, maxLength, lineHeight) => wrapPdfText(text, maxLength).length * lineHeight
+  const getQuestionBlockHeight = (item, displayNumber) => {
+    const isDescriptive = isDescriptiveQuestionType(item?.type)
+    const questionHeight = getWrappedTextHeight(`${displayNumber}. ${getPdfQuestionText(item)}`, 103, 13)
+
+    if (!isDescriptive) {
+      const optionRows = Math.ceil((item.options ?? []).map(getPdfOptionText).filter(Boolean).length / 2)
+      return questionHeight + 4 + (optionRows * 18) + 8
+    }
+
+    const sections = Array.isArray(item.descriptiveSections) ? item.descriptiveSections : []
+    const sectionHeight = sections.reduce((total, section, sectionIndex) => {
+      const sectionLabel = `${PDF_ROMAN_NUMERALS[sectionIndex]?.replace('.', '').toLowerCase() || sectionIndex + 1}.`
+      const ownHeight = getWrappedTextHeight(`${sectionLabel} ${stripHtml(section.questionText) || 'Sub question'}`, 88, 13)
+      const childHeight = (section.children ?? []).reduce((childTotal, child, childIndex) => (
+        childTotal + getWrappedTextHeight(`${String.fromCharCode(97 + childIndex)}. ${stripHtml(child.questionText) || 'Inside question'}`, 84, 13)
+      ), 0)
+      return total + ownHeight + childHeight
+    }, 0)
+
+    return questionHeight + 5 + sectionHeight + (sections.length * 3) + 10
+  }
+
+  const hasLogo = Boolean(logoImage)
+  const logoBoxX = margin + 6
+  const logoBoxY = pageHeight - 94
+  const logoMaxSize = 56
+  const headerCenterX = pageWidth / 2
+
+  if (logoImage) {
+    const logoScale = Math.min(logoMaxSize / logoImage.width, logoMaxSize / logoImage.height)
+    const logoWidth = logoImage.width * logoScale
+    const logoHeight = logoImage.height * logoScale
+    addCommand(`q ${logoWidth.toFixed(2)} 0 0 ${logoHeight.toFixed(2)} ${logoBoxX.toFixed(2)} ${(logoBoxY + ((logoMaxSize - logoHeight) / 2)).toFixed(2)} cm /Im1 Do Q`)
+  }
+  addCenteredTextInBox({ text: setup.collegeName || '[Select College Name]', centerX: headerCenterX, y: pageHeight - 48, size: 15, font: 'F2' })
+  addCenteredTextInBox({ text: `Academic Year ${String(setup.academicYear || '2025 - 2026').replace(/\s*-\s*/g, '-')}`, centerX: headerCenterX, y: pageHeight - 68, size: 12, font: 'F3' })
+  addCenteredTextInBox({ text: assessment?.assessmentName || '[Assessment Name]', centerX: headerCenterX, y: pageHeight - 90, size: 15, font: 'F2' })
+  addCenteredTextInBox({ text: assessment?.examCategory || '[Exam Category]', centerX: headerCenterX, y: pageHeight - 109, size: 12, font: 'F2' })
+  y = pageHeight - 124
+  addLine(margin, y, pageWidth - margin, y)
+  y -= 18
+  const totalMarksText = `Total Marks : ${marksSummary.totalMarks} (${marksSummary.mcqMarks} MCQ + ${String(marksSummary.descriptiveMarks).padStart(2, '0')} Descriptive)`
+  const durationLabel = 'Duration : '
+  const durationValue = assessment?.totalDuration || 'HH:MM'
+  const durationStartX = pageWidth - margin - 12 - approximateTextWidth(`${durationLabel}${durationValue}`, 12)
+  addText({
+    text: totalMarksText,
+    x: margin + 12,
+    y,
+    size: 12,
+    font: 'F2',
+  })
+  addText({ text: durationLabel, x: durationStartX, y, size: 12 })
+  addText({ text: durationValue, x: durationStartX + approximateTextWidth(durationLabel, 12), y, size: 12, font: 'F2' })
+  y -= 13
+  addLine(margin, y, pageWidth - margin, y)
+  y -= 20
+
+  const groupedQuestions = questions.reduce((groups, item) => {
+    const key = getPdfSectionKey(item)
+    return { ...groups, [key]: [...(groups[key] || []), item] }
+  }, {})
+  const orderedKeys = [
+    ...PDF_SECTION_ORDER.filter((key) => groupedQuestions[key]?.length),
+    ...Object.keys(groupedQuestions).filter((key) => !PDF_SECTION_ORDER.includes(key)),
+  ]
+  let sectionNumber = 0
+  let questionNumber = 1
+
+  orderedKeys.forEach((sectionKey) => {
+    const sectionQuestions = groupedQuestions[sectionKey] || []
+    const sectionMarks = sectionQuestions.reduce((total, item) => total + getQuestionMarksTotal(item), 0)
+    const firstQuestionHeight = sectionQuestions.length ? getQuestionBlockHeight(sectionQuestions[0], questionNumber) : 0
+    ensureSpace(34 + firstQuestionHeight)
+    const roman = PDF_ROMAN_NUMERALS[sectionNumber] || `${sectionNumber + 1}.`
+    addText({ text: `${roman}${getPdfSectionTitle(sectionKey)}`, x: margin + 4, y, size: 13, font: 'F2' })
+    addRightText({ text: `${String(sectionMarks).padStart(2, '0')} Marks`, x: pageWidth - margin - 12, y, size: 13, font: 'F2' })
+    y -= 22
+    sectionNumber += 1
+
+    sectionQuestions.forEach((item) => {
+      const isDescriptive = isDescriptiveQuestionType(item?.type)
+      const questionMarks = getQuestionMarksTotal(item)
+      const questionText = `${questionNumber}. ${getPdfQuestionText(item)}`
+      ensureSpace(getQuestionBlockHeight(item, questionNumber))
+      addWrappedText({ text: questionText, x: margin + 4, maxLength: 103, size: 12, lineHeight: 13, indent: 16 })
+      questionNumber += 1
+
+      if (!isDescriptive) {
+        y -= 4
+        const options = (item.options ?? []).map(getPdfOptionText).filter(Boolean)
+        for (let optionIndex = 0; optionIndex < options.length; optionIndex += 2) {
+          ensureSpace(16)
+          const leftOption = `${String.fromCharCode(65 + optionIndex)}. ${options[optionIndex]}`
+          const rightOption = options[optionIndex + 1] ? `${String.fromCharCode(66 + optionIndex)}. ${options[optionIndex + 1]}` : ''
+          addText({ text: leftOption, x: margin + 32, y, size: 12 })
+          if (rightOption) addText({ text: rightOption, x: margin + 286, y, size: 12 })
+          y -= 16
+        }
+      } else {
+        const sections = Array.isArray(item.descriptiveSections) ? item.descriptiveSections : []
+        y -= sections.length ? 5 : 0
+        sections.forEach((section, sectionIndex) => {
+          const sectionLabel = `${PDF_ROMAN_NUMERALS[sectionIndex]?.replace('.', '').toLowerCase() || sectionIndex + 1}.`
+          addWrappedText({ text: `${sectionLabel} ${stripHtml(section.questionText) || 'Sub question'}`, x: margin + 28, maxLength: 88, size: 12, lineHeight: 13, indent: 16 })
+          y -= (section.children ?? []).length ? 3 : 0
+          ;(section.children ?? []).forEach((child, childIndex) => {
+            addWrappedText({ text: `${String.fromCharCode(97 + childIndex)}. ${stripHtml(child.questionText) || 'Inside question'}`, x: margin + 42, maxLength: 84, size: 12, lineHeight: 13, indent: 16 })
+            if (parseMarksValue(child.marks)) {
+              addRightText({ text: `[${String(child.marks).padStart(2, '0')} Marks]`, x: pageWidth - margin - 12, y: y + 14, size: 12 })
+            }
+          })
+          if (!(section.children ?? []).length && parseMarksValue(section.marks)) {
+            addRightText({ text: `[${String(section.marks).padStart(2, '0')} Marks]`, x: pageWidth - margin - 12, y: y + 14, size: 12 })
+          }
+        })
+        if (!sections.length && questionMarks) {
+          addRightText({ text: `[${String(questionMarks).padStart(2, '0')} Marks]`, x: pageWidth - margin - 12, y: y + 15, size: 12 })
+        }
+      }
+      y -= isDescriptive ? 10 : 8
+    })
+  })
+
+  if (!orderedKeys.length) {
+    addText({ text: 'No questions available.', x: margin + 4, y, size: 12 })
+  }
+
+  finishPage()
+
+  const objects = [
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+    `2 0 obj\n<< /Type /Pages /Kids [${pages.map((_, index) => `${3 + index * 2} 0 R`).join(' ')}] /Count ${pages.length} >>\nendobj\n`,
+  ]
+
+  const fontStartObjectNumber = 3 + pages.length * 2
+  const imageObjectNumber = fontStartObjectNumber + 3
+  const imageResource = logoImage ? ` /XObject << /Im1 ${imageObjectNumber} 0 R >>` : ''
+
+  const pageNumberSize = 10
+
+  pages.forEach((pageContent, index) => {
+    const pageObjectNumber = 3 + index * 2
+    const streamObjectNumber = pageObjectNumber + 1
+    const pageNumberText = `Page ${index + 1} of ${pages.length}`
+    const pageNumberContent = `BT /F1 ${pageNumberSize} Tf ${(pageWidth - margin - approximateTextWidth(pageNumberText, pageNumberSize)).toFixed(2)} 18.00 Td (${escapePdfText(pageNumberText)}) Tj ET`
+    const fullPageContent = `${pageContent}\n${pageNumberContent}`
+    objects.push(`${pageObjectNumber} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontStartObjectNumber} 0 R /F2 ${fontStartObjectNumber + 1} 0 R /F3 ${fontStartObjectNumber + 2} 0 R >>${imageResource} >> /Contents ${streamObjectNumber} 0 R >>\nendobj\n`)
+    objects.push(`${streamObjectNumber} 0 obj\n<< /Length ${fullPageContent.length} >>\nstream\n${fullPageContent}\nendstream\nendobj\n`)
+  })
+  objects.push(`${fontStartObjectNumber} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>\nendobj\n`)
+  objects.push(`${fontStartObjectNumber + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold >>\nendobj\n`)
+  objects.push(`${fontStartObjectNumber + 2} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Italic >>\nendobj\n`)
+  if (logoImage) {
+    objects.push(`${imageObjectNumber} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${logoImage.width} /Height ${logoImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoImage.data.length} >>\nstream\n${logoImage.data}\nendstream\nendobj\n`)
+  }
+
+  const header = '%PDF-1.4\n'
+  const offsets = []
+  let body = header
+  objects.forEach((object) => {
+    offsets.push(body.length)
+    body += object
+  })
+  const xrefOffset = body.length
+  const xrefRows = offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n `).join('\n')
+
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${xrefRows}\ntrailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
+  return Uint8Array.from(body, (character) => character.charCodeAt(0) & 0xff)
+}
+
+const downloadQuestionPaperPdf = async (assessment) => {
+  const pdf = await buildQuestionPaperPdf(assessment)
+  const blob = new Blob([pdf], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+
+  link.href = url
+  link.download = `${sanitizeFileName(`${assessment?.assessmentName || 'Assessment'} Question Paper`)}.pdf`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 const getDraftSummary = (draft) => {
   const questions = readDraftQuestions(draft)
   if (questions.length) {
@@ -210,6 +581,74 @@ const formatDisplayDateTime = (value) => {
     hour: '2-digit',
     minute: '2-digit',
   })}`
+}
+
+const parseAssessmentDate = (value) => {
+  if (!value) return null
+  const normalized = String(value).trim()
+  const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const displayMatch = normalized.match(/^(\d{2})-(\d{2})-(\d{4})$/)
+
+  if (isoMatch) return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]))
+  if (displayMatch) return new Date(Number(displayMatch[3]), Number(displayMatch[2]) - 1, Number(displayMatch[1]))
+
+  const parsed = new Date(normalized)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const applyAssessmentTime = (date, value) => {
+  if (!date) return null
+  const nextDate = new Date(date)
+  const match = String(value || '').trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i)
+
+  if (!match) {
+    nextDate.setHours(0, 0, 0, 0)
+    return nextDate
+  }
+
+  let hours = Number(match[1])
+  const minutes = Number(match[2] || 0)
+  const period = String(match[3] || '').toUpperCase()
+
+  if (period === 'PM' && hours < 12) hours += 12
+  if (period === 'AM' && hours === 12) hours = 0
+
+  nextDate.setHours(hours, minutes, 0, 0)
+  return nextDate
+}
+
+const parseAssessmentDurationMs = (value) => {
+  const match = String(value || '').trim().match(/^(\d{1,2})(?::(\d{2}))?$/)
+  if (!match) return 0
+  const hours = Number(match[1] || 0)
+  const minutes = Number(match[2] || 0)
+  return ((hours * 60) + minutes) * 60 * 1000
+}
+
+const getPublishedAssessmentScheduleStatus = (assessment) => {
+  const startDate = parseAssessmentDate(assessment?.startDate)
+  if (!startDate) return null
+
+  const startAt = applyAssessmentTime(startDate, assessment?.startTime)
+  const durationMs = parseAssessmentDurationMs(assessment?.totalDuration)
+  const durationEndAt = durationMs ? new Date(startAt.getTime() + durationMs) : null
+  const endDate = parseAssessmentDate(assessment?.endDate)
+  const dateEndAt = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null
+  const endAt = [durationEndAt, dateEndAt].filter(Boolean).sort((a, b) => a - b)[0] || startAt
+  const now = new Date()
+
+  if (now > endAt) return { type: 'completed', label: 'Completed' }
+  if (now >= startAt) return { type: 'live', label: 'Assessment Live' }
+
+  const diffMs = startAt.getTime() - now.getTime()
+  const days = Math.ceil(diffMs / (24 * 60 * 60 * 1000))
+  if (days >= 1) return { type: 'upcoming', label: `${days} ${days === 1 ? 'day' : 'days'} to go` }
+
+  const hours = Math.ceil(diffMs / (60 * 60 * 1000))
+  if (hours >= 1) return { type: 'upcoming', label: `${hours} ${hours === 1 ? 'hour' : 'hours'} to go` }
+
+  const minutes = Math.max(1, Math.ceil(diffMs / (60 * 1000)))
+  return { type: 'upcoming', label: `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} to go` }
 }
 
 const getPublishedLogRows = (assessment) => {
@@ -440,6 +879,8 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
                   const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
+                  const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment)
+                  const publishedQuestionRows = getPublishedQuestionRows(assessment)
 
                   return (
                       <article key={assessment.id} className="assessment-create-draft-card assessment-create-published-card">
@@ -478,6 +919,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
                               <SupervisionIcon size={13} strokeWidth={2.3} />
                               {assessment.supervisionType || '-'}
                             </span>
+                          ) : publishedQuestionRows.length ? (
+                            <button type="button" className="assessment-create-published-download-btn" onClick={() => downloadQuestionPaperPdf(assessment)}>
+                              <Download size={12} strokeWidth={2.4} />
+                              Download PDF
+                            </button>
                           ) : null}
                         </span>
                         <div className="assessment-create-published-details" aria-label="Published assessment details">
@@ -489,7 +935,15 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                         </div>
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
-                          <span>Created on {formatDisplayDate(assessment.createdAt)}</span>
+                          {scheduleStatus ? (
+                            scheduleStatus.type === 'upcoming' ? (
+                              <span>{scheduleStatus.label}</span>
+                            ) : (
+                              <span className={`assessment-create-published-schedule-badge is-${scheduleStatus.type}`}>
+                                {scheduleStatus.label}
+                              </span>
+                            )
+                          ) : null}
                         </div>
                       </article>
                     )
