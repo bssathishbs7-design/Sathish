@@ -17506,6 +17506,28 @@ body > .assessment-page-filter-menu {
   height: 28px;
 }
 
+.question-bank-non-create-page.is-full-page.is-grid-view:not(.is-embedded) {
+  overflow: hidden;
+}
+
+.question-bank-non-create-page.is-full-page.is-grid-view:not(.is-embedded) .question-bank-overview-shell:not(:has(.question-bank-metrics-landing)) {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.question-bank-non-create-page.is-full-page.is-grid-view:not(.is-embedded) .assessment-page-bank-controls.is-grid-attached + .assessment-page-table-wrap {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
+.question-bank-non-create-page.is-full-page.is-grid-view:not(.is-embedded) .assessment-page-grid-scroll {
+  height: 100%;
+  max-height: none;
+}
+
 .question-bank-non-create-page:not(.is-embedded) .assessment-page-grid-scroll {
   max-height: clamp(360px, 56vh, 520px);
   min-height: 0;
