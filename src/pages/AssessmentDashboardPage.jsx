@@ -20,16 +20,23 @@ const dashboardCards = [
   },
 ]
 
-export default function AssessmentDashboardPage() {
+export default function AssessmentDashboardPage({ mode = 'dashboard' }) {
+  const isMyAssessment = mode === 'my-assessment'
+
   return (
     <section className="vx-content assessment-page">
       <div className="assessment-page-shell">
-        <PageNavigationHeader items={['My Pages', 'Assessment', 'Dashboard']} />
+        <PageNavigationHeader items={['My Pages', 'Assessment', isMyAssessment ? 'My Assessment' : 'Dashboard']} />
 
         <section className="assessment-page-hero">
           <span className="assessment-page-kicker">Assessment</span>
-          <h1>Dashboard</h1>
+          <h1>{isMyAssessment ? 'My Assessment' : 'Dashboard'}</h1>
           <p>Use this dashboard for assessment-only analytics and workflow status, separate from the existing summary dashboards.</p>
+          {isMyAssessment ? (
+            <button type="button" className="assessment-page-test-btn">
+              Test Button
+            </button>
+          ) : null}
         </section>
 
         <section className="assessment-page-grid" aria-label="Assessment dashboard overview">

@@ -20,6 +20,7 @@ export const APP_PAGES = {
   CREATE_ASSESSMENT: 'createassessment',
   ASSESSMENT_EVALUATION: 'Assessment Evaluation',
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
+  MY_ASSESSMENT: 'My Assessment',
   QUESTION_BANK: 'Question Bank',
   QUESTION_BANK_NON_CREATE: 'Question Bank Overall Question',
   QUERY_REQUEST: 'Query Request',
@@ -96,6 +97,14 @@ export const SIDEBAR_MENU = [
         ],
       },
       {
+        label: APP_PAGES.QUESTION_BANK,
+        icon: BookText,
+        children: [
+          { label: APP_PAGES.QUESTION_BANK, navLabel: 'Create', icon: FilePenLine },
+          { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'All Questions', icon: FileSearch },
+        ],
+      },
+      {
         label: 'Assessment',
         icon: TrendingUp,
         children: [
@@ -105,12 +114,8 @@ export const SIDEBAR_MENU = [
         ],
       },
       {
-        label: APP_PAGES.QUESTION_BANK,
-        icon: BookText,
-        children: [
-          { label: APP_PAGES.QUESTION_BANK, navLabel: 'Create', icon: FilePenLine },
-          { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'All Questions', icon: FileSearch },
-        ],
+        label: APP_PAGES.MY_ASSESSMENT,
+        icon: ClipboardCheck,
       },
       {
         label: APP_PAGES.QUERY_REQUEST,

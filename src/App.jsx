@@ -37,6 +37,7 @@ const PAGE_PATHS = {
   [APP_PAGES.CREATE_ASSESSMENT]: '/createassessment',
   [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/evaluation',
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
+  [APP_PAGES.MY_ASSESSMENT]: '/my-assessment',
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
   [APP_PAGES.QUESTION_BANK_NON_CREATE]: '/question-bank/non-create',
   [APP_PAGES.QUERY_REQUEST]: '/query-request',
@@ -1251,6 +1252,8 @@ function App() {
             <AssessmentEvaluationPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} />
+          ) : activePage === APP_PAGES.MY_ASSESSMENT ? (
+            <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} mode="my-assessment" />
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
             <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (

@@ -69,6 +69,7 @@ const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-secti
 const CREATE_ASSESSMENT_CUSTOM_EXAM_CATEGORIES_KEY = 'vx-create-assessment-custom-exam-categories'
 const CREATE_ASSESSMENT_TEMPLATES_KEY = 'vx-create-assessment-templates'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
+const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 
 const SUBJECT_DIRECTORY = {
@@ -922,6 +923,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [examCategoryDraft, setExamCategoryDraft] = useState('')
   const [isStudentInstructionsOpen, setIsStudentInstructionsOpen] = useState(false)
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
+  const [publishedAssessmentNotice, setPublishedAssessmentNotice] = useState(null)
   const [approvalDraft, setApprovalDraft] = useState({
     facultyName: 'Dr. Meera Nair',
     employeeId: 'EMP1021',
@@ -968,6 +970,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [generationTick, setGenerationTick] = useState(Date.now())
   const [descriptiveCompetencyDraft, setDescriptiveCompetencyDraft] = useState(null)
   const generationTimersRef = useRef(new Map())
+  const publishNoticeTimerRef = useRef(null)
   const isGeneratingQuestion = generationJobs.length > 0
 
   const headerSetup = setupDraft ?? setup
@@ -1468,6 +1471,118 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setSaveStatus('Template loaded')
   }
 
+  const getPublishedAssessmentRecord = (nextSetup) => {
+    const assessmentName = String(nextSetup.assessmentName || '').trim() || 'Untitled Assessment'
+    const assignmentTarget = String(nextSetup.assignGroup || '').trim()
+      || String(nextSetup.assignYear || '').trim()
+      || 'Not assigned'
+    const publishedAt = new Date().toISOString()
+
+    return {
+      id: nextSetup.assessmentId || `assessment-${Date.now()}`,
+      assessmentName,
+      examMode: nextSetup.examDeliveryMode || 'Online',
+      assignTo: assignmentTarget,
+      supervisionType: nextSetup.supervisionType || 'Not set',
+      totalMarks: assessmentSummary.totalMarks,
+      examCategory: nextSetup.examCategory || 'Not set',
+      examType: configurationQuestionSummary.examType,
+      startDate: nextSetup.examDeliveryMode === 'Offline' ? nextSetup.examDate : (nextSetup.supervisionType === 'Practice Exam' ? nextSetup.practiceStartDate : nextSetup.examDate),
+      startTime: nextSetup.examDeliveryMode === 'Offline'
+        ? [nextSetup.startTime, nextSetup.startPeriod].filter(Boolean).join(' ')
+        : nextSetup.supervisionType === 'Practice Exam'
+          ? [nextSetup.practiceStartTime, nextSetup.practiceStartPeriod].filter(Boolean).join(' ')
+          : [nextSetup.startTime, nextSetup.startPeriod].filter(Boolean).join(' '),
+      totalDuration: configurationDurationLabel,
+      endDate: nextSetup.supervisionType === 'Practice Exam' ? nextSetup.practiceEndDate : '',
+      createdAt: nextSetup.createdAt || new Date().toISOString(),
+      publishedAt,
+      publishedLog: [{
+        facultyId: 'MC2568',
+        facultyName: 'Karthik Subramanian',
+        remarks: 'Assessment published',
+        timestamp: publishedAt,
+      }],
+      questionCount: assessmentSummary.totalQuestions,
+      questionRows: savedQuestions,
+      setup: nextSetup,
+    }
+  }
+
+  const getPublishedAssessmentChangeRemarks = (previousRecord, nextRecord) => {
+    if (!previousRecord) return 'Assessment published'
+
+    const trackedFields = [
+      ['Assessment Name', previousRecord.assessmentName, nextRecord.assessmentName],
+      ['Exam Mode', previousRecord.examMode, nextRecord.examMode],
+      ['Assign To', previousRecord.assignTo, nextRecord.assignTo],
+      ['Supervision Type', previousRecord.supervisionType, nextRecord.supervisionType],
+      ['Total Marks', previousRecord.totalMarks, nextRecord.totalMarks],
+      ['Exam Category', previousRecord.examCategory, nextRecord.examCategory],
+      ['Exam Type', previousRecord.examType, nextRecord.examType],
+      ['Start Date', previousRecord.startDate, nextRecord.startDate],
+      ['Start Time', previousRecord.startTime, nextRecord.startTime],
+      ['Total Duration', previousRecord.totalDuration, nextRecord.totalDuration],
+      ['End Date', previousRecord.endDate, nextRecord.endDate],
+      ['No. of Questions', previousRecord.questionCount, nextRecord.questionCount],
+    ]
+
+    const changes = trackedFields
+      .filter(([, previousValue, nextValue]) => String(previousValue ?? '').trim() !== String(nextValue ?? '').trim())
+      .map(([label, previousValue, nextValue]) => `${label}: ${previousValue || '-'} to ${nextValue || '-'}`)
+
+    if (!changes.length) return 'Assessment republished with no configuration changes'
+    return `Edited: ${changes.slice(0, 4).join('; ')}${changes.length > 4 ? `; +${changes.length - 4} more` : ''}`
+  }
+
+  const upsertPublishedAssessment = (record) => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
+      const rows = Array.isArray(parsed) ? parsed : []
+      const existingRecord = rows.find((item) => item.id === record.id)
+      const existingLog = Array.isArray(existingRecord?.publishedLog) ? existingRecord.publishedLog : []
+      const nextLog = Array.isArray(record.publishedLog) ? record.publishedLog : []
+      const changeRemarks = getPublishedAssessmentChangeRemarks(existingRecord, record)
+      const nextRecord = {
+        ...record,
+        publishedLog: [
+          ...nextLog.map((item) => ({
+            ...item,
+            remarks: changeRemarks,
+          })),
+          ...existingLog,
+        ],
+      }
+      const nextRows = [
+        nextRecord,
+        ...rows.filter((item) => item.id !== record.id),
+      ]
+      window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextRows))
+    } catch {
+      window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify([record]))
+    }
+  }
+
+  const showPublishedAssessmentNotice = (record) => {
+    if (publishNoticeTimerRef.current) {
+      window.clearTimeout(publishNoticeTimerRef.current)
+    }
+    setPublishedAssessmentNotice(record)
+    publishNoticeTimerRef.current = window.setTimeout(() => {
+      setPublishedAssessmentNotice(null)
+      publishNoticeTimerRef.current = null
+      onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
+    }, 5000)
+  }
+
+  const publishAssessmentDirectly = () => {
+    const nextSetup = persistSetupDraft('Assessment published')
+    const record = getPublishedAssessmentRecord(nextSetup)
+    upsertPublishedAssessment(record)
+    setSaveStatus('Assessment published.')
+    showPublishedAssessmentNotice(record)
+  }
+
   const openApprovalModal = () => {
     const errors = validateSetupDraft()
     setSetupErrors(errors)
@@ -1477,6 +1592,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
     if (!savedQuestions.length || !previewSections.length) {
       setSaveStatus('Add questions in Preview before sending to approval.')
+      return
+    }
+
+    if (setupDraft.approvalFlow === 'Direct Publish') {
+      publishAssessmentDirectly()
       return
     }
 
@@ -1757,7 +1877,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setupDraft.understandThreshold,
   ])
   const primaryPublicationActionLabel = setupDraft.approvalFlow === 'Direct Publish'
-    ? 'Publish to Students'
+    ? 'Publish Assessment'
     : 'Send to Approval'
   const isPublicationHeaderComplete = Boolean(
     setupDraft.collegeName
@@ -2048,6 +2168,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   useEffect(() => () => {
     generationTimersRef.current.forEach((timerId) => clearTimeout(timerId))
     generationTimersRef.current.clear()
+    if (publishNoticeTimerRef.current) {
+      clearTimeout(publishNoticeTimerRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -3480,6 +3603,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                 Send
               </button>
             </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {publishedAssessmentNotice ? (
+        <div className="create-assessment-publish-modal" role="status" aria-live="polite">
+          <section className="create-assessment-publish-card">
+            <span className="create-assessment-publish-icon" aria-hidden="true">
+              <Check size={22} strokeWidth={2.5} />
+            </span>
+            <strong>{publishedAssessmentNotice.assessmentName} has been successfully published.</strong>
+            <p>Students have been notified.</p>
+            <small>Redirecting to Assessment Create in 5 sec.</small>
           </section>
         </div>
       ) : null}
