@@ -2454,7 +2454,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                     <>
                       <button
                         type="button"
-                        className={selectedGridAction === 'assessment' ? 'is-active' : ''}
+                        className={`question-bank-action-add-assessment ${selectedGridAction === 'assessment' ? 'is-active' : ''}`}
                         onClick={() => setSelectedGridAction('assessment')}
                         disabled={selectedGridAction === 'learn' || isReportMetricActive}
                       >
@@ -2463,7 +2463,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                       </button>
                       <button
                         type="button"
-                        className={selectedGridAction === 'learn' ? 'is-active' : ''}
+                        className={`question-bank-action-share-students ${selectedGridAction === 'learn' ? 'is-active' : ''}`}
                         onClick={() => setSelectedGridAction('learn')}
                         disabled={selectedGridAction === 'assessment' || isReportMetricActive}
                       >
@@ -2533,6 +2533,16 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                       <Plus size={15} strokeWidth={2.3} />
                       More
                     </button>
+                    {!embedded ? (
+                      <button
+                        type="button"
+                        className="assessment-page-more-filters-btn assessment-page-set-default-filter-btn"
+                        onClick={setCurrentFiltersAsMetricDefault}
+                      >
+                        <Shuffle size={14} strokeWidth={2.3} />
+                        Set Default
+                      </button>
+                    ) : null}
                     {showAdvancedFilters && typeof document !== 'undefined' ? createPortal(
                       <span className="assessment-page-filter-advanced-row" style={moreFiltersPanelStyle} role="tooltip">
                         <span className="assessment-page-more-filter-head">
@@ -2561,14 +2571,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                               <BarChart3 size={14} strokeWidth={2.3} />
                               Metrics
                             </button>
-                            <button
-                              type="button"
-                              className="assessment-page-more-filter-default-btn is-secondary"
-                              onClick={setCurrentFiltersAsMetricDefault}
-                            >
-                              <Shuffle size={14} strokeWidth={2.3} />
-                              Set as Default
-                            </button>
                           </span>
                         ) : null}
                       </span>,
@@ -2583,7 +2585,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   <>
                     <button
                       type="button"
-                      className={selectedGridAction === 'assessment' ? 'is-active' : ''}
+                      className={`question-bank-action-add-assessment ${selectedGridAction === 'assessment' ? 'is-active' : ''}`}
                       onClick={() => setSelectedGridAction('assessment')}
                       disabled={selectedGridAction === 'learn' || isReportMetricActive}
                     >
@@ -2595,7 +2597,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                     </button>
                     <button
                       type="button"
-                      className={selectedGridAction === 'learn' ? 'is-active' : ''}
+                      className={`question-bank-action-share-students ${selectedGridAction === 'learn' ? 'is-active' : ''}`}
                       onClick={() => setSelectedGridAction('learn')}
                       disabled={selectedGridAction === 'assessment' || isReportMetricActive}
                     >
