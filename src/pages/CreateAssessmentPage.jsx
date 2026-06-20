@@ -958,6 +958,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [saveStatus, setSaveStatus] = useState('')
   const [activeCreateTab, setActiveCreateTab] = useState(readCreateAssessmentInitialTab)
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(false)
+  const isPublishedEditMode = Boolean(setupDraft.isPublishedEdit || setupDraft.sourcePublishedId || setup.isPublishedEdit || setup.sourcePublishedId)
   const [selectedCreateQuestionTypeLabel, setSelectedCreateQuestionTypeLabel] = useState('')
   const [editingPreviewQuestionId, setEditingPreviewQuestionId] = useState(null)
   const [previewSectionTitles, setPreviewSectionTitles] = useState(() => readCreateAssessmentSectionTitles(setup))
@@ -1582,7 +1583,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const record = getPublishedAssessmentRecord(nextSetup)
     upsertPublishedAssessment(record)
     setSaveStatus('')
-    showPublishedAssessmentNotice(record)
+    showPublishedAssessmentNotice({
+      ...record,
+      noticeType: isPublishedEditMode ? 'update' : 'publish',
+    })
   }
 
   const openApprovalModal = () => {
@@ -1879,7 +1883,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setupDraft.understandThreshold,
   ])
   const primaryPublicationActionLabel = setupDraft.approvalFlow === 'Direct Publish'
-    ? 'Publish Assessment'
+    ? isPublishedEditMode ? 'Update Assessment' : 'Publish Assessment'
     : 'Send to Approval'
   const isPublicationHeaderComplete = Boolean(
     setupDraft.collegeName
@@ -3615,8 +3619,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             <span className="create-assessment-publish-icon" aria-hidden="true">
               <Check size={22} strokeWidth={2.5} />
             </span>
-            <strong>{publishedAssessmentNotice.assessmentName} has been successfully published.</strong>
-            <p>Students have been notified.</p>
+            <strong>
+              {publishedAssessmentNotice.noticeType === 'update'
+                ? `Your changes to ${publishedAssessmentNotice.assessmentName} have been successfully saved and published.`
+                : `${publishedAssessmentNotice.assessmentName} has been successfully published.`}
+            </strong>
+            {publishedAssessmentNotice.noticeType === 'update' ? null : <p>Students have been notified.</p>}
             <small>Redirecting to Published Assessment in 2 sec.</small>
           </section>
         </div>

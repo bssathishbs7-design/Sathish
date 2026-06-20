@@ -345,7 +345,7 @@ const buildQuestionPaperPdf = async (assessment) => {
   const finishPage = () => {
     pages.push(commands.join('\n'))
     commands = []
-    y = pageHeight - 26
+    y = pageHeight - 42
   }
   const ensureSpace = (height) => {
     if (y - height > margin) return
@@ -750,7 +750,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
       window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
       return nextPublished
     })
-    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(assessment.setup))
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({
+      ...assessment.setup,
+      sourcePublishedId: assessment.id,
+      sourcePublishedName: assessment.assessmentName || assessment.setup?.assessmentName || 'Untitled Assessment',
+      isPublishedEdit: true,
+    }))
     window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'configuration')
     onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
   }
