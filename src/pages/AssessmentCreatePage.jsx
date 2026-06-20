@@ -251,8 +251,8 @@ const getPdfSectionTitle = (key) => {
 const PDF_SECTION_ORDER = ['MCQ', 'SAQs', 'MEQs', 'LAQs', 'Reasoning']
 const PDF_ROMAN_NUMERALS = ['I.', 'II.', 'III.', 'IV.', 'V.', 'VI.', 'VII.', 'VIII.', 'IX.', 'X.']
 
-const loadPdfLogoImage = (logoPreview) => new Promise((resolve) => {
-  if (!logoPreview) {
+const loadPdfImage = (imageUrl) => new Promise((resolve) => {
+  if (!imageUrl) {
     resolve(null)
     return
   }
@@ -283,7 +283,7 @@ const loadPdfLogoImage = (logoPreview) => new Promise((resolve) => {
     })
   }
   image.onerror = () => resolve(null)
-  image.src = logoPreview
+  image.src = imageUrl
 })
 
 const getPublishedQuestionRows = (assessment) => (
@@ -316,13 +316,20 @@ const getPdfMarksSummary = (questions) => {
 const buildQuestionPaperPdf = async (assessment) => {
   const questions = getPublishedQuestionRows(assessment)
   const setup = assessment?.setup ?? {}
-  const logoImage = await loadPdfLogoImage(setup.logoPreview)
+  const logoImage = await loadPdfImage(setup.logoPreview)
+  const questionImages = await Promise.all(questions.map(async (question) => {
+    const images = Array.isArray(question?.images) ? question.images : []
+    const loadedImages = await Promise.all(images.map((image) => loadPdfImage(image?.url)))
+    return loadedImages.filter(Boolean).slice(0, 4)
+  }))
+  const questionImageMap = new Map(questions.map((question, index) => [question, questionImages[index] || []]))
   const marksSummary = getPdfMarksSummary(questions)
   const pageWidth = 595.28
   const pageHeight = 841.89
   const margin = 28
   const contentWidth = pageWidth - (margin * 2)
   const pages = []
+  const pdfImages = []
   let commands = []
   let y = pageHeight - 30
 
@@ -342,6 +349,40 @@ const buildQuestionPaperPdf = async (assessment) => {
   }
   const addLine = (x1, y1, x2, y2) => addCommand(`0 0 0 RG ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`)
   const addRect = (x, rectY, width, height) => addCommand(`0 0 0 RG ${x.toFixed(2)} ${rectY.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re S`)
+  const getImageDrawSize = (image, maxWidth, maxHeight) => {
+    const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1)
+    return {
+      width: image.width * scale,
+      height: image.height * scale,
+    }
+  }
+  const addPdfImage = ({ image, x, maxWidth, maxHeight }) => {
+    const size = getImageDrawSize(image, maxWidth, maxHeight)
+    ensureSpace(size.height + 8)
+    const name = `Im${pdfImages.length + 1}`
+    pdfImages.push({ ...image, name })
+    addCommand(`q ${size.width.toFixed(2)} 0 0 ${size.height.toFixed(2)} ${x.toFixed(2)} ${(y - size.height).toFixed(2)} cm /${name} Do Q`)
+    y -= size.height + 8
+  }
+  const addQuestionImages = (item) => {
+    const images = questionImageMap.get(item) || []
+    if (!images.length) return
+
+    y -= 2
+    const imageGap = 8
+    const columns = images.length
+    const availableWidth = contentWidth - 64
+    const imageBoxWidth = Math.max(72, (availableWidth - (imageGap * (columns - 1))) / columns)
+    const imageBoxHeight = Math.min(112, imageBoxWidth * 0.75)
+    ensureSpace(imageBoxHeight + 10)
+    images.forEach((image, index) => {
+      const imageX = margin + 32 + (index * (imageBoxWidth + imageGap))
+      const name = `Im${pdfImages.length + 1}`
+      pdfImages.push({ ...image, name })
+      addCommand(`q ${imageBoxWidth.toFixed(2)} 0 0 ${imageBoxHeight.toFixed(2)} ${imageX.toFixed(2)} ${(y - imageBoxHeight).toFixed(2)} cm /${name} Do Q`)
+    })
+    y -= imageBoxHeight + 10
+  }
   const finishPage = () => {
     pages.push(commands.join('\n'))
     commands = []
@@ -359,14 +400,28 @@ const buildQuestionPaperPdf = async (assessment) => {
       y -= lineHeight
     })
   }
+  const addMarksLine = (marks) => {
+    ensureSpace(14)
+    y -= 1
+    addRightText({ text: `[${String(marks).padStart(2, '0')} Marks]`, x: pageWidth - margin - 12, y, size: 12 })
+    y -= 12
+  }
   const getWrappedTextHeight = (text, maxLength, lineHeight) => wrapPdfText(text, maxLength).length * lineHeight
   const getQuestionBlockHeight = (item, displayNumber) => {
     const isDescriptive = isDescriptiveQuestionType(item?.type)
     const questionHeight = getWrappedTextHeight(`${displayNumber}. ${getPdfQuestionText(item)}`, 103, 13)
+    const imageHeight = (questionImageMap.get(item) || []).length ? 130 : 0
 
     if (!isDescriptive) {
-      const optionRows = Math.ceil((item.options ?? []).map(getPdfOptionText).filter(Boolean).length / 2)
-      return questionHeight + 4 + (optionRows * 18) + 8
+      const options = (item.options ?? []).map(getPdfOptionText).filter(Boolean)
+      const optionHeight = options.reduce((total, option, optionIndex) => {
+        if (optionIndex % 2 !== 0) return total
+        const leftLines = wrapPdfText(`${String.fromCharCode(65 + optionIndex)}. ${option}`, 42).length
+        const rightOption = options[optionIndex + 1]
+        const rightLines = rightOption ? wrapPdfText(`${String.fromCharCode(66 + optionIndex)}. ${rightOption}`, 42).length : 1
+        return total + (Math.max(leftLines, rightLines) * 13) + 4
+      }, 0)
+      return questionHeight + imageHeight + 4 + optionHeight + 8
     }
 
     const sections = Array.isArray(item.descriptiveSections) ? item.descriptiveSections : []
@@ -374,12 +429,14 @@ const buildQuestionPaperPdf = async (assessment) => {
       const sectionLabel = `${PDF_ROMAN_NUMERALS[sectionIndex]?.replace('.', '').toLowerCase() || sectionIndex + 1}.`
       const ownHeight = getWrappedTextHeight(`${sectionLabel} ${stripHtml(section.questionText) || 'Sub question'}`, 88, 13)
       const childHeight = (section.children ?? []).reduce((childTotal, child, childIndex) => (
-        childTotal + getWrappedTextHeight(`${String.fromCharCode(97 + childIndex)}. ${stripHtml(child.questionText) || 'Inside question'}`, 84, 13)
+        childTotal
+        + getWrappedTextHeight(`${String.fromCharCode(97 + childIndex)}. ${stripHtml(child.questionText) || 'Inside question'}`, 84, 13)
+        + (parseMarksValue(child.marks) ? 13 : 0)
       ), 0)
-      return total + ownHeight + childHeight
+      return total + ownHeight + childHeight + (!(section.children ?? []).length && parseMarksValue(section.marks) ? 13 : 0)
     }, 0)
 
-    return questionHeight + 5 + sectionHeight + (sections.length * 3) + 10
+    return questionHeight + imageHeight + 5 + sectionHeight + (sections.length * 3) + (!sections.length && getQuestionMarksTotal(item) ? 13 : 0) + 10
   }
 
   const hasLogo = Boolean(logoImage)
@@ -389,10 +446,10 @@ const buildQuestionPaperPdf = async (assessment) => {
   const headerCenterX = pageWidth / 2
 
   if (logoImage) {
-    const logoScale = Math.min(logoMaxSize / logoImage.width, logoMaxSize / logoImage.height)
-    const logoWidth = logoImage.width * logoScale
-    const logoHeight = logoImage.height * logoScale
-    addCommand(`q ${logoWidth.toFixed(2)} 0 0 ${logoHeight.toFixed(2)} ${logoBoxX.toFixed(2)} ${(logoBoxY + ((logoMaxSize - logoHeight) / 2)).toFixed(2)} cm /Im1 Do Q`)
+    const logoSize = getImageDrawSize(logoImage, logoMaxSize, logoMaxSize)
+    const logoName = `Im${pdfImages.length + 1}`
+    pdfImages.push({ ...logoImage, name: logoName })
+    addCommand(`q ${logoSize.width.toFixed(2)} 0 0 ${logoSize.height.toFixed(2)} ${logoBoxX.toFixed(2)} ${(logoBoxY + ((logoMaxSize - logoSize.height) / 2)).toFixed(2)} cm /${logoName} Do Q`)
   }
   addCenteredTextInBox({ text: setup.collegeName || '[Select College Name]', centerX: headerCenterX, y: pageHeight - 48, size: 15, font: 'F2' })
   addCenteredTextInBox({ text: `Academic Year ${String(setup.academicYear || '2025 - 2026').replace(/\s*-\s*/g, '-')}`, centerX: headerCenterX, y: pageHeight - 68, size: 12, font: 'F3' })
@@ -446,18 +503,26 @@ const buildQuestionPaperPdf = async (assessment) => {
       const questionText = `${questionNumber}. ${getPdfQuestionText(item)}`
       ensureSpace(getQuestionBlockHeight(item, questionNumber))
       addWrappedText({ text: questionText, x: margin + 4, maxLength: 103, size: 12, lineHeight: 13, indent: 16 })
+      addQuestionImages(item)
       questionNumber += 1
 
       if (!isDescriptive) {
         y -= 4
         const options = (item.options ?? []).map(getPdfOptionText).filter(Boolean)
         for (let optionIndex = 0; optionIndex < options.length; optionIndex += 2) {
-          ensureSpace(16)
           const leftOption = `${String.fromCharCode(65 + optionIndex)}. ${options[optionIndex]}`
           const rightOption = options[optionIndex + 1] ? `${String.fromCharCode(66 + optionIndex)}. ${options[optionIndex + 1]}` : ''
-          addText({ text: leftOption, x: margin + 32, y, size: 12 })
-          if (rightOption) addText({ text: rightOption, x: margin + 286, y, size: 12 })
-          y -= 16
+          const leftLines = wrapPdfText(leftOption, 42)
+          const rightLines = rightOption ? wrapPdfText(rightOption, 42) : []
+          const rowLineCount = Math.max(leftLines.length, rightLines.length, 1)
+          ensureSpace((rowLineCount * 13) + 4)
+          leftLines.forEach((line, lineIndex) => {
+            addText({ text: line, x: margin + 32 + (lineIndex ? 12 : 0), y: y - (lineIndex * 13), size: 12 })
+          })
+          rightLines.forEach((line, lineIndex) => {
+            addText({ text: line, x: margin + 286 + (lineIndex ? 12 : 0), y: y - (lineIndex * 13), size: 12 })
+          })
+          y -= (rowLineCount * 13) + 4
         }
       } else {
         const sections = Array.isArray(item.descriptiveSections) ? item.descriptiveSections : []
@@ -469,15 +534,15 @@ const buildQuestionPaperPdf = async (assessment) => {
           ;(section.children ?? []).forEach((child, childIndex) => {
             addWrappedText({ text: `${String.fromCharCode(97 + childIndex)}. ${stripHtml(child.questionText) || 'Inside question'}`, x: margin + 42, maxLength: 84, size: 12, lineHeight: 13, indent: 16 })
             if (parseMarksValue(child.marks)) {
-              addRightText({ text: `[${String(child.marks).padStart(2, '0')} Marks]`, x: pageWidth - margin - 12, y: y + 14, size: 12 })
+              addMarksLine(child.marks)
             }
           })
           if (!(section.children ?? []).length && parseMarksValue(section.marks)) {
-            addRightText({ text: `[${String(section.marks).padStart(2, '0')} Marks]`, x: pageWidth - margin - 12, y: y + 14, size: 12 })
+            addMarksLine(section.marks)
           }
         })
         if (!sections.length && questionMarks) {
-          addRightText({ text: `[${String(questionMarks).padStart(2, '0')} Marks]`, x: pageWidth - margin - 12, y: y + 15, size: 12 })
+          addMarksLine(questionMarks)
         }
       }
       y -= isDescriptive ? 10 : 8
@@ -496,8 +561,10 @@ const buildQuestionPaperPdf = async (assessment) => {
   ]
 
   const fontStartObjectNumber = 3 + pages.length * 2
-  const imageObjectNumber = fontStartObjectNumber + 3
-  const imageResource = logoImage ? ` /XObject << /Im1 ${imageObjectNumber} 0 R >>` : ''
+  const imageStartObjectNumber = fontStartObjectNumber + 3
+  const imageResource = pdfImages.length
+    ? ` /XObject << ${pdfImages.map((image, index) => `/${image.name} ${imageStartObjectNumber + index} 0 R`).join(' ')} >>`
+    : ''
 
   const pageNumberSize = 10
 
@@ -513,9 +580,9 @@ const buildQuestionPaperPdf = async (assessment) => {
   objects.push(`${fontStartObjectNumber} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>\nendobj\n`)
   objects.push(`${fontStartObjectNumber + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold >>\nendobj\n`)
   objects.push(`${fontStartObjectNumber + 2} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Italic >>\nendobj\n`)
-  if (logoImage) {
-    objects.push(`${imageObjectNumber} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${logoImage.width} /Height ${logoImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoImage.data.length} >>\nstream\n${logoImage.data}\nendstream\nendobj\n`)
-  }
+  pdfImages.forEach((image, index) => {
+    objects.push(`${imageStartObjectNumber + index} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.data.length} >>\nstream\n${image.data}\nendstream\nendobj\n`)
+  })
 
   const header = '%PDF-1.4\n'
   const offsets = []
