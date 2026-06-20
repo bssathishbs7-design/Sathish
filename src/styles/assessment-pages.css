@@ -1186,6 +1186,10 @@
   text-transform: uppercase;
 }
 
+.assessment-create-field.has-error {
+  grid-template-rows: 16px 38px auto;
+}
+
 .assessment-create-field > span:first-child:not(.assessment-create-select-wrap) {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1241,11 +1245,36 @@
   box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.08);
 }
 
+.assessment-create-field input:not(:disabled):hover,
+.assessment-create-field select:not(:disabled):hover,
+.assessment-create-multiselect-control:hover,
+.assessment-create-select-wrap:not(:has(select:disabled)):hover select {
+  border-color: #10b9a8;
+  background: #f7fffc;
+  box-shadow: 0 6px 14px rgba(20, 184, 166, 0.08);
+}
+
 .assessment-create-field input:disabled,
 .assessment-create-field select:disabled {
   background: #f2f6f5;
   color: #80919d;
   cursor: not-allowed;
+}
+
+.assessment-create-field.has-error input,
+.assessment-create-field.has-error select,
+.assessment-create-field.has-error .assessment-create-multiselect-control {
+  border-color: #f4a7b5;
+  background: #fff8f9;
+}
+
+.assessment-create-field small {
+  color: #be123c;
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.25;
+  text-transform: none;
 }
 
 .assessment-create-select-wrap:has(select:disabled) {
@@ -1422,6 +1451,13 @@
   text-align: center;
   cursor: pointer;
   overflow: hidden;
+}
+
+.assessment-create-upload:not(.is-disabled):hover strong,
+.assessment-create-upload:not(.is-disabled):focus-within strong {
+  border-color: #10b9a8;
+  background: #f7fffc;
+  box-shadow: 0 8px 18px rgba(20, 184, 166, 0.1);
 }
 
 .assessment-create-upload strong span {
@@ -3998,6 +4034,12 @@
   cursor: not-allowed;
 }
 
+.create-assessment-assign-select select:not(:disabled):hover {
+  border-color: #10b9a8;
+  background: #f7fffc;
+  box-shadow: 0 6px 14px rgba(20, 184, 166, 0.08);
+}
+
 .create-assessment-assign-select svg {
   position: absolute;
   right: 12px;
@@ -4079,6 +4121,16 @@
   background: #10b9a8;
   color: #ffffff;
   box-shadow: 0 6px 14px rgba(16, 185, 168, 0.16);
+}
+
+.create-assessment-threshold-mode-toggle button:not(.is-active):hover {
+  background: #e9fbf7;
+  color: #08776d;
+}
+
+.create-assessment-threshold-mode-toggle button.is-active:hover {
+  background: #0f9f91;
+  box-shadow: 0 8px 18px rgba(16, 185, 168, 0.2);
 }
 
 .create-assessment-threshold-mode-toggle button:focus-visible {
@@ -4177,6 +4229,12 @@
 .create-assessment-attainment-row input:focus {
   border-color: #10b9a8;
   box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.08);
+}
+
+.create-assessment-attainment-list:not(.has-error) .create-assessment-attainment-row input:not(:disabled):hover {
+  border-color: #10b9a8;
+  background: #f7fffc;
+  box-shadow: 0 6px 14px rgba(20, 184, 166, 0.08);
 }
 
 .create-assessment-attainment-row > button {
@@ -4404,6 +4462,33 @@
   box-shadow: 0 6px 14px rgba(220, 38, 38, 0.18);
 }
 
+.create-assessment-mode-toggle:not(.is-disabled) button:not(:disabled):not(.is-active):hover,
+.create-assessment-mode-toggle:not(.is-disabled) button:not(:disabled):not(.is-active):focus-visible {
+  background: #ecfffb;
+  color: #08776d;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 168, 0.18);
+  outline: none;
+}
+
+.create-assessment-mode-toggle:not(.is-disabled) button.is-active:hover,
+.create-assessment-mode-toggle:not(.is-disabled) button.is-active:focus-visible {
+  background: #0f9f94;
+  box-shadow: 0 8px 18px rgba(20, 184, 166, 0.26);
+  outline: none;
+}
+
+.create-assessment-mode-toggle:not(.is-disabled) button.is-active.is-online:hover,
+.create-assessment-mode-toggle:not(.is-disabled) button.is-active.is-online:focus-visible {
+  background: #15803d;
+  box-shadow: 0 8px 18px rgba(22, 163, 74, 0.26);
+}
+
+.create-assessment-mode-toggle:not(.is-disabled) button.is-active.is-offline:hover,
+.create-assessment-mode-toggle:not(.is-disabled) button.is-active.is-offline:focus-visible {
+  background: #b91c1c;
+  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.26);
+}
+
 .create-assessment-mode-toggle.is-disabled {
   border-color: #d7e3df;
   background: #f4f8f7;
@@ -4412,6 +4497,14 @@
 
 .create-assessment-mode-toggle.is-disabled button {
   cursor: not-allowed;
+}
+
+.create-assessment-mode-toggle button:disabled:hover,
+.create-assessment-mode-toggle button:disabled:focus-visible {
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  outline: none;
 }
 
 .create-assessment-mode-toggle.is-disabled button.is-active {
@@ -4470,10 +4563,123 @@
 
 .create-assessment-proctored-split-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  grid-template-columns: minmax(180px, 1fr) 38px minmax(180px, 1fr);
   gap: 12px;
   align-items: end;
   min-width: 0;
+}
+
+.create-assessment-sequence-shift-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 52px;
+}
+
+.create-assessment-sequence-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.create-assessment-sequence-label.is-first {
+  background: #dcfce7;
+  color: #047857;
+}
+
+.create-assessment-sequence-label.is-second {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.create-assessment-sequence-shift-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #bfe5dc;
+  border-radius: 999px;
+  background: #ecfffb;
+  color: #08776d;
+  cursor: pointer;
+}
+
+.create-assessment-sequence-shift-btn:hover,
+.create-assessment-sequence-shift-btn:focus-visible {
+  border-color: #10b9a8;
+  background: #dffdf7;
+  outline: none;
+}
+
+.create-assessment-sequence-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 40;
+  display: grid;
+  gap: 10px;
+  width: 250px;
+  padding: 12px;
+  border: 1px solid #d7ebe5;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(13, 55, 38, 0.16);
+  transform: translateX(-50%);
+}
+
+.create-assessment-sequence-popover::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid #d7ebe5;
+  border-bottom: 1px solid #d7ebe5;
+  background: #ffffff;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.create-assessment-sequence-popover p {
+  margin: 0;
+  color: #214552;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.create-assessment-sequence-popover > div {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.create-assessment-sequence-popover button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid #d7ebe5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #214552;
+  font-size: 0.68rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.create-assessment-sequence-popover button:first-child {
+  border-color: #10b9a8;
+  background: #0f9f94;
+  color: #ffffff;
 }
 
 .create-assessment-duration-split-prompt {
@@ -4514,6 +4720,22 @@
   border-color: #fecdd3;
   background: #fff1f2;
   color: #be123c;
+}
+
+.create-assessment-duration-split-prompt button:hover,
+.create-assessment-duration-split-prompt button:focus-visible {
+  border-color: #0f8f75;
+  background: #0f9f94;
+  box-shadow: 0 8px 16px rgba(20, 184, 166, 0.24);
+  outline: none;
+}
+
+.create-assessment-duration-split-footer button:hover,
+.create-assessment-duration-split-footer button:focus-visible {
+  border-color: #fb7185;
+  background: #ffe4e6;
+  color: #9f1239;
+  outline: none;
 }
 
 .create-assessment-duration-split-panel {
@@ -4836,6 +5058,21 @@
 .create-assessment-yes-no-toggle button.is-active {
   background: #10b9a8;
   color: #ffffff;
+}
+
+.create-assessment-yes-no-toggle button:not(:disabled):not(.is-active):hover,
+.create-assessment-yes-no-toggle button:not(:disabled):not(.is-active):focus-visible {
+  background: #ecfffb;
+  color: #08776d;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 168, 0.18);
+  outline: none;
+}
+
+.create-assessment-yes-no-toggle button.is-active:hover,
+.create-assessment-yes-no-toggle button.is-active:focus-visible {
+  background: #0f9f94;
+  box-shadow: 0 7px 16px rgba(20, 184, 166, 0.24);
+  outline: none;
 }
 
 .create-assessment-instructions-section-head {
@@ -5385,6 +5622,13 @@
   box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.08);
 }
 
+.create-assessment-schedule-field:not(.has-error) input:not(:disabled):hover,
+.create-assessment-schedule-field:not(.has-error) select:not(:disabled):hover {
+  border-color: #10b9a8;
+  background: #f7fffc;
+  box-shadow: 0 6px 14px rgba(20, 184, 166, 0.08);
+}
+
 .create-assessment-schedule-field small {
   color: #be123c;
   font-size: 0.66rem;
@@ -5475,6 +5719,7 @@
 .create-assessment-date-input:hover,
 .create-assessment-date-input:focus-within {
   border-color: #10b9a8;
+  background: #f7fffc;
   box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.08);
 }
 
@@ -5520,6 +5765,7 @@
 .create-assessment-time-stepper-trigger:hover,
 .create-assessment-time-stepper-trigger:focus-visible {
   border-color: #10b9a8;
+  background: #f7fffc;
   box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.08);
   outline: none;
 }
@@ -12605,6 +12851,26 @@
   color: #d9e8f8;
 }
 
+.theme-dark .assessment-create-field input:not(:disabled):hover,
+.theme-dark .assessment-create-field select:not(:disabled):hover,
+.theme-dark .assessment-create-multiselect-control:hover,
+.theme-dark .assessment-create-select-wrap:not(:has(select:disabled)):hover select {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.theme-dark .assessment-create-field.has-error input,
+.theme-dark .assessment-create-field.has-error select,
+.theme-dark .assessment-create-field.has-error .assessment-create-multiselect-control {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.theme-dark .assessment-create-field small {
+  color: #fca5a5;
+}
+
 .theme-dark .create-assessment-approval-head,
 .theme-dark .create-assessment-approval-actions {
   border-color: rgba(94, 116, 145, 0.38);
@@ -12790,10 +13056,66 @@
   color: #bfdbfe;
 }
 
+.theme-dark .create-assessment-duration-split-prompt button:hover,
+.theme-dark .create-assessment-duration-split-prompt button:focus-visible {
+  border-color: rgba(94, 234, 212, 0.68);
+  background: #0f8f75;
+  box-shadow: 0 8px 16px rgba(20, 184, 166, 0.2);
+}
+
 .theme-dark .create-assessment-duration-split-footer button {
   border-color: rgba(248, 113, 113, 0.42);
   background: rgba(127, 29, 29, 0.2);
   color: #fecdd3;
+}
+
+.theme-dark .create-assessment-sequence-shift-btn {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.14);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-sequence-shift-btn:hover,
+.theme-dark .create-assessment-sequence-shift-btn:focus-visible {
+  border-color: rgba(94, 234, 212, 0.68);
+  background: rgba(20, 184, 166, 0.22);
+}
+
+.theme-dark .create-assessment-sequence-label.is-first {
+  background: rgba(22, 163, 74, 0.22);
+  color: #86efac;
+}
+
+.theme-dark .create-assessment-sequence-label.is-second {
+  background: rgba(37, 99, 235, 0.2);
+  color: #bfdbfe;
+}
+
+.theme-dark .create-assessment-sequence-popover {
+  border-color: rgba(94, 116, 145, 0.52);
+  background: #101827;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.34);
+}
+
+.theme-dark .create-assessment-sequence-popover::after {
+  border-color: rgba(94, 116, 145, 0.52);
+  background: #101827;
+}
+
+.theme-dark .create-assessment-sequence-popover p {
+  color: #d9e8f8;
+}
+
+.theme-dark .create-assessment-sequence-popover button {
+  border-color: rgba(94, 116, 145, 0.52);
+  background: rgba(15, 23, 42, 0.56);
+  color: #d9e8f8;
+}
+
+.theme-dark .create-assessment-sequence-popover button:first-child {
+  border-color: rgba(45, 212, 191, 0.68);
+  background: #0f8f75;
+  color: #ffffff;
 }
 
 .theme-dark .create-assessment-type-badge {
@@ -12854,6 +13176,19 @@
 .theme-dark .create-assessment-yes-no-toggle button.is-active {
   background: #0f8f75;
   color: #ffffff;
+}
+
+.theme-dark .create-assessment-yes-no-toggle button:not(:disabled):not(.is-active):hover,
+.theme-dark .create-assessment-yes-no-toggle button:not(:disabled):not(.is-active):focus-visible {
+  background: rgba(20, 184, 166, 0.14);
+  color: #8df0c7;
+  box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.28);
+}
+
+.theme-dark .create-assessment-yes-no-toggle button.is-active:hover,
+.theme-dark .create-assessment-yes-no-toggle button.is-active:focus-visible {
+  background: #0f766e;
+  box-shadow: 0 7px 16px rgba(20, 184, 166, 0.2);
 }
 
 .theme-dark .create-assessment-instructions-inline-body {
@@ -13000,6 +13335,12 @@
   background: rgba(20, 184, 166, 0.08);
 }
 
+.theme-dark .create-assessment-attainment-list:not(.has-error) .create-assessment-attainment-row input:not(:disabled):hover {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
 .theme-dark .create-assessment-attainment-row > button {
   border-color: rgba(94, 116, 145, 0.58);
   background: rgba(15, 23, 42, 0.52);
@@ -13037,9 +13378,25 @@
   color: #ffffff;
 }
 
+.theme-dark .create-assessment-threshold-mode-toggle button:not(.is-active):hover {
+  background: rgba(20, 184, 166, 0.14);
+  color: #8df0c7;
+}
+
+.theme-dark .create-assessment-threshold-mode-toggle button.is-active:hover {
+  background: #0d7f6b;
+  box-shadow: 0 8px 18px rgba(20, 184, 166, 0.22);
+}
+
 .theme-dark .create-assessment-assign-select select:disabled {
   background: rgba(15, 23, 42, 0.4);
   color: #8396ab;
+}
+
+.theme-dark .create-assessment-assign-select select:not(:disabled):hover {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
 }
 
 .theme-dark .create-assessment-assign-select svg {
@@ -13086,6 +13443,29 @@
   color: #cbd5e1;
 }
 
+.theme-dark .create-assessment-mode-toggle:not(.is-disabled) button:not(:disabled):not(.is-active):hover,
+.theme-dark .create-assessment-mode-toggle:not(.is-disabled) button:not(:disabled):not(.is-active):focus-visible {
+  background: rgba(20, 184, 166, 0.14);
+  color: #8df0c7;
+  box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.28);
+}
+
+.theme-dark .create-assessment-mode-toggle:not(.is-disabled) button.is-active:hover,
+.theme-dark .create-assessment-mode-toggle:not(.is-disabled) button.is-active:focus-visible {
+  background: #0f8f75;
+  box-shadow: 0 8px 18px rgba(20, 184, 166, 0.22);
+}
+
+.theme-dark .create-assessment-mode-toggle:not(.is-disabled) button.is-active.is-online:hover,
+.theme-dark .create-assessment-mode-toggle:not(.is-disabled) button.is-active.is-online:focus-visible {
+  background: #166534;
+}
+
+.theme-dark .create-assessment-mode-toggle:not(.is-disabled) button.is-active.is-offline:hover,
+.theme-dark .create-assessment-mode-toggle:not(.is-disabled) button.is-active.is-offline:focus-visible {
+  background: #991b1b;
+}
+
 .theme-dark .create-assessment-schedule-field {
   color: #c3d4e8;
 }
@@ -13097,6 +13477,13 @@
   color: #eef6ff;
 }
 
+.theme-dark .create-assessment-schedule-field:not(.has-error) input:not(:disabled):hover,
+.theme-dark .create-assessment-schedule-field:not(.has-error) select:not(:disabled):hover {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
 .theme-dark .create-assessment-date-input {
   border-color: rgba(94, 116, 145, 0.58);
   background: rgba(15, 23, 42, 0.72);
@@ -13105,6 +13492,7 @@
 .theme-dark .create-assessment-date-input:hover,
 .theme-dark .create-assessment-date-input:focus-within {
   border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.08);
   box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.12);
 }
 
@@ -13126,6 +13514,13 @@
   border-color: rgba(94, 116, 145, 0.58);
   background: #132235;
   color: #eef6ff;
+}
+
+.theme-dark .create-assessment-schedule-field:not(.has-error) .create-assessment-time-stepper-trigger:hover,
+.theme-dark .create-assessment-schedule-field:not(.has-error) .create-assessment-time-stepper-trigger:focus-visible {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.08);
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.12);
 }
 
 .theme-dark .create-assessment-time-stepper-popover::before {
@@ -13197,6 +13592,13 @@
   border-color: rgba(45, 212, 191, 0.48);
   background: rgba(20, 184, 166, 0.12);
   color: #8df0c7;
+}
+
+.theme-dark .assessment-create-upload:not(.is-disabled):hover strong,
+.theme-dark .assessment-create-upload:not(.is-disabled):focus-within strong {
+  border-color: rgba(45, 212, 191, 0.68);
+  background: rgba(20, 184, 166, 0.18);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
 .theme-dark .assessment-create-upload > button {
@@ -16877,6 +17279,22 @@
 
   .create-assessment-proctored-split-row {
     grid-template-columns: 1fr;
+  }
+
+  .create-assessment-sequence-shift-wrap {
+    min-height: 34px;
+  }
+
+  .create-assessment-sequence-popover {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+
+  .create-assessment-sequence-popover::after {
+    left: auto;
+    right: 13px;
+    transform: rotate(45deg);
   }
 
   .create-assessment-schedule-toggle-field.is-inline {

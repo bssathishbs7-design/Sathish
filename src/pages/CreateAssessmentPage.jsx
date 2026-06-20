@@ -6,6 +6,7 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  ArrowLeftRight,
   ArrowRight,
   Bold,
   CalendarDays,
@@ -170,6 +171,7 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   descriptiveEvaluationRequired: 'Yes',
   proctoredTotalDuration: '',
   splitProctoredDuration: false,
+  proctoredSectionSequence: 'mcq-first',
   mcqTimeLimit: '',
   descriptiveTimeLimit: '',
   offlineDuration: '',
@@ -259,9 +261,9 @@ const createOption = (label = '') => createAuthoringOption({ idPrefix: 'assessme
 const toCapitalizedCase = (value) =>
   value.replace(/[A-Za-z]+/g, (word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
 
-function AssessmentSetupSelectField({ label, value, options, placeholder, onChange, className = '', required = false, disabled = false }) {
+function AssessmentSetupSelectField({ label, value, options, placeholder, onChange, className = '', required = false, disabled = false, error = '' }) {
   return (
-    <label className={`assessment-create-field ${className}`.trim()}>
+    <label className={`assessment-create-field ${className} ${error ? 'has-error' : ''}`.trim()}>
       <span>{label}{required ? <em className="assessment-create-required-mark">*</em> : null}</span>
       <span className="assessment-create-select-wrap">
         <select value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
@@ -272,6 +274,7 @@ function AssessmentSetupSelectField({ label, value, options, placeholder, onChan
         </select>
         <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
       </span>
+      {error ? <small>{error}</small> : null}
     </label>
   )
 }
@@ -713,6 +716,67 @@ const CONFIGURATION_ERROR_LABELS = {
   attainmentLevels: 'Attainment Levels',
 }
 
+const CONFIGURATION_VALIDATION_STEPS = [
+  {
+    id: 'header',
+    fields: ['collegeName', 'assessmentName', 'examCategory', 'academicYear'],
+  },
+  {
+    id: 'schedule',
+    fields: [
+      'examDeliveryMode',
+      'supervisionType',
+      'examDate',
+      'startTime',
+      'practiceStartDate',
+      'practiceStartTime',
+      'practiceEndDate',
+      'practiceEndTime',
+      'mcqDisplayType',
+      'descriptiveDisplayType',
+      'proctoredTotalDuration',
+      'mcqTimeLimit',
+      'descriptiveTimeLimit',
+      'offlineDuration',
+    ],
+  },
+  {
+    id: 'threshold',
+    fields: [
+      'lotThreshold',
+      'hotThreshold',
+      'applyThreshold',
+      'rememberThreshold',
+      'understandThreshold',
+      'analyzeThreshold',
+      'evaluateThreshold',
+      'attainmentLevels',
+    ],
+  },
+  {
+    id: 'assign',
+    fields: ['assignYear', 'approvalFlow'],
+  },
+]
+
+const CONFIGURATION_FIELD_STEP_INDEX = CONFIGURATION_VALIDATION_STEPS.reduce((fieldMap, step, stepIndex) => {
+  step.fields.forEach((field) => {
+    fieldMap[field] = stepIndex
+  })
+  return fieldMap
+}, {})
+
+const getConfigurationStepIndexForField = (field) => CONFIGURATION_FIELD_STEP_INDEX[field] ?? 0
+
+const filterConfigurationErrorsByStep = (errors = {}, stepIndex = CONFIGURATION_VALIDATION_STEPS.length - 1) => {
+  const visibleFields = new Set(
+    CONFIGURATION_VALIDATION_STEPS
+      .slice(0, Math.max(0, stepIndex) + 1)
+      .flatMap((step) => step.fields)
+  )
+  return Object.fromEntries(Object.entries(errors).filter(([field]) => visibleFields.has(field)))
+}
+
 const getConfigurationErrorMessage = (errors = {}) => {
   const firstKey = Object.keys(errors)[0]
   const label = CONFIGURATION_ERROR_LABELS[firstKey] || 'required fields'
@@ -948,6 +1012,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [isAssignSectionOpen, setIsAssignSectionOpen] = useState(true)
   const [isResultPublishSectionOpen, setIsResultPublishSectionOpen] = useState(false)
   const [isConfigurationChecklistOpen, setIsConfigurationChecklistOpen] = useState(false)
+  const [isSequenceConfirmOpen, setIsSequenceConfirmOpen] = useState(false)
+  const [configurationValidationStep, setConfigurationValidationStep] = useState(-1)
   const [setupErrors, setSetupErrors] = useState({})
   const [question, setQuestion] = useState(null)
   const assessmentQuestionsStorageKey = getAssessmentQuestionsStorageKey(setup)
@@ -970,6 +1036,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [activeCreateTab, setActiveCreateTab] = useState(readCreateAssessmentInitialTab)
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(false)
   const isPublishedEditMode = Boolean(setupDraft.isPublishedEdit || setupDraft.sourcePublishedId || setup.isPublishedEdit || setup.sourcePublishedId)
+  const isDescriptiveFirstSequence = setupDraft.proctoredSectionSequence === 'descriptive-first'
+  const mcqSequenceLabel = `MCQ Duration | <span class="create-assessment-sequence-label is-${isDescriptiveFirstSequence ? 'second' : 'first'}">Sequence ${isDescriptiveFirstSequence ? '2' : '1'}</span>`
+  const descriptiveSequenceLabel = `Descriptive Duration | <span class="create-assessment-sequence-label is-${isDescriptiveFirstSequence ? 'first' : 'second'}">Sequence ${isDescriptiveFirstSequence ? '1' : '2'}</span>`
   const [selectedCreateQuestionTypeLabel, setSelectedCreateQuestionTypeLabel] = useState('')
   const [editingPreviewQuestionId, setEditingPreviewQuestionId] = useState(null)
   const [previewSectionTitles, setPreviewSectionTitles] = useState(() => readCreateAssessmentSectionTitles(setup))
@@ -1049,7 +1118,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
   }, [descriptiveCompetencyDraft])
 
-  const updateSetupDraft = (field, value) => {
+  const revealConfigurationValidationForField = (field) => {
+    setConfigurationValidationStep((current) => Math.max(current, getConfigurationStepIndexForField(field)))
+  }
+
+  const updateSetupDraft = (field, value, validationField = field) => {
+    revealConfigurationValidationForField(validationField)
     setSetupDraft((current) => ({ ...current, [field]: value }))
     setSetupErrors((current) => {
       if (!current[field]) return current
@@ -1087,6 +1161,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const updateSupervisionType = (value) => {
+    revealConfigurationValidationForField('supervisionType')
     setSetupDraft((current) => applyPracticeExamTimingDefaults(normalizeResultPublishSettings({
         ...current,
         supervisionType: value,
@@ -1114,6 +1189,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const updateDisplayType = (field, value) => {
+    revealConfigurationValidationForField(field)
     setSetupDraft((current) => normalizeResultPublishSettings({
       ...current,
       [field]: value,
@@ -1150,6 +1226,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const updateThinkingThresholdMode = (value) => {
+    revealConfigurationValidationForField(value === 'blooms' ? 'applyThreshold' : 'lotThreshold')
     setSetupDraft((current) => {
       const nextDraft = { ...current, thinkingThresholdMode: value }
       if (value === 'blooms') {
@@ -1195,6 +1272,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const updateAttainmentLevel = (rowId, field, value) => {
+    revealConfigurationValidationForField('attainmentLevels')
     const nextValue = field === 'level'
       ? value.slice(0, 32)
       : value.replace(/[^\d]/g, '').slice(0, 3)
@@ -1212,6 +1290,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const addAttainmentLevel = () => {
+    revealConfigurationValidationForField('attainmentLevels')
     setSetupDraft((current) => ({
       ...current,
       attainmentLevels: [
@@ -1222,6 +1301,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const deleteAttainmentLevel = (rowId) => {
+    revealConfigurationValidationForField('attainmentLevels')
     setSetupDraft((current) => {
       const rows = current.attainmentLevels ?? DEFAULT_ATTAINMENT_LEVELS
       if (rows.length <= 1) return current
@@ -1399,6 +1479,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     return errors
   }
 
+  useEffect(() => {
+    if (activeCreateTab !== 'configuration' || configurationValidationStep < 0) return
+    setSetupErrors(filterConfigurationErrorsByStep(validateSetupDraft(setupDraft), configurationValidationStep))
+  }, [activeCreateTab, configurationValidationStep, savedQuestions, setupDraft])
+
   const clearExamCategoryDraft = () => {
     setExamCategoryDraft('')
   }
@@ -1430,6 +1515,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       assessmentId: setup.assessmentId,
       createdAt: setup.createdAt,
     })
+    setSetupErrors({})
+    setConfigurationValidationStep(-1)
   }
 
   const uploadSetupLogo = (file) => {
@@ -1470,6 +1557,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const saveAssessmentTemplate = () => {
     const errors = validateSetupDraft()
+    setConfigurationValidationStep(CONFIGURATION_VALIDATION_STEPS.length - 1)
     setSetupErrors(errors)
     if (Object.keys(errors).length) {
       setSaveStatus(getConfigurationErrorMessage(errors))
@@ -1507,6 +1595,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
 
     setSetupErrors({})
+    setConfigurationValidationStep(-1)
     setIsConfigurationSummaryVisible(true)
     setSaveStatus('Template loaded')
   }
@@ -1636,6 +1725,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const openApprovalModal = () => {
     const errors = validateSetupDraft()
+    setConfigurationValidationStep(CONFIGURATION_VALIDATION_STEPS.length - 1)
     setSetupErrors(errors)
     if (Object.keys(errors).length) {
       setSaveStatus(getConfigurationErrorMessage(errors))
@@ -1994,7 +2084,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const configurationChecklistActiveIndex = incompleteChecklistIndex === -1
     ? configurationChecklistItems.length - 1
     : incompleteChecklistIndex
-  const scrollToConfigurationSection = (item) => {
+  const scrollToConfigurationSection = (item, index = configurationValidationStep) => {
+    setConfigurationValidationStep((current) => Math.max(current, index))
     item.onBeforeScroll?.()
     window.requestAnimationFrame(() => {
       document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -2033,13 +2124,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         value={setupDraft[field]}
         period={setupDraft[periodField]}
         onChange={(value) => updateSetupDraft(field, value)}
-        onPeriodChange={(value) => updateSetupDraft(periodField, value)}
+        onPeriodChange={(value) => updateSetupDraft(periodField, value, field)}
       />
       {setupErrors[errorKey] ? <small>{setupErrors[errorKey]}</small> : null}
     </label>
   )
 
   const updateProctoredDurationSplit = (field, value) => {
+    revealConfigurationValidationForField(field)
     setSetupDraft((current) => {
       const nextDraft = { ...current, [field]: value }
       const totalMinutes = getTimeValueMinutes(nextDraft.proctoredTotalDuration)
@@ -2063,6 +2155,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const updateProctoredTotalDuration = (value) => {
+    revealConfigurationValidationForField('proctoredTotalDuration')
     setSetupDraft((current) => ({
       ...current,
       proctoredTotalDuration: value,
@@ -2082,6 +2175,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const updateSplitProctoredDuration = (checked) => {
+    revealConfigurationValidationForField('proctoredTotalDuration')
     setSetupDraft((current) => ({
       ...current,
       splitProctoredDuration: checked,
@@ -2103,7 +2197,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const renderScheduleDurationField = (field, label, errorKey = field, options = {}) => (
     <label className={`create-assessment-schedule-field ${setupErrors[errorKey] ? 'has-error' : ''} ${options.disabled ? 'is-disabled' : ''}`.trim()}>
-      <span>{label}{options.required === false ? null : <> <em>*</em></>}</span>
+      <span>
+        {options.htmlLabel ? <span dangerouslySetInnerHTML={{ __html: label }} /> : label}
+        {options.required === false ? null : <> <em>*</em></>}
+      </span>
       <DurationTimeSelect
         value={setupDraft[field]}
         onChange={options.onChange || ((value) => updateSetupDraft(field, value))}
@@ -4209,9 +4306,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   placeholder="Select College Name"
                   onChange={(value) => updateSetupDraft('collegeName', value)}
                   required
+                  error={setupErrors.collegeName}
                 />
 
-                <label className="assessment-create-field assessment-create-name-field">
+                <label className={`assessment-create-field assessment-create-name-field ${setupErrors.assessmentName ? 'has-error' : ''}`.trim()}>
                   <span>Assessment Name<em className="assessment-create-required-mark">*</em></span>
                   <input
                     type="text"
@@ -4219,10 +4317,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     placeholder="Assessment Name"
                     onChange={(event) => updateSetupDraft('assessmentName', toCapitalizedCase(event.target.value))}
                   />
+                  {setupErrors.assessmentName ? <small>{setupErrors.assessmentName}</small> : null}
                 </label>
 
                 <div className="assessment-create-side-fields">
-                  <div className="assessment-create-field assessment-create-exam-category-field">
+                  <div className={`assessment-create-field assessment-create-exam-category-field ${setupErrors.examCategory ? 'has-error' : ''}`.trim()}>
                     <span>Exam Category<em className="assessment-create-required-mark">*</em></span>
                     <span className="assessment-create-exam-category-row">
                       <span className="assessment-create-select-wrap">
@@ -4273,6 +4372,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         ) : null}
                       </span>
                     </span>
+                    {setupErrors.examCategory ? <small>{setupErrors.examCategory}</small> : null}
                   </div>
 
                   <div className="assessment-create-year-action-row">
@@ -4284,6 +4384,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                       placeholder="Academic Year"
                       onChange={(value) => updateSetupDraft('academicYear', value)}
                       required
+                      error={setupErrors.academicYear}
                     />
                   </div>
                 </div>
@@ -4326,6 +4427,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           type="button"
                           className={`${setupDraft.examDeliveryMode === mode ? 'is-active' : ''} is-${mode.toLowerCase()}`.trim()}
                           onClick={() => {
+                            revealConfigurationValidationForField('examDeliveryMode')
                             setSetupDraft((current) => applyPracticeExamTimingDefaults({
                               ...current,
                               examDeliveryMode: mode,
@@ -4391,6 +4493,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             {renderScheduleStartTimeField('practiceStartTime', 'practiceStartPeriod', 'Start Time', 'practiceStartTime', { required: false })}
                             {renderScheduleDateField('practiceEndDate', 'End Date', 'practiceEndDate', {
                               onChange: (value) => {
+                                revealConfigurationValidationForField('practiceEndDate')
                                 setSetupDraft((current) => ({
                                   ...current,
                                   practiceEndDate: value,
@@ -4426,13 +4529,46 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                     <span>Total Duration: {setupDraft.proctoredTotalDuration}</span>
                                   </div>
                                   <div className="create-assessment-proctored-split-row">
-                                    {renderScheduleDurationField('mcqTimeLimit', 'MCQ Duration', 'mcqTimeLimit', {
+                                    {renderScheduleDurationField('mcqTimeLimit', mcqSequenceLabel, 'mcqTimeLimit', {
                                       required: false,
+                                      htmlLabel: true,
                                       emptyLabel: '--:--',
                                       onChange: (value) => updateProctoredDurationSplit('mcqTimeLimit', value),
                                     })}
-                                    {renderScheduleDurationField('descriptiveTimeLimit', 'Descriptive Duration', 'descriptiveTimeLimit', {
+                                    <div className="create-assessment-sequence-shift-wrap">
+                                      <button
+                                        type="button"
+                                        className="create-assessment-sequence-shift-btn"
+                                        onClick={() => setIsSequenceConfirmOpen((current) => !current)}
+                                        aria-label="Change exam sequence of sections"
+                                        aria-expanded={isSequenceConfirmOpen}
+                                      >
+                                        <ArrowLeftRight size={15} strokeWidth={2.3} />
+                                      </button>
+                                      {isSequenceConfirmOpen ? (
+                                        <div className="create-assessment-sequence-popover" role="dialog" aria-label="Confirm sequence change">
+                                          <p>Are you sure you want to change exam sequence of sections?</p>
+                                          <div>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setSetupDraft((current) => ({
+                                                  ...current,
+                                                  proctoredSectionSequence: current.proctoredSectionSequence === 'descriptive-first' ? 'mcq-first' : 'descriptive-first',
+                                                }))
+                                                setIsSequenceConfirmOpen(false)
+                                              }}
+                                            >
+                                              Yes
+                                            </button>
+                                            <button type="button" onClick={() => setIsSequenceConfirmOpen(false)}>No</button>
+                                          </div>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                    {renderScheduleDurationField('descriptiveTimeLimit', descriptiveSequenceLabel, 'descriptiveTimeLimit', {
                                       required: false,
+                                      htmlLabel: true,
                                       emptyLabel: '--:--',
                                       onChange: (value) => updateProctoredDurationSplit('descriptiveTimeLimit', value),
                                     })}
@@ -4956,7 +5092,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             key={item.id}
                             type="button"
                             className={`create-assessment-process-checklist-item ${item.complete ? 'is-complete' : isActive ? 'is-active' : 'is-pending'}`}
-                            onClick={() => scrollToConfigurationSection(item)}
+                            onClick={() => scrollToConfigurationSection(item, index)}
                           >
                             <span className="create-assessment-process-checklist-icon">
                               {item.complete ? <Check size={14} strokeWidth={2.4} /> : index + 1}
