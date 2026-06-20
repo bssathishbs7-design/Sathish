@@ -229,7 +229,7 @@ const getPdfSectionTitle = (key) => {
   const map = {
     MCQ: 'Multiple Choice Question',
     SAQs: 'Short Answer Questions',
-    MEQs: 'Modified Essay Questions',
+    MEQs: 'Essay Questions',
     LAQs: 'Long Answer Questions',
     Reasoning: 'Reasoning Answer Questions',
   }
@@ -243,6 +243,9 @@ const getPdfSectionTitle = (key) => {
     .replace(/\bSaqs\b/g, 'SAQs')
     .replace(/\bMeqs\b/g, 'MEQs')
     .replace(/\bLaqs\b/g, 'LAQs')
+    .replace(/\bSAQs\s+/g, '')
+    .replace(/\bMEQs\b/g, 'Essay')
+    .replace(/\bModified Essay\b/g, 'Essay')
     .trim()
 
   return readableKey ? `${readableKey} Questions` : 'Questions'
@@ -454,7 +457,7 @@ const buildQuestionPaperPdf = async (assessment) => {
   addCenteredTextInBox({ text: setup.collegeName || '[Select College Name]', centerX: headerCenterX, y: pageHeight - 48, size: 15, font: 'F2' })
   addCenteredTextInBox({ text: `Academic Year ${String(setup.academicYear || '2025 - 2026').replace(/\s*-\s*/g, '-')}`, centerX: headerCenterX, y: pageHeight - 68, size: 12, font: 'F3' })
   addCenteredTextInBox({ text: assessment?.assessmentName || '[Assessment Name]', centerX: headerCenterX, y: pageHeight - 90, size: 15, font: 'F2' })
-  addCenteredTextInBox({ text: assessment?.examCategory || '[Exam Category]', centerX: headerCenterX, y: pageHeight - 109, size: 12, font: 'F2' })
+  addCenteredTextInBox({ text: `${assessment?.examCategory || '[Exam Category]'} / ${assessment?.assignTo || setup.assignYear || setup.year || '[Year]'}`, centerX: headerCenterX, y: pageHeight - 109, size: 12, font: 'F2' })
   y = pageHeight - 124
   addLine(margin, y, pageWidth - margin, y)
   y -= 18

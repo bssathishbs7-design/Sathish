@@ -651,6 +651,17 @@ const getLocalDateInputValue = (date = new Date()) => {
   return `${year}-${month}-${day}`
 }
 
+const getCurrentStartTimeValue = (date = new Date()) => {
+  const rawHours = date.getHours()
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const period = rawHours >= 12 ? 'PM' : 'AM'
+  const hours = rawHours % 12 || 12
+  return {
+    time: `${String(hours).padStart(2, '0')}:${minutes}`,
+    period,
+  }
+}
+
 const formatDateInputDisplay = (value) => {
   const [year, month, day] = String(value || '').split('-')
   return year && month && day ? `${day}/${month}/${year}` : 'DD/MM/YYYY'
@@ -1062,12 +1073,25 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     return nextDraft
   }
 
+  const applyPracticeExamTimingDefaults = (draft) => {
+    if ((draft.examDeliveryMode || 'Online') !== 'Online' || draft.supervisionType !== 'Practice Exam') return draft
+    const currentTime = getCurrentStartTimeValue()
+    return {
+      ...draft,
+      practiceStartDate: draft.practiceStartDate || getLocalDateInputValue(),
+      practiceStartTime: draft.practiceStartTime || currentTime.time,
+      practiceStartPeriod: draft.practiceStartPeriod || currentTime.period,
+      practiceEndTime: draft.practiceEndDate && !draft.practiceEndTime ? '12:00' : draft.practiceEndTime,
+      practiceEndPeriod: draft.practiceEndDate && !draft.practiceEndTime ? 'PM' : (draft.practiceEndPeriod || 'PM'),
+    }
+  }
+
   const updateSupervisionType = (value) => {
-    setSetupDraft((current) => normalizeResultPublishSettings({
-      ...current,
-      supervisionType: value,
-      ...getResultPublishDefaults(value),
-    }))
+    setSetupDraft((current) => applyPracticeExamTimingDefaults(normalizeResultPublishSettings({
+        ...current,
+        supervisionType: value,
+        ...getResultPublishDefaults(value),
+      })))
     setSetupErrors((current) => {
       const {
         examDate: _examDate,
@@ -1104,6 +1128,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     if (setupDraft.descriptiveDisplayType === 'Read-Only') return
     setSetupDraft((current) => ({ ...current, descriptiveDisplayType: 'Read-Only' }))
   }, [setupDraft.descriptiveDisplayType])
+
+  useEffect(() => {
+    if ((setupDraft.examDeliveryMode || 'Online') !== 'Online' || setupDraft.supervisionType !== 'Practice Exam') return
+    if (setupDraft.practiceStartDate && setupDraft.practiceStartTime) return
+    setSetupDraft((current) => applyPracticeExamTimingDefaults(current))
+  }, [
+    setupDraft.examDeliveryMode,
+    setupDraft.practiceStartDate,
+    setupDraft.practiceStartTime,
+    setupDraft.supervisionType,
+  ])
 
   const validatePublicationHeaderDraft = (draft = setupDraft) => {
     const errors = {}
@@ -1249,26 +1284,29 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const hasDescriptiveQuestions = savedQuestions.some((item) => isDescriptiveQuestionType(item.type))
     if (mode === 'Online') {
       if (draft.supervisionType === 'Practice Exam') {
-        if (!draft.practiceStartDate) {
-          errors.practiceStartDate = 'Select start date.'
-        } else if (draft.practiceStartDate < todayValue) {
+        const defaultStartTime = getCurrentStartTimeValue()
+        const practiceStartDate = draft.practiceStartDate || todayValue
+        const practiceStartTime = draft.practiceStartTime || defaultStartTime.time
+        const practiceStartPeriod = draft.practiceStartPeriod || defaultStartTime.period
+        const practiceEndTime = draft.practiceEndTime || (draft.practiceEndDate ? '12:00' : '')
+        const practiceEndPeriod = draft.practiceEndPeriod || 'PM'
+
+        if (practiceStartDate < todayValue) {
           errors.practiceStartDate = 'Previous dates are not allowed.'
         }
-        if (!START_TIME_PATTERN.test(draft.practiceStartTime || '')) {
+        if (!START_TIME_PATTERN.test(practiceStartTime || '')) {
           errors.practiceStartTime = 'Enter start time in HH:MM format.'
-        } else if (isScheduledStartTooSoon(draft.practiceStartDate, draft.practiceStartTime, draft.practiceStartPeriod)) {
-          errors.practiceStartTime = 'Start time must be at least 5 minutes from current time.'
         }
         if (!draft.practiceEndDate) {
           errors.practiceEndDate = 'Select end date.'
         } else if (draft.practiceEndDate < todayValue) {
           errors.practiceEndDate = 'Previous dates are not allowed.'
         }
-        if (!START_TIME_PATTERN.test(draft.practiceEndTime || '')) {
+        if (draft.practiceEndDate && !START_TIME_PATTERN.test(practiceEndTime || '')) {
           errors.practiceEndTime = 'Enter end time in HH:MM format.'
         }
-        const practiceStart = getScheduledStartDate(draft.practiceStartDate, draft.practiceStartTime, draft.practiceStartPeriod)
-        const practiceEnd = getScheduledStartDate(draft.practiceEndDate, draft.practiceEndTime, draft.practiceEndPeriod)
+        const practiceStart = getScheduledStartDate(practiceStartDate, practiceStartTime, practiceStartPeriod)
+        const practiceEnd = getScheduledStartDate(draft.practiceEndDate, practiceEndTime, practiceEndPeriod)
         if (practiceStart && practiceEnd && practiceEnd <= practiceStart) {
           errors.practiceEndTime = 'End time must be after start time.'
         }
@@ -1479,6 +1517,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       || String(nextSetup.assignYear || '').trim()
       || 'Not assigned'
     const publishedAt = new Date().toISOString()
+    const defaultPracticeStartTime = getCurrentStartTimeValue()
+    const practiceStartDate = nextSetup.practiceStartDate || getLocalDateInputValue()
+    const practiceStartTime = nextSetup.practiceStartTime || defaultPracticeStartTime.time
+    const practiceStartPeriod = nextSetup.practiceStartPeriod || defaultPracticeStartTime.period
+    const practiceEndTime = nextSetup.practiceEndTime || (nextSetup.practiceEndDate ? '12:00' : '')
+    const practiceEndPeriod = nextSetup.practiceEndPeriod || 'PM'
 
     return {
       id: nextSetup.assessmentId || `assessment-${Date.now()}`,
@@ -1489,14 +1533,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       totalMarks: assessmentSummary.totalMarks,
       examCategory: nextSetup.examCategory || 'Not set',
       examType: configurationQuestionSummary.examType,
-      startDate: nextSetup.examDeliveryMode === 'Offline' ? nextSetup.examDate : (nextSetup.supervisionType === 'Practice Exam' ? nextSetup.practiceStartDate : nextSetup.examDate),
+      startDate: nextSetup.examDeliveryMode === 'Offline' ? nextSetup.examDate : (nextSetup.supervisionType === 'Practice Exam' ? practiceStartDate : nextSetup.examDate),
       startTime: nextSetup.examDeliveryMode === 'Offline'
         ? [nextSetup.startTime, nextSetup.startPeriod].filter(Boolean).join(' ')
         : nextSetup.supervisionType === 'Practice Exam'
-          ? [nextSetup.practiceStartTime, nextSetup.practiceStartPeriod].filter(Boolean).join(' ')
+          ? [practiceStartTime, practiceStartPeriod].filter(Boolean).join(' ')
           : [nextSetup.startTime, nextSetup.startPeriod].filter(Boolean).join(' '),
       totalDuration: configurationDurationLabel,
       endDate: nextSetup.supervisionType === 'Practice Exam' ? nextSetup.practiceEndDate : '',
+      endTime: nextSetup.supervisionType === 'Practice Exam' ? [practiceEndTime, practiceEndPeriod].filter(Boolean).join(' ') : '',
       createdAt: nextSetup.createdAt || new Date().toISOString(),
       publishedAt,
       publishedLog: [{
@@ -1747,8 +1792,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
 
     if (setupDraft.supervisionType === 'Practice Exam') {
-      const startDate = getScheduledStartDate(setupDraft.practiceStartDate, setupDraft.practiceStartTime, setupDraft.practiceStartPeriod)
-      const endDate = getScheduledStartDate(setupDraft.practiceEndDate, setupDraft.practiceEndTime, setupDraft.practiceEndPeriod)
+      const defaultStartTime = getCurrentStartTimeValue()
+      const startDate = getScheduledStartDate(
+        setupDraft.practiceStartDate || getLocalDateInputValue(),
+        setupDraft.practiceStartTime || defaultStartTime.time,
+        setupDraft.practiceStartPeriod || defaultStartTime.period,
+      )
+      const endDate = getScheduledStartDate(
+        setupDraft.practiceEndDate,
+        setupDraft.practiceEndTime || (setupDraft.practiceEndDate ? '12:00' : ''),
+        setupDraft.practiceEndPeriod || 'PM',
+      )
       if (!startDate || !endDate || endDate <= startDate) return '00:00'
       return formatDurationValue(Math.round((endDate.getTime() - startDate.getTime()) / 60000))
     }
@@ -1785,10 +1839,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
 
     if (setupDraft.supervisionType === 'Practice Exam') {
-      const startDate = getScheduledStartDate(setupDraft.practiceStartDate, setupDraft.practiceStartTime, setupDraft.practiceStartPeriod)
-      const endDate = getScheduledStartDate(setupDraft.practiceEndDate, setupDraft.practiceEndTime, setupDraft.practiceEndPeriod)
+      const defaultStartTime = getCurrentStartTimeValue()
+      const startDate = getScheduledStartDate(
+        setupDraft.practiceStartDate || getLocalDateInputValue(),
+        setupDraft.practiceStartTime || defaultStartTime.time,
+        setupDraft.practiceStartPeriod || defaultStartTime.period,
+      )
+      const endDate = getScheduledStartDate(
+        setupDraft.practiceEndDate,
+        setupDraft.practiceEndTime || (setupDraft.practiceEndDate ? '12:00' : ''),
+        setupDraft.practiceEndPeriod || 'PM',
+      )
       return Boolean(
-        startDate
+        setupDraft.practiceEndDate
+        && startDate
         && endDate
         && endDate > startDate
         && (!hasMcq || setupDraft.mcqDisplayType)
@@ -1937,9 +2001,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     })
   }
 
-  const renderScheduleDateField = (field, label, errorKey = field) => (
+  const renderScheduleDateField = (field, label, errorKey = field, options = {}) => (
     <label className={`create-assessment-schedule-field ${setupErrors[errorKey] ? 'has-error' : ''}`}>
-      <span>{label} <em>*</em></span>
+      <span>{label}{options.required === false ? null : <> <em>*</em></>}</span>
       <span className={`create-assessment-date-input ${setupDraft[field] ? 'has-value' : ''}`}>
         <input
           type="date"
@@ -1947,7 +2011,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           min={getLocalDateInputValue()}
           aria-label={label}
           onClick={(event) => event.currentTarget.showPicker?.()}
-          onChange={(event) => updateSetupDraft(field, event.target.value)}
+          onChange={(event) => {
+            if (options.onChange) {
+              options.onChange(event.target.value)
+              return
+            }
+            updateSetupDraft(field, event.target.value)
+          }}
         />
         <em aria-hidden="true">{formatDateInputDisplay(setupDraft[field])}</em>
         <CalendarDays size={16} strokeWidth={2.2} aria-hidden="true" />
@@ -1956,9 +2026,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     </label>
   )
 
-  const renderScheduleStartTimeField = (field, periodField, label, errorKey = field) => (
+  const renderScheduleStartTimeField = (field, periodField, label, errorKey = field, options = {}) => (
     <label className={`create-assessment-schedule-field ${setupErrors[errorKey] ? 'has-error' : ''}`}>
-      <span>{label} <em>*</em></span>
+      <span>{label}{options.required === false ? null : <> <em>*</em></>}</span>
       <StartTimeSelect
         value={setupDraft[field]}
         period={setupDraft[periodField]}
@@ -4256,9 +4326,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           type="button"
                           className={`${setupDraft.examDeliveryMode === mode ? 'is-active' : ''} is-${mode.toLowerCase()}`.trim()}
                           onClick={() => {
-                            updateSetupDraft('examDeliveryMode', mode)
+                            setSetupDraft((current) => applyPracticeExamTimingDefaults({
+                              ...current,
+                              examDeliveryMode: mode,
+                            }))
                             setSetupErrors((current) => {
                               const {
+                                examDeliveryMode: _examDeliveryMode,
                                 examDate: _examDate,
                                 startTime: _startTime,
                                 practiceStartDate: _practiceStartDate,
@@ -4313,10 +4387,23 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
                         {setupDraft.supervisionType === 'Practice Exam' ? (
                           <div className="create-assessment-schedule-grid is-practice">
-                            {renderScheduleDateField('practiceStartDate', 'Start Date')}
-                            {renderScheduleStartTimeField('practiceStartTime', 'practiceStartPeriod', 'Start Time')}
-                            {renderScheduleDateField('practiceEndDate', 'End Date')}
-                            {renderScheduleStartTimeField('practiceEndTime', 'practiceEndPeriod', 'End Time')}
+                            {renderScheduleDateField('practiceStartDate', 'Start Date', 'practiceStartDate', { required: false })}
+                            {renderScheduleStartTimeField('practiceStartTime', 'practiceStartPeriod', 'Start Time', 'practiceStartTime', { required: false })}
+                            {renderScheduleDateField('practiceEndDate', 'End Date', 'practiceEndDate', {
+                              onChange: (value) => {
+                                setSetupDraft((current) => ({
+                                  ...current,
+                                  practiceEndDate: value,
+                                  practiceEndTime: current.practiceEndTime || '12:00',
+                                  practiceEndPeriod: current.practiceEndTime ? current.practiceEndPeriod : 'PM',
+                                }))
+                                setSetupErrors((current) => {
+                                  const { practiceEndDate: _practiceEndDate, practiceEndTime: _practiceEndTime, ...rest } = current
+                                  return rest
+                                })
+                              },
+                            })}
+                            {renderScheduleStartTimeField('practiceEndTime', 'practiceEndPeriod', 'End Time', 'practiceEndTime', { required: false })}
                           </div>
                         ) : setupDraft.supervisionType === 'Proctored Exams' ? (
                           <>
