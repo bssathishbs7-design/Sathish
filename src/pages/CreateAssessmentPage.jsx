@@ -62,6 +62,7 @@ import '../styles/assessment-pages.css'
 
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
 const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
+const ASSESSMENT_CREATE_INITIAL_TAB_KEY = 'vx-assessment-create-initial-tab'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
 const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
@@ -1571,15 +1572,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     publishNoticeTimerRef.current = window.setTimeout(() => {
       setPublishedAssessmentNotice(null)
       publishNoticeTimerRef.current = null
+      window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'published')
       onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
-    }, 5000)
+    }, 2000)
   }
 
   const publishAssessmentDirectly = () => {
-    const nextSetup = persistSetupDraft('Assessment published')
+    const nextSetup = persistSetupDraft('')
     const record = getPublishedAssessmentRecord(nextSetup)
     upsertPublishedAssessment(record)
-    setSaveStatus('Assessment published.')
+    setSaveStatus('')
     showPublishedAssessmentNotice(record)
   }
 
@@ -3615,7 +3617,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             </span>
             <strong>{publishedAssessmentNotice.assessmentName} has been successfully published.</strong>
             <p>Students have been notified.</p>
-            <small>Redirecting to Assessment Create in 5 sec.</small>
+            <small>Redirecting to Published Assessment in 2 sec.</small>
           </section>
         </div>
       ) : null}

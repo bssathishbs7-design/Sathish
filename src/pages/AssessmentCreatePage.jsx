@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowRight, BadgeCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, Monitor, Pencil, Plus, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
@@ -74,6 +74,7 @@ const initialForm = {
 
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
 const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
+const ASSESSMENT_CREATE_INITIAL_TAB_KEY = 'vx-assessment-create-initial-tab'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
@@ -625,7 +626,9 @@ const parseAssessmentDurationMs = (value) => {
   return ((hours * 60) + minutes) * 60 * 1000
 }
 
-const getPublishedAssessmentScheduleStatus = (assessment) => {
+const getDayStart = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
   const startDate = parseAssessmentDate(assessment?.startDate)
   if (!startDate) return null
 
@@ -635,19 +638,24 @@ const getPublishedAssessmentScheduleStatus = (assessment) => {
   const endDate = parseAssessmentDate(assessment?.endDate)
   const dateEndAt = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null
   const endAt = [durationEndAt, dateEndAt].filter(Boolean).sort((a, b) => a - b)[0] || startAt
-  const now = new Date()
-
   if (now > endAt) return { type: 'completed', label: 'Completed' }
   if (now >= startAt) return { type: 'live', label: 'Assessment Live' }
 
   const diffMs = startAt.getTime() - now.getTime()
-  const days = Math.ceil(diffMs / (24 * 60 * 60 * 1000))
-  if (days >= 1) return { type: 'upcoming', label: `${days} ${days === 1 ? 'day' : 'days'} to go` }
-
-  const hours = Math.ceil(diffMs / (60 * 60 * 1000))
-  if (hours >= 1) return { type: 'upcoming', label: `${hours} ${hours === 1 ? 'hour' : 'hours'} to go` }
-
   const minutes = Math.max(1, Math.ceil(diffMs / (60 * 1000)))
+  const startDay = getDayStart(startAt)
+  const currentDay = getDayStart(now)
+  const calendarDays = Math.round((startDay.getTime() - currentDay.getTime()) / (24 * 60 * 60 * 1000))
+
+  if (calendarDays >= 1) {
+    return { type: 'upcoming', label: `${calendarDays} ${calendarDays === 1 ? 'day' : 'days'} to go` }
+  }
+
+  if (minutes > 5 && minutes >= 60) {
+    const hours = Math.max(1, Math.floor(minutes / 60))
+    return { type: 'upcoming', label: `${hours} ${hours === 1 ? 'hour' : 'hours'} to go` }
+  }
+
   return { type: 'upcoming', label: `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} to go` }
 }
 
@@ -667,9 +675,13 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const [publishedAssessments, setPublishedAssessments] = useState(readPublishedAssessments)
   const [selectedPublishedLogAssessment, setSelectedPublishedLogAssessment] = useState(null)
   const [publishedLogPage, setPublishedLogPage] = useState(1)
-  const [activeAssessmentTab, setActiveAssessmentTab] = useState(() => (
-    readAssessmentDrafts().length ? 'draft' : readPublishedAssessments().length ? 'published' : ''
-  ))
+  const [scheduleNow, setScheduleNow] = useState(() => new Date())
+  const [activeAssessmentTab, setActiveAssessmentTab] = useState(() => {
+    const requestedTab = window.localStorage.getItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
+    window.localStorage.removeItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
+    if (requestedTab === 'published' && readPublishedAssessments().length) return 'published'
+    return readAssessmentDrafts().length ? 'draft' : readPublishedAssessments().length ? 'published' : ''
+  })
   const metrics = assessmentMetrics.map((metric) => (
     metric.tone === 'draft'
       ? { ...metric, count: draftAssessments.length }
@@ -677,6 +689,14 @@ export default function AssessmentCreatePage({ onNavigate }) {
         ? { ...metric, count: publishedAssessments.length }
         : metric
   ))
+
+  useEffect(() => {
+    if (activeAssessmentTab !== 'published') return undefined
+
+    setScheduleNow(new Date())
+    const intervalId = window.setInterval(() => setScheduleNow(new Date()), 10000)
+    return () => window.clearInterval(intervalId)
+  }, [activeAssessmentTab])
 
   const createAssessment = () => {
     window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({
@@ -879,7 +899,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
                   const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
-                  const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment)
+                  const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                   const publishedQuestionRows = getPublishedQuestionRows(assessment)
 
                   return (

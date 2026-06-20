@@ -5146,7 +5146,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(15, 23, 42, 0.28);
+  background: rgba(15, 23, 42, 0.56);
 }
 
 .create-assessment-publish-card {
@@ -12636,7 +12636,7 @@
 }
 
 .theme-dark .create-assessment-publish-modal {
-  background: rgba(2, 8, 23, 0.62);
+  background: rgba(2, 8, 23, 0.72);
 }
 
 .theme-dark .create-assessment-publish-card {
