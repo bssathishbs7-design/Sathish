@@ -729,6 +729,17 @@ const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
   return { type: 'upcoming', label: `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} to go` }
 }
 
+const isPublishedAssessmentActionLocked = (assessment, now = new Date()) => {
+  const startDate = parseAssessmentDate(assessment?.startDate)
+  if (!startDate) return false
+
+  const startAt = applyAssessmentTime(startDate, assessment?.startTime)
+  if (!startAt || Number.isNaN(startAt.getTime())) return false
+
+  const lockAt = new Date(startAt.getTime() - 5 * 60 * 1000)
+  return now >= lockAt
+}
+
 const getPublishedLogRows = (assessment) => {
   if (Array.isArray(assessment?.publishedLog) && assessment.publishedLog.length) return assessment.publishedLog
 
@@ -840,6 +851,10 @@ export default function AssessmentCreatePage({ onNavigate }) {
       }
       return nextPublished
     })
+  }
+
+  const openExamControls = (assessment) => {
+    console.info('Exam controls flow pending', assessment)
   }
 
   return (
@@ -975,19 +990,26 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
+                  const arePublishedActionsLocked = isPublishedAssessmentActionLocked(assessment, scheduleNow)
+                  const canShowExamControls = !isOfflineExam && scheduleStatus?.type === 'live'
                   const publishedQuestionRows = getPublishedQuestionRows(assessment)
 
                   return (
-                      <article key={assessment.id} className="assessment-create-draft-card assessment-create-published-card">
+                      <article
+                        key={assessment.id}
+                        className={`assessment-create-draft-card assessment-create-published-card ${scheduleStatus?.type === 'live' ? 'is-live' : ''}`.trim()}
+                      >
                         <div className="assessment-create-published-head">
                           <div>
                             <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong>
                             <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
                       </div>
                       <span className="assessment-create-published-actions">
-                        <button type="button" className="assessment-create-published-icon-btn is-delete" onClick={() => deletePublishedAssessment(assessment.id)} aria-label={`Delete ${assessment.assessmentName || 'published assessment'}`}>
-                          <Trash2 size={13} strokeWidth={2.2} />
-                        </button>
+                        {!arePublishedActionsLocked ? (
+                          <button type="button" className="assessment-create-published-icon-btn is-delete" onClick={() => deletePublishedAssessment(assessment.id)} aria-label={`Delete ${assessment.assessmentName || 'published assessment'}`}>
+                            <Trash2 size={13} strokeWidth={2.2} />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="assessment-create-published-info"
@@ -1000,9 +1022,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
                         >
                           <Info size={14} strokeWidth={2.2} />
                         </button>
-                        <button type="button" className="assessment-create-published-icon-btn is-edit" onClick={() => editPublishedAssessment(assessment)} aria-label={`Edit ${assessment.assessmentName || 'published assessment'}`}>
-                          <Pencil size={13} strokeWidth={2.2} />
-                        </button>
+                        {!arePublishedActionsLocked ? (
+                          <button type="button" className="assessment-create-published-icon-btn is-edit" onClick={() => editPublishedAssessment(assessment)} aria-label={`Edit ${assessment.assessmentName || 'published assessment'}`}>
+                            <Pencil size={13} strokeWidth={2.2} />
+                          </button>
+                        ) : null}
                       </span>
                         </div>
                         <span className="assessment-create-published-status-row">
@@ -1030,14 +1054,22 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                         </div>
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
-                          {scheduleStatus ? (
-                            scheduleStatus.type === 'upcoming' ? (
-                              <span>{scheduleStatus.label}</span>
-                            ) : (
-                              <span className={`assessment-create-published-schedule-badge is-${scheduleStatus.type}`}>
-                                {scheduleStatus.label}
-                              </span>
-                            )
+                          <span className="assessment-create-published-footer-status">
+                            {scheduleStatus ? (
+                              scheduleStatus.type === 'upcoming' ? (
+                                <span>{scheduleStatus.label}</span>
+                              ) : (
+                                <span className={`assessment-create-published-schedule-badge is-${scheduleStatus.type}`}>
+                                  {scheduleStatus.label}
+                                </span>
+                              )
+                            ) : null}
+                          </span>
+                          {canShowExamControls ? (
+                            <button type="button" className="assessment-create-exam-controls-btn" onClick={() => openExamControls(assessment)}>
+                              <Monitor size={12} strokeWidth={2.4} />
+                              Exam Controls
+                            </button>
                           ) : null}
                         </div>
                       </article>

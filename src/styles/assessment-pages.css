@@ -502,6 +502,11 @@
   box-shadow: 0 10px 22px rgba(13, 55, 38, 0.08);
 }
 
+.assessment-create-published-card.is-live {
+  border-color: #2dd4bf;
+  background: linear-gradient(180deg, #f0fdf8 0%, #ffffff 58%);
+}
+
 .assessment-create-published-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -716,8 +721,48 @@
 }
 
 .assessment-create-published-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
   padding-top: 0;
   border-top: 0;
+}
+
+.assessment-create-published-footer-status {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  color: #687780;
+  font-size: 0.62rem;
+  font-weight: 500;
+}
+
+.assessment-create-exam-controls-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid #99f6e4;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.62rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.assessment-create-exam-controls-btn:hover,
+.assessment-create-exam-controls-btn:focus-visible {
+  border-color: #10b9a8;
+  background: #d8f8ee;
+  color: #075f54;
+  outline: none;
+  box-shadow: 0 8px 18px rgba(16, 185, 168, 0.14);
 }
 
 .assessment-create-published-schedule-badge {
@@ -1075,7 +1120,7 @@
 .assessment-create-setup-top {
   display: grid;
   grid-template-columns: 112px minmax(260px, 1.35fr) minmax(260px, 0.9fr);
-  grid-template-rows: repeat(2, 58px);
+  grid-template-rows: repeat(2, minmax(64px, auto));
   grid-template-areas:
     "logo college side"
     "logo name side";
@@ -1102,7 +1147,7 @@
 .assessment-create-side-fields {
   grid-area: side;
   display: grid;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(64px, auto));
   gap: 7px;
   min-width: 0;
 }
@@ -1175,7 +1220,7 @@
 .assessment-create-field {
   position: relative;
   display: grid;
-  grid-template-rows: 16px 38px;
+  grid-template-rows: 16px 38px minmax(0, 14px);
   align-items: start;
   gap: 4px;
   min-width: 0;
@@ -1187,7 +1232,7 @@
 }
 
 .assessment-create-field.has-error {
-  grid-template-rows: 16px 38px auto;
+  grid-template-rows: 16px 38px minmax(14px, auto);
 }
 
 .assessment-create-field > span:first-child:not(.assessment-create-select-wrap) {
@@ -1422,7 +1467,7 @@
 
 .assessment-create-upload {
   position: relative;
-  align-self: stretch;
+  align-self: start;
   display: grid;
   grid-template-rows: 16px minmax(0, 1fr);
   gap: 4px;
@@ -1437,9 +1482,8 @@
   gap: 5px;
   min-width: 0;
   width: 100%;
-  height: 100%;
-  min-height: 100px;
-  aspect-ratio: 1 / 1;
+  height: 118px;
+  min-height: 0;
   padding: 7px;
   border: 1px dashed #8fd2c1;
   border-radius: 14px;
@@ -4002,17 +4046,17 @@
 
 .create-assessment-assign-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(280px, max-content);
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(300px, 0.95fr);
   gap: 14px;
+  align-items: start;
   min-width: 0;
 }
 
 .create-assessment-assign-sent-toggle .create-assessment-mode-toggle {
-  grid-template-columns: repeat(2, max-content);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .create-assessment-assign-sent-toggle .create-assessment-mode-toggle button {
-  min-width: 112px;
   white-space: nowrap;
 }
 
@@ -4375,7 +4419,12 @@
 .create-assessment-schedule-toggle-field.is-inline {
   align-items: center;
   grid-template-columns: max-content max-content;
+  grid-template-rows: auto;
   gap: 8px;
+}
+
+.create-assessment-schedule-toggle-field.is-inline.has-error {
+  grid-template-rows: auto minmax(14px, auto);
 }
 
 .create-assessment-schedule-toggle-field.is-inline > span:first-child {
@@ -4388,6 +4437,7 @@
 
 .create-assessment-schedule-toggle-field {
   display: grid;
+  grid-template-rows: 16px auto minmax(0, 14px);
   gap: 6px;
   min-width: 0;
   color: #385260;
@@ -4395,6 +4445,10 @@
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.create-assessment-schedule-toggle-field.has-error {
+  grid-template-rows: 16px auto minmax(14px, auto);
 }
 
 .create-assessment-schedule-toggle-field > span:first-child {
@@ -4522,7 +4576,7 @@
   display: grid;
   grid-template-columns: minmax(190px, 1.05fr) minmax(210px, 1fr) repeat(2, minmax(190px, 1fr));
   gap: 14px;
-  align-items: end;
+  align-items: start;
   min-width: 0;
 }
 
@@ -12596,6 +12650,11 @@
   background: rgba(96, 165, 250, 0.2);
 }
 
+.theme-dark .assessment-create-published-card.is-live {
+  border-color: rgba(45, 212, 191, 0.68);
+  background: linear-gradient(180deg, rgba(20, 184, 166, 0.16) 0%, rgba(15, 23, 42, 0.76) 58%);
+}
+
 .theme-dark .assessment-create-published-head strong {
   color: #eef6ff;
 }
@@ -12677,6 +12736,23 @@
 
 .theme-dark .assessment-create-published-details {
   border-color: rgba(94, 116, 145, 0.34);
+}
+
+.theme-dark .assessment-create-published-footer-status {
+  color: #9fb0c8;
+}
+
+.theme-dark .assessment-create-exam-controls-btn {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.14);
+  color: #8df0c7;
+}
+
+.theme-dark .assessment-create-exam-controls-btn:hover,
+.theme-dark .assessment-create-exam-controls-btn:focus-visible {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.22);
+  color: #ccfbf1;
 }
 
 .theme-dark .assessment-create-published-schedule-badge.is-live {
@@ -15743,7 +15819,7 @@
 
   .assessment-create-setup-top {
     grid-template-columns: 78px minmax(0, 1fr);
-    grid-template-rows: 58px 58px auto;
+    grid-template-rows: repeat(2, minmax(64px, auto)) auto;
     grid-template-areas:
       "logo college"
       "name name"
@@ -17202,7 +17278,7 @@
   }
 
   .assessment-create-upload strong {
-    min-height: 92px;
+    height: 110px;
   }
 
   .create-assessment-schedule-grid {
@@ -17249,7 +17325,7 @@
 
   .assessment-create-setup-top {
     grid-template-columns: 92px minmax(0, 1fr);
-    grid-template-rows: 58px 58px auto;
+    grid-template-rows: repeat(2, minmax(64px, auto)) auto;
     grid-template-areas:
       "logo college"
       "logo name"

@@ -1918,7 +1918,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const mode = setupDraft.examDeliveryMode || 'Online'
     const hasMcq = configurationQuestionSummary.hasMcq
     const hasDescriptive = configurationQuestionSummary.hasDescriptive
-    if (!mode || !setupDraft.supervisionType || !setupDraft.approvalFlow || !setupDraft.assignYear) return false
+    if (!mode || !setupDraft.supervisionType) return false
 
     if (mode === 'Offline') {
       return Boolean(
@@ -1975,8 +1975,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }, [
     configurationQuestionSummary.hasDescriptive,
     configurationQuestionSummary.hasMcq,
-    setupDraft.approvalFlow,
-    setupDraft.assignYear,
     setupDraft.descriptiveDisplayType,
     setupDraft.descriptiveStartTime,
     setupDraft.descriptiveTimeLimit,
@@ -2068,7 +2066,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     {
       id: 'assign',
       label: 'Assign Information',
-      complete: Boolean(setupDraft.assignYear),
+      complete: Boolean(setupDraft.assignYear && setupDraft.approvalFlow),
       target: 'assessment-assign-information-section',
       onBeforeScroll: () => setIsAssignSectionOpen(true),
     },
@@ -2077,6 +2075,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     isSchedulingDetailsComplete,
     isThresholdSettingsComplete,
     setIsAssignSectionOpen,
+    setupDraft.approvalFlow,
     setupDraft.assignYear,
   ])
   const configurationChecklistCompletedCount = configurationChecklistItems.filter((item) => item.complete).length
