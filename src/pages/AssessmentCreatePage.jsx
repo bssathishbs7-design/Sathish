@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, BadgeCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, Monitor, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ArrowRight, BadgeCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -79,6 +79,52 @@ const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const PUBLISHED_LOG_PAGE_SIZE = 5
+const PUBLISHED_FILTER_DEFAULTS = {
+  mode: 'all',
+  status: 'all',
+  supervision: 'all',
+  examType: 'all',
+}
+const PUBLISHED_FILTER_GROUPS = [
+  {
+    key: 'mode',
+    label: 'Exam Mode',
+    options: [
+      { value: 'all', label: 'All Modes' },
+      { value: 'online', label: 'Online' },
+      { value: 'offline', label: 'Offline' },
+    ],
+  },
+  {
+    key: 'status',
+    label: 'Exam Status',
+    options: [
+      { value: 'all', label: 'All Status' },
+      { value: 'live', label: 'Live' },
+      { value: 'upcoming', label: 'Upcoming' },
+      { value: 'completed', label: 'Completed' },
+    ],
+  },
+  {
+    key: 'supervision',
+    label: 'Supervision Type',
+    options: [
+      { value: 'all', label: 'All Types' },
+      { value: 'practice', label: 'Practice Exam' },
+      { value: 'proctored', label: 'Proctored Exams' },
+    ],
+  },
+  {
+    key: 'examType',
+    label: 'Exam Type',
+    options: [
+      { value: 'all', label: 'All Exam Types' },
+      { value: 'mcq', label: 'MCQ' },
+      { value: 'descriptive', label: 'Descriptive' },
+      { value: 'hybrid', label: 'Hybrid' },
+    ],
+  },
+]
 
 const isDescriptiveQuestionType = (type) => (
   type === 'Descriptive Question'
@@ -757,6 +803,9 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const [selectedPublishedLogAssessment, setSelectedPublishedLogAssessment] = useState(null)
   const [publishedLogPage, setPublishedLogPage] = useState(1)
   const [scheduleNow, setScheduleNow] = useState(() => new Date())
+  const [publishedSearchValue, setPublishedSearchValue] = useState('')
+  const [publishedFilters, setPublishedFilters] = useState(PUBLISHED_FILTER_DEFAULTS)
+  const [isPublishedFilterOpen, setIsPublishedFilterOpen] = useState(false)
   const [activeAssessmentTab, setActiveAssessmentTab] = useState(() => {
     const requestedTab = window.localStorage.getItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     window.localStorage.removeItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
@@ -770,6 +819,45 @@ export default function AssessmentCreatePage({ onNavigate }) {
         ? { ...metric, count: publishedAssessments.length }
         : metric
   ))
+  const livePublishedAssessmentCount = publishedAssessments.filter((assessment) => (
+    getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'live'
+  )).length
+  const activePublishedFilterCount = Object.values(publishedFilters).filter((value) => value !== 'all').length
+  const hasPublishedFilter = activePublishedFilterCount > 0
+  const hasPublishedSearch = Boolean(publishedSearchValue.trim())
+  const filteredPublishedAssessments = publishedAssessments.filter((assessment) => {
+    const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
+    const searchText = [
+      assessment.assessmentName,
+      assessment.examCategory,
+      assessment.assignTo,
+      assessment.examMode,
+      assessment.examType,
+      assessment.supervisionType,
+      assessment.startDate,
+      formatDisplayDate(assessment.startDate),
+      assessment.startTime,
+    ].filter(Boolean).join(' ').toLowerCase()
+    const searchMatches = !hasPublishedSearch || searchText.includes(publishedSearchValue.trim().toLowerCase())
+
+    const mode = String(assessment.examMode || '').toLowerCase()
+    const examType = String(assessment.examType || '').toLowerCase()
+    const supervisionType = String(assessment.supervisionType || '').toLowerCase()
+
+    return (
+      searchMatches
+      && (publishedFilters.mode === 'all' || mode === publishedFilters.mode)
+      && (publishedFilters.status === 'all' || scheduleStatus?.type === publishedFilters.status)
+      && (publishedFilters.supervision === 'all' || supervisionType.includes(publishedFilters.supervision))
+      && (publishedFilters.examType === 'all' || examType === publishedFilters.examType)
+    )
+  })
+
+  const clearPublishedSearchFilters = () => {
+    setPublishedSearchValue('')
+    setPublishedFilters(PUBLISHED_FILTER_DEFAULTS)
+    setIsPublishedFilterOpen(false)
+  }
 
   useEffect(() => {
     if (activeAssessmentTab !== 'published') return undefined
@@ -981,16 +1069,95 @@ export default function AssessmentCreatePage({ onNavigate }) {
         {activeAssessmentTab === 'published' ? (
           <section className="assessment-create-draft-shell assessment-create-published-shell" aria-label="Published assessments">
             <div className="assessment-create-card-heading">
-              <h2>Published Assessment</h2>
+              <div className="assessment-create-published-title">
+                <h2>Published Assessment</h2>
+                {publishedAssessments.length ? (
+                  <button
+                    type="button"
+                    className={`assessment-create-live-count-btn ${publishedFilters.status === 'live' ? 'is-active' : ''}`.trim()}
+                    onClick={() => {
+                      setPublishedFilters((current) => ({
+                        ...current,
+                        status: current.status === 'live' ? 'all' : 'live',
+                      }))
+                    }}
+                    aria-pressed={publishedFilters.status === 'live'}
+                  >
+                    <span aria-hidden="true" />
+                    Live Assessment
+                    <strong>{livePublishedAssessmentCount}</strong>
+                  </button>
+                ) : null}
+              </div>
+              {publishedAssessments.length ? (
+                <div className="assessment-create-published-toolbar">
+                  <label className="assessment-create-published-search">
+                    <Search size={15} strokeWidth={2.2} aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={publishedSearchValue}
+                      placeholder="Search published assessments..."
+                      onChange={(event) => setPublishedSearchValue(event.target.value)}
+                    />
+                  </label>
+                  <span className="assessment-create-published-filter-wrap">
+                    <button
+                      type="button"
+                      className={`assessment-create-published-filter-btn ${hasPublishedFilter ? 'is-active' : ''}`.trim()}
+                      onClick={() => setIsPublishedFilterOpen((current) => !current)}
+                      aria-expanded={isPublishedFilterOpen}
+                    >
+                      <ListFilter size={15} strokeWidth={2.3} />
+                      Filter
+                      {hasPublishedFilter ? <em>{activePublishedFilterCount}</em> : null}
+                    </button>
+                    {isPublishedFilterOpen ? (
+                      <span className="assessment-create-published-filter-popover" role="dialog" aria-label="Published assessment filters">
+                        {PUBLISHED_FILTER_GROUPS.map((group) => (
+                          <label key={group.key}>
+                            <span>{group.label}</span>
+                            <select
+                              value={publishedFilters[group.key]}
+                              onChange={(event) => {
+                                const nextValue = event.target.value
+                                setPublishedFilters((current) => ({ ...current, [group.key]: nextValue }))
+                              }}
+                            >
+                              {group.options.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ))}
+                        <span className="assessment-create-published-filter-actions">
+                          <button type="button" onClick={() => setPublishedFilters(PUBLISHED_FILTER_DEFAULTS)}>
+                            Reset
+                          </button>
+                          <button type="button" className="is-primary" onClick={() => setIsPublishedFilterOpen(false)}>
+                            Apply
+                          </button>
+                        </span>
+                      </span>
+                    ) : null}
+                  </span>
+                  {(hasPublishedSearch || hasPublishedFilter) ? (
+                    <button type="button" className="assessment-create-published-clear-btn" onClick={clearPublishedSearchFilters}>
+                      <X size={14} strokeWidth={2.3} />
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             {publishedAssessments.length ? (
+              <>
+                {filteredPublishedAssessments.length ? (
               <div className="assessment-create-draft-grid">
-                {publishedAssessments.map((assessment) => {
+                {filteredPublishedAssessments.map((assessment) => {
                   const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
                   const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
-                  const arePublishedActionsLocked = isPublishedAssessmentActionLocked(assessment, scheduleNow)
                   const canShowExamControls = !isOfflineExam && scheduleStatus?.type === 'live'
                   const publishedQuestionRows = getPublishedQuestionRows(assessment)
 
@@ -1005,11 +1172,9 @@ export default function AssessmentCreatePage({ onNavigate }) {
                             <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
                       </div>
                       <span className="assessment-create-published-actions">
-                        {!arePublishedActionsLocked ? (
-                          <button type="button" className="assessment-create-published-icon-btn is-delete" onClick={() => deletePublishedAssessment(assessment.id)} aria-label={`Delete ${assessment.assessmentName || 'published assessment'}`}>
-                            <Trash2 size={13} strokeWidth={2.2} />
-                          </button>
-                        ) : null}
+                        <button type="button" className="assessment-create-published-icon-btn is-delete" onClick={() => deletePublishedAssessment(assessment.id)} aria-label={`Delete ${assessment.assessmentName || 'published assessment'}`}>
+                          <Trash2 size={13} strokeWidth={2.2} />
+                        </button>
                         <button
                           type="button"
                           className="assessment-create-published-info"
@@ -1022,11 +1187,9 @@ export default function AssessmentCreatePage({ onNavigate }) {
                         >
                           <Info size={14} strokeWidth={2.2} />
                         </button>
-                        {!arePublishedActionsLocked ? (
-                          <button type="button" className="assessment-create-published-icon-btn is-edit" onClick={() => editPublishedAssessment(assessment)} aria-label={`Edit ${assessment.assessmentName || 'published assessment'}`}>
-                            <Pencil size={13} strokeWidth={2.2} />
-                          </button>
-                        ) : null}
+                        <button type="button" className="assessment-create-published-icon-btn is-edit" onClick={() => editPublishedAssessment(assessment)} aria-label={`Edit ${assessment.assessmentName || 'published assessment'}`}>
+                          <Pencil size={13} strokeWidth={2.2} />
+                        </button>
                       </span>
                         </div>
                         <span className="assessment-create-published-status-row">
@@ -1076,6 +1239,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
                     )
                 })}
               </div>
+                ) : (
+                  <div className="assessment-create-placeholder">
+                    <p>No published assessments match your search.</p>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="assessment-create-placeholder">
                 <p>No published assessments available.</p>

@@ -24,7 +24,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard' }) {
   const isMyAssessment = mode === 'my-assessment'
 
   return (
-    <section className="vx-content assessment-page">
+    <section className={`vx-content assessment-page ${isMyAssessment ? 'is-my-assessment' : ''}`.trim()}>
       <div className="assessment-page-shell">
         <PageNavigationHeader items={['My Pages', 'Assessment', isMyAssessment ? 'My Assessment' : 'Dashboard']} />
 
