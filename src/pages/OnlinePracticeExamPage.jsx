@@ -225,10 +225,10 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
             </small>
           </div>
           <div className="online-practice-header-chips" aria-label="Assessment configuration summary">
-            {headerChips.map(([label, value]) => (
-              <span key={label} className={`is-${label.toLowerCase()}`}>
-                <em>{label}</em>
-                <strong>{value}</strong>
+            {headerChips.map((chip) => (
+              <span key={chip.tone} className={`is-${chip.tone}`}>
+                <em>{chip.label}</em>
+                <strong>{chip.value}</strong>
               </span>
             ))}
           </div>
