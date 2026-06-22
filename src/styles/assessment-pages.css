@@ -106,8 +106,748 @@
   line-height: 1.45;
 }
 
+.assessment-page.is-my-assessment .my-assessment-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-card {
+  --metric-accent: #2563eb;
+  --metric-border: #bfdbfe;
+  --metric-bg: #f8fbff;
+  --metric-icon-bg: #dbeafe;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 9px 12px;
+  border: 1px solid var(--metric-border);
+  border-radius: 8px;
+  background: var(--metric-bg);
+  color: #082431;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-card:hover,
+.assessment-page.is-my-assessment .my-assessment-metric-card:focus-visible,
+.assessment-page.is-my-assessment .my-assessment-metric-card.is-active {
+  border-color: var(--metric-accent);
+  outline: none;
+  box-shadow: inset 3px 0 0 var(--metric-accent), 0 8px 18px rgba(13, 55, 38, 0.06);
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--metric-icon-bg);
+  color: var(--metric-accent);
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-copy strong {
+  color: #082431;
+  font-size: 1.08rem;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-copy span {
+  overflow: hidden;
+  color: #405866;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-card.is-total {
+  --metric-accent: #2563eb;
+  --metric-border: #bfdbfe;
+  --metric-bg: #f8fbff;
+  --metric-icon-bg: #dbeafe;
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-card.is-live {
+  --metric-accent: #0f9f6e;
+  --metric-border: #a7f3c1;
+  --metric-bg: #f4fff7;
+  --metric-icon-bg: #dcfce7;
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-card.is-upcoming {
+  --metric-accent: #c2410c;
+  --metric-border: #fed7aa;
+  --metric-bg: #fff7ed;
+  --metric-icon-bg: #ffedd5;
+}
+
+.assessment-page.is-my-assessment .my-assessment-metric-card.is-completed {
+  --metric-accent: #475569;
+  --metric-border: #cbd5e1;
+  --metric-bg: #f8fafc;
+  --metric-icon-bg: #e2e8f0;
+}
+
+.assessment-page.is-my-assessment .my-assessment-published-shell {
+  align-content: start;
+  width: 100%;
+}
+
+.assessment-page.is-my-assessment .my-assessment-published-grid {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.assessment-page.is-my-assessment .my-assessment-count-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.assessment-page.is-my-assessment .my-assessment-live-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: max-content;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid #b7ebd0;
+  border-radius: 999px;
+  background: #edfff5;
+  color: #087a4a;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.assessment-page.is-my-assessment .my-assessment-live-count-badge:hover,
+.assessment-page.is-my-assessment .my-assessment-live-count-badge:focus-visible,
+.assessment-page.is-my-assessment .my-assessment-live-count-badge.is-active {
+  border-color: #18c77d;
+  background: #dffff0;
+  color: #05643d;
+  outline: none;
+}
+
+.assessment-page.is-my-assessment .my-assessment-live-count-badge > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #0aa86b;
+  box-shadow: 0 0 0 0 rgba(10, 168, 107, 0.36);
+  animation: assessment-create-live-count-pulse 1.35s ease-in-out infinite;
+}
+
+.assessment-page.is-my-assessment .my-assessment-live-count-badge strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #c9f8df;
+  color: #05643d;
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.assessment-page.is-my-assessment .assessment-create-published-card {
+  width: 100%;
+  max-width: none;
+}
+
+.assessment-page.is-my-assessment .my-assessment-card-top-status {
+  display: inline-flex;
+  justify-content: flex-end;
+  align-self: start;
+  min-width: 0;
+  color: #687780;
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.assessment-page.is-my-assessment .my-assessment-empty-state {
+  grid-column: 1 / -1;
+}
+
 .assessment-page-shell.has-selection-bar {
   padding-bottom: 0;
+}
+
+.online-practice-exam-page {
+  box-sizing: border-box;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-height: 100svh;
+  padding: 16px;
+  background: #f6fbf9;
+  color: #082431;
+}
+
+.online-practice-exam-page.has-fixed-header {
+  padding-top: 96px;
+}
+
+.online-practice-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: 58px minmax(240px, 1fr) minmax(360px, auto) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 84px;
+  padding: 12px 32px;
+  border: 0;
+  border-bottom: 1px solid #cfe2dc;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(13, 55, 38, 0.05);
+}
+
+.online-practice-start-identity {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #d9ebe6;
+}
+
+.online-practice-start-identity h1 {
+  margin: 0;
+  color: #082431;
+  font-size: 1.16rem;
+  font-weight: 900;
+}
+
+.online-practice-start-identity p,
+.online-practice-start-identity small {
+  display: block;
+  margin: 3px 0 0;
+  color: #607380;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.online-practice-start-identity small {
+  font-size: 0.72rem;
+}
+
+.online-practice-logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  background: #dcfce7;
+  color: #08776d;
+}
+
+.online-practice-logo-image {
+  width: 58px;
+  height: 58px;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.online-practice-header h1,
+.online-practice-empty h1,
+.online-practice-instructions h2,
+.online-practice-question-card h2 {
+  margin: 0;
+  color: #082431;
+}
+
+.online-practice-header h1 {
+  overflow: hidden;
+  font-size: 1.12rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-practice-header p,
+.online-practice-header small {
+  margin: 3px 0 0;
+  color: #607380;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.online-practice-header small {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-practice-header-title {
+  min-width: 0;
+}
+
+.online-practice-header-chips {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.online-practice-header-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #cdebe1;
+  border-radius: 8px;
+  background: #f8fffc;
+  color: #244756;
+  font-size: 0.7rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.online-practice-header-chips span.is-type {
+  border-color: #c7dcff;
+  background: #f3f7ff;
+}
+
+.online-practice-header-chips span.is-duration {
+  border-color: #c9efe5;
+  background: #f0fffb;
+}
+
+.online-practice-header-chips span.is-marks {
+  border-color: #f8ddb1;
+  background: #fff8ec;
+}
+
+.online-practice-header-chips em {
+  color: #607380;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.online-practice-header-chips strong {
+  color: #08776d;
+  font-weight: 900;
+}
+
+.online-practice-header-chips span.is-type strong {
+  color: #2457b8;
+}
+
+.online-practice-header-chips span.is-duration strong {
+  color: #08776d;
+}
+
+.online-practice-header-chips span.is-marks strong {
+  color: #9a5a00;
+}
+
+.online-practice-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.online-practice-theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #bfe2d8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #08776d;
+  cursor: pointer;
+}
+
+.online-practice-exit-btn,
+.online-practice-empty button,
+.online-practice-start-btn,
+.online-practice-question-nav button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #bfe2d8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #08776d;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.online-practice-exit-btn:hover,
+.online-practice-exit-btn:focus-visible,
+.online-practice-theme-btn:hover,
+.online-practice-theme-btn:focus-visible,
+.online-practice-empty button:hover,
+.online-practice-empty button:focus-visible,
+.online-practice-question-nav button:hover:not(:disabled),
+.online-practice-question-nav button:focus-visible:not(:disabled) {
+  border-color: #10b9a8;
+  background: #ecfffb;
+  outline: none;
+}
+
+.online-practice-start-card,
+.online-practice-workspace,
+.online-practice-empty {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid #cfe2dc;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.online-practice-start-head,
+.online-practice-summary,
+.online-practice-question-head,
+.online-practice-question-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.online-practice-start-head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #d9ebe6;
+}
+
+.online-practice-start-head > span,
+.online-practice-summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #244756;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.online-practice-start-head > strong {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #047857;
+  font-size: 0.72rem;
+}
+
+.online-practice-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.online-practice-detail-grid span {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px 9px;
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 1px solid #dbe7e2;
+  border-radius: 8px;
+  background: #fbfefd;
+}
+
+.online-practice-detail-grid i {
+  display: inline-flex;
+  grid-row: 1 / span 2;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: #08776d;
+  font-style: normal;
+  background: #e7fff8;
+  border-radius: 8px;
+}
+
+.online-practice-detail-grid strong {
+  grid-column: 2;
+  color: #082431;
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.08;
+}
+
+.online-practice-detail-grid em {
+  grid-column: 2;
+  color: #607380;
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.08;
+}
+
+.online-practice-instructions {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.online-practice-student-instructions {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #cdebe1;
+  border-radius: 8px;
+  background: #f8fffc;
+}
+
+.online-practice-instructions h2,
+.online-practice-student-instructions h2 {
+  font-size: 0.95rem;
+}
+
+.online-practice-instructions ul,
+.online-practice-student-instructions ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #405866;
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+.online-practice-agree {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  color: #244756;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.online-practice-agree input {
+  width: 17px;
+  height: 17px;
+  accent-color: #10b9a8;
+}
+
+.online-practice-start-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.online-practice-start-btn {
+  border-color: #10b9a8;
+  background: #0f9f94;
+  color: #ffffff;
+}
+
+.online-practice-start-btn:disabled,
+.online-practice-question-nav button:disabled {
+  border-color: #d5e7e1;
+  background: #f3f8f6;
+  color: #8aa0af;
+  cursor: not-allowed;
+}
+
+.online-practice-summary {
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid #dbe7e2;
+  border-radius: 8px;
+  background: #fbfefd;
+}
+
+.online-practice-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #dbe7e2;
+  border-radius: 10px;
+  background: #f7fbfa;
+  width: max-content;
+}
+
+.online-practice-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #405866;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.online-practice-tabs button.is-active {
+  border-color: #99f6e4;
+  background: #ecfffb;
+  color: #08776d;
+}
+
+.online-practice-tabs strong,
+.online-practice-tabs em {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #dffbf6;
+  color: #075f54;
+  font-size: 0.62rem;
+  font-style: normal;
+}
+
+.online-practice-question-card {
+  display: grid;
+  gap: 14px;
+  min-height: 320px;
+  padding: 16px;
+  border: 1px solid #dbe7e2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.online-practice-question-head {
+  color: #607380;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.online-practice-question-head strong {
+  color: #08776d;
+}
+
+.online-practice-question-card h2 {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.online-practice-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+
+.online-practice-options button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid #dbe7e2;
+  border-radius: 8px;
+  background: #fbfefd;
+  color: #244756;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+
+.online-practice-options button:hover,
+.online-practice-options button:focus-visible,
+.online-practice-options button.is-selected {
+  border-color: #10b9a8;
+  background: #ecfffb;
+  outline: none;
+}
+
+.online-practice-descriptive-readonly {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #ddd6fe;
+  border-radius: 8px;
+  background: #fbfaff;
+}
+
+.online-practice-descriptive-readonly > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
+.online-practice-descriptive-readonly p,
+.online-practice-empty-section p,
+.online-practice-empty p {
+  margin: 0;
+  color: #405866;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.online-practice-descriptive-readonly p {
+  display: flex;
+  gap: 8px;
+}
+
+.online-practice-question-nav {
+  justify-content: flex-end;
+}
+
+.online-practice-empty {
+  align-self: center;
+  justify-items: start;
 }
 
 .question-bank-overview-shell {
@@ -268,13 +1008,18 @@
 }
 
 .assessment-create-metric.is-draft {
-  border-color: #bde6dc;
-  background: #f7fffc;
+  border-color: #fed7aa;
+  background: #fff7ed;
 }
 
 .assessment-create-metric.is-draft .assessment-create-metric-icon {
-  background: #ccfbf1;
-  color: #0f766e;
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.assessment-create-metric.is-draft.is-active {
+  border-color: #fb923c;
+  box-shadow: inset 3px 0 0 #f97316, 0 8px 18px rgba(194, 65, 12, 0.1);
 }
 
 .assessment-create-metric.is-pending {
@@ -1101,6 +1846,81 @@
   color: #075f54;
   outline: none;
   box-shadow: 0 8px 18px rgba(16, 185, 168, 0.14);
+}
+
+.my-assessment-card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border: 1px solid #99f6e4;
+  border-radius: 999px;
+  background: #0f9f94;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.my-assessment-card-action.is-results {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.my-assessment-card-action:hover:not(:disabled),
+.my-assessment-card-action:focus-visible:not(:disabled) {
+  border-color: #0f766e;
+  background: #08776d;
+  color: #ffffff;
+  outline: none;
+  box-shadow: 0 8px 18px rgba(16, 185, 168, 0.14);
+}
+
+.my-assessment-card-action.is-results:hover:not(:disabled),
+.my-assessment-card-action.is-results:focus-visible:not(:disabled) {
+  border-color: #60a5fa;
+  background: #dbeafe;
+  color: #1d4ed8;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+}
+
+.my-assessment-card-action:disabled {
+  border-color: #d5e7e1;
+  background: #f3f8f6;
+  color: #8aa0af;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.my-assessment-card-action.is-start.is-live {
+  position: relative;
+  overflow: hidden;
+  border-color: #10b9a8;
+  background: linear-gradient(90deg, #0f9f94 0%, #12c7b8 50%, #0f9f94 100%);
+  background-size: 220% 100%;
+  color: #ffffff;
+  animation: my-assessment-start-fill 1.35s ease-in-out infinite;
+}
+
+@keyframes my-assessment-start-fill {
+  0% {
+    background-position: 0% center;
+    box-shadow: 0 0 0 0 rgba(16, 185, 168, 0.3);
+  }
+
+  50% {
+    background-position: 100% center;
+    box-shadow: 0 0 0 4px rgba(16, 185, 168, 0.08);
+  }
+
+  100% {
+    background-position: 0% center;
+    box-shadow: 0 0 0 0 rgba(16, 185, 168, 0);
+  }
 }
 
 .assessment-create-published-schedule-badge {
@@ -10494,6 +11314,67 @@
   min-width: 0;
 }
 
+.query-request-meta-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+}
+
+.query-request-meta-badges::-webkit-scrollbar {
+  display: none;
+}
+
+.query-request-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: max-content;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid #dbe7e2;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #334652;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.query-request-meta-badge strong {
+  display: inline;
+  width: auto;
+  color: #607380;
+  font-size: inherit;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.query-request-meta-badge.is-reason {
+  border-color: #fecaca;
+  background: #fff7f8;
+  color: #be123c;
+}
+
+.query-request-meta-badge.is-action {
+  border-color: #99f6e4;
+  background: #f0fffb;
+  color: #08776d;
+}
+
+.query-request-meta-badge.is-note {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+  color: #1d4ed8;
+}
+
 .assessment-page-grid-row-checkbox {
   display: inline-flex;
   align-items: center;
@@ -12862,6 +13743,34 @@
   color: #c3d4e8;
 }
 
+.theme-dark .query-request-meta-badge {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: #101827;
+  color: #d9e8f8;
+}
+
+.theme-dark .query-request-meta-badge strong {
+  color: #9fb2c6;
+}
+
+.theme-dark .query-request-meta-badge.is-reason {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.18);
+  color: #fca5a5;
+}
+
+.theme-dark .query-request-meta-badge.is-action {
+  border-color: rgba(45, 212, 191, 0.48);
+  background: rgba(20, 184, 166, 0.12);
+  color: #8df0c7;
+}
+
+.theme-dark .query-request-meta-badge.is-note {
+  border-color: rgba(96, 165, 250, 0.52);
+  background: rgba(30, 64, 175, 0.16);
+  color: #93c5fd;
+}
+
 .theme-dark .assessment-create-metric.is-created {
   border-color: rgba(96, 165, 250, 0.52);
   background: rgba(30, 64, 175, 0.16);
@@ -12873,13 +13782,18 @@
 }
 
 .theme-dark .assessment-create-metric.is-draft {
-  border-color: rgba(45, 212, 191, 0.48);
-  background: rgba(20, 184, 166, 0.12);
+  border-color: rgba(251, 146, 60, 0.48);
+  background: rgba(124, 45, 18, 0.18);
 }
 
 .theme-dark .assessment-create-metric.is-draft .assessment-create-metric-icon {
-  background: rgba(20, 184, 166, 0.22);
-  color: #8df0c7;
+  background: rgba(234, 88, 12, 0.24);
+  color: #fdba74;
+}
+
+.theme-dark .assessment-create-metric.is-draft.is-active {
+  border-color: rgba(251, 146, 60, 0.72);
+  box-shadow: inset 3px 0 0 #fb923c, 0 8px 20px rgba(0, 0, 0, 0.18);
 }
 
 .theme-dark .assessment-create-metric.is-pending {
@@ -13053,6 +13967,212 @@
   color: #dcfce7;
 }
 
+.theme-dark .assessment-page.is-my-assessment .my-assessment-live-count-badge {
+  border-color: rgba(74, 222, 128, 0.42);
+  background: rgba(22, 163, 74, 0.14);
+  color: #9af5b7;
+}
+
+.theme-dark .assessment-page.is-my-assessment .my-assessment-live-count-badge:hover,
+.theme-dark .assessment-page.is-my-assessment .my-assessment-live-count-badge:focus-visible,
+.theme-dark .assessment-page.is-my-assessment .my-assessment-live-count-badge.is-active {
+  border-color: rgba(74, 222, 128, 0.68);
+  background: rgba(22, 163, 74, 0.22);
+  color: #dcfce7;
+}
+
+.theme-dark .assessment-page.is-my-assessment .my-assessment-live-count-badge strong {
+  background: rgba(34, 197, 94, 0.18);
+  color: #bbf7d0;
+}
+
+.theme-dark .assessment-page.is-my-assessment .my-assessment-metric-card {
+  --metric-accent: #93c5fd;
+  --metric-border: rgba(96, 165, 250, 0.44);
+  --metric-bg: rgba(30, 64, 175, 0.16);
+  --metric-icon-bg: rgba(37, 99, 235, 0.24);
+  color: #eef6ff;
+}
+
+.theme-dark .assessment-page.is-my-assessment .my-assessment-metric-copy strong {
+  color: #eef6ff;
+}
+
+.theme-dark .assessment-page.is-my-assessment .my-assessment-metric-copy span {
+  color: #c3d4e8;
+}
+
+.theme-dark .assessment-page.is-my-assessment .my-assessment-metric-card.is-live {
+  --metric-accent: #86efac;
+  --metric-border: rgba(74, 222, 128, 0.44);
+  --metric-bg: rgba(22, 101, 52, 0.14);
+  --metric-icon-bg: rgba(22, 163, 74, 0.22);
+}
+
+.theme-dark .assessment-page.is-my-assessment .my-assessment-metric-card.is-upcoming {
+  --metric-accent: #fdba74;
+  --metric-border: rgba(251, 146, 60, 0.48);
+  --metric-bg: rgba(124, 45, 18, 0.18);
+  --metric-icon-bg: rgba(234, 88, 12, 0.24);
+}
+
+.theme-dark .assessment-page.is-my-assessment .my-assessment-metric-card.is-completed {
+  --metric-accent: #cbd5e1;
+  --metric-border: rgba(148, 163, 184, 0.45);
+  --metric-bg: rgba(51, 65, 85, 0.18);
+  --metric-icon-bg: rgba(100, 116, 139, 0.24);
+}
+
+.theme-dark .online-practice-exam-page {
+  background: #0b1220;
+  color: #eef6ff;
+}
+
+.theme-dark .online-practice-header,
+.theme-dark .online-practice-start-card,
+.theme-dark .online-practice-workspace,
+.theme-dark .online-practice-empty,
+.theme-dark .online-practice-question-card {
+  border-color: rgba(94, 116, 145, 0.5);
+  background: #101827;
+}
+
+.theme-dark .online-practice-logo-mark {
+  background: rgba(20, 184, 166, 0.18);
+  color: #8df0c7;
+}
+
+.theme-dark .online-practice-header h1,
+.theme-dark .online-practice-start-identity h1,
+.theme-dark .online-practice-empty h1,
+.theme-dark .online-practice-instructions h2,
+.theme-dark .online-practice-student-instructions h2,
+.theme-dark .online-practice-question-card h2,
+.theme-dark .online-practice-detail-grid strong,
+.theme-dark .online-practice-summary strong {
+  color: #eef6ff;
+}
+
+.theme-dark .online-practice-header p,
+.theme-dark .online-practice-header small,
+.theme-dark .online-practice-start-identity p,
+.theme-dark .online-practice-start-identity small,
+.theme-dark .online-practice-detail-grid em,
+.theme-dark .online-practice-instructions ul,
+.theme-dark .online-practice-student-instructions ul,
+.theme-dark .online-practice-empty p,
+.theme-dark .online-practice-empty-section p,
+.theme-dark .online-practice-descriptive-readonly p {
+  color: #c3d4e8;
+}
+
+.theme-dark .online-practice-exit-btn,
+.theme-dark .online-practice-theme-btn,
+.theme-dark .online-practice-empty button,
+.theme-dark .online-practice-question-nav button {
+  border-color: rgba(94, 116, 145, 0.52);
+  background: #101827;
+  color: #d9e8f8;
+}
+
+.theme-dark .online-practice-header-chips span {
+  border-color: rgba(94, 116, 145, 0.42);
+  background: rgba(15, 23, 42, 0.58);
+  color: #d9e8f8;
+}
+
+.theme-dark .online-practice-header-chips span.is-type {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.theme-dark .online-practice-header-chips span.is-duration {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.16);
+}
+
+.theme-dark .online-practice-header-chips span.is-marks {
+  border-color: rgba(251, 191, 36, 0.42);
+  background: rgba(217, 119, 6, 0.16);
+}
+
+.theme-dark .online-practice-header-chips em {
+  color: #9fb2c6;
+}
+
+.theme-dark .online-practice-header-chips strong {
+  color: #8df0c7;
+}
+
+.theme-dark .online-practice-header-chips span.is-type strong {
+  color: #bfdbfe;
+}
+
+.theme-dark .online-practice-header-chips span.is-duration strong {
+  color: #8df0c7;
+}
+
+.theme-dark .online-practice-header-chips span.is-marks strong {
+  color: #fde68a;
+}
+
+.theme-dark .online-practice-detail-grid span,
+.theme-dark .online-practice-summary,
+.theme-dark .online-practice-tabs,
+.theme-dark .online-practice-options button {
+  border-color: rgba(94, 116, 145, 0.42);
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.theme-dark .online-practice-detail-grid i {
+  color: #8df0c7;
+  background: rgba(20, 184, 166, 0.18);
+}
+
+.theme-dark .online-practice-start-head {
+  border-bottom-color: rgba(94, 116, 145, 0.34);
+}
+
+.theme-dark .online-practice-start-identity {
+  border-bottom-color: rgba(94, 116, 145, 0.34);
+}
+
+.theme-dark .online-practice-start-head > span,
+.theme-dark .online-practice-summary span,
+.theme-dark .online-practice-question-head,
+.theme-dark .online-practice-options button,
+.theme-dark .online-practice-agree {
+  color: #d9e8f8;
+}
+
+.theme-dark .online-practice-instructions {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(30, 64, 175, 0.16);
+}
+
+.theme-dark .online-practice-student-instructions {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.12);
+}
+
+.theme-dark .online-practice-tabs button {
+  color: #c3d4e8;
+}
+
+.theme-dark .online-practice-tabs button.is-active,
+.theme-dark .online-practice-options button:hover,
+.theme-dark .online-practice-options button:focus-visible,
+.theme-dark .online-practice-options button.is-selected {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(20, 184, 166, 0.16);
+  color: #8df0c7;
+}
+
+.theme-dark .online-practice-descriptive-readonly {
+  border-color: rgba(167, 139, 250, 0.46);
+  background: rgba(91, 33, 182, 0.15);
+}
+
 .theme-dark .assessment-create-published-info {
   border-color: rgba(96, 165, 250, 0.36);
   background: rgba(96, 165, 250, 0.12);
@@ -13168,6 +14288,45 @@
   border-color: rgba(45, 212, 191, 0.62);
   background: rgba(20, 184, 166, 0.22);
   color: #ccfbf1;
+}
+
+.theme-dark .my-assessment-card-action {
+  border-color: rgba(45, 212, 191, 0.48);
+  background: rgba(20, 184, 166, 0.72);
+  color: #ecfffb;
+}
+
+.theme-dark .my-assessment-card-action.is-results {
+  border-color: rgba(96, 165, 250, 0.48);
+  background: rgba(96, 165, 250, 0.16);
+  color: #bfdbfe;
+}
+
+.theme-dark .my-assessment-card-action:hover:not(:disabled),
+.theme-dark .my-assessment-card-action:focus-visible:not(:disabled) {
+  border-color: rgba(45, 212, 191, 0.68);
+  background: rgba(20, 184, 166, 0.9);
+  color: #ffffff;
+}
+
+.theme-dark .my-assessment-card-action.is-results:hover:not(:disabled),
+.theme-dark .my-assessment-card-action.is-results:focus-visible:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.64);
+  background: rgba(96, 165, 250, 0.24);
+  color: #dbeafe;
+}
+
+.theme-dark .my-assessment-card-action:disabled {
+  border-color: rgba(94, 116, 145, 0.44);
+  background: rgba(15, 23, 42, 0.62);
+  color: #8396ab;
+}
+
+.theme-dark .my-assessment-card-action.is-start.is-live {
+  border-color: rgba(45, 212, 191, 0.72);
+  background: linear-gradient(90deg, rgba(15, 159, 148, 0.9) 0%, rgba(20, 184, 166, 1) 50%, rgba(15, 159, 148, 0.9) 100%);
+  background-size: 220% 100%;
+  color: #ffffff;
 }
 
 .theme-dark .assessment-create-published-schedule-badge.is-live {
@@ -19738,12 +20897,90 @@ body > .assessment-page-filter-menu {
 }
 
 @media (max-width: 991.98px) {
+  .assessment-page.is-my-assessment .my-assessment-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .assessment-page.is-my-assessment .assessment-page-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 760px) {
+  .online-practice-exam-page {
+    padding: 10px;
+  }
+
+  .online-practice-exam-page.has-fixed-header {
+    padding-top: 190px;
+  }
+
+  .online-practice-header {
+    grid-template-columns: 48px minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .online-practice-logo-mark,
+  .online-practice-logo-image {
+    width: 48px;
+    height: 48px;
+  }
+
+  .online-practice-header-chips,
+  .online-practice-header-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .online-practice-start-identity {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .online-practice-start-identity .online-practice-header-actions {
+    grid-column: 1 / -1;
+  }
+
+  .online-practice-header-chips {
+    justify-content: flex-start;
+  }
+
+  .online-practice-header-actions {
+    justify-content: stretch;
+  }
+
+  .online-practice-exit-btn {
+    flex: 1 1 auto;
+  }
+
+  .online-practice-detail-grid,
+  .online-practice-options {
+    grid-template-columns: 1fr;
+  }
+
+  .online-practice-tabs {
+    display: grid;
+    width: 100%;
+  }
+
+  .online-practice-start-card,
+  .online-practice-workspace,
+  .online-practice-empty {
+    padding: 14px;
+  }
+
+  .online-practice-start-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .online-practice-start-btn {
+    width: 100%;
+  }
+
+  .assessment-page.is-my-assessment .my-assessment-metrics {
+    grid-template-columns: 1fr;
+  }
+
   .assessment-create-draft-shell .assessment-create-card-heading {
     grid-template-columns: 1fr;
     align-items: stretch;

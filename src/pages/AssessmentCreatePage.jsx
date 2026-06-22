@@ -735,11 +735,22 @@ const applyAssessmentTime = (date, value) => {
 }
 
 const parseAssessmentDurationMs = (value) => {
-  const match = String(value || '').trim().match(/^(\d{1,2})(?::(\d{2}))?$/)
+  const match = String(value || '').trim().match(/^(\d+)(?::(\d{2}))?$/)
   if (!match) return 0
   const hours = Number(match[1] || 0)
   const minutes = Number(match[2] || 0)
   return ((hours * 60) + minutes) * 60 * 1000
+}
+
+const formatAssessmentRemainingTime = (value) => {
+  const totalSeconds = Math.max(0, Math.floor((value || 0) / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const pad = (item) => String(item).padStart(2, '0')
+
+  if (hours > 0) return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+  return `${pad(minutes)}:${pad(seconds)}`
 }
 
 const getDayStart = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
@@ -755,7 +766,7 @@ const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
   const dateEndAt = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null
   const endAt = [durationEndAt, dateEndAt].filter(Boolean).sort((a, b) => a - b)[0] || startAt
   if (now > endAt) return { type: 'completed', label: 'Completed' }
-  if (now >= startAt) return { type: 'live', label: 'Assessment Live' }
+  if (now >= startAt) return { type: 'live', label: 'Assessment Live', remainingMs: endAt.getTime() - now.getTime() }
 
   const diffMs = startAt.getTime() - now.getTime()
   const minutes = Math.max(1, Math.ceil(diffMs / (60 * 1000)))
@@ -863,7 +874,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
     if (activeAssessmentTab !== 'published') return undefined
 
     setScheduleNow(new Date())
-    const intervalId = window.setInterval(() => setScheduleNow(new Date()), 10000)
+    const intervalId = window.setInterval(() => setScheduleNow(new Date()), 1000)
     return () => window.clearInterval(intervalId)
   }, [activeAssessmentTab])
 
@@ -1160,6 +1171,10 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                   const canShowExamControls = !isOfflineExam && scheduleStatus?.type === 'live'
                   const publishedQuestionRows = getPublishedQuestionRows(assessment)
+                  const durationValue = scheduleStatus?.type === 'live'
+                    ? formatAssessmentRemainingTime(scheduleStatus.remainingMs)
+                    : assessment.totalDuration || '-'
+                  const durationLabel = scheduleStatus?.type === 'live' ? 'Remaining Time' : 'Total Duration'
 
                   return (
                       <article
@@ -1211,7 +1226,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                         <div className="assessment-create-published-details" aria-label="Published assessment details">
                           <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em>Start Date</em></span>
                           <span><strong>{assessment.startTime || '-'}</strong><em>Start Time</em></span>
-                          <span><strong>{assessment.totalDuration || '-'}</strong><em>Total Duration</em></span>
+                          <span><strong>{durationValue}</strong><em>{durationLabel}</em></span>
                           <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em>End Date</em></span>
                           <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
                           <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
