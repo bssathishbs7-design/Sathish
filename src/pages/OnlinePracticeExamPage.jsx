@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Award, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, FileText, Hash, ListChecks, Moon, Sun, Timer } from 'lucide-react'
+import { ArrowLeft, Award, CalendarDays, ChevronLeft, ChevronRight, Clock3, FileText, Hash, ListChecks, Moon, Sun, Timer } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 
 const ONLINE_PRACTICE_EXAM_STORAGE_KEY = 'vx-online-practice-exam-assessment'
+const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
+const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
+const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-sections'
+const PREVIEW_SECTION_CONFIG = [
+  { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
+  { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
+  { key: 'MEQs', defaultTitle: 'Modified Essay Questions' },
+  { key: 'LAQs', defaultTitle: 'Long Answer Questions' },
+]
+const PREVIEW_SECTION_KEY_SET = new Set(PREVIEW_SECTION_CONFIG.map((section) => section.key))
 
 const readSelectedAssessment = () => {
   try {
@@ -84,6 +94,184 @@ const getMarks = (question) => (
   ?? '-'
 )
 
+const formatMarksLabel = (value) => {
+  const marks = getMarks(value)
+  return marks === '-' ? '- Marks' : `${String(marks).padStart(2, '0')} Marks`
+}
+
+const hasVisibleMarks = (value) => {
+  const text = String(value ?? '').trim()
+  return text !== '' && text !== '-' && Number(text) !== 0
+}
+
+const getNumericMarks = (value) => {
+  const marks = Number(getMarks(value))
+  return Number.isFinite(marks) ? marks : 0
+}
+
+const parseMarksValue = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const getQuestionMarksTotal = (question) => {
+  if (!isDescriptiveQuestionType(question?.type)) return parseMarksValue(getMarks(question))
+
+  const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+  const sectionMarks = sections.reduce((total, section) => {
+    const children = Array.isArray(section.children) ? section.children : []
+    const childMarks = children.reduce((sum, child) => sum + parseMarksValue(child.marks), 0)
+    const ownMarks = children.length ? 0 : parseMarksValue(section.marks)
+    return total + ownMarks + childMarks
+  }, 0)
+
+  return (sections.length ? 0 : parseMarksValue(question?.marks)) + sectionMarks
+}
+
+const toRoman = (value) => {
+  const numerals = [
+    ['X', 10],
+    ['IX', 9],
+    ['V', 5],
+    ['IV', 4],
+    ['I', 1],
+  ]
+  let remaining = Math.max(1, value)
+  let output = ''
+
+  numerals.forEach(([symbol, amount]) => {
+    while (remaining >= amount) {
+      output += symbol
+      remaining -= amount
+    }
+  })
+
+  return output
+}
+
+const toLowerRoman = (value) => toRoman(value).toLowerCase()
+
+const isCustomPreviewSectionKey = (key) => String(key ?? '').startsWith('custom-section-')
+
+const getSummaryTypeLabel = (type) => {
+  if (type === 'MCQ') return 'MCQ'
+  if (String(type).includes('MEQs')) return 'MEQs'
+  if (String(type).includes('LAQs')) return 'LAQs'
+  if (String(type).includes('SAQs') || type === 'Descriptive Question') return 'SAQs'
+  return type || 'Question'
+}
+
+const getPreviewSectionKey = (item) => (
+  PREVIEW_SECTION_KEY_SET.has(item?.previewSectionKey) || isCustomPreviewSectionKey(item?.previewSectionKey)
+    ? item.previewSectionKey
+    : getSummaryTypeLabel(item?.type)
+)
+
+const getAssessmentStorageSuffix = (setup = {}) => {
+  if (setup.assessmentId) return String(setup.assessmentId)
+  const signature = [
+    setup.collegeName,
+    setup.assessmentName,
+    setup.academicYear,
+    setup.examCategory,
+    setup.course,
+    setup.year,
+  ].filter(Boolean).join('|')
+  return signature ? signature.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : 'draft'
+}
+
+const readJsonStorage = (key, fallback) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || 'null')
+    return parsed ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
+const getPreviewSectionTitles = (setup = {}) => {
+  const suffix = getAssessmentStorageSuffix(setup)
+  const defaults = PREVIEW_SECTION_CONFIG.reduce((titles, section) => ({
+    ...titles,
+    [section.key]: section.defaultTitle,
+  }), {})
+  const customSections = readJsonStorage(`${CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY}:${suffix}`, [])
+  const customTitles = Array.isArray(customSections)
+    ? Object.fromEntries(customSections.map((section) => [
+      section.key,
+      section.title || section.defaultTitle || 'New Section',
+    ]))
+    : {}
+  const savedTitles = readJsonStorage(`${CREATE_ASSESSMENT_SECTION_TITLES_KEY}:${suffix}`, {})
+
+  return {
+    ...defaults,
+    ...customTitles,
+    ...(savedTitles && typeof savedTitles === 'object' ? savedTitles : {}),
+  }
+}
+
+const getPreviewSectionOrder = (setup = {}, questions = []) => {
+  const suffix = getAssessmentStorageSuffix(setup)
+  const defaultOrder = PREVIEW_SECTION_CONFIG.map((section) => section.key)
+  const savedOrder = readJsonStorage(`${CREATE_ASSESSMENT_SECTION_ORDER_KEY}:${suffix}`, [])
+  const questionKeys = questions.map(getPreviewSectionKey).filter(Boolean)
+  const orderedKeys = Array.isArray(savedOrder) ? savedOrder : []
+
+  return [
+    ...orderedKeys,
+    ...defaultOrder,
+    ...questionKeys,
+  ].filter((key, index, rows) => rows.indexOf(key) === index)
+}
+
+const getPreviewOrderedQuestionNumbers = (setup = {}, questions = []) => {
+  const sectionOrder = getPreviewSectionOrder(setup, questions)
+  const numbers = {}
+  let displayNumber = 1
+
+  sectionOrder.forEach((sectionKey) => {
+    questions
+      .filter((question) => getPreviewSectionKey(question) === sectionKey)
+      .forEach((question, index) => {
+        numbers[question.id ?? `${sectionKey}-${index}`] = displayNumber
+        displayNumber += 1
+      })
+  })
+
+  return numbers
+}
+
+const getPreviewSectionToneClass = (key) => {
+  if (key === 'MCQ') return 'type-mcq'
+  if (key === 'SAQs') return 'type-saqs'
+  if (key === 'MEQs') return 'type-meqs'
+  if (key === 'LAQs') return 'type-laqs'
+  if (isCustomPreviewSectionKey(key)) return 'type-custom'
+  return 'type-custom'
+}
+
+const getDescriptiveSectionTitle = (type) => {
+  const normalized = String(type || 'Descriptive Questions')
+    .replace(/\bSAQs?\b/gi, '')
+    .replace(/\bDirect\b/gi, 'Direct')
+    .replace(/\bModified\s+Essay\b/gi, 'Essay')
+    .replace(/\bDescriptive\s+Question\b/gi, 'Descriptive Questions')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return normalized || 'Descriptive Questions'
+}
+
+const getDescriptiveSubQuestions = (question) => {
+  const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+  if (sections.length) return sections
+  const subQuestions = Array.isArray(question?.subQuestions) ? question.subQuestions : []
+  if (subQuestions.length) return subQuestions
+  return []
+}
+
 const getInstructionLines = (value) => stripHtml(value)
   .split(/\n+|(?:\s*•\s*)/)
   .map((line) => line.trim())
@@ -127,6 +315,40 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const currentQuestions = activeSection === 'mcq' ? mcqQuestions : descriptiveQuestions
   const currentQuestion = currentQuestions[activeQuestionIndex] ?? null
   const setup = assessment?.setup ?? {}
+  const previewQuestionDisplayNumbers = useMemo(() => (
+    getPreviewOrderedQuestionNumbers(setup, questionRows)
+  ), [questionRows, setup])
+  const descriptiveGroups = useMemo(() => {
+    const titleMap = getPreviewSectionTitles(setup)
+    const sectionOrder = getPreviewSectionOrder(setup, questionRows)
+    const groupsByKey = new Map()
+
+    descriptiveQuestions.forEach((question) => {
+      const sectionKey = getPreviewSectionKey(question)
+      const title = titleMap[sectionKey] || getDescriptiveSectionTitle(question?.type)
+      const existing = groupsByKey.get(sectionKey)
+      if (existing) {
+        existing.questions.push(question)
+        existing.totalMarks += getQuestionMarksTotal(question)
+        return
+      }
+
+      groupsByKey.set(sectionKey, {
+        key: sectionKey,
+        title,
+        totalMarks: getQuestionMarksTotal(question),
+        questions: [question],
+      })
+    })
+
+    return [...groupsByKey.values()]
+      .sort((first, second) => sectionOrder.indexOf(first.key) - sectionOrder.indexOf(second.key))
+      .map((group) => ({
+        ...group,
+        roman: `${toRoman(sectionOrder.filter((key) => key === 'MCQ' || groupsByKey.has(key)).indexOf(group.key) + 1)}.`,
+        toneClass: getPreviewSectionToneClass(group.key),
+      }))
+  }, [descriptiveQuestions, questionRows, setup])
   const headerLogo = setup.logoPreview || assessment?.logoPreview || ''
   const ThemeIcon = theme === 'dark' ? Sun : Moon
   const studentInstructionLines = getInstructionLines(setup.studentInstructions)
@@ -341,8 +563,72 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
             </button>
           </div>
 
-          <article className="online-practice-question-card">
-            {currentQuestion ? (
+          <article className={`online-practice-question-card ${activeSection === 'descriptive' ? 'is-descriptive-section' : ''}`.trim()}>
+            {activeSection === 'descriptive' ? (
+              descriptiveGroups.length ? (
+                <div className="online-practice-descriptive-readonly" aria-label="Read only descriptive questions">
+                  {descriptiveGroups.map((group, groupIndex) => (
+                    <section className={`online-practice-descriptive-section ${group.toneClass}`} key={group.title}>
+                      <div className="online-practice-descriptive-section-head">
+                        <h2><span>{group.roman}</span>{group.title}</h2>
+                        <strong>{String(group.totalMarks).padStart(2, '0')} Marks</strong>
+                      </div>
+                      <div className="online-practice-descriptive-list">
+                        {group.questions.map((question, questionIndex) => {
+                          const subQuestions = getDescriptiveSubQuestions(question)
+                          const displayNumber = previewQuestionDisplayNumbers[question.id ?? `${group.key}-${questionIndex}`] ?? questionIndex + 1
+
+                          return (
+                            <div className="online-practice-descriptive-paper-question" key={question.id ?? questionIndex}>
+                              <p className="online-practice-descriptive-main">
+                                <strong>{displayNumber}.</strong>
+                                <span>{getQuestionText(question)}</span>
+                              </p>
+                              {Array.isArray(question.images) && question.images.length ? (
+                                <div className="online-practice-question-images" aria-label="Question images">
+                                  {question.images.map((image, imageIndex) => (
+                                    <figure key={image.id ?? `${image.name || 'image'}-${imageIndex}`}>
+                                      <span>{String.fromCharCode(65 + imageIndex)}</span>
+                                      <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
+                                    </figure>
+                                  ))}
+                                </div>
+                              ) : null}
+                              {subQuestions.length ? (
+                                subQuestions.map((section, index) => (
+                                  <div className="online-practice-descriptive-subgroup" key={section.id ?? index}>
+                                    <p className="online-practice-descriptive-sub">
+                                      <strong>{toLowerRoman(index + 1)}.</strong>
+                                      <span>{getQuestionText(section)}</span>
+                                      {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? (
+                                        <b>{section.marks} Marks</b>
+                                      ) : null}
+                                    </p>
+                                    {Array.isArray(section.children) && section.children.length ? (
+                                      section.children.map((child, childIndex) => (
+                                        <p className="online-practice-descriptive-sub is-nested" key={child.id ?? childIndex}>
+                                          <strong>{String.fromCharCode(97 + childIndex)}.</strong>
+                                          <span>{getQuestionText(child)}</span>
+                                          {hasVisibleMarks(child.marks) ? <b>{child.marks} Marks</b> : null}
+                                        </p>
+                                      ))
+                                    ) : null}
+                                  </div>
+                                ))
+                              ) : null}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <div className="online-practice-empty-section">
+                  <p>No questions available in this section.</p>
+                </div>
+              )
+            ) : currentQuestion ? (
               <>
                 <div className="online-practice-question-head">
                   <span>Question {activeQuestionIndex + 1} of {currentQuestions.length}</span>
@@ -350,7 +636,6 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                 </div>
                 <h2>{getQuestionText(currentQuestion)}</h2>
 
-                {activeSection === 'mcq' ? (
                   <div className="online-practice-options">
                     {(currentQuestion.options ?? []).map((option, optionIndex) => {
                       const optionKey = `${currentQuestion.id ?? activeQuestionIndex}-${optionIndex}`
@@ -369,21 +654,6 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                       )
                     })}
                   </div>
-                ) : (
-                  <div className="online-practice-descriptive-readonly">
-                    <span><CheckCircle2 size={15} strokeWidth={2.2} /> Read Only</span>
-                    {(currentQuestion.descriptiveSections ?? []).length ? (
-                      currentQuestion.descriptiveSections.map((section, index) => (
-                        <p key={section.id ?? index}>
-                          <strong>{index + 1}.</strong>
-                          {getQuestionText(section)}
-                        </p>
-                      ))
-                    ) : (
-                      <p>No sub questions available.</p>
-                    )}
-                  </div>
-                )}
               </>
             ) : (
               <div className="online-practice-empty-section">
@@ -392,16 +662,18 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
             )}
           </article>
 
-          <footer className="online-practice-question-nav">
-            <button type="button" disabled={activeQuestionIndex <= 0} onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}>
-              <ChevronLeft size={16} strokeWidth={2.2} />
-              Previous
-            </button>
-            <button type="button" disabled={activeQuestionIndex >= currentQuestions.length - 1} onClick={() => setActiveQuestionIndex((current) => Math.min(currentQuestions.length - 1, current + 1))}>
-              Next
-              <ChevronRight size={16} strokeWidth={2.2} />
-            </button>
-          </footer>
+          {activeSection === 'mcq' ? (
+            <footer className="online-practice-question-nav">
+              <button type="button" disabled={activeQuestionIndex <= 0} onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}>
+                <ChevronLeft size={16} strokeWidth={2.2} />
+                Previous
+              </button>
+              <button type="button" disabled={activeQuestionIndex >= currentQuestions.length - 1} onClick={() => setActiveQuestionIndex((current) => Math.min(currentQuestions.length - 1, current + 1))}>
+                Next
+                <ChevronRight size={16} strokeWidth={2.2} />
+              </button>
+            </footer>
+          ) : null}
         </section>
       )}
     </main>
