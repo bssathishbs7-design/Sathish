@@ -132,8 +132,11 @@ const getThresholdTone = (value = '') => {
 const getHtmlText = (html = '') => String(html)
   .replace(/<br\s*\/?>/gi, ' ')
   .replace(/<\/(p|div|li|h[1-6])>/gi, ' ')
-  .replace(/<[^>]*>/g, '')
+  .replace(/<\/?[A-Za-z][^>]*>/g, '')
   .replace(/&nbsp;/g, ' ')
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&amp;/g, '&')
   .trim()
 
 const RichQuestionContent = ({ html, fallback = 'Not added' }) => {

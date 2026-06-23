@@ -134,7 +134,13 @@ const isDescriptiveQuestionType = (type) => (
   || String(type ?? '').includes('LAQs')
 )
 
-const stripHtml = (value) => String(value ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+const stripHtml = (value) => String(value ?? '')
+  .replace(/<\/?[A-Za-z][^>]*>/g, '')
+  .replace(/&nbsp;/g, ' ')
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&amp;/g, '&')
+  .trim()
 
 const formatYearLabel = (value) => {
   const yearMap = {

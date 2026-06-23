@@ -25,8 +25,11 @@ const readSelectedAssessment = () => {
 }
 
 const stripHtml = (value) => String(value ?? '')
-  .replace(/<[^>]*>/g, ' ')
+  .replace(/<\/?[A-Za-z][^>]*>/g, ' ')
   .replace(/&nbsp;/g, ' ')
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&amp;/g, '&')
   .replace(/\s+/g, ' ')
   .trim()
 
@@ -80,7 +83,10 @@ const isDescriptiveQuestionType = (type) => (
 )
 
 const getQuestionText = (question) => (
-  stripHtml(question?.questionText ?? question?.question ?? question?.title) || 'Question text not available'
+  stripHtml(question?.questionText)
+  || stripHtml(question?.title)
+  || stripHtml(question?.question)
+  || 'Question text not available'
 )
 
 const getOptionText = (option) => (
@@ -115,7 +121,10 @@ const parseMarksValue = (value) => {
 }
 
 const getQuestionMarksTotal = (question) => {
-  if (!isDescriptiveQuestionType(question?.type)) return parseMarksValue(getMarks(question))
+  if (!isDescriptiveQuestionType(question?.type)) {
+    if (question?.type === 'MCQ' && !parseMarksValue(question?.marks)) return 1
+    return parseMarksValue(getMarks(question))
+  }
 
   const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
   const sectionMarks = sections.reduce((total, section) => {
@@ -127,6 +136,27 @@ const getQuestionMarksTotal = (question) => {
 
   return (sections.length ? 0 : parseMarksValue(question?.marks)) + sectionMarks
 }
+
+const formatQuestionMarksBadge = (question) => {
+  const totalMarks = getQuestionMarksTotal(question)
+  if (totalMarks > 0) return `${totalMarks} Marks`
+
+  const marks = getMarks(question)
+  return marks === '-' ? '- Marks' : `${marks} Marks`
+}
+
+const renderQuestionImages = (images, className = '') => (
+  Array.isArray(images) && images.length ? (
+    <div className={`online-practice-question-images ${className}`.trim()} aria-label="Question images">
+      {images.map((image, imageIndex) => (
+        <figure key={image.id ?? `${image.name || 'image'}-${imageIndex}`}>
+          <span>{String.fromCharCode(65 + imageIndex)}</span>
+          <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
+        </figure>
+      ))}
+    </div>
+  ) : null
+)
 
 const toRoman = (value) => {
   const numerals = [
@@ -299,6 +329,8 @@ const formatCountdown = (seconds) => {
   return `${pad(minutes)}:${pad(secs)}`
 }
 
+const getDescriptiveSectionDomId = (key) => `online-practice-desc-${String(key || 'section').replace(/[^a-zA-Z0-9_-]/g, '-')}`
+
 function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [assessment] = useState(readSelectedAssessment)
   const [hasAgreed, setHasAgreed] = useState(false)
@@ -306,18 +338,25 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [examStartedAt, setExamStartedAt] = useState(null)
   const [timerNow, setTimerNow] = useState(Date.now())
   const [activeSection, setActiveSection] = useState('mcq')
+  const [activeDescriptiveGroupKey, setActiveDescriptiveGroupKey] = useState('')
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState({})
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
   const descriptiveQuestions = useMemo(() => questionRows.filter((item) => isDescriptiveQuestionType(item?.type)), [questionRows])
+  const mcqTotalMarks = useMemo(() => (
+    mcqQuestions.reduce((sum, question) => sum + getQuestionMarksTotal(question), 0)
+  ), [mcqQuestions])
   const currentQuestions = activeSection === 'mcq' ? mcqQuestions : descriptiveQuestions
   const currentQuestion = currentQuestions[activeQuestionIndex] ?? null
   const setup = assessment?.setup ?? {}
   const previewQuestionDisplayNumbers = useMemo(() => (
     getPreviewOrderedQuestionNumbers(setup, questionRows)
   ), [questionRows, setup])
+  const currentQuestionDisplayNumber = currentQuestion
+    ? previewQuestionDisplayNumbers[currentQuestion.id ?? `${getPreviewSectionKey(currentQuestion)}-${activeQuestionIndex}`] ?? activeQuestionIndex + 1
+    : activeQuestionIndex + 1
   const descriptiveGroups = useMemo(() => {
     const titleMap = getPreviewSectionTitles(setup)
     const sectionOrder = getPreviewSectionOrder(setup, questionRows)
@@ -349,6 +388,15 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
         toneClass: getPreviewSectionToneClass(group.key),
       }))
   }, [descriptiveQuestions, questionRows, setup])
+  const descriptiveTotalMarks = useMemo(() => (
+    descriptiveGroups.reduce((sum, group) => sum + group.totalMarks, 0)
+  ), [descriptiveGroups])
+  const mcqSectionTitle = getPreviewSectionTitles(setup).MCQ || 'Multiple Choice Question'
+  const mcqSectionRoman = useMemo(() => {
+    const sectionOrder = getPreviewSectionOrder(setup, questionRows)
+    const mcqIndex = sectionOrder.filter((key) => key === 'MCQ' || descriptiveGroups.some((group) => group.key === key)).indexOf('MCQ')
+    return `${toRoman(Math.max(0, mcqIndex) + 1)}.`
+  }, [descriptiveGroups, questionRows, setup])
   const headerLogo = setup.logoPreview || assessment?.logoPreview || ''
   const ThemeIcon = theme === 'dark' ? Sun : Moon
   const studentInstructionLines = getInstructionLines(setup.studentInstructions)
@@ -394,6 +442,9 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const switchSection = (section) => {
     setActiveSection(section)
     setActiveQuestionIndex(0)
+    if (section === 'descriptive' && descriptiveGroups.length) {
+      setActiveDescriptiveGroupKey(descriptiveGroups[0].key)
+    }
   }
 
   const startExam = () => {
@@ -403,6 +454,22 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     setHasStarted(true)
   }
 
+  const showDescriptiveSection = (groupKey) => {
+    setActiveSection('descriptive')
+    setActiveDescriptiveGroupKey(groupKey)
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(getDescriptiveSectionDomId(groupKey))
+      const header = document.querySelector('.online-practice-header')
+      if (!target) return
+
+      const headerOffset = (header?.getBoundingClientRect().height ?? 84) + 14
+      window.scrollTo({
+        top: target.getBoundingClientRect().top + window.scrollY - headerOffset,
+        behavior: 'smooth',
+      })
+    })
+  }
+
   useEffect(() => {
     const timerId = window.setInterval(() => {
       setTimerNow(Date.now())
@@ -410,6 +477,58 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
     return () => window.clearInterval(timerId)
   }, [])
+
+  useEffect(() => {
+    if (activeSection !== 'descriptive' || !descriptiveGroups.length) return undefined
+
+    let animationFrameId = 0
+
+    const updateActiveSectionFromScroll = () => {
+      animationFrameId = 0
+      const header = document.querySelector('.online-practice-header')
+      const activationLine = (header?.getBoundingClientRect().height ?? 84) + 90
+      const sectionPositions = descriptiveGroups
+        .map((group) => {
+          const element = document.getElementById(getDescriptiveSectionDomId(group.key))
+          if (!element) return null
+          const rect = element.getBoundingClientRect()
+          return {
+            key: group.key,
+            top: rect.top,
+            bottom: rect.bottom,
+          }
+        })
+        .filter(Boolean)
+
+      if (!sectionPositions.length) return
+
+      const activeCandidate = sectionPositions
+        .filter((section) => section.bottom >= activationLine)
+        .sort((first, second) => Math.abs(first.top - activationLine) - Math.abs(second.top - activationLine))[0]
+        ?? sectionPositions[sectionPositions.length - 1]
+
+      setActiveDescriptiveGroupKey((current) => (
+        current === activeCandidate.key ? current : activeCandidate.key
+      ))
+    }
+
+    const handleScroll = () => {
+      if (animationFrameId) return
+      animationFrameId = window.requestAnimationFrame(updateActiveSectionFromScroll)
+    }
+
+    updateActiveSectionFromScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', handleScroll)
+    document.addEventListener('scroll', handleScroll, { passive: true, capture: true })
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleScroll)
+      document.removeEventListener('scroll', handleScroll, { capture: true })
+      if (animationFrameId) window.cancelAnimationFrame(animationFrameId)
+    }
+  }, [activeSection, descriptiveGroups])
 
   if (!assessment) {
     return (
@@ -551,129 +670,195 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
         </section>
       ) : (
         <section className="online-practice-workspace">
-          <div className="online-practice-tabs" role="tablist" aria-label="Question sections">
-            <button type="button" className={activeSection === 'mcq' ? 'is-active' : ''} onClick={() => switchSection('mcq')}>
-              MCQ
-              <strong>{mcqQuestions.length}</strong>
-            </button>
-            <button type="button" className={activeSection === 'descriptive' ? 'is-active' : ''} onClick={() => switchSection('descriptive')}>
-              Descriptive
-              <strong>{descriptiveQuestions.length}</strong>
-              <em>Read Only</em>
-            </button>
-          </div>
+          <div className="online-practice-exam-layout">
+            <div className="online-practice-exam-main">
+              {activeSection === 'mcq' ? (
+                <div className="online-practice-question-head is-section-title">
+                  <h2><span>{mcqSectionRoman}</span>{mcqSectionTitle}</h2>
+                  <strong>{String(mcqTotalMarks).padStart(2, '0')} Marks</strong>
+                </div>
+              ) : null}
+              <article className={`online-practice-question-card ${activeSection === 'descriptive' ? 'is-descriptive-section' : ''}`.trim()}>
+                {activeSection === 'descriptive' ? (
+                  descriptiveGroups.length ? (
+                    <div className="online-practice-descriptive-readonly" aria-label="Read only descriptive questions">
+                      {descriptiveGroups.map((group, groupIndex) => (
+                        <section
+                          className={`online-practice-descriptive-section ${group.toneClass}`}
+                          id={getDescriptiveSectionDomId(group.key)}
+                          key={group.title}
+                        >
+                          <div className="online-practice-descriptive-section-head">
+                            <h2><span>{group.roman}</span>{group.title}</h2>
+                            <strong>{String(group.totalMarks).padStart(2, '0')} Marks</strong>
+                          </div>
+                          <div className="online-practice-descriptive-list">
+                            {group.questions.map((question, questionIndex) => {
+                              const subQuestions = getDescriptiveSubQuestions(question)
+                              const displayNumber = previewQuestionDisplayNumbers[question.id ?? `${group.key}-${questionIndex}`] ?? questionIndex + 1
 
-          <article className={`online-practice-question-card ${activeSection === 'descriptive' ? 'is-descriptive-section' : ''}`.trim()}>
-            {activeSection === 'descriptive' ? (
-              descriptiveGroups.length ? (
-                <div className="online-practice-descriptive-readonly" aria-label="Read only descriptive questions">
-                  {descriptiveGroups.map((group, groupIndex) => (
-                    <section className={`online-practice-descriptive-section ${group.toneClass}`} key={group.title}>
-                      <div className="online-practice-descriptive-section-head">
-                        <h2><span>{group.roman}</span>{group.title}</h2>
-                        <strong>{String(group.totalMarks).padStart(2, '0')} Marks</strong>
-                      </div>
-                      <div className="online-practice-descriptive-list">
-                        {group.questions.map((question, questionIndex) => {
-                          const subQuestions = getDescriptiveSubQuestions(question)
-                          const displayNumber = previewQuestionDisplayNumbers[question.id ?? `${group.key}-${questionIndex}`] ?? questionIndex + 1
-
-                          return (
-                            <div className="online-practice-descriptive-paper-question" key={question.id ?? questionIndex}>
-                              <p className="online-practice-descriptive-main">
-                                <strong>{displayNumber}.</strong>
-                                <span>{getQuestionText(question)}</span>
-                              </p>
-                              {Array.isArray(question.images) && question.images.length ? (
-                                <div className="online-practice-question-images" aria-label="Question images">
-                                  {question.images.map((image, imageIndex) => (
-                                    <figure key={image.id ?? `${image.name || 'image'}-${imageIndex}`}>
-                                      <span>{String.fromCharCode(65 + imageIndex)}</span>
-                                      <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
-                                    </figure>
-                                  ))}
-                                </div>
-                              ) : null}
-                              {subQuestions.length ? (
-                                subQuestions.map((section, index) => (
-                                  <div className="online-practice-descriptive-subgroup" key={section.id ?? index}>
-                                    <p className="online-practice-descriptive-sub">
-                                      <strong>{toLowerRoman(index + 1)}.</strong>
-                                      <span>{getQuestionText(section)}</span>
-                                      {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? (
-                                        <b>{section.marks} Marks</b>
-                                      ) : null}
-                                    </p>
-                                    {Array.isArray(section.children) && section.children.length ? (
-                                      section.children.map((child, childIndex) => (
-                                        <p className="online-practice-descriptive-sub is-nested" key={child.id ?? childIndex}>
-                                          <strong>{String.fromCharCode(97 + childIndex)}.</strong>
-                                          <span>{getQuestionText(child)}</span>
-                                          {hasVisibleMarks(child.marks) ? <b>{child.marks} Marks</b> : null}
+                              return (
+                                <div className="online-practice-descriptive-paper-question" key={question.id ?? questionIndex}>
+                                  <p className="online-practice-descriptive-main">
+                                    <strong>{displayNumber}.</strong>
+                                    <span>{getQuestionText(question)}</span>
+                                  </p>
+                                  {renderQuestionImages(question.images)}
+                                  {subQuestions.length ? (
+                                    subQuestions.map((section, index) => (
+                                      <div className="online-practice-descriptive-subgroup" key={section.id ?? index}>
+                                        <p className="online-practice-descriptive-sub">
+                                          <strong>{toLowerRoman(index + 1)}.</strong>
+                                          <span>{getQuestionText(section)}</span>
+                                          {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? (
+                                            <b>{section.marks} Marks</b>
+                                          ) : null}
                                         </p>
-                                      ))
-                                    ) : null}
-                                  </div>
-                                ))
-                              ) : null}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </section>
-                  ))}
+                                        {Array.isArray(section.children) && section.children.length ? (
+                                          section.children.map((child, childIndex) => (
+                                            <p className="online-practice-descriptive-sub is-nested" key={child.id ?? childIndex}>
+                                              <strong>{String.fromCharCode(97 + childIndex)}.</strong>
+                                              <span>{getQuestionText(child)}</span>
+                                              {hasVisibleMarks(child.marks) ? <b>{child.marks} Marks</b> : null}
+                                            </p>
+                                          ))
+                                        ) : null}
+                                      </div>
+                                    ))
+                                  ) : null}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="online-practice-empty-section">
+                      <p>No questions available in this section.</p>
+                    </div>
+                  )
+                ) : currentQuestion ? (
+                  <>
+                    <div className="online-practice-current-question">
+                      <strong className="online-practice-current-question-number">{currentQuestionDisplayNumber}.</strong>
+                      <h2>{getQuestionText(currentQuestion)}</h2>
+                    </div>
+                    {renderQuestionImages(currentQuestion.images, 'is-mcq')}
+
+                    <div className="online-practice-options">
+                      {(currentQuestion.options ?? []).map((option, optionIndex) => {
+                        const optionKey = `${currentQuestion.id ?? activeQuestionIndex}-${optionIndex}`
+                        const isSelected = answers[currentQuestion.id ?? activeQuestionIndex] === optionIndex
+
+                        return (
+                          <button
+                            type="button"
+                            key={optionKey}
+                            className={isSelected ? 'is-selected' : ''}
+                            onClick={() => setAnswers((current) => ({ ...current, [currentQuestion.id ?? activeQuestionIndex]: optionIndex }))}
+                          >
+                            <strong>{String.fromCharCode(65 + optionIndex)}.</strong>
+                            <span>{getOptionText(option)}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="online-practice-empty-section">
+                    <p>No questions available in this section.</p>
+                  </div>
+                )}
+              </article>
+
+              {activeSection === 'mcq' ? (
+                <footer className="online-practice-question-nav">
+                  <button type="button" disabled={activeQuestionIndex <= 0} onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}>
+                    <ChevronLeft size={16} strokeWidth={2.2} />
+                    Previous
+                  </button>
+                  <button type="button" disabled={activeQuestionIndex >= currentQuestions.length - 1} onClick={() => setActiveQuestionIndex((current) => Math.min(currentQuestions.length - 1, current + 1))}>
+                    Next
+                    <ChevronRight size={16} strokeWidth={2.2} />
+                  </button>
+                </footer>
+              ) : null}
+            </div>
+
+            <aside className="online-practice-side-nav" aria-label="Question navigation">
+              <div className="online-practice-tabs" role="tablist" aria-label="Question sections">
+                <button type="button" className={activeSection === 'mcq' ? 'is-active' : ''} onClick={() => switchSection('mcq')}>
+                  MCQ
+                </button>
+                <button type="button" className={activeSection === 'descriptive' ? 'is-active' : ''} onClick={() => switchSection('descriptive')}>
+                  Descriptive
+                </button>
+              </div>
+
+              <div className="online-practice-nav-summary" aria-label={`${activeSection === 'mcq' ? 'MCQ' : 'Descriptive'} section summary`}>
+                <span>
+                  <strong>{activeSection === 'mcq' ? mcqQuestions.length : descriptiveQuestions.length}</strong>
+                  <em>Total Questions</em>
+                </span>
+                <span>
+                  <strong>{String(activeSection === 'mcq' ? mcqTotalMarks : descriptiveTotalMarks).padStart(2, '0')}</strong>
+                  <em>Total Marks</em>
+                </span>
+              </div>
+
+              {activeSection === 'mcq' ? (
+                <div className="online-practice-mcq-nav-panel">
+                  <div className="online-practice-number-nav" aria-label="MCQ question numbers">
+                    {mcqQuestions.map((question, index) => (
+                      <button
+                        type="button"
+                        key={question.id ?? index}
+                        className={activeQuestionIndex === index ? 'is-active' : ''}
+                        onClick={() => setActiveQuestionIndex(index)}
+                      >
+                        {index + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="online-practice-question-status-legend" aria-label="Question status legend">
+                    <span className="is-answered"><i aria-hidden="true" />Answered</span>
+                    <span className="is-try-later"><i aria-hidden="true" />Try Later</span>
+                    <span className="is-not-viewed"><i aria-hidden="true" />Not Viewed</span>
+                    <span className="is-viewed"><i aria-hidden="true" />Viewed</span>
+                  </div>
+                  <button type="button" className="online-practice-submit-mcq-btn">
+                    Submit MCQ
+                  </button>
                 </div>
               ) : (
-                <div className="online-practice-empty-section">
-                  <p>No questions available in this section.</p>
+                <div className="online-practice-section-nav" aria-label="Descriptive sections">
+                  {descriptiveGroups.map((group, index) => {
+                    const isActive = activeDescriptiveGroupKey ? activeDescriptiveGroupKey === group.key : index === 0
+
+                    return (
+                      <button
+                        type="button"
+                        key={group.key}
+                        className={isActive ? 'is-active' : ''}
+                        onClick={() => showDescriptiveSection(group.key)}
+                      >
+                        <span>{group.roman}</span>
+                        <strong>{group.title}</strong>
+                        <em>
+                          {String(group.totalMarks).padStart(2, '0')} Marks
+                          {' '}
+                          &bull;
+                          {' '}
+                          {group.questions.length} Questions
+                        </em>
+                      </button>
+                    )
+                  })}
                 </div>
-              )
-            ) : currentQuestion ? (
-              <>
-                <div className="online-practice-question-head">
-                  <span>Question {activeQuestionIndex + 1} of {currentQuestions.length}</span>
-                  <strong>{getMarks(currentQuestion)} Marks</strong>
-                </div>
-                <h2>{getQuestionText(currentQuestion)}</h2>
-
-                  <div className="online-practice-options">
-                    {(currentQuestion.options ?? []).map((option, optionIndex) => {
-                      const optionKey = `${currentQuestion.id ?? activeQuestionIndex}-${optionIndex}`
-                      const isSelected = answers[currentQuestion.id ?? activeQuestionIndex] === optionIndex
-
-                      return (
-                        <button
-                          type="button"
-                          key={optionKey}
-                          className={isSelected ? 'is-selected' : ''}
-                          onClick={() => setAnswers((current) => ({ ...current, [currentQuestion.id ?? activeQuestionIndex]: optionIndex }))}
-                        >
-                          <strong>{String.fromCharCode(65 + optionIndex)}.</strong>
-                          <span>{getOptionText(option)}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-              </>
-            ) : (
-              <div className="online-practice-empty-section">
-                <p>No questions available in this section.</p>
-              </div>
-            )}
-          </article>
-
-          {activeSection === 'mcq' ? (
-            <footer className="online-practice-question-nav">
-              <button type="button" disabled={activeQuestionIndex <= 0} onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}>
-                <ChevronLeft size={16} strokeWidth={2.2} />
-                Previous
-              </button>
-              <button type="button" disabled={activeQuestionIndex >= currentQuestions.length - 1} onClick={() => setActiveQuestionIndex((current) => Math.min(currentQuestions.length - 1, current + 1))}>
-                Next
-                <ChevronRight size={16} strokeWidth={2.2} />
-              </button>
-            </footer>
-          ) : null}
+              )}
+            </aside>
+          </div>
         </section>
       )}
     </main>
