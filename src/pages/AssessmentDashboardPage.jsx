@@ -61,10 +61,30 @@ const MY_ASSESSMENT_FILTER_GROUPS = [
   },
 ]
 
+const isSameAssessmentRecord = (first, second) => {
+  if (!first || !second) return false
+  if (first.id && second.id) return first.id === second.id
+
+  return (
+    first.assessmentName === second.assessmentName
+    && first.startDate === second.startDate
+    && first.startTime === second.startTime
+  )
+}
+
 const readPublishedAssessments = () => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
-    return Array.isArray(parsed) ? parsed : []
+    if (!Array.isArray(parsed)) return []
+
+    const selectedAssessment = JSON.parse(window.sessionStorage.getItem(ONLINE_PRACTICE_EXAM_STORAGE_KEY) || 'null')
+    if (!selectedAssessment || selectedAssessment.status !== 'completed') return parsed
+
+    return parsed.map((assessment) => (
+      isSameAssessmentRecord(assessment, selectedAssessment)
+        ? { ...assessment, status: 'completed', completedAt: selectedAssessment.completedAt }
+        : assessment
+    ))
   } catch {
     return []
   }
@@ -133,6 +153,8 @@ const formatAssessmentRemainingTime = (value) => {
 const getDayStart = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
 const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
+  if (assessment?.status === 'completed') return { type: 'completed', label: 'Completed' }
+
   const startDate = parseAssessmentDate(assessment?.startDate)
   if (!startDate) return null
 
@@ -193,6 +215,11 @@ const sortAssessmentsByStatusPriority = (assessments, now = new Date()) => {
 const handleViewAssessmentResults = (assessment) => {
   console.info('View assessment results', assessment?.id)
 }
+
+const isOnlinePracticeAssessment = (assessment) => (
+  String(assessment?.examMode || '').toLowerCase() === 'online'
+  && String(assessment?.supervisionType || '').toLowerCase().includes('practice')
+)
 
 export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate }) {
   const isMyAssessment = mode === 'my-assessment'
@@ -281,7 +308,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   }
 
   const handleStartAssessment = (assessment) => {
-    if (!assessment) return
+    if (!assessment || !isOnlinePracticeAssessment(assessment)) return
 
     try {
       window.sessionStorage.setItem(ONLINE_PRACTICE_EXAM_STORAGE_KEY, JSON.stringify(assessment))
@@ -460,7 +487,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         <button
                           type="button"
                           className={`my-assessment-card-action is-${scheduleStatus?.type === 'completed' ? 'results' : 'start'} ${scheduleStatus?.type === 'live' ? 'is-live' : ''}`}
-                          disabled={scheduleStatus?.type === 'upcoming'}
+                          disabled={scheduleStatus?.type === 'upcoming' || (!isPracticeExam && scheduleStatus?.type !== 'completed')}
                           onClick={() => {
                             if (scheduleStatus?.type === 'completed') {
                               handleViewAssessmentResults(assessment)
