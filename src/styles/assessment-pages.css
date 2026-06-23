@@ -846,7 +846,27 @@
 
 .online-practice-mcq-nav-panel {
   display: grid;
-  gap: 9px;
+  gap: 10px;
+}
+
+.online-practice-mcq-attended-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #dbe7e2;
+  color: #607380;
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.online-practice-mcq-attended-row strong {
+  color: #08776d;
+  font-size: 0.74rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
 }
 
 .online-practice-number-nav {
@@ -872,6 +892,30 @@
   cursor: pointer;
 }
 
+.online-practice-number-nav button.is-answered {
+  border-color: #10b981;
+  background: #10b981;
+  color: #ffffff;
+}
+
+.online-practice-number-nav button.is-try-later {
+  border-color: #f59e0b;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.online-practice-number-nav button.is-viewed {
+  border-color: #60a5fa;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.online-practice-number-nav button.is-not-viewed {
+  border-color: #cfe2dc;
+  background: #fbfefd;
+  color: #244756;
+}
+
 .online-practice-number-nav button:hover,
 .online-practice-number-nav button:focus-visible,
 .online-practice-number-nav button.is-active {
@@ -881,11 +925,39 @@
   outline: none;
 }
 
+.online-practice-number-nav button.is-active {
+  box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.22);
+}
+
+.online-practice-number-nav button.is-answered.is-active {
+  border-color: #059669;
+  background: #10b981;
+  color: #ffffff;
+}
+
+.online-practice-number-nav button.is-try-later.is-active {
+  border-color: #d97706;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.online-practice-number-nav button.is-viewed.is-active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.online-practice-number-nav button.is-not-viewed.is-active {
+  border-color: #10b9a8;
+  background: #ecfffb;
+  color: #08776d;
+}
+
 .online-practice-question-status-legend {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 10px;
-  padding: 10px 4px 0;
+  gap: 9px 10px;
+  padding: 11px 4px 2px;
   border-top: 1px solid #dbe7e2;
 }
 
@@ -1459,7 +1531,27 @@
 }
 
 .online-practice-question-nav {
+  justify-content: space-between;
+}
+
+.online-practice-question-nav-actions {
+  display: inline-flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 10px;
+}
+
+.online-practice-question-nav .online-practice-try-later-btn {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.online-practice-question-nav .online-practice-try-later-btn:hover:not(:disabled),
+.online-practice-question-nav .online-practice-try-later-btn:focus-visible:not(:disabled) {
+  border-color: #f59e0b;
+  background: #ffedd5;
+  color: #92400e;
 }
 
 .online-practice-empty {
@@ -14841,6 +14933,43 @@
   color: #d9e8f8;
 }
 
+.theme-dark .online-practice-number-nav button.is-answered {
+  border-color: #34d399;
+  background: rgba(16, 185, 129, 0.34);
+  color: #d1fae5;
+}
+
+.theme-dark .online-practice-number-nav button.is-try-later {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.16);
+  color: #fdba74;
+}
+
+.theme-dark .online-practice-number-nav button.is-viewed {
+  border-color: #60a5fa;
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+}
+
+.theme-dark .online-practice-number-nav button.is-not-viewed {
+  border-color: rgba(94, 116, 145, 0.52);
+  background: rgba(15, 23, 42, 0.42);
+  color: #d9e8f8;
+}
+
+.theme-dark .online-practice-question-nav .online-practice-try-later-btn {
+  border-color: rgba(251, 146, 60, 0.54);
+  background: rgba(154, 52, 18, 0.2);
+  color: #fdba74;
+}
+
+.theme-dark .online-practice-question-nav .online-practice-try-later-btn:hover:not(:disabled),
+.theme-dark .online-practice-question-nav .online-practice-try-later-btn:focus-visible:not(:disabled) {
+  border-color: #fb923c;
+  background: rgba(194, 65, 12, 0.28);
+  color: #fed7aa;
+}
+
 .theme-dark .online-practice-section-nav span {
   color: #8df0c7;
 }
@@ -14851,6 +14980,15 @@
 
 .theme-dark .online-practice-question-status-legend {
   border-top-color: rgba(94, 116, 145, 0.42);
+}
+
+.theme-dark .online-practice-mcq-attended-row {
+  border-top-color: rgba(94, 116, 145, 0.42);
+  color: #9fb2c6;
+}
+
+.theme-dark .online-practice-mcq-attended-row strong {
+  color: #8df0c7;
 }
 
 .theme-dark .online-practice-question-status-legend .is-answered {
@@ -21992,13 +22130,23 @@ body > .assessment-page-filter-menu {
   }
 
   .online-practice-question-nav {
+    gap: 8px;
     justify-content: space-between;
+  }
+
+  .online-practice-question-nav-actions {
+    flex: 1 1 auto;
+    gap: 8px;
   }
 
   .online-practice-question-nav button {
     flex: 1 1 0;
     min-height: 38px;
     padding: 0 10px;
+  }
+
+  .online-practice-question-nav .online-practice-try-later-btn {
+    flex: 0 0 auto;
   }
 
   .online-practice-start-footer {

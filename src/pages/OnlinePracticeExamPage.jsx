@@ -330,6 +330,7 @@ const formatCountdown = (seconds) => {
 }
 
 const getDescriptiveSectionDomId = (key) => `online-practice-desc-${String(key || 'section').replace(/[^a-zA-Z0-9_-]/g, '-')}`
+const getMcqQuestionKey = (question, index) => String(question?.id ?? `mcq-${index}`)
 
 function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [assessment] = useState(readSelectedAssessment)
@@ -341,6 +342,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [activeDescriptiveGroupKey, setActiveDescriptiveGroupKey] = useState('')
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState({})
+  const [mcqQuestionStatuses, setMcqQuestionStatuses] = useState({})
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
@@ -397,6 +399,11 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const mcqIndex = sectionOrder.filter((key) => key === 'MCQ' || descriptiveGroups.some((group) => group.key === key)).indexOf('MCQ')
     return `${toRoman(Math.max(0, mcqIndex) + 1)}.`
   }, [descriptiveGroups, questionRows, setup])
+  const attendedMcqCount = useMemo(() => (
+    mcqQuestions.filter((question, index) => (
+      mcqQuestionStatuses[getMcqQuestionKey(question, index)] === 'answered'
+    )).length
+  ), [mcqQuestionStatuses, mcqQuestions])
   const headerLogo = setup.logoPreview || assessment?.logoPreview || ''
   const ThemeIcon = theme === 'dark' ? Sun : Moon
   const studentInstructionLines = getInstructionLines(setup.studentInstructions)
@@ -447,6 +454,26 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     }
   }
 
+  const setMcqStatus = (question, index, status) => {
+    const key = getMcqQuestionKey(question, index)
+    setMcqQuestionStatuses((current) => ({
+      ...current,
+      [key]: status,
+    }))
+  }
+
+  const selectMcqOption = (question, index, optionIndex) => {
+    const key = getMcqQuestionKey(question, index)
+    setAnswers((current) => ({ ...current, [key]: optionIndex }))
+    setMcqQuestionStatuses((current) => ({ ...current, [key]: 'answered' }))
+  }
+
+  const markTryLater = () => {
+    if (!currentQuestion) return
+    setMcqStatus(currentQuestion, activeQuestionIndex, 'try-later')
+    setActiveQuestionIndex((current) => Math.min(mcqQuestions.length - 1, current + 1))
+  }
+
   const startExam = () => {
     const startedAt = Date.now()
     setExamStartedAt(startedAt)
@@ -477,6 +504,15 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
     return () => window.clearInterval(timerId)
   }, [])
+
+  useEffect(() => {
+    if (!hasStarted || activeSection !== 'mcq' || !currentQuestion) return
+
+    const key = getMcqQuestionKey(currentQuestion, activeQuestionIndex)
+    setMcqQuestionStatuses((current) => (
+      current[key] ? current : { ...current, [key]: 'viewed' }
+    ))
+  }, [activeQuestionIndex, activeSection, currentQuestion, hasStarted])
 
   useEffect(() => {
     if (activeSection !== 'descriptive' || !descriptiveGroups.length) return undefined
@@ -749,14 +785,15 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                     <div className="online-practice-options">
                       {(currentQuestion.options ?? []).map((option, optionIndex) => {
                         const optionKey = `${currentQuestion.id ?? activeQuestionIndex}-${optionIndex}`
-                        const isSelected = answers[currentQuestion.id ?? activeQuestionIndex] === optionIndex
+                        const answerKey = getMcqQuestionKey(currentQuestion, activeQuestionIndex)
+                        const isSelected = answers[answerKey] === optionIndex
 
                         return (
                           <button
                             type="button"
                             key={optionKey}
                             className={isSelected ? 'is-selected' : ''}
-                            onClick={() => setAnswers((current) => ({ ...current, [currentQuestion.id ?? activeQuestionIndex]: optionIndex }))}
+                            onClick={() => selectMcqOption(currentQuestion, activeQuestionIndex, optionIndex)}
                           >
                             <strong>{String.fromCharCode(65 + optionIndex)}.</strong>
                             <span>{getOptionText(option)}</span>
@@ -774,14 +811,19 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
               {activeSection === 'mcq' ? (
                 <footer className="online-practice-question-nav">
-                  <button type="button" disabled={activeQuestionIndex <= 0} onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}>
-                    <ChevronLeft size={16} strokeWidth={2.2} />
-                    Previous
+                  <button type="button" className="online-practice-try-later-btn" onClick={markTryLater} disabled={!currentQuestion}>
+                    Try Later
                   </button>
-                  <button type="button" disabled={activeQuestionIndex >= currentQuestions.length - 1} onClick={() => setActiveQuestionIndex((current) => Math.min(currentQuestions.length - 1, current + 1))}>
-                    Next
-                    <ChevronRight size={16} strokeWidth={2.2} />
-                  </button>
+                  <span className="online-practice-question-nav-actions">
+                    <button type="button" disabled={activeQuestionIndex <= 0} onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}>
+                      <ChevronLeft size={16} strokeWidth={2.2} />
+                      Previous
+                    </button>
+                    <button type="button" disabled={activeQuestionIndex >= currentQuestions.length - 1} onClick={() => setActiveQuestionIndex((current) => Math.min(currentQuestions.length - 1, current + 1))}>
+                      Next
+                      <ChevronRight size={16} strokeWidth={2.2} />
+                    </button>
+                  </span>
                 </footer>
               ) : null}
             </div>
@@ -809,17 +851,25 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
               {activeSection === 'mcq' ? (
                 <div className="online-practice-mcq-nav-panel">
+                  <div className="online-practice-mcq-attended-row">
+                    <span>Attended</span>
+                    <strong>{attendedMcqCount} / {mcqQuestions.length}</strong>
+                  </div>
                   <div className="online-practice-number-nav" aria-label="MCQ question numbers">
-                    {mcqQuestions.map((question, index) => (
-                      <button
-                        type="button"
-                        key={question.id ?? index}
-                        className={activeQuestionIndex === index ? 'is-active' : ''}
-                        onClick={() => setActiveQuestionIndex(index)}
-                      >
-                        {index + 1}
-                      </button>
-                    ))}
+                    {mcqQuestions.map((question, index) => {
+                      const status = mcqQuestionStatuses[getMcqQuestionKey(question, index)] || 'not-viewed'
+
+                      return (
+                        <button
+                          type="button"
+                          key={question.id ?? index}
+                          className={`is-${status} ${activeQuestionIndex === index ? 'is-active' : ''}`.trim()}
+                          onClick={() => setActiveQuestionIndex(index)}
+                        >
+                          {index + 1}
+                        </button>
+                      )
+                    })}
                   </div>
                   <div className="online-practice-question-status-legend" aria-label="Question status legend">
                     <span className="is-answered"><i aria-hidden="true" />Answered</span>
@@ -828,7 +878,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                     <span className="is-viewed"><i aria-hidden="true" />Viewed</span>
                   </div>
                   <button type="button" className="online-practice-submit-mcq-btn">
-                    Submit MCQ
+                    Submit MCQ Assessment
                   </button>
                 </div>
               ) : (
