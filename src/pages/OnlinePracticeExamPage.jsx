@@ -845,7 +845,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   return (
-    <main className={`online-practice-exam-page ${hasStarted ? 'has-fixed-header' : 'is-before-start'}`}>
+    <main className={`online-practice-exam-page is-practice-exam ${hasStarted ? 'has-fixed-header' : 'is-before-start'}`}>
       {hasStarted ? (
         <header className="online-practice-header">
           {headerLogo ? (

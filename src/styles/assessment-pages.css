@@ -1139,8 +1139,32 @@
     min-height: 54px;
   }
 
+  .online-proctored-side-meta {
+    gap: 7px;
+  }
+
+  .online-proctored-side-badge {
+    min-height: 32px;
+    padding: 0 8px;
+    font-size: 0.68rem;
+  }
+
   .online-proctored-side-meta-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .online-proctored-side-meta-grid span {
+    min-height: 46px;
+    padding: 7px 8px;
+  }
+
+  .online-proctored-side-meta-grid em {
+    font-size: 0.6rem;
+  }
+
+  .online-proctored-side-meta-grid strong {
+    font-size: 0.76rem;
   }
 }
 
@@ -23289,15 +23313,33 @@ body > .assessment-page-filter-menu {
   }
 
   .online-practice-descriptive-section-head {
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 8px 0 10px;
   }
 
   .online-practice-descriptive-section-head h2 {
-    font-size: 0.9rem;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    font-size: 0.82rem;
+    line-height: 1.05;
+  }
+
+  .online-practice-descriptive-section-head h2 strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .online-practice-descriptive-section-head strong {
+    align-self: center;
+    min-height: 20px;
+    padding: 0 6px;
     font-size: 0.78rem;
+    line-height: 1.05;
   }
 
   .online-practice-descriptive-list {
@@ -23315,6 +23357,9 @@ body > .assessment-page-filter-menu {
   }
 
   .online-practice-descriptive-main {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 6px;
     font-size: 0.84rem;
   }
 
@@ -23322,6 +23367,13 @@ body > .assessment-page-filter-menu {
     grid-template-columns: 20px minmax(0, 1fr);
     padding-left: 20px;
     font-size: 0.78rem;
+  }
+
+  .online-practice-descriptive-main span,
+  .online-practice-descriptive-sub span {
+    text-align: left;
+    text-justify: auto;
+    word-spacing: normal;
   }
 
   .online-practice-question-images {
@@ -23384,23 +23436,24 @@ body > .assessment-page-filter-menu {
   }
 
   .online-practice-question-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-    justify-content: space-between;
+    justify-content: stretch;
   }
 
   .online-practice-question-nav-actions {
-    flex: 1 1 auto;
-    gap: 8px;
+    display: contents;
   }
 
   .online-practice-question-nav button {
-    flex: 1 1 0;
+    width: 100%;
     min-height: 38px;
     padding: 0 10px;
   }
 
   .online-practice-question-nav .online-practice-try-later-btn {
-    flex: 0 0 auto;
+    width: 100%;
   }
 
   .online-practice-start-footer {
@@ -23633,19 +23686,37 @@ body > .assessment-page-filter-menu {
   }
 
   .online-practice-question-head.is-section-title {
-    min-height: 36px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: center;
+    min-height: 34px;
     padding: 0 8px 0 10px;
   }
 
   .online-practice-question-head.is-section-title h2 {
+    align-self: center;
+    display: grid;
+    align-items: center;
     gap: 6px;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
     font-size: 0.82rem;
+    line-height: 1.05;
+  }
+
+  .online-practice-question-head.is-section-title h2 strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .online-practice-question-head.is-section-title strong {
-    min-height: 24px;
+    align-self: center;
+    min-height: 20px;
     padding: 0 6px;
     font-size: 0.76rem;
+    line-height: 1.05;
   }
 
   .online-practice-question-card {
@@ -24074,5 +24145,541 @@ body > .assessment-page-filter-menu {
 
   .online-practice-summary {
     border-radius: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .assessment-page.is-my-assessment {
+    padding: 8px 8px 14px;
+  }
+
+  .assessment-page.is-my-assessment .assessment-page-shell {
+    gap: 10px;
+  }
+
+  .assessment-page.is-my-assessment .my-assessment-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .assessment-page.is-my-assessment .my-assessment-metric-card {
+    min-height: 72px;
+    padding: 10px;
+  }
+
+  .assessment-page.is-my-assessment .my-assessment-metric-copy span {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.18;
+  }
+
+  .assessment-page.is-my-assessment .my-assessment-published-shell {
+    padding: 12px;
+  }
+
+  .assessment-page.is-my-assessment .assessment-create-card-heading {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 10px;
+    min-height: 0;
+    padding-bottom: 10px;
+  }
+
+  .assessment-page.is-my-assessment .assessment-create-card-heading h2 {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    line-height: 1.16;
+    white-space: normal;
+  }
+
+  .assessment-page.is-my-assessment .assessment-create-published-toolbar.my-assessment-toolbar {
+    grid-template-columns: minmax(0, 1fr) max-content max-content;
+    justify-content: stretch;
+    justify-self: stretch;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .assessment-page.is-my-assessment .assessment-create-published-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .assessment-page.is-my-assessment .assessment-create-published-search input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .assessment-page.is-my-assessment .my-assessment-published-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .assessment-page.is-my-assessment .assessment-create-published-toolbar.my-assessment-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-page.is-my-assessment .assessment-create-published-filter-wrap,
+  .assessment-page.is-my-assessment .assessment-create-published-filter-btn,
+  .assessment-page.is-my-assessment .assessment-create-published-clear-btn {
+    width: 100%;
+  }
+
+  .assessment-page.is-my-assessment .assessment-create-published-filter-btn,
+  .assessment-page.is-my-assessment .assessment-create-published-clear-btn {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .assessment-create-tracker-page {
+    padding: 8px 8px 14px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-page-shell {
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .assessment-create-tracker-page .assessment-create-page-header {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .assessment-create-tracker-page .page-navigation-header {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .assessment-create-tracker-page .assessment-create-new-btn {
+    width: 100%;
+    min-height: 46px;
+    border-radius: 8px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-toolbar {
+    width: 100%;
+  }
+
+  .assessment-create-tracker-page .assessment-create-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-metric {
+    min-height: 58px;
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-metric-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-metric-copy {
+    min-width: 0;
+  }
+
+  .assessment-create-tracker-page .assessment-create-metric-copy strong {
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .assessment-create-tracker-page .assessment-create-metric-copy span {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.18;
+  }
+
+  .assessment-create-tracker-page .assessment-create-draft-shell {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-card-heading {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 10px;
+    min-height: 0;
+    padding-bottom: 10px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-published-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .assessment-create-tracker-page .assessment-create-card-heading h2 {
+    min-width: 0;
+    margin: 0;
+    line-height: 1.16;
+    white-space: normal;
+  }
+
+  .assessment-create-tracker-page .assessment-create-published-toolbar {
+    grid-template-columns: minmax(0, 1fr) max-content max-content;
+    justify-content: stretch;
+    justify-self: stretch;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .assessment-create-tracker-page .assessment-create-published-search {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .assessment-create-tracker-page .assessment-create-published-search input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .assessment-create-tracker-page .assessment-create-draft-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .assessment-create-tracker-page .assessment-create-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .assessment-create-tracker-page .assessment-create-metric {
+    gap: 8px;
+    min-height: 56px;
+    padding: 9px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-metric-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-published-title {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .assessment-create-tracker-page .assessment-create-live-count-btn {
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .assessment-create-tracker-page .assessment-create-published-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-create-tracker-page .assessment-create-published-filter-wrap,
+  .assessment-create-tracker-page .assessment-create-published-filter-btn,
+  .assessment-create-tracker-page .assessment-create-published-clear-btn {
+    width: 100%;
+  }
+
+  .assessment-create-tracker-page .assessment-create-published-filter-btn,
+  .assessment-create-tracker-page .assessment-create-published-clear-btn {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .online-practice-exam-page.is-before-start {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 100svh;
+    padding: 8px;
+    overflow-x: hidden;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-card {
+    width: 100%;
+    max-width: 100%;
+    gap: 12px;
+    padding: 12px;
+    overflow: hidden;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-identity {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding-bottom: 10px;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-identity .online-practice-logo-mark,
+  .online-practice-exam-page.is-before-start .online-practice-start-identity .online-practice-logo-image {
+    width: 44px;
+    height: 44px;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-identity h1 {
+    overflow: hidden;
+    font-size: 1.02rem;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-identity p,
+  .online-practice-exam-page.is-before-start .online-practice-start-identity small {
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 0.72rem;
+    line-height: 1.22;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-identity .online-practice-header-actions {
+    grid-column: auto;
+    justify-self: end;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-head {
+    padding-bottom: 10px;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-head > span {
+    font-size: 0.86rem;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-detail-grid span {
+    grid-template-columns: 30px minmax(0, 1fr);
+    min-height: 58px;
+    padding: 8px;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-detail-grid strong {
+    overflow: hidden;
+    font-size: 0.86rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-detail-grid em {
+    font-size: 0.66rem;
+    line-height: 1.15;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-instructions,
+  .online-practice-exam-page.is-before-start .online-practice-student-instructions {
+    gap: 7px;
+    padding: 11px;
+    overflow: hidden;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-instructions h2,
+  .online-practice-exam-page.is-before-start .online-practice-student-instructions h2 {
+    font-size: 0.9rem;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-instructions ul,
+  .online-practice-exam-page.is-before-start .online-practice-student-instructions ul {
+    padding-left: 18px;
+    font-size: 0.78rem;
+    line-height: 1.52;
+    overflow-wrap: anywhere;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-agree {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: start;
+    width: 100%;
+    max-width: 100%;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-agree span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .online-practice-exam-page.is-before-start .online-practice-start-identity {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-identity .online-practice-logo-mark,
+  .online-practice-exam-page.is-before-start .online-practice-start-identity .online-practice-logo-image {
+    width: 40px;
+    height: 40px;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-start-identity .online-practice-header-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .online-practice-exam-page.is-before-start .online-practice-detail-grid span {
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 768px) {
+  .online-practice-exam-page.has-fixed-header .online-practice-header-chips {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 6px;
+  }
+
+  .online-practice-exam-page.has-fixed-header .online-practice-header-chips span {
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 30px;
+    padding: 0 6px;
+    overflow: hidden;
+    border-radius: 8px;
+    font-size: 0.62rem;
+  }
+
+  .online-practice-exam-page.has-fixed-header .online-practice-header-chips strong {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .online-practice-exam-page.has-fixed-header .online-practice-header-chips {
+    gap: 5px;
+  }
+
+  .online-practice-exam-page.has-fixed-header .online-practice-header-chips span {
+    min-height: 28px;
+    padding: 0 4px;
+    font-size: 0.58rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .online-practice-exam-page.is-practice-exam.has-fixed-header,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header {
+    padding-bottom: calc(172px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-side-nav,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-side-nav {
+    overflow: visible;
+  }
+
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-mcq-nav-panel,
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-section-nav,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-mcq-nav-panel,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-section-nav {
+    position: fixed;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    z-index: 36;
+    display: grid;
+    max-height: min(42svh, 250px);
+    padding: 10px;
+    border: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 -8px 18px rgba(13, 55, 38, 0.1);
+    overflow-y: auto;
+  }
+
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-section-nav:has(+ .online-practice-submit-assessment-btn),
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-section-nav:has(+ .online-practice-submit-assessment-btn) {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-side-nav > .online-practice-submit-assessment-btn,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-side-nav > .online-practice-submit-assessment-btn {
+    position: fixed;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    z-index: 37;
+    width: auto;
+    min-height: 46px;
+    border-radius: 10px;
+    box-shadow: 0 -8px 18px rgba(13, 55, 38, 0.1);
+  }
+
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-mcq-nav-panel .online-practice-submit-mcq-btn,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-mcq-nav-panel .online-practice-submit-mcq-btn {
+    min-height: 44px;
+    border-radius: 9px;
+  }
+
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-question-status-legend,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-question-status-legend {
+    gap: 7px 10px;
+  }
+
+  .theme-dark .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-mcq-nav-panel,
+  .theme-dark .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-section-nav,
+  .theme-dark .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-mcq-nav-panel,
+  .theme-dark .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-section-nav {
+    background: rgba(15, 23, 42, 0.98);
+    box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.24);
+  }
+}
+
+@media (max-width: 420px) {
+  .online-practice-exam-page.is-practice-exam.has-fixed-header,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header {
+    padding-bottom: calc(182px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-mcq-nav-panel,
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-section-nav,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-mcq-nav-panel,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-section-nav {
+    right: 6px;
+    left: 6px;
+    padding: 9px;
+  }
+
+  .online-practice-exam-page.is-practice-exam.has-fixed-header .online-practice-side-nav > .online-practice-submit-assessment-btn,
+  .online-practice-exam-page.is-proctored-exam.has-fixed-header .online-practice-side-nav > .online-practice-submit-assessment-btn {
+    right: 6px;
+    left: 6px;
   }
 }

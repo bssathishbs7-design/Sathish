@@ -536,7 +536,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const sideNavMetaItems = [
     { label: 'Type', value: assessment?.examType || '-', tone: 'type' },
     {
-      label: shouldShowSequenceTimer ? `${activeSequenceLabel} Time` : shouldShowRemainingTime ? 'Remaining Time' : 'Duration',
+      label: shouldShowSequenceTimer || shouldShowRemainingTime ? 'Time Remaining' : 'Duration',
       value: shouldShowSequenceTimer ? activeSequenceTimeDisplay : durationDisplay,
       tone: 'duration',
       isCritical: shouldShowSequenceTimer ? isSequenceTimeCritical : isTimeLimitCritical,
@@ -1017,7 +1017,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
   if (!assessment) {
     return (
-      <main className="online-practice-exam-page">
+      <main className="online-practice-exam-page is-proctored-exam">
         <section className="online-practice-empty">
           <h1>Assessment not found</h1>
           <p>Please return to My Assessment and start the assessment again.</p>
@@ -1032,7 +1032,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
   if (!isProctoredFlowAssessment) {
     return (
-      <main className="online-practice-exam-page">
+      <main className="online-practice-exam-page is-proctored-exam">
         <section className="online-practice-empty">
           <h1>Proctored exam only</h1>
           <p>This page is available only for Online Proctored Exam assessments.</p>
@@ -1046,7 +1046,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   return (
-    <main className={`online-practice-exam-page ${hasStarted ? 'has-fixed-header' : 'is-before-start'}`}>
+    <main className={`online-practice-exam-page is-proctored-exam ${hasStarted ? 'has-fixed-header' : 'is-before-start'}`}>
       {hasStarted ? (
         <header className={`online-practice-header ${headerChips.length ? '' : 'has-no-chips'}`.trim()}>
           {headerLogo ? (
@@ -1432,16 +1432,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                 <div className="online-proctored-sequence-note">
                   <ShieldCheck size={15} strokeWidth={2.4} />
                   <strong>{activeSequenceLabel}</strong>
-                </div>
-              ) : null}
-
-              {shouldShowSequenceTimer ? (
-                <div className={`online-proctored-sequence-timer ${isSequenceTimeCritical ? 'is-critical' : ''}`.trim()}>
-                  <Timer size={15} strokeWidth={2.4} />
-                  <span>
-                    <em>{activeSequenceLabel} Time Remaining</em>
-                    <strong>{activeSequenceTimeDisplay}</strong>
-                  </span>
                 </div>
               ) : null}
 

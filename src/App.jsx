@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import './App.css'
-import { AlertTriangle, CheckCircle2, Info, OctagonAlert } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Info, Monitor, OctagonAlert } from 'lucide-react'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
@@ -69,6 +69,33 @@ const PATH_PAGES = Object.fromEntries(
 )
 
 const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? APP_PAGES.DASHBOARD
+
+const PHONE_UNSUPPORTED_PAGES = new Set([
+  APP_PAGES.CONFIGURATION,
+  APP_PAGES.DASHBOARD,
+  APP_PAGES.REVIEW_APPROVE,
+  APP_PAGES.QUESTION_BANK,
+  APP_PAGES.QUESTION_BANK_NON_CREATE,
+  APP_PAGES.ASSESSMENT_EVALUATION,
+  APP_PAGES.ASSESSMENT_DASHBOARD,
+  APP_PAGES.QUERY_REQUEST,
+])
+
+const isPhoneViewport = () => window.matchMedia('(max-width: 767px)').matches
+
+function MobileUnsupportedPage() {
+  return (
+    <section className="vx-mobile-unsupported" role="dialog" aria-modal="true" aria-labelledby="vx-mobile-unsupported-title">
+      <div className="vx-mobile-unsupported-card">
+        <span className="vx-mobile-unsupported-icon" aria-hidden="true">
+          <Monitor size={30} strokeWidth={2.2} />
+        </span>
+        <h1 id="vx-mobile-unsupported-title">Desktop View Recommended</h1>
+        <p>For the best experience, please access this page using a desktop, laptop, or tablet. Mobile phone views are not supported at this time.</p>
+      </div>
+    </section>
+  )
+}
 
 const START_EVALUATION_STORAGE_KEY = 'vx-start-evaluation-record'
 const ASSIGNED_SKILL_ACTIVITIES_STORAGE_KEY = 'vx-assigned-skill-activities'
@@ -368,6 +395,7 @@ function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [theme, setTheme] = useState(() => window.localStorage.getItem('vx-theme') ?? 'light')
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isPhoneScreen, setIsPhoneScreen] = useState(() => isPhoneViewport())
   const useCompactLogo = sidebarCollapsed
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
   const [questionBankMode, setQuestionBankMode] = useState('editable')
@@ -398,6 +426,7 @@ function App() {
     || activePage === APP_PAGES.ONLINE_PRACTICE_EXAM
     || activePage === APP_PAGES.ONLINE_PROCTORED_EXAM
   const isPlainAssessmentMode = activePage === APP_PAGES.CREATE_ASSESSMENT
+  const shouldShowMobileUnsupported = isPhoneScreen && PHONE_UNSUPPORTED_PAGES.has(activePage)
   const hideShellChrome = isExamMode || isPlainAssessmentMode
   const activeEvaluationRecord = selectedEvaluationRecord
     ?? evaluationRecords.find((record) => idsMatch(record.id, selectedCompletedEvaluationActivityId))
@@ -410,6 +439,16 @@ function App() {
     designation: 'Admin',
     role: 'Admin',
   }
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 767px)')
+    const handlePhoneViewportChange = () => setIsPhoneScreen(mediaQuery.matches)
+
+    handlePhoneViewportChange()
+    mediaQuery.addEventListener('change', handlePhoneViewportChange)
+
+    return () => mediaQuery.removeEventListener('change', handlePhoneViewportChange)
+  }, [])
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement))
@@ -1203,8 +1242,10 @@ function App() {
           />
         ) : null}
 
-        <div key={activePage} className={`vx-page-surface vx-page-dissolve ${isExamMode ? 'is-exam-surface' : ''}`}>
-          {activePage === APP_PAGES.DASHBOARD ? (
+        <div key={activePage} className={`vx-page-surface vx-page-dissolve ${isExamMode ? 'is-exam-surface' : ''} ${shouldShowMobileUnsupported ? 'is-mobile-unsupported-surface' : ''}`}>
+          {shouldShowMobileUnsupported ? (
+            <MobileUnsupportedPage />
+          ) : activePage === APP_PAGES.DASHBOARD ? (
             <DashboardSummaryPage
               onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}
               assignedActivities={assignedSkillActivities}
@@ -1467,26 +1508,6 @@ function App() {
         </div>
 
       </main>
-
-      {!hideShellChrome ? (
-        <nav className="vx-mobile-nav">
-          <button type="button" onClick={() => setMobileSidebarOpen(true)}>Menu</button>
-          <button
-            type="button"
-            className={activePage === APP_PAGES.DASHBOARD ? 'active' : ''}
-            onClick={() => navigateToPage(APP_PAGES.DASHBOARD)}
-          >
-            {APP_PAGES.DASHBOARD}
-          </button>
-          <button
-            type="button"
-            className={activePage === APP_PAGES.PROFILE_SETTINGS ? 'active' : ''}
-            onClick={handleEditProfile}
-          >
-            Profile
-          </button>
-        </nav>
-      ) : null}
     </div>
   )
 }
