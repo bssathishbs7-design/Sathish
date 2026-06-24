@@ -1338,6 +1338,10 @@
 }
 
 .vx-shell.is-exam-mode {
+  background: #f6fbf9;
+}
+
+.theme-dark.vx-shell.is-exam-mode {
   background: #08120e;
 }
 
@@ -1348,6 +1352,11 @@
 
 .vx-main.is-exam-main {
   min-height: 100svh;
+  background: #f6fbf9;
+}
+
+.theme-dark .vx-main.is-exam-main {
+  background: #08120e;
 }
 
 .vx-shell.is-assessment-plain-mode {
