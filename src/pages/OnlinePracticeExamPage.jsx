@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeft, Award, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, FileText, Hash, ListChecks, Moon, Sun, Timer } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Award, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, FileText, Hash, ListChecks, Moon, Sun, Timer, X } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 
@@ -146,13 +146,15 @@ const formatQuestionMarksBadge = (question) => {
   return marks === '-' ? '- Marks' : `${marks} Marks`
 }
 
-const renderQuestionImages = (images, className = '') => (
+const renderQuestionImages = (images, className = '', onPreview) => (
   Array.isArray(images) && images.length ? (
     <div className={`online-practice-question-images ${className}`.trim()} aria-label="Question images">
       {images.map((image, imageIndex) => (
         <figure key={image.id ?? `${image.name || 'image'}-${imageIndex}`}>
           <span>{String.fromCharCode(65 + imageIndex)}</span>
-          <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
+          <button type="button" onClick={() => onPreview?.(images, imageIndex)} aria-label={`Preview question image ${String.fromCharCode(65 + imageIndex)}`}>
+            <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
+          </button>
         </figure>
       ))}
     </div>
@@ -265,7 +267,8 @@ const getPreviewOrderedQuestionNumbers = (setup = {}, questions = []) => {
     questions
       .filter((question) => getPreviewSectionKey(question) === sectionKey)
       .forEach((question, index) => {
-        numbers[question.id ?? `${sectionKey}-${index}`] = displayNumber
+        const globalIndex = questions.indexOf(question)
+        numbers[question.id ?? `${sectionKey}-${globalIndex}`] = displayNumber
         displayNumber += 1
       })
   })
@@ -355,6 +358,8 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [isDescriptiveSubmitted, setIsDescriptiveSubmitted] = useState(false)
   const [isAssessmentSubmitted, setIsAssessmentSubmitted] = useState(false)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
+  const [isTimeLimitModalOpen, setIsTimeLimitModalOpen] = useState(false)
+  const [imagePreview, setImagePreview] = useState(null)
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
@@ -365,11 +370,14 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const currentQuestions = activeSection === 'mcq' ? mcqQuestions : descriptiveQuestions
   const currentQuestion = currentQuestions[activeQuestionIndex] ?? null
   const setup = assessment?.setup ?? {}
+  const examTypeValue = String(assessment?.examType || setup.examType || 'Hybrid').toLowerCase()
+  const hasMcqSection = mcqQuestions.length > 0 && examTypeValue !== 'descriptive'
+  const hasDescriptiveSection = descriptiveQuestions.length > 0 && examTypeValue !== 'mcq'
   const previewQuestionDisplayNumbers = useMemo(() => (
     getPreviewOrderedQuestionNumbers(setup, questionRows)
   ), [questionRows, setup])
   const currentQuestionDisplayNumber = currentQuestion
-    ? previewQuestionDisplayNumbers[currentQuestion.id ?? `${getPreviewSectionKey(currentQuestion)}-${activeQuestionIndex}`] ?? activeQuestionIndex + 1
+    ? previewQuestionDisplayNumbers[currentQuestion.id ?? `${getPreviewSectionKey(currentQuestion)}-${questionRows.indexOf(currentQuestion)}`] ?? activeQuestionIndex + 1
     : activeQuestionIndex + 1
   const descriptiveGroups = useMemo(() => {
     const titleMap = getPreviewSectionTitles(setup)
@@ -394,31 +402,34 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
       })
     })
 
+    const visibleSectionOrder = sectionOrder.filter((key) => (
+      (key === 'MCQ' && hasMcqSection) || groupsByKey.has(key)
+    ))
+
     return [...groupsByKey.values()]
       .sort((first, second) => sectionOrder.indexOf(first.key) - sectionOrder.indexOf(second.key))
       .map((group) => ({
         ...group,
-        roman: `${toRoman(sectionOrder.filter((key) => key === 'MCQ' || groupsByKey.has(key)).indexOf(group.key) + 1)}.`,
+        roman: `${toRoman(visibleSectionOrder.indexOf(group.key) + 1)}.`,
         toneClass: getPreviewSectionToneClass(group.key),
       }))
-  }, [descriptiveQuestions, questionRows, setup])
+  }, [descriptiveQuestions, hasMcqSection, questionRows, setup])
   const descriptiveTotalMarks = useMemo(() => (
     descriptiveGroups.reduce((sum, group) => sum + group.totalMarks, 0)
   ), [descriptiveGroups])
   const mcqSectionTitle = getPreviewSectionTitles(setup).MCQ || 'Multiple Choice Question'
   const mcqSectionRoman = useMemo(() => {
     const sectionOrder = getPreviewSectionOrder(setup, questionRows)
-    const mcqIndex = sectionOrder.filter((key) => key === 'MCQ' || descriptiveGroups.some((group) => group.key === key)).indexOf('MCQ')
+    const mcqIndex = sectionOrder
+      .filter((key) => (key === 'MCQ' && hasMcqSection) || descriptiveGroups.some((group) => group.key === key))
+      .indexOf('MCQ')
     return `${toRoman(Math.max(0, mcqIndex) + 1)}.`
-  }, [descriptiveGroups, questionRows, setup])
+  }, [descriptiveGroups, hasMcqSection, questionRows, setup])
   const attendedMcqCount = useMemo(() => (
     mcqQuestions.filter((question, index) => (
       mcqQuestionStatuses[getMcqQuestionKey(question, index)] === 'answered'
     )).length
   ), [mcqQuestionStatuses, mcqQuestions])
-  const examTypeValue = String(assessment?.examType || setup.examType || 'Hybrid').toLowerCase()
-  const hasMcqSection = mcqQuestions.length > 0 && examTypeValue !== 'descriptive'
-  const hasDescriptiveSection = descriptiveQuestions.length > 0 && examTypeValue !== 'mcq'
   const mcqAllowsAnswerInput = isAnswerInputMode(setup.mcqDisplayType || assessment?.mcqDisplayType || 'Answer Input')
   const descriptiveAllowsAnswerInput = isAnswerInputMode(setup.descriptiveDisplayType || assessment?.descriptiveDisplayType || 'Read-Only')
   const isMcqLocked = isMcqSubmitted || isAssessmentSubmitted
@@ -457,9 +468,10 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const durationDisplay = shouldShowRemainingTime
     ? formatCountdown(remainingDurationSeconds)
     : assessment?.totalDuration || '-'
+  const isTimeLimitCritical = shouldShowRemainingTime && remainingDurationSeconds > 0 && remainingDurationSeconds <= 300
   const headerChips = [
     { label: 'Type', value: assessment?.examType || '-', tone: 'type' },
-    { label: shouldShowRemainingTime ? 'Remaining Time' : 'Duration', value: durationDisplay, tone: 'duration' },
+    { label: shouldShowRemainingTime ? 'Remaining Time' : 'Duration', value: durationDisplay, tone: 'duration', isCritical: isTimeLimitCritical },
     { label: 'Marks', value: assessment?.totalMarks ?? '-', tone: 'marks' },
   ]
   const detailItems = [
@@ -620,6 +632,26 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     onExit?.(APP_PAGES.MY_ASSESSMENT)
   }
 
+  const openImagePreview = (images, index = 0) => {
+    if (!Array.isArray(images) || !images.length) return
+    setImagePreview({
+      images,
+      index: Math.min(Math.max(0, index), images.length - 1),
+    })
+  }
+
+  const closeImagePreview = () => {
+    setImagePreview(null)
+  }
+
+  const moveImagePreview = (direction) => {
+    setImagePreview((current) => {
+      if (!current) return current
+      const nextIndex = Math.min(Math.max(0, current.index + direction), current.images.length - 1)
+      return { ...current, index: nextIndex }
+    })
+  }
+
   const showDescriptiveSection = (groupKey) => {
     setActiveSection('descriptive')
     setActiveDescriptiveGroupKey(groupKey)
@@ -744,6 +776,44 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     return () => window.clearTimeout(timeoutId)
   }, [onExit, submitModal])
 
+  useEffect(() => {
+    if (!shouldShowRemainingTime || remainingDurationSeconds > 0 || isAssessmentSubmitted) return
+
+    setIsMcqSubmitted(hasMcqSection)
+    setIsDescriptiveSubmitted(hasDescriptiveSection)
+    setIsAssessmentSubmitted(true)
+    setSubmitModal(null)
+    setIsExitModalOpen(false)
+    persistCompletedAssessment()
+    setIsTimeLimitModalOpen(true)
+  }, [hasDescriptiveSection, hasMcqSection, isAssessmentSubmitted, remainingDurationSeconds, shouldShowRemainingTime])
+
+  useEffect(() => {
+    if (!isTimeLimitModalOpen) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      onExit?.(APP_PAGES.MY_ASSESSMENT)
+    }, 2000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [isTimeLimitModalOpen, onExit])
+
+  useEffect(() => {
+    if (!imagePreview) return undefined
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closeImagePreview()
+        return
+      }
+      if (event.key === 'ArrowLeft') moveImagePreview(-1)
+      if (event.key === 'ArrowRight') moveImagePreview(1)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [imagePreview])
+
   if (!assessment) {
     return (
       <main className="online-practice-exam-page">
@@ -796,7 +866,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
           </div>
           <div className="online-practice-header-chips" aria-label="Assessment configuration summary">
             {headerChips.map((chip) => (
-              <span key={chip.tone} className={`is-${chip.tone}`}>
+              <span key={chip.tone} className={`is-${chip.tone} ${chip.isCritical ? 'is-critical' : ''}`.trim()}>
                 <em>{chip.label}</em>
                 <strong>{chip.value}</strong>
               </span>
@@ -902,7 +972,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
           <div className="online-practice-exam-layout">
             <div className="online-practice-exam-main">
               {activeSection === 'mcq' && hasMcqSection ? (
-                <div className="online-practice-question-head is-section-title">
+                <div className="online-practice-question-head is-section-title type-mcq">
                   <h2><span>{mcqSectionRoman}</span>{mcqSectionTitle}</h2>
                   <strong>{String(mcqTotalMarks).padStart(2, '0')} Marks</strong>
                 </div>
@@ -924,7 +994,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                           <div className="online-practice-descriptive-list">
                             {group.questions.map((question, questionIndex) => {
                               const subQuestions = getDescriptiveSubQuestions(question)
-                              const displayNumber = previewQuestionDisplayNumbers[question.id ?? `${group.key}-${questionIndex}`] ?? questionIndex + 1
+                              const displayNumber = previewQuestionDisplayNumbers[question.id ?? `${group.key}-${questionRows.indexOf(question)}`] ?? questionIndex + 1
 
                               return (
                                 <div className="online-practice-descriptive-paper-question" key={question.id ?? questionIndex}>
@@ -932,7 +1002,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                     <strong>{displayNumber}.</strong>
                                     <span>{getQuestionText(question)}</span>
                                   </p>
-                                  {renderQuestionImages(question.images)}
+                                  {renderQuestionImages(question.images, '', openImagePreview)}
                                   {subQuestions.length ? (
                                     subQuestions.map((section, index) => (
                                       <div className="online-practice-descriptive-subgroup" key={section.id ?? index}>
@@ -1005,7 +1075,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                   mcqQuestions.length ? (
                     <div className="online-practice-mcq-readonly-list" aria-label="Read only MCQ questions">
                       {mcqQuestions.map((question, questionIndex) => {
-                        const displayNumber = previewQuestionDisplayNumbers[question.id ?? `MCQ-${questionIndex}`] ?? questionIndex + 1
+                        const displayNumber = previewQuestionDisplayNumbers[question.id ?? `MCQ-${questionRows.indexOf(question)}`] ?? questionIndex + 1
 
                         return (
                           <section className="online-practice-mcq-readonly-question" key={question.id ?? questionIndex}>
@@ -1013,7 +1083,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                               <strong className="online-practice-current-question-number">{displayNumber}.</strong>
                               <h2>{getQuestionText(question)}</h2>
                             </div>
-                            {renderQuestionImages(question.images, 'is-mcq')}
+                            {renderQuestionImages(question.images, 'is-mcq', openImagePreview)}
 
                             <div className="online-practice-options is-readonly">
                               {(question.options ?? []).map((option, optionIndex) => (
@@ -1038,7 +1108,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                       <strong className="online-practice-current-question-number">{currentQuestionDisplayNumber}.</strong>
                       <h2>{getQuestionText(currentQuestion)}</h2>
                     </div>
-                    {renderQuestionImages(currentQuestion.images, 'is-mcq')}
+                    {renderQuestionImages(currentQuestion.images, 'is-mcq', openImagePreview)}
 
                     <div className="online-practice-options">
                       {(currentQuestion.options ?? []).map((option, optionIndex) => {
@@ -1272,6 +1342,49 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                 Exit Anyway
               </button>
             </div>
+          </section>
+        </div>
+      ) : null}
+
+      {isTimeLimitModalOpen ? (
+        <div className="online-practice-submit-overlay" role="presentation">
+          <section className="online-practice-submit-modal online-practice-time-limit-modal is-success" role="dialog" aria-modal="true" aria-labelledby="online-practice-time-limit-title">
+            <span className="online-practice-time-limit-icon" aria-hidden="true">
+              <Timer size={34} strokeWidth={2.4} />
+            </span>
+            <h2 id="online-practice-time-limit-title">Time Limit Reached</h2>
+            <p>Thank you for completing the assessment. The allocated time has ended. Your test is now being automatically submitted, and this window will close shortly.</p>
+          </section>
+        </div>
+      ) : null}
+
+      {imagePreview ? (
+        <div className="online-practice-image-preview-overlay" role="presentation" onClick={closeImagePreview}>
+          <section className="online-practice-image-preview-modal" role="dialog" aria-modal="true" aria-labelledby="online-practice-image-preview-title" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <span className="online-practice-image-preview-badge">{String.fromCharCode(65 + imagePreview.index)}</span>
+              <h2 id="online-practice-image-preview-title">Question Image</h2>
+              <strong>{imagePreview.index + 1} / {imagePreview.images.length}</strong>
+              <button type="button" onClick={closeImagePreview} aria-label="Close image preview">
+                <X size={18} strokeWidth={2.4} />
+              </button>
+            </header>
+            <div className="online-practice-image-preview-stage">
+              <img
+                src={imagePreview.images[imagePreview.index]?.url}
+                alt={imagePreview.images[imagePreview.index]?.name || `Question image ${imagePreview.index + 1}`}
+              />
+            </div>
+            <footer>
+              <button type="button" onClick={() => moveImagePreview(-1)} disabled={imagePreview.index <= 0}>
+                <ChevronLeft size={16} strokeWidth={2.3} />
+                Previous
+              </button>
+              <button type="button" onClick={() => moveImagePreview(1)} disabled={imagePreview.index >= imagePreview.images.length - 1}>
+                Next
+                <ChevronRight size={16} strokeWidth={2.3} />
+              </button>
+            </footer>
           </section>
         </div>
       ) : null}
