@@ -22,6 +22,7 @@ export const APP_PAGES = {
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
   MY_ASSESSMENT: 'My Assessment',
   ONLINE_PRACTICE_EXAM: 'Online Practice Exam',
+  ONLINE_PROCTORED_EXAM: 'Online Proctored Exam',
   QUESTION_BANK: 'Question Bank',
   QUESTION_BANK_NON_CREATE: 'Question Bank Overall Question',
   QUERY_REQUEST: 'Query Request',

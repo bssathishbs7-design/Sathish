@@ -24,6 +24,8 @@ const dashboardCards = [
 
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const ONLINE_PRACTICE_EXAM_STORAGE_KEY = 'vx-online-practice-exam-assessment'
+const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
+const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const MY_ASSESSMENT_FILTER_DEFAULTS = {
   status: 'all',
   supervision: 'all',
@@ -77,12 +79,19 @@ const readPublishedAssessments = () => {
     const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
     if (!Array.isArray(parsed)) return []
 
-    const selectedAssessment = JSON.parse(window.sessionStorage.getItem(ONLINE_PRACTICE_EXAM_STORAGE_KEY) || 'null')
-    if (!selectedAssessment || selectedAssessment.status !== 'completed') return parsed
+    const selectedPracticeAssessment = JSON.parse(window.sessionStorage.getItem(ONLINE_PRACTICE_EXAM_STORAGE_KEY) || 'null')
+    const selectedProctoredAssessment = JSON.parse(window.sessionStorage.getItem(ONLINE_PROCTORED_EXAM_STORAGE_KEY) || 'null')
+    const completedAssessments = [selectedPracticeAssessment, selectedProctoredAssessment]
+      .filter((assessment) => assessment && assessment.status === 'completed')
+    if (!completedAssessments.length) return parsed
 
     return parsed.map((assessment) => (
-      isSameAssessmentRecord(assessment, selectedAssessment)
-        ? { ...assessment, status: 'completed', completedAt: selectedAssessment.completedAt }
+      completedAssessments.find((selectedAssessment) => isSameAssessmentRecord(assessment, selectedAssessment))
+        ? {
+          ...assessment,
+          status: 'completed',
+          completedAt: completedAssessments.find((selectedAssessment) => isSameAssessmentRecord(assessment, selectedAssessment))?.completedAt,
+        }
         : assessment
     ))
   } catch {
@@ -221,6 +230,12 @@ const isOnlinePracticeAssessment = (assessment) => (
   && String(assessment?.supervisionType || '').toLowerCase().includes('practice')
 )
 
+const isOnlineProctoredAssessment = (assessment) => {
+  const supervisionType = String(assessment?.supervisionType || '').toLowerCase()
+  return String(assessment?.examMode || '').toLowerCase() === 'online'
+    && supervisionType.includes('proctored')
+}
+
 export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate }) {
   const isMyAssessment = mode === 'my-assessment'
   const navigationItems = isMyAssessment
@@ -308,28 +323,54 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   }
 
   const handleStartAssessment = (assessment) => {
-    if (!assessment || !isOnlinePracticeAssessment(assessment)) return
+    if (!assessment) return
+    const isPracticeAssessment = isOnlinePracticeAssessment(assessment)
+    const isProctoredAssessment = isOnlineProctoredAssessment(assessment)
+    if (!isPracticeAssessment && !isProctoredAssessment) return
+    const isOnlineProctoredFlow = isProctoredAssessment
+    const storageKey = isOnlineProctoredFlow
+      ? ONLINE_PROCTORED_EXAM_STORAGE_KEY
+      : ONLINE_PRACTICE_EXAM_STORAGE_KEY
+    const destinationPage = isOnlineProctoredFlow
+      ? APP_PAGES.ONLINE_PROCTORED_EXAM
+      : APP_PAGES.ONLINE_PRACTICE_EXAM
 
     try {
-      window.sessionStorage.setItem(ONLINE_PRACTICE_EXAM_STORAGE_KEY, JSON.stringify(assessment))
+      window.sessionStorage.setItem(
+        storageKey,
+        JSON.stringify(assessment),
+      )
     } catch (error) {
-      console.warn('Unable to persist online practice exam assessment.', error)
+      console.warn('Unable to persist selected online assessment.', error)
     }
 
-    onNavigate?.(APP_PAGES.ONLINE_PRACTICE_EXAM)
+    onNavigate?.(destinationPage)
   }
 
   useEffect(() => {
     if (!isMyAssessment) return undefined
 
-    setPublishedAssessments(readPublishedAssessments())
+    const refreshPublishedAssessments = () => {
+      setPublishedAssessments(readPublishedAssessments())
+    }
+    const handleStorageChange = (event) => {
+      if (event.key === ASSESSMENT_PUBLISHED_STORAGE_KEY) refreshPublishedAssessments()
+    }
+
+    refreshPublishedAssessments()
     setScheduleNow(new Date())
     const intervalId = window.setInterval(() => {
-      setPublishedAssessments(readPublishedAssessments())
+      refreshPublishedAssessments()
       setScheduleNow(new Date())
     }, 1000)
+    window.addEventListener(ASSESSMENT_PUBLISHED_CHANGED_EVENT, refreshPublishedAssessments)
+    window.addEventListener('storage', handleStorageChange)
 
-    return () => window.clearInterval(intervalId)
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener(ASSESSMENT_PUBLISHED_CHANGED_EVENT, refreshPublishedAssessments)
+      window.removeEventListener('storage', handleStorageChange)
+    }
   }, [isMyAssessment])
 
   return (
@@ -436,6 +477,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
               <div className="assessment-create-draft-grid my-assessment-published-grid">
                 {filteredOnlineAssessments.length ? filteredOnlineAssessments.map((assessment) => {
                   const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
+                  const isProctoredExam = String(assessment.supervisionType || '').toLowerCase().includes('proctored')
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                   const durationValue = scheduleStatus?.type === 'live'
@@ -487,7 +529,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         <button
                           type="button"
                           className={`my-assessment-card-action is-${scheduleStatus?.type === 'completed' ? 'results' : 'start'} ${scheduleStatus?.type === 'live' ? 'is-live' : ''}`}
-                          disabled={scheduleStatus?.type === 'upcoming' || (!isPracticeExam && scheduleStatus?.type !== 'completed')}
+                          disabled={scheduleStatus?.type === 'upcoming' || (!isPracticeExam && !isProctoredExam && scheduleStatus?.type !== 'completed')}
                           onClick={() => {
                             if (scheduleStatus?.type === 'completed') {
                               handleViewAssessmentResults(assessment)

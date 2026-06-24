@@ -23,6 +23,7 @@ import ProgressTrackingPage from './pages/ProgressTrackingPage'
 import ActivityResultPage from './pages/ActivityResultPage'
 import StudentExamPage from './pages/StudentExamPage'
 import OnlinePracticeExamPage from './pages/OnlinePracticeExamPage'
+import OnlineProctoredExamPage from './pages/OnlineProctoredExamPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import StudentManagementPage from './pages/StudentManagementPage'
 import ImageActivityPage from './pages/ImageActivityPage'
@@ -40,6 +41,7 @@ const PAGE_PATHS = {
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
   [APP_PAGES.MY_ASSESSMENT]: '/my-assessment',
   [APP_PAGES.ONLINE_PRACTICE_EXAM]: '/my-assessment/online-practice-exam',
+  [APP_PAGES.ONLINE_PROCTORED_EXAM]: '/my-assessment/online-proctored-exam',
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
   [APP_PAGES.QUESTION_BANK_NON_CREATE]: '/question-bank/non-create',
   [APP_PAGES.QUERY_REQUEST]: '/query-request',
@@ -392,7 +394,9 @@ function App() {
   const [alerts, setAlerts] = useState([])
   const [queryRequestCount, setQueryRequestCount] = useState(() => readActiveQueryRequestCount())
   const [createdReportCount, setCreatedReportCount] = useState(() => readActiveCreatedReportCount())
-  const isExamMode = activePage === APP_PAGES.STUDENT_EXAM || activePage === APP_PAGES.ONLINE_PRACTICE_EXAM
+  const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
+    || activePage === APP_PAGES.ONLINE_PRACTICE_EXAM
+    || activePage === APP_PAGES.ONLINE_PROCTORED_EXAM
   const isPlainAssessmentMode = activePage === APP_PAGES.CREATE_ASSESSMENT
   const hideShellChrome = isExamMode || isPlainAssessmentMode
   const activeEvaluationRecord = selectedEvaluationRecord
@@ -1378,6 +1382,12 @@ function App() {
             />
           ) : activePage === APP_PAGES.ONLINE_PRACTICE_EXAM ? (
             <OnlinePracticeExamPage
+              onExit={navigateToPage}
+              theme={theme}
+              onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+            />
+          ) : activePage === APP_PAGES.ONLINE_PROCTORED_EXAM ? (
+            <OnlineProctoredExamPage
               onExit={navigateToPage}
               theme={theme}
               onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}

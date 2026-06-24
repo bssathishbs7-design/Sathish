@@ -78,6 +78,9 @@ const ASSESSMENT_CREATE_INITIAL_TAB_KEY = 'vx-assessment-create-initial-tab'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
+const ONLINE_PRACTICE_EXAM_STORAGE_KEY = 'vx-online-practice-exam-assessment'
+const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
+const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const PUBLISHED_LOG_PAGE_SIZE = 5
 const PUBLISHED_FILTER_DEFAULTS = {
   mode: 'all',
@@ -168,6 +171,32 @@ const readPublishedAssessments = () => {
   } catch {
     return []
   }
+}
+
+const isSameAssessmentRecord = (first, second) => {
+  if (!first || !second) return false
+  if (first.id && second.id) return first.id === second.id
+
+  return (
+    first.assessmentName === second.assessmentName
+    && first.startDate === second.startDate
+    && first.startTime === second.startTime
+  )
+}
+
+const clearDeletedAssessmentSessionRecords = (deletedAssessment) => {
+  if (!deletedAssessment) return
+
+  ;[ONLINE_PRACTICE_EXAM_STORAGE_KEY, ONLINE_PROCTORED_EXAM_STORAGE_KEY].forEach((storageKey) => {
+    try {
+      const selectedAssessment = JSON.parse(window.sessionStorage.getItem(storageKey) || 'null')
+      if (isSameAssessmentRecord(deletedAssessment, selectedAssessment)) {
+        window.sessionStorage.removeItem(storageKey)
+      }
+    } catch {
+      // Session cleanup should not block deleting the published assessment.
+    }
+  })
 }
 
 const getAssessmentStorageSuffix = (setup = {}) => {
@@ -948,8 +977,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
 
   const deletePublishedAssessment = (assessmentId) => {
     setPublishedAssessments((current) => {
+      const deletedAssessment = current.find((assessment) => assessment.id === assessmentId)
       const nextPublished = current.filter((assessment) => assessment.id !== assessmentId)
       window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
+      clearDeletedAssessmentSessionRecords(deletedAssessment)
+      window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
       setSelectedPublishedLogAssessment((selected) => (selected?.id === assessmentId ? null : selected))
       if (!nextPublished.length && activeAssessmentTab === 'published') {
         setActiveAssessmentTab(draftAssessments.length ? 'draft' : '')
