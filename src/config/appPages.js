@@ -20,6 +20,7 @@ export const APP_PAGES = {
   CREATE_ASSESSMENT: 'createassessment',
   ASSESSMENT_EVALUATION: 'Assessment Evaluation',
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
+  EXAM_CONTROLS: 'Exam Controls',
   MY_ASSESSMENT: 'My Assessment',
   ONLINE_PRACTICE_EXAM: 'Online Practice Exam',
   ONLINE_PROCTORED_EXAM: 'Online Proctored Exam',
@@ -67,6 +68,7 @@ export const ASSESSMENT_PAGES = [
   APP_PAGES.CREATE_ASSESSMENT,
   APP_PAGES.ASSESSMENT_EVALUATION,
   APP_PAGES.ASSESSMENT_DASHBOARD,
+  APP_PAGES.EXAM_CONTROLS,
 ]
 
 export const QUESTION_BANK_PAGES = [

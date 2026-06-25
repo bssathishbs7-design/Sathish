@@ -8,6 +8,9 @@ const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
 const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
 const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-sections'
+const STUDENT_EXAM_TIME_EXTENSIONS_KEY = 'vx-student-exam-time-extensions'
+const STUDENT_EXAM_TIME_EXTENSION_EVENT = 'vx-student-exam-time-extension-changed'
+const CURRENT_STUDENT_ID = 'MC2568'
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
   { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
@@ -22,6 +25,21 @@ const readSelectedAssessment = () => {
     return parsed && typeof parsed === 'object' ? parsed : null
   } catch {
     return null
+  }
+}
+
+const getAssessmentId = (assessment) => (
+  assessment?.id || assessment?.assessmentId || assessment?.setup?.assessmentId || 'selected-assessment'
+)
+
+const readStudentTimeExtension = (assessment, studentId = CURRENT_STUDENT_ID) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_TIME_EXTENSIONS_KEY) || 'null')
+    const assessmentExtensions = parsed?.[getAssessmentId(assessment)]
+    const studentExtension = assessmentExtensions?.[studentId]
+    return studentExtension && typeof studentExtension === 'object' ? studentExtension : {}
+  } catch {
+    return {}
   }
 }
 
@@ -360,6 +378,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const [isTimeLimitModalOpen, setIsTimeLimitModalOpen] = useState(false)
   const [imagePreview, setImagePreview] = useState(null)
+  const [timeExtension, setTimeExtension] = useState(() => readStudentTimeExtension(assessment))
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
@@ -445,26 +464,29 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const studentInstructionLines = getInstructionLines(setup.studentInstructions)
   const canShowStudentInstructions = setup.provideStudentInstructions === 'Yes' && studentInstructionLines.length > 0
   const totalDurationSeconds = useMemo(() => parseDurationToSeconds(assessment?.totalDuration), [assessment?.totalDuration])
+  const extensionMinutes = Number(timeExtension?.extensionMinutes || 0)
+  const extensionSeconds = extensionMinutes * 60
+  const effectiveTotalDurationSeconds = totalDurationSeconds + extensionSeconds
   const scheduledStartAt = useMemo(() => {
     const startDate = parseAssessmentDate(assessment?.startDate)
     return applyAssessmentTime(startDate, assessment?.startTime)
   }, [assessment?.startDate, assessment?.startTime])
   const scheduledEndAt = useMemo(() => (
-    scheduledStartAt && totalDurationSeconds
-      ? new Date(scheduledStartAt.getTime() + (totalDurationSeconds * 1000))
+    scheduledStartAt && effectiveTotalDurationSeconds
+      ? new Date(scheduledStartAt.getTime() + (effectiveTotalDurationSeconds * 1000))
       : null
-  ), [scheduledStartAt, totalDurationSeconds])
+  ), [scheduledStartAt, effectiveTotalDurationSeconds])
   const isAssessmentLive = Boolean(
     scheduledStartAt
     && scheduledEndAt
     && timerNow >= scheduledStartAt.getTime()
     && timerNow <= scheduledEndAt.getTime()
   )
-  const fallbackEndAt = examStartedAt && totalDurationSeconds ? examStartedAt + (totalDurationSeconds * 1000) : null
-  const remainingDurationSeconds = (hasStarted || isAssessmentLive) && totalDurationSeconds
+  const fallbackEndAt = examStartedAt && effectiveTotalDurationSeconds ? examStartedAt + (effectiveTotalDurationSeconds * 1000) : null
+  const remainingDurationSeconds = (hasStarted || isAssessmentLive) && effectiveTotalDurationSeconds
     ? Math.max(0, Math.floor(((scheduledEndAt?.getTime() || fallbackEndAt || timerNow) - timerNow) / 1000))
-    : totalDurationSeconds
-  const shouldShowRemainingTime = Boolean((hasStarted || isAssessmentLive) && totalDurationSeconds)
+    : effectiveTotalDurationSeconds
+  const shouldShowRemainingTime = Boolean((hasStarted || isAssessmentLive) && effectiveTotalDurationSeconds)
   const durationDisplay = shouldShowRemainingTime
     ? formatCountdown(remainingDurationSeconds)
     : assessment?.totalDuration || '-'
@@ -472,6 +494,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const headerChips = [
     { label: 'Type', value: assessment?.examType || '-', tone: 'type' },
     { label: shouldShowRemainingTime ? 'Remaining Time' : 'Duration', value: durationDisplay, tone: 'duration', isCritical: isTimeLimitCritical },
+    ...(extensionMinutes > 0 ? [{ label: 'Extended', value: `+${extensionMinutes} mins`, tone: 'extended' }] : []),
     { label: 'Marks', value: assessment?.totalMarks ?? '-', tone: 'marks' },
   ]
   const detailItems = [
@@ -675,6 +698,31 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
     return () => window.clearInterval(timerId)
   }, [])
+
+  useEffect(() => {
+    const syncStudentExtension = () => {
+      setTimeExtension(readStudentTimeExtension(assessment))
+    }
+
+    const handleStorage = (event) => {
+      if (event.key === STUDENT_EXAM_TIME_EXTENSIONS_KEY) syncStudentExtension()
+    }
+
+    const handleExtensionEvent = (event) => {
+      if (!event.detail || event.detail.assessmentId === getAssessmentId(assessment)) {
+        syncStudentExtension()
+      }
+    }
+
+    syncStudentExtension()
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener(STUDENT_EXAM_TIME_EXTENSION_EVENT, handleExtensionEvent)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener(STUDENT_EXAM_TIME_EXTENSION_EVENT, handleExtensionEvent)
+    }
+  }, [assessment])
 
   useEffect(() => {
     if (!hasStarted || activeSection !== 'mcq' || !currentQuestion) return

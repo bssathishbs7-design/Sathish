@@ -246,23 +246,23 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   const [myAssessmentSearchValue, setMyAssessmentSearchValue] = useState('')
   const [myAssessmentFilters, setMyAssessmentFilters] = useState(MY_ASSESSMENT_FILTER_DEFAULTS)
   const [isMyAssessmentFilterOpen, setIsMyAssessmentFilterOpen] = useState(false)
-  const onlineAssessments = publishedAssessments.filter((assessment) => (
-    String(assessment.examMode || '').toLowerCase() === 'online'
+  const studentOnlineAssessments = publishedAssessments.filter((assessment) => (
+    isOnlinePracticeAssessment(assessment) || isOnlineProctoredAssessment(assessment)
   ))
-  const liveOnlineAssessmentCount = onlineAssessments.filter((assessment) => (
+  const liveOnlineAssessmentCount = studentOnlineAssessments.filter((assessment) => (
     getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'live'
   )).length
-  const upcomingOnlineAssessmentCount = onlineAssessments.filter((assessment) => (
+  const upcomingOnlineAssessmentCount = studentOnlineAssessments.filter((assessment) => (
     getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'upcoming'
   )).length
-  const completedOnlineAssessmentCount = onlineAssessments.filter((assessment) => (
+  const completedOnlineAssessmentCount = studentOnlineAssessments.filter((assessment) => (
     getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'completed'
   )).length
   const myAssessmentMetrics = [
     {
       key: 'all',
       label: 'Total Assessments',
-      count: onlineAssessments.length,
+      count: studentOnlineAssessments.length,
       icon: ClipboardList,
       tone: 'total',
     },
@@ -291,7 +291,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   const activeMyAssessmentFilterCount = Object.values(myAssessmentFilters).filter((value) => value !== 'all').length
   const hasMyAssessmentFilter = activeMyAssessmentFilterCount > 0
   const hasMyAssessmentSearch = Boolean(myAssessmentSearchValue.trim())
-  const filteredOnlineAssessments = sortAssessmentsByStatusPriority(onlineAssessments.filter((assessment) => {
+  const filteredOnlineAssessments = sortAssessmentsByStatusPriority(studentOnlineAssessments.filter((assessment) => {
     const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
     const searchText = [
       assessment.assessmentName,
@@ -413,7 +413,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
             <section className="assessment-create-draft-shell assessment-create-published-shell my-assessment-published-shell" aria-label="My online assessments">
               <div className="assessment-create-card-heading">
                 <h2>Assessment Status</h2>
-                {onlineAssessments.length ? (
+                {studentOnlineAssessments.length ? (
                 <div className="assessment-create-published-toolbar my-assessment-toolbar">
                   <label className="assessment-create-published-search">
                     <Search size={15} strokeWidth={2.2} aria-hidden="true" />
@@ -473,7 +473,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                 </div>
               ) : null}
             </div>
-            {onlineAssessments.length ? (
+            {studentOnlineAssessments.length ? (
               <div className="assessment-create-draft-grid my-assessment-published-grid">
                 {filteredOnlineAssessments.length ? filteredOnlineAssessments.map((assessment) => {
                   const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
@@ -529,7 +529,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         <button
                           type="button"
                           className={`my-assessment-card-action is-${scheduleStatus?.type === 'completed' ? 'results' : 'start'} ${scheduleStatus?.type === 'live' ? 'is-live' : ''}`}
-                          disabled={scheduleStatus?.type === 'upcoming' || (!isPracticeExam && !isProctoredExam && scheduleStatus?.type !== 'completed')}
+                          disabled={scheduleStatus?.type === 'upcoming'}
                           onClick={() => {
                             if (scheduleStatus?.type === 'completed') {
                               handleViewAssessmentResults(assessment)
@@ -551,7 +551,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
               </div>
             ) : (
               <div className="assessment-create-placeholder">
-                <p>No online assessments available.</p>
+                <p>No assigned online assessments available.</p>
               </div>
             )}
             </section>

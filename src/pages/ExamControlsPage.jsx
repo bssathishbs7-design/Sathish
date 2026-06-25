@@ -1,0 +1,705 @@
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Activity, ArrowLeft, CalendarDays, CheckCircle2, Clock3, FileText, Monitor, Search, ShieldCheck, TimerReset } from 'lucide-react'
+import PageNavigationHeader from '../components/PageNavigationHeader'
+import { APP_PAGES } from '../config/appPages'
+import '../styles/assessment-pages.css'
+
+const EXAM_CONTROLS_ASSESSMENT_KEY = 'vx-exam-controls-assessment'
+const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
+const ASSESSMENT_CREATE_INITIAL_TAB_KEY = 'vx-assessment-create-initial-tab'
+const STUDENT_EXAM_TIME_EXTENSIONS_KEY = 'vx-student-exam-time-extensions'
+const STUDENT_EXAM_TIME_EXTENSION_EVENT = 'vx-student-exam-time-extension-changed'
+
+const CONTROL_STUDENTS = [
+  { id: 'MV1253', name: 'Student 1', attendance: 'P' },
+  { id: 'MV1254', name: 'Student 2', attendance: 'P' },
+  { id: 'MV1255', name: 'Student 3', attendance: 'A' },
+  { id: 'MC2568', name: 'Karthik Subramanian', attendance: 'P' },
+]
+
+const readExamControlsAssessment = () => {
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(EXAM_CONTROLS_ASSESSMENT_KEY) || 'null')
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+const readControlState = (assessmentId) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(`${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`) || 'null')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const writeControlState = (assessmentId, state) => {
+  window.localStorage.setItem(`${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`, JSON.stringify(state))
+}
+
+const readStudentTimeExtensions = () => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_TIME_EXTENSIONS_KEY) || 'null')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const writeStudentTimeExtension = ({ assessmentId, studentId, minutes, section }) => {
+  const extensions = readStudentTimeExtensions()
+  const assessmentExtensions = extensions[assessmentId] || {}
+  const studentExtension = assessmentExtensions[studentId] || {}
+  const sectionExtensions = studentExtension.sectionExtensions || {}
+  const nextStudentExtension = {
+    ...studentExtension,
+    extensionMinutes: section
+      ? Number(studentExtension.extensionMinutes || 0)
+      : Number(studentExtension.extensionMinutes || 0) + minutes,
+    sectionExtensions: {
+      ...sectionExtensions,
+      ...(section ? { [section]: Number(sectionExtensions[section] || 0) + minutes } : {}),
+    },
+    updatedAt: new Date().toISOString(),
+  }
+
+  const nextExtensions = {
+    ...extensions,
+    [assessmentId]: {
+      ...assessmentExtensions,
+      [studentId]: nextStudentExtension,
+    },
+  }
+
+  window.localStorage.setItem(STUDENT_EXAM_TIME_EXTENSIONS_KEY, JSON.stringify(nextExtensions))
+  window.dispatchEvent(new CustomEvent(STUDENT_EXAM_TIME_EXTENSION_EVENT, {
+    detail: { assessmentId, studentId, minutes, section },
+  }))
+}
+
+const parseAssessmentDate = (value) => {
+  if (!value) return null
+  const normalized = String(value).trim()
+  const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const displayMatch = normalized.match(/^(\d{2})-(\d{2})-(\d{4})$/)
+
+  if (isoMatch) return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]))
+  if (displayMatch) return new Date(Number(displayMatch[3]), Number(displayMatch[2]) - 1, Number(displayMatch[1]))
+
+  const parsed = new Date(normalized)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const applyAssessmentTime = (date, value) => {
+  if (!date) return null
+  const nextDate = new Date(date)
+  const match = String(value || '').trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i)
+
+  if (!match) {
+    nextDate.setHours(0, 0, 0, 0)
+    return nextDate
+  }
+
+  let hours = Number(match[1])
+  const minutes = Number(match[2] || 0)
+  const period = String(match[3] || '').toUpperCase()
+
+  if (period === 'PM' && hours < 12) hours += 12
+  if (period === 'AM' && hours === 12) hours = 0
+
+  nextDate.setHours(hours, minutes, 0, 0)
+  return nextDate
+}
+
+const parseDurationMinutes = (value) => {
+  const match = String(value || '').trim().match(/^(\d+)(?::(\d{2}))?$/)
+  if (!match) return 0
+  return (Number(match[1] || 0) * 60) + Number(match[2] || 0)
+}
+
+const formatDuration = (minutes) => {
+  const total = Math.max(0, Number(minutes) || 0)
+  const hours = Math.floor(total / 60)
+  const mins = total % 60
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+}
+
+const formatCountdown = (ms) => {
+  const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return hours > 0
+    ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+const formatDisplayDate = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString('en-GB').replace(/\//g, '-')
+}
+
+const formatDisplayTime = (date) => (
+  date && !Number.isNaN(date.getTime())
+    ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '-'
+)
+
+const getAssessmentSchedule = (assessment, now) => {
+  const startDate = parseAssessmentDate(assessment?.startDate)
+  const startAt = applyAssessmentTime(startDate, assessment?.startTime)
+  const durationMinutes = parseDurationMinutes(assessment?.totalDuration)
+  const endAt = startAt && durationMinutes ? new Date(startAt.getTime() + durationMinutes * 60 * 1000) : null
+
+  if (!startAt || !endAt) {
+    return { status: 'unknown', label: 'Schedule not available', remainingMs: 0, startAt, endAt, durationMinutes }
+  }
+
+  if (now > endAt) return { status: 'completed', label: 'Completed', remainingMs: 0, startAt, endAt, durationMinutes }
+  if (now >= startAt) return { status: 'live', label: 'Assessment Live', remainingMs: endAt.getTime() - now.getTime(), startAt, endAt, durationMinutes }
+  return { status: 'upcoming', label: 'Upcoming', remainingMs: startAt.getTime() - now.getTime(), startAt, endAt, durationMinutes }
+}
+
+const hasDescriptiveType = (assessment) => String(assessment?.examType || '').toLowerCase().includes('descriptive') || String(assessment?.examType || '').toLowerCase().includes('hybrid')
+const hasMcqType = (assessment) => String(assessment?.examType || '').toLowerCase().includes('mcq') || String(assessment?.examType || '').toLowerCase().includes('hybrid')
+
+const buildDefaultLogs = (student, assessment, schedule) => [
+  {
+    id: `${student.id}-joined`,
+    time: formatDisplayTime(schedule.startAt),
+    action: 'Started exam',
+    remarks: `${student.name} entered ${assessment?.assessmentName || 'assessment'}.`,
+    faculty: 'System',
+  },
+  {
+    id: `${student.id}-tracking`,
+    time: formatDisplayTime(new Date()),
+    action: 'Live tracking',
+    remarks: 'Live exam tracking log initialized.',
+    faculty: 'System',
+  },
+]
+
+function ExamControlsPage({ onNavigate }) {
+  const assessment = readExamControlsAssessment()
+  const assessmentId = assessment?.id || assessment?.assessmentId || assessment?.setup?.assessmentId || 'selected-assessment'
+  const [now, setNow] = useState(() => new Date())
+  const [controlState, setControlState] = useState(() => readControlState(assessmentId))
+  const [extendModal, setExtendModal] = useState(null)
+  const [extendSuccessModal, setExtendSuccessModal] = useState(null)
+  const [resetModal, setResetModal] = useState(null)
+  const [resetMode, setResetMode] = useState('clear')
+  const [logModal, setLogModal] = useState(null)
+  const [studentSearch, setStudentSearch] = useState('')
+
+  const goBackToPublishedTab = () => {
+    window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'published')
+    onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
+  }
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(new Date()), 1000)
+    return () => window.clearInterval(intervalId)
+  }, [])
+
+  useEffect(() => {
+    if (!assessment) return
+    writeControlState(assessmentId, controlState)
+  }, [assessment, assessmentId, controlState])
+
+  useEffect(() => {
+    if (!extendSuccessModal) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      setExtendSuccessModal(null)
+    }, 2000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [extendSuccessModal])
+
+  const schedule = useMemo(() => getAssessmentSchedule(assessment, now), [assessment, now])
+  const setup = assessment?.setup || {}
+  const isProctored = String(assessment?.supervisionType || '').toLowerCase().includes('proctored')
+  const isPractice = String(assessment?.supervisionType || '').toLowerCase().includes('practice')
+  const isHybrid = String(assessment?.examType || '').toLowerCase().includes('hybrid')
+  const isSplitHybrid = Boolean(isProctored && isHybrid && setup.splitProctoredDuration)
+  const isFinalFiveMinutes = schedule.status === 'live' && schedule.remainingMs <= 5 * 60 * 1000
+  const controlsDisabled = schedule.status !== 'live' || isFinalFiveMinutes
+  const baseDurationMinutes = parseDurationMinutes(assessment?.totalDuration)
+  const mcqDurationMinutes = parseDurationMinutes(setup.mcqTimeLimit) || baseDurationMinutes
+  const descriptiveDurationMinutes = parseDurationMinutes(setup.descriptiveTimeLimit) || baseDurationMinutes
+  const splitOrder = setup.proctoredSectionSequence === 'descriptive-first'
+    ? ['descriptive', 'mcq']
+    : ['mcq', 'descriptive']
+
+  const students = useMemo(() => CONTROL_STUDENTS.map((student, index) => {
+    const state = controlState[student.id] || {}
+    const isPresent = student.attendance === 'P'
+    const startOffset = index * 2 * 60 * 1000
+    const startTime = schedule.startAt ? new Date(schedule.startAt.getTime() + startOffset) : null
+    const extensionMinutes = Number(state.extensionMinutes || 0)
+    const mcqExtensionMinutes = Number(state.mcqExtensionMinutes || 0)
+    const descriptiveExtensionMinutes = Number(state.descriptiveExtensionMinutes || 0)
+    const status = !isPresent
+      ? 'Absent'
+      : schedule.status === 'completed'
+        ? 'Completed'
+        : schedule.status === 'live'
+          ? 'In progress'
+          : 'Waiting'
+
+    return {
+      ...student,
+      startTime,
+      extensionMinutes,
+      mcqExtensionMinutes,
+      descriptiveExtensionMinutes,
+      overallStatus: state.overallStatus || status,
+      logs: state.logs || buildDefaultLogs(student, assessment, schedule),
+    }
+  }), [assessment, controlState, schedule])
+
+  const visibleStudents = useMemo(() => {
+    const query = studentSearch.trim().toLowerCase()
+    if (!query) return students
+    return students.filter((student) => (
+      String(student.id || '').toLowerCase().includes(query)
+      || String(student.name || '').toLowerCase().includes(query)
+      || String(student.attendance || '').toLowerCase().includes(query)
+      || String(student.overallStatus || '').toLowerCase().includes(query)
+    ))
+  }, [studentSearch, students])
+
+  const addStudentLog = (studentId, action, remarks) => {
+    setControlState((current) => {
+      const previous = current[studentId] || {}
+      const nextLog = {
+        id: `${studentId}-${Date.now()}`,
+        time: formatDisplayTime(new Date()),
+        action,
+        remarks,
+        faculty: 'Karthik Subramanian',
+      }
+      return {
+        ...current,
+        [studentId]: {
+          ...previous,
+          logs: [nextLog, ...(previous.logs || [])],
+        },
+      }
+    })
+  }
+
+  const extendStudentTime = (minutes) => {
+    if (!extendModal) return
+    const { student, section } = extendModal
+    const sectionLabel = section === 'mcq' ? 'MCQ section' : section === 'descriptive' ? 'Descriptive section' : assessment?.assessmentName || 'this assessment'
+    setControlState((current) => {
+      const previous = current[student.id] || {}
+      const key = section === 'mcq' ? 'mcqExtensionMinutes' : section === 'descriptive' ? 'descriptiveExtensionMinutes' : 'extensionMinutes'
+      return {
+        ...current,
+        [student.id]: {
+          ...previous,
+          [key]: Number(previous[key] || 0) + minutes,
+        },
+      }
+    })
+    writeStudentTimeExtension({ assessmentId, studentId: student.id, minutes, section })
+    addStudentLog(student.id, 'Time extended', `${section ? `${section.toUpperCase()} section` : 'Exam'} extended by ${minutes} minutes.`)
+    setExtendModal(null)
+    setExtendSuccessModal({
+      message: `${student.name}'s ${sectionLabel} timer has been extended by ${minutes} minutes.`,
+    })
+  }
+
+  const confirmReset = () => {
+    if (!resetModal) return
+    const { student } = resetModal
+    setControlState((current) => {
+      const previous = current[student.id] || {}
+      return {
+        ...current,
+        [student.id]: {
+          ...previous,
+          resetMode,
+          resetCount: Number(previous.resetCount || 0) + 1,
+        },
+      }
+    })
+    addStudentLog(
+      student.id,
+      'Reset assessment',
+      resetMode === 'keep' ? 'Assessment reset and existing answers retained.' : 'Assessment reset and all answers cleared.',
+    )
+    setResetModal(null)
+  }
+
+  const renderExtendButton = (student, section = '') => (
+    <button
+      type="button"
+      className="exam-controls-extend-btn"
+      disabled={controlsDisabled || student.attendance !== 'P'}
+      onClick={() => setExtendModal({ student, section })}
+      title={isFinalFiveMinutes ? 'Controls disabled in final 5 minutes' : undefined}
+    >
+      Extend Time
+    </button>
+  )
+
+  const getStudentLiveDuration = (student) => {
+    if (student.attendance !== 'P') return '-'
+    if (String(student.overallStatus || '').toLowerCase() === 'completed') return '00:00'
+    if (!student.startTime) return '-'
+
+    const totalMinutes = baseDurationMinutes + Number(student.extensionMinutes || 0)
+    if (!totalMinutes) return '-'
+
+    const studentEndAt = student.startTime.getTime() + (totalMinutes * 60 * 1000)
+    return formatCountdown(studentEndAt - now.getTime())
+  }
+
+  const getSplitSectionMinutes = (student, section) => {
+    const isMcq = section === 'mcq'
+    const duration = isMcq ? mcqDurationMinutes : descriptiveDurationMinutes
+    const extension = isMcq ? student.mcqExtensionMinutes : student.descriptiveExtensionMinutes
+    return {
+      duration,
+      extension,
+      total: duration + extension,
+    }
+  }
+
+  const getSplitSectionLiveDuration = (student, sectionIndex) => {
+    if (student.attendance !== 'P') return '-'
+    if (String(student.overallStatus || '').toLowerCase() === 'completed') return '00:00'
+    if (!student.startTime) return '-'
+
+    const previousMinutes = splitOrder.slice(0, sectionIndex).reduce((sum, section) => (
+      sum + getSplitSectionMinutes(student, section).total
+    ), 0)
+    const section = splitOrder[sectionIndex]
+    const { total } = getSplitSectionMinutes(student, section)
+    if (!total) return '-'
+
+    const sectionStartAt = student.startTime.getTime() + (previousMinutes * 60 * 1000)
+    const sectionEndAt = sectionStartAt + (total * 60 * 1000)
+
+    if (now.getTime() < sectionStartAt) return formatCountdown(total * 60 * 1000)
+    return formatCountdown(sectionEndAt - now.getTime())
+  }
+
+  const renderSimpleTable = () => (
+    <div className="exam-controls-table-wrap">
+      <table className="exam-controls-table">
+        <thead>
+          <tr>
+            <th>Student ID</th>
+            <th>Attendance</th>
+            <th>Student Name</th>
+            <th>Login Time</th>
+            <th>Status Log</th>
+            <th>Extend Time</th>
+            <th>Reset</th>
+            <th>Live Duration</th>
+            <th>Overall Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleStudents.map((student) => (
+            <tr key={student.id}>
+              <td><strong>{student.id}</strong></td>
+              <td><span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span></td>
+              <td>{student.name}</td>
+              <td>{formatDisplayTime(student.startTime)}</td>
+              <td>
+                <button type="button" className="exam-controls-log-btn" onClick={() => setLogModal(student)}>
+                  View Log
+                </button>
+              </td>
+              <td>{renderExtendButton(student)}</td>
+              <td>
+                <button
+                  type="button"
+                  className="exam-controls-reset-btn"
+                  disabled={controlsDisabled || student.attendance !== 'P'}
+                  onClick={() => {
+                    setResetMode('clear')
+                    setResetModal({ student })
+                  }}
+                  title={isFinalFiveMinutes ? 'Controls disabled in final 5 minutes' : undefined}
+                >
+                  Reset
+                </button>
+              </td>
+              <td><span className="exam-controls-live-duration">{getStudentLiveDuration(student)}</span></td>
+              <td><span className={`exam-controls-overall is-${student.overallStatus.toLowerCase().replace(/\s+/g, '-')}`}>{student.overallStatus}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+
+  const renderSplitTable = () => (
+    <div className="exam-controls-table-wrap">
+      <table className="exam-controls-table is-split">
+        <thead>
+          <tr>
+            <th>Student ID</th>
+            <th>Attendance</th>
+            <th>Student Name</th>
+            <th>Login Time</th>
+            <th>Status Log</th>
+            <th>Duration Split</th>
+            <th>Live Duration</th>
+            <th>Extend Time</th>
+            <th>Exam Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleStudents.flatMap((student) => splitOrder.map((section, sectionIndex) => {
+            const isMcq = section === 'mcq'
+            const sectionTiming = getSplitSectionMinutes(student, section)
+            return (
+              <tr key={`${student.id}-${section}`}>
+                {sectionIndex === 0 ? (
+                  <>
+                    <td rowSpan={2}><strong>{student.id}</strong></td>
+                    <td rowSpan={2}><span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span></td>
+                    <td rowSpan={2}>{student.name}</td>
+                    <td rowSpan={2}>{formatDisplayTime(student.startTime)}</td>
+                    <td rowSpan={2}>
+                      <button type="button" className="exam-controls-log-btn" onClick={() => setLogModal(student)}>
+                        View Log
+                      </button>
+                    </td>
+                  </>
+                ) : null}
+                <td><span className="exam-controls-sequence-pill">{isMcq ? 'MCQ' : 'Descriptive'} (Sequence {sectionIndex + 1})</span></td>
+                <td><span className="exam-controls-live-duration">{getSplitSectionLiveDuration(student, sectionIndex)}</span></td>
+                <td>{renderExtendButton(student, section)}</td>
+                <td>{formatDuration(sectionTiming.total)}</td>
+              </tr>
+            )
+          }))}
+        </tbody>
+      </table>
+    </div>
+  )
+
+  const renderModalPortal = (content) => (
+    typeof document === 'undefined' ? content : createPortal(content, document.body)
+  )
+
+  if (!assessment) {
+    return (
+      <section className="vx-content exam-controls-page">
+        <div className="exam-controls-shell">
+          <PageNavigationHeader
+            items={['My Pages', 'Assessment', 'Exam Controls']}
+            onBack={goBackToPublishedTab}
+          />
+          <section className="exam-controls-empty">
+            <strong>No assessment selected</strong>
+            <p>Open Exam Controls from a live or completed published assessment card.</p>
+            <button type="button" onClick={() => onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)}>
+              <ArrowLeft size={16} strokeWidth={2.3} />
+              Back to Published Assessments
+            </button>
+          </section>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="vx-content exam-controls-page">
+      <div className="exam-controls-shell">
+        <PageNavigationHeader
+          items={['My Pages', 'Assessment', 'Exam Controls']}
+          onBack={goBackToPublishedTab}
+        />
+
+        <section className={`exam-controls-header-panel is-${schedule.status}`} aria-label="Assessment control summary">
+          <div className="exam-controls-header-main">
+            <div>
+              <h1>{assessment.assessmentName || 'Untitled Assessment'}</h1>
+              <p>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</p>
+            </div>
+            <span className={`exam-controls-header-status is-${schedule.status}`}>{schedule.label}</span>
+          </div>
+
+          <div className="exam-controls-command-strip">
+            <span className={`exam-controls-command-timer ${isFinalFiveMinutes ? 'is-critical' : ''}`.trim()}>
+              <Clock3 size={20} strokeWidth={2.3} />
+              <span>
+                <strong>{schedule.status === 'live' ? formatCountdown(schedule.remainingMs) : assessment.totalDuration || '-'}</strong>
+                <em>{schedule.status === 'live' ? 'Remaining Time' : 'Total Duration'}</em>
+              </span>
+            </span>
+
+            <div className="exam-controls-command-meta">
+              {[
+                { label: 'Mode', value: assessment.examMode || '-', icon: Monitor },
+                { label: 'Supervision', value: assessment.supervisionType || '-', icon: ShieldCheck },
+                { label: 'Type', value: assessment.examType || '-', icon: FileText },
+                { label: 'Start', value: `${formatDisplayDate(assessment.startDate)} / ${assessment.startTime || '-'}`, icon: CalendarDays },
+                { label: 'Marks', value: assessment.totalMarks ?? '-', icon: Activity },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <span key={item.label}>
+                    <Icon size={14} strokeWidth={2.25} />
+                    <em>{item.label}</em>
+                    <strong>{item.value}</strong>
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+
+          {isFinalFiveMinutes ? (
+            <div className="exam-controls-final-warning">
+              Controls disabled in final 5 minutes. Extend Time and Reset actions are unavailable for students.
+            </div>
+          ) : null}
+        </section>
+
+        <section className="exam-controls-tracking-card">
+          <div className="exam-controls-tracking-head">
+            <div>
+              <h2>Live Exam Tracking</h2>
+            </div>
+            <div className="exam-controls-tracking-tools">
+              <label className="exam-controls-student-search">
+                <Search size={15} strokeWidth={2.3} />
+                <input
+                  type="search"
+                  value={studentSearch}
+                  onChange={(event) => setStudentSearch(event.target.value)}
+                  placeholder="Search student..."
+                />
+              </label>
+              <button type="button" className="exam-controls-class-reset-btn">
+                Overall Class Reset
+              </button>
+            </div>
+          </div>
+          {isSplitHybrid ? renderSplitTable() : renderSimpleTable()}
+        </section>
+      </div>
+
+      {extendModal ? renderModalPortal((
+        <div className="exam-controls-modal-backdrop" role="presentation">
+          <section className="exam-controls-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-extend-title">
+            <span className="exam-controls-modal-icon" aria-hidden="true">
+              <Clock3 size={24} strokeWidth={2.3} />
+            </span>
+            <h2 id="exam-controls-extend-title">Extend Exam Time</h2>
+            <p>{extendModal.student.name} / {assessment.assessmentName || 'Assessment'}</p>
+            <p className="exam-controls-modal-summary">
+              Add extra time for this student. The live exam timer will update immediately after selection.
+            </p>
+            {extendModal.section ? <small>{extendModal.section.toUpperCase()} section</small> : null}
+            <div className="exam-controls-extension-options">
+              {[5, 10, 15].map((minutes) => (
+                <button type="button" key={minutes} onClick={() => extendStudentTime(minutes)}>
+                  {minutes} Mins
+                </button>
+              ))}
+            </div>
+            <div className="exam-controls-modal-actions is-single">
+              <button type="button" className="is-secondary" onClick={() => setExtendModal(null)}>Cancel</button>
+            </div>
+          </section>
+        </div>
+      )) : null}
+
+      {resetModal ? renderModalPortal((
+        <div className="exam-controls-modal-backdrop" role="presentation">
+          <section className="exam-controls-reset-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-reset-title">
+            <span className="exam-controls-modal-icon is-reset" aria-hidden="true">
+              <TimerReset size={26} strokeWidth={2.3} />
+            </span>
+            <h2 id="exam-controls-reset-title">
+              <span>Reset Assessment for</span>
+              {resetModal.student.name}
+            </h2>
+            <label className={resetMode === 'keep' ? 'is-selected' : ''}>
+              <input type="radio" checked={resetMode === 'keep'} onChange={() => setResetMode('keep')} />
+              <span>Reset (Keep Answers)</span>
+            </label>
+            <label className={resetMode === 'clear' ? 'is-selected' : ''}>
+              <input type="radio" checked={resetMode === 'clear'} onChange={() => setResetMode('clear')} />
+              <span>Reset (Clear all answer)</span>
+            </label>
+            <div className="exam-controls-reset-note">
+              <TimerReset size={17} strokeWidth={2.3} />
+              <p>The student will rejoin and continue the exam until the original scheduled end time. No grace period or extension will be provided for this individual reset.</p>
+            </div>
+            <div className="exam-controls-modal-actions">
+              <button type="button" className="is-secondary" onClick={() => setResetModal(null)}>Cancel</button>
+              <button type="button" onClick={confirmReset}>Confirm Reset</button>
+            </div>
+          </section>
+        </div>
+      )) : null}
+
+      {extendSuccessModal ? renderModalPortal((
+        <div className="exam-controls-modal-backdrop" role="presentation">
+          <section className="exam-controls-success-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-success-title">
+            <span className="exam-controls-modal-icon is-success" aria-hidden="true">
+              <CheckCircle2 size={28} strokeWidth={2.3} />
+            </span>
+            <h2 id="exam-controls-success-title">Time Extended</h2>
+            <p>{extendSuccessModal.message}</p>
+          </section>
+        </div>
+      )) : null}
+
+      {logModal ? renderModalPortal((
+        <div className="exam-controls-modal-backdrop" role="presentation">
+          <section className="exam-controls-log-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-log-title">
+            <div className="exam-controls-log-head">
+              <div>
+                <h2 id="exam-controls-log-title">Live Exam Tracking Log</h2>
+                <p>{logModal.id} / {logModal.name}</p>
+              </div>
+              <button type="button" onClick={() => setLogModal(null)}>Close</button>
+            </div>
+            <div className="exam-controls-log-table-wrap">
+              <table className="exam-controls-log-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Action</th>
+                    <th>Remarks</th>
+                    <th>Faculty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(students.find((student) => student.id === logModal.id)?.logs || []).map((log) => (
+                    <tr key={log.id}>
+                      <td>{log.time}</td>
+                      <td>{log.action}</td>
+                      <td>{log.remarks}</td>
+                      <td>{log.faculty}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      )) : null}
+    </section>
+  )
+}
+
+export default ExamControlsPage

@@ -9,6 +9,7 @@ import AssessmentCreatePage from './pages/AssessmentCreatePage'
 import CreateAssessmentPage from './pages/CreateAssessmentPage'
 import AssessmentEvaluationPage from './pages/AssessmentEvaluationPage'
 import AssessmentDashboardPage from './pages/AssessmentDashboardPage'
+import ExamControlsPage from './pages/ExamControlsPage'
 import QuestionBankPage from './pages/QuestionBankPage'
 import QuestionBankNonCreatePage from './pages/QuestionBankNonCreatePage'
 import QueryRequestPage from './pages/QueryRequestPage'
@@ -39,6 +40,7 @@ const PAGE_PATHS = {
   [APP_PAGES.CREATE_ASSESSMENT]: '/createassessment',
   [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/evaluation',
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
+  [APP_PAGES.EXAM_CONTROLS]: '/assessment/exam-controls',
   [APP_PAGES.MY_ASSESSMENT]: '/my-assessment',
   [APP_PAGES.ONLINE_PRACTICE_EXAM]: '/my-assessment/online-practice-exam',
   [APP_PAGES.ONLINE_PROCTORED_EXAM]: '/my-assessment/online-proctored-exam',
@@ -1299,6 +1301,8 @@ function App() {
             <AssessmentEvaluationPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} />
+          ) : activePage === APP_PAGES.EXAM_CONTROLS ? (
+            <ExamControlsPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.MY_ASSESSMENT ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} mode="my-assessment" />
           ) : activePage === APP_PAGES.QUESTION_BANK ? (

@@ -80,6 +80,7 @@ const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const ONLINE_PRACTICE_EXAM_STORAGE_KEY = 'vx-online-practice-exam-assessment'
 const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
+const EXAM_CONTROLS_ASSESSMENT_KEY = 'vx-exam-controls-assessment'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const PUBLISHED_LOG_PAGE_SIZE = 5
 const PUBLISHED_FILTER_DEFAULTS = {
@@ -991,7 +992,8 @@ export default function AssessmentCreatePage({ onNavigate }) {
   }
 
   const openExamControls = (assessment) => {
-    console.info('Exam controls flow pending', assessment)
+    window.sessionStorage.setItem(EXAM_CONTROLS_ASSESSMENT_KEY, JSON.stringify(assessment))
+    onNavigate?.(APP_PAGES.EXAM_CONTROLS)
   }
 
   return (
@@ -1207,7 +1209,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
-                  const canShowExamControls = !isOfflineExam && scheduleStatus?.type === 'live'
+                  const canShowExamControls = !isOfflineExam && ['live', 'completed'].includes(scheduleStatus?.type)
                   const publishedQuestionRows = getPublishedQuestionRows(assessment)
                   const durationValue = scheduleStatus?.type === 'live'
                     ? formatAssessmentRemainingTime(scheduleStatus.remainingMs)
