@@ -10,6 +10,14 @@ const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
 const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-sections'
 const STUDENT_EXAM_TIME_EXTENSIONS_KEY = 'vx-student-exam-time-extensions'
 const STUDENT_EXAM_TIME_EXTENSION_EVENT = 'vx-student-exam-time-extension-changed'
+const STUDENT_EXAM_SUBMISSION_STATUS_KEY = 'vx-student-exam-submission-status'
+const STUDENT_EXAM_SUBMISSION_STATUS_EVENT = 'vx-student-exam-submission-status-changed'
+const STUDENT_EXAM_SESSION_KEY = 'vx-student-exam-session'
+const STUDENT_EXAM_SESSION_EVENT = 'vx-student-exam-session-changed'
+const STUDENT_EXAM_RESET_KEY = 'vx-student-exam-reset-state'
+const STUDENT_EXAM_RESET_EVENT = 'vx-student-exam-reset-changed'
+const ONLINE_PRACTICE_ATTEMPT_STORAGE_KEY = 'vx-online-practice-exam-attempts'
+const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const CURRENT_STUDENT_ID = 'MC2568'
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
@@ -40,6 +48,119 @@ const readStudentTimeExtension = (assessment, studentId = CURRENT_STUDENT_ID) =>
     return studentExtension && typeof studentExtension === 'object' ? studentExtension : {}
   } catch {
     return {}
+  }
+}
+
+const readStudentExamReset = (assessment, studentId = CURRENT_STUDENT_ID) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_RESET_KEY) || 'null')
+    const reset = parsed?.[getAssessmentId(assessment)]?.[studentId]
+    return reset && typeof reset === 'object' ? reset : null
+  } catch {
+    return null
+  }
+}
+
+const readStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(ONLINE_PRACTICE_ATTEMPT_STORAGE_KEY) || 'null')
+    const attempt = parsed?.[getAssessmentId(assessment)]?.[studentId]
+    return attempt && typeof attempt === 'object' ? attempt : null
+  } catch {
+    return null
+  }
+}
+
+const getInitialStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => {
+  const attempt = readStoredAttempt(assessment, studentId)
+  const reset = readStudentExamReset(assessment, studentId)
+  if (!reset?.version) return attempt
+  if (attempt?.appliedResetVersion === reset.version) return attempt
+  if (reset.mode === 'clear') return { appliedResetVersion: reset.version }
+  return {
+    ...(attempt || {}),
+    hasStarted: false,
+    examStartedAt: null,
+    isMcqSubmitted: false,
+    isDescriptiveSubmitted: false,
+    isAssessmentSubmitted: false,
+    appliedResetVersion: reset.version,
+  }
+}
+
+const writeStoredAttempt = (assessment, attempt, studentId = CURRENT_STUDENT_ID) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(ONLINE_PRACTICE_ATTEMPT_STORAGE_KEY) || 'null')
+    const attempts = parsed && typeof parsed === 'object' ? parsed : {}
+    const assessmentId = getAssessmentId(assessment)
+    const assessmentAttempts = attempts[assessmentId] || {}
+    window.localStorage.setItem(ONLINE_PRACTICE_ATTEMPT_STORAGE_KEY, JSON.stringify({
+      ...attempts,
+      [assessmentId]: {
+        ...assessmentAttempts,
+        [studentId]: {
+          ...attempt,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    }))
+  } catch {
+    // Attempt restore is best-effort.
+  }
+}
+
+const writeStudentSubmissionStatus = (assessment, status, studentId = CURRENT_STUDENT_ID) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_SUBMISSION_STATUS_KEY) || 'null')
+    const statuses = parsed && typeof parsed === 'object' ? parsed : {}
+    const assessmentId = getAssessmentId(assessment)
+    const assessmentStatuses = statuses[assessmentId] || {}
+    const nextStatuses = {
+      ...statuses,
+      [assessmentId]: {
+        ...assessmentStatuses,
+        [studentId]: {
+          status,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    }
+
+    window.localStorage.setItem(STUDENT_EXAM_SUBMISSION_STATUS_KEY, JSON.stringify(nextStatuses))
+    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, {
+      detail: { assessmentId, studentId, status },
+    }))
+  } catch {
+    // Submission status sharing is best-effort for the faculty controls page.
+  }
+}
+
+const writeStudentExamSession = (assessment, loginTime, studentId = CURRENT_STUDENT_ID) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_SESSION_KEY) || 'null')
+    const sessions = parsed && typeof parsed === 'object' ? parsed : {}
+    const assessmentId = getAssessmentId(assessment)
+    const assessmentSessions = sessions[assessmentId] || {}
+    const nextSessions = {
+      ...sessions,
+      [assessmentId]: {
+        ...assessmentSessions,
+        [studentId]: {
+          ...(assessmentSessions[studentId] || {}),
+          loginTime: new Date(loginTime).toISOString(),
+          examType: 'Practice',
+          attendance: 'P',
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    }
+
+    window.localStorage.setItem(STUDENT_EXAM_SESSION_KEY, JSON.stringify(nextSessions))
+    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_SESSION_EVENT, {
+      detail: { assessmentId, studentId, loginTime },
+    }))
+  } catch {
+    // Session sharing is best-effort for the faculty controls page.
   }
 }
 
@@ -361,20 +482,22 @@ const isOnlinePracticeAssessment = (assessment) => (
 
 function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [assessment] = useState(readSelectedAssessment)
+  const [initialAttempt] = useState(() => getInitialStoredAttempt(assessment) || {})
   const [hasAgreed, setHasAgreed] = useState(false)
-  const [hasStarted, setHasStarted] = useState(false)
-  const [examStartedAt, setExamStartedAt] = useState(null)
+  const [hasStarted, setHasStarted] = useState(Boolean(initialAttempt.hasStarted))
+  const [examStartedAt, setExamStartedAt] = useState(initialAttempt.examStartedAt || null)
   const [timerNow, setTimerNow] = useState(Date.now())
-  const [activeSection, setActiveSection] = useState('mcq')
-  const [activeDescriptiveGroupKey, setActiveDescriptiveGroupKey] = useState('')
-  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
-  const [answers, setAnswers] = useState({})
-  const [mcqQuestionStatuses, setMcqQuestionStatuses] = useState({})
-  const [descriptiveAnswers, setDescriptiveAnswers] = useState({})
+  const [activeSection, setActiveSection] = useState(initialAttempt.activeSection || 'mcq')
+  const [activeDescriptiveGroupKey, setActiveDescriptiveGroupKey] = useState(initialAttempt.activeDescriptiveGroupKey || '')
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(Number(initialAttempt.activeQuestionIndex || 0))
+  const [answers, setAnswers] = useState(initialAttempt.answers || {})
+  const [mcqQuestionStatuses, setMcqQuestionStatuses] = useState(initialAttempt.mcqQuestionStatuses || {})
+  const [descriptiveAnswers, setDescriptiveAnswers] = useState(initialAttempt.descriptiveAnswers || {})
   const [submitModal, setSubmitModal] = useState(null)
-  const [isMcqSubmitted, setIsMcqSubmitted] = useState(false)
-  const [isDescriptiveSubmitted, setIsDescriptiveSubmitted] = useState(false)
-  const [isAssessmentSubmitted, setIsAssessmentSubmitted] = useState(false)
+  const [isMcqSubmitted, setIsMcqSubmitted] = useState(Boolean(initialAttempt.isMcqSubmitted))
+  const [isDescriptiveSubmitted, setIsDescriptiveSubmitted] = useState(Boolean(initialAttempt.isDescriptiveSubmitted))
+  const [isAssessmentSubmitted, setIsAssessmentSubmitted] = useState(Boolean(initialAttempt.isAssessmentSubmitted))
+  const [appliedResetVersion, setAppliedResetVersion] = useState(Number(initialAttempt.appliedResetVersion || 0))
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const [isTimeLimitModalOpen, setIsTimeLimitModalOpen] = useState(false)
   const [imagePreview, setImagePreview] = useState(null)
@@ -578,6 +701,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     setExamStartedAt(startedAt)
     setTimerNow(startedAt)
     setHasStarted(true)
+    writeStudentExamSession(assessment, startedAt)
   }
 
   const openSubmitModal = (section) => {
@@ -599,6 +723,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     }
     if (submitModal?.isFinal) {
       setIsAssessmentSubmitted(true)
+      writeStudentSubmissionStatus(assessment, 'Manual Submit')
     }
     setSubmitModal((current) => (current ? { ...current, phase: 'success' } : current))
   }
@@ -634,6 +759,12 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
       window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(updatedAssessments))
     } catch {
       // Local storage is best-effort here; the session value still keeps this navigation correct.
+    } finally {
+      try {
+        window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
+      } catch {
+        // Ignore event dispatch errors in constrained environments.
+      }
     }
   }
 
@@ -698,6 +829,98 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
     return () => window.clearInterval(timerId)
   }, [])
+
+  useEffect(() => {
+    if (!assessment) return
+    writeStoredAttempt(assessment, {
+      hasStarted,
+      examStartedAt,
+      activeSection,
+      activeDescriptiveGroupKey,
+      activeQuestionIndex,
+      answers,
+      mcqQuestionStatuses,
+      descriptiveAnswers,
+      isMcqSubmitted,
+      isDescriptiveSubmitted,
+      isAssessmentSubmitted,
+      appliedResetVersion,
+    })
+  }, [
+    activeDescriptiveGroupKey,
+    activeQuestionIndex,
+    activeSection,
+    answers,
+    assessment,
+    descriptiveAnswers,
+    examStartedAt,
+    hasStarted,
+    appliedResetVersion,
+    isAssessmentSubmitted,
+    isDescriptiveSubmitted,
+    isMcqSubmitted,
+    mcqQuestionStatuses,
+  ])
+
+  useEffect(() => {
+    const applyReset = () => {
+      const reset = readStudentExamReset(assessment)
+      const storedAttempt = readStoredAttempt(assessment) || {}
+      if (!reset?.version || storedAttempt.appliedResetVersion === reset.version) return
+
+      setHasStarted(false)
+      setExamStartedAt(null)
+      setActiveQuestionIndex(0)
+      setSubmitModal(null)
+      setIsExitModalOpen(false)
+      setIsTimeLimitModalOpen(false)
+      setIsMcqSubmitted(false)
+      setIsDescriptiveSubmitted(false)
+      setIsAssessmentSubmitted(false)
+
+      if (reset.mode === 'clear') {
+        setAppliedResetVersion(reset.version)
+        setActiveSection('mcq')
+        setActiveDescriptiveGroupKey('')
+        setAnswers({})
+        setMcqQuestionStatuses({})
+        setDescriptiveAnswers({})
+        writeStoredAttempt(assessment, { appliedResetVersion: reset.version })
+        return
+      }
+
+      setActiveSection(storedAttempt.activeSection || 'mcq')
+      setActiveDescriptiveGroupKey(storedAttempt.activeDescriptiveGroupKey || '')
+      setAnswers(storedAttempt.answers || {})
+      setMcqQuestionStatuses(storedAttempt.mcqQuestionStatuses || {})
+      setDescriptiveAnswers(storedAttempt.descriptiveAnswers || {})
+      setAppliedResetVersion(reset.version)
+      writeStoredAttempt(assessment, {
+        ...storedAttempt,
+        hasStarted: false,
+        examStartedAt: null,
+        isMcqSubmitted: false,
+        isDescriptiveSubmitted: false,
+        isAssessmentSubmitted: false,
+        appliedResetVersion: reset.version,
+      })
+    }
+
+    const handleResetEvent = (event) => {
+      if (!event.detail || event.detail.assessmentId === getAssessmentId(assessment)) applyReset()
+    }
+    const handleStorage = (event) => {
+      if (event.key === STUDENT_EXAM_RESET_KEY) applyReset()
+    }
+
+    applyReset()
+    window.addEventListener(STUDENT_EXAM_RESET_EVENT, handleResetEvent)
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener(STUDENT_EXAM_RESET_EVENT, handleResetEvent)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [assessment])
 
   useEffect(() => {
     const syncStudentExtension = () => {
@@ -832,6 +1055,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     setIsAssessmentSubmitted(true)
     setSubmitModal(null)
     setIsExitModalOpen(false)
+    writeStudentSubmissionStatus(assessment, 'Auto Submit')
     persistCompletedAssessment()
     setIsTimeLimitModalOpen(true)
   }, [hasDescriptiveSection, hasMcqSection, isAssessmentSubmitted, remainingDurationSeconds, shouldShowRemainingTime])

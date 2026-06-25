@@ -162,10 +162,15 @@ const formatAssessmentRemainingTime = (value) => {
 const getDayStart = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
 const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
-  if (assessment?.status === 'completed') return { type: 'completed', label: 'Completed' }
+  const isCompletedStatus = String(assessment?.status || '').trim().toLowerCase() === 'completed'
+  if (isCompletedStatus) {
+    return { type: 'completed', label: 'Completed' }
+  }
 
   const startDate = parseAssessmentDate(assessment?.startDate)
-  if (!startDate) return null
+  if (!startDate) {
+    return null
+  }
 
   const startAt = applyAssessmentTime(startDate, assessment?.startTime)
   const durationMs = parseAssessmentDurationMs(assessment?.totalDuration)

@@ -3997,7 +3997,7 @@
 }
 
 .exam-controls-table.is-split {
-  min-width: 1180px;
+  min-width: 0;
   table-layout: auto;
 }
 

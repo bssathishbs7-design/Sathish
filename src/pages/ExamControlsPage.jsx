@@ -10,6 +10,16 @@ const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
 const ASSESSMENT_CREATE_INITIAL_TAB_KEY = 'vx-assessment-create-initial-tab'
 const STUDENT_EXAM_TIME_EXTENSIONS_KEY = 'vx-student-exam-time-extensions'
 const STUDENT_EXAM_TIME_EXTENSION_EVENT = 'vx-student-exam-time-extension-changed'
+const STUDENT_EXAM_SUBMISSION_STATUS_KEY = 'vx-student-exam-submission-status'
+const STUDENT_EXAM_SUBMISSION_STATUS_EVENT = 'vx-student-exam-submission-status-changed'
+const STUDENT_EXAM_SESSION_KEY = 'vx-student-exam-session'
+const STUDENT_EXAM_SESSION_EVENT = 'vx-student-exam-session-changed'
+const STUDENT_EXAM_RESET_KEY = 'vx-student-exam-reset-state'
+const STUDENT_EXAM_RESET_EVENT = 'vx-student-exam-reset-changed'
+const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
+const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
+const ONLINE_PRACTICE_EXAM_STORAGE_KEY = 'vx-online-practice-exam-assessment'
+const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
 
 const CONTROL_STUDENTS = [
   { id: 'MV1253', name: 'Student 1', attendance: 'P' },
@@ -40,6 +50,17 @@ const writeControlState = (assessmentId, state) => {
   window.localStorage.setItem(`${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`, JSON.stringify(state))
 }
 
+const isSameAssessmentRecord = (first, second) => {
+  if (!first || !second) return false
+  if (first.id && second.id) return first.id === second.id
+
+  return (
+    first.assessmentName === second.assessmentName
+    && first.startDate === second.startDate
+    && first.startTime === second.startTime
+  )
+}
+
 const readStudentTimeExtensions = () => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_TIME_EXTENSIONS_KEY) || 'null')
@@ -47,6 +68,106 @@ const readStudentTimeExtensions = () => {
   } catch {
     return {}
   }
+}
+
+const readStudentSubmissionStatuses = () => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_SUBMISSION_STATUS_KEY) || 'null')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const readStudentExamSessions = () => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_SESSION_KEY) || 'null')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const readStudentExamResets = () => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_RESET_KEY) || 'null')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const removeStudentStorageRecord = (key, assessmentId, studentId) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || 'null')
+    if (!parsed?.[assessmentId]) return
+    const nextAssessmentValue = { ...parsed[assessmentId] }
+    delete nextAssessmentValue[studentId]
+    const nextValue = { ...parsed }
+    if (Object.keys(nextAssessmentValue).length) {
+      nextValue[assessmentId] = nextAssessmentValue
+    } else {
+      delete nextValue[assessmentId]
+    }
+    window.localStorage.setItem(key, JSON.stringify(nextValue))
+  } catch {
+    // Reset should remain best-effort even if optional student state is malformed.
+  }
+}
+
+const clearAssessmentCompletedStatus = (assessment) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
+    if (Array.isArray(parsed)) {
+      const updated = parsed.map((item) => (
+        isSameAssessmentRecord(item, assessment)
+          ? { ...item, status: undefined, completedAt: undefined }
+          : item
+      ))
+      window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(updated))
+      window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
+    }
+  } catch {
+    // Keep reset flow moving even if published storage is unavailable.
+  }
+
+  ;[ONLINE_PRACTICE_EXAM_STORAGE_KEY, ONLINE_PROCTORED_EXAM_STORAGE_KEY].forEach((key) => {
+    try {
+      const selectedAssessment = JSON.parse(window.sessionStorage.getItem(key) || 'null')
+      if (isSameAssessmentRecord(selectedAssessment, assessment)) {
+        window.sessionStorage.setItem(key, JSON.stringify({
+          ...selectedAssessment,
+          status: undefined,
+          completedAt: undefined,
+        }))
+      }
+    } catch {
+      // Session storage is optional here.
+    }
+  })
+}
+
+const writeStudentExamReset = ({ assessmentId, studentId, mode }) => {
+  const resets = readStudentExamResets()
+  const assessmentResets = resets[assessmentId] || {}
+  const previous = assessmentResets[studentId] || {}
+  const reset = {
+    mode,
+    version: Number(previous.version || 0) + 1,
+    resetAt: new Date().toISOString(),
+  }
+  const nextResets = {
+    ...resets,
+    [assessmentId]: {
+      ...assessmentResets,
+      [studentId]: reset,
+    },
+  }
+
+  window.localStorage.setItem(STUDENT_EXAM_RESET_KEY, JSON.stringify(nextResets))
+  window.dispatchEvent(new CustomEvent(STUDENT_EXAM_RESET_EVENT, {
+    detail: { assessmentId, studentId, reset },
+  }))
 }
 
 const writeStudentTimeExtension = ({ assessmentId, studentId, minutes, section }) => {
@@ -154,7 +275,10 @@ const getAssessmentSchedule = (assessment, now) => {
   const startDate = parseAssessmentDate(assessment?.startDate)
   const startAt = applyAssessmentTime(startDate, assessment?.startTime)
   const durationMinutes = parseDurationMinutes(assessment?.totalDuration)
-  const endAt = startAt && durationMinutes ? new Date(startAt.getTime() + durationMinutes * 60 * 1000) : null
+  const durationEndAt = startAt && durationMinutes ? new Date(startAt.getTime() + durationMinutes * 60 * 1000) : null
+  const endDate = parseAssessmentDate(assessment?.endDate)
+  const dateEndAt = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null
+  const endAt = [durationEndAt, dateEndAt].filter(Boolean).sort((first, second) => first - second)[0] || null
 
   if (!startAt || !endAt) {
     return { status: 'unknown', label: 'Schedule not available', remainingMs: 0, startAt, endAt, durationMinutes }
@@ -194,8 +318,12 @@ function ExamControlsPage({ onNavigate }) {
   const [extendSuccessModal, setExtendSuccessModal] = useState(null)
   const [resetModal, setResetModal] = useState(null)
   const [resetMode, setResetMode] = useState('clear')
+  const [classResetModal, setClassResetModal] = useState(false)
+  const [classResetMode, setClassResetMode] = useState('clear')
   const [logModal, setLogModal] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
+  const [submissionStatuses, setSubmissionStatuses] = useState(() => readStudentSubmissionStatuses())
+  const [studentSessions, setStudentSessions] = useState(() => readStudentExamSessions())
 
   const goBackToPublishedTab = () => {
     window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'published')
@@ -211,6 +339,29 @@ function ExamControlsPage({ onNavigate }) {
     if (!assessment) return
     writeControlState(assessmentId, controlState)
   }, [assessment, assessmentId, controlState])
+
+  useEffect(() => {
+    const syncSubmissionStatuses = () => setSubmissionStatuses(readStudentSubmissionStatuses())
+    const syncStudentSessions = () => setStudentSessions(readStudentExamSessions())
+
+    const handleStorage = (event) => {
+      if (event.key === STUDENT_EXAM_SUBMISSION_STATUS_KEY) syncSubmissionStatuses()
+      if (event.key === STUDENT_EXAM_SESSION_KEY) syncStudentSessions()
+    }
+
+    const handleStatusEvent = () => syncSubmissionStatuses()
+    const handleSessionEvent = () => syncStudentSessions()
+
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, handleStatusEvent)
+    window.addEventListener(STUDENT_EXAM_SESSION_EVENT, handleSessionEvent)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, handleStatusEvent)
+      window.removeEventListener(STUDENT_EXAM_SESSION_EVENT, handleSessionEvent)
+    }
+  }, [])
 
   useEffect(() => {
     if (!extendSuccessModal) return undefined
@@ -239,30 +390,97 @@ function ExamControlsPage({ onNavigate }) {
 
   const students = useMemo(() => CONTROL_STUDENTS.map((student, index) => {
     const state = controlState[student.id] || {}
-    const isPresent = student.attendance === 'P'
-    const startOffset = index * 2 * 60 * 1000
-    const startTime = schedule.startAt ? new Date(schedule.startAt.getTime() + startOffset) : null
+    const session = studentSessions?.[assessmentId]?.[student.id] || null
+    const sessionLoginTime = session?.loginTime ? new Date(session.loginTime) : null
+    const hasValidLoginTime = sessionLoginTime && !Number.isNaN(sessionLoginTime.getTime())
+    const isPresent = Boolean(hasValidLoginTime)
+    const startTime = hasValidLoginTime ? sessionLoginTime : null
     const extensionMinutes = Number(state.extensionMinutes || 0)
     const mcqExtensionMinutes = Number(state.mcqExtensionMinutes || 0)
     const descriptiveExtensionMinutes = Number(state.descriptiveExtensionMinutes || 0)
+    const liveUntilMs = Number(state.liveUntilMs || 0)
+    const mcqLiveUntilMs = Number(state.mcqLiveUntilMs || 0)
+    const descriptiveLiveUntilMs = Number(state.descriptiveLiveUntilMs || 0)
+    const hasLiveExtension = liveUntilMs > now.getTime() || mcqLiveUntilMs > now.getTime() || descriptiveLiveUntilMs > now.getTime()
+    const submissionState = submissionStatuses?.[assessmentId]?.[student.id] || {}
+    const submittedStatus = submissionState.status || ''
+    const completedSubmissionStatus = submittedStatus ? 'Completed' : ''
+    const submittedAt = Date.parse(submissionState.updatedAt || '')
+    const extensionUpdatedAt = Date.parse(state.extensionUpdatedAt || '')
+    const hasSubmissionAfterExtension = Boolean(submittedStatus && (!Number.isFinite(extensionUpdatedAt) || Number.isFinite(submittedAt) && submittedAt >= extensionUpdatedAt))
     const status = !isPresent
       ? 'Absent'
-      : schedule.status === 'completed'
+      : hasSubmissionAfterExtension
+        ? completedSubmissionStatus
+        : hasLiveExtension
+          ? 'In progress'
+        : schedule.status === 'completed'
         ? 'Completed'
         : schedule.status === 'live'
           ? 'In progress'
           : 'Waiting'
+    const persistedStatus = state.overallStatus || ''
+    const overallStatus = !isPresent
+      ? 'Absent'
+      : hasSubmissionAfterExtension
+        ? completedSubmissionStatus
+        : hasLiveExtension
+          ? 'In progress'
+        : submittedStatus
+          ? completedSubmissionStatus
+        : persistedStatus === 'In progress' && schedule.status === 'completed'
+          ? 'Completed'
+          : persistedStatus || status
 
     return {
       ...student,
+      attendance: isPresent ? 'P' : 'A',
       startTime,
       extensionMinutes,
       mcqExtensionMinutes,
       descriptiveExtensionMinutes,
-      overallStatus: state.overallStatus || status,
+      liveUntilMs,
+      mcqLiveUntilMs,
+      descriptiveLiveUntilMs,
+      hasSubmissionAfterExtension,
+      overallStatus,
       logs: state.logs || buildDefaultLogs(student, assessment, schedule),
     }
-  }), [assessment, controlState, schedule])
+  }), [assessment, assessmentId, controlState, now, schedule, studentSessions, submissionStatuses])
+
+  const classResetTargets = useMemo(() => {
+    const seen = new Map()
+    CONTROL_STUDENTS.forEach((student) => {
+      if (!student?.id) return
+      seen.set(student.id, {
+        id: student.id,
+        name: student.name || `Student ${student.id}`,
+      })
+    })
+    ;(studentSessions?.[assessmentId] && Object.keys(studentSessions[assessmentId]).forEach((studentId) => {
+      const session = studentSessions[assessmentId]?.[studentId]
+      seen.set(studentId, {
+        id: studentId,
+        name: session?.name || session?.studentName || seen.get(studentId)?.name || `Student ${studentId}`,
+      })
+    }))
+
+    Object.keys(submissionStatuses?.[assessmentId] || {}).forEach((studentId) => {
+      seen.set(studentId, {
+        id: studentId,
+        name: seen.get(studentId)?.name || `Student ${studentId}`,
+      })
+    })
+
+    Object.keys(controlState || {}).forEach((studentId) => {
+      seen.set(studentId, {
+        id: studentId,
+        name: seen.get(studentId)?.name || `Student ${studentId}`,
+      })
+    })
+
+    return Array.from(seen.values())
+  }, [assessmentId, controlState, studentSessions, submissionStatuses])
 
   const visibleStudents = useMemo(() => {
     const query = studentSearch.trim().toLowerCase()
@@ -299,14 +517,39 @@ function ExamControlsPage({ onNavigate }) {
     if (!extendModal) return
     const { student, section } = extendModal
     const sectionLabel = section === 'mcq' ? 'MCQ section' : section === 'descriptive' ? 'Descriptive section' : assessment?.assessmentName || 'this assessment'
+    const sectionIndex = section ? splitOrder.indexOf(section) : -1
+    const currentLiveUntilMs = (() => {
+      if (!student.startTime) return now.getTime()
+      if (!section) {
+        return student.startTime.getTime() + ((baseDurationMinutes + Number(student.extensionMinutes || 0)) * 60 * 1000)
+      }
+
+      const previousMinutes = splitOrder.slice(0, sectionIndex).reduce((sum, splitSection) => {
+        const isMcq = splitSection === 'mcq'
+        const duration = isMcq ? mcqDurationMinutes : descriptiveDurationMinutes
+        const extension = isMcq ? Number(student.mcqExtensionMinutes || 0) : Number(student.descriptiveExtensionMinutes || 0)
+        return sum + duration + extension
+      }, 0)
+      const isMcq = section === 'mcq'
+      const duration = isMcq ? mcqDurationMinutes : descriptiveDurationMinutes
+      const extension = isMcq ? Number(student.mcqExtensionMinutes || 0) : Number(student.descriptiveExtensionMinutes || 0)
+      const sectionStartAt = student.startTime.getTime() + (previousMinutes * 60 * 1000)
+      return sectionStartAt + ((duration + extension) * 60 * 1000)
+    })()
+
     setControlState((current) => {
       const previous = current[student.id] || {}
       const key = section === 'mcq' ? 'mcqExtensionMinutes' : section === 'descriptive' ? 'descriptiveExtensionMinutes' : 'extensionMinutes'
+      const liveUntilKey = section === 'mcq' ? 'mcqLiveUntilMs' : section === 'descriptive' ? 'descriptiveLiveUntilMs' : 'liveUntilMs'
+      const nextLiveUntilMs = Math.max(Number(previous[liveUntilKey] || 0), currentLiveUntilMs, now.getTime()) + (minutes * 60 * 1000)
       return {
         ...current,
         [student.id]: {
           ...previous,
           [key]: Number(previous[key] || 0) + minutes,
+          [liveUntilKey]: nextLiveUntilMs,
+          extensionUpdatedAt: new Date().toISOString(),
+          overallStatus: 'In progress',
         },
       }
     })
@@ -314,6 +557,7 @@ function ExamControlsPage({ onNavigate }) {
     addStudentLog(student.id, 'Time extended', `${section ? `${section.toUpperCase()} section` : 'Exam'} extended by ${minutes} minutes.`)
     setExtendModal(null)
     setExtendSuccessModal({
+      title: 'Time Extended',
       message: `${student.name}'s ${sectionLabel} timer has been extended by ${minutes} minutes.`,
     })
   }
@@ -321,6 +565,23 @@ function ExamControlsPage({ onNavigate }) {
   const confirmReset = () => {
     if (!resetModal) return
     const { student } = resetModal
+    const resetMessage = resetMode === 'keep'
+      ? 'Assessment reset. Student can continue with saved answers.'
+      : 'Assessment reset. Student will start a fresh attempt.'
+    writeStudentExamReset({ assessmentId, studentId: student.id, mode: resetMode })
+    removeStudentStorageRecord(STUDENT_EXAM_SUBMISSION_STATUS_KEY, assessmentId, student.id)
+    removeStudentStorageRecord(STUDENT_EXAM_SESSION_KEY, assessmentId, student.id)
+    removeStudentStorageRecord(STUDENT_EXAM_TIME_EXTENSIONS_KEY, assessmentId, student.id)
+    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, {
+      detail: { assessmentId, studentId: student.id, status: '' },
+    }))
+    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_SESSION_EVENT, {
+      detail: { assessmentId, studentId: student.id, loginTime: null },
+    }))
+    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_TIME_EXTENSION_EVENT, {
+      detail: { assessmentId, studentId: student.id, minutes: 0, section: '' },
+    }))
+    clearAssessmentCompletedStatus(assessment)
     setControlState((current) => {
       const previous = current[student.id] || {}
       return {
@@ -329,22 +590,97 @@ function ExamControlsPage({ onNavigate }) {
           ...previous,
           resetMode,
           resetCount: Number(previous.resetCount || 0) + 1,
+          extensionMinutes: 0,
+          mcqExtensionMinutes: 0,
+          descriptiveExtensionMinutes: 0,
+          liveUntilMs: 0,
+          mcqLiveUntilMs: 0,
+          descriptiveLiveUntilMs: 0,
+          extensionUpdatedAt: '',
+          overallStatus: 'Waiting',
         },
       }
     })
     addStudentLog(
       student.id,
       'Reset assessment',
-      resetMode === 'keep' ? 'Assessment reset and existing answers retained.' : 'Assessment reset and all answers cleared.',
+      resetMessage,
     )
+    setSubmissionStatuses(readStudentSubmissionStatuses())
+    setStudentSessions(readStudentExamSessions())
+    setExtendSuccessModal({ title: 'Assessment Reset', message: resetMessage })
     setResetModal(null)
+  }
+
+  const openClassReset = () => {
+    if (!classResetTargets.length) return
+    setClassResetMode('clear')
+    setClassResetModal(true)
+  }
+
+  const confirmClassReset = () => {
+    if (!classResetModal || !classResetTargets.length) return
+    const classResetMessage = classResetMode === 'keep'
+      ? 'Class assessment reset. Students can continue with saved answers.'
+      : 'Class assessment reset. Students will start fresh attempts.'
+    classResetTargets.forEach((student) => {
+      writeStudentExamReset({ assessmentId, studentId: student.id, mode: classResetMode })
+      removeStudentStorageRecord(STUDENT_EXAM_SUBMISSION_STATUS_KEY, assessmentId, student.id)
+      removeStudentStorageRecord(STUDENT_EXAM_SESSION_KEY, assessmentId, student.id)
+      removeStudentStorageRecord(STUDENT_EXAM_TIME_EXTENSIONS_KEY, assessmentId, student.id)
+      addStudentLog(
+        student.id,
+        'Reset assessment',
+        classResetMessage,
+      )
+    })
+
+    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, {
+      detail: { assessmentId },
+    }))
+    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_SESSION_EVENT, {
+      detail: { assessmentId },
+    }))
+    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_TIME_EXTENSION_EVENT, {
+      detail: { assessmentId },
+    }))
+
+    setControlState((current) => {
+      const next = { ...current }
+      classResetTargets.forEach((student) => {
+        const previous = next[student.id] || {}
+        next[student.id] = {
+          ...previous,
+          resetMode: classResetMode,
+          resetCount: Number(previous.resetCount || 0) + 1,
+          extensionMinutes: 0,
+          mcqExtensionMinutes: 0,
+          descriptiveExtensionMinutes: 0,
+          liveUntilMs: 0,
+          mcqLiveUntilMs: 0,
+          descriptiveLiveUntilMs: 0,
+          extensionUpdatedAt: '',
+          overallStatus: 'Waiting',
+        }
+      })
+      return next
+    })
+
+    clearAssessmentCompletedStatus(assessment)
+    setSubmissionStatuses(readStudentSubmissionStatuses())
+    setStudentSessions(readStudentExamSessions())
+    setExtendSuccessModal({
+      title: 'Class Reset',
+      message: `${classResetTargets.length} student(s) reset successfully.`,
+    })
+    setClassResetModal(false)
   }
 
   const renderExtendButton = (student, section = '') => (
     <button
       type="button"
       className="exam-controls-extend-btn"
-      disabled={controlsDisabled || student.attendance !== 'P'}
+      disabled={student.attendance !== 'P' || isFinalFiveMinutes}
       onClick={() => setExtendModal({ student, section })}
       title={isFinalFiveMinutes ? 'Controls disabled in final 5 minutes' : undefined}
     >
@@ -354,13 +690,19 @@ function ExamControlsPage({ onNavigate }) {
 
   const getStudentLiveDuration = (student) => {
     if (student.attendance !== 'P') return '-'
-    if (String(student.overallStatus || '').toLowerCase() === 'completed') return '00:00'
     if (!student.startTime) return '-'
+    if (student.hasSubmissionAfterExtension) return '00:00'
 
     const totalMinutes = baseDurationMinutes + Number(student.extensionMinutes || 0)
     if (!totalMinutes) return '-'
 
-    const studentEndAt = student.startTime.getTime() + (totalMinutes * 60 * 1000)
+    const liveUntilMs = Number(student.liveUntilMs || 0)
+    const hasActiveExtension = liveUntilMs > now.getTime()
+    if (String(student.overallStatus || '').toLowerCase() === 'completed' && !hasActiveExtension) return '00:00'
+
+    const studentEndAt = hasActiveExtension
+      ? liveUntilMs
+      : student.startTime.getTime() + (totalMinutes * 60 * 1000)
     return formatCountdown(studentEndAt - now.getTime())
   }
 
@@ -377,8 +719,8 @@ function ExamControlsPage({ onNavigate }) {
 
   const getSplitSectionLiveDuration = (student, sectionIndex) => {
     if (student.attendance !== 'P') return '-'
-    if (String(student.overallStatus || '').toLowerCase() === 'completed') return '00:00'
     if (!student.startTime) return '-'
+    if (student.hasSubmissionAfterExtension) return '00:00'
 
     const previousMinutes = splitOrder.slice(0, sectionIndex).reduce((sum, section) => (
       sum + getSplitSectionMinutes(student, section).total
@@ -388,7 +730,13 @@ function ExamControlsPage({ onNavigate }) {
     if (!total) return '-'
 
     const sectionStartAt = student.startTime.getTime() + (previousMinutes * 60 * 1000)
-    const sectionEndAt = sectionStartAt + (total * 60 * 1000)
+    const sectionLiveUntilMs = Number((section === 'mcq' ? student.mcqLiveUntilMs : student.descriptiveLiveUntilMs) || 0)
+    const hasActiveExtension = sectionLiveUntilMs > now.getTime()
+    if (String(student.overallStatus || '').toLowerCase() === 'completed' && !hasActiveExtension) return '00:00'
+
+    const sectionEndAt = hasActiveExtension
+      ? sectionLiveUntilMs
+      : sectionStartAt + (total * 60 * 1000)
 
     if (now.getTime() < sectionStartAt) return formatCountdown(total * 60 * 1000)
     return formatCountdown(sectionEndAt - now.getTime())
@@ -460,6 +808,7 @@ function ExamControlsPage({ onNavigate }) {
             <th>Live Duration</th>
             <th>Extend Time</th>
             <th>Exam Duration</th>
+            <th>Overall Status</th>
           </tr>
         </thead>
         <tbody>
@@ -485,6 +834,11 @@ function ExamControlsPage({ onNavigate }) {
                 <td><span className="exam-controls-live-duration">{getSplitSectionLiveDuration(student, sectionIndex)}</span></td>
                 <td>{renderExtendButton(student, section)}</td>
                 <td>{formatDuration(sectionTiming.total)}</td>
+                {sectionIndex === 0 ? (
+                  <td rowSpan={2}>
+                    <span className={`exam-controls-overall is-${student.overallStatus.toLowerCase().replace(/\s+/g, '-')}`}>{student.overallStatus}</span>
+                  </td>
+                ) : null}
               </tr>
             )
           }))}
@@ -586,7 +940,13 @@ function ExamControlsPage({ onNavigate }) {
                   placeholder="Search student..."
                 />
               </label>
-              <button type="button" className="exam-controls-class-reset-btn">
+              <button
+                type="button"
+                className="exam-controls-class-reset-btn"
+                disabled={controlsDisabled}
+                onClick={openClassReset}
+                title={controlsDisabled ? 'Controls disabled in final 5 minutes' : 'Reset class attempts'}
+              >
                 Overall Class Reset
               </button>
             </div>
@@ -651,13 +1011,47 @@ function ExamControlsPage({ onNavigate }) {
         </div>
       )) : null}
 
+      {classResetModal ? renderModalPortal((
+        <div className="exam-controls-modal-backdrop" role="presentation">
+          <section className="exam-controls-reset-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-class-reset-title">
+            <span className="exam-controls-modal-icon is-reset" aria-hidden="true">
+              <TimerReset size={26} strokeWidth={2.3} />
+            </span>
+            <h2 id="exam-controls-class-reset-title">
+              <span>Overall Class Reset</span>
+              {assessment?.assessmentName || 'Assessment'}
+            </h2>
+            <label className={classResetMode === 'keep' ? 'is-selected' : ''}>
+              <input type="radio" checked={classResetMode === 'keep'} onChange={() => setClassResetMode('keep')} />
+              <span>Keep Answers</span>
+            </label>
+            <label className={classResetMode === 'clear' ? 'is-selected' : ''}>
+              <input type="radio" checked={classResetMode === 'clear'} onChange={() => setClassResetMode('clear')} />
+              <span>Clear Answers</span>
+            </label>
+            <div className="exam-controls-reset-note">
+              <TimerReset size={17} strokeWidth={2.3} />
+              <p>
+                {classResetTargets.length} students will be reset for this class.
+              {' '}
+                {classResetMode === 'keep' ? 'Saved answers are retained.' : 'Saved answers are cleared.'}
+              </p>
+            </div>
+            <div className="exam-controls-modal-actions">
+              <button type="button" className="is-secondary" onClick={() => setClassResetModal(false)}>Cancel</button>
+              <button type="button" onClick={confirmClassReset}>Reset Class</button>
+            </div>
+          </section>
+        </div>
+      )) : null}
+
       {extendSuccessModal ? renderModalPortal((
         <div className="exam-controls-modal-backdrop" role="presentation">
           <section className="exam-controls-success-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-success-title">
             <span className="exam-controls-modal-icon is-success" aria-hidden="true">
               <CheckCircle2 size={28} strokeWidth={2.3} />
             </span>
-            <h2 id="exam-controls-success-title">Time Extended</h2>
+            <h2 id="exam-controls-success-title">{extendSuccessModal.title || 'Updated'}</h2>
             <p>{extendSuccessModal.message}</p>
           </section>
         </div>
