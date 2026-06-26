@@ -1666,6 +1666,38 @@
   animation: onlinePracticeSuccessPop 420ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
+.online-proctored-violation-overlay {
+  justify-items: center;
+  text-align: center;
+  gap: 12px;
+  width: min(520px, 100%);
+  border-color: #fca5a5;
+}
+
+.online-proctored-violation-overlay .online-proctored-violation-note {
+  margin-top: -2px;
+  color: #7f1d1d;
+  font-size: 0.74rem;
+  font-weight: 820;
+  line-height: 1.45;
+}
+
+.online-proctored-violation-overlay.is-penalty,
+.online-proctored-violation-overlay.is-lock {
+  border-color: #f59e0b;
+}
+
+.online-proctored-violation-overlay.is-penalty .online-practice-time-limit-icon,
+.online-proctored-violation-overlay.is-lock .online-practice-time-limit-icon {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.online-proctored-violation-overlay.is-auto-submitted {
+  border-color: #ef4444;
+}
+
+
 .online-practice-exit-modal {
   border-color: #fecaca;
 }
@@ -17372,6 +17404,15 @@
 .theme-dark .online-proctored-fullscreen-alert {
   border-color: rgba(248, 113, 113, 0.46);
   background: rgba(127, 29, 29, 0.28);
+  color: #fecaca;
+}
+
+.theme-dark .online-proctored-violation-overlay {
+  background: rgba(30, 41, 59, 0.98);
+  border-color: rgba(248, 113, 113, 0.52);
+}
+
+.theme-dark .online-proctored-violation-overlay .online-proctored-violation-note {
   color: #fecaca;
 }
 

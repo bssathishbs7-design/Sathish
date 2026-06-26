@@ -96,3 +96,14 @@ Before shipping a component:
 - verify keyboard focus visibility
 - verify modal layering and scroll behavior
 - verify `npm run build` passes
+
+## 9. Proctored Enforcement Hardening (Online + Proctored Exam)
+
+After exam start, enforce strict anti-cheat behavior end-to-end:
+
+- If any violation is detected, keep the exam in controlled fullscreen state and show a full-screen warning overlay.
+- Allow only explicit exam workflow actions (answering, section navigation, submit/auto-submit).
+- Block non-essential interactions automatically: right-click, copy/paste, screenshot shortcuts, dev tools shortcuts, tab/window switching behavior, and app-switch opportunities as far as browser APIs allow.
+- On repeated violations, escalate based on the configured sequence (warning, penalty, lock, auto-submit).
+- Only after successful completion should the session transition out of fullscreen, restore browser normal mode, and re-show normal tab/page UI.
+- For all device classes (desktop/tablet/mobile), apply the same violation handling UI and lock behavior; if platform restriction is required, block entry before start.

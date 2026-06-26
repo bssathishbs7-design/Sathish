@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowLeft, Award, Ban, BatteryCharging, BellOff, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, FileText, Hand, Hash, Info, ListChecks, Monitor, Moon, ShieldCheck, Sun, Timer, Wifi, X } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -16,9 +16,16 @@ const STUDENT_EXAM_SESSION_KEY = 'vx-student-exam-session'
 const STUDENT_EXAM_SESSION_EVENT = 'vx-student-exam-session-changed'
 const STUDENT_EXAM_RESET_KEY = 'vx-student-exam-reset-state'
 const STUDENT_EXAM_RESET_EVENT = 'vx-student-exam-reset-changed'
+const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
+const EXAM_CONTROLS_STATE_CHANGED_EVENT = 'vx-exam-controls-state-changed'
 const ONLINE_PROCTORED_ATTEMPT_STORAGE_KEY = 'vx-online-proctored-exam-attempts'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const CURRENT_STUDENT_ID = 'MC2568'
+const PROCTOR_WARNING_LABEL = 'Security Violation'
+const PROCTOR_PENALTY_SECONDS = 10
+const PROCTOR_LOCK_SECONDS = 30
+const PROCTOR_VIOLATION_COOLDOWN_MS = 650
+const MOBILE_BREAKPOINT_WIDTH = 768
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
   { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
@@ -59,6 +66,73 @@ const readStudentExamReset = (assessment, studentId = CURRENT_STUDENT_ID) => {
   } catch {
     return null
   }
+}
+
+const readExamControlsState = (assessmentId) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(`${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`) || 'null')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const writeExamControlsState = (assessment, studentId, stateUpdater) => {
+  const assessmentId = getAssessmentId(assessment)
+  try {
+    const parsed = readExamControlsState(assessmentId)
+    const currentState = parsed[studentId] || {}
+    const nextState = typeof stateUpdater === 'function'
+      ? stateUpdater(currentState)
+      : stateUpdater
+
+    const nextParsed = {
+      ...parsed,
+      [studentId]: {
+        ...currentState,
+        ...nextState,
+        updatedAt: new Date().toISOString(),
+      },
+    }
+
+    window.localStorage.setItem(`${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`, JSON.stringify(nextParsed))
+    window.dispatchEvent(new CustomEvent(EXAM_CONTROLS_STATE_CHANGED_EVENT, {
+      detail: { assessmentId, studentId },
+    }))
+  } catch {
+    // Best-effort write so exams are not blocked by local storage failure.
+  }
+}
+
+const formatCompactTime = (value) => (
+  value && !Number.isNaN(new Date(value).getTime())
+    ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : '-'
+)
+
+const appendStudentViolationLog = (assessment, studentId, remarks) => {
+  const assessmentId = getAssessmentId(assessment)
+  if (!assessmentId || !studentId) return
+
+  writeExamControlsState(assessment, studentId, (current) => {
+    const nextCount = Number(current.violationCount || 0) + 1
+    const nextLog = {
+      id: `${studentId}-${Date.now()}`,
+      time: formatCompactTime(new Date()),
+      action: PROCTOR_WARNING_LABEL,
+      remarks,
+      faculty: 'System',
+      ruleNumber: nextCount,
+    }
+
+    return {
+      ...current,
+      violationCount: nextCount,
+      overallStatus: 'In progress',
+      logs: [nextLog, ...(current.logs || [])],
+      lastViolationAt: new Date().toISOString(),
+    }
+  })
 }
 
 const readStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => {
@@ -286,13 +360,18 @@ const formatQuestionMarksBadge = (question) => {
   return marks === '-' ? '- Marks' : `${marks} Marks`
 }
 
-const renderQuestionImages = (images, className = '', onPreview) => (
+const renderQuestionImages = (images, className = '', onPreview, isDisabled = false) => (
   Array.isArray(images) && images.length ? (
     <div className={`online-practice-question-images ${className}`.trim()} aria-label="Question images">
       {images.map((image, imageIndex) => (
         <figure key={image.id ?? `${image.name || 'image'}-${imageIndex}`}>
           <span>{String.fromCharCode(65 + imageIndex)}</span>
-          <button type="button" onClick={() => onPreview?.(images, imageIndex)} aria-label={`Preview question image ${String.fromCharCode(65 + imageIndex)}`}>
+          <button
+            type="button"
+            disabled={isDisabled}
+            onClick={() => onPreview?.(images, imageIndex)}
+            aria-label={`Preview question image ${String.fromCharCode(65 + imageIndex)}`}
+          >
             <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
           </button>
         </figure>
@@ -451,6 +530,40 @@ const getInstructionLines = (value) => stripHtml(value)
   .map((line) => line.trim())
   .filter(Boolean)
 
+const isInAppWebview = () => {
+  const userAgent = window.navigator.userAgent || ''
+  return /FBAN|FBAV|FB_IAB|Instagram|Line|MicroMessenger|WhatsApp|Telegram|Discord|LinkedInApp|Snapchat|TikTok|WeChat|Pinterest/i.test(userAgent)
+}
+
+const isMobileDevice = () => {
+  const userAgent = window.navigator.userAgent || ''
+  return /Android(?!.*\bTablet\b)|iPhone|iPod|Windows Phone|BlackBerry|IEMobile|Kindle|Silk/i.test(userAgent)
+}
+
+const isTabletDevice = () => {
+  const userAgent = window.navigator.userAgent || ''
+  return /iPad|Android(?!.*Mobi)|Tablet|PlayBook|Surface|Nexus 7|Nexus 10|SM-T|Kindle/i.test(userAgent)
+}
+
+const isPwaStandalone = () => (
+  (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches))
+  || window.navigator.standalone === true
+)
+
+const detectMultiMonitorSetup = () => {
+  if (!window.screen || typeof window.screen.availLeft !== 'number') return false
+  return window.screen.availLeft !== 0 || window.screen.availTop !== 0
+}
+
+const isRestrictedProctorEnvironment = () => {
+  if (!isPwaStandalone()) return 'Launch this proctored exam in fullscreen/PWA mode.'
+  if (isInAppWebview()) return 'Please open the proctored exam in a standard browser session.'
+  if (isMobileDevice() && window.innerWidth < MOBILE_BREAKPOINT_WIDTH) return 'This proctored exam is restricted on mobile phones.'
+  if (isTabletDevice()) return 'Tablet mode is restricted for proctored exams.'
+  if (detectMultiMonitorSetup()) return 'More than one display is detected. Use one screen for the exam.'
+  return ''
+}
+
 const parseDurationToSeconds = (value) => {
   if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.round(value * 60))
   const text = String(value ?? '').trim()
@@ -506,7 +619,18 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [sequenceTransitionModal, setSequenceTransitionModal] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [fullscreenError, setFullscreenError] = useState('')
+  const [isFullscreenMode, setIsFullscreenMode] = useState(false)
+  const [environmentRestrictionMessage, setEnvironmentRestrictionMessage] = useState(() => isRestrictedProctorEnvironment())
   const [timeExtension, setTimeExtension] = useState(() => readStudentTimeExtension(assessment))
+  const [proctorViolation, setProctorViolation] = useState({
+    count: 0,
+    phase: 'idle',
+    message: '',
+    endsAt: 0,
+    showFullscreenLock: false,
+  })
+  const [isAutoExitAfterViolation, setIsAutoExitAfterViolation] = useState(false)
+  const violationCooldownRef = useRef(0)
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
@@ -582,6 +706,17 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const descriptiveAllowsAnswerInput = isAnswerInputMode(setup.descriptiveDisplayType || assessment?.descriptiveDisplayType || 'Read-Only')
   const isMcqLocked = isMcqSubmitted || isAssessmentSubmitted
   const isDescriptiveLocked = isDescriptiveSubmitted || isAssessmentSubmitted
+  const proctorViolationRemainingSeconds = proctorViolation.endsAt ? Math.max(0, Math.ceil((proctorViolation.endsAt - timerNow) / 1000)) : 0
+  const isProctorPenaltyOrLock = proctorViolation.phase === 'penalty' || proctorViolation.phase === 'lock'
+  const shouldBlockProctoringActions = isProctoredFlowAssessment
+    && hasStarted
+    && !isAssessmentSubmitted
+    && (proctorViolation.phase === 'warning' || isProctorPenaltyOrLock || proctorViolation.phase === 'auto-submitted')
+  const isProctorViolationActive = shouldBlockProctoringActions || proctorViolation.phase === 'warning' || proctorViolation.phase === 'auto-submitted'
+  const shouldShowFullscreenViolation = hasStarted && !isAssessmentSubmitted
+    && proctorViolation.phase !== 'idle'
+    && proctorViolation.showFullscreenLock
+  const isExamActionLocked = isProctorViolationActive || proctorViolation.phase === 'auto-submitted'
   const hasPendingMcq = hasMcqSection && !isMcqSubmitted
   const hasPendingDescriptive = hasDescriptiveSection && !isDescriptiveSubmitted
   const hasPendingSections = hasPendingMcq || hasPendingDescriptive
@@ -704,9 +839,9 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   ]
   const submitModalCopy = submitModal?.isFinal
     ? {
-      title: 'Submit Assessment?',
-      message: `You are about to submit the complete proctored assessment for ${assessment?.name || 'this assessment'}. Once confirmed, this assessment will be marked as completed.`,
-      success: `${assessment?.name || 'Assessment'} has been completed successfully.`,
+        title: 'Submit Assessment?',
+        message: `You are about to submit the complete proctored assessment for ${assessment?.name || 'this assessment'}. Once confirmed, this assessment will be marked as completed.`,
+        success: `${assessment?.name || 'Assessment'} has been completed successfully.`,
       questions: questionRows.length,
       marks: assessment?.totalMarks ?? (mcqTotalMarks + descriptiveTotalMarks),
       answered: null,
@@ -729,7 +864,80 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         answered: `${attendedMcqCount} / ${mcqQuestions.length} answered`,
       }
 
+  const showProctorViolation = (reason, details) => {
+    let nextPhase = 'warning'
+    let nextMessage = `Warning ${proctorViolation.count + 1}: ${reason}.`
+    let nextRemaining = 0
+    let shouldAutoSubmit = false
+
+    setProctorViolation((current) => {
+      const nextCount = Number(current.count || 0) + 1
+      if (nextCount === 1) {
+        nextPhase = 'warning'
+        nextMessage = `Security warning (${nextCount}/4): ${reason}.`
+        appendStudentViolationLog(assessment, CURRENT_STUDENT_ID, `${reason}${details ? ` | ${details}` : ''}`)
+        return {
+          ...current,
+          count: nextCount,
+          phase: nextPhase,
+          message: nextMessage,
+          endsAt: 0,
+          showFullscreenLock: true,
+        }
+      }
+
+      if (nextCount === 2) {
+        nextPhase = 'penalty'
+        nextRemaining = PROCTOR_PENALTY_SECONDS
+        nextMessage = `Violation ${nextCount}/4: Penalty applied. Pause for ${nextRemaining} seconds.`
+        appendStudentViolationLog(assessment, CURRENT_STUDENT_ID, `Penalty ${nextRemaining}s applied: ${reason}${details ? ` | ${details}` : ''}`)
+        return {
+          ...current,
+          count: nextCount,
+          phase: nextPhase,
+          message: nextMessage,
+          endsAt: Date.now() + (nextRemaining * 1000),
+          showFullscreenLock: true,
+        }
+      }
+
+      if (nextCount === 3) {
+        nextPhase = 'lock'
+        nextRemaining = PROCTOR_LOCK_SECONDS
+        nextMessage = `Violation ${nextCount}/4: Locked for ${nextRemaining} seconds.`
+        appendStudentViolationLog(assessment, CURRENT_STUDENT_ID, `Lock ${nextRemaining}s applied: ${reason}${details ? ` | ${details}` : ''}`)
+        return {
+          ...current,
+          count: nextCount,
+          phase: nextPhase,
+          message: nextMessage,
+          endsAt: Date.now() + (nextRemaining * 1000),
+          showFullscreenLock: true,
+        }
+      }
+
+      nextPhase = 'auto-submitted'
+      nextMessage = `Auto-submitted due repeated security violations.`
+      shouldAutoSubmit = true
+      appendStudentViolationLog(assessment, CURRENT_STUDENT_ID, `Exam auto-submitted: ${reason}${details ? ` | ${details}` : ''}`)
+      return {
+        ...current,
+        count: nextCount,
+        phase: nextPhase,
+        message: nextMessage,
+        endsAt: Date.now() + 2000,
+        showFullscreenLock: true,
+      }
+    })
+
+    if (shouldAutoSubmit) {
+      setIsAutoExitAfterViolation(true)
+      finalizeAssessmentSubmission({ submissionStatus: 'Auto Submit' })
+    }
+  }
+
   const switchSection = (section) => {
+    if (shouldBlockProctoringActions) return
     if (!isSectionAccessibleInSequence(section)) return
     if (section === 'mcq' && isMcqSubmitted) return
     if (section === 'descriptive' && isDescriptiveSubmitted) return
@@ -744,6 +952,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const setMcqStatus = (question, index, status) => {
+    if (shouldBlockProctoringActions) return
     const key = getMcqQuestionKey(question, index)
     setMcqQuestionStatuses((current) => ({
       ...current,
@@ -752,20 +961,20 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const selectMcqOption = (question, index, optionIndex) => {
-    if (!mcqAllowsAnswerInput || isMcqLocked) return
+    if (!mcqAllowsAnswerInput || isMcqLocked || shouldBlockProctoringActions) return
     const key = getMcqQuestionKey(question, index)
     setAnswers((current) => ({ ...current, [key]: optionIndex }))
     setMcqQuestionStatuses((current) => ({ ...current, [key]: 'answered' }))
   }
 
   const markTryLater = () => {
-    if (!currentQuestion || !mcqAllowsAnswerInput || isMcqLocked) return
+    if (!currentQuestion || !mcqAllowsAnswerInput || isMcqLocked || shouldBlockProctoringActions) return
     setMcqStatus(currentQuestion, activeQuestionIndex, 'try-later')
     setActiveQuestionIndex((current) => Math.min(mcqQuestions.length - 1, current + 1))
   }
 
   const updateDescriptiveAnswer = (key, value) => {
-    if (isDescriptiveLocked) return
+    if (isDescriptiveLocked || shouldBlockProctoringActions) return
     setDescriptiveAnswers((current) => ({
       ...current,
       [key]: value,
@@ -773,8 +982,26 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const startExam = async () => {
+    if (environmentRestrictionMessage) {
+      setFullscreenError(environmentRestrictionMessage)
+      return
+    }
+
+    setProctorViolation({
+      count: 0,
+      phase: 'idle',
+      message: '',
+      endsAt: 0,
+      showFullscreenLock: false,
+    })
     setFullscreenError('')
     try {
+      if (window.history && window.history.pushState) {
+        window.history.pushState({ proctor: 'locked' }, '', window.location.href)
+      }
+      if (window.screen?.orientation?.lock) {
+        window.screen.orientation.lock('landscape').catch(() => {})
+      }
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen()
       }
@@ -788,6 +1015,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       return
     }
 
+    setIsFullscreenMode(true)
     const startedAt = Date.now()
     setExamStartedAt(startedAt)
     setActiveSequenceStartedAt(isSplitProctoredFlow ? startedAt : null)
@@ -801,6 +1029,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const openSubmitModal = (section) => {
+    if (shouldBlockProctoringActions) return
     if (section === 'final') {
       setSubmitModal({ section: 'final', isFinal: true, phase: 'confirm' })
       return
@@ -816,6 +1045,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const confirmSubmit = () => {
+    if (shouldBlockProctoringActions) return
     if (submitModal?.section === 'mcq') {
       setIsMcqSubmitted(true)
     }
@@ -835,6 +1065,23 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     setIsAssessmentSubmitted(true)
     if (hasMcqSection) setIsMcqSubmitted(true)
     if (hasDescriptiveSection) setIsDescriptiveSubmitted(true)
+    setProctorViolation((current) => ({
+      ...current,
+      phase: 'idle',
+      message: '',
+      endsAt: 0,
+      showFullscreenLock: false,
+    }))
+    appendStudentViolationLog(
+      assessment,
+      CURRENT_STUDENT_ID,
+      `Assessment ${submissionStatus.toLowerCase()} completed.`,
+    )
+    setIsAutoExitAfterViolation(false)
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {})
+    }
+    setIsFullscreenMode(false)
     writeStudentSubmissionStatus(assessment, submissionStatus)
     persistCompletedAssessment()
     setSubmitModal((current) => (current?.phase === 'success' ? current : null))
@@ -908,7 +1155,19 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     onExit?.(APP_PAGES.MY_ASSESSMENT)
   }
 
+  const registerViolation = (reason, details = '') => {
+    if (!hasStarted || isAssessmentSubmitted) return
+    const now = Date.now()
+    if (now - violationCooldownRef.current < PROCTOR_VIOLATION_COOLDOWN_MS) return
+    violationCooldownRef.current = now
+    if (!document.fullscreenElement) {
+      setFullscreenError('Fullscreen mode is required to continue.')
+    }
+    showProctorViolation(reason, details)
+  }
+
   const openImagePreview = (images, index = 0) => {
+    if (isExamActionLocked) return
     if (!Array.isArray(images) || !images.length) return
     setImagePreview({
       images,
@@ -920,6 +1179,35 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     setImagePreview(null)
   }
 
+  const detectViolationShortcut = (event) => {
+    const key = event.key || ''
+    const lowerKey = key.toLowerCase()
+    const blockedFnKeys = new Set(['F1', 'F3', 'F4', 'F5', 'F6', 'F10', 'F11', 'F12'])
+    const hasCtrlMeta = event.ctrlKey || event.metaKey
+    const hasAltCtrlMeta = event.altKey || hasCtrlMeta
+
+    if (key === 'PrintScreen') return 'screenshot attempt'
+    if (event.type === 'contextmenu') return 'context menu blocked'
+    if (blockedFnKeys.has(key)) return `${key} key pressed`
+
+    if (hasCtrlMeta && ['s', 'c', 'u', 'i', 'j', 'p', 'v', 'x', 'a', 'o', 'l', 'w', 'n', 't', 'r'].includes(lowerKey)) {
+      return `${String(key).toUpperCase()} shortcut blocked`
+    }
+    if (event.shiftKey && hasCtrlMeta && ['c', 'i', 'j', 'p', 'n', 'q', 's', 'k', 'd'].includes(lowerKey)) {
+      return `${String(key).toUpperCase()} shortcut blocked`
+    }
+    if (event.ctrlKey && event.shiftKey && ['I', 'J', 'C', 'K', 'P'].includes(key)) {
+      return `${String(key).toUpperCase()} shortcut blocked`
+    }
+    if ((event.altKey && ['Tab', 'F4'].includes(key)) || (event.metaKey && ['Tab'].includes(key))) return 'Window/application switching attempt'
+    if (hasAltCtrlMeta && ['Tab', 'Escape'].includes(key)) return 'Window/application switching attempt'
+    if (event.metaKey && ['r', 'l', 'Left', 'Right', 't', 'n'].includes(key)) return 'Browser/application navigation attempt'
+    if (event.ctrlKey && ['Tab', 'ArrowLeft', 'ArrowRight'].includes(key)) return 'Window/application switching attempt'
+    if (hasCtrlMeta && key === 'Escape') return 'System escape attempt'
+    if (event.key === 'Meta') return 'System key pressed'
+    return ''
+  }
+
   const moveImagePreview = (direction) => {
     setImagePreview((current) => {
       if (!current) return current
@@ -928,7 +1216,19 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     })
   }
 
+  const returnToFullscreen = async () => {
+    if (!document.documentElement.requestFullscreen || document.fullscreenElement) return
+    try {
+      await document.documentElement.requestFullscreen()
+      setIsFullscreenMode(true)
+      setFullscreenError('')
+    } catch {
+      setFullscreenError('Fullscreen mode is required for proctored exam.')
+    }
+  }
+
   const showDescriptiveSection = (groupKey) => {
+    if (shouldBlockProctoringActions) return
     if (!isSectionAccessibleInSequence('descriptive')) return
 
     setActiveSection('descriptive')
@@ -953,6 +1253,213 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
     return () => window.clearInterval(timerId)
   }, [])
+
+  useEffect(() => {
+    const updateEnvironmentRestriction = () => {
+      if (!hasStarted && !isAssessmentSubmitted) {
+        setEnvironmentRestrictionMessage(isRestrictedProctorEnvironment())
+      }
+    }
+
+    updateEnvironmentRestriction()
+    window.addEventListener('resize', updateEnvironmentRestriction)
+    window.addEventListener('orientationchange', updateEnvironmentRestriction)
+
+    return () => {
+      window.removeEventListener('resize', updateEnvironmentRestriction)
+      window.removeEventListener('orientationchange', updateEnvironmentRestriction)
+    }
+  }, [hasStarted, isAssessmentSubmitted])
+
+  useEffect(() => {
+    if (!hasStarted) return
+    if (!isAssessmentSubmitted) return
+
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {})
+    }
+  }, [hasStarted, isAssessmentSubmitted])
+
+  useEffect(() => {
+    if (!proctorViolation.endsAt || !['penalty', 'lock', 'auto-submitted'].includes(proctorViolation.phase)) return undefined
+    if (timerNow < proctorViolation.endsAt) return undefined
+
+    if (proctorViolation.phase === 'auto-submitted') {
+      return undefined
+    }
+
+    setProctorViolation((current) => (
+      current.phase === proctorViolation.phase && current.endsAt === proctorViolation.endsAt
+        ? {
+          ...current,
+          phase: 'idle',
+          message: '',
+          endsAt: 0,
+        }
+        : current
+    ))
+    return undefined
+  }, [proctorViolation.endsAt, proctorViolation.phase, timerNow])
+
+  useEffect(() => {
+    if (!isProctorViolationActive || proctorViolation.phase !== 'warning') return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      setProctorViolation((current) => (
+        current.phase === 'warning'
+          ? { ...current, phase: 'idle', message: '', endsAt: 0 }
+          : current
+      ))
+    }, 3000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [isProctorViolationActive, proctorViolation.phase, proctorViolation.message])
+
+  useEffect(() => {
+    if (!isAutoExitAfterViolation || !isAssessmentSubmitted || proctorViolation.phase !== 'auto-submitted') return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      onExit?.(APP_PAGES.MY_ASSESSMENT)
+    }, 1800)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [isAutoExitAfterViolation, isAssessmentSubmitted, onExit, proctorViolation.phase])
+
+  useEffect(() => {
+    if (!hasStarted || isAssessmentSubmitted) return undefined
+
+    const handleVisibilityChange = () => {
+      setIsFullscreenMode(Boolean(document.fullscreenElement))
+      if (!document.fullscreenElement) {
+        registerViolation('Exam page hidden', 'focus lost')
+        return
+      }
+      if (document.hidden) {
+        registerViolation('Exam page hidden', 'focus lost')
+      }
+    }
+    const handleBlur = () => {
+      setIsFullscreenMode(Boolean(document.fullscreenElement))
+      if (!document.fullscreenElement) {
+        registerViolation('Window focus lost', 'fullscreen mode not active')
+        return
+      }
+      registerViolation('Window focus lost', 'tab switch or app switch')
+    }
+    const handleFullscreenChange = () => {
+      setIsFullscreenMode(Boolean(document.fullscreenElement))
+      if (!document.fullscreenElement) {
+        registerViolation('Fullscreen exited', 'return to fullscreen to continue')
+      }
+    }
+    const handleKeyDown = (event) => {
+      if (isAssessmentSubmitted) return
+      const violation = detectViolationShortcut(event)
+      if (!violation) return
+      event.preventDefault()
+      registerViolation('Restricted shortcut', violation)
+    }
+    const handleCopy = (event) => {
+      event.preventDefault()
+      registerViolation('Copy action blocked', 'attempted copy')
+    }
+    const handleCut = (event) => {
+      event.preventDefault()
+      registerViolation('Cut action blocked', 'attempted cut')
+    }
+    const handlePaste = (event) => {
+      event.preventDefault()
+      registerViolation('Paste action blocked', 'attempted paste')
+    }
+    const handleContextMenu = (event) => {
+      event.preventDefault()
+      registerViolation('Right click blocked', 'context menu blocked')
+    }
+    const handleDragStart = (event) => {
+      event.preventDefault()
+      registerViolation('Drag action blocked', 'drag gesture blocked')
+    }
+    const handleSelectStart = (event) => {
+      const target = event.target
+      const isInputField = target instanceof HTMLElement && (
+        target.matches('input, textarea, [contenteditable="true"], .mcq-option, .descriptive-answer')
+      )
+      if (!isInputField) {
+        event.preventDefault()
+      }
+      registerViolation('Text selection blocked', 'selection gesture blocked')
+    }
+    const handleDrop = (event) => {
+      event.preventDefault()
+      registerViolation('File/content drop blocked', 'drop blocked')
+    }
+    const handleVisibilityAndHistory = () => {
+      if (!hasStarted || isAssessmentSubmitted) return
+      registerViolation('Attempt to leave page', 'navigation attempt')
+      if (window.history && window.history.pushState) {
+        window.history.pushState({ proctor: 'locked' }, '', window.location.href)
+      }
+    }
+    const handlePopState = () => {
+      handleVisibilityAndHistory()
+    }
+    const handleFullscreenError = () => {
+      registerViolation('Fullscreen blocked', 'fullscreen exit error')
+    }
+
+    const handleBeforeUnload = (event) => {
+      if (!hasStarted || isAssessmentSubmitted) return
+      registerViolation('Attempt to leave page', 'page refresh/close')
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    const handlePageHide = () => {
+      setIsFullscreenMode(Boolean(document.fullscreenElement))
+      registerViolation('Page hidden', 'page visibility change detected')
+    }
+    const handleResize = () => {
+      setIsFullscreenMode(Boolean(document.fullscreenElement))
+      if (!document.fullscreenElement) {
+        registerViolation('Exam window resized', 'fullscreen mode lost')
+      }
+    }
+    window.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('blur', handleBlur)
+    window.addEventListener('fullscreenchange', handleFullscreenChange)
+    window.addEventListener('keydown', handleKeyDown, true)
+    window.addEventListener('contextmenu', handleContextMenu)
+    window.addEventListener('copy', handleCopy)
+    window.addEventListener('cut', handleCut)
+    window.addEventListener('paste', handlePaste)
+    window.addEventListener('dragstart', handleDragStart)
+    window.addEventListener('selectstart', handleSelectStart)
+    window.addEventListener('drop', handleDrop)
+    window.addEventListener('fullscreenerror', handleFullscreenError)
+    window.addEventListener('popstate', handlePopState)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('resize', handleResize)
+    window.history && window.history.pushState && window.history.pushState({ proctor: 'locked' }, '', window.location.href)
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('fullscreenchange', handleFullscreenChange)
+      window.removeEventListener('keydown', handleKeyDown, true)
+      window.removeEventListener('contextmenu', handleContextMenu)
+      window.removeEventListener('copy', handleCopy)
+      window.removeEventListener('cut', handleCut)
+      window.removeEventListener('paste', handlePaste)
+      window.removeEventListener('dragstart', handleDragStart)
+      window.removeEventListener('selectstart', handleSelectStart)
+      window.removeEventListener('drop', handleDrop)
+      window.removeEventListener('fullscreenerror', handleFullscreenError)
+      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [hasStarted, isAssessmentSubmitted, proctorViolation.phase])
 
   useEffect(() => {
     if (!assessment) return
@@ -1329,7 +1836,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   return (
-    <main className={`online-practice-exam-page is-proctored-exam ${hasStarted ? 'has-fixed-header' : 'is-before-start'}`}>
+    <main
+      className={`online-practice-exam-page is-proctored-exam ${hasStarted ? 'has-fixed-header' : 'is-before-start'} ${
+        shouldBlockProctoringActions ? 'is-proctor-locked' : ''
+      } ${isProctorViolationActive ? 'is-proctor-restricted' : ''}`.trim()}
+    >
       {hasStarted ? (
         <header className={`online-practice-header ${headerChips.length ? '' : 'has-no-chips'}`.trim()}>
           {headerLogo ? (
@@ -1527,7 +2038,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                     <strong>{displayNumber}.</strong>
                                     <span>{getQuestionText(question)}</span>
                                   </p>
-                                  {renderQuestionImages(question.images, '', openImagePreview)}
+                                  {renderQuestionImages(question.images, '', openImagePreview, isExamActionLocked)}
                                   {subQuestions.length ? (
                                     subQuestions.map((section, index) => (
                                       <div className="online-practice-descriptive-subgroup" key={section.id ?? index}>
@@ -1542,7 +2053,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                           <label className="online-practice-descriptive-answer">
                                             <span>Your answer</span>
                                               <textarea
-                                                disabled={isDescriptiveLocked}
+                                                disabled={isDescriptiveLocked || isExamActionLocked}
                                                 value={descriptiveAnswers[section.id ?? `${question.id}-section-${index}`] ?? ''}
                                                 onChange={(event) => updateDescriptiveAnswer(section.id ?? `${question.id}-section-${index}`, event.target.value)}
                                                 placeholder="Type your answer..."
@@ -1561,7 +2072,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                                 <label className="online-practice-descriptive-answer is-nested">
                                                   <span>Your answer</span>
                                                   <textarea
-                                                    disabled={isDescriptiveLocked}
+                                                    disabled={isDescriptiveLocked || isExamActionLocked}
                                                     value={descriptiveAnswers[child.id ?? `${question.id}-child-${index}-${childIndex}`] ?? ''}
                                                     onChange={(event) => updateDescriptiveAnswer(child.id ?? `${question.id}-child-${index}-${childIndex}`, event.target.value)}
                                                     placeholder="Type your answer..."
@@ -1577,7 +2088,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                     <label className="online-practice-descriptive-answer">
                                       <span>Your answer</span>
                                       <textarea
-                                        disabled={isDescriptiveLocked}
+                                        disabled={isDescriptiveLocked || isExamActionLocked}
                                         value={descriptiveAnswers[question.id ?? `${group.key}-${questionIndex}`] ?? ''}
                                         onChange={(event) => updateDescriptiveAnswer(question.id ?? `${group.key}-${questionIndex}`, event.target.value)}
                                         placeholder="Type your answer..."
@@ -1608,11 +2119,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                               <strong className="online-practice-current-question-number">{displayNumber}.</strong>
                               <h2>{getQuestionText(question)}</h2>
                             </div>
-                            {renderQuestionImages(question.images, 'is-mcq', openImagePreview)}
+                            {renderQuestionImages(question.images, 'is-mcq', openImagePreview, isExamActionLocked)}
 
                             <div className="online-practice-options is-readonly">
                               {(question.options ?? []).map((option, optionIndex) => (
-                                <button type="button" key={`${question.id ?? questionIndex}-${optionIndex}`} disabled>
+                                <button type="button" key={`${question.id ?? questionIndex}-${optionIndex}`} disabled={isExamActionLocked}>
                                   <strong>{String.fromCharCode(65 + optionIndex)}.</strong>
                                   <span>{getOptionText(option)}</span>
                                 </button>
@@ -1633,7 +2144,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                       <strong className="online-practice-current-question-number">{currentQuestionDisplayNumber}.</strong>
                       <h2>{getQuestionText(currentQuestion)}</h2>
                     </div>
-                    {renderQuestionImages(currentQuestion.images, 'is-mcq', openImagePreview)}
+                    {renderQuestionImages(currentQuestion.images, 'is-mcq', openImagePreview, isExamActionLocked)}
 
                     <div className="online-practice-options">
                       {(currentQuestion.options ?? []).map((option, optionIndex) => {
@@ -1646,7 +2157,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                             type="button"
                             key={optionKey}
                             className={isSelected ? 'is-selected' : ''}
-                            disabled={!mcqAllowsAnswerInput || isMcqLocked}
+                            disabled={!mcqAllowsAnswerInput || isMcqLocked || isExamActionLocked}
                             onClick={() => selectMcqOption(currentQuestion, activeQuestionIndex, optionIndex)}
                           >
                             <strong>{String.fromCharCode(65 + optionIndex)}.</strong>
@@ -1665,15 +2176,28 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
               {activeSection === 'mcq' && mcqAllowsAnswerInput ? (
                 <footer className="online-practice-question-nav">
-                  <button type="button" className="online-practice-try-later-btn" onClick={markTryLater} disabled={!currentQuestion || isMcqLocked}>
+                  <button
+                    type="button"
+                    className="online-practice-try-later-btn"
+                    onClick={markTryLater}
+                    disabled={!currentQuestion || isMcqLocked || isExamActionLocked}
+                  >
                     Try Later
                   </button>
                   <span className="online-practice-question-nav-actions">
-                    <button type="button" disabled={activeQuestionIndex <= 0} onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}>
+                    <button
+                      type="button"
+                      disabled={activeQuestionIndex <= 0 || isExamActionLocked}
+                      onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}
+                    >
                       <ChevronLeft size={16} strokeWidth={2.2} />
                       Previous
                     </button>
-                    <button type="button" disabled={activeQuestionIndex >= currentQuestions.length - 1} onClick={() => setActiveQuestionIndex((current) => Math.min(currentQuestions.length - 1, current + 1))}>
+                    <button
+                      type="button"
+                      disabled={activeQuestionIndex >= currentQuestions.length - 1 || isExamActionLocked}
+                      onClick={() => setActiveQuestionIndex((current) => Math.min(currentQuestions.length - 1, current + 1))}
+                    >
                       Next
                       <ChevronRight size={16} strokeWidth={2.2} />
                     </button>
@@ -1701,12 +2225,22 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               {shouldShowSectionTabs ? (
                 <div className="online-practice-tabs" role="tablist" aria-label="Question sections">
                   {hasMcqSection ? (
-                    <button type="button" className={`${activeSection === 'mcq' ? 'is-active' : ''} ${isMcqSubmitted ? 'is-completed' : ''}`.trim()} onClick={() => switchSection('mcq')} disabled={isMcqSubmitted}>
+                    <button
+                      type="button"
+                      className={`${activeSection === 'mcq' ? 'is-active' : ''} ${isMcqSubmitted ? 'is-completed' : ''}`.trim()}
+                      onClick={() => switchSection('mcq')}
+                      disabled={isMcqSubmitted || isExamActionLocked}
+                    >
                       {isMcqSubmitted ? 'MCQ Completed' : 'MCQ'}
                     </button>
                   ) : null}
                   {hasDescriptiveSection ? (
-                    <button type="button" className={`${activeSection === 'descriptive' ? 'is-active' : ''} ${isDescriptiveSubmitted ? 'is-completed' : ''}`.trim()} onClick={() => switchSection('descriptive')} disabled={isDescriptiveSubmitted}>
+                    <button
+                      type="button"
+                      className={`${activeSection === 'descriptive' ? 'is-active' : ''} ${isDescriptiveSubmitted ? 'is-completed' : ''}`.trim()}
+                      onClick={() => switchSection('descriptive')}
+                      disabled={isDescriptiveSubmitted || isExamActionLocked}
+                    >
                       {isDescriptiveSubmitted ? 'Descriptive Completed' : 'Descriptive'}
                     </button>
                   ) : null}
@@ -1748,14 +2282,15 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                         const status = mcqQuestionStatuses[getMcqQuestionKey(question, index)] || 'not-viewed'
 
                         return (
-                          <button
-                            type="button"
-                            key={question.id ?? index}
-                            className={`is-${status} ${activeQuestionIndex === index ? 'is-active' : ''}`.trim()}
-                            onClick={() => setActiveQuestionIndex(index)}
-                          >
-                            {index + 1}
-                          </button>
+                            <button
+                              type="button"
+                              key={question.id ?? index}
+                              className={`is-${status} ${activeQuestionIndex === index ? 'is-active' : ''}`.trim()}
+                              onClick={() => setActiveQuestionIndex(index)}
+                              disabled={isMcqLocked || isExamActionLocked}
+                            >
+                              {index + 1}
+                            </button>
                         )
                       })}
                     </div>
@@ -1768,7 +2303,12 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                         <span className="is-viewed"><i aria-hidden="true" />Viewed</span>
                       </div>
                       {shouldShowMcqSubmit ? (
-                        <button type="button" className="online-practice-submit-mcq-btn" onClick={() => openSubmitModal('mcq')} disabled={isMcqSubmitted || isAssessmentSubmitted}>
+                        <button
+                          type="button"
+                          className="online-practice-submit-mcq-btn"
+                          onClick={() => openSubmitModal('mcq')}
+                          disabled={isMcqSubmitted || isAssessmentSubmitted || isExamActionLocked}
+                        >
                           {isMcqSubmitted ? 'MCQ Assessment Submitted' : splitSectionSubmitLabel('mcq')}
                         </button>
                       ) : null}
@@ -1786,6 +2326,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                         key={group.key}
                         className={isActive ? 'is-active' : ''}
                         onClick={() => showDescriptiveSection(group.key)}
+                        disabled={isDescriptiveLocked || isExamActionLocked}
                       >
                         <span>{group.roman}</span>
                         <strong>{group.title}</strong>
@@ -1803,19 +2344,34 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               )}
 
               {shouldShowMcqSubmit && !mcqAllowsAnswerInput ? (
-                <button type="button" className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn" onClick={() => openSubmitModal('mcq')} disabled={isMcqSubmitted || isAssessmentSubmitted}>
+                <button
+                  type="button"
+                  className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn"
+                  onClick={() => openSubmitModal('mcq')}
+                  disabled={isMcqSubmitted || isAssessmentSubmitted || isExamActionLocked}
+                >
                   {isMcqSubmitted ? 'MCQ Assessment Submitted' : splitSectionSubmitLabel('mcq')}
                 </button>
               ) : null}
 
                {shouldShowDescriptiveSubmit ? (
-                <button type="button" className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn" onClick={() => openSubmitModal('descriptive')} disabled={isDescriptiveSubmitted || isAssessmentSubmitted}>
+                <button
+                  type="button"
+                  className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn"
+                  onClick={() => openSubmitModal('descriptive')}
+                  disabled={isDescriptiveSubmitted || isAssessmentSubmitted || isExamActionLocked}
+                >
                   {isAssessmentSubmitted ? 'Assessment Submitted' : isDescriptiveSubmitted ? 'Descriptive Assessment Submitted' : splitSectionSubmitLabel('descriptive')}
                 </button>
               ) : null}
 
               {shouldShowFinalSubmit ? (
-                <button type="button" className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn" onClick={() => openSubmitModal('final')} disabled={isAssessmentSubmitted || hasPendingSections}>
+                <button
+                  type="button"
+                  className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn"
+                  onClick={() => openSubmitModal('final')}
+                  disabled={isAssessmentSubmitted || hasPendingSections || isExamActionLocked}
+                >
                   Submit Assessment
                 </button>
               ) : null}
@@ -1823,6 +2379,37 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
           </div>
         </section>
       )}
+
+      {shouldShowFullscreenViolation ? (
+        <div className="online-practice-submit-overlay" role="presentation">
+          <section className={`online-proctored-violation-overlay online-practice-submit-modal is-${proctorViolation.phase}`} role="dialog" aria-modal="true" aria-labelledby="online-proctored-violation-title">
+            <span className="online-practice-time-limit-icon" aria-hidden="true">
+              <AlertTriangle size={34} strokeWidth={2.4} />
+            </span>
+            <h2 id="online-proctored-violation-title">Security Violation</h2>
+            <p>{proctorViolation.message}</p>
+            {!isFullscreenMode ? (
+              <p className="online-proctored-violation-note">Fullscreen mode is required to continue. Return to fullscreen to resume.</p>
+            ) : null}
+            {proctorViolationRemainingSeconds > 0 ? (
+              <p className="online-proctored-violation-note">
+                {isProctorPenaltyOrLock ? 'Restricted for' : 'Auto action in'}
+                {' '}
+                {String(proctorViolationRemainingSeconds).padStart(2, '0')}
+                {' '}
+                seconds.
+              </p>
+            ) : null}
+            <div className="online-practice-submit-actions online-practice-exit-actions">
+              {!isFullscreenMode ? (
+                <button type="button" onClick={returnToFullscreen}>
+                  Return Fullscreen
+                </button>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {submitModal ? (
         <div className="online-practice-submit-overlay" role="presentation">

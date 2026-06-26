@@ -7,6 +7,7 @@ import '../styles/assessment-pages.css'
 
 const EXAM_CONTROLS_ASSESSMENT_KEY = 'vx-exam-controls-assessment'
 const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
+const EXAM_CONTROLS_STATE_CHANGED_EVENT = 'vx-exam-controls-state-changed'
 const ASSESSMENT_CREATE_INITIAL_TAB_KEY = 'vx-assessment-create-initial-tab'
 const STUDENT_EXAM_TIME_EXTENSIONS_KEY = 'vx-student-exam-time-extensions'
 const STUDENT_EXAM_TIME_EXTENSION_EVENT = 'vx-student-exam-time-extension-changed'
@@ -48,6 +49,9 @@ const readControlState = (assessmentId) => {
 
 const writeControlState = (assessmentId, state) => {
   window.localStorage.setItem(`${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`, JSON.stringify(state))
+  window.dispatchEvent(new CustomEvent(EXAM_CONTROLS_STATE_CHANGED_EVENT, {
+    detail: { assessmentId },
+  }))
 }
 
 const isSameAssessmentRecord = (first, second) => {
@@ -333,7 +337,7 @@ function ExamControlsPage({ onNavigate }) {
   useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 1000)
     return () => window.clearInterval(intervalId)
-  }, [])
+  }, [assessmentId])
 
   useEffect(() => {
     if (!assessment) return
@@ -343,23 +347,36 @@ function ExamControlsPage({ onNavigate }) {
   useEffect(() => {
     const syncSubmissionStatuses = () => setSubmissionStatuses(readStudentSubmissionStatuses())
     const syncStudentSessions = () => setStudentSessions(readStudentExamSessions())
+    const syncControlState = () => setControlState(readControlState(assessmentId))
 
     const handleStorage = (event) => {
       if (event.key === STUDENT_EXAM_SUBMISSION_STATUS_KEY) syncSubmissionStatuses()
       if (event.key === STUDENT_EXAM_SESSION_KEY) syncStudentSessions()
+      if (event.key === `${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`) syncControlState()
     }
 
     const handleStatusEvent = () => syncSubmissionStatuses()
     const handleSessionEvent = () => syncStudentSessions()
+    const handleControlStateEvent = (event) => {
+      if (!event?.detail) {
+        syncControlState()
+        return
+      }
+      if (!event.detail.assessmentId || event.detail.assessmentId === assessmentId) {
+        syncControlState()
+      }
+    }
 
     window.addEventListener('storage', handleStorage)
     window.addEventListener(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, handleStatusEvent)
     window.addEventListener(STUDENT_EXAM_SESSION_EVENT, handleSessionEvent)
+    window.addEventListener(EXAM_CONTROLS_STATE_CHANGED_EVENT, handleControlStateEvent)
 
     return () => {
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, handleStatusEvent)
       window.removeEventListener(STUDENT_EXAM_SESSION_EVENT, handleSessionEvent)
+      window.removeEventListener(EXAM_CONTROLS_STATE_CHANGED_EVENT, handleControlStateEvent)
     }
   }, [])
 
