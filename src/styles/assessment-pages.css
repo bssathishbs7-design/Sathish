@@ -22236,6 +22236,12 @@
     grid-template-columns: 38px minmax(0, 1fr);
     align-items: start;
     gap: 9px;
+    width: 100%;
+  }
+
+  .create-assessment-title-row.has-no-logo,
+  .create-assessment-title-row:not(:has(.create-assessment-logo)) {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .create-assessment-logo {
@@ -22251,6 +22257,8 @@
   .create-assessment-title-copy h1 {
     font-size: 1.06rem;
     line-height: 1.18;
+    overflow-wrap: normal;
+    word-break: normal;
   }
 
   .create-assessment-title-copy p {
@@ -22258,6 +22266,8 @@
     font-size: 0.72rem;
     line-height: 1.35;
     white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
   }
 
   .create-assessment-header-actions {
@@ -22791,6 +22801,214 @@
 
   .assessment-create-form-actions button {
     width: 100%;
+  }
+}
+
+/* Create assessment configuration mobile fit fixes */
+@media (max-width: 767.98px) {
+  .create-assessment-workspace .assessment-create-setup-card,
+  .create-assessment-workspace .create-assessment-schedule-block,
+  .create-assessment-workspace .create-assessment-threshold-section,
+  .create-assessment-workspace .create-assessment-assign-card,
+  .create-assessment-workspace .create-assessment-timing-panel,
+  .create-assessment-workspace .create-assessment-schedule-options {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .create-assessment-workspace .assessment-create-setup-card {
+    gap: 14px;
+    overflow: hidden;
+    padding: 12px;
+  }
+
+  .create-assessment-workspace .assessment-create-setup-top,
+  .create-assessment-workspace .assessment-create-side-fields,
+  .create-assessment-workspace .assessment-create-year-action-row,
+  .create-assessment-workspace .create-assessment-schedule-layout,
+  .create-assessment-workspace .create-assessment-schedule-grid,
+  .create-assessment-workspace .create-assessment-schedule-grid.is-offline,
+  .create-assessment-workspace .create-assessment-schedule-grid.is-practice,
+  .create-assessment-workspace .create-assessment-schedule-grid.is-proctored-shared,
+  .create-assessment-workspace .create-assessment-schedule-grid.is-proctored-date,
+  .create-assessment-workspace .create-assessment-assign-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .create-assessment-workspace .assessment-create-setup-top {
+    grid-template-areas:
+      "logo"
+      "college"
+      "name"
+      "side";
+    gap: 12px;
+  }
+
+  .create-assessment-workspace .assessment-create-upload {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .create-assessment-workspace .assessment-create-upload strong {
+    width: 100%;
+    min-height: 156px;
+  }
+
+  .create-assessment-workspace .assessment-create-field,
+  .create-assessment-workspace .create-assessment-schedule-field,
+  .create-assessment-workspace .create-assessment-schedule-toggle-field {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .create-assessment-workspace .assessment-create-field > span:first-child:not(.assessment-create-select-wrap),
+  .create-assessment-workspace .create-assessment-schedule-field > span:first-child,
+  .create-assessment-workspace .create-assessment-schedule-toggle-field > span:first-child,
+  .create-assessment-workspace .create-assessment-threshold-section-head > span,
+  .create-assessment-workspace .create-assessment-schedule-head > strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .create-assessment-workspace .assessment-create-field input,
+  .create-assessment-workspace .assessment-create-field select,
+  .create-assessment-workspace .assessment-create-select-wrap,
+  .create-assessment-workspace .assessment-create-multiselect-control,
+  .create-assessment-workspace .create-assessment-schedule-field input,
+  .create-assessment-workspace .create-assessment-schedule-field select,
+  .create-assessment-workspace .create-assessment-date-input,
+  .create-assessment-workspace .create-assessment-time-stepper,
+  .create-assessment-workspace .create-assessment-time-stepper-trigger,
+  .create-assessment-workspace .create-assessment-assign-select,
+  .create-assessment-workspace .create-assessment-assign-select select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .create-assessment-workspace .create-assessment-mode-toggle {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-self: stretch;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .create-assessment-workspace .create-assessment-mode-toggle button {
+    min-width: 0;
+    padding-inline: 8px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .create-assessment-workspace .create-assessment-schedule-head,
+  .create-assessment-workspace .create-assessment-instructions-section-head,
+  .create-assessment-workspace .create-assessment-timing-panel-head {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .create-assessment-workspace .create-assessment-instructions-section-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .create-assessment-workspace .create-assessment-instructions-section-head .create-assessment-threshold-section-head,
+  .create-assessment-workspace .create-assessment-threshold-section-head {
+    min-width: 0;
+  }
+
+  .create-assessment-workspace .create-assessment-instructions-section-head .create-assessment-yes-no-toggle {
+    justify-self: stretch;
+    width: 100%;
+    margin: 0 12px 12px;
+    max-width: calc(100% - 24px);
+  }
+
+  .create-assessment-workspace .create-assessment-process-checklist {
+    position: static;
+    z-index: auto;
+    justify-items: stretch;
+    width: 100%;
+    margin-top: 14px;
+    padding: 0;
+    pointer-events: auto;
+  }
+
+  .create-assessment-workspace .create-assessment-process-checklist-trigger {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+    justify-content: space-between;
+  }
+
+  .create-assessment-workspace .create-assessment-process-checklist-panel {
+    order: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    transform-origin: top center;
+  }
+
+  .create-assessment-workspace .assessment-create-form-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+
+  .create-assessment-workspace .assessment-create-form-actions button {
+    width: 100%;
+    min-height: 46px;
+    height: auto;
+    flex: 0 0 auto;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+  }
+
+  .create-assessment-workspace .assessment-create-form-actions-spacer {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .create-assessment-workspace-body {
+    padding-inline: 8px;
+  }
+
+  .create-assessment-workspace-main {
+    padding-inline: 0;
+  }
+
+  .create-assessment-workspace .assessment-create-setup-card,
+  .create-assessment-workspace .create-assessment-schedule-block,
+  .create-assessment-workspace .create-assessment-threshold-section-body,
+  .create-assessment-workspace .create-assessment-assign-card,
+  .create-assessment-workspace .create-assessment-timing-panel {
+    padding: 12px;
+  }
+
+  .create-assessment-workspace .create-assessment-mode-toggle button {
+    font-size: 0.72rem;
+  }
+
+  .create-assessment-workspace .assessment-create-form-actions button {
+    min-height: 44px;
+    font-size: 0.78rem;
   }
 }
 

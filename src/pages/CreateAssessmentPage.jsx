@@ -3647,7 +3647,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   return (
     <section className="create-assessment-workspace">
       <header className="create-assessment-workspace-header">
-        <div className="create-assessment-title-row">
+        <div className={`create-assessment-title-row ${headerSetup.logoPreview ? 'has-logo' : 'has-no-logo'}`}>
           {headerSetup.logoPreview ? (
             <img src={headerSetup.logoPreview} alt={headerSetup.logoName || 'Assessment logo'} className="create-assessment-logo" />
           ) : null}
