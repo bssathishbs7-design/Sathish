@@ -550,16 +550,20 @@ const isPwaStandalone = () => (
   || window.navigator.standalone === true
 )
 
+const hasFullscreenSupport = () => (
+  Boolean(window.document?.documentElement?.requestFullscreen) && window.document.fullscreenEnabled !== false
+)
+
 const detectMultiMonitorSetup = () => {
   if (!window.screen || typeof window.screen.availLeft !== 'number') return false
   return window.screen.availLeft !== 0 || window.screen.availTop !== 0
 }
 
 const isRestrictedProctorEnvironment = () => {
-  if (!isPwaStandalone()) return 'Launch this proctored exam in fullscreen/PWA mode.'
   if (isInAppWebview()) return 'Please open the proctored exam in a standard browser session.'
   if (isMobileDevice() && window.innerWidth < MOBILE_BREAKPOINT_WIDTH) return 'This proctored exam is restricted on mobile phones.'
   if (isTabletDevice()) return 'Tablet mode is restricted for proctored exams.'
+  if (!hasFullscreenSupport()) return 'Launch this proctored exam in fullscreen/PWA mode.'
   if (detectMultiMonitorSetup()) return 'More than one display is detected. Use one screen for the exam.'
   return ''
 }
@@ -1004,9 +1008,12 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       }
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen()
+      } else if (!document.documentElement.requestFullscreen) {
+        setFullscreenError('Launch this proctored exam in fullscreen/PWA mode.')
+        return
       }
     } catch {
-      setFullscreenError('Please allow fullscreen mode to start the proctored exam.')
+      setFullscreenError('Launch this proctored exam in fullscreen/PWA mode.')
       return
     }
 
@@ -1992,10 +1999,21 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               <span>I acknowledge and agree to comply with all stated assessment guidelines.</span>
             </label>
 
-            <button type="button" className="online-practice-start-btn" disabled={!hasAgreed} onClick={startExam}>
+            <button
+              type="button"
+              className="online-practice-start-btn"
+              disabled={!hasAgreed || Boolean(environmentRestrictionMessage)}
+              onClick={startExam}
+            >
               Start Proctored Exam
             </button>
           </div>
+          {environmentRestrictionMessage ? (
+            <div className="online-proctored-fullscreen-alert" role="alert">
+              <AlertTriangle size={16} strokeWidth={2.4} />
+              {environmentRestrictionMessage}
+            </div>
+          ) : null}
           {fullscreenError ? (
             <div className="online-proctored-fullscreen-alert" role="alert">
               <AlertTriangle size={16} strokeWidth={2.4} />
