@@ -823,6 +823,17 @@
   font-weight: 850;
 }
 
+.online-proctored-top-edge-guard {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 18px;
+  z-index: 2147483647;
+  background: transparent;
+  pointer-events: auto;
+}
+
 .online-proctored-sequence-note {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);

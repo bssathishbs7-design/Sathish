@@ -25,6 +25,7 @@ const PROCTOR_WARNING_LABEL = 'Security Violation'
 const PROCTOR_PENALTY_SECONDS = 10
 const PROCTOR_LOCK_SECONDS = 30
 const PROCTOR_VIOLATION_COOLDOWN_MS = 650
+const PROCTOR_TOP_EDGE_GUARD_PX = 18
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
   { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
@@ -1531,6 +1532,15 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       event.preventDefault()
       event.stopPropagation()
     }
+    const handleTopEdgePointer = (event) => {
+      if (typeof event.clientY !== 'number' || event.clientY > PROCTOR_TOP_EDGE_GUARD_PX) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (typeof event.stopImmediatePropagation === 'function') {
+        event.stopImmediatePropagation()
+      }
+      registerViolation('Browser control access attempt', 'Pointer moved to the top screen edge')
+    }
     const handleVisibilityAndHistory = () => {
       if (!hasStarted || isAssessmentSubmitted) return
       if (window.history && window.history.pushState) {
@@ -1573,6 +1583,10 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     window.addEventListener('dragstart', handleDragStart)
     window.addEventListener('selectstart', handleSelectStart)
     window.addEventListener('drop', handleDrop)
+    window.addEventListener('pointermove', handleTopEdgePointer, true)
+    window.addEventListener('mousemove', handleTopEdgePointer, true)
+    document.addEventListener('pointermove', handleTopEdgePointer, true)
+    document.addEventListener('mousemove', handleTopEdgePointer, true)
     window.addEventListener('fullscreenerror', handleFullscreenError)
     window.addEventListener('popstate', handlePopState)
     window.addEventListener('beforeunload', handleBeforeUnload)
@@ -1596,6 +1610,10 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       window.removeEventListener('dragstart', handleDragStart)
       window.removeEventListener('selectstart', handleSelectStart)
       window.removeEventListener('drop', handleDrop)
+      window.removeEventListener('pointermove', handleTopEdgePointer, true)
+      window.removeEventListener('mousemove', handleTopEdgePointer, true)
+      document.removeEventListener('pointermove', handleTopEdgePointer, true)
+      document.removeEventListener('mousemove', handleTopEdgePointer, true)
       window.removeEventListener('fullscreenerror', handleFullscreenError)
       window.removeEventListener('popstate', handlePopState)
       window.removeEventListener('beforeunload', handleBeforeUnload)
@@ -1989,6 +2007,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         shouldBlockProctoringActions ? 'is-proctor-locked' : ''
       } ${isProctorViolationActive ? 'is-proctor-restricted' : ''}`.trim()}
     >
+      {isKeyboardLockedForExam ? <div className="online-proctored-top-edge-guard" aria-hidden="true" /> : null}
       {hasStarted ? (
         <header className={`online-practice-header ${headerChips.length ? '' : 'has-no-chips'}`.trim()}>
           {headerLogo ? (
