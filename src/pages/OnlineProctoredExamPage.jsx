@@ -25,7 +25,6 @@ const PROCTOR_WARNING_LABEL = 'Security Violation'
 const PROCTOR_PENALTY_SECONDS = 10
 const PROCTOR_LOCK_SECONDS = 30
 const PROCTOR_VIOLATION_COOLDOWN_MS = 650
-const MOBILE_BREAKPOINT_WIDTH = 768
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
   { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
@@ -545,6 +544,8 @@ const isTabletDevice = () => {
   return /iPad|Android(?!.*Mobi)|Tablet|PlayBook|Surface|Nexus 7|Nexus 10|SM-T|Kindle/i.test(userAgent)
 }
 
+const isMobileOrTabletDevice = () => isMobileDevice() || isTabletDevice()
+
 const isPwaStandalone = () => (
   (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches))
   || window.navigator.standalone === true
@@ -554,6 +555,48 @@ const hasFullscreenSupport = () => (
   Boolean(window.document?.documentElement?.requestFullscreen) && window.document.fullscreenEnabled !== false
 )
 
+const requestExamKeyboardLock = async () => {
+  if (!window.navigator?.keyboard?.lock) return
+  try {
+    await window.navigator.keyboard.lock([
+      'Escape',
+      'Tab',
+      'AltLeft',
+      'AltRight',
+      'ControlLeft',
+      'ControlRight',
+      'MetaLeft',
+      'MetaRight',
+      'F1',
+      'F3',
+      'F4',
+      'F5',
+      'F6',
+      'F10',
+      'F11',
+      'F12',
+    ])
+  } catch {
+    // Keyboard Lock is browser-dependent and only works in supported fullscreen contexts.
+  }
+}
+
+const releaseExamKeyboardLock = () => {
+  try {
+    window.navigator?.keyboard?.unlock?.()
+  } catch {
+    // Ignore unsupported browser cleanup.
+  }
+}
+
+const blockExamKeyboardEvent = (event) => {
+  event.preventDefault()
+  event.stopPropagation()
+  if (typeof event.stopImmediatePropagation === 'function') {
+    event.stopImmediatePropagation()
+  }
+}
+
 const detectMultiMonitorSetup = () => {
   if (!window.screen || typeof window.screen.availLeft !== 'number') return false
   return window.screen.availLeft !== 0 || window.screen.availTop !== 0
@@ -561,9 +604,7 @@ const detectMultiMonitorSetup = () => {
 
 const isRestrictedProctorEnvironment = () => {
   if (isInAppWebview()) return 'Please open the proctored exam in a standard browser session.'
-  if (isMobileDevice() && window.innerWidth < MOBILE_BREAKPOINT_WIDTH) return 'This proctored exam is restricted on mobile phones.'
-  if (isTabletDevice()) return 'Tablet mode is restricted for proctored exams.'
-  if (!hasFullscreenSupport()) return 'Launch this proctored exam in fullscreen/PWA mode.'
+  if (!isMobileOrTabletDevice() && !hasFullscreenSupport()) return 'Launch this proctored exam in fullscreen/PWA mode.'
   if (detectMultiMonitorSetup()) return 'More than one display is detected. Use one screen for the exam.'
   return ''
 }
@@ -624,6 +665,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [imagePreview, setImagePreview] = useState(null)
   const [fullscreenError, setFullscreenError] = useState('')
   const [isFullscreenMode, setIsFullscreenMode] = useState(false)
+  const [examPause, setExamPause] = useState({
+    active: false,
+    message: '',
+    requiresFullscreen: false,
+  })
   const [environmentRestrictionMessage, setEnvironmentRestrictionMessage] = useState(() => isRestrictedProctorEnvironment())
   const [timeExtension, setTimeExtension] = useState(() => readStudentTimeExtension(assessment))
   const [proctorViolation, setProctorViolation] = useState({
@@ -710,17 +756,21 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const descriptiveAllowsAnswerInput = isAnswerInputMode(setup.descriptiveDisplayType || assessment?.descriptiveDisplayType || 'Read-Only')
   const isMcqLocked = isMcqSubmitted || isAssessmentSubmitted
   const isDescriptiveLocked = isDescriptiveSubmitted || isAssessmentSubmitted
+  const isFullscreenRequiredForDevice = !isMobileOrTabletDevice()
+  const isKeyboardLockedForExam = hasStarted && !isAssessmentSubmitted
+  const isExamPaused = examPause.active && hasStarted && !isAssessmentSubmitted
   const proctorViolationRemainingSeconds = proctorViolation.endsAt ? Math.max(0, Math.ceil((proctorViolation.endsAt - timerNow) / 1000)) : 0
   const isProctorPenaltyOrLock = proctorViolation.phase === 'penalty' || proctorViolation.phase === 'lock'
   const shouldBlockProctoringActions = isProctoredFlowAssessment
     && hasStarted
     && !isAssessmentSubmitted
-    && (proctorViolation.phase === 'warning' || isProctorPenaltyOrLock || proctorViolation.phase === 'auto-submitted')
+    && (isExamPaused || proctorViolation.phase === 'warning' || isProctorPenaltyOrLock || proctorViolation.phase === 'auto-submitted')
   const isProctorViolationActive = shouldBlockProctoringActions || proctorViolation.phase === 'warning' || proctorViolation.phase === 'auto-submitted'
   const shouldShowFullscreenViolation = hasStarted && !isAssessmentSubmitted
     && proctorViolation.phase !== 'idle'
     && proctorViolation.showFullscreenLock
-  const isExamActionLocked = isProctorViolationActive || proctorViolation.phase === 'auto-submitted'
+  const shouldShowExamPauseOverlay = isExamPaused
+  const isExamActionLocked = isExamPaused || isProctorViolationActive || proctorViolation.phase === 'auto-submitted'
   const hasPendingMcq = hasMcqSection && !isMcqSubmitted
   const hasPendingDescriptive = hasDescriptiveSection && !isDescriptiveSubmitted
   const hasPendingSections = hasPendingMcq || hasPendingDescriptive
@@ -986,6 +1036,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const startExam = async () => {
+    const requiresFullscreen = !isMobileOrTabletDevice()
+
     if (environmentRestrictionMessage) {
       setFullscreenError(environmentRestrictionMessage)
       return
@@ -999,6 +1051,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       showFullscreenLock: false,
     })
     setFullscreenError('')
+    setExamPause({
+      active: false,
+      message: '',
+      requiresFullscreen: false,
+    })
     try {
       if (window.history && window.history.pushState) {
         window.history.pushState({ proctor: 'locked' }, '', window.location.href)
@@ -1008,21 +1065,29 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       }
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen()
-      } else if (!document.documentElement.requestFullscreen) {
+      } else if (requiresFullscreen && !document.documentElement.requestFullscreen) {
         setFullscreenError('Launch this proctored exam in fullscreen/PWA mode.')
         return
       }
     } catch {
-      setFullscreenError('Launch this proctored exam in fullscreen/PWA mode.')
-      return
+      if (requiresFullscreen) {
+        setFullscreenError('Launch this proctored exam in fullscreen/PWA mode.')
+        return
+      }
     }
 
-    if (!document.fullscreenElement) {
+    if (requiresFullscreen && !document.fullscreenElement) {
       setFullscreenError('Please enter fullscreen mode to start the proctored exam.')
       return
     }
 
-    setIsFullscreenMode(true)
+    await requestExamKeyboardLock()
+    setIsFullscreenMode(Boolean(document.fullscreenElement))
+    setExamPause({
+      active: false,
+      message: '',
+      requiresFullscreen: false,
+    })
     const startedAt = Date.now()
     setExamStartedAt(startedAt)
     setActiveSequenceStartedAt(isSplitProctoredFlow ? startedAt : null)
@@ -1079,15 +1144,16 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       endsAt: 0,
       showFullscreenLock: false,
     }))
-    appendStudentViolationLog(
-      assessment,
-      CURRENT_STUDENT_ID,
-      `Assessment ${submissionStatus.toLowerCase()} completed.`,
-    )
     setIsAutoExitAfterViolation(false)
+    setExamPause({
+      active: false,
+      message: '',
+      requiresFullscreen: false,
+    })
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(() => {})
     }
+    releaseExamKeyboardLock()
     setIsFullscreenMode(false)
     writeStudentSubmissionStatus(assessment, submissionStatus)
     persistCompletedAssessment()
@@ -1167,7 +1233,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const now = Date.now()
     if (now - violationCooldownRef.current < PROCTOR_VIOLATION_COOLDOWN_MS) return
     violationCooldownRef.current = now
-    if (!document.fullscreenElement) {
+    if (!isMobileOrTabletDevice() && !document.fullscreenElement) {
       setFullscreenError('Fullscreen mode is required to continue.')
     }
     showProctorViolation(reason, details)
@@ -1194,7 +1260,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const hasAltCtrlMeta = event.altKey || hasCtrlMeta
 
     if (key === 'PrintScreen') return 'screenshot attempt'
-    if (event.type === 'contextmenu') return 'context menu blocked'
     if (blockedFnKeys.has(key)) return `${key} key pressed`
 
     if (hasCtrlMeta && ['s', 'c', 'u', 'i', 'j', 'p', 'v', 'x', 'a', 'o', 'l', 'w', 'n', 't', 'r'].includes(lowerKey)) {
@@ -1210,8 +1275,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     if (hasAltCtrlMeta && ['Tab', 'Escape'].includes(key)) return 'Window/application switching attempt'
     if (event.metaKey && ['r', 'l', 'Left', 'Right', 't', 'n'].includes(key)) return 'Browser/application navigation attempt'
     if (event.ctrlKey && ['Tab', 'ArrowLeft', 'ArrowRight'].includes(key)) return 'Window/application switching attempt'
-    if (hasCtrlMeta && key === 'Escape') return 'System escape attempt'
-    if (event.key === 'Meta') return 'System key pressed'
     return ''
   }
 
@@ -1227,7 +1290,13 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     if (!document.documentElement.requestFullscreen || document.fullscreenElement) return
     try {
       await document.documentElement.requestFullscreen()
+      await requestExamKeyboardLock()
       setIsFullscreenMode(true)
+      setExamPause({
+        active: false,
+        message: '',
+        requiresFullscreen: false,
+      })
       setFullscreenError('')
     } catch {
       setFullscreenError('Fullscreen mode is required for proctored exam.')
@@ -1333,76 +1402,128 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }, [isAutoExitAfterViolation, isAssessmentSubmitted, onExit, proctorViolation.phase])
 
   useEffect(() => {
+    if (!isKeyboardLockedForExam) return undefined
+
+    const handleExamKeyboardEvent = (event) => {
+      blockExamKeyboardEvent(event)
+      if (event.type === 'keydown') {
+        requestExamKeyboardLock()
+      }
+    }
+
+    requestExamKeyboardLock()
+    window.addEventListener('keydown', handleExamKeyboardEvent, true)
+    window.addEventListener('keypress', handleExamKeyboardEvent, true)
+    window.addEventListener('keyup', handleExamKeyboardEvent, true)
+    document.addEventListener('keydown', handleExamKeyboardEvent, true)
+    document.addEventListener('keypress', handleExamKeyboardEvent, true)
+    document.addEventListener('keyup', handleExamKeyboardEvent, true)
+
+    return () => {
+      window.removeEventListener('keydown', handleExamKeyboardEvent, true)
+      window.removeEventListener('keypress', handleExamKeyboardEvent, true)
+      window.removeEventListener('keyup', handleExamKeyboardEvent, true)
+      document.removeEventListener('keydown', handleExamKeyboardEvent, true)
+      document.removeEventListener('keypress', handleExamKeyboardEvent, true)
+      document.removeEventListener('keyup', handleExamKeyboardEvent, true)
+      releaseExamKeyboardLock()
+    }
+  }, [isKeyboardLockedForExam])
+
+  useEffect(() => {
     if (!hasStarted || isAssessmentSubmitted) return undefined
+    const requiresFullscreen = !isMobileOrTabletDevice()
+    const pauseExam = (message, requiresFullscreenRestore = false) => {
+      setExamPause((current) => (
+        current.active
+          && current.message === message
+          && current.requiresFullscreen === requiresFullscreenRestore
+          ? current
+          : {
+            active: true,
+            message,
+            requiresFullscreen: requiresFullscreenRestore,
+          }
+      ))
+    }
+    const resumeExam = () => {
+      setExamPause((current) => (
+        current.active
+          ? {
+            active: false,
+            message: '',
+            requiresFullscreen: false,
+          }
+          : current
+      ))
+    }
 
     const handleVisibilityChange = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
-      if (!document.fullscreenElement) {
-        registerViolation('Exam page hidden', 'focus lost')
+      if (requiresFullscreen && !document.fullscreenElement) {
+        pauseExam('Return to fullscreen to continue.', true)
         return
       }
       if (document.hidden) {
-        registerViolation('Exam page hidden', 'focus lost')
+        pauseExam('Return to the exam screen to continue.')
+        return
       }
+      resumeExam()
     }
     const handleBlur = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
-      if (!document.fullscreenElement) {
-        registerViolation('Window focus lost', 'fullscreen mode not active')
+      if (requiresFullscreen && !document.fullscreenElement) {
+        pauseExam('Return to fullscreen to continue.', true)
         return
       }
-      registerViolation('Window focus lost', 'tab switch or app switch')
+      pauseExam('Keep this exam window active to continue.')
+    }
+    const handleFocus = () => {
+      setIsFullscreenMode(Boolean(document.fullscreenElement))
+      if (requiresFullscreen && !document.fullscreenElement) return
+      resumeExam()
     }
     const handleFullscreenChange = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
-      if (!document.fullscreenElement) {
-        registerViolation('Fullscreen exited', 'return to fullscreen to continue')
+      if (requiresFullscreen && !document.fullscreenElement) {
+        pauseExam('Return to fullscreen to continue.', true)
+        return
       }
-    }
-    const handleKeyDown = (event) => {
-      if (isAssessmentSubmitted) return
-      const violation = detectViolationShortcut(event)
-      if (!violation) return
-      event.preventDefault()
-      registerViolation('Restricted shortcut', violation)
+      if (document.fullscreenElement) {
+        requestExamKeyboardLock()
+      }
+      resumeExam()
     }
     const handleCopy = (event) => {
       event.preventDefault()
-      registerViolation('Copy action blocked', 'attempted copy')
+      event.stopPropagation()
     }
     const handleCut = (event) => {
       event.preventDefault()
-      registerViolation('Cut action blocked', 'attempted cut')
+      event.stopPropagation()
     }
     const handlePaste = (event) => {
       event.preventDefault()
-      registerViolation('Paste action blocked', 'attempted paste')
+      event.stopPropagation()
     }
     const handleContextMenu = (event) => {
       event.preventDefault()
-      registerViolation('Right click blocked', 'context menu blocked')
+      event.stopPropagation()
     }
     const handleDragStart = (event) => {
       event.preventDefault()
-      registerViolation('Drag action blocked', 'drag gesture blocked')
+      event.stopPropagation()
     }
     const handleSelectStart = (event) => {
-      const target = event.target
-      const isInputField = target instanceof HTMLElement && (
-        target.matches('input, textarea, [contenteditable="true"], .mcq-option, .descriptive-answer')
-      )
-      if (!isInputField) {
-        event.preventDefault()
-      }
-      registerViolation('Text selection blocked', 'selection gesture blocked')
+      event.preventDefault()
+      event.stopPropagation()
     }
     const handleDrop = (event) => {
       event.preventDefault()
-      registerViolation('File/content drop blocked', 'drop blocked')
+      event.stopPropagation()
     }
     const handleVisibilityAndHistory = () => {
       if (!hasStarted || isAssessmentSubmitted) return
-      registerViolation('Attempt to leave page', 'navigation attempt')
       if (window.history && window.history.pushState) {
         window.history.pushState({ proctor: 'locked' }, '', window.location.href)
       }
@@ -1411,29 +1532,31 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       handleVisibilityAndHistory()
     }
     const handleFullscreenError = () => {
-      registerViolation('Fullscreen blocked', 'fullscreen exit error')
+      if (requiresFullscreen) pauseExam('Return to fullscreen to continue.', true)
     }
 
     const handleBeforeUnload = (event) => {
       if (!hasStarted || isAssessmentSubmitted) return
-      registerViolation('Attempt to leave page', 'page refresh/close')
       event.preventDefault()
       event.returnValue = ''
     }
     const handlePageHide = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
-      registerViolation('Page hidden', 'page visibility change detected')
+      pauseExam('Return to the exam screen to continue.')
     }
     const handleResize = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
-      if (!document.fullscreenElement) {
-        registerViolation('Exam window resized', 'fullscreen mode lost')
+      if (requiresFullscreen && !document.fullscreenElement) {
+        pauseExam('Return to fullscreen to continue.', true)
       }
     }
+    document.addEventListener('visibilitychange', handleVisibilityChange, true)
     window.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('blur', handleBlur)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('fullscreenchange', handleFullscreenChange, true)
+    document.addEventListener('fullscreenerror', handleFullscreenError, true)
     window.addEventListener('fullscreenchange', handleFullscreenChange)
-    window.addEventListener('keydown', handleKeyDown, true)
     window.addEventListener('contextmenu', handleContextMenu)
     window.addEventListener('copy', handleCopy)
     window.addEventListener('cut', handleCut)
@@ -1449,10 +1572,14 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     window.history && window.history.pushState && window.history.pushState({ proctor: 'locked' }, '', window.location.href)
 
     return () => {
+      releaseExamKeyboardLock()
+      document.removeEventListener('visibilitychange', handleVisibilityChange, true)
       window.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange, true)
+      document.removeEventListener('fullscreenerror', handleFullscreenError, true)
       window.removeEventListener('fullscreenchange', handleFullscreenChange)
-      window.removeEventListener('keydown', handleKeyDown, true)
       window.removeEventListener('contextmenu', handleContextMenu)
       window.removeEventListener('copy', handleCopy)
       window.removeEventListener('cut', handleCut)
@@ -1466,7 +1593,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       window.removeEventListener('pagehide', handlePageHide)
       window.removeEventListener('resize', handleResize)
     }
-  }, [hasStarted, isAssessmentSubmitted, proctorViolation.phase])
+  }, [hasStarted, isAssessmentSubmitted])
 
   useEffect(() => {
     if (!assessment) return
@@ -1800,6 +1927,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     if (!imagePreview) return undefined
 
     const handleKeyDown = (event) => {
+      if (isKeyboardLockedForExam) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
       if (event.key === 'Escape') {
         closeImagePreview()
         return
@@ -1810,7 +1942,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [imagePreview])
+  }, [imagePreview, isKeyboardLockedForExam])
 
   if (!assessment) {
     return (
@@ -1986,12 +2118,13 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
             <ul>
               <li>To ensure a fair testing environment, the system uses a controlled online exam window.</li>
               <li>Please remain on the exam page at all times until you submit the assessment.</li>
-              <li>Enter fullscreen mode before starting the exam.</li>
+              <li>Desktop exams require fullscreen mode; mobile and tablet exams are monitored through app and page activity.</li>
+              <li>Keyboard input is disabled during the live proctored exam. Use mouse or touch controls only.</li>
               <li>Do not close the browser window before final submission.</li>
             </ul>
           </section>
 
-          <p className="online-proctored-fullscreen-note">Please click below to enter fullscreen mode and start your exam.</p>
+          <p className="online-proctored-fullscreen-note">Please click below to start your exam. Use mouse or touch only; switching apps, tabs, or leaving the exam screen will be monitored.</p>
 
           <div className="online-practice-start-footer">
             <label className="online-practice-agree">
@@ -2071,7 +2204,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                           <label className="online-practice-descriptive-answer">
                                             <span>Your answer</span>
                                               <textarea
-                                                disabled={isDescriptiveLocked || isExamActionLocked}
+                                                disabled={isDescriptiveLocked || isExamActionLocked || isKeyboardLockedForExam}
                                                 value={descriptiveAnswers[section.id ?? `${question.id}-section-${index}`] ?? ''}
                                                 onChange={(event) => updateDescriptiveAnswer(section.id ?? `${question.id}-section-${index}`, event.target.value)}
                                                 placeholder="Type your answer..."
@@ -2090,7 +2223,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                                 <label className="online-practice-descriptive-answer is-nested">
                                                   <span>Your answer</span>
                                                   <textarea
-                                                    disabled={isDescriptiveLocked || isExamActionLocked}
+                                                    disabled={isDescriptiveLocked || isExamActionLocked || isKeyboardLockedForExam}
                                                     value={descriptiveAnswers[child.id ?? `${question.id}-child-${index}-${childIndex}`] ?? ''}
                                                     onChange={(event) => updateDescriptiveAnswer(child.id ?? `${question.id}-child-${index}-${childIndex}`, event.target.value)}
                                                     placeholder="Type your answer..."
@@ -2106,7 +2239,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                     <label className="online-practice-descriptive-answer">
                                       <span>Your answer</span>
                                       <textarea
-                                        disabled={isDescriptiveLocked || isExamActionLocked}
+                                        disabled={isDescriptiveLocked || isExamActionLocked || isKeyboardLockedForExam}
                                         value={descriptiveAnswers[question.id ?? `${group.key}-${questionIndex}`] ?? ''}
                                         onChange={(event) => updateDescriptiveAnswer(question.id ?? `${group.key}-${questionIndex}`, event.target.value)}
                                         placeholder="Type your answer..."
@@ -2398,6 +2531,25 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         </section>
       )}
 
+      {shouldShowExamPauseOverlay ? (
+        <div className="online-practice-submit-overlay" role="presentation">
+          <section className="online-proctored-violation-overlay online-practice-submit-modal is-paused" role="dialog" aria-modal="true" aria-labelledby="online-proctored-pause-title">
+            <span className="online-practice-time-limit-icon" aria-hidden="true">
+              <AlertTriangle size={34} strokeWidth={2.4} />
+            </span>
+            <h2 id="online-proctored-pause-title">Exam Paused</h2>
+            <p>{examPause.message || 'Return to the exam screen to continue.'}</p>
+            <div className="online-practice-submit-actions online-practice-exit-actions">
+              {examPause.requiresFullscreen ? (
+                <button type="button" onClick={returnToFullscreen}>
+                  Return Fullscreen
+                </button>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       {shouldShowFullscreenViolation ? (
         <div className="online-practice-submit-overlay" role="presentation">
           <section className={`online-proctored-violation-overlay online-practice-submit-modal is-${proctorViolation.phase}`} role="dialog" aria-modal="true" aria-labelledby="online-proctored-violation-title">
@@ -2406,7 +2558,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
             </span>
             <h2 id="online-proctored-violation-title">Security Violation</h2>
             <p>{proctorViolation.message}</p>
-            {!isFullscreenMode ? (
+            {isFullscreenRequiredForDevice && !isFullscreenMode ? (
               <p className="online-proctored-violation-note">Fullscreen mode is required to continue. Return to fullscreen to resume.</p>
             ) : null}
             {proctorViolationRemainingSeconds > 0 ? (
@@ -2419,7 +2571,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               </p>
             ) : null}
             <div className="online-practice-submit-actions online-practice-exit-actions">
-              {!isFullscreenMode ? (
+              {isFullscreenRequiredForDevice && !isFullscreenMode ? (
                 <button type="button" onClick={returnToFullscreen}>
                   Return Fullscreen
                 </button>
