@@ -691,6 +691,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   })
   const [isAutoExitAfterViolation, setIsAutoExitAfterViolation] = useState(false)
   const violationCooldownRef = useRef(0)
+  const isIntentionalFullscreenExitRef = useRef(false)
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
@@ -1161,6 +1162,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       requiresFullscreen: false,
     })
     if (document.fullscreenElement && document.exitFullscreen) {
+      isIntentionalFullscreenExitRef.current = true
       document.exitFullscreen().catch(() => {})
     }
     releaseExamKeyboardLock()
@@ -1496,10 +1498,15 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const handleFullscreenChange = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
+        if (isIntentionalFullscreenExitRef.current) {
+          isIntentionalFullscreenExitRef.current = false
+          return
+        }
         pauseExam('Return to fullscreen to continue.', true)
         return
       }
       if (document.fullscreenElement) {
+        isIntentionalFullscreenExitRef.current = false
         requestExamKeyboardLock()
       }
       resumeExam()
@@ -1539,7 +1546,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       if (typeof event.stopImmediatePropagation === 'function') {
         event.stopImmediatePropagation()
       }
-      registerViolation('Browser control access attempt', 'Pointer moved to the top screen edge')
     }
     const handleVisibilityAndHistory = () => {
       if (!hasStarted || isAssessmentSubmitted) return
