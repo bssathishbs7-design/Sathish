@@ -555,6 +555,15 @@ const hasFullscreenSupport = () => (
   Boolean(window.document?.documentElement?.requestFullscreen) && window.document.fullscreenEnabled !== false
 )
 
+const requestExamFullscreen = async () => {
+  if (!document.documentElement.requestFullscreen || document.fullscreenElement) return
+  try {
+    await document.documentElement.requestFullscreen({ navigationUI: 'hide' })
+  } catch {
+    await document.documentElement.requestFullscreen()
+  }
+}
+
 const requestExamKeyboardLock = async () => {
   if (!window.navigator?.keyboard?.lock) return
   try {
@@ -1064,7 +1073,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         window.screen.orientation.lock('landscape').catch(() => {})
       }
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen()
+        await requestExamFullscreen()
       } else if (requiresFullscreen && !document.documentElement.requestFullscreen) {
         setFullscreenError('Launch this proctored exam in fullscreen/PWA mode.')
         return
@@ -1289,7 +1298,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const returnToFullscreen = async () => {
     if (!document.documentElement.requestFullscreen || document.fullscreenElement) return
     try {
-      await document.documentElement.requestFullscreen()
+      await requestExamFullscreen()
       await requestExamKeyboardLock()
       setIsFullscreenMode(true)
       setExamPause({
@@ -2012,9 +2021,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
             <button type="button" className="online-practice-theme-btn" onClick={onToggleTheme} aria-label="Toggle theme">
               <ThemeIcon size={16} strokeWidth={2.2} />
             </button>
-            <button type="button" className="online-practice-exit-btn" onClick={requestExit}>
-              Exit
-            </button>
+            {!isKeyboardLockedForExam ? (
+              <button type="button" className="online-practice-exit-btn" onClick={requestExit}>
+                Exit
+              </button>
+            ) : null}
           </div>
         </header>
       ) : null}
