@@ -26,6 +26,7 @@ const PROCTOR_PENALTY_SECONDS = 10
 const PROCTOR_LOCK_SECONDS = 30
 const PROCTOR_VIOLATION_COOLDOWN_MS = 650
 const PROCTOR_TOP_EDGE_GUARD_PX = 18
+const EXAM_HEARTBEAT_INTERVAL_MS = 5000
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
   { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
@@ -133,6 +134,46 @@ const appendStudentViolationLog = (assessment, studentId, remarks) => {
       lastViolationAt: new Date().toISOString(),
     }
   })
+}
+
+const appendStudentMonitoringLog = (assessment, studentId, remarks, action = 'Monitoring Event') => {
+  const assessmentId = getAssessmentId(assessment)
+  if (!assessmentId || !studentId) return
+
+  writeExamControlsState(assessment, studentId, (current) => {
+    const nextLog = {
+      id: `${studentId}-monitor-${Date.now()}`,
+      time: formatCompactTime(new Date()),
+      action,
+      remarks,
+      faculty: 'System',
+    }
+
+    return {
+      ...current,
+      logs: [nextLog, ...(current.logs || [])],
+      lastMonitoringEventAt: new Date().toISOString(),
+    }
+  })
+}
+
+const writeStudentExamHeartbeat = (assessment, studentId, state) => {
+  const assessmentId = getAssessmentId(assessment)
+  if (!assessmentId || !studentId) return
+
+  writeExamControlsState(assessment, studentId, (current) => ({
+    ...current,
+    heartbeat: {
+      ...(current.heartbeat || {}),
+      ...state,
+      lastHeartbeatAt: new Date().toISOString(),
+    },
+    overallStatus: state.isSubmitted
+      ? 'Completed'
+      : state.isPaused
+        ? 'Paused'
+        : 'In progress',
+  }))
 }
 
 const readStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => {
@@ -694,6 +735,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const isIntentionalFullscreenExitRef = useRef(false)
   const browserClosePromptRef = useRef(false)
   const fullscreenRestoreTimerRef = useRef(null)
+  const lastMonitoringEventRef = useRef('')
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
@@ -1253,6 +1295,14 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     showProctorViolation(reason, details)
   }
 
+  const recordMonitoringEvent = (reason, details = '') => {
+    if (!hasStarted || isAssessmentSubmitted) return
+    const eventKey = `${reason}:${details}`
+    if (lastMonitoringEventRef.current === eventKey) return
+    lastMonitoringEventRef.current = eventKey
+    appendStudentMonitoringLog(assessment, CURRENT_STUDENT_ID, `${reason}${details ? ` | ${details}` : ''}`)
+  }
+
   const openImagePreview = (images, index = 0) => {
     if (isExamActionLocked) return
     if (!Array.isArray(images) || !images.length) return
@@ -1504,11 +1554,13 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
         pauseExam('Return to fullscreen to continue.', true)
+        recordMonitoringEvent('Fullscreen interrupted', 'Page visibility changed while fullscreen was inactive')
         scheduleFullscreenRestore()
         return
       }
       if (document.hidden) {
         pauseExam('Return to the exam screen to continue.')
+        recordMonitoringEvent('Tab or page hidden', 'Exam page became hidden')
         return
       }
       resumeExam()
@@ -1517,10 +1569,12 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
         pauseExam('Return to fullscreen to continue.', true)
+        recordMonitoringEvent('Fullscreen interrupted', 'Window lost focus while fullscreen was inactive')
         scheduleFullscreenRestore()
         return
       }
       pauseExam('Keep this exam window active to continue.')
+      recordMonitoringEvent('Window focus lost', 'Exam window lost focus')
     }
     const handleFocus = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
@@ -1540,6 +1594,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
           return
         }
         pauseExam('Return to fullscreen to continue.', true)
+        recordMonitoringEvent('Fullscreen interrupted', 'Browser fullscreen exited')
         scheduleFullscreenRestore()
         return
       }
@@ -1585,6 +1640,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         event.stopImmediatePropagation()
       }
       pauseExam('Exam paused. Move away from browser controls and resume when ready.')
+      recordMonitoringEvent('Browser control area reached', 'Pointer moved to the top screen edge')
     }
     const handleVisibilityAndHistory = () => {
       if (!hasStarted || isAssessmentSubmitted) return
@@ -1598,6 +1654,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const handleFullscreenError = () => {
       if (requiresFullscreen) {
         pauseExam('Return to fullscreen to continue.', true)
+        recordMonitoringEvent('Fullscreen restore failed', 'Browser reported a fullscreen error')
         scheduleFullscreenRestore()
       }
     }
@@ -1606,17 +1663,20 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       if (!hasStarted || isAssessmentSubmitted) return
       browserClosePromptRef.current = true
       pauseExam('Exam paused. Resume when you are ready to continue.')
+      recordMonitoringEvent('Close or refresh prompted', 'Browser beforeunload prompt was triggered')
       event.preventDefault()
       event.returnValue = ''
     }
     const handlePageHide = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       pauseExam('Return to the exam screen to continue.')
+      recordMonitoringEvent('Page leaving or hidden', 'Browser pagehide event was triggered')
     }
     const handleResize = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
         pauseExam('Return to fullscreen to continue.', true)
+        recordMonitoringEvent('Fullscreen interrupted', 'Window resized while fullscreen was inactive')
         scheduleFullscreenRestore()
       }
     }
@@ -1709,6 +1769,35 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     isDescriptiveSubmitted,
     isMcqSubmitted,
     mcqQuestionStatuses,
+  ])
+
+  useEffect(() => {
+    if (!assessment || !hasStarted) return undefined
+
+    const writeHeartbeat = () => {
+      writeStudentExamHeartbeat(assessment, CURRENT_STUDENT_ID, {
+        isSubmitted: isAssessmentSubmitted,
+        isPaused: examPause.active,
+        fullscreenActive: Boolean(document.fullscreenElement),
+        pageVisible: !document.hidden,
+        windowFocused: document.hasFocus(),
+        activeSection,
+        activeQuestionIndex,
+      })
+    }
+
+    writeHeartbeat()
+    if (isAssessmentSubmitted) return undefined
+
+    const intervalId = window.setInterval(writeHeartbeat, EXAM_HEARTBEAT_INTERVAL_MS)
+    return () => window.clearInterval(intervalId)
+  }, [
+    activeQuestionIndex,
+    activeSection,
+    assessment,
+    examPause.active,
+    hasStarted,
+    isAssessmentSubmitted,
   ])
 
   useEffect(() => {
