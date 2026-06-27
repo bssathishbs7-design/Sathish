@@ -692,6 +692,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [isAutoExitAfterViolation, setIsAutoExitAfterViolation] = useState(false)
   const violationCooldownRef = useRef(0)
   const isIntentionalFullscreenExitRef = useRef(false)
+  const browserClosePromptRef = useRef(false)
+  const fullscreenRestoreTimerRef = useRef(null)
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
@@ -1301,6 +1303,10 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const returnToFullscreen = async () => {
     if (!document.documentElement.requestFullscreen || document.fullscreenElement) return
     try {
+      if (fullscreenRestoreTimerRef.current) {
+        window.clearTimeout(fullscreenRestoreTimerRef.current)
+        fullscreenRestoreTimerRef.current = null
+      }
       await requestExamFullscreen()
       await requestExamKeyboardLock()
       setIsFullscreenMode(true)
@@ -1313,6 +1319,30 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     } catch {
       setFullscreenError('Fullscreen mode is required for proctored exam.')
     }
+  }
+
+  const scheduleFullscreenRestore = () => {
+    if (fullscreenRestoreTimerRef.current || !document.documentElement.requestFullscreen || document.fullscreenElement) return
+    fullscreenRestoreTimerRef.current = window.setTimeout(() => {
+      fullscreenRestoreTimerRef.current = null
+      if (!hasStarted || isAssessmentSubmitted || document.fullscreenElement) return
+      returnToFullscreen()
+    }, 1000)
+  }
+
+  const resumePausedExam = async () => {
+    if (isFullscreenRequiredForDevice && !document.fullscreenElement) {
+      await returnToFullscreen()
+      return
+    }
+    await requestExamKeyboardLock()
+    setIsFullscreenMode(Boolean(document.fullscreenElement))
+    setExamPause({
+      active: false,
+      message: '',
+      requiresFullscreen: false,
+    })
+    setFullscreenError('')
   }
 
   const showDescriptiveSection = (groupKey) => {
@@ -1474,6 +1504,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
         pauseExam('Return to fullscreen to continue.', true)
+        scheduleFullscreenRestore()
         return
       }
       if (document.hidden) {
@@ -1486,6 +1517,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
         pauseExam('Return to fullscreen to continue.', true)
+        scheduleFullscreenRestore()
         return
       }
       pauseExam('Keep this exam window active to continue.')
@@ -1493,6 +1525,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const handleFocus = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) return
+      if (browserClosePromptRef.current) {
+        browserClosePromptRef.current = false
+        pauseExam('Exam paused. Resume when you are ready to continue.')
+        return
+      }
       resumeExam()
     }
     const handleFullscreenChange = () => {
@@ -1503,6 +1540,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
           return
         }
         pauseExam('Return to fullscreen to continue.', true)
+        scheduleFullscreenRestore()
         return
       }
       if (document.fullscreenElement) {
@@ -1546,6 +1584,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       if (typeof event.stopImmediatePropagation === 'function') {
         event.stopImmediatePropagation()
       }
+      pauseExam('Exam paused. Move away from browser controls and resume when ready.')
     }
     const handleVisibilityAndHistory = () => {
       if (!hasStarted || isAssessmentSubmitted) return
@@ -1557,11 +1596,16 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       handleVisibilityAndHistory()
     }
     const handleFullscreenError = () => {
-      if (requiresFullscreen) pauseExam('Return to fullscreen to continue.', true)
+      if (requiresFullscreen) {
+        pauseExam('Return to fullscreen to continue.', true)
+        scheduleFullscreenRestore()
+      }
     }
 
     const handleBeforeUnload = (event) => {
       if (!hasStarted || isAssessmentSubmitted) return
+      browserClosePromptRef.current = true
+      pauseExam('Exam paused. Resume when you are ready to continue.')
       event.preventDefault()
       event.returnValue = ''
     }
@@ -1573,6 +1617,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
         pauseExam('Return to fullscreen to continue.', true)
+        scheduleFullscreenRestore()
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange, true)
@@ -1601,6 +1646,10 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     window.history && window.history.pushState && window.history.pushState({ proctor: 'locked' }, '', window.location.href)
 
     return () => {
+      if (fullscreenRestoreTimerRef.current) {
+        window.clearTimeout(fullscreenRestoreTimerRef.current)
+        fullscreenRestoreTimerRef.current = null
+      }
       releaseExamKeyboardLock()
       document.removeEventListener('visibilitychange', handleVisibilityChange, true)
       window.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -2580,7 +2629,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                 <button type="button" onClick={returnToFullscreen}>
                   Return Fullscreen
                 </button>
-              ) : null}
+              ) : (
+                <button type="button" onClick={resumePausedExam}>
+                  Resume Exam
+                </button>
+              )}
             </div>
           </section>
         </div>
