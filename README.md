@@ -36,7 +36,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored
 
 The launcher automatically appends `kiosk=1` to the URL. Opening the same page manually in a normal browser window will keep the Start button disabled.
 
-From the deployed app, non-kiosk browsers can download `install-proctored-launcher.bat`. The browser cannot run it automatically; a user or admin must open it once. When opened, it creates the desktop shortcut and starts Microsoft Edge kiosk mode immediately.
+From the deployed app, non-kiosk browsers generate and download `install-proctored-launcher.bat`. The browser cannot run it automatically; a user or admin must open it once. When opened, it creates the desktop shortcut and starts Microsoft Edge kiosk mode immediately.
 
 Edge kiosk mode removes the normal browser tabs/address bar from the student view. A normal React page cannot disable OS-level close/task switching by itself; for stricter control, run this from a managed Windows kiosk or assigned-access student account.
 
