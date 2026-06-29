@@ -140,6 +140,24 @@ const clearAssessmentInvigilatorLock = (assessment, studentId = CURRENT_STUDENT_
   }
 }
 
+const requestDashboardFullscreen = async () => {
+  if (typeof document === 'undefined') return false
+  if (document.fullscreenElement) return true
+  if (!document.documentElement?.requestFullscreen) return false
+
+  try {
+    await document.documentElement.requestFullscreen({ navigationUI: 'hide' })
+    return true
+  } catch {
+    try {
+      await document.documentElement.requestFullscreen()
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
 const readPublishedAssessments = () => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
@@ -438,7 +456,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     startAssessmentNow(assessment)
   }
 
-  const confirmInvigilatorPin = () => {
+  const confirmInvigilatorPin = async () => {
     if (!pinUnlockModal?.assessment) return
     const latestLock = getAssessmentInvigilatorLock(pinUnlockModal.assessment)
     const enteredPin = String(pinUnlockModal.pin || '').trim()
@@ -451,6 +469,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
 
     clearAssessmentInvigilatorLock(pinUnlockModal.assessment)
     const assessmentToStart = pinUnlockModal.assessment
+    await requestDashboardFullscreen()
     setPinUnlockModal(null)
     startAssessmentNow(assessmentToStart)
   }
