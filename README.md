@@ -1,44 +1,10 @@
 # React + Vite
 
-## Proctored Exam Kiosk Launch
+## Proctored Exam Fullscreen Flow
 
-Use Microsoft Edge kiosk mode for the online proctored exam when students must not reach normal browser tabs, address bar, close/exit controls, bookmarks, or navigation buttons. The proctored page allows start only when opened from the kiosk launcher.
+The online proctored exam runs in the user's normal browser. When the exam starts, the app requests fullscreen, blocks keyboard/input events during the live attempt, hides the in-app exit action, and shows a solid lock screen if fullscreen is interrupted.
 
-Double-click:
-
-```text
-launch-proctored-kiosk.bat
-```
-
-Or run the Edge kiosk launcher:
-
-```bash
-npm run kiosk:exam
-```
-
-To install a desktop shortcut on a lab machine:
-
-```bash
-npm run kiosk:install
-```
-
-Chrome is available only as a fallback for local testing:
-
-```bash
-npm run kiosk:exam:chrome
-```
-
-To launch a different exam URL:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored-kiosk.ps1 -ExamUrl "https://your-site/my-assessment/online-proctored-exam"
-```
-
-The launcher automatically appends `kiosk=1` to the URL. Opening the same page manually in a normal browser window will keep the Start button disabled.
-
-From the deployed app, non-kiosk browsers generate and download `install-proctored-launcher.bat`. The browser cannot run it automatically; a user or admin must open it once. When opened, it creates the desktop shortcut and starts Microsoft Edge kiosk mode immediately.
-
-Edge kiosk mode removes the normal browser tabs/address bar from the student view. A normal React page cannot disable OS-level close/task switching by itself; for stricter control, run this from a managed Windows kiosk or assigned-access student account.
+A normal browser page cannot disable OS-level close, task switching, or browser-owned fullscreen controls. If stronger restriction is required later, use Safe Exam Browser, kiosk mode, or a managed Windows assigned-access account outside this React app.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

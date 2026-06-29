@@ -607,19 +607,6 @@ const isInAppWebview = () => {
   return /FBAN|FBAV|FB_IAB|Instagram|Line|MicroMessenger|WhatsApp|Telegram|Discord|LinkedInApp|Snapchat|TikTok|WeChat|Pinterest/i.test(userAgent)
 }
 
-const isMicrosoftEdgeBrowser = () => {
-  const userAgent = window.navigator.userAgent || ''
-  return /\bEdg\//.test(userAgent)
-}
-
-const hasKioskLaunchToken = () => {
-  try {
-    return new URLSearchParams(window.location.search).get('kiosk') === '1'
-  } catch {
-    return false
-  }
-}
-
 const isMobileDevice = () => {
   const userAgent = window.navigator.userAgent || ''
   return /Android(?!.*\bTablet\b)|iPhone|iPod|Windows Phone|BlackBerry|IEMobile|Kindle|Silk/i.test(userAgent)
@@ -736,8 +723,6 @@ const detectMultiMonitorSetup = () => {
 
 const isRestrictedProctorEnvironment = () => {
   if (isInAppWebview()) return 'Please open the proctored exam in a standard browser session.'
-  if (!isMicrosoftEdgeBrowser()) return 'Please open this proctored exam in Microsoft Edge kiosk mode.'
-  if (!hasKioskLaunchToken()) return 'Please launch this exam using the Microsoft Edge kiosk launcher.'
   if (!isMobileOrTabletDevice() && !hasFullscreenSupport()) return 'Launch this proctored exam in fullscreen/PWA mode.'
   if (detectMultiMonitorSetup()) return 'More than one display is detected. Use one screen for the exam.'
   return ''
@@ -897,9 +882,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const isFullscreenRequiredForDevice = !isMobileOrTabletDevice()
   const isKeyboardLockedForExam = hasStarted && !isAssessmentSubmitted
   const shouldBlockKeyboardForExamPage = isProctoredFlowAssessment && !isAssessmentSubmitted
-  const shouldOfferKioskLauncher = !hasStarted
-    && Boolean(environmentRestrictionMessage)
-    && /edge kiosk|kiosk launcher/i.test(environmentRestrictionMessage)
   const isExamPaused = examPause.active && hasStarted && !isAssessmentSubmitted
   const proctorViolationRemainingSeconds = proctorViolation.endsAt ? Math.max(0, Math.ceil((proctorViolation.endsAt - timerNow) / 1000)) : 0
   const isProctorPenaltyOrLock = proctorViolation.phase === 'penalty' || proctorViolation.phase === 'lock'
@@ -1240,59 +1222,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       setActiveSection(firstSplitSection)
       setActiveQuestionIndex(0)
     }
-  }
-
-  const openKioskLauncher = () => {
-    const examUrl = new URL(window.location.href)
-    examUrl.searchParams.set('kiosk', '1')
-    const encodedAssessment = encodeAssessmentForUrl(assessment)
-    if (encodedAssessment) {
-      examUrl.searchParams.set('assessment', encodedAssessment)
-    }
-    const examUrlChunks = examUrl.toString().match(/.{1,700}/g) || []
-    const examUrlChunkLines = examUrlChunks
-      .map((chunk) => `set "EXAM_URL=%EXAM_URL%${chunk}"`)
-      .join('\r\n')
-    const batContent = `@echo off
-setlocal
-
-set "EXAM_URL="
-${examUrlChunkLines}
-set "EDGE_PATH=%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe"
-
-if not exist "%EDGE_PATH%" set "EDGE_PATH=%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe"
-if not exist "%EDGE_PATH%" set "EDGE_PATH=%LOCALAPPDATA%\\Microsoft\\Edge\\Application\\msedge.exe"
-
-if not exist "%EDGE_PATH%" (
-  echo Microsoft Edge was not found.
-  echo Please install Microsoft Edge and try again.
-  pause
-  exit /b 1
-)
-
-start "" "%EDGE_PATH%" --kiosk "%EXAM_URL%" --edge-kiosk-type=fullscreen --no-first-run --disable-infobars --disable-session-crashed-bubble --overscroll-history-navigation=0
-
-echo Microsoft Edge kiosk mode is starting now.
-timeout /t 3 >nul
-`
-    const blob = new Blob([batContent], { type: 'application/x-bat' })
-    const downloadUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = 'install-proctored-launcher.bat'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(downloadUrl)
-  }
-
-  const handleStartExamClick = () => {
-    if (shouldOfferKioskLauncher) {
-      openKioskLauncher()
-      return
-    }
-
-    startExam()
   }
 
   const openSubmitModal = (section) => {
@@ -2480,25 +2409,29 @@ timeout /t 3 >nul
 
           <div className="online-practice-start-footer">
             <label className="online-practice-agree">
-              <input type="checkbox" checked={hasAgreed} onChange={(event) => setHasAgreed(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={hasAgreed}
+                onChange={(event) => setHasAgreed(event.target.checked)}
+                onKeyDown={blockExamKeyboardEvent}
+              />
               <span>I acknowledge and agree to comply with all stated assessment guidelines.</span>
             </label>
 
             <button
               type="button"
               className="online-practice-start-btn"
-              disabled={!hasAgreed || (Boolean(environmentRestrictionMessage) && !shouldOfferKioskLauncher)}
-              onClick={handleStartExamClick}
+              disabled={!hasAgreed || Boolean(environmentRestrictionMessage)}
+              onKeyDown={blockExamKeyboardEvent}
+              onClick={startExam}
             >
-              {shouldOfferKioskLauncher ? 'Download Edge Kiosk Launcher' : 'Start Proctored Exam'}
+              Start Proctored Exam
             </button>
           </div>
           {environmentRestrictionMessage ? (
             <div className="online-proctored-fullscreen-alert" role="alert">
               <AlertTriangle size={16} strokeWidth={2.4} />
-              {shouldOfferKioskLauncher
-                ? `${environmentRestrictionMessage} Download and run the launcher file to start Edge kiosk mode.`
-                : environmentRestrictionMessage}
+              {environmentRestrictionMessage}
             </div>
           ) : null}
           {fullscreenError ? (
