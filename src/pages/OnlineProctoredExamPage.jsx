@@ -597,6 +597,48 @@ const hasFullscreenSupport = () => (
   Boolean(window.document?.documentElement?.requestFullscreen) && window.document.fullscreenEnabled !== false
 )
 
+const EXAM_KEYBOARD_LOCK_KEYS = [
+  'Escape',
+  'Tab',
+  'AltLeft',
+  'AltRight',
+  'ControlLeft',
+  'ControlRight',
+  'ShiftLeft',
+  'ShiftRight',
+  'MetaLeft',
+  'MetaRight',
+  'ContextMenu',
+  'PrintScreen',
+  'ScrollLock',
+  'Pause',
+  'Insert',
+  'Delete',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown',
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'Enter',
+  'Space',
+  'Backspace',
+  'F1',
+  'F2',
+  'F3',
+  'F4',
+  'F5',
+  'F6',
+  'F7',
+  'F8',
+  'F9',
+  'F10',
+  'F11',
+  'F12',
+]
+
 const requestExamFullscreen = async () => {
   if (!document.documentElement.requestFullscreen || document.fullscreenElement) return
   try {
@@ -609,24 +651,7 @@ const requestExamFullscreen = async () => {
 const requestExamKeyboardLock = async () => {
   if (!window.navigator?.keyboard?.lock) return
   try {
-    await window.navigator.keyboard.lock([
-      'Escape',
-      'Tab',
-      'AltLeft',
-      'AltRight',
-      'ControlLeft',
-      'ControlRight',
-      'MetaLeft',
-      'MetaRight',
-      'F1',
-      'F3',
-      'F4',
-      'F5',
-      'F6',
-      'F10',
-      'F11',
-      'F12',
-    ])
+    await window.navigator.keyboard.lock(EXAM_KEYBOARD_LOCK_KEYS)
   } catch {
     // Keyboard Lock is browser-dependent and only works in supported fullscreen contexts.
   }
