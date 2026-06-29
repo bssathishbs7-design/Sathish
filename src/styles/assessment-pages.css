@@ -4121,44 +4121,50 @@
 
 .exam-controls-table:not(.is-split) th:nth-child(1),
 .exam-controls-table:not(.is-split) td:nth-child(1) {
-  width: 11%;
+  width: 9%;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(2),
 .exam-controls-table:not(.is-split) td:nth-child(2) {
-  width: 9%;
+  width: 8%;
   text-align: center;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(3),
 .exam-controls-table:not(.is-split) td:nth-child(3) {
-  width: 19%;
+  width: 18%;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(4),
 .exam-controls-table:not(.is-split) td:nth-child(4) {
-  width: 11%;
+  width: 10%;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(5),
-.exam-controls-table:not(.is-split) td:nth-child(5),
-.exam-controls-table:not(.is-split) th:nth-child(6),
-.exam-controls-table:not(.is-split) td:nth-child(6),
-.exam-controls-table:not(.is-split) th:nth-child(7),
-.exam-controls-table:not(.is-split) td:nth-child(7) {
+.exam-controls-table:not(.is-split) td:nth-child(5) {
   width: 10%;
   text-align: center;
 }
 
+.exam-controls-table:not(.is-split) th:nth-child(6),
+.exam-controls-table:not(.is-split) td:nth-child(6),
+.exam-controls-table:not(.is-split) th:nth-child(7),
+.exam-controls-table:not(.is-split) td:nth-child(7),
 .exam-controls-table:not(.is-split) th:nth-child(8),
 .exam-controls-table:not(.is-split) td:nth-child(8) {
-  width: 12%;
+  width: 8%;
   text-align: center;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(9),
 .exam-controls-table:not(.is-split) td:nth-child(9) {
-  width: 12%;
+  width: 10%;
+  text-align: center;
+}
+
+.exam-controls-table:not(.is-split) th:nth-child(10),
+.exam-controls-table:not(.is-split) td:nth-child(10) {
+  width: 11%;
   text-align: center;
 }
 
