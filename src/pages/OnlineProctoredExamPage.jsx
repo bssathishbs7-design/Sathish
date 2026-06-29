@@ -703,6 +703,10 @@ const releaseExamKeyboardLock = () => {
   }
 }
 
+const isKeyboardGeneratedClick = (event) => (
+  event.detail === 0 && event.nativeEvent?.pointerType !== 'mouse' && event.nativeEvent?.pointerType !== 'touch'
+)
+
 const blockExamKeyboardEvent = (event) => {
   event.preventDefault()
   event.stopPropagation()
@@ -804,6 +808,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const browserClosePromptRef = useRef(false)
   const fullscreenRestoreTimerRef = useRef(null)
   const lastMonitoringEventRef = useRef('')
+  const startPointerIntentRef = useRef(false)
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
@@ -881,7 +886,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const isDescriptiveLocked = isDescriptiveSubmitted || isAssessmentSubmitted
   const isFullscreenRequiredForDevice = !isMobileOrTabletDevice()
   const isKeyboardLockedForExam = hasStarted && !isAssessmentSubmitted
-  const shouldBlockKeyboardForExamPage = isProctoredFlowAssessment && !isAssessmentSubmitted
+  const shouldBlockKeyboardForExamPage = !isAssessmentSubmitted
   const isExamPaused = examPause.active && hasStarted && !isAssessmentSubmitted
   const proctorViolationRemainingSeconds = proctorViolation.endsAt ? Math.max(0, Math.ceil((proctorViolation.endsAt - timerNow) / 1000)) : 0
   const isProctorPenaltyOrLock = proctorViolation.phase === 'penalty' || proctorViolation.phase === 'lock'
@@ -1222,6 +1227,20 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       setActiveSection(firstSplitSection)
       setActiveQuestionIndex(0)
     }
+  }
+
+  const handleStartExamPointerDown = () => {
+    startPointerIntentRef.current = true
+  }
+
+  const handleStartExamClick = (event) => {
+    if (isKeyboardGeneratedClick(event) || !startPointerIntentRef.current) {
+      blockExamKeyboardEvent(event)
+      return
+    }
+
+    startPointerIntentRef.current = false
+    startExam()
   }
 
   const openSubmitModal = (section) => {
@@ -2423,7 +2442,10 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               className="online-practice-start-btn"
               disabled={!hasAgreed || Boolean(environmentRestrictionMessage)}
               onKeyDown={blockExamKeyboardEvent}
-              onClick={startExam}
+              onKeyUp={blockExamKeyboardEvent}
+              onKeyPress={blockExamKeyboardEvent}
+              onPointerDown={handleStartExamPointerDown}
+              onClick={handleStartExamClick}
             >
               Start Proctored Exam
             </button>
