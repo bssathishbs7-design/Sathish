@@ -2426,7 +2426,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
             <div className="online-proctored-fullscreen-alert" role="alert">
               <AlertTriangle size={16} strokeWidth={2.4} />
               {shouldOfferKioskLauncher
-                ? `${environmentRestrictionMessage} Click the installer button above, run the downloaded file once, then use the desktop launcher.`
+                ? `${environmentRestrictionMessage} Click the installer button above, then run the downloaded file to start Edge kiosk mode.`
                 : environmentRestrictionMessage}
             </div>
           ) : null}
