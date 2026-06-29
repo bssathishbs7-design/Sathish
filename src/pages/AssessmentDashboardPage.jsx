@@ -25,7 +25,10 @@ const dashboardCards = [
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const ONLINE_PRACTICE_EXAM_STORAGE_KEY = 'vx-online-practice-exam-assessment'
 const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
+const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
+const EXAM_CONTROLS_STATE_CHANGED_EVENT = 'vx-exam-controls-state-changed'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
+const CURRENT_STUDENT_ID = 'MC2568'
 const MY_ASSESSMENT_FILTER_DEFAULTS = {
   status: 'all',
   supervision: 'all',
@@ -72,6 +75,68 @@ const isSameAssessmentRecord = (first, second) => {
     && first.startDate === second.startDate
     && first.startTime === second.startTime
   )
+}
+
+const getAssessmentId = (assessment) => (
+  assessment?.id || assessment?.assessmentId || assessment?.setup?.assessmentId || 'selected-assessment'
+)
+
+const formatDashboardTime = (value) => (
+  value && !Number.isNaN(new Date(value).getTime())
+    ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : '-'
+)
+
+const readExamControlsState = (assessment) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(`${EXAM_CONTROLS_STATE_KEY}:${getAssessmentId(assessment)}`) || 'null')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const getAssessmentInvigilatorLock = (assessment, studentId = CURRENT_STUDENT_ID) => {
+  const lock = readExamControlsState(assessment)?.[studentId]?.invigilatorLock
+  return lock && typeof lock === 'object' ? lock : null
+}
+
+const clearAssessmentInvigilatorLock = (assessment, studentId = CURRENT_STUDENT_ID) => {
+  const assessmentId = getAssessmentId(assessment)
+  try {
+    const parsed = readExamControlsState(assessment)
+    const currentState = parsed[studentId] || {}
+    const lock = currentState.invigilatorLock || {}
+    const nextLog = {
+      id: `${studentId}-invigilator-unlock-${Date.now()}`,
+      time: formatDashboardTime(new Date()),
+      action: 'Exam Unlocked',
+      remarks: `Invigilator PIN accepted for fullscreen exit ${lock.exitCount || '-'}.`,
+      faculty: 'Invigilator',
+    }
+
+    const nextState = {
+      ...parsed,
+      [studentId]: {
+        ...currentState,
+        invigilatorLock: {
+          ...lock,
+          active: false,
+          unlockedAt: new Date().toISOString(),
+        },
+        overallStatus: 'In progress',
+        logs: [nextLog, ...(currentState.logs || [])],
+        updatedAt: new Date().toISOString(),
+      },
+    }
+
+    window.localStorage.setItem(`${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`, JSON.stringify(nextState))
+    window.dispatchEvent(new CustomEvent(EXAM_CONTROLS_STATE_CHANGED_EVENT, {
+      detail: { assessmentId, studentId },
+    }))
+  } catch {
+    // Unlock is best-effort; if storage fails the attempt will remain locked.
+  }
 }
 
 const readPublishedAssessments = () => {
@@ -251,6 +316,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   const [myAssessmentSearchValue, setMyAssessmentSearchValue] = useState('')
   const [myAssessmentFilters, setMyAssessmentFilters] = useState(MY_ASSESSMENT_FILTER_DEFAULTS)
   const [isMyAssessmentFilterOpen, setIsMyAssessmentFilterOpen] = useState(false)
+  const [pinUnlockModal, setPinUnlockModal] = useState(null)
   const studentOnlineAssessments = publishedAssessments.filter((assessment) => (
     isOnlinePracticeAssessment(assessment) || isOnlineProctoredAssessment(assessment)
   ))
@@ -327,7 +393,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     setIsMyAssessmentFilterOpen(false)
   }
 
-  const handleStartAssessment = (assessment) => {
+  const startAssessmentNow = (assessment) => {
     if (!assessment) return
     const isPracticeAssessment = isOnlinePracticeAssessment(assessment)
     const isProctoredAssessment = isOnlineProctoredAssessment(assessment)
@@ -350,6 +416,42 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     }
 
     onNavigate?.(destinationPage)
+  }
+
+  const handleStartAssessment = (assessment) => {
+    if (!assessment) return
+
+    if (isOnlineProctoredAssessment(assessment)) {
+      const invigilatorLock = getAssessmentInvigilatorLock(assessment)
+      if (invigilatorLock?.active) {
+        setPinUnlockModal({
+          assessment,
+          pin: '',
+          error: '',
+          lock: invigilatorLock,
+        })
+        return
+      }
+    }
+
+    startAssessmentNow(assessment)
+  }
+
+  const confirmInvigilatorPin = () => {
+    if (!pinUnlockModal?.assessment) return
+    const latestLock = getAssessmentInvigilatorLock(pinUnlockModal.assessment)
+    const enteredPin = String(pinUnlockModal.pin || '').trim()
+    const expectedPin = String(latestLock?.pin || pinUnlockModal.lock?.pin || '').trim()
+
+    if (!latestLock?.active || !expectedPin || enteredPin !== expectedPin) {
+      setPinUnlockModal((current) => current ? { ...current, error: 'Invalid Invigilator PIN.' } : current)
+      return
+    }
+
+    clearAssessmentInvigilatorLock(pinUnlockModal.assessment)
+    const assessmentToStart = pinUnlockModal.assessment
+    setPinUnlockModal(null)
+    startAssessmentNow(assessmentToStart)
   }
 
   useEffect(() => {

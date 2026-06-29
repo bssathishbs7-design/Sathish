@@ -27,6 +27,8 @@ const PROCTOR_LOCK_SECONDS = 30
 const PROCTOR_VIOLATION_COOLDOWN_MS = 650
 const PROCTOR_TOP_EDGE_GUARD_PX = 18
 const EXAM_HEARTBEAT_INTERVAL_MS = 5000
+const INVIGILATOR_UNLOCK_LIMIT = 2
+const FULLSCREEN_EXIT_COMPLETE_LIMIT = 3
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
   { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
@@ -134,6 +136,19 @@ const writeExamControlsState = (assessment, studentId, stateUpdater) => {
   } catch {
     // Best-effort write so exams are not blocked by local storage failure.
   }
+}
+
+const generateInvigilatorPin = (previousPins = []) => {
+  const usedPins = new Set(previousPins.map((pin) => String(pin)))
+  let nextPin = ''
+  let attempts = 0
+
+  do {
+    nextPin = String(Math.floor(100000 + Math.random() * 900000))
+    attempts += 1
+  } while (usedPins.has(nextPin) && attempts < 20)
+
+  return nextPin
 }
 
 const formatCompactTime = (value) => (
@@ -607,6 +622,11 @@ const isInAppWebview = () => {
   return /FBAN|FBAV|FB_IAB|Instagram|Line|MicroMessenger|WhatsApp|Telegram|Discord|LinkedInApp|Snapchat|TikTok|WeChat|Pinterest/i.test(userAgent)
 }
 
+const isFirefoxBrowser = () => {
+  const userAgent = window.navigator.userAgent || ''
+  return /Firefox\//i.test(userAgent)
+}
+
 const isMobileDevice = () => {
   const userAgent = window.navigator.userAgent || ''
   return /Android(?!.*\bTablet\b)|iPhone|iPod|Windows Phone|BlackBerry|IEMobile|Kindle|Silk/i.test(userAgent)
@@ -727,6 +747,7 @@ const detectMultiMonitorSetup = () => {
 
 const isRestrictedProctorEnvironment = () => {
   if (isInAppWebview()) return 'Please open the proctored exam in a standard browser session.'
+  if (isFirefoxBrowser()) return 'Firefox is not supported for online proctored exams. Please use Chrome or Microsoft Edge.'
   if (!isMobileOrTabletDevice() && !hasFullscreenSupport()) return 'Launch this proctored exam in fullscreen/PWA mode.'
   if (detectMultiMonitorSetup()) return 'More than one display is detected. Use one screen for the exam.'
   return ''
@@ -787,6 +808,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [sequenceTransitionModal, setSequenceTransitionModal] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [fullscreenError, setFullscreenError] = useState('')
+  const [invigilatorLockNotice, setInvigilatorLockNotice] = useState(null)
   const [isFullscreenMode, setIsFullscreenMode] = useState(false)
   const [examPause, setExamPause] = useState({
     active: false,
@@ -809,6 +831,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const fullscreenRestoreTimerRef = useRef(null)
   const lastMonitoringEventRef = useRef('')
   const startPointerIntentRef = useRef(false)
+  const invigilatorLockInProgressRef = useRef(false)
 
   const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
@@ -1347,6 +1370,101 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     }
   }
 
+  const lockExamForInvigilator = (reason = 'Browser fullscreen exited') => {
+    if (!assessment || !hasStarted || isAssessmentSubmitted || invigilatorLockInProgressRef.current) return
+
+    invigilatorLockInProgressRef.current = true
+    if (fullscreenRestoreTimerRef.current) {
+      window.clearTimeout(fullscreenRestoreTimerRef.current)
+      fullscreenRestoreTimerRef.current = null
+    }
+    releaseExamKeyboardLock()
+
+    const assessmentId = getAssessmentId(assessment)
+    const controlsState = readExamControlsState(assessmentId)
+    const currentState = controlsState[CURRENT_STUDENT_ID] || {}
+    const nextExitCount = Number(currentState.fullscreenExitCount || 0) + 1
+    const pinHistory = Array.isArray(currentState.invigilatorPinHistory)
+      ? currentState.invigilatorPinHistory.map((pin) => String(pin))
+      : []
+    const nowIso = new Date().toISOString()
+    const timeLabel = formatCompactTime(new Date())
+
+    if (nextExitCount >= FULLSCREEN_EXIT_COMPLETE_LIMIT) {
+      const completionMessage = 'Completed due to fullscreen violation limit'
+      setInvigilatorLockNotice({
+        title: 'Exam Locked',
+        message: 'Maximum fullscreen exit limit reached. Contact invigilator/admin.',
+      })
+      setExamPause({
+        active: true,
+        message: 'Maximum fullscreen exit limit reached. Contact invigilator/admin.',
+        requiresFullscreen: false,
+      })
+      setIsAssessmentSubmitted(true)
+      if (hasMcqSection) setIsMcqSubmitted(true)
+      if (hasDescriptiveSection) setIsDescriptiveSubmitted(true)
+      writeStudentSubmissionStatus(assessment, completionMessage)
+      persistCompletedAssessment()
+      writeExamControlsState(assessment, CURRENT_STUDENT_ID, {
+        fullscreenExitCount: nextExitCount,
+        invigilatorPinHistory: pinHistory,
+        invigilatorLock: {
+          active: false,
+          exhausted: true,
+          lockedAt: nowIso,
+          reason,
+          exitCount: nextExitCount,
+          maxUnlocks: INVIGILATOR_UNLOCK_LIMIT,
+        },
+        overallStatus: completionMessage,
+        logs: [{
+          id: `${CURRENT_STUDENT_ID}-fullscreen-completed-${Date.now()}`,
+          time: timeLabel,
+          action: 'Exam Completed',
+          remarks: `${reason} | Fullscreen exit ${nextExitCount}/${FULLSCREEN_EXIT_COMPLETE_LIMIT}.`,
+          faculty: 'System',
+        }, ...(currentState.logs || [])],
+      })
+    } else {
+      const pin = generateInvigilatorPin(pinHistory)
+      const nextPinHistory = [...pinHistory, pin]
+      setInvigilatorLockNotice({
+        title: 'Exam Locked',
+        message: 'Contact invigilator to continue.',
+      })
+      setExamPause({
+        active: true,
+        message: 'Contact invigilator to continue.',
+        requiresFullscreen: false,
+      })
+      writeExamControlsState(assessment, CURRENT_STUDENT_ID, {
+        fullscreenExitCount: nextExitCount,
+        invigilatorPinHistory: nextPinHistory,
+        invigilatorLock: {
+          active: true,
+          pin,
+          lockedAt: nowIso,
+          reason,
+          exitCount: nextExitCount,
+          maxUnlocks: INVIGILATOR_UNLOCK_LIMIT,
+        },
+        overallStatus: 'Locked',
+        logs: [{
+          id: `${CURRENT_STUDENT_ID}-fullscreen-lock-${Date.now()}`,
+          time: timeLabel,
+          action: 'Exam Locked',
+          remarks: `${reason} | Unlock PIN ${nextExitCount}/${INVIGILATOR_UNLOCK_LIMIT} generated.`,
+          faculty: 'System',
+        }, ...(currentState.logs || [])],
+      })
+    }
+
+    window.setTimeout(() => {
+      onExit?.(APP_PAGES.MY_ASSESSMENT)
+    }, 1200)
+  }
+
   const requestExit = () => {
     if (isAssessmentSubmitted) {
       onExit?.(APP_PAGES.MY_ASSESSMENT)
@@ -1679,9 +1797,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const handleVisibilityChange = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
-        pauseExam('Return to fullscreen to continue.', true)
         recordMonitoringEvent('Fullscreen interrupted', 'Page visibility changed while fullscreen was inactive')
-        scheduleFullscreenRestore()
+        lockExamForInvigilator('Fullscreen exited')
         return
       }
       if (document.hidden) {
@@ -1694,9 +1811,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const handleBlur = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
-        pauseExam('Return to fullscreen to continue.', true)
         recordMonitoringEvent('Fullscreen interrupted', 'Window lost focus while fullscreen was inactive')
-        scheduleFullscreenRestore()
+        lockExamForInvigilator('Fullscreen exited')
         return
       }
       pauseExam('Keep this exam window active to continue.')
@@ -1719,9 +1835,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
           isIntentionalFullscreenExitRef.current = false
           return
         }
-        pauseExam('Return to fullscreen to continue.', true)
         recordMonitoringEvent('Fullscreen interrupted', 'Browser fullscreen exited')
-        scheduleFullscreenRestore()
+        lockExamForInvigilator('Browser fullscreen exited')
         return
       }
       if (document.fullscreenElement) {
@@ -1779,9 +1894,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     }
     const handleFullscreenError = () => {
       if (requiresFullscreen) {
-        pauseExam('Return to fullscreen to continue.', true)
         recordMonitoringEvent('Fullscreen restore failed', 'Browser reported a fullscreen error')
-        scheduleFullscreenRestore()
+        lockExamForInvigilator('Fullscreen restore failed')
       }
     }
 
@@ -1801,9 +1915,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const handleResize = () => {
       setIsFullscreenMode(Boolean(document.fullscreenElement))
       if (requiresFullscreen && !document.fullscreenElement) {
-        pauseExam('Return to fullscreen to continue.', true)
         recordMonitoringEvent('Fullscreen interrupted', 'Window resized while fullscreen was inactive')
-        scheduleFullscreenRestore()
+        lockExamForInvigilator('Fullscreen exited')
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange, true)
@@ -2840,7 +2953,19 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         </section>
       )}
 
-      {shouldShowExamPauseOverlay ? (
+      {invigilatorLockNotice ? (
+        <div className="online-practice-submit-overlay online-proctored-lock-overlay" role="presentation">
+          <section className="online-proctored-violation-overlay online-practice-submit-modal is-paused" role="dialog" aria-modal="true" aria-labelledby="online-proctored-invigilator-lock-title">
+            <span className="online-practice-time-limit-icon" aria-hidden="true">
+              <AlertTriangle size={34} strokeWidth={2.4} />
+            </span>
+            <h2 id="online-proctored-invigilator-lock-title">{invigilatorLockNotice.title}</h2>
+            <p>{invigilatorLockNotice.message}</p>
+          </section>
+        </div>
+      ) : null}
+
+      {shouldShowExamPauseOverlay && !invigilatorLockNotice ? (
         <div className="online-practice-submit-overlay online-proctored-lock-overlay" role="presentation">
           <section className="online-proctored-violation-overlay online-practice-submit-modal is-paused" role="dialog" aria-modal="true" aria-labelledby="online-proctored-pause-title">
             <span className="online-practice-time-limit-icon" aria-hidden="true">
