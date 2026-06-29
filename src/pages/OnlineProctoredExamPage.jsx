@@ -1212,7 +1212,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const openKioskLauncher = () => {
-    window.location.href = '/launch-proctored-kiosk.bat'
+    window.location.href = '/install-proctored-launcher.bat'
   }
 
   const handleStartExamClick = () => {
@@ -2419,14 +2419,14 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               disabled={!hasAgreed || (Boolean(environmentRestrictionMessage) && !shouldOfferKioskLauncher)}
               onClick={handleStartExamClick}
             >
-              {shouldOfferKioskLauncher ? 'Open Edge Kiosk Launcher' : 'Start Proctored Exam'}
+              {shouldOfferKioskLauncher ? 'Install Edge Kiosk Launcher' : 'Start Proctored Exam'}
             </button>
           </div>
           {environmentRestrictionMessage ? (
             <div className="online-proctored-fullscreen-alert" role="alert">
               <AlertTriangle size={16} strokeWidth={2.4} />
               {shouldOfferKioskLauncher
-                ? `${environmentRestrictionMessage} Click the launcher button above, then run the downloaded file.`
+                ? `${environmentRestrictionMessage} Click the installer button above, run the downloaded file once, then use the desktop launcher.`
                 : environmentRestrictionMessage}
             </div>
           ) : null}

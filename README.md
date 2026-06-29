@@ -16,6 +16,12 @@ Or run the Edge kiosk launcher:
 npm run kiosk:exam
 ```
 
+To install a desktop shortcut on a lab machine:
+
+```bash
+npm run kiosk:install
+```
+
 Chrome is available only as a fallback for local testing:
 
 ```bash
@@ -29,6 +35,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored
 ```
 
 The launcher automatically appends `kiosk=1` to the URL. Opening the same page manually in a normal browser window will keep the Start button disabled.
+
+From the deployed app, non-kiosk browsers can download `install-proctored-launcher.bat`. The browser cannot run it automatically; a user or admin must open it once to create the desktop shortcut.
 
 Edge kiosk mode removes the normal browser tabs/address bar from the student view. A normal React page cannot disable OS-level close/task switching by itself; for stricter control, run this from a managed Windows kiosk or assigned-access student account.
 

@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "kiosk:exam": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored-kiosk.ps1 -Browser edge",
-    "kiosk:exam:chrome": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored-kiosk.ps1 -Browser chrome"
+    "kiosk:exam:chrome": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored-kiosk.ps1 -Browser chrome",
+    "kiosk:install": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install-proctored-launcher.ps1"
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
