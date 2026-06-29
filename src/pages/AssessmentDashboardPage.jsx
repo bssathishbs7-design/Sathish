@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Activity, BadgeCheck, CalendarClock, ChartColumnBig, ClipboardList, EyeOff, ListFilter, Monitor, Search, ShieldCheck, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
@@ -454,6 +455,47 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     startAssessmentNow(assessmentToStart)
   }
 
+  const renderPinUnlockModal = () => {
+    if (!pinUnlockModal) return null
+
+    const content = (
+      <div className="online-practice-submit-overlay my-assessment-pin-overlay" role="presentation">
+        <section className="online-practice-submit-modal online-practice-exit-modal" role="dialog" aria-modal="true" aria-labelledby="my-assessment-pin-title">
+          <span className="online-practice-time-limit-icon" aria-hidden="true">
+            <ShieldCheck size={32} strokeWidth={2.4} />
+          </span>
+          <h2 id="my-assessment-pin-title">Invigilator PIN</h2>
+          <p>Enter the Invigilator PIN to continue this locked exam.</p>
+          <label className="my-assessment-pin-field">
+            <span>Invigilator PIN</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={pinUnlockModal.pin}
+              onChange={(event) => {
+                const nextPin = event.target.value.replace(/\D/g, '').slice(0, 6)
+                setPinUnlockModal((current) => current ? { ...current, pin: nextPin, error: '' } : current)
+              }}
+              autoFocus
+            />
+          </label>
+          {pinUnlockModal.error ? <p className="my-assessment-pin-error">{pinUnlockModal.error}</p> : null}
+          <div className="online-practice-submit-actions online-practice-exit-actions">
+            <button type="button" className="is-secondary" onClick={() => setPinUnlockModal(null)}>
+              Cancel
+            </button>
+            <button type="button" onClick={confirmInvigilatorPin}>
+              Unlock Exam
+            </button>
+          </div>
+        </section>
+      </div>
+    )
+
+    return typeof document === 'undefined' ? content : createPortal(content, document.body)
+  }
+
   useEffect(() => {
     if (!isMyAssessment) return undefined
 
@@ -696,40 +738,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
           </>
         )}
 
-        {pinUnlockModal ? (
-          <div className="online-practice-submit-overlay" role="presentation">
-            <section className="online-practice-submit-modal online-practice-exit-modal" role="dialog" aria-modal="true" aria-labelledby="my-assessment-pin-title">
-              <span className="online-practice-time-limit-icon" aria-hidden="true">
-                <ShieldCheck size={32} strokeWidth={2.4} />
-              </span>
-              <h2 id="my-assessment-pin-title">Invigilator PIN</h2>
-              <p>Enter the Invigilator PIN to continue this locked exam.</p>
-              <label className="my-assessment-pin-field">
-                <span>Invigilator PIN</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={pinUnlockModal.pin}
-                  onChange={(event) => {
-                    const nextPin = event.target.value.replace(/\D/g, '').slice(0, 6)
-                    setPinUnlockModal((current) => current ? { ...current, pin: nextPin, error: '' } : current)
-                  }}
-                  autoFocus
-                />
-              </label>
-              {pinUnlockModal.error ? <p className="my-assessment-pin-error">{pinUnlockModal.error}</p> : null}
-              <div className="online-practice-submit-actions online-practice-exit-actions">
-                <button type="button" className="is-secondary" onClick={() => setPinUnlockModal(null)}>
-                  Cancel
-                </button>
-                <button type="button" onClick={confirmInvigilatorPin}>
-                  Unlock Exam
-                </button>
-              </div>
-            </section>
-          </div>
-        ) : null}
+        {renderPinUnlockModal()}
       </div>
     </section>
   )

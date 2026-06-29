@@ -3687,6 +3687,10 @@
   text-align: left;
 }
 
+.my-assessment-pin-overlay {
+  z-index: 2147483647;
+}
+
 .my-assessment-pin-field span {
   color: #475569;
   font-size: 0.82rem;
