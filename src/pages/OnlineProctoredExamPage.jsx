@@ -651,6 +651,13 @@ const requestExamFullscreen = async () => {
 const requestExamKeyboardLock = async () => {
   if (!window.navigator?.keyboard?.lock) return
   try {
+    await window.navigator.keyboard.lock()
+    return
+  } catch {
+    // Fall back to an explicit lock list when the browser rejects a broad lock.
+  }
+
+  try {
     await window.navigator.keyboard.lock(EXAM_KEYBOARD_LOCK_KEYS)
   } catch {
     // Keyboard Lock is browser-dependent and only works in supported fullscreen contexts.
