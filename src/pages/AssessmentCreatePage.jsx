@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, BadgeCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ArrowRight, BadgeCheck, BarChart3, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -35,6 +35,12 @@ const assessmentMetrics = [
     count: 0,
     icon: BadgeCheck,
     tone: 'published',
+  },
+  {
+    label: 'Evaluation',
+    count: 0,
+    icon: ClipboardCheck,
+    tone: 'evaluation',
   },
 ]
 
@@ -857,7 +863,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
     const requestedTab = window.localStorage.getItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     window.localStorage.removeItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     if (requestedTab === 'published' && readPublishedAssessments().length) return 'published'
-    return readAssessmentDrafts().length ? 'draft' : readPublishedAssessments().length ? 'published' : ''
+    return readAssessmentDrafts().length ? 'draft' : readPublishedAssessments().length ? 'published' : 'draft'
   })
   const metrics = assessmentMetrics.map((metric) => (
     metric.tone === 'draft'
@@ -866,12 +872,38 @@ export default function AssessmentCreatePage({ onNavigate }) {
         ? { ...metric, count: publishedAssessments.length }
         : metric
   ))
+  const assessmentTabItems = metrics.map((metric) => ({
+      key: metric.tone,
+      label: metric.tone === 'pending'
+        ? 'Pending'
+        : metric.label.replace(' Assessment', '').replace('Approval ', ''),
+      count: metric.count,
+      icon: metric.icon,
+    }))
+  const shouldShowDraftAssessments = activeAssessmentTab === 'draft'
+  const shouldShowPublishedAssessments = activeAssessmentTab === 'published'
+  const activeEmptyTab = !['draft', 'published'].includes(activeAssessmentTab)
+    ? assessmentTabItems.find((item) => item.key === activeAssessmentTab)
+    : null
+  const activeTabLabel = assessmentTabItems.find((item) => item.key === activeAssessmentTab)?.label || 'Assessment'
   const livePublishedAssessmentCount = publishedAssessments.filter((assessment) => (
     getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'live'
   )).length
   const activePublishedFilterCount = Object.values(publishedFilters).filter((value) => value !== 'all').length
   const hasPublishedFilter = activePublishedFilterCount > 0
   const hasPublishedSearch = Boolean(publishedSearchValue.trim())
+  const filteredDraftAssessments = draftAssessments.filter((draft) => {
+    const searchText = [
+      getDraftValue(draft, 'assessmentName'),
+      getDraftValue(draft, 'examCategory'),
+      getDraftValue(draft, 'academicYear'),
+      getDraftValue(draft, 'course', 'assignCourse'),
+      getDraftValue(draft, 'year', 'assignYear'),
+      getDraftValue(draft, 'updatedAt', 'savedAt', 'createdAt'),
+    ].filter(Boolean).join(' ').toLowerCase()
+
+    return !hasPublishedSearch || searchText.includes(publishedSearchValue.trim().toLowerCase())
+  })
   const filteredPublishedAssessments = publishedAssessments.filter((assessment) => {
     const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
     const searchText = [
@@ -905,6 +937,66 @@ export default function AssessmentCreatePage({ onNavigate }) {
     setPublishedFilters(PUBLISHED_FILTER_DEFAULTS)
     setIsPublishedFilterOpen(false)
   }
+
+  const renderAssessmentSearchToolbar = () => (
+    <div className="assessment-create-published-toolbar assessment-create-tracker-toolbar">
+      <label className="assessment-create-published-search">
+        <Search size={15} strokeWidth={2.2} aria-hidden="true" />
+        <input
+          type="search"
+          value={publishedSearchValue}
+          placeholder={`Search ${activeTabLabel.toLowerCase()} assessments...`}
+          onChange={(event) => setPublishedSearchValue(event.target.value)}
+        />
+      </label>
+      <span className="assessment-create-published-filter-wrap">
+        <button
+          type="button"
+          className={`assessment-create-published-filter-btn ${hasPublishedFilter ? 'is-active' : ''}`.trim()}
+          onClick={() => setIsPublishedFilterOpen((current) => !current)}
+          aria-expanded={isPublishedFilterOpen}
+        >
+          <ListFilter size={15} strokeWidth={2.3} />
+          Filter
+          {hasPublishedFilter ? <em>{activePublishedFilterCount}</em> : null}
+        </button>
+        {isPublishedFilterOpen ? (
+          <span className="assessment-create-published-filter-popover" role="dialog" aria-label="Assessment filters">
+            {PUBLISHED_FILTER_GROUPS.map((group) => (
+              <label key={group.key}>
+                <span>{group.label}</span>
+                <select
+                  value={publishedFilters[group.key]}
+                  onChange={(event) => {
+                    const nextValue = event.target.value
+                    setPublishedFilters((current) => ({ ...current, [group.key]: nextValue }))
+                  }}
+                >
+                  {group.options.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            ))}
+            <span className="assessment-create-published-filter-actions">
+              <button type="button" onClick={() => setPublishedFilters(PUBLISHED_FILTER_DEFAULTS)}>
+                Reset
+              </button>
+              <button type="button" className="is-primary" onClick={() => setIsPublishedFilterOpen(false)}>
+                Apply
+              </button>
+            </span>
+          </span>
+        ) : null}
+      </span>
+      {(hasPublishedSearch || hasPublishedFilter) ? (
+        <button type="button" className="assessment-create-published-clear-btn" onClick={clearPublishedSearchFilters}>
+          <X size={14} strokeWidth={2.3} />
+          Clear
+        </button>
+      ) : null}
+    </div>
+  )
 
   useEffect(() => {
     if (activeAssessmentTab !== 'published') return undefined
@@ -940,7 +1032,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
       const nextDrafts = current.filter((draft) => draft.id !== draftId)
       window.localStorage.setItem(ASSESSMENT_DRAFTS_STORAGE_KEY, JSON.stringify(nextDrafts))
       if (!nextDrafts.length && activeAssessmentTab === 'draft') {
-        setActiveAssessmentTab('')
+        setActiveAssessmentTab(publishedAssessments.length ? 'published' : 'draft')
       }
       return nextDrafts
     })
@@ -985,7 +1077,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
       window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
       setSelectedPublishedLogAssessment((selected) => (selected?.id === assessmentId ? null : selected))
       if (!nextPublished.length && activeAssessmentTab === 'published') {
-        setActiveAssessmentTab(draftAssessments.length ? 'draft' : '')
+        setActiveAssessmentTab(draftAssessments.length ? 'draft' : 'published')
       }
       return nextPublished
     })
@@ -1001,56 +1093,59 @@ export default function AssessmentCreatePage({ onNavigate }) {
       <div className={`assessment-page-shell assessment-create-page-shell ${activeAssessmentTab === 'draft' ? 'is-draft-tab' : ''}`}>
         <div className="assessment-create-page-header">
           <PageNavigationHeader items={['My Pages', 'Assessment', 'My Progress']} />
-          <button
-            type="button"
-            className={`assessment-create-new-btn ${activeAssessmentTab === 'create' ? 'is-active' : ''}`}
-            onClick={createAssessment}
-          >
-            <Plus size={17} strokeWidth={2.4} />
-            Create Assessment
-          </button>
+          <div className="assessment-create-header-actions" aria-label="Assessment page actions">
+            <button
+              type="button"
+              className="assessment-create-dashboard-btn"
+              onClick={() => onNavigate?.(APP_PAGES.ASSESSMENT_DASHBOARD)}
+            >
+              <BarChart3 size={16} strokeWidth={2.3} />
+              Assessment Analytics
+            </button>
+            <button
+              type="button"
+              className="assessment-create-new-btn"
+              onClick={createAssessment}
+            >
+              <Plus size={17} strokeWidth={2.4} />
+              Create Assessment
+            </button>
+          </div>
         </div>
 
-        <section className="assessment-create-toolbar" aria-label="Assessment create actions">
-          <div className="assessment-create-metrics" aria-label="Assessment create metrics">
-            {metrics.map((metric) => {
-              const Icon = metric.icon
-              const isDisabledMetric = metric.count <= 0
-              const isActiveMetric = activeAssessmentTab === metric.tone && !isDisabledMetric
+        <section className="assessment-create-tabbar" aria-label="Assessment status tabs">
+          <div className="assessment-create-tabs" role="tablist" aria-label="Assessment status filters">
+            {assessmentTabItems.map((tab) => {
+              const Icon = tab.icon
+              const isActive = activeAssessmentTab === tab.key
 
               return (
                 <button
-                  key={metric.label}
+                  key={tab.key}
                   type="button"
-                  className={`assessment-create-metric is-${metric.tone} ${isActiveMetric ? 'is-active' : ''}`}
-                  onClick={() => {
-                    if (isDisabledMetric) return
-                    setActiveAssessmentTab(metric.tone)
-                  }}
-                  disabled={isDisabledMetric}
-                  aria-disabled={isDisabledMetric}
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`assessment-create-tab ${isActive ? 'is-active' : ''}`.trim()}
+                  onClick={() => setActiveAssessmentTab(tab.key)}
                 >
-                  <span className="assessment-create-metric-icon" aria-hidden="true">
-                    <Icon size={16} strokeWidth={2.2} />
-                  </span>
-                  <span className="assessment-create-metric-copy">
-                    <strong>{metric.count}</strong>
-                    <span>{metric.label}</span>
-                  </span>
+                  <Icon size={15} strokeWidth={2.2} aria-hidden="true" />
+                  <span>{tab.label}</span>
+                  <strong>{tab.count}</strong>
                 </button>
               )
             })}
           </div>
         </section>
 
-        {activeAssessmentTab === 'draft' ? (
+        {shouldShowDraftAssessments ? (
           <section className="assessment-create-draft-shell" aria-label="Draft assessments">
             <div className="assessment-create-card-heading">
               <h2>Draft Assessment</h2>
+              {renderAssessmentSearchToolbar()}
             </div>
-            {draftAssessments.length ? (
+            {draftAssessments.length && filteredDraftAssessments.length ? (
               <div className="assessment-create-draft-grid">
-                {draftAssessments.map((draft) => {
+                {filteredDraftAssessments.map((draft) => {
                   const assessmentName = getDraftValue(draft, 'assessmentName') || 'Untitled Assessment'
                   const examCategory = getDraftValue(draft, 'examCategory') || 'Assessment'
                   const academicYear = getDraftValue(draft, 'academicYear') || '-'
@@ -1109,6 +1204,10 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   )
                 })}
               </div>
+            ) : draftAssessments.length ? (
+              <div className="assessment-create-placeholder">
+                <p>No draft assessments match your search.</p>
+              </div>
             ) : (
               <div className="assessment-create-placeholder">
                 <p>No draft assessments available.</p>
@@ -1117,7 +1216,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
           </section>
         ) : null}
 
-        {activeAssessmentTab === 'published' ? (
+        {shouldShowPublishedAssessments ? (
           <section className="assessment-create-draft-shell assessment-create-published-shell" aria-label="Published assessments">
             <div className="assessment-create-card-heading">
               <div className="assessment-create-published-title">
@@ -1140,65 +1239,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   </button>
                 ) : null}
               </div>
-              {publishedAssessments.length ? (
-                <div className="assessment-create-published-toolbar">
-                  <label className="assessment-create-published-search">
-                    <Search size={15} strokeWidth={2.2} aria-hidden="true" />
-                    <input
-                      type="search"
-                      value={publishedSearchValue}
-                      placeholder="Search published assessments..."
-                      onChange={(event) => setPublishedSearchValue(event.target.value)}
-                    />
-                  </label>
-                  <span className="assessment-create-published-filter-wrap">
-                    <button
-                      type="button"
-                      className={`assessment-create-published-filter-btn ${hasPublishedFilter ? 'is-active' : ''}`.trim()}
-                      onClick={() => setIsPublishedFilterOpen((current) => !current)}
-                      aria-expanded={isPublishedFilterOpen}
-                    >
-                      <ListFilter size={15} strokeWidth={2.3} />
-                      Filter
-                      {hasPublishedFilter ? <em>{activePublishedFilterCount}</em> : null}
-                    </button>
-                    {isPublishedFilterOpen ? (
-                      <span className="assessment-create-published-filter-popover" role="dialog" aria-label="Published assessment filters">
-                        {PUBLISHED_FILTER_GROUPS.map((group) => (
-                          <label key={group.key}>
-                            <span>{group.label}</span>
-                            <select
-                              value={publishedFilters[group.key]}
-                              onChange={(event) => {
-                                const nextValue = event.target.value
-                                setPublishedFilters((current) => ({ ...current, [group.key]: nextValue }))
-                              }}
-                            >
-                              {group.options.map((option) => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                              ))}
-                            </select>
-                          </label>
-                        ))}
-                        <span className="assessment-create-published-filter-actions">
-                          <button type="button" onClick={() => setPublishedFilters(PUBLISHED_FILTER_DEFAULTS)}>
-                            Reset
-                          </button>
-                          <button type="button" className="is-primary" onClick={() => setIsPublishedFilterOpen(false)}>
-                            Apply
-                          </button>
-                        </span>
-                      </span>
-                    ) : null}
-                  </span>
-                  {(hasPublishedSearch || hasPublishedFilter) ? (
-                    <button type="button" className="assessment-create-published-clear-btn" onClick={clearPublishedSearchFilters}>
-                      <X size={14} strokeWidth={2.3} />
-                      Clear
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
+              {renderAssessmentSearchToolbar()}
             </div>
             {publishedAssessments.length ? (
               <>
@@ -1305,6 +1346,20 @@ export default function AssessmentCreatePage({ onNavigate }) {
                 <p>No published assessments available.</p>
               </div>
             )}
+          </section>
+        ) : null}
+
+        {activeEmptyTab ? (
+          <section className="assessment-create-draft-shell" aria-label={`${activeEmptyTab.label} assessments`}>
+            <div className="assessment-create-card-heading">
+              <h2>{activeEmptyTab.key === 'evaluation' ? 'Evaluation' : `${activeEmptyTab.label} Assessment`}</h2>
+              {renderAssessmentSearchToolbar()}
+            </div>
+            <div className="assessment-create-placeholder">
+              <p>
+                No {String(activeEmptyTab.label || 'selected').toLowerCase()} assessments {(hasPublishedSearch || hasPublishedFilter) ? 'match your search.' : 'available.'}
+              </p>
+            </div>
           </section>
         ) : null}
       </div>

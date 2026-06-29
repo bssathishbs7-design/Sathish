@@ -1,10 +1,10 @@
 .start-evaluation-page {
-  padding-top: 12px;
+  padding: 12px;
 }
 
 .start-eval-shell {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .start-eval-summary-card,
@@ -250,7 +250,7 @@
 .start-eval-board {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
+  gap: 12px;
 }
 
 .start-eval-student-panel,

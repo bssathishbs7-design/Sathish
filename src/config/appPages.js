@@ -7,6 +7,7 @@ import {
   FilePenLine,
   FileSearch,
   FileText,
+  LayoutTemplate,
   MessageSquareText,
   SlidersHorizontal,
   TrendingUp,
@@ -26,6 +27,7 @@ export const APP_PAGES = {
   ONLINE_PROCTORED_EXAM: 'Online Proctored Exam',
   QUESTION_BANK: 'Question Bank',
   QUESTION_BANK_NON_CREATE: 'Question Bank Overall Question',
+  BLUEPRINT: 'Blueprint',
   QUERY_REQUEST: 'Query Request',
   ACTIVITY_RESULT: 'Activity Result',
   COMPLETED_EVALUATION: 'Completed Evaluation',
@@ -76,6 +78,14 @@ export const QUESTION_BANK_PAGES = [
   APP_PAGES.QUESTION_BANK_NON_CREATE,
 ]
 
+export const ASSESSMENT_SUITE_PAGES = [
+  APP_PAGES.QUESTION_BANK,
+  APP_PAGES.QUESTION_BANK_NON_CREATE,
+  APP_PAGES.BLUEPRINT,
+  APP_PAGES.ASSESSMENT_CREATE,
+  APP_PAGES.CREATE_ASSESSMENT,
+]
+
 export const SIDEBAR_MENU = [
   {
     section: 'Main',
@@ -90,31 +100,21 @@ export const SIDEBAR_MENU = [
         ],
       },
       {
+        label: APP_PAGES.MY_SKILL_ACTIVITY,
+        icon: BookOpenCheck,
+      },
+      {
         label: APP_PAGES.REVIEW_APPROVE,
         icon: FileCheck2,
       },
       {
-        label: 'My Skills',
-        icon: BookOpenCheck,
-        children: [
-          { label: APP_PAGES.MY_SKILL_ACTIVITY, icon: BookOpenCheck },
-        ],
-      },
-      {
-        label: APP_PAGES.QUESTION_BANK,
+        label: 'Assessment Suite',
         icon: BookText,
         children: [
-          { label: APP_PAGES.QUESTION_BANK, navLabel: 'Create', icon: FilePenLine },
-          { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'All Questions', icon: FileSearch },
-        ],
-      },
-      {
-        label: 'Assessment',
-        icon: TrendingUp,
-        children: [
-          { label: APP_PAGES.ASSESSMENT_CREATE, navLabel: 'My Progress', icon: SlidersHorizontal },
-          { label: APP_PAGES.ASSESSMENT_EVALUATION, navLabel: 'Evaluation', icon: ClipboardCheck },
-          { label: APP_PAGES.ASSESSMENT_DASHBOARD, navLabel: 'Dashboard', icon: BarChart3 },
+          { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'Question Bank', icon: FileSearch },
+          { label: APP_PAGES.QUESTION_BANK, navLabel: 'Create New', icon: FilePenLine },
+          { label: APP_PAGES.BLUEPRINT, navLabel: 'Blueprint', icon: LayoutTemplate },
+          { label: APP_PAGES.ASSESSMENT_CREATE, navLabel: 'Assessment', icon: TrendingUp },
         ],
       },
       {

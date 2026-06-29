@@ -22,8 +22,8 @@ const evaluationPanels = [
 
 export default function AssessmentEvaluationPage() {
   return (
-    <section className="vx-content assessment-page">
-      <div className="assessment-page-shell">
+    <section className="vx-content assessment-page assessment-evaluation-page">
+      <div className="assessment-page-shell assessment-evaluation-page-shell">
         <PageNavigationHeader items={['My Pages', 'Assessment', 'Evaluation']} />
 
         <section className="assessment-page-hero">

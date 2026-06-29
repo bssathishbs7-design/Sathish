@@ -12,6 +12,7 @@ import AssessmentDashboardPage from './pages/AssessmentDashboardPage'
 import ExamControlsPage from './pages/ExamControlsPage'
 import QuestionBankPage from './pages/QuestionBankPage'
 import QuestionBankNonCreatePage from './pages/QuestionBankNonCreatePage'
+import BlueprintPage from './pages/BlueprintPage'
 import QueryRequestPage from './pages/QueryRequestPage'
 import CompletedEvaluationPage from './pages/CompletedEvaluationPage'
 import ReviewApprovePage from './pages/ReviewApprovePage'
@@ -46,6 +47,7 @@ const PAGE_PATHS = {
   [APP_PAGES.ONLINE_PROCTORED_EXAM]: '/my-assessment/online-proctored-exam',
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
   [APP_PAGES.QUESTION_BANK_NON_CREATE]: '/question-bank/non-create',
+  [APP_PAGES.BLUEPRINT]: '/assessment-suite/blueprint',
   [APP_PAGES.QUERY_REQUEST]: '/query-request',
   [APP_PAGES.ACTIVITY_RESULT]: '/skills/activity-result',
   [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
@@ -78,6 +80,7 @@ const PHONE_UNSUPPORTED_PAGES = new Set([
   APP_PAGES.REVIEW_APPROVE,
   APP_PAGES.QUESTION_BANK,
   APP_PAGES.QUESTION_BANK_NON_CREATE,
+  APP_PAGES.BLUEPRINT,
   APP_PAGES.ASSESSMENT_EVALUATION,
   APP_PAGES.ASSESSMENT_DASHBOARD,
   APP_PAGES.QUERY_REQUEST,
@@ -1309,6 +1312,8 @@ function App() {
             <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
             <QuestionBankNonCreatePage onNavigate={navigateToPage} mode="editable" />
+          ) : activePage === APP_PAGES.BLUEPRINT ? (
+            <BlueprintPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.QUERY_REQUEST ? (
             <QueryRequestPage />
           ) : activePage === APP_PAGES.COMPLETED_EVALUATION ? (

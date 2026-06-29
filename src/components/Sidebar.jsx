@@ -3,7 +3,7 @@ import { ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandLogoDark from '../assets/brand-logo-dark.svg'
 import brandMark from '../assets/brand-mark.svg'
-import { APP_PAGES, ASSESSMENT_PAGES, MY_SKILL_PAGES, QUESTION_BANK_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
+import { APP_PAGES, ASSESSMENT_PAGES, ASSESSMENT_SUITE_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
 
 /**
  * Sidebar Implementation Contract
@@ -37,15 +37,13 @@ export default function Sidebar({
   const resolvedBrandLogo = theme === 'dark' ? brandLogoDark : brandLogo
   const activeGroupMap = {
     Skills: SKILL_PAGES.includes(activePage),
-    'My Skills': MY_SKILL_PAGES.includes(activePage),
     Assessment: ASSESSMENT_PAGES.includes(activePage),
-    'Question Bank': QUESTION_BANK_PAGES.includes(activePage),
+    'Assessment Suite': ASSESSMENT_SUITE_PAGES.includes(activePage),
   }
   const getActiveGroupLabel = (page) => {
     if (SKILL_PAGES.includes(page)) return 'Skills'
-    if (MY_SKILL_PAGES.includes(page)) return 'My Skills'
+    if (ASSESSMENT_SUITE_PAGES.includes(page)) return 'Assessment Suite'
     if (ASSESSMENT_PAGES.includes(page)) return 'Assessment'
-    if (QUESTION_BANK_PAGES.includes(page)) return 'Question Bank'
     return null
   }
   const [openGroupLabel, setOpenGroupLabel] = useState(() => getActiveGroupLabel(activePage))

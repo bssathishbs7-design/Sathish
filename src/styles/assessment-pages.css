@@ -21,6 +21,13 @@
   overflow: visible;
 }
 
+.assessment-evaluation-page {
+  height: auto;
+  min-height: calc(100svh - 82px);
+  overflow: visible;
+  padding: 10px 10px 18px;
+}
+
 .assessment-page-shell {
   display: grid;
   grid-template-rows: auto auto auto;
@@ -28,6 +35,10 @@
   flex: 1 1 auto;
   min-height: max-content;
   overflow: visible;
+}
+
+.assessment-evaluation-page-shell {
+  width: 100%;
 }
 
 .assessment-page.is-my-assessment {
@@ -104,6 +115,38 @@
 .assessment-page.is-my-assessment .assessment-page-card p {
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+/* Assessment Evaluation compact page rhythm, aligned with assessment/create. */
+.assessment-page.assessment-evaluation-page {
+  box-sizing: border-box;
+  height: auto;
+  min-height: calc(100svh - 82px);
+  padding: 10px 10px 18px;
+  overflow: visible;
+}
+
+.assessment-page.assessment-evaluation-page .assessment-page-shell {
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  gap: 12px;
+}
+
+.assessment-page.assessment-evaluation-page .page-navigation-header {
+  min-height: 30px;
+  margin: 0;
+}
+
+.assessment-page.assessment-evaluation-page .assessment-page-hero {
+  min-height: 0;
+  padding: 24px 30px;
+}
+
+.assessment-page.assessment-evaluation-page .assessment-page-grid {
+  gap: 12px;
 }
 
 .assessment-page.is-my-assessment .my-assessment-metrics {
@@ -2605,11 +2648,109 @@
   min-width: 0;
 }
 
+.assessment-create-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
 .assessment-create-toolbar {
   min-width: 0;
 }
 
-.assessment-create-new-btn {
+.assessment-create-tabbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid #dbe7e2;
+  border-bottom-color: transparent;
+  border-radius: 8px 8px 0 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.assessment-create-tabbar + .assessment-create-draft-shell {
+  margin-top: -12px;
+  border-radius: 0 0 8px 8px;
+  box-shadow: none;
+}
+
+.assessment-create-tracker-toolbar {
+  width: min(100%, 560px);
+}
+
+.assessment-create-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.assessment-create-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #405866;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 780;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.assessment-create-tab svg {
+  color: #7a8c98;
+}
+
+.assessment-create-tab strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #eef6f3;
+  color: #526978;
+  font-size: 0.64rem;
+  font-weight: 950;
+}
+
+.assessment-create-tab:hover,
+.assessment-create-tab:focus-visible,
+.assessment-create-tab.is-active {
+  border-color: #bce7df;
+  background: #effdf9;
+  color: #08776d;
+  outline: none;
+}
+
+.assessment-create-tab:hover svg,
+.assessment-create-tab:focus-visible svg,
+.assessment-create-tab.is-active svg {
+  color: #0f9f94;
+}
+
+.assessment-create-tab.is-active strong {
+  background: #c9f8ef;
+  color: #075f54;
+}
+
+.assessment-create-new-btn,
+.assessment-create-dashboard-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2633,6 +2774,21 @@
   border-color: #078d83;
   background: #0f9f94;
   box-shadow: 0 10px 18px rgba(20, 184, 166, 0.24);
+  outline: none;
+}
+
+.assessment-create-dashboard-btn {
+  border-color: #bfe2d8;
+  background: #ffffff;
+  color: #08776d;
+  box-shadow: none;
+}
+
+.assessment-create-dashboard-btn:hover,
+.assessment-create-dashboard-btn:focus-visible {
+  border-color: #10b9a8;
+  background: #effdf9;
+  color: #075f54;
   outline: none;
 }
 
@@ -16816,6 +16972,19 @@
   box-shadow: 0 10px 18px rgba(20, 184, 166, 0.22);
 }
 
+.theme-dark .assessment-create-dashboard-btn {
+  border-color: rgba(94, 234, 212, 0.34);
+  background: #101827;
+  color: #99f6e4;
+}
+
+.theme-dark .assessment-create-dashboard-btn:hover,
+.theme-dark .assessment-create-dashboard-btn:focus-visible {
+  border-color: rgba(94, 234, 212, 0.68);
+  background: rgba(20, 184, 166, 0.13);
+  color: #ccfbf1;
+}
+
 .theme-dark .assessment-create-metric:disabled {
   opacity: 0.48;
 }
@@ -23143,6 +23312,26 @@
   padding-bottom: 18px;
 }
 
+.assessment-page.assessment-evaluation-page {
+  height: auto;
+  min-height: calc(100svh - 82px);
+  overflow: visible;
+  padding: 10px 10px 18px;
+}
+
+.assessment-page.assessment-evaluation-page .assessment-page-shell {
+  align-content: start;
+  grid-template-rows: auto auto auto;
+  gap: 12px;
+  min-height: 0;
+  margin: 0;
+}
+
+.assessment-page.assessment-evaluation-page .page-navigation-header {
+  min-height: 30px;
+  margin: 0;
+}
+
 /* Question Bank metrics calm dashboard */
 .question-bank-non-create-page.is-grid-view:not(.is-embedded):has(.question-bank-metrics-landing) {
   overflow-x: hidden;
@@ -25953,12 +26142,28 @@ body > .assessment-page-filter-menu {
     align-items: stretch;
   }
 
+  .assessment-create-tracker-page .assessment-create-header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
   .assessment-create-tracker-page .page-navigation-header {
     min-width: 0;
     overflow: hidden;
   }
 
-  .assessment-create-tracker-page .assessment-create-new-btn {
+  .assessment-create-tracker-page .assessment-create-tabbar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .assessment-create-tracker-page .assessment-create-tabs {
+    padding-bottom: 2px;
+  }
+
+  .assessment-create-tracker-page .assessment-create-new-btn,
+  .assessment-create-tracker-page .assessment-create-dashboard-btn {
     width: 100%;
     min-height: 46px;
     border-radius: 8px;
@@ -26059,6 +26264,10 @@ body > .assessment-page-filter-menu {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .assessment-create-tracker-page .assessment-create-tab {
+    min-height: 34px;
+  }
+
   .assessment-create-tracker-page .assessment-create-metric {
     gap: 8px;
     min-height: 56px;
@@ -26081,6 +26290,10 @@ body > .assessment-page-filter-menu {
   }
 
   .assessment-create-tracker-page .assessment-create-published-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-create-tracker-page .assessment-create-header-actions {
     grid-template-columns: 1fr;
   }
 
