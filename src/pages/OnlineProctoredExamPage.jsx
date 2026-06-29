@@ -866,6 +866,9 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const isFullscreenRequiredForDevice = !isMobileOrTabletDevice()
   const isKeyboardLockedForExam = hasStarted && !isAssessmentSubmitted
   const shouldBlockKeyboardForExamPage = isProctoredFlowAssessment && !isAssessmentSubmitted
+  const shouldOfferKioskLauncher = !hasStarted
+    && Boolean(environmentRestrictionMessage)
+    && /edge kiosk|kiosk launcher/i.test(environmentRestrictionMessage)
   const isExamPaused = examPause.active && hasStarted && !isAssessmentSubmitted
   const proctorViolationRemainingSeconds = proctorViolation.endsAt ? Math.max(0, Math.ceil((proctorViolation.endsAt - timerNow) / 1000)) : 0
   const isProctorPenaltyOrLock = proctorViolation.phase === 'penalty' || proctorViolation.phase === 'lock'
@@ -1206,6 +1209,19 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       setActiveSection(firstSplitSection)
       setActiveQuestionIndex(0)
     }
+  }
+
+  const openKioskLauncher = () => {
+    window.location.href = '/launch-proctored-kiosk.bat'
+  }
+
+  const handleStartExamClick = () => {
+    if (shouldOfferKioskLauncher) {
+      openKioskLauncher()
+      return
+    }
+
+    startExam()
   }
 
   const openSubmitModal = (section) => {
@@ -2400,16 +2416,18 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
             <button
               type="button"
               className="online-practice-start-btn"
-              disabled={!hasAgreed || Boolean(environmentRestrictionMessage)}
-              onClick={startExam}
+              disabled={!hasAgreed || (Boolean(environmentRestrictionMessage) && !shouldOfferKioskLauncher)}
+              onClick={handleStartExamClick}
             >
-              Start Proctored Exam
+              {shouldOfferKioskLauncher ? 'Open Edge Kiosk Launcher' : 'Start Proctored Exam'}
             </button>
           </div>
           {environmentRestrictionMessage ? (
             <div className="online-proctored-fullscreen-alert" role="alert">
               <AlertTriangle size={16} strokeWidth={2.4} />
-              {environmentRestrictionMessage}
+              {shouldOfferKioskLauncher
+                ? `${environmentRestrictionMessage} Click the launcher button above, then run the downloaded file.`
+                : environmentRestrictionMessage}
             </div>
           ) : null}
           {fullscreenError ? (
