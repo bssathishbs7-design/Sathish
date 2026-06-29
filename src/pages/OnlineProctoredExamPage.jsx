@@ -35,10 +35,41 @@ const PREVIEW_SECTION_CONFIG = [
 ]
 const PREVIEW_SECTION_KEY_SET = new Set(PREVIEW_SECTION_CONFIG.map((section) => section.key))
 
+const encodeAssessmentForUrl = (assessment) => {
+  try {
+    return window.btoa(window.encodeURIComponent(JSON.stringify(assessment)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '')
+  } catch {
+    return ''
+  }
+}
+
+const decodeAssessmentFromUrl = (value) => {
+  if (!value) return null
+  try {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    const parsed = JSON.parse(window.decodeURIComponent(window.atob(padded)))
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
 const readSelectedAssessment = () => {
   try {
     const parsed = JSON.parse(window.sessionStorage.getItem(ONLINE_PROCTORED_EXAM_STORAGE_KEY) || 'null')
-    return parsed && typeof parsed === 'object' ? parsed : null
+    if (parsed && typeof parsed === 'object') return parsed
+
+    const urlAssessment = decodeAssessmentFromUrl(new URLSearchParams(window.location.search).get('assessment'))
+    if (urlAssessment) {
+      window.sessionStorage.setItem(ONLINE_PROCTORED_EXAM_STORAGE_KEY, JSON.stringify(urlAssessment))
+      return urlAssessment
+    }
+
+    return null
   } catch {
     return null
   }
@@ -1214,6 +1245,10 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const openKioskLauncher = () => {
     const examUrl = new URL(window.location.href)
     examUrl.searchParams.set('kiosk', '1')
+    const encodedAssessment = encodeAssessmentForUrl(assessment)
+    if (encodedAssessment) {
+      examUrl.searchParams.set('assessment', encodedAssessment)
+    }
     const batContent = `@echo off
 setlocal
 
