@@ -2706,7 +2706,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       )}
 
       {shouldShowExamPauseOverlay ? (
-        <div className="online-practice-submit-overlay" role="presentation">
+        <div className="online-practice-submit-overlay online-proctored-lock-overlay" role="presentation">
           <section className="online-proctored-violation-overlay online-practice-submit-modal is-paused" role="dialog" aria-modal="true" aria-labelledby="online-proctored-pause-title">
             <span className="online-practice-time-limit-icon" aria-hidden="true">
               <AlertTriangle size={34} strokeWidth={2.4} />

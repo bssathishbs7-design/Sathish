@@ -1549,6 +1549,12 @@
   backdrop-filter: blur(3px);
 }
 
+.online-proctored-lock-overlay {
+  z-index: 2147483646;
+  background: #082431;
+  backdrop-filter: none;
+}
+
 .online-practice-submit-modal {
   display: grid;
   gap: 14px;
@@ -17590,6 +17596,10 @@
 
 .theme-dark .online-practice-submit-overlay {
   background: rgba(2, 6, 23, 0.76);
+}
+
+.theme-dark .online-proctored-lock-overlay {
+  background: #020617;
 }
 
 .theme-dark .online-practice-submit-modal {
