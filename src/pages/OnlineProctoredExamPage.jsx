@@ -1535,6 +1535,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     document.addEventListener('keydown', handleExamKeyboardEvent, true)
     document.addEventListener('keypress', handleExamKeyboardEvent, true)
     document.addEventListener('keyup', handleExamKeyboardEvent, true)
+    document.addEventListener('beforeinput', handleExamKeyboardEvent, true)
+    document.addEventListener('input', handleExamKeyboardEvent, true)
+    document.addEventListener('compositionstart', handleExamKeyboardEvent, true)
+    document.addEventListener('compositionupdate', handleExamKeyboardEvent, true)
+    document.addEventListener('compositionend', handleExamKeyboardEvent, true)
 
     return () => {
       window.removeEventListener('keydown', handleExamKeyboardEvent, true)
@@ -1543,6 +1548,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       document.removeEventListener('keydown', handleExamKeyboardEvent, true)
       document.removeEventListener('keypress', handleExamKeyboardEvent, true)
       document.removeEventListener('keyup', handleExamKeyboardEvent, true)
+      document.removeEventListener('beforeinput', handleExamKeyboardEvent, true)
+      document.removeEventListener('input', handleExamKeyboardEvent, true)
+      document.removeEventListener('compositionstart', handleExamKeyboardEvent, true)
+      document.removeEventListener('compositionupdate', handleExamKeyboardEvent, true)
+      document.removeEventListener('compositionend', handleExamKeyboardEvent, true)
       releaseExamKeyboardLock()
     }
   }, [isKeyboardLockedForExam])
