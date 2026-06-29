@@ -673,6 +673,11 @@ const blockExamKeyboardEvent = (event) => {
   }
 }
 
+const isTextInputTarget = (target) => {
+  if (!(target instanceof HTMLElement)) return false
+  return Boolean(target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'))
+}
+
 const detectMultiMonitorSetup = () => {
   if (!window.screen || typeof window.screen.availLeft !== 'number') return false
   return window.screen.availLeft !== 0 || window.screen.availTop !== 0
@@ -1527,11 +1532,27 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         requestExamKeyboardLock()
       }
     }
+    const handleExamTextFocus = (event) => {
+      if (!isTextInputTarget(event.target)) return
+      blockExamKeyboardEvent(event)
+      if (typeof event.target.blur === 'function') {
+        event.target.blur()
+      }
+    }
 
     requestExamKeyboardLock()
+    if (isTextInputTarget(document.activeElement) && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur()
+    }
     window.addEventListener('keydown', handleExamKeyboardEvent, true)
     window.addEventListener('keypress', handleExamKeyboardEvent, true)
     window.addEventListener('keyup', handleExamKeyboardEvent, true)
+    window.addEventListener('beforeinput', handleExamKeyboardEvent, true)
+    window.addEventListener('input', handleExamKeyboardEvent, true)
+    window.addEventListener('compositionstart', handleExamKeyboardEvent, true)
+    window.addEventListener('compositionupdate', handleExamKeyboardEvent, true)
+    window.addEventListener('compositionend', handleExamKeyboardEvent, true)
+    window.addEventListener('focusin', handleExamTextFocus, true)
     document.addEventListener('keydown', handleExamKeyboardEvent, true)
     document.addEventListener('keypress', handleExamKeyboardEvent, true)
     document.addEventListener('keyup', handleExamKeyboardEvent, true)
@@ -1540,11 +1561,18 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     document.addEventListener('compositionstart', handleExamKeyboardEvent, true)
     document.addEventListener('compositionupdate', handleExamKeyboardEvent, true)
     document.addEventListener('compositionend', handleExamKeyboardEvent, true)
+    document.addEventListener('focusin', handleExamTextFocus, true)
 
     return () => {
       window.removeEventListener('keydown', handleExamKeyboardEvent, true)
       window.removeEventListener('keypress', handleExamKeyboardEvent, true)
       window.removeEventListener('keyup', handleExamKeyboardEvent, true)
+      window.removeEventListener('beforeinput', handleExamKeyboardEvent, true)
+      window.removeEventListener('input', handleExamKeyboardEvent, true)
+      window.removeEventListener('compositionstart', handleExamKeyboardEvent, true)
+      window.removeEventListener('compositionupdate', handleExamKeyboardEvent, true)
+      window.removeEventListener('compositionend', handleExamKeyboardEvent, true)
+      window.removeEventListener('focusin', handleExamTextFocus, true)
       document.removeEventListener('keydown', handleExamKeyboardEvent, true)
       document.removeEventListener('keypress', handleExamKeyboardEvent, true)
       document.removeEventListener('keyup', handleExamKeyboardEvent, true)
@@ -1553,6 +1581,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       document.removeEventListener('compositionstart', handleExamKeyboardEvent, true)
       document.removeEventListener('compositionupdate', handleExamKeyboardEvent, true)
       document.removeEventListener('compositionend', handleExamKeyboardEvent, true)
+      document.removeEventListener('focusin', handleExamTextFocus, true)
       releaseExamKeyboardLock()
     }
   }, [isKeyboardLockedForExam])
