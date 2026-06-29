@@ -850,6 +850,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const isDescriptiveLocked = isDescriptiveSubmitted || isAssessmentSubmitted
   const isFullscreenRequiredForDevice = !isMobileOrTabletDevice()
   const isKeyboardLockedForExam = hasStarted && !isAssessmentSubmitted
+  const shouldBlockKeyboardForExamPage = isProctoredFlowAssessment && !isAssessmentSubmitted
   const isExamPaused = examPause.active && hasStarted && !isAssessmentSubmitted
   const proctorViolationRemainingSeconds = proctorViolation.endsAt ? Math.max(0, Math.ceil((proctorViolation.endsAt - timerNow) / 1000)) : 0
   const isProctorPenaltyOrLock = proctorViolation.phase === 'penalty' || proctorViolation.phase === 'lock'
@@ -1531,11 +1532,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }, [isAutoExitAfterViolation, isAssessmentSubmitted, onExit, proctorViolation.phase])
 
   useEffect(() => {
-    if (!isKeyboardLockedForExam) return undefined
+    if (!shouldBlockKeyboardForExamPage) return undefined
 
     const handleExamKeyboardEvent = (event) => {
       blockExamKeyboardEvent(event)
-      if (event.type === 'keydown') {
+      if (event.type === 'keydown' && isKeyboardLockedForExam) {
         requestExamKeyboardLock()
       }
     }
@@ -1547,7 +1548,9 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       }
     }
 
-    requestExamKeyboardLock()
+    if (isKeyboardLockedForExam) {
+      requestExamKeyboardLock()
+    }
     if (isTextInputTarget(document.activeElement) && typeof document.activeElement.blur === 'function') {
       document.activeElement.blur()
     }
@@ -1589,9 +1592,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       document.removeEventListener('compositionupdate', handleExamKeyboardEvent, true)
       document.removeEventListener('compositionend', handleExamKeyboardEvent, true)
       document.removeEventListener('focusin', handleExamTextFocus, true)
-      releaseExamKeyboardLock()
+      if (isKeyboardLockedForExam) {
+        releaseExamKeyboardLock()
+      }
     }
-  }, [isKeyboardLockedForExam])
+  }, [isKeyboardLockedForExam, shouldBlockKeyboardForExamPage])
 
   useEffect(() => {
     if (!hasStarted || isAssessmentSubmitted) return undefined
