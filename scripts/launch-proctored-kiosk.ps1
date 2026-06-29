@@ -1,7 +1,7 @@
 param(
   [string]$ExamUrl = "https://sathish-jc88.vercel.app/my-assessment/online-proctored-exam",
   [ValidateSet("chrome", "edge")]
-  [string]$Browser = "chrome"
+  [string]$Browser = "edge"
 )
 
 $ErrorActionPreference = "Stop"
@@ -45,6 +45,7 @@ New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
 
 $arguments = @(
   "--kiosk",
+  "--edge-kiosk-type=fullscreen",
   "--new-window",
   "--no-first-run",
   "--disable-infobars",

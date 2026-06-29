@@ -2,7 +2,7 @@
 
 ## Proctored Exam Kiosk Launch
 
-Use kiosk mode for the online proctored exam when students must not reach the normal Chrome tab/address-bar screen.
+Use Microsoft Edge kiosk mode for the online proctored exam when students must not reach normal browser tabs, address bar, close/exit controls, bookmarks, or navigation buttons.
 
 Double-click:
 
@@ -10,16 +10,16 @@ Double-click:
 launch-proctored-kiosk.bat
 ```
 
-Or run:
+Or run the Edge kiosk launcher:
 
 ```bash
 npm run kiosk:exam
 ```
 
-To use Edge instead of Chrome:
+Chrome is available only as a fallback for local testing:
 
 ```bash
-npm run kiosk:exam:edge
+npm run kiosk:exam:chrome
 ```
 
 To launch a different exam URL:
@@ -28,7 +28,7 @@ To launch a different exam URL:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored-kiosk.ps1 -ExamUrl "https://your-site/my-assessment/online-proctored-exam"
 ```
 
-Kiosk mode removes the normal browser tabs/address bar from the student view. A normal React page cannot disable OS-level close/task switching by itself; for stricter control, run this from a managed Windows kiosk or assigned-access student account.
+Edge kiosk mode removes the normal browser tabs/address bar from the student view. A normal React page cannot disable OS-level close/task switching by itself; for stricter control, run this from a managed Windows kiosk or assigned-access student account.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

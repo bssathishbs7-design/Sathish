@@ -576,6 +576,11 @@ const isInAppWebview = () => {
   return /FBAN|FBAV|FB_IAB|Instagram|Line|MicroMessenger|WhatsApp|Telegram|Discord|LinkedInApp|Snapchat|TikTok|WeChat|Pinterest/i.test(userAgent)
 }
 
+const isMicrosoftEdgeBrowser = () => {
+  const userAgent = window.navigator.userAgent || ''
+  return /\bEdg\//.test(userAgent)
+}
+
 const isMobileDevice = () => {
   const userAgent = window.navigator.userAgent || ''
   return /Android(?!.*\bTablet\b)|iPhone|iPod|Windows Phone|BlackBerry|IEMobile|Kindle|Silk/i.test(userAgent)
@@ -692,6 +697,7 @@ const detectMultiMonitorSetup = () => {
 
 const isRestrictedProctorEnvironment = () => {
   if (isInAppWebview()) return 'Please open the proctored exam in a standard browser session.'
+  if (!isMicrosoftEdgeBrowser()) return 'Please open this proctored exam in Microsoft Edge kiosk mode.'
   if (!isMobileOrTabletDevice() && !hasFullscreenSupport()) return 'Launch this proctored exam in fullscreen/PWA mode.'
   if (detectMultiMonitorSetup()) return 'More than one display is detected. Use one screen for the exam.'
   return ''

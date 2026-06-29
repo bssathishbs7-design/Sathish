@@ -9,8 +9,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "kiosk:exam": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored-kiosk.ps1",
-    "kiosk:exam:edge": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored-kiosk.ps1 -Browser edge"
+    "kiosk:exam": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored-kiosk.ps1 -Browser edge",
+    "kiosk:exam:chrome": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch-proctored-kiosk.ps1 -Browser chrome"
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
