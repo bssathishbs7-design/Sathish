@@ -419,6 +419,7 @@ function ExamControlsPage({ onNavigate }) {
     const mcqLiveUntilMs = Number(state.mcqLiveUntilMs || 0)
     const descriptiveLiveUntilMs = Number(state.descriptiveLiveUntilMs || 0)
     const hasLiveExtension = liveUntilMs > now.getTime() || mcqLiveUntilMs > now.getTime() || descriptiveLiveUntilMs > now.getTime()
+    const invigilatorLock = state.invigilatorLock || null
     const submissionState = submissionStatuses?.[assessmentId]?.[student.id] || {}
     const submittedStatus = submissionState.status || ''
     const completedSubmissionStatus = submittedStatus && !['Manual Submit', 'Auto Submit'].includes(submittedStatus)
@@ -441,14 +442,19 @@ function ExamControlsPage({ onNavigate }) {
           ? 'In progress'
           : 'Waiting'
     const persistedStatus = state.overallStatus || ''
-    const overallStatus = !isPresent
+    const isFullscreenLimitCompleted = invigilatorLock?.exhausted || persistedStatus === 'Completed due to fullscreen violation limit'
+    const overallStatus = invigilatorLock?.active
+      ? 'Locked'
+      : isFullscreenLimitCompleted
+        ? 'Completed due to fullscreen violation limit'
+        : submittedStatus
+          ? completedSubmissionStatus
+          : !isPresent
       ? 'Absent'
       : hasSubmissionAfterExtension
         ? completedSubmissionStatus
         : hasLiveExtension
           ? 'In progress'
-        : submittedStatus
-          ? completedSubmissionStatus
         : persistedStatus === 'In progress' && schedule.status === 'completed'
           ? 'Completed'
           : persistedStatus || status
@@ -464,7 +470,7 @@ function ExamControlsPage({ onNavigate }) {
       mcqLiveUntilMs,
       descriptiveLiveUntilMs,
       hasSubmissionAfterExtension,
-      invigilatorLock: state.invigilatorLock || null,
+      invigilatorLock,
       overallStatus,
       logs: state.logs || buildDefaultLogs(student, assessment, schedule),
     }
@@ -619,6 +625,9 @@ function ExamControlsPage({ onNavigate }) {
           mcqLiveUntilMs: 0,
           descriptiveLiveUntilMs: 0,
           extensionUpdatedAt: '',
+          fullscreenExitCount: 0,
+          invigilatorLock: null,
+          invigilatorPinHistory: [],
           overallStatus: 'Waiting',
         },
       }
@@ -682,6 +691,9 @@ function ExamControlsPage({ onNavigate }) {
           mcqLiveUntilMs: 0,
           descriptiveLiveUntilMs: 0,
           extensionUpdatedAt: '',
+          fullscreenExitCount: 0,
+          invigilatorLock: null,
+          invigilatorPinHistory: [],
           overallStatus: 'Waiting',
         }
       })
