@@ -3675,6 +3675,46 @@
   color: #475569;
 }
 
+.assessment-create-published-schedule-badge.is-locked {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.my-assessment-pin-field {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 4px;
+  text-align: left;
+}
+
+.my-assessment-pin-field span {
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.my-assessment-pin-field input {
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 8px;
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  outline: none;
+  padding: 12px 14px;
+  text-align: center;
+}
+
+.my-assessment-pin-field input:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+}
+
+.my-assessment-pin-error {
+  color: #b91c1c;
+  font-weight: 800;
+}
+
 .exam-controls-page {
   background: #f6fbfa;
 }
@@ -4155,6 +4195,12 @@
 }
 
 .exam-controls-overall.is-absent {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.exam-controls-overall.is-locked,
+.exam-controls-overall.is-completed-due-to-fullscreen-violation-limit {
   background: #fee2e2;
   color: #b91c1c;
 }

@@ -421,7 +421,11 @@ function ExamControlsPage({ onNavigate }) {
     const hasLiveExtension = liveUntilMs > now.getTime() || mcqLiveUntilMs > now.getTime() || descriptiveLiveUntilMs > now.getTime()
     const submissionState = submissionStatuses?.[assessmentId]?.[student.id] || {}
     const submittedStatus = submissionState.status || ''
-    const completedSubmissionStatus = submittedStatus ? 'Completed' : ''
+    const completedSubmissionStatus = submittedStatus && !['Manual Submit', 'Auto Submit'].includes(submittedStatus)
+      ? submittedStatus
+      : submittedStatus
+        ? 'Completed'
+        : ''
     const submittedAt = Date.parse(submissionState.updatedAt || '')
     const extensionUpdatedAt = Date.parse(state.extensionUpdatedAt || '')
     const hasSubmissionAfterExtension = Boolean(submittedStatus && (!Number.isFinite(extensionUpdatedAt) || Number.isFinite(submittedAt) && submittedAt >= extensionUpdatedAt))
@@ -460,6 +464,7 @@ function ExamControlsPage({ onNavigate }) {
       mcqLiveUntilMs,
       descriptiveLiveUntilMs,
       hasSubmissionAfterExtension,
+      invigilatorLock: state.invigilatorLock || null,
       overallStatus,
       logs: state.logs || buildDefaultLogs(student, assessment, schedule),
     }
@@ -768,6 +773,7 @@ function ExamControlsPage({ onNavigate }) {
             <th>Attendance</th>
             <th>Student Name</th>
             <th>Login Time</th>
+            <th>Invigilator PIN</th>
             <th>Status Log</th>
             <th>Extend Time</th>
             <th>Reset</th>
@@ -782,6 +788,7 @@ function ExamControlsPage({ onNavigate }) {
               <td><span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span></td>
               <td>{student.name}</td>
               <td>{formatDisplayTime(student.startTime)}</td>
+              <td>{student.invigilatorLock?.active ? <strong>{student.invigilatorLock.pin}</strong> : '-'}</td>
               <td>
                 <button type="button" className="exam-controls-log-btn" onClick={() => setLogModal(student)}>
                   View Log
@@ -820,6 +827,7 @@ function ExamControlsPage({ onNavigate }) {
             <th>Attendance</th>
             <th>Student Name</th>
             <th>Login Time</th>
+            <th>Invigilator PIN</th>
             <th>Status Log</th>
             <th>Duration Split</th>
             <th>Live Duration</th>
@@ -840,6 +848,7 @@ function ExamControlsPage({ onNavigate }) {
                     <td rowSpan={2}><span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span></td>
                     <td rowSpan={2}>{student.name}</td>
                     <td rowSpan={2}>{formatDisplayTime(student.startTime)}</td>
+                    <td rowSpan={2}>{student.invigilatorLock?.active ? <strong>{student.invigilatorLock.pin}</strong> : '-'}</td>
                     <td rowSpan={2}>
                       <button type="button" className="exam-controls-log-btn" onClick={() => setLogModal(student)}>
                         View Log

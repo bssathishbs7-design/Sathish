@@ -207,19 +207,24 @@ const writeStudentExamHeartbeat = (assessment, studentId, state) => {
   const assessmentId = getAssessmentId(assessment)
   if (!assessmentId || !studentId) return
 
-  writeExamControlsState(assessment, studentId, (current) => ({
-    ...current,
-    heartbeat: {
-      ...(current.heartbeat || {}),
-      ...state,
-      lastHeartbeatAt: new Date().toISOString(),
-    },
-    overallStatus: state.isSubmitted
-      ? 'Completed'
-      : state.isPaused
-        ? 'Paused'
-        : 'In progress',
-  }))
+  writeExamControlsState(assessment, studentId, (current) => {
+    const isInvigilatorLocked = Boolean(current.invigilatorLock?.active)
+    return {
+      ...current,
+      heartbeat: {
+        ...(current.heartbeat || {}),
+        ...state,
+        lastHeartbeatAt: new Date().toISOString(),
+      },
+      overallStatus: isInvigilatorLocked
+        ? 'Locked'
+        : state.isSubmitted
+          ? 'Completed'
+          : state.isPaused
+            ? 'Paused'
+            : 'In progress',
+    }
+  })
 }
 
 const readStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => {

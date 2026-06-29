@@ -462,7 +462,9 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     }
     const handleStorageChange = (event) => {
       if (event.key === ASSESSMENT_PUBLISHED_STORAGE_KEY) refreshPublishedAssessments()
+      if (String(event.key || '').startsWith(`${EXAM_CONTROLS_STATE_KEY}:`)) refreshPublishedAssessments()
     }
+    const handleExamControlsChange = () => refreshPublishedAssessments()
 
     refreshPublishedAssessments()
     setScheduleNow(new Date())
@@ -471,11 +473,13 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
       setScheduleNow(new Date())
     }, 1000)
     window.addEventListener(ASSESSMENT_PUBLISHED_CHANGED_EVENT, refreshPublishedAssessments)
+    window.addEventListener(EXAM_CONTROLS_STATE_CHANGED_EVENT, handleExamControlsChange)
     window.addEventListener('storage', handleStorageChange)
 
     return () => {
       window.clearInterval(intervalId)
       window.removeEventListener(ASSESSMENT_PUBLISHED_CHANGED_EVENT, refreshPublishedAssessments)
+      window.removeEventListener(EXAM_CONTROLS_STATE_CHANGED_EVENT, handleExamControlsChange)
       window.removeEventListener('storage', handleStorageChange)
     }
   }, [isMyAssessment])
@@ -587,6 +591,10 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                   const isProctoredExam = String(assessment.supervisionType || '').toLowerCase().includes('proctored')
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
+                  const invigilatorLock = isProctoredExam ? getAssessmentInvigilatorLock(assessment) : null
+                  const cardStatus = invigilatorLock?.active
+                    ? { type: 'locked', label: 'Locked' }
+                    : scheduleStatus
                   const durationValue = scheduleStatus?.type === 'live'
                     ? formatAssessmentRemainingTime(scheduleStatus.remainingMs)
                     : assessment.totalDuration || '-'
@@ -595,7 +603,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                   return (
                     <article
                       key={assessment.id}
-                      className={`assessment-create-draft-card assessment-create-published-card ${scheduleStatus?.type === 'live' ? 'is-live' : ''}`.trim()}
+                      className={`assessment-create-draft-card assessment-create-published-card ${cardStatus?.type === 'live' ? 'is-live' : ''}`.trim()}
                     >
                       <div className="assessment-create-published-head">
                         <div>
@@ -603,12 +611,12 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                           <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
                         </div>
                         <span className="my-assessment-card-top-status">
-                          {scheduleStatus ? (
-                            scheduleStatus.type === 'upcoming' ? (
-                              <span>{scheduleStatus.label}</span>
+                          {cardStatus ? (
+                            cardStatus.type === 'upcoming' ? (
+                              <span>{cardStatus.label}</span>
                             ) : (
-                              <span className={`assessment-create-published-schedule-badge is-${scheduleStatus.type}`}>
-                                {scheduleStatus.label}
+                              <span className={`assessment-create-published-schedule-badge is-${cardStatus.type}`}>
+                                {cardStatus.label}
                               </span>
                             )
                           ) : null}
@@ -635,17 +643,17 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         <span className="assessment-create-published-footer-status" />
                         <button
                           type="button"
-                          className={`my-assessment-card-action is-${scheduleStatus?.type === 'completed' ? 'results' : 'start'} ${scheduleStatus?.type === 'live' ? 'is-live' : ''}`}
+                          className={`my-assessment-card-action is-${cardStatus?.type === 'completed' ? 'results' : 'start'} ${cardStatus?.type === 'live' ? 'is-live' : ''}`}
                           disabled={scheduleStatus?.type === 'upcoming'}
                           onClick={() => {
-                            if (scheduleStatus?.type === 'completed') {
+                            if (cardStatus?.type === 'completed') {
                               handleViewAssessmentResults(assessment)
                               return
                             }
                             handleStartAssessment(assessment)
                           }}
                         >
-                          {scheduleStatus?.type === 'completed' ? 'View Results' : 'Start Assessment'}
+                          {cardStatus?.type === 'completed' ? 'View Results' : invigilatorLock?.active ? 'Enter PIN' : 'Start Assessment'}
                         </button>
                       </div>
                     </article>
@@ -687,6 +695,41 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
             </section>
           </>
         )}
+
+        {pinUnlockModal ? (
+          <div className="online-practice-submit-overlay" role="presentation">
+            <section className="online-practice-submit-modal online-practice-exit-modal" role="dialog" aria-modal="true" aria-labelledby="my-assessment-pin-title">
+              <span className="online-practice-time-limit-icon" aria-hidden="true">
+                <ShieldCheck size={32} strokeWidth={2.4} />
+              </span>
+              <h2 id="my-assessment-pin-title">Invigilator PIN</h2>
+              <p>Enter the Invigilator PIN to continue this locked exam.</p>
+              <label className="my-assessment-pin-field">
+                <span>Invigilator PIN</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={pinUnlockModal.pin}
+                  onChange={(event) => {
+                    const nextPin = event.target.value.replace(/\D/g, '').slice(0, 6)
+                    setPinUnlockModal((current) => current ? { ...current, pin: nextPin, error: '' } : current)
+                  }}
+                  autoFocus
+                />
+              </label>
+              {pinUnlockModal.error ? <p className="my-assessment-pin-error">{pinUnlockModal.error}</p> : null}
+              <div className="online-practice-submit-actions online-practice-exit-actions">
+                <button type="button" className="is-secondary" onClick={() => setPinUnlockModal(null)}>
+                  Cancel
+                </button>
+                <button type="button" onClick={confirmInvigilatorPin}>
+                  Unlock Exam
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </div>
     </section>
   )
