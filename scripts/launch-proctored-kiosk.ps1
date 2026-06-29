@@ -40,6 +40,8 @@ function Find-Browser {
 
 $browserPath = Find-Browser -Name $Browser
 $profileRoot = Join-Path $env:TEMP "vx-proctored-kiosk-profile"
+$separator = if ($ExamUrl.Contains("?")) { "&" } else { "?" }
+$kioskExamUrl = if ($ExamUrl -match "(\?|&)kiosk=1(&|$)") { $ExamUrl } else { "$ExamUrl${separator}kiosk=1" }
 
 New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
 
@@ -52,7 +54,7 @@ $arguments = @(
   "--disable-session-crashed-bubble",
   "--overscroll-history-navigation=0",
   "--user-data-dir=$profileRoot",
-  $ExamUrl
+  $kioskExamUrl
 )
 
 Start-Process -FilePath $browserPath -ArgumentList $arguments -WindowStyle Hidden

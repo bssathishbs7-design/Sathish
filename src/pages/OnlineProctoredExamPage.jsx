@@ -581,6 +581,14 @@ const isMicrosoftEdgeBrowser = () => {
   return /\bEdg\//.test(userAgent)
 }
 
+const hasKioskLaunchToken = () => {
+  try {
+    return new URLSearchParams(window.location.search).get('kiosk') === '1'
+  } catch {
+    return false
+  }
+}
+
 const isMobileDevice = () => {
   const userAgent = window.navigator.userAgent || ''
   return /Android(?!.*\bTablet\b)|iPhone|iPod|Windows Phone|BlackBerry|IEMobile|Kindle|Silk/i.test(userAgent)
@@ -698,6 +706,7 @@ const detectMultiMonitorSetup = () => {
 const isRestrictedProctorEnvironment = () => {
   if (isInAppWebview()) return 'Please open the proctored exam in a standard browser session.'
   if (!isMicrosoftEdgeBrowser()) return 'Please open this proctored exam in Microsoft Edge kiosk mode.'
+  if (!hasKioskLaunchToken()) return 'Please launch this exam using the Microsoft Edge kiosk launcher.'
   if (!isMobileOrTabletDevice() && !hasFullscreenSupport()) return 'Launch this proctored exam in fullscreen/PWA mode.'
   if (detectMultiMonitorSetup()) return 'More than one display is detected. Use one screen for the exam.'
   return ''
