@@ -431,6 +431,7 @@ function App() {
     || activePage === APP_PAGES.ONLINE_PRACTICE_EXAM
     || activePage === APP_PAGES.ONLINE_PROCTORED_EXAM
   const isPlainAssessmentMode = activePage === APP_PAGES.CREATE_ASSESSMENT
+    || activePage === APP_PAGES.ASSESSMENT_EVALUATION
   const shouldShowMobileUnsupported = isPhoneScreen && PHONE_UNSUPPORTED_PAGES.has(activePage)
   const hideShellChrome = isExamMode || isPlainAssessmentMode
   const activeEvaluationRecord = selectedEvaluationRecord
@@ -1301,7 +1302,12 @@ function App() {
               onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
             />
           ) : activePage === APP_PAGES.ASSESSMENT_EVALUATION ? (
-            <AssessmentEvaluationPage onNavigate={navigateToPage} onAlert={showAlert} />
+            <AssessmentEvaluationPage
+              onNavigate={navigateToPage}
+              onAlert={showAlert}
+              theme={theme}
+              onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+            />
           ) : activePage === APP_PAGES.ASSESSMENT_DASHBOARD ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.EXAM_CONTROLS ? (

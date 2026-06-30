@@ -88,6 +88,7 @@ const ONLINE_PRACTICE_EXAM_STORAGE_KEY = 'vx-online-practice-exam-assessment'
 const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
 const EXAM_CONTROLS_ASSESSMENT_KEY = 'vx-exam-controls-assessment'
 const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
+const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const PUBLISHED_LOG_PAGE_SIZE = 5
 const PUBLISHED_ACTION_VERIFICATION_CODE = '1234'
@@ -892,6 +893,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const [activeAssessmentTab, setActiveAssessmentTab] = useState(() => {
     const requestedTab = window.localStorage.getItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     window.localStorage.removeItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
+    if (requestedTab === 'evaluation') return 'evaluation'
     if (requestedTab === 'published' && readPublishedAssessments().length) return 'published'
     return readAssessmentDrafts().length ? 'draft' : readPublishedAssessments().length ? 'published' : 'draft'
   })
@@ -1180,6 +1182,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const openExamControls = (assessment) => {
     window.sessionStorage.setItem(EXAM_CONTROLS_ASSESSMENT_KEY, JSON.stringify(assessment))
     onNavigate?.(APP_PAGES.EXAM_CONTROLS)
+  }
+
+  const startAssessmentEvaluation = (assessment) => {
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(assessment))
+    onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)
   }
 
   return (
@@ -1523,7 +1530,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                               Yet to Start
                             </span>
                           </span>
-                          <button type="button" className="assessment-create-exam-controls-btn" onClick={() => onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)}>
+                          <button type="button" className="assessment-create-exam-controls-btn" onClick={() => startAssessmentEvaluation(assessment)}>
                             <ClipboardCheck size={12} strokeWidth={2.4} />
                             Start Evaluation
                           </button>
