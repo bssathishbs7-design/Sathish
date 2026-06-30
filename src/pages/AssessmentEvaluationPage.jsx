@@ -1,5 +1,5 @@
-import { LogOut, Moon, Pencil, RotateCcw, Sun } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Award, ClipboardList, Clock3, LogOut, Moon, Pencil, Percent, RotateCcw, Sun, UserX, Users } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 
@@ -200,6 +200,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [studentSessions, setStudentSessions] = useState(() => readStorageObject(STUDENT_EXAM_SESSION_KEY))
   const [submissionStatuses, setSubmissionStatuses] = useState(() => readStorageObject(STUDENT_EXAM_SUBMISSION_STATUS_KEY))
   const [manualAttendance, setManualAttendance] = useState(() => readStorageObject(getManualAttendanceStorageKey(readSelectedAssessment())))
+  const [studentSearch, setStudentSearch] = useState('')
+  const [attendanceFilter, setAttendanceFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [sortConfig, setSortConfig] = useState({ key: 'studentId', direction: 'asc' })
+  const [currentPage, setCurrentPage] = useState(1)
 
   const assessmentName = getAssessmentValue(assessment, 'assessmentName', 'Assessment Evaluation')
   const academicYear = getAssessmentYear(assessment)
@@ -216,6 +221,112 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const isOffline = isOfflineAssessment(assessment)
   const evaluationRows = readEvaluationStudents(assessment, studentSessions, submissionStatuses, manualAttendance)
   const maxMark = questionSummary.totalMarks || Number(assessment?.totalMarks ?? assessment?.setup?.totalMarks ?? 0) || 0
+  const normalizedRows = useMemo(() => evaluationRows.map((row) => {
+    const isAbsent = String(row.attendance).toUpperCase() === 'A'
+    return {
+      ...row,
+      isAbsent,
+      evalStatus: isAbsent ? 'Absent' : 'Yet to Start',
+      mcq: '-',
+      descriptive: '-',
+      attemptedQuestions: '-',
+      maxMark: formatTwoDigit(maxMark),
+      obtainedMarks: '-',
+      percentage: '-',
+    }
+  }), [evaluationRows, maxMark])
+  const absentCount = normalizedRows.filter((row) => row.isAbsent).length
+  const pendingCount = normalizedRows.filter((row) => !row.isAbsent).length
+  const metricItems = [
+    {
+      label: 'Total Marks :',
+      value: `${formatTwoDigit(questionSummary.totalMarks)} (${formatTwoDigit(questionSummary.mcqMarks)} MCQ + ${formatTwoDigit(questionSummary.descriptiveMarks)} Desc.)`,
+      icon: Award,
+      tone: 'marks',
+    },
+    {
+      label: 'Total Questions :',
+      value: `${formatTwoDigit(questionSummary.totalCount)} (${formatTwoDigit(questionSummary.mcqCount)} MCQ + ${formatTwoDigit(questionSummary.descriptiveCount)} Desc.)`,
+      icon: ClipboardList,
+      tone: 'questions',
+    },
+    {
+      label: 'No. of Students',
+      value: formatTwoDigit(normalizedRows.length),
+      icon: Users,
+      tone: 'students',
+    },
+    {
+      label: 'Absent',
+      value: formatTwoDigit(absentCount),
+      icon: UserX,
+      tone: 'absent',
+    },
+    {
+      label: 'Evaluation Pending',
+      value: formatTwoDigit(pendingCount),
+      icon: Clock3,
+      tone: 'pending',
+    },
+    {
+      label: 'Overall Percentage',
+      value: '00',
+      icon: Percent,
+      tone: 'percentage',
+    },
+  ]
+  const filteredRows = useMemo(() => {
+    const query = studentSearch.trim().toLowerCase()
+    return normalizedRows.filter((row) => {
+      const matchesSearch = !query || [
+        row.id,
+        row.name,
+        row.attendance,
+        row.evalStatus,
+      ].join(' ').toLowerCase().includes(query)
+      const matchesAttendance = attendanceFilter === 'all' || row.attendance === attendanceFilter
+      const matchesStatus = statusFilter === 'all' || row.evalStatus === statusFilter
+      return matchesSearch && matchesAttendance && matchesStatus
+    })
+  }, [attendanceFilter, normalizedRows, statusFilter, studentSearch])
+  const sortedRows = useMemo(() => {
+    const sortValue = (row) => {
+      if (sortConfig.key === 'studentId') return row.id
+      if (sortConfig.key === 'studentName') return row.name
+      if (sortConfig.key === 'attendance') return row.attendance
+      if (sortConfig.key === 'status') return row.evalStatus
+      if (sortConfig.key === 'maxMark') return Number(row.maxMark) || 0
+      return row.id
+    }
+
+    return [...filteredRows].sort((left, right) => {
+      const leftValue = sortValue(left)
+      const rightValue = sortValue(right)
+      const result = typeof leftValue === 'number'
+        ? leftValue - rightValue
+        : String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: 'base' })
+      return sortConfig.direction === 'asc' ? result : -result
+    })
+  }, [filteredRows, sortConfig])
+  const rowsPerPage = 5
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / rowsPerPage))
+  const pageStartIndex = (currentPage - 1) * rowsPerPage
+  const pagedRows = sortedRows.slice(pageStartIndex, pageStartIndex + rowsPerPage)
+  const pageFrom = sortedRows.length ? pageStartIndex + 1 : 0
+  const pageTo = Math.min(pageStartIndex + rowsPerPage, sortedRows.length)
+  const toggleSort = (key) => {
+    setSortConfig((current) => (
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: 'asc' }
+    ))
+  }
+  const sortLabel = (key, label) => (
+    <button type="button" className="assessment-evaluation-sort-btn" onClick={() => toggleSort(key)}>
+      {label}
+      {sortConfig.key === key ? <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span> : null}
+    </button>
+  )
   const showTableAction = (action, row) => {
     onAlert?.({
       tone: 'primary',
@@ -256,6 +367,14 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     }
   }, [])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [attendanceFilter, statusFilter, studentSearch])
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages))
+  }, [totalPages])
+
   return (
     <section className="assessment-evaluation-workspace">
       <header className="assessment-evaluation-top-header">
@@ -280,22 +399,6 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         </div>
 
         <div className="assessment-evaluation-right-block">
-          <div className="assessment-evaluation-summary-badges" aria-label="Assessment question and mark summary">
-            <span>
-              <em>Total Questions</em>
-              <strong>
-                {formatTwoDigit(questionSummary.totalCount)}
-                <small>({formatTwoDigit(questionSummary.mcqCount)} MCQ / {formatTwoDigit(questionSummary.descriptiveCount)} Descriptive)</small>
-              </strong>
-            </span>
-            <span>
-              <em>Total Marks</em>
-              <strong>
-                {formatTwoDigit(questionSummary.totalMarks)}
-                <small>({formatTwoDigit(questionSummary.mcqMarks)} MCQ / {formatTwoDigit(questionSummary.descriptiveMarks)} Descriptive)</small>
-              </strong>
-            </span>
-          </div>
           <div className="assessment-evaluation-header-actions" aria-label="Evaluation actions">
             <button
               type="button"
@@ -318,18 +421,57 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       </header>
 
       <section className="assessment-evaluation-table-card" aria-label="Student evaluation tracking">
+        <div className="assessment-evaluation-metrics" aria-label="Evaluation summary">
+          {metricItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <span key={item.label} className={`is-${item.tone}`}>
+                <i aria-hidden="true"><Icon size={15} strokeWidth={2.3} /></i>
+                <span>
+                  <em>{item.label}</em>
+                  <strong>{item.value}</strong>
+                </span>
+              </span>
+            )
+          })}
+        </div>
+        <div className="assessment-evaluation-table-tools">
+          <h2>Student Evaluation</h2>
+          <label>
+            <input
+              type="search"
+              value={studentSearch}
+              onChange={(event) => setStudentSearch(event.target.value)}
+              placeholder="Search student..."
+            />
+          </label>
+          <label>
+            <select value={attendanceFilter} onChange={(event) => setAttendanceFilter(event.target.value)}>
+              <option value="all">Attendance: All</option>
+              <option value="P">Attendance: Present</option>
+              <option value="A">Attendance: Absent</option>
+            </select>
+          </label>
+          <label>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">Status: All</option>
+              <option value="Yet to Start">Status: Yet to Start</option>
+              <option value="Absent">Status: Absent</option>
+            </select>
+          </label>
+        </div>
         <div className="assessment-evaluation-table-wrap">
           <table className="assessment-evaluation-table">
             <thead>
               <tr>
-                <th>Student ID</th>
-                <th>Attendance</th>
-                <th>Student Name</th>
-                <th>Eval. Status</th>
+                <th>{sortLabel('studentId', 'Student ID')}</th>
+                <th>{sortLabel('attendance', 'Attendance')}</th>
+                <th>{sortLabel('studentName', 'Student Name')}</th>
+                <th>{sortLabel('status', 'Eval. Status')}</th>
                 <th>MCQ</th>
                 <th>Descriptive</th>
                 <th>Attempted Ques</th>
-                <th>Max Mark</th>
+                <th>{sortLabel('maxMark', 'Max Mark')}</th>
                 <th>Obt. Marks</th>
                 <th>Percentage</th>
                 <th>Results</th>
@@ -337,9 +479,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               </tr>
             </thead>
             <tbody>
-              {evaluationRows.map((row) => {
-                const isAbsent = String(row.attendance).toUpperCase() === 'A'
-                const evalStatus = isAbsent ? 'Absent' : 'Yet to Start'
+              {pagedRows.map((row) => {
+                const { isAbsent, evalStatus } = row
                 return (
                   <tr key={row.id}>
                     <td>{row.id}</td>
@@ -369,12 +510,12 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                     </td>
                     <td>{row.name}</td>
                     <td><span className={`assessment-evaluation-status ${isAbsent ? 'is-absent' : 'is-yet-to-start'}`}>{evalStatus}</span></td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>{formatTwoDigit(maxMark)}</td>
-                    <td>-</td>
-                    <td>-</td>
+                    <td>{row.mcq}</td>
+                    <td>{row.descriptive}</td>
+                    <td>{row.attemptedQuestions}</td>
+                    <td>{row.maxMark}</td>
+                    <td>{row.obtainedMarks}</td>
+                    <td>{row.percentage}</td>
                     <td>
                       <button type="button" className="assessment-evaluation-result-btn" onClick={() => showTableAction('View', row)} disabled={isAbsent}>
                         View
@@ -397,6 +538,17 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             </tbody>
           </table>
         </div>
+        <footer className="assessment-evaluation-table-footer">
+          <span>Showing {pageFrom}-{pageTo} of {sortedRows.length}</span>
+          <div>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage <= 1}>
+              Previous
+            </button>
+            <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={currentPage >= totalPages}>
+              Next
+            </button>
+          </div>
+        </footer>
       </section>
     </section>
   )
