@@ -19,7 +19,7 @@ export const APP_PAGES = {
   EVALUATION: 'Evaluation',
   ASSESSMENT_CREATE: 'Assessment Create',
   CREATE_ASSESSMENT: 'createassessment',
-  ASSESSMENT_EVALUATION: 'Assessment Evaluation',
+  ASSESSMENT_EVALUATION: 'startstudentevaluation',
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
   EXAM_CONTROLS: 'Exam Controls',
   MY_ASSESSMENT: 'My Assessment',

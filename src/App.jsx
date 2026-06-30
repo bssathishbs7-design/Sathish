@@ -39,7 +39,7 @@ const PAGE_PATHS = {
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
   [APP_PAGES.ASSESSMENT_CREATE]: '/assessment/create',
   [APP_PAGES.CREATE_ASSESSMENT]: '/createassessment',
-  [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/evaluation',
+  [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/startstudentevaluation',
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
   [APP_PAGES.EXAM_CONTROLS]: '/assessment/exam-controls',
   [APP_PAGES.MY_ASSESSMENT]: '/my-assessment',

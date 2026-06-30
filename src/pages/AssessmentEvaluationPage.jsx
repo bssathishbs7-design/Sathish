@@ -1,9 +1,10 @@
-import { Award, ClipboardList, Clock3, LogOut, Moon, Pencil, Percent, RotateCcw, Sun, UserX, Users } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Award, Check, ClipboardList, Clock3, FileText, Image as ImageIcon, LogOut, Moon, Pencil, Percent, RotateCcw, Sun, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 
 const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
+const ASSESSMENT_EVALUATION_STUDENT_KEY = 'vx-assessment-evaluation-student'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const ASSESSMENT_CREATE_INITIAL_TAB_KEY = 'vx-assessment-create-initial-tab'
 const STUDENT_EXAM_SESSION_KEY = 'vx-student-exam-session'
@@ -11,6 +12,7 @@ const STUDENT_EXAM_SESSION_EVENT = 'vx-student-exam-session-changed'
 const STUDENT_EXAM_SUBMISSION_STATUS_KEY = 'vx-student-exam-submission-status'
 const STUDENT_EXAM_SUBMISSION_STATUS_EVENT = 'vx-student-exam-submission-status-changed'
 const ASSESSMENT_EVALUATION_ATTENDANCE_KEY = 'vx-assessment-evaluation-attendance'
+const ASSESSMENT_STUDENT_QUESTION_EVALUATION_KEY = 'vx-assessment-student-question-evaluation'
 const DEFAULT_EVALUATION_STUDENTS = [
   { id: 'MV1253', name: 'Student 1', attendance: 'P' },
   { id: 'MV1254', name: 'Student 2', attendance: 'P' },
@@ -22,6 +24,15 @@ const readSelectedAssessment = () => {
   try {
     const storedAssessment = window.sessionStorage.getItem(ASSESSMENT_EVALUATION_SELECTED_KEY)
     return storedAssessment ? JSON.parse(storedAssessment) : null
+  } catch {
+    return null
+  }
+}
+
+const readSelectedStudent = () => {
+  try {
+    const storedStudent = window.sessionStorage.getItem(ASSESSMENT_EVALUATION_STUDENT_KEY)
+    return storedStudent ? JSON.parse(storedStudent) : null
   } catch {
     return null
   }
@@ -58,6 +69,10 @@ const getAssessmentControlId = (assessment) => (
 
 const getManualAttendanceStorageKey = (assessment) => (
   `${ASSESSMENT_EVALUATION_ATTENDANCE_KEY}:${getAssessmentControlId(assessment)}`
+)
+
+const getStudentQuestionEvaluationStorageKey = (assessment, student) => (
+  `${ASSESSMENT_STUDENT_QUESTION_EVALUATION_KEY}:${getAssessmentControlId(assessment)}:${student?.id || 'student'}`
 )
 
 const isOfflineAssessment = (assessment) => String(
@@ -104,6 +119,72 @@ const getQuestionMarksTotal = (item) => {
 
   if (item?.type === 'MCQ' && !parseMarksValue(item?.marks)) return 1
   return parseMarksValue(item?.marks)
+}
+
+const getDescriptiveSectionMarks = (section) => {
+  const children = Array.isArray(section?.children) ? section.children : []
+  if (children.length) {
+    return children.reduce((total, child) => total + (getQuestionMarksTotal(child) || parseMarksValue(child?.marks)), 0)
+  }
+  return getQuestionMarksTotal(section) || parseMarksValue(section?.marks)
+}
+
+const getDescriptiveScoringItems = (question, index) => {
+  const baseKey = getQuestionKey(question, `descriptive-${index + 1}`)
+  const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+
+  if (!sections.length) {
+    return [{ key: baseKey, maxMarks: getQuestionMarksTotal(question) }]
+  }
+
+  return sections.flatMap((section, sectionIndex) => {
+    const sectionKey = getQuestionKey(section, `${baseKey}-section-${sectionIndex + 1}`)
+    const children = Array.isArray(section.children) ? section.children : []
+
+    if (!children.length) {
+      return [{ key: sectionKey, maxMarks: getDescriptiveSectionMarks(section) }]
+    }
+
+    return children.map((child, childIndex) => ({
+      key: getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`),
+      maxMarks: getQuestionMarksTotal(child) || parseMarksValue(child?.marks),
+    }))
+  })
+}
+
+const getQuestionText = (item, fallback = 'Question not available') => (
+  stripHtml(item?.questionText ?? item?.prompt ?? item?.text ?? item?.title ?? item?.question ?? fallback)
+)
+
+const getQuestionKey = (item, fallback) => String(
+  item?.id
+  || item?.questionId
+  || item?._id
+  || fallback
+)
+
+const getQuestionImages = (item) => {
+  const candidates = [
+    item?.images,
+    item?.questionImages,
+    item?.attachments,
+    item?.media,
+    item?.imagePreview,
+    item?.questionImagePreview,
+    item?.imageUrl,
+    item?.questionImageUrl,
+    item?.image,
+    item?.questionImage,
+  ].filter(Boolean)
+
+  return candidates.flatMap((candidate) => {
+    const values = Array.isArray(candidate) ? candidate : [candidate]
+    return values.map((image, index) => {
+      if (typeof image === 'string') return { id: `${image}-${index}`, url: image, name: `Question image ${index + 1}` }
+      const url = image?.url || image?.src || image?.preview || image?.dataUrl || image?.base64 || image?.path
+      return url ? { id: image?.id || `${url}-${index}`, url, name: image?.name || image?.fileName || `Question image ${index + 1}` } : null
+    }).filter(Boolean)
+  })
 }
 
 const getAssessmentStorageSuffix = (setup = {}) => {
@@ -197,6 +278,7 @@ const readEvaluationStudents = (assessment, studentSessions = {}, submissionStat
 
 export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 'light', onToggleTheme }) {
   const [assessment] = useState(() => readSelectedAssessment())
+  const [selectedStudent, setSelectedStudent] = useState(() => readSelectedStudent())
   const [studentSessions, setStudentSessions] = useState(() => readStorageObject(STUDENT_EXAM_SESSION_KEY))
   const [submissionStatuses, setSubmissionStatuses] = useState(() => readStorageObject(STUDENT_EXAM_SUBMISSION_STATUS_KEY))
   const [manualAttendance, setManualAttendance] = useState(() => readStorageObject(getManualAttendanceStorageKey(readSelectedAssessment())))
@@ -205,8 +287,12 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortConfig, setSortConfig] = useState({ key: 'studentId', direction: 'asc' })
   const [currentPage, setCurrentPage] = useState(1)
+  const [studentDetailSearch, setStudentDetailSearch] = useState('')
+  const [questionEvaluationState, setQuestionEvaluationState] = useState(() => (
+    readStorageObject(getStudentQuestionEvaluationStorageKey(readSelectedAssessment(), readSelectedStudent()))
+  ))
 
-  const assessmentName = getAssessmentValue(assessment, 'assessmentName', 'Assessment Evaluation')
+  const assessmentName = getAssessmentValue(assessment, 'assessmentName', 'Start Student Evaluation')
   const academicYear = getAssessmentYear(assessment)
   const examMode = getAssessmentValue(assessment, 'examMode', 'Online')
   const examCategory = getAssessmentValue(assessment, 'examCategory', 'Assessment')
@@ -218,7 +304,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     .map((value) => value || '-')
     .join(' / ')
   const questionSummary = getQuestionSummary(assessment)
+  const assessmentQuestions = useMemo(() => readAssessmentQuestions(assessment), [assessment])
+  const mcqQuestions = assessmentQuestions.filter((item) => !isDescriptiveQuestionType(item?.type))
+  const descriptiveQuestions = assessmentQuestions.filter((item) => isDescriptiveQuestionType(item?.type))
   const isOffline = isOfflineAssessment(assessment)
+  const examTypeText = String(examType || '').toLowerCase()
+  const shouldShowMcqObtained = examTypeText.includes('mcq') || examTypeText.includes('hybrid')
+  const shouldShowDescriptiveObtained = examTypeText.includes('descriptive') || examTypeText.includes('hybrid')
   const evaluationRows = readEvaluationStudents(assessment, studentSessions, submissionStatuses, manualAttendance)
   const maxMark = questionSummary.totalMarks || Number(assessment?.totalMarks ?? assessment?.setup?.totalMarks ?? 0) || 0
   const normalizedRows = useMemo(() => evaluationRows.map((row) => {
@@ -334,6 +426,37 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     })
   }
 
+  const openStudentEvaluation = (row) => {
+    if (row.isAbsent) return
+    const nextStudent = {
+      ...row,
+      evaluationStatus: 'Not Completed',
+      attendanceStatus: row.attendance === 'P' ? 'Present' : 'Absent',
+    }
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_STUDENT_KEY, JSON.stringify(nextStudent))
+    setSelectedStudent(nextStudent)
+  }
+
+  const backToStudentList = () => {
+    window.sessionStorage.removeItem(ASSESSMENT_EVALUATION_STUDENT_KEY)
+    setSelectedStudent(null)
+    setStudentDetailSearch('')
+  }
+
+  const handleStudentDetailSearch = (value) => {
+    setStudentDetailSearch(value)
+    const query = value.trim().toLowerCase()
+    if (!query) return
+    const matchedStudent = normalizedRows.find((row) => (
+      !row.isAbsent
+      && (
+        String(row.id).toLowerCase().includes(query)
+        || String(row.name).toLowerCase().includes(query)
+      )
+    ))
+    if (matchedStudent) openStudentEvaluation(matchedStudent)
+  }
+
   const exitToEvaluationTab = () => {
     window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'evaluation')
     onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
@@ -346,6 +469,239 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       return nextAttendance
     })
   }
+
+  const mcqScoringItems = mcqQuestions.map((question, index) => ({
+    key: getQuestionKey(question, `mcq-${index + 1}`),
+    maxMarks: getQuestionMarksTotal(question) || 1,
+  }))
+  const descriptiveScoringItems = descriptiveQuestions.flatMap(getDescriptiveScoringItems)
+  const getScoringSummary = (items) => items.reduce((summary, item) => {
+    const result = questionEvaluationState[item.key] || {}
+    const hasMarks = result.marks !== undefined && result.marks !== null && result.marks !== ''
+    const isAttempted = result.status === 'correct'
+      || result.status === 'wrong'
+      || result.status === 'evaluated'
+      || (hasMarks && result.status !== 'not-attempted')
+
+    return {
+      total: summary.total + 1,
+      attempted: summary.attempted + (isAttempted ? 1 : 0),
+      maxMarks: summary.maxMarks + parseMarksValue(item.maxMarks),
+      obtainedMarks: summary.obtainedMarks + (hasMarks ? parseMarksValue(result.marks) : 0),
+    }
+  }, {
+    total: 0,
+    attempted: 0,
+    maxMarks: 0,
+    obtainedMarks: 0,
+  })
+  const mcqScoringSummary = getScoringSummary(mcqScoringItems)
+  const descriptiveScoringSummary = getScoringSummary(descriptiveScoringItems)
+  const studentScoringSummary = {
+    total: mcqScoringSummary.total + descriptiveScoringSummary.total,
+    attempted: mcqScoringSummary.attempted + descriptiveScoringSummary.attempted,
+    maxMarks: mcqScoringSummary.maxMarks + descriptiveScoringSummary.maxMarks,
+    obtainedMarks: mcqScoringSummary.obtainedMarks + descriptiveScoringSummary.obtainedMarks,
+  }
+  const studentPercentage = studentScoringSummary.maxMarks
+    ? Math.round((studentScoringSummary.obtainedMarks / studentScoringSummary.maxMarks) * 100)
+    : 0
+
+  const saveQuestionEvaluationState = (updater) => {
+    if (!selectedStudent) return
+    setQuestionEvaluationState((current) => {
+      const nextState = typeof updater === 'function' ? updater(current) : updater
+      writeStorageObject(getStudentQuestionEvaluationStorageKey(assessment, selectedStudent), nextState)
+      return nextState
+    })
+  }
+
+  const setQuestionResult = (questionKey, result) => {
+    saveQuestionEvaluationState((current) => ({
+      ...current,
+      [questionKey]: result,
+    }))
+  }
+
+  const resetQuestionResult = (questionKey) => {
+    saveQuestionEvaluationState((current) => {
+      const nextState = { ...current }
+      delete nextState[questionKey]
+      return nextState
+    })
+  }
+
+  const renderQuestionImages = (question) => {
+    const images = getQuestionImages(question)
+    if (!images.length) return null
+
+    return (
+      <div className="assessment-question-images" aria-label="Question images">
+        {images.map((image, index) => (
+          <figure key={image.id || `${image.url}-${index}`}>
+            <img src={image.url} alt={image.name || `Question image ${index + 1}`} />
+            <figcaption>
+              <ImageIcon size={13} strokeWidth={2.3} />
+              Image {String.fromCharCode(65 + index)}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    )
+  }
+
+  const renderMcqQuestion = (question, index) => {
+    const questionKey = getQuestionKey(question, `mcq-${index + 1}`)
+    const result = questionEvaluationState[questionKey]?.status || 'pending'
+    const maxMarks = getQuestionMarksTotal(question) || 1
+
+    return (
+      <article key={questionKey} className={`assessment-question-row is-mcq is-${result}`}>
+        <div className="assessment-question-main">
+          <span className="assessment-question-number">{index + 1}.</span>
+          <div>
+            <p>{getQuestionText(question, `MCQ question ${index + 1}`)}</p>
+            {renderQuestionImages(question)}
+          </div>
+        </div>
+        <div className="assessment-question-actions">
+          <span className="assessment-question-mark">Max Mark : {maxMarks}</span>
+          <button
+            type="button"
+            className={result === 'correct' ? 'is-active is-correct' : 'is-correct'}
+            onClick={() => setQuestionResult(questionKey, { status: 'correct', marks: maxMarks })}
+            aria-label={`Mark question ${index + 1} correct`}
+          >
+            <Check size={16} strokeWidth={2.6} />
+          </button>
+          <button
+            type="button"
+            className={result === 'wrong' ? 'is-active is-wrong' : 'is-wrong'}
+            onClick={() => setQuestionResult(questionKey, { status: 'wrong', marks: 0 })}
+            aria-label={`Mark question ${index + 1} wrong`}
+          >
+            <X size={16} strokeWidth={2.6} />
+          </button>
+          <button
+            type="button"
+            className={result === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
+            onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
+          >
+            Not Attempted
+          </button>
+          <button type="button" className="is-reset" onClick={() => resetQuestionResult(questionKey)}>
+            <RotateCcw size={15} strokeWidth={2.4} />
+            Reset
+          </button>
+        </div>
+      </article>
+    )
+  }
+
+  const renderDescriptiveScoringRow = (question, indexLabel, questionKey) => {
+    const result = questionEvaluationState[questionKey] || {}
+    const maxMarks = getQuestionMarksTotal(question) || parseMarksValue(question?.marks)
+
+    return (
+      <article key={questionKey} className={`assessment-question-row is-descriptive ${result.status === 'not-attempted' ? 'is-not-attempted' : ''}`}>
+        <div className="assessment-question-main">
+          <span className="assessment-question-number">{indexLabel}</span>
+          <div>
+            <p>{getQuestionText(question, `Descriptive question ${indexLabel}`)}</p>
+            {renderQuestionImages(question)}
+          </div>
+        </div>
+        <div className="assessment-question-actions">
+          <span className="assessment-question-mark">Max Mark : {maxMarks}</span>
+          <input
+            type="number"
+            min="0"
+            max={maxMarks || undefined}
+            value={result.marks ?? ''}
+            onChange={(event) => setQuestionResult(questionKey, { status: 'evaluated', marks: event.target.value })}
+            placeholder="Enter mark"
+            aria-label={`Enter obtained mark for question ${indexLabel}`}
+          />
+          <button
+            type="button"
+            className={result.status === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
+            onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
+          >
+            Not Attempted
+          </button>
+          <button type="button" className="is-reset" onClick={() => resetQuestionResult(questionKey)}>
+            <RotateCcw size={15} strokeWidth={2.4} />
+            Reset
+          </button>
+        </div>
+      </article>
+    )
+  }
+
+  const renderDescriptiveQuestion = (question, index) => {
+    const baseKey = getQuestionKey(question, `descriptive-${index + 1}`)
+    const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+
+    if (!sections.length) {
+      return renderDescriptiveScoringRow(question, `${index + 1}.`, baseKey)
+    }
+
+    return (
+      <article key={baseKey} className="assessment-descriptive-group">
+        <div className="assessment-descriptive-parent">
+          <span className="assessment-question-number">{index + 1}.</span>
+          <div>
+            <p>{getQuestionText(question, `Descriptive question ${index + 1}`)}</p>
+            {renderQuestionImages(question)}
+          </div>
+        </div>
+        <div className="assessment-descriptive-children">
+          {sections.map((section, sectionIndex) => {
+            const children = Array.isArray(section.children) ? section.children : []
+            const sectionKey = getQuestionKey(section, `${baseKey}-section-${sectionIndex + 1}`)
+            const sectionTitle = getQuestionText(section, `Sub question ${index + 1}.${sectionIndex + 1}`)
+
+            return (
+              <section key={sectionKey} className="assessment-descriptive-section">
+                <header>
+                  <strong>{sectionTitle}</strong>
+                  <span>Section Mark : {getDescriptiveSectionMarks(section)}</span>
+                </header>
+                {renderQuestionImages(section)}
+                {children.length ? (
+                  children.map((child, childIndex) => renderDescriptiveScoringRow(
+                    child,
+                    `${index + 1}.${sectionIndex + 1}.${childIndex + 1}`,
+                    getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`),
+                  ))
+                ) : renderDescriptiveScoringRow(section, `${index + 1}.${sectionIndex + 1}`, sectionKey)}
+              </section>
+            )
+          })}
+        </div>
+      </article>
+    )
+  }
+
+  const selectedStudentDetails = selectedStudent ? [
+    { label: 'Questions', value: `Attempted: ${formatTwoDigit(studentScoringSummary.attempted)} of ${formatTwoDigit(studentScoringSummary.total)}`, icon: ClipboardList, tone: 'questions' },
+    { label: 'Marks', value: `Obtained: ${formatTwoDigit(studentScoringSummary.obtainedMarks)} of ${formatTwoDigit(studentScoringSummary.maxMarks)}`, icon: Award, tone: 'marks' },
+    ...(shouldShowMcqObtained ? [{
+      label: 'MCQ',
+      badge: `${formatTwoDigit(mcqScoringSummary.attempted)} Out of ${formatTwoDigit(mcqScoringSummary.total)}`,
+      tone: 'mcq',
+      icon: ClipboardList,
+      value: `${formatTwoDigit(mcqScoringSummary.obtainedMarks)} Marks`,
+    }] : []),
+    ...(shouldShowDescriptiveObtained ? [{
+      label: 'Descriptive',
+      badge: `${formatTwoDigit(descriptiveScoringSummary.attempted)} Out of ${formatTwoDigit(descriptiveScoringSummary.total)}`,
+      tone: 'descriptive',
+      icon: FileText,
+      value: `${formatTwoDigit(descriptiveScoringSummary.obtainedMarks)} Marks`,
+    }] : []),
+    { label: 'Percentage', value: `${formatTwoDigit(studentPercentage)}%`, icon: Percent, tone: 'percentage' },
+  ] : []
 
   useEffect(() => {
     const syncStudentSessions = () => setStudentSessions(readStorageObject(STUDENT_EXAM_SESSION_KEY))
@@ -374,6 +730,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages))
   }, [totalPages])
+
+  useEffect(() => {
+    setQuestionEvaluationState(readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, selectedStudent)))
+  }, [assessment, selectedStudent])
 
   return (
     <section className="assessment-evaluation-workspace">
@@ -420,6 +780,85 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         </div>
       </header>
 
+      {selectedStudent ? (
+        <section className="assessment-student-evaluation-card" aria-label="Selected student evaluation">
+          <div className="assessment-student-evaluation-head">
+            <button type="button" className="assessment-student-back-icon" onClick={backToStudentList} title="Back to Student List" aria-label="Back to Student List">
+              <ArrowLeft size={18} strokeWidth={2.4} />
+            </button>
+            <div>
+              <h2>{selectedStudent.name}</h2>
+              <p className="assessment-student-evaluation-subtitle">
+                <span>{selectedStudent.id}</span>
+                <span className="assessment-student-evaluation-divider">/</span>
+                <span>{selectedStudent.attendanceStatus || (selectedStudent.attendance === 'P' ? 'Present' : 'Absent')}</span>
+                <span className="assessment-student-evaluation-divider">/</span>
+                <strong>{selectedStudent.evaluationStatus || 'Not Completed'}</strong>
+              </p>
+            </div>
+            <label className="assessment-student-search">
+              <input
+                type="search"
+                value={studentDetailSearch}
+                onChange={(event) => handleStudentDetailSearch(event.target.value)}
+                placeholder="Search student or ID..."
+              />
+            </label>
+          </div>
+
+          <div className="assessment-student-detail-grid">
+            {selectedStudentDetails.map((item) => (
+              <span key={item.label} className={item.tone ? `is-${item.tone}` : ''}>
+                {item.icon ? <i aria-hidden="true"><item.icon size={15} strokeWidth={2.3} /></i> : null}
+                <span>
+                  <em>
+                    {item.label}
+                    {item.badge ? <b>({item.badge})</b> : null}
+                  </em>
+                  <strong>{item.value}</strong>
+                  {item.subValue ? <small>{item.subValue}</small> : null}
+                </span>
+              </span>
+            ))}
+          </div>
+
+          <section className="assessment-student-question-area" aria-label="Question evaluation workspace">
+            {mcqQuestions.length || descriptiveQuestions.length ? (
+              <>
+                {mcqQuestions.length ? (
+                  <section className="assessment-student-question-section is-mcq" aria-label="MCQ questions">
+                    <header>
+                      <h3>I. MCQ Questions</h3>
+                      <span>Section Total = {formatTwoDigit(questionSummary.mcqMarks)} Marks</span>
+                    </header>
+                    <div className="assessment-question-list">
+                      {mcqQuestions.map(renderMcqQuestion)}
+                    </div>
+                  </section>
+                ) : null}
+
+                {descriptiveQuestions.length ? (
+                  <section className="assessment-student-question-section is-descriptive" aria-label="Descriptive questions">
+                    <header>
+                      <h3>{mcqQuestions.length ? 'II.' : 'I.'} Descriptive Questions</h3>
+                      <span>Section Total = {formatTwoDigit(questionSummary.descriptiveMarks)} Marks</span>
+                    </header>
+                    <div className="assessment-question-list">
+                      {descriptiveQuestions.map(renderDescriptiveQuestion)}
+                    </div>
+                  </section>
+                ) : null}
+              </>
+            ) : (
+              <div className="assessment-student-evaluation-empty">
+                <AlertCircle size={26} strokeWidth={2.3} />
+                <strong>No questions found for this assessment</strong>
+                <p>Attach MCQ or descriptive questions to this exam before starting student evaluation.</p>
+              </div>
+            )}
+          </section>
+        </section>
+      ) : (
       <section className="assessment-evaluation-table-card" aria-label="Student evaluation tracking">
         <div className="assessment-evaluation-metrics" aria-label="Evaluation summary">
           {metricItems.map((item) => {
@@ -523,13 +962,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                     </td>
                     <td>
                       <div className="assessment-evaluation-row-actions">
-                        <button type="button" className="is-icon" onClick={() => showTableAction('Reset', row)} aria-label={`Reset ${row.name}`} disabled={isAbsent}>
+                        <button type="button" className="is-icon is-reset" onClick={() => showTableAction('Reset', row)} aria-label={`Reset ${row.name}`} disabled={isAbsent}>
                           <RotateCcw size={14} strokeWidth={2.4} />
                         </button>
-                        <button type="button" className="is-icon" onClick={() => showTableAction('Edit', row)} aria-label={`Edit ${row.name}`} disabled={isAbsent}>
+                        <button type="button" className="is-icon is-edit" onClick={() => showTableAction('Edit', row)} aria-label={`Edit ${row.name}`} disabled={isAbsent}>
                           <Pencil size={14} strokeWidth={2.4} />
                         </button>
-                        <button type="button" className="is-primary" onClick={() => showTableAction('Start Evaluation', row)} disabled={isAbsent}>Start Evaluation</button>
+                        <button type="button" className="is-primary" onClick={() => openStudentEvaluation(row)} disabled={isAbsent}>Start Evaluation</button>
                       </div>
                     </td>
                   </tr>
@@ -550,6 +989,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           </div>
         </footer>
       </section>
+      )}
     </section>
   )
 }
