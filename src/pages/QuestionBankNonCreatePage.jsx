@@ -2445,9 +2445,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   <span aria-hidden="true" />
                   <em>My Pages</em>
                   <ChevronRight size={14} strokeWidth={2.4} />
-                  <em>Question Bank</em>
+                  <em>Assessment Suite</em>
                   <ChevronRight size={14} strokeWidth={2.4} />
-                  <strong>All Questions</strong>
+                  <strong>Question Bank</strong>
                 </span>
                 <span className="question-bank-list-head-actions" role="group" aria-label="Question bank actions">
                   {isEditable ? (

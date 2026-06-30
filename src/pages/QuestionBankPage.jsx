@@ -5,8 +5,6 @@ import {
   CheckCheck,
   CheckCircle2,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
   Contact,
   Eye,
@@ -28,6 +26,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import RichMathEditor from '../components/RichMathEditor'
 import { stripHtml } from '../utils/mathText'
 import {
@@ -3866,10 +3865,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
   return (
     <section className={`question-bank-page is-${normalizedMode}`}>
-     
-
       <div className="question-bank-layout">
         <main className="question-bank-main">
+          <section className="question-bank-create-page-head" aria-label="Question bank page navigation">
+            <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Create New']} />
+          </section>
+
           <div className="question-bank-metrics-grid" aria-label="Question bank metrics">
             {questionBankMetrics.map((metric) => {
               const Icon = metric.icon
@@ -3905,89 +3906,90 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             })}
           </div>
 
-          <div className="question-bank-tabs" role="tablist" aria-label="Question bank sections">
-            <button
-              type="button"
-              className={activeQuestionTab === 'create' ? 'is-active' : ''}
-              onClick={() => setActiveQuestionTab('create')}
-              role="tab"
-              aria-selected={activeQuestionTab === 'create'}
-            >
-              Create Ques
-            </button>
-            <button
-              type="button"
-              className={activeQuestionTab === 'created' ? 'is-active' : ''}
-              onClick={() => setActiveQuestionTab('created')}
-              role="tab"
-              aria-selected={activeQuestionTab === 'created'}
-            >
-              My Questions
-              <span>{createdQuestionCards.length}</span>
-            </button>
-            <button
-              type="button"
-              className={activeQuestionTab === 'uploaded' ? 'is-active' : ''}
-              onClick={() => setActiveQuestionTab('uploaded')}
-              role="tab"
-              aria-selected={activeQuestionTab === 'uploaded'}
-            >
-              Upload Ques
-              <span>{uploadedQuestionCards.length}</span>
-            </button>
-            <button
-              type="button"
-              className={activeQuestionTab === 'draft' ? 'is-active' : ''}
-              onClick={() => setActiveQuestionTab('draft')}
-              role="tab"
-              aria-selected={activeQuestionTab === 'draft'}
-            >
-             My Draft
-              <span>{draftQuestionCards.length}</span>
-            </button>
-            <button
-              type="button"
-              className={activeQuestionTab === 'sent' ? 'is-active' : ''}
-              onClick={() => setActiveQuestionTab('sent')}
-              role="tab"
-              aria-selected={activeQuestionTab === 'sent'}
-            >
-              Pending
-              <span>{sentApprovalQuestionCards.length}</span>
-            </button>
-            <button
-              type="button"
-              className={activeQuestionTab === 'approved' ? 'is-active' : ''}
-              onClick={() => setActiveQuestionTab('approved')}
-              role="tab"
-              aria-selected={activeQuestionTab === 'approved'}
-            >
-              Approved
-              <span>{approvedQuestionCards.length}</span>
-            </button>
-            <button
-              type="button"
-              className={activeQuestionTab === 'rejected' ? 'is-active' : ''}
-              onClick={() => setActiveQuestionTab('rejected')}
-              role="tab"
-              aria-selected={activeQuestionTab === 'rejected'}
-            >
-              Rejected
-              <span>{rejectedQuestionCards.length}</span>
-            </button>
-            <button
-              type="button"
-              className={activeQuestionTab === 'report' ? 'is-active' : ''}
-              onClick={() => setActiveQuestionTab('report')}
-              role="tab"
-              aria-selected={activeQuestionTab === 'report'}
-            >
-              Reported
-              <span>{reportQuestionCards.length}</span>
-            </button>
-          </div>
+          <section className="question-bank-tab-card">
+            <div className="question-bank-tabs" role="tablist" aria-label="Question bank sections">
+              <button
+                type="button"
+                className={activeQuestionTab === 'create' ? 'is-active' : ''}
+                onClick={() => setActiveQuestionTab('create')}
+                role="tab"
+                aria-selected={activeQuestionTab === 'create'}
+              >
+                Create Ques
+              </button>
+              <button
+                type="button"
+                className={activeQuestionTab === 'created' ? 'is-active' : ''}
+                onClick={() => setActiveQuestionTab('created')}
+                role="tab"
+                aria-selected={activeQuestionTab === 'created'}
+              >
+                My Questions
+                <span>{createdQuestionCards.length}</span>
+              </button>
+              <button
+                type="button"
+                className={activeQuestionTab === 'uploaded' ? 'is-active' : ''}
+                onClick={() => setActiveQuestionTab('uploaded')}
+                role="tab"
+                aria-selected={activeQuestionTab === 'uploaded'}
+              >
+                Upload Ques
+                <span>{uploadedQuestionCards.length}</span>
+              </button>
+              <button
+                type="button"
+                className={activeQuestionTab === 'draft' ? 'is-active' : ''}
+                onClick={() => setActiveQuestionTab('draft')}
+                role="tab"
+                aria-selected={activeQuestionTab === 'draft'}
+              >
+               My Draft
+                <span>{draftQuestionCards.length}</span>
+              </button>
+              <button
+                type="button"
+                className={activeQuestionTab === 'sent' ? 'is-active' : ''}
+                onClick={() => setActiveQuestionTab('sent')}
+                role="tab"
+                aria-selected={activeQuestionTab === 'sent'}
+              >
+                Pending
+                <span>{sentApprovalQuestionCards.length}</span>
+              </button>
+              <button
+                type="button"
+                className={activeQuestionTab === 'approved' ? 'is-active' : ''}
+                onClick={() => setActiveQuestionTab('approved')}
+                role="tab"
+                aria-selected={activeQuestionTab === 'approved'}
+              >
+                Approved
+                <span>{approvedQuestionCards.length}</span>
+              </button>
+              <button
+                type="button"
+                className={activeQuestionTab === 'rejected' ? 'is-active' : ''}
+                onClick={() => setActiveQuestionTab('rejected')}
+                role="tab"
+                aria-selected={activeQuestionTab === 'rejected'}
+              >
+                Rejected
+                <span>{rejectedQuestionCards.length}</span>
+              </button>
+              <button
+                type="button"
+                className={activeQuestionTab === 'report' ? 'is-active' : ''}
+                onClick={() => setActiveQuestionTab('report')}
+                role="tab"
+                aria-selected={activeQuestionTab === 'report'}
+              >
+                Reported
+                <span>{reportQuestionCards.length}</span>
+              </button>
+            </div>
 
-          {activeQuestionTab === 'uploaded' ? (
+            {activeQuestionTab === 'uploaded' ? (
             <section className="question-bank-upload-import-panel" aria-label="Upload questions from Excel template">
               <div className="question-bank-upload-import-head">
                 <div className="question-bank-upload-import-copy">
@@ -4053,7 +4055,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             </section>
           ) : null}
 
-          {activeQuestionTab === 'create' && !selectedQuestion ? (
+            {activeQuestionTab === 'create' && !selectedQuestion ? (
             <div className={`question-bank-create-strip ${!selectedQuestion ? 'has-empty-state' : ''}`}>
               {questionTypePicker}
               {!selectedQuestion ? (
@@ -4066,7 +4068,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             </div>
           ) : null}
 
-          {selectedQuestion || isListQuestionTab ? (
+            {selectedQuestion || isListQuestionTab ? (
             <div className="question-bank-workspace">
               <div className="question-bank-editor">
                 {activeQuestionTab === 'create' && selectedQuestion ? (
@@ -5615,9 +5617,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
               </div>
             </div>
-          ) : (
+            ) : (
             null
-          )}
+            )}
+          </section>
         </main>
       </div>
 

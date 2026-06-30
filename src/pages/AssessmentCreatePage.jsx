@@ -1092,7 +1092,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
     <section className="vx-content assessment-page assessment-create-tracker-page">
       <div className={`assessment-page-shell assessment-create-page-shell ${activeAssessmentTab === 'draft' ? 'is-draft-tab' : ''}`}>
         <div className="assessment-create-page-header">
-          <PageNavigationHeader items={['My Pages', 'Assessment', 'My Progress']} />
+          <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Assessment']} />
           <div className="assessment-create-header-actions" aria-label="Assessment page actions">
             <button
               type="button"
