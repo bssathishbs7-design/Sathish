@@ -87,8 +87,10 @@ const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const ONLINE_PRACTICE_EXAM_STORAGE_KEY = 'vx-online-practice-exam-assessment'
 const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
 const EXAM_CONTROLS_ASSESSMENT_KEY = 'vx-exam-controls-assessment'
+const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const PUBLISHED_LOG_PAGE_SIZE = 5
+const PUBLISHED_ACTION_VERIFICATION_CODE = '1234'
 const PUBLISHED_FILTER_DEFAULTS = {
   mode: 'all',
   status: 'all',
@@ -829,6 +831,9 @@ const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
 }
 
 const isPublishedAssessmentActionLocked = (assessment, now = new Date()) => {
+  const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, now)
+  if (['live', 'completed'].includes(scheduleStatus?.type)) return true
+
   const startDate = parseAssessmentDate(assessment?.startDate)
   if (!startDate) return false
 
@@ -850,6 +855,29 @@ const getPublishedLogRows = (assessment) => {
   }]
 }
 
+const getAssessmentControlId = (assessment) => (
+  assessment?.id || assessment?.assessmentId || assessment?.setup?.assessmentId || 'selected-assessment'
+)
+
+const readExamControlLogRows = (assessment) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(`${EXAM_CONTROLS_STATE_KEY}:${getAssessmentControlId(assessment)}`) || 'null')
+    if (!parsed || typeof parsed !== 'object') return []
+
+    return Object.entries(parsed).flatMap(([studentId, state]) => (
+      Array.isArray(state?.logs)
+        ? state.logs.map((log, index) => ({
+            ...log,
+            id: log.id || `${studentId}-${index}`,
+            studentId,
+          }))
+        : []
+    ))
+  } catch {
+    return []
+  }
+}
+
 export default function AssessmentCreatePage({ onNavigate }) {
   const [draftAssessments, setDraftAssessments] = useState(readAssessmentDrafts)
   const [publishedAssessments, setPublishedAssessments] = useState(readPublishedAssessments)
@@ -859,18 +887,28 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const [publishedSearchValue, setPublishedSearchValue] = useState('')
   const [publishedFilters, setPublishedFilters] = useState(PUBLISHED_FILTER_DEFAULTS)
   const [isPublishedFilterOpen, setIsPublishedFilterOpen] = useState(false)
+  const [publishedActionModal, setPublishedActionModal] = useState(null)
+  const [publishedLogActiveTab, setPublishedLogActiveTab] = useState('exam')
   const [activeAssessmentTab, setActiveAssessmentTab] = useState(() => {
     const requestedTab = window.localStorage.getItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     window.localStorage.removeItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     if (requestedTab === 'published' && readPublishedAssessments().length) return 'published'
     return readAssessmentDrafts().length ? 'draft' : readPublishedAssessments().length ? 'published' : 'draft'
   })
+  const evaluationAssessments = publishedAssessments.filter((assessment) => (
+    getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'completed'
+  ))
+  const activePublishedAssessments = publishedAssessments.filter((assessment) => (
+    getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type !== 'completed'
+  ))
   const metrics = assessmentMetrics.map((metric) => (
     metric.tone === 'draft'
       ? { ...metric, count: draftAssessments.length }
       : metric.tone === 'published'
-        ? { ...metric, count: publishedAssessments.length }
-        : metric
+        ? { ...metric, count: activePublishedAssessments.length }
+        : metric.tone === 'evaluation'
+          ? { ...metric, count: evaluationAssessments.length }
+          : metric
   ))
   const assessmentTabItems = metrics.map((metric) => ({
       key: metric.tone,
@@ -882,11 +920,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
     }))
   const shouldShowDraftAssessments = activeAssessmentTab === 'draft'
   const shouldShowPublishedAssessments = activeAssessmentTab === 'published'
-  const activeEmptyTab = !['draft', 'published'].includes(activeAssessmentTab)
+  const shouldShowEvaluationAssessments = activeAssessmentTab === 'evaluation'
+  const activeEmptyTab = !['draft', 'published', 'evaluation'].includes(activeAssessmentTab)
     ? assessmentTabItems.find((item) => item.key === activeAssessmentTab)
     : null
   const activeTabLabel = assessmentTabItems.find((item) => item.key === activeAssessmentTab)?.label || 'Assessment'
-  const livePublishedAssessmentCount = publishedAssessments.filter((assessment) => (
+  const livePublishedAssessmentCount = activePublishedAssessments.filter((assessment) => (
     getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'live'
   )).length
   const activePublishedFilterCount = Object.values(publishedFilters).filter((value) => value !== 'all').length
@@ -904,7 +943,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
 
     return !hasPublishedSearch || searchText.includes(publishedSearchValue.trim().toLowerCase())
   })
-  const filteredPublishedAssessments = publishedAssessments.filter((assessment) => {
+  const filterAssessmentCards = (assessments) => assessments.filter((assessment) => {
     const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
     const searchText = [
       assessment.assessmentName,
@@ -931,6 +970,8 @@ export default function AssessmentCreatePage({ onNavigate }) {
       && (publishedFilters.examType === 'all' || examType === publishedFilters.examType)
     )
   })
+  const filteredPublishedAssessments = filterAssessmentCards(activePublishedAssessments)
+  const filteredEvaluationAssessments = filterAssessmentCards(evaluationAssessments)
 
   const clearPublishedSearchFilters = () => {
     setPublishedSearchValue('')
@@ -1083,6 +1124,59 @@ export default function AssessmentCreatePage({ onNavigate }) {
     })
   }
 
+  const openPublishedActionModal = (action, assessment) => {
+    setPublishedActionModal({
+      action,
+      assessment,
+      step: 'confirm',
+      method: 'password',
+      value: '',
+      error: '',
+    })
+  }
+
+  const closePublishedActionModal = () => {
+    setPublishedActionModal(null)
+  }
+
+  const continuePublishedActionVerification = () => {
+    setPublishedActionModal((current) => (
+      current ? { ...current, step: 'verify', method: 'password', value: '', error: '' } : current
+    ))
+  }
+
+  const updatePublishedActionVerification = (updates) => {
+    setPublishedActionModal((current) => (
+      current ? { ...current, ...updates, error: '' } : current
+    ))
+  }
+
+  const submitPublishedActionVerification = (event) => {
+    event.preventDefault()
+    if (!publishedActionModal?.assessment) return
+
+    const enteredValue = String(publishedActionModal.value || '').trim()
+    if (enteredValue !== PUBLISHED_ACTION_VERIFICATION_CODE) {
+      setPublishedActionModal((current) => (
+        current
+          ? {
+              ...current,
+              error: current.method === 'otp' ? 'Invalid OTP' : 'Invalid Password',
+            }
+          : current
+      ))
+      return
+    }
+
+    const { action, assessment } = publishedActionModal
+    setPublishedActionModal(null)
+    if (action === 'edit') {
+      editPublishedAssessment(assessment)
+      return
+    }
+    deletePublishedAssessment(assessment.id)
+  }
+
   const openExamControls = (assessment) => {
     window.sessionStorage.setItem(EXAM_CONTROLS_ASSESSMENT_KEY, JSON.stringify(assessment))
     onNavigate?.(APP_PAGES.EXAM_CONTROLS)
@@ -1221,7 +1315,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
             <div className="assessment-create-card-heading">
               <div className="assessment-create-published-title">
                 <h2>Published Assessment</h2>
-                {publishedAssessments.length ? (
+                {activePublishedAssessments.length ? (
                   <button
                     type="button"
                     className={`assessment-create-live-count-btn ${publishedFilters.status === 'live' ? 'is-active' : ''}`.trim()}
@@ -1241,7 +1335,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
               </div>
               {renderAssessmentSearchToolbar()}
             </div>
-            {publishedAssessments.length ? (
+            {activePublishedAssessments.length ? (
               <>
                 {filteredPublishedAssessments.length ? (
               <div className="assessment-create-draft-grid">
@@ -1251,6 +1345,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                   const canShowExamControls = !isOfflineExam && ['live', 'completed'].includes(scheduleStatus?.type)
+                  const canShowPublishedActions = !isPublishedAssessmentActionLocked(assessment, scheduleNow)
                   const publishedQuestionRows = getPublishedQuestionRows(assessment)
                   const durationValue = scheduleStatus?.type === 'live'
                     ? formatAssessmentRemainingTime(scheduleStatus.remainingMs)
@@ -1268,24 +1363,29 @@ export default function AssessmentCreatePage({ onNavigate }) {
                             <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
                       </div>
                       <span className="assessment-create-published-actions">
-                        <button type="button" className="assessment-create-published-icon-btn is-delete" onClick={() => deletePublishedAssessment(assessment.id)} aria-label={`Delete ${assessment.assessmentName || 'published assessment'}`}>
-                          <Trash2 size={13} strokeWidth={2.2} />
-                        </button>
+                        {canShowPublishedActions ? (
+                          <button type="button" className="assessment-create-published-icon-btn is-delete" onClick={() => openPublishedActionModal('delete', assessment)} aria-label={`Delete ${assessment.assessmentName || 'published assessment'}`}>
+                            <Trash2 size={13} strokeWidth={2.2} />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="assessment-create-published-info"
                           onClick={() => {
                             setSelectedPublishedLogAssessment(assessment)
                             setPublishedLogPage(1)
+                            setPublishedLogActiveTab('exam')
                           }}
                           title="Published assessment details"
                           aria-label={`View published log for ${assessment.assessmentName || 'published assessment'}`}
                         >
                           <Info size={14} strokeWidth={2.2} />
                         </button>
-                        <button type="button" className="assessment-create-published-icon-btn is-edit" onClick={() => editPublishedAssessment(assessment)} aria-label={`Edit ${assessment.assessmentName || 'published assessment'}`}>
-                          <Pencil size={13} strokeWidth={2.2} />
-                        </button>
+                        {canShowPublishedActions ? (
+                          <button type="button" className="assessment-create-published-icon-btn is-edit" onClick={() => openPublishedActionModal('edit', assessment)} aria-label={`Edit ${assessment.assessmentName || 'published assessment'}`}>
+                            <Pencil size={13} strokeWidth={2.2} />
+                          </button>
+                        ) : null}
                       </span>
                         </div>
                         <span className="assessment-create-published-status-row">
@@ -1349,6 +1449,102 @@ export default function AssessmentCreatePage({ onNavigate }) {
           </section>
         ) : null}
 
+        {shouldShowEvaluationAssessments ? (
+          <section className="assessment-create-draft-shell assessment-create-published-shell" aria-label="Evaluation assessments">
+            <div className="assessment-create-card-heading">
+              <div className="assessment-create-published-title">
+                <h2>Evaluation</h2>
+              </div>
+              {renderAssessmentSearchToolbar()}
+            </div>
+            {evaluationAssessments.length ? (
+              filteredEvaluationAssessments.length ? (
+                <div className="assessment-create-draft-grid">
+                  {filteredEvaluationAssessments.map((assessment) => {
+                    const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
+                    const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
+                    const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
+                    const publishedQuestionRows = getPublishedQuestionRows(assessment)
+                    const durationValue = assessment.totalDuration || '-'
+
+                    return (
+                      <article
+                        key={assessment.id}
+                        className="assessment-create-draft-card assessment-create-published-card"
+                      >
+                        <div className="assessment-create-published-head">
+                          <div>
+                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong>
+                            <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
+                          </div>
+                          <span className="assessment-create-published-actions">
+                            <button
+                              type="button"
+                              className="assessment-create-published-info"
+                              onClick={() => {
+                                setSelectedPublishedLogAssessment(assessment)
+                                setPublishedLogPage(1)
+                                setPublishedLogActiveTab('exam')
+                              }}
+                              title="Assessment log details"
+                              aria-label={`View logs for ${assessment.assessmentName || 'assessment'}`}
+                            >
+                              <Info size={14} strokeWidth={2.2} />
+                            </button>
+                          </span>
+                        </div>
+                        <span className="assessment-create-published-status-row">
+                          <span className={`assessment-create-published-status is-${isOfflineExam ? 'offline' : 'online'}`}>
+                            {assessment.examMode || '-'}
+                          </span>
+                          {!isOfflineExam ? (
+                            <span className={`assessment-create-published-supervision ${isPracticeExam ? 'is-practice' : 'is-proctored'}`}>
+                              <SupervisionIcon size={13} strokeWidth={2.3} />
+                              {assessment.supervisionType || '-'}
+                            </span>
+                          ) : publishedQuestionRows.length ? (
+                            <button type="button" className="assessment-create-published-download-btn" onClick={() => downloadQuestionPaperPdf(assessment)}>
+                              <Download size={12} strokeWidth={2.4} />
+                              Download PDF
+                            </button>
+                          ) : null}
+                        </span>
+                        <div className="assessment-create-published-details" aria-label="Evaluation assessment details">
+                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em>Start Date</em></span>
+                          <span><strong>{assessment.startTime || '-'}</strong><em>Start Time</em></span>
+                          <span><strong>{durationValue}</strong><em>Total Duration</em></span>
+                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em>End Date</em></span>
+                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
+                          <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
+                        </div>
+                        <div className="assessment-create-draft-footer assessment-create-published-footer">
+                          <span className="assessment-create-published-footer-status">
+                            <span className="assessment-create-published-schedule-badge is-yet-to-start">
+                              Yet to Start
+                            </span>
+                          </span>
+                          <button type="button" className="assessment-create-exam-controls-btn" onClick={() => onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)}>
+                            <ClipboardCheck size={12} strokeWidth={2.4} />
+                            Start Evaluation
+                          </button>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="assessment-create-placeholder">
+                  <p>No evaluation assessments match your search.</p>
+                </div>
+              )
+            ) : (
+              <div className="assessment-create-placeholder">
+                <p>No completed assessments available.</p>
+              </div>
+            )}
+          </section>
+        ) : null}
+
         {activeEmptyTab ? (
           <section className="assessment-create-draft-shell" aria-label={`${activeEmptyTab.label} assessments`}>
             <div className="assessment-create-card-heading">
@@ -1363,8 +1559,93 @@ export default function AssessmentCreatePage({ onNavigate }) {
           </section>
         ) : null}
       </div>
+      {publishedActionModal ? createPortal((
+        <div className="assessment-create-action-guard-backdrop" role="presentation">
+          <section
+            className="assessment-create-action-guard-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="assessment-create-action-guard-title"
+          >
+            {publishedActionModal.step === 'confirm' ? (
+              <>
+                <span className={`assessment-create-action-guard-icon is-${publishedActionModal.action}`} aria-hidden="true">
+                  {publishedActionModal.action === 'edit' ? <Pencil size={26} strokeWidth={2.2} /> : <Trash2 size={26} strokeWidth={2.2} />}
+                </span>
+                <div className="assessment-create-action-guard-copy">
+                  <h3 id="assessment-create-action-guard-title">
+                    {publishedActionModal.action === 'edit' ? 'Are you sure edit?' : 'Are you sure delete?'}
+                  </h3>
+                  <p>{publishedActionModal.assessment?.assessmentName || 'Untitled Assessment'}</p>
+                </div>
+                <div className="assessment-create-action-guard-actions">
+                  <button type="button" className="is-secondary" onClick={closePublishedActionModal}>
+                    No
+                  </button>
+                  <button type="button" className={publishedActionModal.action === 'delete' ? 'is-danger' : 'is-primary'} onClick={continuePublishedActionVerification}>
+                    Yes
+                  </button>
+                </div>
+              </>
+            ) : (
+              <form className="assessment-create-action-guard-form" onSubmit={submitPublishedActionVerification}>
+                <span className={`assessment-create-action-guard-icon is-${publishedActionModal.action}`} aria-hidden="true">
+                  {publishedActionModal.action === 'edit' ? <Pencil size={26} strokeWidth={2.2} /> : <Trash2 size={26} strokeWidth={2.2} />}
+                </span>
+                <div className="assessment-create-action-guard-copy">
+                  <h3 id="assessment-create-action-guard-title">
+                    Verify {publishedActionModal.action === 'edit' ? 'Edit' : 'Delete'} Action
+                  </h3>
+                  <p>Select Password or OTP, then enter the code to continue.</p>
+                </div>
+                <div className="assessment-create-action-methods" role="radiogroup" aria-label="Verification method">
+                  <button
+                    type="button"
+                    className={publishedActionModal.method === 'password' ? 'is-active' : ''}
+                    onClick={() => updatePublishedActionVerification({ method: 'password', value: '' })}
+                    aria-pressed={publishedActionModal.method === 'password'}
+                  >
+                    Password
+                  </button>
+                  <button
+                    type="button"
+                    className={publishedActionModal.method === 'otp' ? 'is-active' : ''}
+                    onClick={() => updatePublishedActionVerification({ method: 'otp', value: '' })}
+                    aria-pressed={publishedActionModal.method === 'otp'}
+                  >
+                    OTP
+                  </button>
+                </div>
+                <label className="assessment-create-action-guard-field">
+                  <span>{publishedActionModal.method === 'otp' ? 'Enter OTP' : 'Enter Password'}</span>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    autoFocus
+                    value={publishedActionModal.value}
+                    onChange={(event) => updatePublishedActionVerification({ value: event.target.value })}
+                    placeholder="Enter 1234"
+                  />
+                </label>
+                {publishedActionModal.error ? (
+                  <p className="assessment-create-action-guard-error">{publishedActionModal.error}</p>
+                ) : null}
+                <div className="assessment-create-action-guard-actions">
+                  <button type="button" className="is-secondary" onClick={closePublishedActionModal}>
+                    No
+                  </button>
+                  <button type="submit" className={publishedActionModal.action === 'delete' ? 'is-danger' : 'is-primary'}>
+                    Yes
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+        </div>
+      ), document.body) : null}
       {selectedPublishedLogAssessment ? createPortal((() => {
         const publishedLogRows = getPublishedLogRows(selectedPublishedLogAssessment)
+        const examControlLogRows = readExamControlLogRows(selectedPublishedLogAssessment)
         const totalPublishedLogPages = Math.max(1, Math.ceil(publishedLogRows.length / PUBLISHED_LOG_PAGE_SIZE))
         const currentPublishedLogPage = Math.min(publishedLogPage, totalPublishedLogPages)
         const pagedPublishedLogRows = publishedLogRows.slice(
@@ -1377,45 +1658,90 @@ export default function AssessmentCreatePage({ onNavigate }) {
           <section className="assessment-create-log-modal" role="dialog" aria-modal="true" aria-labelledby="assessment-create-log-title" onClick={(event) => event.stopPropagation()}>
             <div className="assessment-create-log-modal-head">
               <div>
-                <h3 id="assessment-create-log-title">Published Log Details</h3>
+                <h3 id="assessment-create-log-title">Assessment Log Details</h3>
                 <span>{selectedPublishedLogAssessment.assessmentName || 'Untitled Assessment'}</span>
               </div>
               <button type="button" className="assessment-create-log-close" onClick={() => setSelectedPublishedLogAssessment(null)} aria-label="Close published log details">
                 <X size={15} strokeWidth={2.3} />
               </button>
             </div>
+            <div className="assessment-create-log-tabs" role="tablist" aria-label="Assessment log views">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={publishedLogActiveTab === 'exam'}
+                className={publishedLogActiveTab === 'exam' ? 'is-active' : ''}
+                onClick={() => setPublishedLogActiveTab('exam')}
+              >
+                Exam Controls Log
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={publishedLogActiveTab === 'published'}
+                className={publishedLogActiveTab === 'published' ? 'is-active' : ''}
+                onClick={() => setPublishedLogActiveTab('published')}
+              >
+                Published Log Details
+              </button>
+            </div>
             <div className="assessment-create-log-table-shell">
-              <div className="assessment-create-log-grid" role="table" aria-label="Published log details">
-                <div className="assessment-create-log-grid-head" role="row">
-                  <span role="columnheader">Faculty ID</span>
-                  <span role="columnheader">Faculty Name</span>
-                  <span role="columnheader">Remarks</span>
-                  <span role="columnheader">Date & Time Stamp</span>
-                </div>
-                {pagedPublishedLogRows.map((item, index) => (
-                  <div className="assessment-create-log-grid-row" role="row" key={`${item.timestamp || 'log'}-${index}`}>
-                    <span role="cell">{item.facultyId || '-'}</span>
-                    <span role="cell">{item.facultyName || '-'}</span>
-                    <span role="cell">{item.remarks || '-'}</span>
-                    <span role="cell">{formatDisplayDateTime(item.timestamp)}</span>
+              {publishedLogActiveTab === 'exam' ? (
+                <div className="assessment-create-log-grid is-exam-controls" role="table" aria-label="Exam controls log">
+                  <div className="assessment-create-log-grid-head" role="row">
+                    <span role="columnheader">Student ID</span>
+                    <span role="columnheader">Time</span>
+                    <span role="columnheader">Action</span>
+                    <span role="columnheader">Remarks</span>
+                    <span role="columnheader">Faculty</span>
                   </div>
-                ))}
-              </div>
+                  {examControlLogRows.length ? examControlLogRows.map((item, index) => (
+                    <div className="assessment-create-log-grid-row" role="row" key={`${item.id || 'exam-log'}-${index}`}>
+                      <span role="cell">{item.studentId || '-'}</span>
+                      <span role="cell">{item.time || '-'}</span>
+                      <span role="cell">{item.action || '-'}</span>
+                      <span role="cell">{item.remarks || '-'}</span>
+                      <span role="cell">{item.faculty || '-'}</span>
+                    </div>
+                  )) : (
+                    <div className="assessment-create-log-empty">No exam controls log available.</div>
+                  )}
+                </div>
+              ) : (
+                <div className="assessment-create-log-grid" role="table" aria-label="Published log details">
+                  <div className="assessment-create-log-grid-head" role="row">
+                    <span role="columnheader">Faculty ID</span>
+                    <span role="columnheader">Faculty Name</span>
+                    <span role="columnheader">Remarks</span>
+                    <span role="columnheader">Date & Time Stamp</span>
+                  </div>
+                  {pagedPublishedLogRows.map((item, index) => (
+                    <div className="assessment-create-log-grid-row" role="row" key={`${item.timestamp || 'log'}-${index}`}>
+                      <span role="cell">{item.facultyId || '-'}</span>
+                      <span role="cell">{item.facultyName || '-'}</span>
+                      <span role="cell">{item.remarks || '-'}</span>
+                      <span role="cell">{formatDisplayDateTime(item.timestamp)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="assessment-create-log-pagination" aria-label="Published log pagination">
-              <span>
-                Page {currentPublishedLogPage} of {totalPublishedLogPages}
-                {' '}| Showing {pagedPublishedLogRows.length} of {publishedLogRows.length}
-              </span>
-              <div>
-                <button type="button" onClick={() => setPublishedLogPage((page) => Math.max(1, page - 1))} disabled={currentPublishedLogPage <= 1}>
-                  Previous
-                </button>
-                <button type="button" onClick={() => setPublishedLogPage((page) => Math.min(totalPublishedLogPages, page + 1))} disabled={currentPublishedLogPage >= totalPublishedLogPages}>
-                  Next
-                </button>
+            {publishedLogActiveTab === 'published' ? (
+              <div className="assessment-create-log-pagination" aria-label="Published log pagination">
+                <span>
+                  Page {currentPublishedLogPage} of {totalPublishedLogPages}
+                  {' '}| Showing {pagedPublishedLogRows.length} of {publishedLogRows.length}
+                </span>
+                <div>
+                  <button type="button" onClick={() => setPublishedLogPage((page) => Math.max(1, page - 1))} disabled={currentPublishedLogPage <= 1}>
+                    Previous
+                  </button>
+                  <button type="button" onClick={() => setPublishedLogPage((page) => Math.min(totalPublishedLogPages, page + 1))} disabled={currentPublishedLogPage >= totalPublishedLogPages}>
+                    Next
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : null}
           </section>
         </div>
         )

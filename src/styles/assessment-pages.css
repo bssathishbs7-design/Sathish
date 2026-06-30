@@ -3831,6 +3831,11 @@
   color: #475569;
 }
 
+.assessment-create-published-schedule-badge.is-yet-to-start {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
 .assessment-create-published-schedule-badge.is-locked {
   background: #fee2e2;
   color: #b91c1c;
@@ -5220,6 +5225,191 @@
   background: rgba(8, 24, 35, 0.42);
 }
 
+.assessment-create-action-guard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(8, 24, 35, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.assessment-create-action-guard-modal {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(520px, 100%);
+  padding: 24px;
+  border: 1px solid #d5e7e1;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 26px 80px rgba(8, 24, 35, 0.34);
+  color: #082431;
+  text-align: center;
+}
+
+.assessment-create-action-guard-form {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.assessment-create-action-guard-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+}
+
+.assessment-create-action-guard-icon.is-edit {
+  background: #eaf2ff;
+  color: #2563eb;
+}
+
+.assessment-create-action-guard-icon.is-delete {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.assessment-create-action-guard-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.assessment-create-action-guard-copy h3 {
+  margin: 0;
+  color: #082431;
+  font-size: 1.08rem;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.assessment-create-action-guard-copy p {
+  margin: 0;
+  color: #526978;
+  font-size: 0.84rem;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+.assessment-create-action-methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.assessment-create-action-methods button,
+.assessment-create-action-guard-actions button {
+  min-height: 38px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.assessment-create-action-methods button {
+  border: 1px solid #d8e7e2;
+  background: #ffffff;
+  color: #405866;
+}
+
+.assessment-create-action-methods button:hover,
+.assessment-create-action-methods button:focus-visible,
+.assessment-create-action-methods button.is-active {
+  border-color: #10b9a8;
+  background: #ecfffb;
+  color: #08776d;
+  outline: none;
+}
+
+.assessment-create-action-guard-field {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+}
+
+.assessment-create-action-guard-field span {
+  color: #405866;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.assessment-create-action-guard-field input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #c9dcd5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #082431;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  outline: none;
+}
+
+.assessment-create-action-guard-field input:focus {
+  border-color: #10b9a8;
+  box-shadow: 0 0 0 3px rgba(16, 185, 168, 0.12);
+}
+
+.assessment-create-action-guard-error {
+  justify-self: stretch;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #be123c;
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-align: left;
+}
+
+.assessment-create-action-guard-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.assessment-create-action-guard-actions button {
+  border: 1px solid transparent;
+}
+
+.assessment-create-action-guard-actions .is-secondary {
+  border-color: #d8e7e2;
+  background: #ffffff;
+  color: #405866;
+}
+
+.assessment-create-action-guard-actions .is-primary {
+  border-color: #0aa79a;
+  background: #14b8a6;
+  color: #ffffff;
+}
+
+.assessment-create-action-guard-actions .is-danger {
+  border-color: #fb7185;
+  background: #e11d48;
+  color: #ffffff;
+}
+
+.assessment-create-action-guard-actions button:hover,
+.assessment-create-action-guard-actions button:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+}
+
 .assessment-create-log-modal {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -5272,6 +5462,43 @@
   cursor: pointer;
 }
 
+.assessment-create-log-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid #dcebe6;
+  border-radius: 8px;
+  background: #f8fffc;
+}
+
+.assessment-create-log-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #405866;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.assessment-create-log-tabs button:hover,
+.assessment-create-log-tabs button:focus-visible,
+.assessment-create-log-tabs button.is-active {
+  border-color: #bce7df;
+  background: #ecfffb;
+  color: #08776d;
+  outline: none;
+}
+
 .assessment-create-log-close:hover,
 .assessment-create-log-close:focus-visible {
   border-color: #10b9a8;
@@ -5306,6 +5533,12 @@
   min-width: 620px;
 }
 
+.assessment-create-log-grid.is-exam-controls .assessment-create-log-grid-head,
+.assessment-create-log-grid.is-exam-controls .assessment-create-log-grid-row {
+  grid-template-columns: minmax(92px, 0.72fr) minmax(90px, 0.72fr) minmax(130px, 0.9fr) minmax(220px, 1.5fr) minmax(100px, 0.7fr);
+  min-width: 760px;
+}
+
 .assessment-create-log-grid-head span,
 .assessment-create-log-grid-row span {
   min-width: 0;
@@ -5334,6 +5567,15 @@
 .assessment-create-log-grid-row span {
   color: #132b36;
   font-weight: 650;
+}
+
+.assessment-create-log-empty {
+  min-width: 620px;
+  padding: 22px;
+  color: #607380;
+  font-size: 0.78rem;
+  font-weight: 760;
+  text-align: center;
 }
 
 .assessment-create-log-pagination {
@@ -17103,6 +17345,44 @@
   background: #101827;
 }
 
+.theme-dark .assessment-create-tabbar {
+  border-color: rgba(94, 116, 145, 0.5);
+  border-bottom-color: transparent;
+  background: #101827;
+}
+
+.theme-dark .assessment-create-tab {
+  color: #c3d4e8;
+}
+
+.theme-dark .assessment-create-tab svg {
+  color: #9fb2c6;
+}
+
+.theme-dark .assessment-create-tab strong {
+  background: rgba(148, 163, 184, 0.14);
+  color: #d9e8f8;
+}
+
+.theme-dark .assessment-create-tab:hover,
+.theme-dark .assessment-create-tab:focus-visible,
+.theme-dark .assessment-create-tab.is-active {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: rgba(20, 184, 166, 0.14);
+  color: #99f6e4;
+}
+
+.theme-dark .assessment-create-tab:hover svg,
+.theme-dark .assessment-create-tab:focus-visible svg,
+.theme-dark .assessment-create-tab.is-active svg {
+  color: #5eead4;
+}
+
+.theme-dark .assessment-create-tab.is-active strong {
+  background: rgba(45, 212, 191, 0.22);
+  color: #ccfbf1;
+}
+
 .theme-dark .assessment-create-draft-card {
   border-color: rgba(94, 116, 145, 0.5);
   background: #132235;
@@ -18155,6 +18435,37 @@
   color: #ccfbf1;
 }
 
+.theme-dark .assessment-create-action-guard-modal {
+  border-color: rgba(94, 116, 145, 0.46);
+  background: #101827;
+  color: #eef6ff;
+}
+
+.theme-dark .assessment-create-action-guard-copy h3 {
+  color: #eef6ff;
+}
+
+.theme-dark .assessment-create-action-guard-copy p,
+.theme-dark .assessment-create-action-guard-field span {
+  color: #9fb0c8;
+}
+
+.theme-dark .assessment-create-action-methods button,
+.theme-dark .assessment-create-action-guard-field input,
+.theme-dark .assessment-create-action-guard-actions .is-secondary {
+  border-color: rgba(94, 116, 145, 0.46);
+  background: #162235;
+  color: #d9e8f8;
+}
+
+.theme-dark .assessment-create-action-methods button:hover,
+.theme-dark .assessment-create-action-methods button:focus-visible,
+.theme-dark .assessment-create-action-methods button.is-active {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
+}
+
 .theme-dark .my-assessment-card-action {
   border-color: rgba(45, 212, 191, 0.48);
   background: rgba(20, 184, 166, 0.72);
@@ -18205,6 +18516,11 @@
   color: #cbd5e1;
 }
 
+.theme-dark .assessment-create-published-schedule-badge.is-yet-to-start {
+  background: rgba(14, 165, 233, 0.18);
+  color: #7dd3fc;
+}
+
 .theme-dark .assessment-create-log-modal {
   border-color: rgba(94, 116, 145, 0.5);
   background: #101827;
@@ -18237,6 +18553,23 @@
   color: #ccfbf1;
 }
 
+.theme-dark .assessment-create-log-tabs {
+  border-color: rgba(94, 116, 145, 0.46);
+  background: #162235;
+}
+
+.theme-dark .assessment-create-log-tabs button {
+  color: #9fb0c8;
+}
+
+.theme-dark .assessment-create-log-tabs button:hover,
+.theme-dark .assessment-create-log-tabs button:focus-visible,
+.theme-dark .assessment-create-log-tabs button.is-active {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
+}
+
 .theme-dark .assessment-create-log-table-shell {
   border-color: rgba(94, 116, 145, 0.42);
 }
@@ -18252,6 +18585,10 @@
 }
 
 .theme-dark .assessment-create-log-pagination > span {
+  color: #9fb0c8;
+}
+
+.theme-dark .assessment-create-log-empty {
   color: #9fb0c8;
 }
 
