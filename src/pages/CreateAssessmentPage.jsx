@@ -671,6 +671,40 @@ const createStorageLightPreviewSections = (sections = []) => (
   }))
 )
 
+const createStorageLightSetup = (setup = {}) => ({
+  ...setup,
+  logoPreview: '',
+})
+
+const createStorageLightPublishedRecord = (record = {}) => ({
+  ...record,
+  setup: createStorageLightSetup(record.setup ?? {}),
+  questionRows: createStorageLightAssessmentQuestions(record.questionRows ?? []),
+  previewSections: createStorageLightPreviewSections(record.previewSections ?? []),
+})
+
+const createPublishedSummaryRecord = (record = {}) => ({
+  id: record.id,
+  assessmentName: record.assessmentName,
+  examMode: record.examMode,
+  assignTo: record.assignTo,
+  supervisionType: record.supervisionType,
+  totalMarks: record.totalMarks,
+  examCategory: record.examCategory,
+  examType: record.examType,
+  startDate: record.startDate,
+  startTime: record.startTime,
+  totalDuration: record.totalDuration,
+  endDate: record.endDate,
+  endTime: record.endTime,
+  createdAt: record.createdAt,
+  publishedAt: record.publishedAt,
+  publishedLog: record.publishedLog,
+  questionCount: record.questionCount,
+  questionRows: [],
+  setup: createStorageLightSetup(record.setup ?? {}),
+})
+
 const writeAssessmentQuestionsStorage = (key, questions = []) => {
   if (writeLocalStorageJson(key, questions)) return 'full'
   return writeLocalStorageJson(key, createStorageLightAssessmentQuestions(questions)) ? 'light' : ''
@@ -1848,20 +1882,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         nextRecord,
         ...rows.filter((item) => item.id !== record.id),
       ]
-      const lightRows = nextRows.map((row) => ({
-        ...row,
-        questionRows: createStorageLightAssessmentQuestions(row.questionRows ?? []),
-      }))
-      if (!writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, nextRows)) {
-        writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, lightRows)
-      }
+      const lightRows = nextRows.map(createStorageLightPublishedRecord)
+      const summaryRows = nextRows.map(createPublishedSummaryRecord)
+      if (writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, nextRows)) return 'full'
+      if (writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, lightRows)) return 'light'
+      return writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, summaryRows) ? 'summary' : ''
     } catch {
-      const lightRecord = {
-        ...record,
-        questionRows: createStorageLightAssessmentQuestions(record.questionRows ?? []),
-      }
-      writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [record])
-        || writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [lightRecord])
+      const lightRecord = createStorageLightPublishedRecord(record)
+      const summaryRecord = createPublishedSummaryRecord(record)
+      if (writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [record])) return 'full'
+      if (writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [lightRecord])) return 'light'
+      return writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [summaryRecord]) ? 'summary' : ''
     }
   }
 
@@ -1881,7 +1912,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const publishAssessmentDirectly = () => {
     const nextSetup = persistSetupDraft('')
     const record = getPublishedAssessmentRecord(nextSetup, getCurrentAssessmentQuestions())
-    upsertPublishedAssessment(record)
+    const publishStorageResult = upsertPublishedAssessment(record)
+    if (!publishStorageResult) {
+      setSaveStatus('Unable to publish assessment. Browser storage is full. Please remove large images and try again.')
+      return
+    }
     setSaveStatus('')
     showPublishedAssessmentNotice({
       ...record,
@@ -2984,7 +3019,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setSetupDraft(nextSetup)
     const draftRow = {
       id: draftId,
-      setup: nextSetup,
+      setup: createStorageLightSetup(nextSetup),
       assessmentName: draftAssessmentName,
       academicYear: nextSetup.academicYear || '',
       examCategory: nextSetup.examCategory || '',
@@ -3186,10 +3221,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     writeLocalStorageJson(assessmentCustomSectionsStorageKey, nextCustomSections)
     writeLocalStorageJson(assessmentSectionOrderStorageKey, nextOrder)
     writeLocalStorageJson(assessmentSectionTitlesStorageKey, nextTitles)
-    if (!writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)) {
-      setSaveStatus('Unable to create NMC sections. Please remove large images and try again.')
-      return
-    }
+    const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
     setCustomPreviewSections(nextCustomSections)
     setPreviewSectionOrder(nextOrder)
     setPreviewSectionTitles(nextTitles)
@@ -3197,7 +3229,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setSavedQuestions(nextQuestions)
     setEditingPreviewSectionKey(null)
     setPreviewSectionTitleDraft('')
-    setSaveStatus('NMC SAQ sections created.')
+    setSaveStatus(
+      storageResult === 'full'
+        ? 'NMC SAQ sections created.'
+        : storageResult === 'light'
+          ? 'NMC SAQ sections created. Images are visible now but were not saved permanently because browser storage is full.'
+          : 'NMC SAQ sections created for this session. Browser storage is full, so save may need smaller images.',
+    )
   }
 
   const movePreviewQuestionToSection = (itemId, sectionKey) => {

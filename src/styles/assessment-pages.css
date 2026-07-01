@@ -1104,13 +1104,13 @@
   min-height: 54px;
   padding: 12px 18px;
   border-bottom: 1px solid #dbece8;
-  background: #eef8ff;
-  color: #1553bd;
+  background: linear-gradient(90deg, #ecfdf7 0%, #f8fffd 100%);
+  color: #006b5f;
 }
 
 .assessment-student-question-section.is-descriptive > header {
-  background: #f1f5ff;
-  color: #1d4ed8;
+  background: linear-gradient(90deg, #f4f0ff 0%, #fbfaff 100%);
+  color: #5b21b6;
 }
 
 .assessment-student-question-section h3 {
@@ -1868,8 +1868,13 @@
 .theme-dark .assessment-student-question-section > header,
 .theme-dark .assessment-student-question-section.is-descriptive > header {
   border-bottom-color: #263a52;
-  background: #172334;
-  color: #93c5fd;
+  background: rgba(20, 184, 166, 0.14);
+  color: #5eead4;
+}
+
+.theme-dark .assessment-student-question-section.is-descriptive > header {
+  background: rgba(139, 92, 246, 0.14);
+  color: #c4b5fd;
 }
 
 .theme-dark .assessment-question-row {

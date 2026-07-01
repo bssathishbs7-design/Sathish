@@ -920,14 +920,10 @@ export default function AssessmentCreatePage({ onNavigate }) {
     const requestedTab = window.localStorage.getItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     window.localStorage.removeItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     const rows = readPublishedAssessments()
-    const { published, evaluation } = splitPublishedAssessmentRows(rows)
     const drafts = readAssessmentDrafts()
     if (requestedTab === 'evaluation') return 'evaluation'
-    if (requestedTab === 'published') {
-      if (published.length) return 'published'
-      if (evaluation.length) return 'evaluation'
-    }
-    return drafts.length ? 'draft' : published.length ? 'published' : evaluation.length ? 'evaluation' : 'draft'
+    if (requestedTab === 'published') return 'published'
+    return drafts.length ? 'draft' : rows.length ? 'published' : 'draft'
   })
   const { published: activePublishedAssessments, evaluation: evaluationAssessments } = splitPublishedAssessmentRows(publishedAssessments, scheduleNow)
   const metrics = assessmentMetrics.map((metric) => (
@@ -1009,10 +1005,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
   }
 
   const handleAssessmentTabChange = (tabKey) => {
-    if (tabKey === 'published' && !activePublishedAssessments.length && evaluationAssessments.length) {
-      setActiveAssessmentTab('evaluation')
-      return
-    }
     setActiveAssessmentTab(tabKey)
   }
 
@@ -1083,12 +1075,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
     const intervalId = window.setInterval(() => setScheduleNow(new Date()), 1000)
     return () => window.clearInterval(intervalId)
   }, [activeAssessmentTab])
-
-  useEffect(() => {
-    if (activeAssessmentTab !== 'published') return
-    if (activePublishedAssessments.length || !evaluationAssessments.length) return
-    setActiveAssessmentTab('evaluation')
-  }, [activeAssessmentTab, activePublishedAssessments.length, evaluationAssessments.length])
 
   const createAssessment = () => {
     window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({
