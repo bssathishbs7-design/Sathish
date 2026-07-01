@@ -228,10 +228,21 @@ const getAssessmentQuestionsStorageKey = (setup = {}) => (
 
 const readDraftQuestions = (draft) => {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(getAssessmentQuestionsStorageKey(draft?.setup ?? draft)) || '[]')
-    return Array.isArray(parsed) ? parsed : []
+    const storedRows = JSON.parse(window.localStorage.getItem(getAssessmentQuestionsStorageKey(draft?.setup ?? draft)) || '[]')
+    if (Array.isArray(storedRows) && storedRows.length) return storedRows
+    return Array.isArray(draft?.questionRows) ? draft.questionRows : []
   } catch {
-    return []
+    return Array.isArray(draft?.questionRows) ? draft.questionRows : []
+  }
+}
+
+const restoreAssessmentQuestionsForCreate = (setup = {}, questionRows = []) => {
+  if (!setup || !Array.isArray(questionRows) || !questionRows.length) return
+
+  try {
+    window.localStorage.setItem(getAssessmentQuestionsStorageKey(setup), JSON.stringify(questionRows))
+  } catch {
+    // Navigation should still continue if browser storage is full.
   }
 }
 
@@ -831,6 +842,21 @@ const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
   return { type: 'upcoming', label: `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} to go` }
 }
 
+const splitPublishedAssessmentRows = (rows = [], now = new Date()) => {
+  const published = []
+  const evaluation = []
+
+  rows.forEach((assessment) => {
+    if (getPublishedAssessmentScheduleStatus(assessment, now)?.type === 'completed') {
+      evaluation.push(assessment)
+    } else {
+      published.push(assessment)
+    }
+  })
+
+  return { published, evaluation }
+}
+
 const isPublishedAssessmentActionLocked = (assessment, now = new Date()) => {
   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, now)
   if (['live', 'completed'].includes(scheduleStatus?.type)) return true
@@ -893,16 +919,17 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const [activeAssessmentTab, setActiveAssessmentTab] = useState(() => {
     const requestedTab = window.localStorage.getItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     window.localStorage.removeItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
+    const rows = readPublishedAssessments()
+    const { published, evaluation } = splitPublishedAssessmentRows(rows)
+    const drafts = readAssessmentDrafts()
     if (requestedTab === 'evaluation') return 'evaluation'
-    if (requestedTab === 'published' && readPublishedAssessments().length) return 'published'
-    return readAssessmentDrafts().length ? 'draft' : readPublishedAssessments().length ? 'published' : 'draft'
+    if (requestedTab === 'published') {
+      if (published.length) return 'published'
+      if (evaluation.length) return 'evaluation'
+    }
+    return drafts.length ? 'draft' : published.length ? 'published' : evaluation.length ? 'evaluation' : 'draft'
   })
-  const evaluationAssessments = publishedAssessments.filter((assessment) => (
-    getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'completed'
-  ))
-  const activePublishedAssessments = publishedAssessments.filter((assessment) => (
-    getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type !== 'completed'
-  ))
+  const { published: activePublishedAssessments, evaluation: evaluationAssessments } = splitPublishedAssessmentRows(publishedAssessments, scheduleNow)
   const metrics = assessmentMetrics.map((metric) => (
     metric.tone === 'draft'
       ? { ...metric, count: draftAssessments.length }
@@ -981,6 +1008,14 @@ export default function AssessmentCreatePage({ onNavigate }) {
     setIsPublishedFilterOpen(false)
   }
 
+  const handleAssessmentTabChange = (tabKey) => {
+    if (tabKey === 'published' && !activePublishedAssessments.length && evaluationAssessments.length) {
+      setActiveAssessmentTab('evaluation')
+      return
+    }
+    setActiveAssessmentTab(tabKey)
+  }
+
   const renderAssessmentSearchToolbar = () => (
     <div className="assessment-create-published-toolbar assessment-create-tracker-toolbar">
       <label className="assessment-create-published-search">
@@ -1049,6 +1084,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
     return () => window.clearInterval(intervalId)
   }, [activeAssessmentTab])
 
+  useEffect(() => {
+    if (activeAssessmentTab !== 'published') return
+    if (activePublishedAssessments.length || !evaluationAssessments.length) return
+    setActiveAssessmentTab('evaluation')
+  }, [activeAssessmentTab, activePublishedAssessments.length, evaluationAssessments.length])
+
   const createAssessment = () => {
     window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({
       ...initialForm,
@@ -1061,11 +1102,13 @@ export default function AssessmentCreatePage({ onNavigate }) {
 
   const continueDraftAssessment = (draft) => {
     if (!draft?.setup) return
-    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({
+    const nextSetup = {
       ...draft.setup,
       sourceDraftId: draft.id,
       sourceDraftName: draft.assessmentName || draft.setup?.assessmentName || 'Untitled Assessment',
-    }))
+    }
+    restoreAssessmentQuestionsForCreate(nextSetup, readDraftQuestions(draft))
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
     window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'preview')
     onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
   }
@@ -1101,12 +1144,14 @@ export default function AssessmentCreatePage({ onNavigate }) {
       window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
       return nextPublished
     })
-    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({
+    const nextSetup = {
       ...assessment.setup,
       sourcePublishedId: assessment.id,
       sourcePublishedName: assessment.assessmentName || assessment.setup?.assessmentName || 'Untitled Assessment',
       isPublishedEdit: true,
-    }))
+    }
+    restoreAssessmentQuestionsForCreate(nextSetup, getPublishedQuestionRows(assessment))
+    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
     window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'configuration')
     onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
   }
@@ -1227,7 +1272,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   role="tab"
                   aria-selected={isActive}
                   className={`assessment-create-tab ${isActive ? 'is-active' : ''}`.trim()}
-                  onClick={() => setActiveAssessmentTab(tab.key)}
+                  onClick={() => handleAssessmentTabChange(tab.key)}
                 >
                   <Icon size={15} strokeWidth={2.2} aria-hidden="true" />
                   <span>{tab.label}</span>

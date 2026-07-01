@@ -498,10 +498,68 @@ const getAssessmentCustomSectionsStorageKey = (setup = {}) => (
   `${CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY}:${getAssessmentStorageSuffix(setup)}`
 )
 
+const normalizeStoredOption = (option, index) => ({
+  ...createOption(''),
+  ...(option && typeof option === 'object' ? option : {}),
+  id: option?.id || `assessment-option-recovered-${Date.now()}-${index}`,
+  label: option?.label ?? '',
+  distractorErrors: Array.isArray(option?.distractorErrors) ? option.distractorErrors : [],
+})
+
+const normalizeStoredDescriptiveLeaf = (row, index, fallbackPrefix = 'assessment-descriptive') => ({
+  ...createDescriptiveInsideQuestion(),
+  ...(row && typeof row === 'object' ? row : {}),
+  id: row?.id || `${fallbackPrefix}-recovered-${Date.now()}-${index}`,
+  questionText: row?.questionText ?? '',
+  marks: row?.marks ?? '0',
+  answerKey: row?.answerKey ?? '',
+  topics: Array.isArray(row?.topics) ? row.topics : [],
+  competencies: Array.isArray(row?.competencies) ? row.competencies : [],
+})
+
+const normalizeStoredDescriptiveSection = (section, index) => {
+  const children = Array.isArray(section?.children) ? section.children : []
+  return {
+    ...normalizeStoredDescriptiveLeaf(section, index, 'assessment-descriptive-section'),
+    children: children
+      .map((child, childIndex) => normalizeStoredDescriptiveLeaf(child, childIndex, 'assessment-descriptive-child'))
+      .filter(Boolean),
+  }
+}
+
+const normalizeStoredAssessmentQuestion = (item, index) => {
+  if (!item || typeof item !== 'object') return null
+  const type = item.type || 'MCQ'
+  const safeQuestion = {
+    ...createQuestion({}, type),
+    ...item,
+    id: item.id || `assessment-question-recovered-${Date.now()}-${index}`,
+    type,
+    questionText: item.questionText ?? '',
+    options: Array.isArray(item.options) ? item.options.map(normalizeStoredOption) : [],
+    correctOptionIds: Array.isArray(item.correctOptionIds) ? item.correctOptionIds : [],
+    images: Array.isArray(item.images) ? item.images : [],
+    topics: Array.isArray(item.topics) ? item.topics : [],
+    competencies: Array.isArray(item.competencies) ? item.competencies : [],
+    organSubSystems: Array.isArray(item.organSubSystems) ? item.organSubSystems : [DEFAULT_OPTIONAL_TAG],
+    diseaseTags: Array.isArray(item.diseaseTags) ? item.diseaseTags : [DEFAULT_OPTIONAL_TAG],
+    keyConcepts: Array.isArray(item.keyConcepts) ? item.keyConcepts : [DEFAULT_OPTIONAL_TAG],
+    descriptiveSections: Array.isArray(item.descriptiveSections)
+      ? item.descriptiveSections.map(normalizeStoredDescriptiveSection).filter(Boolean)
+      : [],
+  }
+
+  if (safeQuestion.type === 'MCQ' && !safeQuestion.options.length) {
+    safeQuestion.options = Array.from({ length: 4 }, () => createOption(''))
+  }
+
+  return safeQuestion
+}
+
 const readSavedAssessmentQuestions = (setup = {}) => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(getAssessmentQuestionsStorageKey(setup)) || '[]')
-    return Array.isArray(parsed) ? parsed : []
+    return Array.isArray(parsed) ? parsed.map(normalizeStoredAssessmentQuestion).filter(Boolean) : []
   } catch {
     return []
   }
@@ -572,13 +630,84 @@ const readCreateAssessmentTemplates = () => {
   }
 }
 
+const writeLocalStorageJson = (key, value) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value))
+    return true
+  } catch (error) {
+    console.error(`Unable to save ${key}.`, error)
+    return false
+  }
+}
+
+const createStorageLightImages = (images = []) => (
+  images.map((image) => ({
+    id: image.id,
+    name: image.name,
+    storageOmitted: true,
+  }))
+)
+
+const createStorageLightDescriptiveSections = (sections = []) => (
+  sections.map((section) => ({
+    ...section,
+    images: createStorageLightImages(section.images ?? []),
+    children: createStorageLightDescriptiveSections(section.children ?? []),
+  }))
+)
+
+const createStorageLightAssessmentQuestions = (questions = []) => (
+  questions.map((item) => ({
+    ...item,
+    images: createStorageLightImages(item.images ?? []),
+    descriptiveSections: createStorageLightDescriptiveSections(item.descriptiveSections ?? []),
+  }))
+)
+
+const createStorageLightPreviewSections = (sections = []) => (
+  sections.map((section) => ({
+    ...section,
+    questions: createStorageLightAssessmentQuestions(section.questions ?? []),
+  }))
+)
+
+const writeAssessmentQuestionsStorage = (key, questions = []) => {
+  if (writeLocalStorageJson(key, questions)) return 'full'
+  return writeLocalStorageJson(key, createStorageLightAssessmentQuestions(questions)) ? 'light' : ''
+}
+
 const readImageFile = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader()
-  reader.onload = () => resolve({
-    id: `assessment-image-${Date.now()}-${file.name}`,
-    name: file.name,
-    url: reader.result,
-  })
+  reader.onload = () => {
+    const image = new Image()
+    image.onload = () => {
+      try {
+        const maxSide = 700
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height))
+        const width = Math.max(1, Math.round(image.width * scale))
+        const height = Math.max(1, Math.round(image.height * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const context = canvas.getContext('2d')
+        context.drawImage(image, 0, 0, width, height)
+
+        resolve({
+          id: `assessment-image-${Date.now()}-${file.name}`,
+          name: file.name,
+          url: canvas.toDataURL('image/jpeg', 0.62),
+        })
+      } catch {
+        resolve({
+          id: `assessment-image-${Date.now()}-${file.name}`,
+          name: file.name,
+          url: reader.result,
+        })
+      }
+    }
+    image.onerror = reject
+    image.src = reader.result
+  }
   reader.onerror = reject
   reader.readAsDataURL(file)
 })
@@ -1021,6 +1150,21 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const assessmentSectionOrderStorageKey = getAssessmentSectionOrderStorageKey(setup)
   const assessmentCustomSectionsStorageKey = getAssessmentCustomSectionsStorageKey(setup)
   const [savedQuestions, setSavedQuestions] = useState(() => readSavedAssessmentQuestions(setup))
+  const savedQuestionsRef = useRef(savedQuestions)
+  const getCurrentAssessmentQuestions = () => (
+    savedQuestionsRef.current.length ? savedQuestionsRef.current : savedQuestions
+  )
+  const syncAssessmentStorageForSetup = (nextSetup, questions = getCurrentAssessmentQuestions()) => {
+    const nextQuestionsKey = getAssessmentQuestionsStorageKey(nextSetup)
+    const nextTitlesKey = getAssessmentSectionTitlesStorageKey(nextSetup)
+    const nextOrderKey = getAssessmentSectionOrderStorageKey(nextSetup)
+    const nextCustomSectionsKey = getAssessmentCustomSectionsStorageKey(nextSetup)
+
+    writeAssessmentQuestionsStorage(nextQuestionsKey, questions)
+    writeLocalStorageJson(nextTitlesKey, previewSectionTitles)
+    writeLocalStorageJson(nextOrderKey, previewSectionOrder)
+    writeLocalStorageJson(nextCustomSectionsKey, customPreviewSections)
+  }
   const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
   const [isActionQuestionTypePickerOpen, setIsActionQuestionTypePickerOpen] = useState(false)
@@ -1054,6 +1198,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const generationTimersRef = useRef(new Map())
   const publishNoticeTimerRef = useRef(null)
   const isGeneratingQuestion = generationJobs.length > 0
+
+  useEffect(() => {
+    savedQuestionsRef.current = savedQuestions
+  }, [savedQuestions])
 
   const headerSetup = setupDraft ?? setup
   const detailItems = [headerSetup.collegeName, headerSetup.academicYear, headerSetup.examCategory, headerSetup.course, headerSetup.year].filter(Boolean)
@@ -1360,8 +1508,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     if (!draft.examDeliveryMode) errors.examDeliveryMode = 'Select exam mode.'
     if (!draft.supervisionType) errors.supervisionType = 'Select supervision type.'
     if (!draft.approvalFlow) errors.approvalFlow = 'Select send option.'
-    const hasMcqQuestions = savedQuestions.some((item) => item.type === 'MCQ')
-    const hasDescriptiveQuestions = savedQuestions.some((item) => isDescriptiveQuestionType(item.type))
+    const currentAssessmentQuestions = getCurrentAssessmentQuestions()
+    const hasMcqQuestions = currentAssessmentQuestions.some((item) => item.type === 'MCQ')
+    const hasDescriptiveQuestions = currentAssessmentQuestions.some((item) => isDescriptiveQuestionType(item.type))
     if (mode === 'Online') {
       if (draft.supervisionType === 'Practice Exam') {
         const defaultStartTime = getCurrentStartTimeValue()
@@ -1547,7 +1696,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       createdAt: setupDraft.createdAt || setup.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
-    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
+    if (!writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, nextSetup)) {
+      writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, {
+        ...nextSetup,
+        logoPreview: '',
+      })
+    }
+    syncAssessmentStorageForSetup(nextSetup)
     setSetup(nextSetup)
     setSetupDraft(nextSetup)
     setSaveStatus(nextStatus)
@@ -1577,7 +1732,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       template,
       ...savedTemplates.filter((item) => item.id !== templateId),
     ]
-    window.localStorage.setItem(CREATE_ASSESSMENT_TEMPLATES_KEY, JSON.stringify(nextTemplates))
+    writeLocalStorageJson(CREATE_ASSESSMENT_TEMPLATES_KEY, nextTemplates)
     setSavedTemplates(nextTemplates)
   }
 
@@ -1592,7 +1747,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
     setSetup(nextSetup)
     setSetupDraft(nextSetup)
-    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
+    writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, nextSetup)
 
     setSetupErrors({})
     setConfigurationValidationStep(-1)
@@ -1600,7 +1755,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setSaveStatus('Template loaded')
   }
 
-  const getPublishedAssessmentRecord = (nextSetup) => {
+  const getPublishedAssessmentRecord = (nextSetup, questionRows = getCurrentAssessmentQuestions()) => {
     const assessmentName = String(nextSetup.assessmentName || '').trim() || 'Untitled Assessment'
     const assignmentTarget = String(nextSetup.assignGroup || '').trim()
       || String(nextSetup.assignYear || '').trim()
@@ -1640,7 +1795,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         timestamp: publishedAt,
       }],
       questionCount: assessmentSummary.totalQuestions,
-      questionRows: savedQuestions,
+      questionRows,
       setup: nextSetup,
     }
   }
@@ -1693,9 +1848,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         nextRecord,
         ...rows.filter((item) => item.id !== record.id),
       ]
-      window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextRows))
+      const lightRows = nextRows.map((row) => ({
+        ...row,
+        questionRows: createStorageLightAssessmentQuestions(row.questionRows ?? []),
+      }))
+      if (!writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, nextRows)) {
+        writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, lightRows)
+      }
     } catch {
-      window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify([record]))
+      const lightRecord = {
+        ...record,
+        questionRows: createStorageLightAssessmentQuestions(record.questionRows ?? []),
+      }
+      writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [record])
+        || writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [lightRecord])
     }
   }
 
@@ -1714,7 +1880,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const publishAssessmentDirectly = () => {
     const nextSetup = persistSetupDraft('')
-    const record = getPublishedAssessmentRecord(nextSetup)
+    const record = getPublishedAssessmentRecord(nextSetup, getCurrentAssessmentQuestions())
     upsertPublishedAssessment(record)
     setSaveStatus('')
     showPublishedAssessmentNotice({
@@ -1725,13 +1891,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const openApprovalModal = () => {
     const errors = validateSetupDraft()
+    const currentQuestions = getCurrentAssessmentQuestions()
     setConfigurationValidationStep(CONFIGURATION_VALIDATION_STEPS.length - 1)
     setSetupErrors(errors)
     if (Object.keys(errors).length) {
       setSaveStatus(getConfigurationErrorMessage(errors))
       return
     }
-    if (!savedQuestions.length || !previewSections.length) {
+    if (!currentQuestions.length || !previewSections.length) {
       setSaveStatus('Add questions in Preview before sending to approval.')
       return
     }
@@ -1746,6 +1913,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const sendAssessmentToApproval = () => {
     const nextSetup = persistSetupDraft('Sent to approval')
+    const currentQuestions = getCurrentAssessmentQuestions()
+    const approvalQuestionRows = createStorageLightAssessmentQuestions(currentQuestions)
+    const approvalPreviewSections = createStorageLightPreviewSections(previewSections)
     const assessmentName = String(nextSetup.assessmentName || '').trim() || 'Untitled Assessment'
     const assignmentTarget = String(nextSetup.assignGroup || '').trim()
       || String(nextSetup.assignYear || '').trim()
@@ -1771,8 +1941,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       totalMarksDetail: configurationQuestionSummary.totalMarksDetail,
       duration: configurationDurationLabel,
       questionCount: assessmentSummary.totalQuestions,
-      questionRows: savedQuestions,
-      previewSections,
+      questionRows: approvalQuestionRows,
+      previewSections: approvalPreviewSections,
       setup: nextSetup,
       approvalFaculty: approvalDraft,
     })
@@ -2515,13 +2685,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       thinkingLevel: questionOverride.thinkingLevel || 'LoT',
       difficultyLevel: questionOverride.difficultyLevel || 'L1',
     }
-    setSavedQuestions((currentQuestions) => {
-      const nextQuestions = isEditingPreviewQuestion
-        ? currentQuestions.map((item) => (item.id === targetEditingPreviewQuestionId ? nextQuestion : item))
-        : [nextQuestion, ...currentQuestions.filter((item) => item.id !== questionOverride.id)]
-      window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
-      return nextQuestions
-    })
+    const currentQuestions = savedQuestionsRef.current
+    const nextQuestions = isEditingPreviewQuestion
+      ? currentQuestions.map((item) => (item.id === targetEditingPreviewQuestionId ? nextQuestion : item))
+      : [nextQuestion, ...currentQuestions.filter((item) => item.id !== questionOverride.id)]
+    const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
+    savedQuestionsRef.current = nextQuestions
+    setSavedQuestions(nextQuestions)
     if (options.resetEditor !== false) {
       setQuestion(createQuestion(setup, questionOverride.type))
       setEditingPreviewQuestionId(null)
@@ -2531,7 +2701,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         setSelectedCreateQuestionTypeLabel('')
       }
     }
-    setSaveStatus(options.message ?? (isEditingPreviewQuestion ? 'Question updated.' : status === 'Draft' ? 'Draft saved.' : 'Question created.'))
+    setSaveStatus(
+      storageResult === 'full'
+        ? options.message ?? (isEditingPreviewQuestion ? 'Question updated.' : status === 'Draft' ? 'Draft saved.' : 'Question created.')
+        : storageResult === 'light'
+          ? `${options.message ?? (isEditingPreviewQuestion ? 'Question updated.' : status === 'Draft' ? 'Draft saved.' : 'Question created.')} Images are visible now but were not saved permanently because browser storage is full.`
+          : 'Question added to preview for this session. Browser storage is full, so remove large images before final save.',
+    )
   }
 
   const createQuestionWithGeneration = () => {
@@ -2580,36 +2756,42 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const startedAt = Date.now()
     setGenerationTick(startedAt)
     setGenerationJobs((current) => [...current, { id: jobId, questionPreviewText, startedAt, typeLabel, isDescriptive: isDescriptiveGeneration }])
-    setQuestion(createQuestion(setup, sourceQuestion.type))
-    setActiveCreateTab('create')
+    persistQuestion('Created', sourceQuestion, {
+      message: `${typeLabel} added to preview. Generating optional fields...`,
+    })
+    setActiveCreateTab('preview')
     setHasSelectedCreateTab(true)
     setSelectedCreateQuestionTypeLabel(typeLabel)
     setActiveMappingPicker(null)
     setMappingSearchValue('')
     setIsOptionalTagsOpen(false)
-    setSaveStatus(`${typeLabel} generation started. You can create the next question.`)
 
     const timerId = setTimeout(() => {
-      const latestText = getRichTextPreview(sourceQuestion.questionText)
-      if (!latestText) {
+      try {
+        const latestText = getRichTextPreview(sourceQuestion.questionText)
+        if (!latestText) {
+          setSaveStatus('Enter question text to create.')
+          return
+        }
+
+        const generatedQuestion = isDescriptiveGeneration
+          ? buildGeneratedDescriptiveQuestion(sourceQuestion)
+          : buildGeneratedMcqQuestion(sourceQuestion)
+        persistQuestion('Created', generatedQuestion, {
+          resetEditor: false,
+          editingPreviewQuestionId: null,
+          message: `${typeLabel} generated and updated in preview.`,
+        })
+        setActiveCreateTab('preview')
+        setHasSelectedCreateTab(true)
+        setSelectedCreateQuestionTypeLabel(typeLabel)
+      } catch (error) {
+        console.error('Unable to generate assessment question.', error)
+        setSaveStatus('Question generation failed. Please try again.')
+      } finally {
         setGenerationJobs((current) => current.filter((job) => job.id !== jobId))
         generationTimersRef.current.delete(jobId)
-        setSaveStatus('Enter question text to create.')
-        return
       }
-      const generatedQuestion = isDescriptiveGeneration
-        ? buildGeneratedDescriptiveQuestion(sourceQuestion)
-        : buildGeneratedMcqQuestion(sourceQuestion)
-      persistQuestion('Created', generatedQuestion, {
-        resetEditor: false,
-        editingPreviewQuestionId: null,
-        message: `${typeLabel} generated and added to preview.`,
-      })
-      setActiveCreateTab('create')
-      setHasSelectedCreateTab(true)
-      setSelectedCreateQuestionTypeLabel(typeLabel)
-      setGenerationJobs((current) => current.filter((job) => job.id !== jobId))
-      generationTimersRef.current.delete(jobId)
     }, 15000)
     generationTimersRef.current.set(jobId, timerId)
   }
@@ -2658,7 +2840,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     try {
       const existingRows = JSON.parse(window.localStorage.getItem(QUESTION_BANK_STORAGE_KEY) ?? '[]')
       const nextRows = [questionBankQuestion, ...(Array.isArray(existingRows) ? existingRows : [])]
-      window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(nextRows))
+      if (!writeLocalStorageJson(QUESTION_BANK_STORAGE_KEY, nextRows)) {
+        setSaveStatus('Unable to add question bank. Please remove large images and try again.')
+        return
+      }
       window.dispatchEvent(new Event('question-bank-created-questions'))
       setSaveStatus('Added to question bank.')
       setActiveCreateTab('questionBank')
@@ -2687,13 +2872,22 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
     const nextQuestions = [
       ...importedQuestions,
-      ...savedQuestions.filter((item) => !questions.some((questionItem) => (
+      ...savedQuestionsRef.current.filter((item) => !questions.some((questionItem) => (
         (questionItem.id ?? questionItem.originalQuestionId) === (item.originalQuestionId ?? item.id)
       ))),
     ]
-    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
+    savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
-    setSaveStatus(`${importedQuestions.length} question${importedQuestions.length === 1 ? '' : 's'} added to assessment.`)
+    setActiveCreateTab('preview')
+    setHasSelectedCreateTab(true)
+    setSaveStatus(
+      storageResult === 'full'
+        ? `${importedQuestions.length} question${importedQuestions.length === 1 ? '' : 's'} added to assessment.`
+        : storageResult === 'light'
+          ? `${importedQuestions.length} question${importedQuestions.length === 1 ? '' : 's'} added to preview. Images are visible now but were not saved permanently because browser storage is full.`
+          : `${importedQuestions.length} question${importedQuestions.length === 1 ? '' : 's'} added to preview for this session. Browser storage is full.`,
+    )
   }
 
   const deletePreviewQuestion = (item) => {
@@ -2705,8 +2899,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       return
     }
 
-    const nextQuestions = savedQuestions.filter((savedItem) => savedItem.id !== item.id)
-    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    const nextQuestions = getCurrentAssessmentQuestions().filter((savedItem) => savedItem.id !== item.id)
+    if (!writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)) {
+      setSaveStatus('Unable to remove question.')
+      return
+    }
+    savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
     setSaveStatus('Question removed from preview.')
   }
@@ -2740,16 +2938,32 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const persistSavedQuestions = (nextQuestions, message = '') => {
-    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
+    const didPersistQuestions = Boolean(storageResult)
+    savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
-    if (message) setSaveStatus(message)
+    if (message) {
+      setSaveStatus(
+        didPersistQuestions
+          ? storageResult === 'light'
+            ? `${message} Images are visible now but were not saved permanently because browser storage is full.`
+            : message
+          : 'Changes applied for this session. Browser storage is full, so remove large images before final save.',
+      )
+    }
+    return didPersistQuestions
   }
 
   const saveAssessmentDraft = () => {
     if (!canSaveAssessmentDraft) return
+    const currentQuestions = getCurrentAssessmentQuestions()
     const draftAssessmentName = String(setupDraft.assessmentName || '').trim() || 'Untitled Assessment'
     const draftId = draftAssessmentName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled-assessment'
-    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(savedQuestions))
+    const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, currentQuestions)
+    if (!storageResult) {
+      setSaveStatus('Unable to save draft. Please remove large images and try again.')
+      return
+    }
     const nextSetup = {
       ...setupDraft,
       assessmentName: draftAssessmentName,
@@ -2759,7 +2973,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       createdAt: setupDraft.createdAt || setup.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
-    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
+    if (!writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, nextSetup)) {
+      writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, {
+        ...nextSetup,
+        logoPreview: '',
+      })
+    }
+    syncAssessmentStorageForSetup(nextSetup, currentQuestions)
     setSetup(nextSetup)
     setSetupDraft(nextSetup)
     const draftRow = {
@@ -2772,6 +2992,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       year: nextSetup.assignYear || nextSetup.year || '',
       examMode: nextSetup.examDeliveryMode || '',
       questionCount: assessmentSummary.totalQuestions,
+      questionRows: createStorageLightAssessmentQuestions(currentQuestions),
       totalMarks: assessmentSummary.totalMarks,
       updatedAt: new Date().toISOString(),
     }
@@ -2791,11 +3012,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             && (!sourceDraftName || rowName !== sourceDraftName)
         }),
       ]
-      window.localStorage.setItem(ASSESSMENT_DRAFTS_STORAGE_KEY, JSON.stringify(nextDrafts))
+      writeLocalStorageJson(ASSESSMENT_DRAFTS_STORAGE_KEY, nextDrafts)
     } catch {
-      window.localStorage.setItem(ASSESSMENT_DRAFTS_STORAGE_KEY, JSON.stringify([draftRow]))
+      writeLocalStorageJson(ASSESSMENT_DRAFTS_STORAGE_KEY, [draftRow])
     }
-    setSaveStatus('Assessment draft saved.')
+    setSaveStatus(storageResult === 'light'
+      ? 'Assessment draft saved. Large images were not saved permanently because browser storage is full.'
+      : 'Assessment draft saved.')
   }
 
   const startEditPreviewSectionTitle = (section) => {
@@ -2810,7 +3033,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ...previewSectionTitles,
       [editingPreviewSectionKey]: previewSectionTitleDraft.trim() || fallbackTitle,
     }
-    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(nextTitles))
+    writeLocalStorageJson(assessmentSectionTitlesStorageKey, nextTitles)
     setPreviewSectionTitles(nextTitles)
     setEditingPreviewSectionKey(null)
     setPreviewSectionTitleDraft('')
@@ -2832,9 +3055,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       [sectionKey]: nextSection.title,
     }
 
-    window.localStorage.setItem(assessmentCustomSectionsStorageKey, JSON.stringify(nextCustomSections))
-    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(nextOrder))
-    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(nextTitles))
+    writeLocalStorageJson(assessmentCustomSectionsStorageKey, nextCustomSections)
+    writeLocalStorageJson(assessmentSectionOrderStorageKey, nextOrder)
+    writeLocalStorageJson(assessmentSectionTitlesStorageKey, nextTitles)
     setCustomPreviewSections(nextCustomSections)
     setPreviewSectionOrder(nextOrder)
     setPreviewSectionTitles(nextTitles)
@@ -2850,19 +3073,23 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const nextTitles = Object.fromEntries(
       Object.entries(previewSectionTitles).filter(([key]) => key !== section.key),
     )
-    const nextQuestions = savedQuestions.map((item) => (
+    const nextQuestions = getCurrentAssessmentQuestions().map((item) => (
       getPreviewSectionKey(item) === section.key
         ? { ...item, previewSectionKey: getSummaryTypeLabel(item.type) }
         : item
     ))
 
-    window.localStorage.setItem(assessmentCustomSectionsStorageKey, JSON.stringify(nextCustomSections))
-    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(nextOrder))
-    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(nextTitles))
-    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    writeLocalStorageJson(assessmentCustomSectionsStorageKey, nextCustomSections)
+    writeLocalStorageJson(assessmentSectionOrderStorageKey, nextOrder)
+    writeLocalStorageJson(assessmentSectionTitlesStorageKey, nextTitles)
+    if (!writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)) {
+      setSaveStatus('Unable to delete section. Please remove large images and try again.')
+      return
+    }
     setCustomPreviewSections(nextCustomSections)
     setPreviewSectionOrder(nextOrder)
     setPreviewSectionTitles(nextTitles)
+    savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
     if (editingPreviewSectionKey === section.key) {
       setEditingPreviewSectionKey(null)
@@ -2877,18 +3104,22 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       [section.key]: section.defaultTitle,
     }), {})
     const defaultOrder = PREVIEW_SECTION_CONFIG.map((section) => section.key)
-    const nextQuestions = savedQuestions.map((item) => ({
+    const nextQuestions = getCurrentAssessmentQuestions().map((item) => ({
       ...item,
       previewSectionKey: getSummaryTypeLabel(item.type),
     }))
 
-    window.localStorage.setItem(assessmentCustomSectionsStorageKey, JSON.stringify([]))
-    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(defaultOrder))
-    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(defaultTitles))
-    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    writeLocalStorageJson(assessmentCustomSectionsStorageKey, [])
+    writeLocalStorageJson(assessmentSectionOrderStorageKey, defaultOrder)
+    writeLocalStorageJson(assessmentSectionTitlesStorageKey, defaultTitles)
+    if (!writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)) {
+      setSaveStatus('Unable to reset sections. Please remove large images and try again.')
+      return
+    }
     setCustomPreviewSections([])
     setPreviewSectionOrder(defaultOrder)
     setPreviewSectionTitles(defaultTitles)
+    savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
     setEditingPreviewSectionKey(null)
     setPreviewSectionTitleDraft('')
@@ -2898,7 +3129,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const createNmcSaqSections = () => {
-    const saqQuestions = savedQuestions.filter((item) => getSummaryTypeLabel(item.type) === 'SAQs')
+    const currentQuestions = getCurrentAssessmentQuestions()
+    const saqQuestions = currentQuestions.filter((item) => getSummaryTypeLabel(item.type) === 'SAQs')
     if (!saqQuestions.length) {
       setSaveStatus('No SAQs available for NMC sections.')
       return
@@ -2938,7 +3170,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const nextOrder = [...cleanOrder]
     nextOrder.splice(saqOrderIndex < 0 ? nextOrder.length : saqOrderIndex + 1, 0, ...nmcSectionKeys)
     const categoryKeyByLabel = Object.fromEntries(orderedCategoryLabels.map((label, index) => [label, nmcSectionKeys[index]]))
-    const nextQuestions = savedQuestions.map((item) => {
+    const nextQuestions = currentQuestions.map((item) => {
       if (getSummaryTypeLabel(item.type) === 'SAQs') {
         return {
           ...item,
@@ -2951,13 +3183,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         : item
     })
 
-    window.localStorage.setItem(assessmentCustomSectionsStorageKey, JSON.stringify(nextCustomSections))
-    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(nextOrder))
-    window.localStorage.setItem(assessmentSectionTitlesStorageKey, JSON.stringify(nextTitles))
-    window.localStorage.setItem(assessmentQuestionsStorageKey, JSON.stringify(nextQuestions))
+    writeLocalStorageJson(assessmentCustomSectionsStorageKey, nextCustomSections)
+    writeLocalStorageJson(assessmentSectionOrderStorageKey, nextOrder)
+    writeLocalStorageJson(assessmentSectionTitlesStorageKey, nextTitles)
+    if (!writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)) {
+      setSaveStatus('Unable to create NMC sections. Please remove large images and try again.')
+      return
+    }
     setCustomPreviewSections(nextCustomSections)
     setPreviewSectionOrder(nextOrder)
     setPreviewSectionTitles(nextTitles)
+    savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
     setEditingPreviewSectionKey(null)
     setPreviewSectionTitleDraft('')
@@ -2965,10 +3201,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const movePreviewQuestionToSection = (itemId, sectionKey) => {
-    const movingQuestion = savedQuestions.find((item) => item.id === itemId)
+    const currentQuestions = getCurrentAssessmentQuestions()
+    const movingQuestion = currentQuestions.find((item) => item.id === itemId)
     if (!movingQuestion) return
 
-    const nextQuestions = savedQuestions.filter((item) => item.id !== itemId)
+    const nextQuestions = currentQuestions.filter((item) => item.id !== itemId)
     const targetIndex = nextQuestions.reduce((lastIndex, item, index) => (
       getPreviewSectionKey(item) === sectionKey ? index : lastIndex
     ), -1)
@@ -2981,13 +3218,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const movePreviewQuestionBefore = (itemId, targetId) => {
     if (itemId === targetId) return
-    const movingQuestion = savedQuestions.find((item) => item.id === itemId)
-    const targetQuestion = savedQuestions.find((item) => item.id === targetId)
+    const currentQuestions = getCurrentAssessmentQuestions()
+    const movingQuestion = currentQuestions.find((item) => item.id === itemId)
+    const targetQuestion = currentQuestions.find((item) => item.id === targetId)
     if (!movingQuestion || !targetQuestion) return
 
-    const currentIndex = savedQuestions.findIndex((item) => item.id === itemId)
-    const targetIndex = savedQuestions.findIndex((item) => item.id === targetId)
-    const nextQuestions = [...savedQuestions]
+    const currentIndex = currentQuestions.findIndex((item) => item.id === itemId)
+    const targetIndex = currentQuestions.findIndex((item) => item.id === targetId)
+    const nextQuestions = [...currentQuestions]
     const [movedQuestion] = nextQuestions.splice(currentIndex, 1)
     const adjustedTargetIndex = currentIndex < targetIndex ? targetIndex - 1 : targetIndex
     nextQuestions.splice(adjustedTargetIndex, 0, {
@@ -2998,14 +3236,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const movePreviewQuestionToOwnSection = (itemId) => {
-    const movingQuestion = savedQuestions.find((item) => item.id === itemId)
+    const currentQuestions = getCurrentAssessmentQuestions()
+    const movingQuestion = currentQuestions.find((item) => item.id === itemId)
     if (!movingQuestion) return
 
     const ownSectionKey = getSummaryTypeLabel(movingQuestion.type)
     if (!PREVIEW_SECTION_KEY_SET.has(ownSectionKey)) return
 
     const nextQuestions = [
-      ...savedQuestions.filter((item) => item.id !== itemId),
+      ...currentQuestions.filter((item) => item.id !== itemId),
       {
         ...movingQuestion,
         previewSectionKey: ownSectionKey,
@@ -3019,7 +3258,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const nextOrder = previewSectionOrder.filter((key) => key !== sectionKey)
     const targetIndex = nextOrder.findIndex((key) => key === targetSectionKey)
     nextOrder.splice(targetIndex < 0 ? nextOrder.length : targetIndex, 0, sectionKey)
-    window.localStorage.setItem(assessmentSectionOrderStorageKey, JSON.stringify(nextOrder))
+    writeLocalStorageJson(assessmentSectionOrderStorageKey, nextOrder)
     setPreviewSectionOrder(nextOrder)
     setSaveStatus('Section order updated.')
   }
@@ -3580,12 +3819,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const handleQuestionImagesUpload = async (event) => {
-    const files = Array.from(event.target.files ?? [])
+    const files = Array.from(event.target.files ?? []).filter((file) => file.type.startsWith('image/'))
     if (!files.length) return
 
-    const images = await Promise.all(files.map(readImageFile))
-    updateQuestion((current) => ({ images: [...current.images, ...images].slice(0, 4) }))
-    event.target.value = ''
+    try {
+      const availableSlots = Math.max(0, 4 - (question?.images?.length ?? 0))
+      const images = await Promise.all(files.slice(0, availableSlots).map(readImageFile))
+      updateQuestion((current) => ({ images: [...current.images, ...images].slice(0, 4) }))
+      setSaveStatus('Image added.')
+    } catch (error) {
+      console.error('Unable to upload question image.', error)
+      setSaveStatus('Unable to upload image. Please try a smaller JPG or PNG.')
+    } finally {
+      event.target.value = ''
+    }
   }
 
   const handleOptionModeChange = (allowMultiple) => {
@@ -3918,7 +4165,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             type="button"
                             className="create-assessment-preview-nmc-section"
                             onClick={createNmcSaqSections}
-                            disabled={!savedQuestions.some((item) => getSummaryTypeLabel(item.type) === 'SAQs')}
+                            disabled={!previewQuestions.some((item) => getSummaryTypeLabel(item.type) === 'SAQs')}
                           >
                             <ListChecks size={14} strokeWidth={2.2} />
                             <span>NMC Section</span>

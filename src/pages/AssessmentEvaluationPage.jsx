@@ -754,7 +754,6 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               <section key={sectionKey} className="assessment-descriptive-section">
                 <header>
                   <strong><span className="assessment-descriptive-section-label">{sectionLabel}</span>{sectionTitle}</strong>
-                  <span>Section Mark : {getDescriptiveSectionMarks(section)}</span>
                 </header>
                 {renderQuestionImages(section)}
                 {children.map((child, childIndex) => renderDescriptiveScoringRow(
