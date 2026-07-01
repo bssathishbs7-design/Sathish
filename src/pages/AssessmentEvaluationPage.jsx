@@ -16,6 +16,7 @@ const STUDENT_EXAM_SUBMISSION_STATUS_KEY = 'vx-student-exam-submission-status'
 const STUDENT_EXAM_SUBMISSION_STATUS_EVENT = 'vx-student-exam-submission-status-changed'
 const ASSESSMENT_EVALUATION_ATTENDANCE_KEY = 'vx-assessment-evaluation-attendance'
 const ASSESSMENT_STUDENT_QUESTION_EVALUATION_KEY = 'vx-assessment-student-question-evaluation'
+const ONLINE_PROCTORED_ATTEMPT_STORAGE_KEY = 'vx-online-proctored-exam-attempts'
 const DEFAULT_EVALUATION_STUDENTS = [
   { id: 'MV1253', name: 'Student 1', attendance: 'P' },
   { id: 'MV1254', name: 'Student 2', attendance: 'P' },
@@ -195,6 +196,42 @@ const getQuestionImages = (item) => {
       return url ? { id: image?.id || `${url}-${index}`, url, name: image?.name || image?.fileName || `Question image ${index + 1}` } : null
     }).filter(Boolean)
   })
+}
+
+const getOptionText = (option, fallback) => (
+  stripHtml(option?.label ?? option?.text ?? option?.value ?? option?.title ?? fallback)
+)
+
+const getQuestionOptions = (question) => (
+  Array.isArray(question?.options) ? question.options.filter((option) => getOptionText(option, '')) : []
+)
+
+const getCorrectOptionIndexes = (question) => {
+  const options = getQuestionOptions(question)
+  const correctIds = Array.isArray(question?.correctOptionIds) ? question.correctOptionIds.map(String) : []
+
+  return options
+    .map((option, index) => (correctIds.includes(String(option?.id)) ? index : -1))
+    .filter((index) => index >= 0)
+}
+
+const getCorrectOptionLabel = (question) => {
+  const labels = getCorrectOptionIndexes(question).map((index) => String.fromCharCode(65 + index))
+  return labels.length ? labels.join(', ') : '-'
+}
+
+const getAnswerKeyText = (item) => stripHtml(item?.answerKey ?? item?.answer ?? item?.expectedAnswer ?? '')
+
+const getOnlineMcqQuestionKey = (question, index) => String(question?.id ?? `mcq-${index}`)
+
+const readStoredAttempt = (assessment, student) => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(ONLINE_PROCTORED_ATTEMPT_STORAGE_KEY) || 'null')
+    const attempt = parsed?.[getAssessmentControlId(assessment)]?.[student?.id]
+    return attempt && typeof attempt === 'object' ? attempt : {}
+  } catch {
+    return {}
+  }
 }
 
 const getAssessmentStorageSuffix = (setup = {}) => {
@@ -617,29 +654,103 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     })
   }
 
-  const renderQuestionImages = (question) => {
+  const renderQuestionImageBadge = (question) => {
     const images = getQuestionImages(question)
     if (!images.length) return null
 
     return (
-      <div className="assessment-question-images" aria-label="Question images">
-        {images.map((image, index) => (
-          <figure key={image.id || `${image.url}-${index}`}>
-            <img src={image.url} alt={image.name || `Question image ${index + 1}`} />
-            <figcaption>
-              <ImageIcon size={13} strokeWidth={2.3} />
-              Image {String.fromCharCode(65 + index)}
-            </figcaption>
-          </figure>
-        ))}
+      <span className="assessment-question-image-popover">
+        <button type="button" className="assessment-question-badge is-images">
+          <ImageIcon size={13} strokeWidth={2.3} />
+          View Images {images.length}
+        </button>
+        <span className="assessment-question-image-tooltip" role="tooltip">
+          {images.map((image, index) => (
+            <figure key={image.id || `${image.url}-${index}`}>
+              <img src={image.url} alt={image.name || `Question image ${index + 1}`} />
+              <figcaption>
+                <ImageIcon size={12} strokeWidth={2.3} />
+                Image {String.fromCharCode(65 + index)}
+              </figcaption>
+            </figure>
+          ))}
+        </span>
+      </span>
+    )
+  }
+
+  const renderQuestionBadges = (question, maxMarks) => (
+    <div className="assessment-question-badges">
+      {renderQuestionImageBadge(question)}
+      <span className="assessment-question-badge is-mark">Max Mark : {maxMarks || 0}</span>
+    </div>
+  )
+
+  const renderAnswerKey = (item, label = 'Answer Key') => {
+    const answerText = getAnswerKeyText(item)
+    if (!answerText) return null
+
+    return (
+      <div className="assessment-answer-key">
+        <strong>{label}</strong>
+        <span>{answerText}</span>
       </div>
     )
   }
+
+  const renderMcqOptions = (question) => {
+    const options = getQuestionOptions(question)
+    if (!options.length) return null
+    const correctIndexes = new Set(getCorrectOptionIndexes(question))
+
+    return (
+      <div className="assessment-mcq-options" aria-label="MCQ options">
+        {options.map((option, optionIndex) => {
+          const optionLabel = String.fromCharCode(65 + optionIndex)
+          return (
+            <span key={option?.id || `${optionLabel}-${optionIndex}`} className={correctIndexes.has(optionIndex) ? 'is-answer' : ''}>
+              <b>{optionLabel}</b>
+              <span>{getOptionText(option, `Option ${optionLabel}`)}</span>
+            </span>
+          )
+        })}
+      </div>
+    )
+  }
+
+  const renderMcqAnswerMeta = (question, studentAnswerIndex) => (
+    <div className="assessment-question-meta">
+      <span>
+        <strong>Answer Key</strong>
+        {getCorrectOptionLabel(question)}
+      </span>
+      {Number.isInteger(studentAnswerIndex) ? (
+        <span>
+          <strong>Student Answer</strong>
+          {String.fromCharCode(65 + studentAnswerIndex)}
+        </span>
+      ) : null}
+      {renderAnswerKey(question, 'Explanation')}
+    </div>
+  )
+
+  const renderMcqAnswerKeyOnly = (question) => (
+    <div className="assessment-question-meta">
+      <span>
+        <strong>Answer Key</strong>
+        {getCorrectOptionLabel(question)}
+      </span>
+    </div>
+  )
 
   const renderMcqQuestion = (question, index, displayNumber = index + 1) => {
     const questionKey = getQuestionKey(question, `mcq-${index + 1}`)
     const result = questionEvaluationState[questionKey]?.status || 'pending'
     const maxMarks = getQuestionMarksTotal(question) || 1
+    const attempt = readStoredAttempt(assessment, selectedStudent)
+    const storedStudentAnswer = attempt?.answers?.[getOnlineMcqQuestionKey(question, index)]
+    const studentAnswerIndex = Number.isFinite(Number(storedStudentAnswer)) ? Number(storedStudentAnswer) : null
+    const shouldShowOnlineMcqDetails = !isOffline
 
     return (
       <article key={questionKey} className={`assessment-question-row is-mcq is-${result}`}>
@@ -647,11 +758,14 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           <span className="assessment-question-number">{displayNumber}.</span>
           <div>
             <p>{getQuestionText(question, `MCQ question ${displayNumber}`)}</p>
-            {renderQuestionImages(question)}
+            {renderQuestionBadges(question, maxMarks)}
+            {renderMcqOptions(question)}
+            {shouldShowOnlineMcqDetails
+              ? renderMcqAnswerMeta(question, Number.isInteger(studentAnswerIndex) ? studentAnswerIndex : null)
+              : renderMcqAnswerKeyOnly(question)}
           </div>
         </div>
         <div className="assessment-question-actions">
-          <span className="assessment-question-mark">Max Mark : {maxMarks}</span>
           <button
             type="button"
             className={result === 'correct' ? 'is-active is-correct' : 'is-correct'}
@@ -693,11 +807,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           <span className="assessment-question-number">{indexLabel}</span>
           <div>
             <p>{getQuestionText(question, `Descriptive question ${indexLabel}`)}</p>
-            {renderQuestionImages(question)}
+            {renderQuestionBadges(question, maxMarks)}
+            {renderAnswerKey(question)}
           </div>
         </div>
         <div className="assessment-question-actions">
-          <span className="assessment-question-mark">Max Mark : {maxMarks}</span>
           <input
             type="number"
             min="0"
@@ -736,7 +850,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           <span className="assessment-question-number">{displayNumber}.</span>
           <div>
             <p>{getQuestionText(question, `Descriptive question ${displayNumber}`)}</p>
-            {renderQuestionImages(question)}
+            {renderQuestionBadges(question, getQuestionMarksTotal(question) || parseMarksValue(question?.marks))}
           </div>
         </div>
         <div className="assessment-descriptive-children">
@@ -755,7 +869,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 <header>
                   <strong><span className="assessment-descriptive-section-label">{sectionLabel}</span>{sectionTitle}</strong>
                 </header>
-                {renderQuestionImages(section)}
+                {renderQuestionBadges(section, getDescriptiveSectionMarks(section))}
+                {renderAnswerKey(section)}
                 {children.map((child, childIndex) => renderDescriptiveScoringRow(
                   child,
                   getAlphaLabel(childIndex),
@@ -820,6 +935,32 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   useEffect(() => {
     setQuestionEvaluationState(readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, selectedStudent)))
   }, [assessment, selectedStudent])
+
+  useEffect(() => {
+    if (!selectedStudent || isOffline || !mcqQuestions.length) return
+    const attempt = readStoredAttempt(assessment, selectedStudent)
+    const answers = attempt?.answers || {}
+    if (!answers || typeof answers !== 'object') return
+
+    const autoResults = {}
+    mcqQuestions.forEach((question, index) => {
+      const questionKey = getQuestionKey(question, `mcq-${index + 1}`)
+      if (questionEvaluationState[questionKey]) return
+
+      const storedAnswer = answers[getOnlineMcqQuestionKey(question, index)]
+      const selectedOptionIndex = Number(storedAnswer)
+      if (!Number.isInteger(selectedOptionIndex)) return
+
+      const correctIndexes = getCorrectOptionIndexes(question)
+      const maxMarks = getQuestionMarksTotal(question) || 1
+      autoResults[questionKey] = correctIndexes.includes(selectedOptionIndex)
+        ? { status: 'correct', marks: maxMarks, autoEvaluated: true }
+        : { status: 'wrong', marks: 0, autoEvaluated: true }
+    })
+
+    if (!Object.keys(autoResults).length) return
+    saveQuestionEvaluationState((current) => ({ ...autoResults, ...current }))
+  }, [assessment, selectedStudent, isOffline, assessmentQuestions, questionEvaluationState])
 
   return (
     <section className="assessment-evaluation-workspace">
