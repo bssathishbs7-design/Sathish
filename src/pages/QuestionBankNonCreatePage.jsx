@@ -2454,6 +2454,14 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                     <>
                       <button
                         type="button"
+                        className="question-bank-action-create-new"
+                        onClick={() => onNavigate?.(APP_PAGES.QUESTION_BANK)}
+                      >
+                        <Plus size={15} strokeWidth={2.3} />
+                        Create New
+                      </button>
+                      <button
+                        type="button"
                         className={`question-bank-action-add-assessment ${selectedGridAction === 'assessment' ? 'is-active' : ''}`}
                         onClick={() => setSelectedGridAction('assessment')}
                         disabled={selectedGridAction === 'learn' || isReportMetricActive}

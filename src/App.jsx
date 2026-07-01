@@ -39,7 +39,8 @@ const PAGE_PATHS = {
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
   [APP_PAGES.ASSESSMENT_CREATE]: '/assessment/create',
   [APP_PAGES.CREATE_ASSESSMENT]: '/createassessment',
-  [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/startstudentevaluation',
+  [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/evaluation',
+  [APP_PAGES.ASSESSMENT_STUDENT_EVALUATION]: '/assessment/startstudentevaluation',
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
   [APP_PAGES.EXAM_CONTROLS]: '/assessment/exam-controls',
   [APP_PAGES.MY_ASSESSMENT]: '/my-assessment',
@@ -47,7 +48,7 @@ const PAGE_PATHS = {
   [APP_PAGES.ONLINE_PROCTORED_EXAM]: '/my-assessment/online-proctored-exam',
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
   [APP_PAGES.QUESTION_BANK_NON_CREATE]: '/question-bank/non-create',
-  [APP_PAGES.BLUEPRINT]: '/assessment-suite/blueprint',
+  [APP_PAGES.BLUEPRINT]: '/assessment-suite/corelation-rating',
   [APP_PAGES.QUERY_REQUEST]: '/query-request',
   [APP_PAGES.ACTIVITY_RESULT]: '/skills/activity-result',
   [APP_PAGES.COMPLETED_EVALUATION]: '/skills/completed-evaluation',
@@ -72,7 +73,11 @@ const PATH_PAGES = Object.fromEntries(
   Object.entries(PAGE_PATHS).map(([page, path]) => [path, page]),
 )
 
-const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? APP_PAGES.DASHBOARD
+const PATH_ALIASES = {
+  '/assessment-suite/blueprint': APP_PAGES.BLUEPRINT,
+}
+
+const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? PATH_ALIASES[pathname] ?? APP_PAGES.DASHBOARD
 
 const PHONE_UNSUPPORTED_PAGES = new Set([
   APP_PAGES.CONFIGURATION,
@@ -82,6 +87,7 @@ const PHONE_UNSUPPORTED_PAGES = new Set([
   APP_PAGES.QUESTION_BANK_NON_CREATE,
   APP_PAGES.BLUEPRINT,
   APP_PAGES.ASSESSMENT_EVALUATION,
+  APP_PAGES.ASSESSMENT_STUDENT_EVALUATION,
   APP_PAGES.ASSESSMENT_DASHBOARD,
   APP_PAGES.QUERY_REQUEST,
 ])
@@ -432,6 +438,7 @@ function App() {
     || activePage === APP_PAGES.ONLINE_PROCTORED_EXAM
   const isPlainAssessmentMode = activePage === APP_PAGES.CREATE_ASSESSMENT
     || activePage === APP_PAGES.ASSESSMENT_EVALUATION
+    || activePage === APP_PAGES.ASSESSMENT_STUDENT_EVALUATION
   const shouldShowMobileUnsupported = isPhoneScreen && PHONE_UNSUPPORTED_PAGES.has(activePage)
   const hideShellChrome = isExamMode || isPlainAssessmentMode
   const activeEvaluationRecord = selectedEvaluationRecord
@@ -1303,6 +1310,15 @@ function App() {
             />
           ) : activePage === APP_PAGES.ASSESSMENT_EVALUATION ? (
             <AssessmentEvaluationPage
+              view="list"
+              onNavigate={navigateToPage}
+              onAlert={showAlert}
+              theme={theme}
+              onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+            />
+          ) : activePage === APP_PAGES.ASSESSMENT_STUDENT_EVALUATION ? (
+            <AssessmentEvaluationPage
+              view="student"
               onNavigate={navigateToPage}
               onAlert={showAlert}
               theme={theme}

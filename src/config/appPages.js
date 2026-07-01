@@ -4,7 +4,6 @@ import {
   BookText,
   ClipboardCheck,
   FileCheck2,
-  FilePenLine,
   FileSearch,
   FileText,
   LayoutTemplate,
@@ -19,7 +18,8 @@ export const APP_PAGES = {
   EVALUATION: 'Evaluation',
   ASSESSMENT_CREATE: 'Assessment Create',
   CREATE_ASSESSMENT: 'createassessment',
-  ASSESSMENT_EVALUATION: 'startstudentevaluation',
+  ASSESSMENT_EVALUATION: 'Assessment Evaluation',
+  ASSESSMENT_STUDENT_EVALUATION: 'startstudentevaluation',
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
   EXAM_CONTROLS: 'Exam Controls',
   MY_ASSESSMENT: 'My Assessment',
@@ -27,7 +27,7 @@ export const APP_PAGES = {
   ONLINE_PROCTORED_EXAM: 'Online Proctored Exam',
   QUESTION_BANK: 'Question Bank',
   QUESTION_BANK_NON_CREATE: 'Question Bank Overall Question',
-  BLUEPRINT: 'Blueprint',
+  BLUEPRINT: 'Corelation Rating',
   QUERY_REQUEST: 'Query Request',
   ACTIVITY_RESULT: 'Activity Result',
   COMPLETED_EVALUATION: 'Completed Evaluation',
@@ -69,6 +69,7 @@ export const ASSESSMENT_PAGES = [
   APP_PAGES.ASSESSMENT_CREATE,
   APP_PAGES.CREATE_ASSESSMENT,
   APP_PAGES.ASSESSMENT_EVALUATION,
+  APP_PAGES.ASSESSMENT_STUDENT_EVALUATION,
   APP_PAGES.ASSESSMENT_DASHBOARD,
   APP_PAGES.EXAM_CONTROLS,
 ]
@@ -81,7 +82,6 @@ export const QUESTION_BANK_PAGES = [
 export const ASSESSMENT_SUITE_PAGES = [
   APP_PAGES.QUESTION_BANK,
   APP_PAGES.QUESTION_BANK_NON_CREATE,
-  APP_PAGES.BLUEPRINT,
   APP_PAGES.ASSESSMENT_CREATE,
   APP_PAGES.CREATE_ASSESSMENT,
 ]
@@ -108,12 +108,15 @@ export const SIDEBAR_MENU = [
         icon: FileCheck2,
       },
       {
+        label: APP_PAGES.BLUEPRINT,
+        navLabel: 'Corelation Rating',
+        icon: LayoutTemplate,
+      },
+      {
         label: 'Assessment Suite',
         icon: BookText,
         children: [
           { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'Question Bank', icon: FileSearch },
-          { label: APP_PAGES.QUESTION_BANK, navLabel: 'Create New', icon: FilePenLine },
-          { label: APP_PAGES.BLUEPRINT, navLabel: 'Blueprint', icon: LayoutTemplate },
           { label: APP_PAGES.ASSESSMENT_CREATE, navLabel: 'Assessment', icon: TrendingUp },
         ],
       },

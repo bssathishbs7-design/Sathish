@@ -4,13 +4,13 @@ import '../styles/assessment-pages.css'
 
 const blueprintPanels = [
   {
-    title: 'Blueprint setup',
-    description: 'Create assessment blueprints with course, year, topic, difficulty, and marks distribution.',
+    title: 'Corelation setup',
+    description: 'Create corelation ratings with course, year, topic, difficulty, and marks distribution.',
     icon: Layers3,
   },
   {
     title: 'Question mapping',
-    description: 'Map question bank items to blueprint rows before moving into assessment creation.',
+    description: 'Map question bank items to corelation rows before moving into assessment creation.',
     icon: ClipboardList,
   },
   {
@@ -24,15 +24,15 @@ export default function BlueprintPage() {
   return (
     <section className="vx-content assessment-page assessment-evaluation-page">
       <div className="assessment-page-shell assessment-evaluation-page-shell">
-        <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Blueprint']} />
+        <PageNavigationHeader items={['My Pages', 'Corelation Rating']} />
 
         <section className="assessment-page-hero">
           <span className="assessment-page-kicker">Assessment Suite</span>
-          <h1>Blueprint</h1>
+          <h1>Corelation Rating</h1>
           <p>Plan assessment structure, coverage, and question distribution before creating the final assessment.</p>
         </section>
 
-        <section className="assessment-page-grid" aria-label="Blueprint overview">
+        <section className="assessment-page-grid" aria-label="Corelation rating overview">
           {blueprintPanels.map((item) => {
             const Icon = item.icon
             return (
