@@ -6,6 +6,9 @@ import '../styles/assessment-pages.css'
 const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
 const ASSESSMENT_EVALUATION_STUDENT_KEY = 'vx-assessment-evaluation-student'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
+const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
+const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
+const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-sections'
 const ASSESSMENT_CREATE_INITIAL_TAB_KEY = 'vx-assessment-create-initial-tab'
 const STUDENT_EXAM_SESSION_KEY = 'vx-student-exam-session'
 const STUDENT_EXAM_SESSION_EVENT = 'vx-student-exam-session-changed'
@@ -19,6 +22,13 @@ const DEFAULT_EVALUATION_STUDENTS = [
   { id: 'MV1255', name: 'Student 3', attendance: 'P' },
   { id: 'MC2568', name: 'Karthik Subramanian', attendance: 'P' },
 ]
+const PREVIEW_SECTION_CONFIG = [
+  { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
+  { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
+  { key: 'MEQs', defaultTitle: 'Modified Essay Questions' },
+  { key: 'LAQs', defaultTitle: 'Long Answer Questions' },
+]
+const PREVIEW_SECTION_KEY_SET = new Set(PREVIEW_SECTION_CONFIG.map((section) => section.key))
 
 const readSelectedAssessment = () => {
   try {
@@ -204,6 +214,58 @@ const getAssessmentQuestionsStorageKey = (setup = {}) => (
   `${CREATE_ASSESSMENT_QUESTIONS_KEY}:${getAssessmentStorageSuffix(setup)}`
 )
 
+const isCustomPreviewSectionKey = (key) => String(key ?? '').startsWith('custom-section-')
+
+const getSummaryTypeLabel = (type) => {
+  if (type === 'MCQ') return 'MCQ'
+  if (String(type).includes('MEQs')) return 'MEQs'
+  if (String(type).includes('LAQs')) return 'LAQs'
+  if (String(type).includes('SAQs') || type === 'Descriptive Question') return 'SAQs'
+  return type || 'Question'
+}
+
+const getPreviewSectionKey = (item) => (
+  PREVIEW_SECTION_KEY_SET.has(item?.previewSectionKey) || isCustomPreviewSectionKey(item?.previewSectionKey)
+    ? item.previewSectionKey
+    : getSummaryTypeLabel(item?.type)
+)
+
+const getPreviewSectionTitles = (setup = {}) => {
+  const suffix = getAssessmentStorageSuffix(setup)
+  const defaults = PREVIEW_SECTION_CONFIG.reduce((titles, section) => ({
+    ...titles,
+    [section.key]: section.defaultTitle,
+  }), {})
+  const customSections = readStorageObject(`${CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY}:${suffix}`)
+  const customTitles = Array.isArray(customSections)
+    ? Object.fromEntries(customSections.map((section) => [
+      section.key,
+      section.title || section.defaultTitle || 'New Section',
+    ]))
+    : {}
+  const savedTitles = readStorageObject(`${CREATE_ASSESSMENT_SECTION_TITLES_KEY}:${suffix}`)
+
+  return {
+    ...defaults,
+    ...customTitles,
+    ...(savedTitles && typeof savedTitles === 'object' ? savedTitles : {}),
+  }
+}
+
+const getPreviewSectionOrder = (setup = {}, questions = []) => {
+  const suffix = getAssessmentStorageSuffix(setup)
+  const defaultOrder = PREVIEW_SECTION_CONFIG.map((section) => section.key)
+  const savedOrder = readStorageObject(`${CREATE_ASSESSMENT_SECTION_ORDER_KEY}:${suffix}`)
+  const orderedKeys = Array.isArray(savedOrder) ? savedOrder : []
+  const questionKeys = questions.map(getPreviewSectionKey).filter(Boolean)
+
+  return [
+    ...orderedKeys,
+    ...defaultOrder,
+    ...questionKeys,
+  ].filter((key, index, rows) => rows.indexOf(key) === index)
+}
+
 const readAssessmentQuestions = (assessment) => {
   const attachedQuestions = [
     assessment?.questions,
@@ -223,6 +285,11 @@ const readAssessmentQuestions = (assessment) => {
 }
 
 const formatTwoDigit = (value) => String(Number(value) || 0).padStart(2, '0')
+
+const ROMAN_LABELS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']
+const ALPHA_LABELS = 'abcdefghijklmnopqrstuvwxyz'.split('')
+const getRomanLabel = (index) => `${ROMAN_LABELS[index] || index + 1}.`
+const getAlphaLabel = (index) => `${ALPHA_LABELS[index] || index + 1}.`
 
 const getQuestionSummary = (assessment) => {
   const questions = readAssessmentQuestions(assessment)
@@ -307,6 +374,25 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const assessmentQuestions = useMemo(() => readAssessmentQuestions(assessment), [assessment])
   const mcqQuestions = assessmentQuestions.filter((item) => !isDescriptiveQuestionType(item?.type))
   const descriptiveQuestions = assessmentQuestions.filter((item) => isDescriptiveQuestionType(item?.type))
+  const previewSectionTitles = getPreviewSectionTitles(assessment?.setup ?? assessment)
+  const previewSectionGroups = getPreviewSectionOrder(assessment?.setup ?? assessment, assessmentQuestions)
+    .map((sectionKey) => {
+      const questions = assessmentQuestions.filter((item) => getPreviewSectionKey(item) === sectionKey)
+      return {
+        key: sectionKey,
+        title: previewSectionTitles[sectionKey] || sectionKey,
+        marks: questions.reduce((total, item) => total + getQuestionMarksTotal(item), 0),
+        questions,
+      }
+    })
+    .filter((section) => section.questions.length)
+  const questionDisplayNumbers = previewSectionGroups.reduce((numbers, section) => {
+    section.questions.forEach((question) => {
+      const key = getQuestionKey(question, `${section.key}-${section.questions.indexOf(question)}`)
+      numbers[key] = Object.keys(numbers).length + 1
+    })
+    return numbers
+  }, {})
   const isOffline = isOfflineAssessment(assessment)
   const examTypeText = String(examType || '').toLowerCase()
   const shouldShowMcqObtained = examTypeText.includes('mcq') || examTypeText.includes('hybrid')
@@ -550,7 +636,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     )
   }
 
-  const renderMcqQuestion = (question, index) => {
+  const renderMcqQuestion = (question, index, displayNumber = index + 1) => {
     const questionKey = getQuestionKey(question, `mcq-${index + 1}`)
     const result = questionEvaluationState[questionKey]?.status || 'pending'
     const maxMarks = getQuestionMarksTotal(question) || 1
@@ -558,9 +644,9 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     return (
       <article key={questionKey} className={`assessment-question-row is-mcq is-${result}`}>
         <div className="assessment-question-main">
-          <span className="assessment-question-number">{index + 1}.</span>
+          <span className="assessment-question-number">{displayNumber}.</span>
           <div>
-            <p>{getQuestionText(question, `MCQ question ${index + 1}`)}</p>
+            <p>{getQuestionText(question, `MCQ question ${displayNumber}`)}</p>
             {renderQuestionImages(question)}
           </div>
         </div>
@@ -570,7 +656,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             type="button"
             className={result === 'correct' ? 'is-active is-correct' : 'is-correct'}
             onClick={() => setQuestionResult(questionKey, { status: 'correct', marks: maxMarks })}
-            aria-label={`Mark question ${index + 1} correct`}
+            aria-label={`Mark question ${displayNumber} correct`}
           >
             <Check size={16} strokeWidth={2.6} />
           </button>
@@ -578,7 +664,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             type="button"
             className={result === 'wrong' ? 'is-active is-wrong' : 'is-wrong'}
             onClick={() => setQuestionResult(questionKey, { status: 'wrong', marks: 0 })}
-            aria-label={`Mark question ${index + 1} wrong`}
+            aria-label={`Mark question ${displayNumber} wrong`}
           >
             <X size={16} strokeWidth={2.6} />
           </button>
@@ -589,9 +675,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           >
             Not Attempted
           </button>
-          <button type="button" className="is-reset" onClick={() => resetQuestionResult(questionKey)}>
+          <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${displayNumber}`}>
             <RotateCcw size={15} strokeWidth={2.4} />
-            Reset
           </button>
         </div>
       </article>
@@ -629,29 +714,28 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           >
             Not Attempted
           </button>
-          <button type="button" className="is-reset" onClick={() => resetQuestionResult(questionKey)}>
+          <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${indexLabel}`}>
             <RotateCcw size={15} strokeWidth={2.4} />
-            Reset
           </button>
         </div>
       </article>
     )
   }
 
-  const renderDescriptiveQuestion = (question, index) => {
+  const renderDescriptiveQuestion = (question, index, displayNumber = index + 1) => {
     const baseKey = getQuestionKey(question, `descriptive-${index + 1}`)
     const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
 
     if (!sections.length) {
-      return renderDescriptiveScoringRow(question, `${index + 1}.`, baseKey)
+      return renderDescriptiveScoringRow(question, `${displayNumber}.`, baseKey)
     }
 
     return (
       <article key={baseKey} className="assessment-descriptive-group">
         <div className="assessment-descriptive-parent">
-          <span className="assessment-question-number">{index + 1}.</span>
+          <span className="assessment-question-number">{displayNumber}.</span>
           <div>
-            <p>{getQuestionText(question, `Descriptive question ${index + 1}`)}</p>
+            <p>{getQuestionText(question, `Descriptive question ${displayNumber}`)}</p>
             {renderQuestionImages(question)}
           </div>
         </div>
@@ -659,22 +743,25 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           {sections.map((section, sectionIndex) => {
             const children = Array.isArray(section.children) ? section.children : []
             const sectionKey = getQuestionKey(section, `${baseKey}-section-${sectionIndex + 1}`)
-            const sectionTitle = getQuestionText(section, `Sub question ${index + 1}.${sectionIndex + 1}`)
+            const sectionLabel = getRomanLabel(sectionIndex)
+            const sectionTitle = getQuestionText(section, `Sub question ${displayNumber} ${sectionLabel}`)
+
+            if (!children.length) {
+              return renderDescriptiveScoringRow(section, sectionLabel, sectionKey)
+            }
 
             return (
               <section key={sectionKey} className="assessment-descriptive-section">
                 <header>
-                  <strong>{sectionTitle}</strong>
+                  <strong><span className="assessment-descriptive-section-label">{sectionLabel}</span>{sectionTitle}</strong>
                   <span>Section Mark : {getDescriptiveSectionMarks(section)}</span>
                 </header>
                 {renderQuestionImages(section)}
-                {children.length ? (
-                  children.map((child, childIndex) => renderDescriptiveScoringRow(
-                    child,
-                    `${index + 1}.${sectionIndex + 1}.${childIndex + 1}`,
-                    getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`),
-                  ))
-                ) : renderDescriptiveScoringRow(section, `${index + 1}.${sectionIndex + 1}`, sectionKey)}
+                {children.map((child, childIndex) => renderDescriptiveScoringRow(
+                  child,
+                  getAlphaLabel(childIndex),
+                  getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`),
+                ))}
               </section>
             )
           })}
@@ -823,32 +910,34 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           </div>
 
           <section className="assessment-student-question-area" aria-label="Question evaluation workspace">
-            {mcqQuestions.length || descriptiveQuestions.length ? (
-              <>
-                {mcqQuestions.length ? (
-                  <section className="assessment-student-question-section is-mcq" aria-label="MCQ questions">
-                    <header>
-                      <h3>I. MCQ Questions</h3>
-                      <span>Section Total = {formatTwoDigit(questionSummary.mcqMarks)} Marks</span>
-                    </header>
-                    <div className="assessment-question-list">
-                      {mcqQuestions.map(renderMcqQuestion)}
-                    </div>
-                  </section>
-                ) : null}
+            {previewSectionGroups.length ? (
+              previewSectionGroups.map((section, sectionIndex) => {
+                const sectionLabel = ['I', 'II', 'III', 'IV', 'V', 'VI'][sectionIndex] || `${sectionIndex + 1}`
+                const isDescriptiveSection = section.questions.some((question) => isDescriptiveQuestionType(question?.type))
 
-                {descriptiveQuestions.length ? (
-                  <section className="assessment-student-question-section is-descriptive" aria-label="Descriptive questions">
+                return (
+                  <section
+                    key={section.key}
+                    className={`assessment-student-question-section ${isDescriptiveSection ? 'is-descriptive' : 'is-mcq'}`}
+                    aria-label={section.title}
+                  >
                     <header>
-                      <h3>{mcqQuestions.length ? 'II.' : 'I.'} Descriptive Questions</h3>
-                      <span>Section Total = {formatTwoDigit(questionSummary.descriptiveMarks)} Marks</span>
+                      <h3>{sectionLabel}. {section.title}</h3>
+                      <span>{formatTwoDigit(section.marks)} Marks</span>
                     </header>
                     <div className="assessment-question-list">
-                      {descriptiveQuestions.map(renderDescriptiveQuestion)}
+                      {section.questions.map((question, questionIndex) => {
+                        const questionKey = getQuestionKey(question, `${section.key}-${questionIndex}`)
+                        const displayNumber = questionDisplayNumbers[questionKey] || questionIndex + 1
+
+                        return isDescriptiveQuestionType(question?.type)
+                          ? renderDescriptiveQuestion(question, questionIndex, displayNumber)
+                          : renderMcqQuestion(question, questionIndex, displayNumber)
+                      })}
                     </div>
                   </section>
-                ) : null}
-              </>
+                )
+              })
             ) : (
               <div className="assessment-student-evaluation-empty">
                 <AlertCircle size={26} strokeWidth={2.3} />
