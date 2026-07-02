@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, Award, Check, ChevronDown, ChevronUp, ClipboardList, Clock3, FileText, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, RotateCcw, Sun, UserX, Users, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Award, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Clock3, FileText, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, RotateCcw, Search, Sun, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -436,6 +436,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [expandedDescriptiveAnswerKeys, setExpandedDescriptiveAnswerKeys] = useState({})
   const [collapsedQuestionSections, setCollapsedQuestionSections] = useState({})
   const [expandedTagPanels, setExpandedTagPanels] = useState({})
+  const [confirmAction, setConfirmAction] = useState(null)
   const [questionEvaluationState, setQuestionEvaluationState] = useState(() => (
     readStorageObject(getStudentQuestionEvaluationStorageKey(readSelectedAssessment(), readSelectedStudent()))
   ))
@@ -480,23 +481,73 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const shouldShowDescriptiveObtained = examTypeText.includes('descriptive') || examTypeText.includes('hybrid')
   const evaluationRows = readEvaluationStudents(assessment, studentSessions, submissionStatuses, manualAttendance)
   const maxMark = questionSummary.totalMarks || Number(assessment?.totalMarks ?? assessment?.setup?.totalMarks ?? 0) || 0
+  const mcqScoringItems = mcqQuestions.map((question, index) => ({
+    key: getQuestionKey(question, `mcq-${index + 1}`),
+    maxMarks: getQuestionMarksTotal(question) || 1,
+  }))
+  const descriptiveScoringItems = descriptiveQuestions.flatMap(getDescriptiveScoringItems)
+  const getScoringSummary = (items, evaluationState = {}) => items.reduce((summary, item) => {
+    const result = evaluationState[item.key] || {}
+    const hasMarks = result.marks !== undefined && result.marks !== null && result.marks !== ''
+    const isValidResult = !result.error && result.status !== 'invalid'
+    const isAttempted = isValidResult && (result.status === 'correct'
+      || result.status === 'wrong'
+      || result.status === 'evaluated'
+      || (hasMarks && result.status !== 'not-attempted'))
+
+    return {
+      total: summary.total + 1,
+      attempted: summary.attempted + (isAttempted ? 1 : 0),
+      maxMarks: summary.maxMarks + parseMarksValue(item.maxMarks),
+      obtainedMarks: summary.obtainedMarks + (hasMarks && isValidResult ? parseMarksValue(result.marks) : 0),
+    }
+  }, {
+    total: 0,
+    attempted: 0,
+    maxMarks: 0,
+    obtainedMarks: 0,
+  })
   const normalizedRows = useMemo(() => evaluationRows.map((row) => {
     const isAbsent = String(row.attendance).toUpperCase() === 'A'
-    const savedStatus = studentEvaluationStatuses[row.id]?.status
+    const savedEvaluation = studentEvaluationStatuses[row.id] || {}
+    const savedStatus = savedEvaluation.status
+    const evalStatus = isAbsent ? 'Absent' : (savedStatus === 'Completed' ? 'Completed' : 'Yet to Start')
+    const savedQuestionState = readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, row))
+    const rowMcqSummary = getScoringSummary(mcqScoringItems, savedQuestionState)
+    const rowDescriptiveSummary = getScoringSummary(descriptiveScoringItems, savedQuestionState)
+    const rowSummary = {
+      attempted: rowMcqSummary.attempted + rowDescriptiveSummary.attempted,
+      total: rowMcqSummary.total + rowDescriptiveSummary.total,
+      maxMarks: rowMcqSummary.maxMarks + rowDescriptiveSummary.maxMarks,
+      obtainedMarks: rowMcqSummary.obtainedMarks + rowDescriptiveSummary.obtainedMarks,
+    }
+    const rowPercentage = rowSummary.maxMarks
+      ? Math.round((rowSummary.obtainedMarks / rowSummary.maxMarks) * 100)
+      : 0
+    const shouldFillScores = !isAbsent && evalStatus === 'Completed'
+
     return {
       ...row,
       isAbsent,
-      evalStatus: isAbsent ? 'Absent' : (savedStatus || 'Yet to Start'),
-      mcq: '-',
-      descriptive: '-',
-      attemptedQuestions: '-',
+      evalStatus,
+      markedEvaluated: Boolean(savedEvaluation.markedEvaluated),
+      mcq: shouldFillScores && shouldShowMcqObtained ? formatTwoDigit(rowMcqSummary.obtainedMarks) : '-',
+      descriptive: shouldFillScores && shouldShowDescriptiveObtained ? formatTwoDigit(rowDescriptiveSummary.obtainedMarks) : '-',
+      attemptedQuestions: shouldFillScores ? `${formatTwoDigit(rowSummary.attempted)} / ${formatTwoDigit(rowSummary.total)}` : '-',
       maxMark: formatTwoDigit(maxMark),
-      obtainedMarks: '-',
-      percentage: '-',
+      obtainedMarks: shouldFillScores ? formatTwoDigit(rowSummary.obtainedMarks) : '-',
+      percentage: shouldFillScores ? `${formatTwoDigit(rowPercentage)}%` : '-',
+      scoringSummary: rowSummary,
     }
-  }), [evaluationRows, maxMark, studentEvaluationStatuses])
+  }), [assessment, descriptiveScoringItems, evaluationRows, getScoringSummary, maxMark, mcqScoringItems, shouldShowDescriptiveObtained, shouldShowMcqObtained, studentEvaluationStatuses])
   const absentCount = normalizedRows.filter((row) => row.isAbsent).length
   const pendingCount = normalizedRows.filter((row) => !row.isAbsent && row.evalStatus !== 'Completed').length
+  const completedScoreRows = normalizedRows.filter((row) => !row.isAbsent && row.evalStatus === 'Completed')
+  const completedObtainedMarks = completedScoreRows.reduce((total, row) => total + (row.scoringSummary?.obtainedMarks || 0), 0)
+  const completedMaxMarks = completedScoreRows.reduce((total, row) => total + (row.scoringSummary?.maxMarks || 0), 0)
+  const overallPercentage = completedMaxMarks
+    ? Math.round((completedObtainedMarks / completedMaxMarks) * 100)
+    : 0
   const metricItems = [
     {
       label: 'Total Marks :',
@@ -530,7 +581,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     },
     {
       label: 'Overall Percentage',
-      value: '00',
+      value: `${formatTwoDigit(overallPercentage)}%`,
       icon: Percent,
       tone: 'percentage',
     },
@@ -594,8 +645,61 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     })
   }
 
-  const openStudentEvaluation = (row) => {
+  const openEvaluationActionConfirm = (type, row) => {
     if (row.isAbsent) return
+    setConfirmAction({ type, row })
+  }
+
+  const closeEvaluationActionConfirm = () => {
+    setConfirmAction(null)
+  }
+
+  const resetStudentEvaluation = (row) => {
+    window.localStorage.removeItem(getStudentQuestionEvaluationStorageKey(assessment, row))
+    setStudentEvaluationStatuses((current) => {
+      const nextStatuses = {
+        ...current,
+        [row.id]: {
+          ...(current[row.id] || {}),
+          status: 'Yet to Start',
+          markedEvaluated: false,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+      writeStorageObject(getStudentEvaluationStatusStorageKey(assessment), nextStatuses)
+      return nextStatuses
+    })
+
+    if (selectedStudent?.id === row.id) {
+      setQuestionEvaluationState({})
+      const nextStudent = { ...selectedStudent, evaluationStatus: 'Yet to Start' }
+      window.sessionStorage.setItem(ASSESSMENT_EVALUATION_STUDENT_KEY, JSON.stringify(nextStudent))
+      setSelectedStudent(nextStudent)
+    }
+
+    onAlert?.({ tone: 'success', message: 'Evaluation reset successfully.' })
+  }
+
+  const confirmEvaluationAction = () => {
+    if (!confirmAction?.row) return
+    const { type, row } = confirmAction
+    closeEvaluationActionConfirm()
+
+    if (type === 'reset') {
+      resetStudentEvaluation(row)
+      return
+    }
+
+    if (type === 'edit') {
+      openStudentEvaluation(row)
+    }
+  }
+
+  const openStudentEvaluation = (row) => {
+    if (row.isAbsent) {
+      onAlert?.({ tone: 'warning', message: 'Absent student cannot be evaluated.' })
+      return
+    }
     const nextStudent = {
       ...row,
       evaluationStatus: row.evalStatus === 'Completed' ? 'Completed' : 'Not Completed',
@@ -618,13 +722,81 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const query = value.trim().toLowerCase()
     if (!query) return
     const matchedStudent = normalizedRows.find((row) => (
-      !row.isAbsent
-      && (
-        String(row.id).toLowerCase().includes(query)
-        || String(row.name).toLowerCase().includes(query)
-      )
+      String(row.id).toLowerCase().includes(query)
+      || String(row.name).toLowerCase().includes(query)
     ))
+    if (matchedStudent?.isAbsent) {
+      onAlert?.({ tone: 'warning', message: 'Absent student cannot be evaluated.' })
+      return
+    }
     if (matchedStudent) openStudentEvaluation(matchedStudent)
+  }
+
+  const markSelectedStudentEvaluated = () => {
+    if (!selectedStudent) return
+    if (!canMarkSelectedStudentEvaluated) {
+      onAlert?.({
+        tone: 'warning',
+        message: 'Complete the student evaluation before marking it as evaluated.',
+      })
+      return
+    }
+    if (isSelectedStudentMarkedEvaluated) {
+      onAlert?.({
+        tone: 'success',
+        message: `Marks already evaluated for ${selectedStudent.name} / ${selectedStudent.id}.`,
+      })
+      return
+    }
+    const nextStatuses = {
+      ...studentEvaluationStatuses,
+      [selectedStudent.id]: {
+        ...(studentEvaluationStatuses[selectedStudent.id] || {}),
+        status: 'Completed',
+        markedEvaluated: true,
+        markedEvaluatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    }
+    writeStorageObject(getStudentEvaluationStatusStorageKey(assessment), nextStatuses)
+    setStudentEvaluationStatuses(nextStatuses)
+
+    const nextStudent = { ...selectedStudent, evaluationStatus: 'Completed' }
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_STUDENT_KEY, JSON.stringify(nextStudent))
+    setSelectedStudent(nextStudent)
+    onAlert?.({
+      tone: 'success',
+      message: `Marks evaluated for ${selectedStudent.name} / ${selectedStudent.id}.`,
+    })
+  }
+
+  const moveToEvaluationStudent = (row) => {
+    if (!row) return
+    openStudentEvaluation(row)
+  }
+
+  const continueToNextEvaluationStudent = () => {
+    if (!isSelectedStudentMarkedEvaluated) {
+      onAlert?.({
+        tone: 'warning',
+        message: 'Please mark this student as evaluated before moving to the next student.',
+      })
+      return
+    }
+    if (!nextEvaluationStudent) {
+      onAlert?.({ tone: 'success', message: 'All student evaluations completed.' })
+      backToStudentList()
+      return
+    }
+    moveToEvaluationStudent(nextEvaluationStudent)
+  }
+
+  const handleEvaluationFooterAction = () => {
+    if (isSelectedStudentMarkedEvaluated) {
+      continueToNextEvaluationStudent()
+      return
+    }
+    markSelectedStudentEvaluated()
   }
 
   const exitToEvaluationTab = () => {
@@ -640,34 +812,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     })
   }
 
-  const mcqScoringItems = mcqQuestions.map((question, index) => ({
-    key: getQuestionKey(question, `mcq-${index + 1}`),
-    maxMarks: getQuestionMarksTotal(question) || 1,
-  }))
-  const descriptiveScoringItems = descriptiveQuestions.flatMap(getDescriptiveScoringItems)
-  const getScoringSummary = (items) => items.reduce((summary, item) => {
-    const result = questionEvaluationState[item.key] || {}
-    const hasMarks = result.marks !== undefined && result.marks !== null && result.marks !== ''
-    const isValidResult = !result.error && result.status !== 'invalid'
-    const isAttempted = isValidResult && (result.status === 'correct'
-      || result.status === 'wrong'
-      || result.status === 'evaluated'
-      || (hasMarks && result.status !== 'not-attempted'))
-
-    return {
-      total: summary.total + 1,
-      attempted: summary.attempted + (isAttempted ? 1 : 0),
-      maxMarks: summary.maxMarks + parseMarksValue(item.maxMarks),
-      obtainedMarks: summary.obtainedMarks + (hasMarks && isValidResult ? parseMarksValue(result.marks) : 0),
-    }
-  }, {
-    total: 0,
-    attempted: 0,
-    maxMarks: 0,
-    obtainedMarks: 0,
-  })
-  const mcqScoringSummary = getScoringSummary(mcqScoringItems)
-  const descriptiveScoringSummary = getScoringSummary(descriptiveScoringItems)
+  const mcqScoringSummary = getScoringSummary(mcqScoringItems, questionEvaluationState)
+  const descriptiveScoringSummary = getScoringSummary(descriptiveScoringItems, questionEvaluationState)
   const studentScoringSummary = {
     total: mcqScoringSummary.total + descriptiveScoringSummary.total,
     attempted: mcqScoringSummary.attempted + descriptiveScoringSummary.attempted,
@@ -1162,11 +1308,26 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     </span>
   )
 
-  const selectedStudentEvaluationStatus = selectedStudent && previewSectionGroups.length
+  const selectedStudentStatusRecord = selectedStudent
+    ? studentEvaluationStatuses[selectedStudent.id] || {}
+    : {}
+  const selectedStudentAutoStatus = selectedStudent && previewSectionGroups.length
     ? previewSectionGroups.every((section) => getSectionEvaluationStatus(section) === 'completed')
       ? 'Completed'
       : 'Not Completed'
     : selectedStudent?.evaluationStatus || 'Not Completed'
+  const selectedStudentEvaluationStatus = selectedStudentAutoStatus
+  const canMarkSelectedStudentEvaluated = selectedStudentEvaluationStatus === 'Completed'
+  const isSelectedStudentMarkedEvaluated = canMarkSelectedStudentEvaluated && Boolean(selectedStudentStatusRecord.markedEvaluated)
+  const presentEvaluationRows = useMemo(() => normalizedRows.filter((row) => !row.isAbsent), [normalizedRows])
+  const selectedStudentIndex = selectedStudent
+    ? presentEvaluationRows.findIndex((row) => row.id === selectedStudent.id)
+    : -1
+  const nextEvaluationStudent = selectedStudentIndex >= 0 && selectedStudentIndex < presentEvaluationRows.length - 1
+    ? presentEvaluationRows[selectedStudentIndex + 1]
+    : null
+  const completedPresentEvaluations = presentEvaluationRows.filter((row) => row.markedEvaluated).length
+  const totalPresentEvaluations = presentEvaluationRows.length
 
   const selectedStudentDetails = selectedStudent ? [
     { label: 'Questions', value: `Attempted: ${formatTwoDigit(studentScoringSummary.attempted)} of ${formatTwoDigit(studentScoringSummary.total)}`, icon: ClipboardList, tone: 'questions' },
@@ -1221,16 +1382,37 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }, [assessment, selectedStudent])
 
   useEffect(() => {
+    if (!isStudentEvaluationView || selectedStudent || !presentEvaluationRows.length) return
+    openStudentEvaluation(presentEvaluationRows[0])
+  }, [isStudentEvaluationView, presentEvaluationRows, selectedStudent])
+
+  useEffect(() => {
+    if (!selectedStudent) return
+    const matchedRow = normalizedRows.find((row) => row.id === selectedStudent.id)
+    const isAbsentSelected = matchedRow?.isAbsent || selectedStudent.attendance === 'A' || selectedStudent.attendanceStatus === 'Absent'
+    if (!isAbsentSelected) return
+
+    window.sessionStorage.removeItem(ASSESSMENT_EVALUATION_STUDENT_KEY)
+    setSelectedStudent(null)
+    onAlert?.({ tone: 'warning', message: 'Absent student cannot be evaluated.' })
+    onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)
+  }, [normalizedRows, onAlert, onNavigate, selectedStudent])
+
+  useEffect(() => {
     if (!selectedStudent) return
     const studentId = selectedStudent.id
     const nextStatus = selectedStudentEvaluationStatus
 
     setStudentEvaluationStatuses((current) => {
-      if (current[studentId]?.status === nextStatus) return current
+      const currentRecord = current[studentId] || {}
+      const nextMarkedEvaluated = nextStatus === 'Completed' ? Boolean(currentRecord.markedEvaluated) : false
+      if (currentRecord.status === nextStatus && Boolean(currentRecord.markedEvaluated) === nextMarkedEvaluated) return current
       const nextStatuses = {
         ...current,
         [studentId]: {
+          ...currentRecord,
           status: nextStatus,
+          markedEvaluated: nextMarkedEvaluated,
           updatedAt: new Date().toISOString(),
         },
       }
@@ -1334,11 +1516,12 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               </p>
             </div>
             <label className="assessment-student-search">
+              <Search size={15} strokeWidth={2.3} aria-hidden="true" />
               <input
                 type="search"
                 value={studentDetailSearch}
                 onChange={(event) => handleStudentDetailSearch(event.target.value)}
-                placeholder="Search student or ID..."
+                placeholder="Search by Student ID or Name"
               />
             </label>
           </div>
@@ -1425,6 +1608,22 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               </div>
             )}
           </section>
+          <nav className="assessment-student-floating-controls" aria-label="Student evaluation navigation">
+            <span className="assessment-student-completed-badge">
+              No. of Evaluation Completed : {formatTwoDigit(completedPresentEvaluations)} out of {formatTwoDigit(totalPresentEvaluations)}
+            </span>
+            <span className="assessment-student-floating-actions">
+              <button
+                type="button"
+                className={`assessment-student-floating-btn is-mark-evaluated ${isSelectedStudentMarkedEvaluated ? 'is-evaluated' : canMarkSelectedStudentEvaluated ? 'is-ready' : ''}`}
+                onClick={handleEvaluationFooterAction}
+                disabled={!canMarkSelectedStudentEvaluated && !isSelectedStudentMarkedEvaluated}
+              >
+                {isSelectedStudentMarkedEvaluated ? <ChevronRight size={16} strokeWidth={2.5} /> : <Check size={16} strokeWidth={2.5} />}
+                {isSelectedStudentMarkedEvaluated ? 'Continue to Next' : 'Mark as Evaluated'}
+              </button>
+            </span>
+          </nav>
         </section>
         ) : (
           <section className="assessment-student-evaluation-card" aria-label="Selected student evaluation">
@@ -1495,13 +1694,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 <th>{sortLabel('maxMark', 'Max Mark')}</th>
                 <th>Obt. Marks</th>
                 <th>Percentage</th>
-                <th>Results</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {pagedRows.map((row) => {
                 const { isAbsent, evalStatus } = row
+                const canUseCompletedActions = !isAbsent && evalStatus === 'Completed'
                 return (
                   <tr key={row.id}>
                     <td>{row.id}</td>
@@ -1513,6 +1712,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                             className={row.attendance === 'P' ? 'is-present is-active' : 'is-present'}
                             onClick={() => updateManualAttendance(row.id, 'P')}
                             aria-label={`Mark ${row.name} present`}
+                            disabled={evalStatus === 'Completed'}
                           >
                             P
                           </button>
@@ -1521,6 +1721,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                             className={row.attendance === 'A' ? 'is-absent is-active' : 'is-absent'}
                             onClick={() => updateManualAttendance(row.id, 'A')}
                             aria-label={`Mark ${row.name} absent`}
+                            disabled={evalStatus === 'Completed'}
                           >
                             A
                           </button>
@@ -1538,19 +1739,37 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                     <td>{row.obtainedMarks}</td>
                     <td>{row.percentage}</td>
                     <td>
-                      <button type="button" className="assessment-evaluation-result-btn" onClick={() => showTableAction('View', row)} disabled={isAbsent}>
-                        View
-                      </button>
-                    </td>
-                    <td>
                       <div className="assessment-evaluation-row-actions">
-                        <button type="button" className="is-icon is-reset" onClick={() => showTableAction('Reset', row)} aria-label={`Reset ${row.name}`} disabled={isAbsent}>
+                        <button
+                          type="button"
+                          className="is-icon is-reset"
+                          onClick={() => openEvaluationActionConfirm('reset', row)}
+                          aria-label={`Reset evaluation for ${row.name}`}
+                          title={canUseCompletedActions ? 'Reset Evaluation' : 'Available after completion'}
+                          data-tooltip={canUseCompletedActions ? 'Reset Evaluation' : undefined}
+                          disabled={!canUseCompletedActions}
+                        >
                           <RotateCcw size={14} strokeWidth={2.4} />
                         </button>
-                        <button type="button" className="is-icon is-edit" onClick={() => showTableAction('Edit', row)} aria-label={`Edit ${row.name}`} disabled={isAbsent}>
+                        <button
+                          type="button"
+                          className="is-icon is-edit"
+                          onClick={() => openEvaluationActionConfirm('edit', row)}
+                          aria-label={`Edit evaluation for ${row.name}`}
+                          title={canUseCompletedActions ? 'Edit Evaluation' : 'Available after completion'}
+                          data-tooltip={canUseCompletedActions ? 'Edit Evaluation' : undefined}
+                          disabled={!canUseCompletedActions}
+                        >
                           <Pencil size={14} strokeWidth={2.4} />
                         </button>
-                        <button type="button" className="is-primary" onClick={() => openStudentEvaluation(row)} disabled={isAbsent}>Start Evaluation</button>
+                        <button
+                          type="button"
+                          className={evalStatus === 'Completed' ? 'is-view-result' : 'is-primary'}
+                          onClick={() => openStudentEvaluation(row)}
+                          disabled={isAbsent}
+                        >
+                          {evalStatus === 'Completed' ? 'View Result' : 'Start Evaluation'}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1572,6 +1791,23 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         </footer>
       </section>
       )}
+      {confirmAction ? (
+        <div className="assessment-evaluation-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="assessment-evaluation-confirm-title">
+          <article className="assessment-evaluation-confirm-modal">
+            <span className={`assessment-evaluation-confirm-icon is-${confirmAction.type}`} aria-hidden="true">
+              {confirmAction.type === 'reset' ? <RotateCcw size={24} strokeWidth={2.4} /> : <Pencil size={24} strokeWidth={2.4} />}
+            </span>
+            <h2 id="assessment-evaluation-confirm-title">
+              {confirmAction.type === 'reset' ? 'Are you sure reset this evaluation?' : 'Are you sure edit this evaluation?'}
+            </h2>
+            <p>{confirmAction.row.name} / {confirmAction.row.id}</p>
+            <div className="assessment-evaluation-confirm-actions">
+              <button type="button" className="is-secondary" onClick={closeEvaluationActionConfirm}>No</button>
+              <button type="button" className="is-primary" onClick={confirmEvaluationAction}>Yes</button>
+            </div>
+          </article>
+        </div>
+      ) : null}
     </section>
   )
 }
