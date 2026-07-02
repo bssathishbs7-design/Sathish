@@ -785,10 +785,9 @@ function ExamControlsPage({ onNavigate }) {
             <th>Attendance</th>
             <th>Student Name</th>
             <th>Login Time</th>
-            <th>Invigilator PIN</th>
             <th>Status Log</th>
             <th>Extend Time</th>
-            <th>Reset</th>
+            <th>Reset Student</th>
             <th>Live Duration</th>
             <th>Overall Status</th>
           </tr>
@@ -800,7 +799,6 @@ function ExamControlsPage({ onNavigate }) {
               <td><span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span></td>
               <td>{student.name}</td>
               <td>{formatDisplayTime(student.startTime)}</td>
-              <td>{student.invigilatorLock?.active ? <strong>{student.invigilatorLock.pin}</strong> : '-'}</td>
               <td>
                 <button type="button" className="exam-controls-log-btn" onClick={() => setLogModal(student)}>
                   View Log
@@ -818,7 +816,7 @@ function ExamControlsPage({ onNavigate }) {
                   }}
                   title={isFinalFiveMinutes ? 'Controls disabled in final 5 minutes' : undefined}
                 >
-                  Reset
+                  Reset Student
                 </button>
               </td>
               <td><span className="exam-controls-live-duration">{getStudentLiveDuration(student)}</span></td>
@@ -839,7 +837,6 @@ function ExamControlsPage({ onNavigate }) {
             <th>Attendance</th>
             <th>Student Name</th>
             <th>Login Time</th>
-            <th>Invigilator PIN</th>
             <th>Status Log</th>
             <th>Duration Split</th>
             <th>Live Duration</th>
@@ -860,7 +857,6 @@ function ExamControlsPage({ onNavigate }) {
                     <td rowSpan={2}><span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span></td>
                     <td rowSpan={2}>{student.name}</td>
                     <td rowSpan={2}>{formatDisplayTime(student.startTime)}</td>
-                    <td rowSpan={2}>{student.invigilatorLock?.active ? <strong>{student.invigilatorLock.pin}</strong> : '-'}</td>
                     <td rowSpan={2}>
                       <button type="button" className="exam-controls-log-btn" onClick={() => setLogModal(student)}>
                         View Log
@@ -1026,24 +1022,24 @@ function ExamControlsPage({ onNavigate }) {
               <TimerReset size={26} strokeWidth={2.3} />
             </span>
             <h2 id="exam-controls-reset-title">
-              <span>Reset Assessment for</span>
+              <span>Reset Student</span>
               {resetModal.student.name}
             </h2>
             <label className={resetMode === 'keep' ? 'is-selected' : ''}>
               <input type="radio" checked={resetMode === 'keep'} onChange={() => setResetMode('keep')} />
-              <span>Reset (Keep Answers)</span>
+              <span>Keep Answers</span>
             </label>
             <label className={resetMode === 'clear' ? 'is-selected' : ''}>
               <input type="radio" checked={resetMode === 'clear'} onChange={() => setResetMode('clear')} />
-              <span>Reset (Clear all answer)</span>
+              <span>Clear Answers</span>
             </label>
             <div className="exam-controls-reset-note">
               <TimerReset size={17} strokeWidth={2.3} />
-              <p>The student will rejoin and continue the exam until the original scheduled end time. No grace period or extension will be provided for this individual reset.</p>
+              <p>This student will be reset. {resetMode === 'keep' ? 'Saved answers are retained.' : 'Saved answers are cleared.'}</p>
             </div>
             <div className="exam-controls-modal-actions">
               <button type="button" className="is-secondary" onClick={() => setResetModal(null)}>Cancel</button>
-              <button type="button" onClick={confirmReset}>Confirm Reset</button>
+              <button type="button" onClick={confirmReset}>Reset Student</button>
             </div>
           </section>
         </div>
