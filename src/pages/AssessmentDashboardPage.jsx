@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Activity, BadgeCheck, CalendarClock, ChartColumnBig, ClipboardList, EyeOff, ListFilter, Monitor, Search, ShieldCheck, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
@@ -82,13 +81,7 @@ const getAssessmentId = (assessment) => (
   assessment?.id || assessment?.assessmentId || assessment?.setup?.assessmentId || 'selected-assessment'
 )
 
-const formatDashboardTime = (value) => (
-  value && !Number.isNaN(new Date(value).getTime())
-    ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    : '-'
-)
-
-const readExamControlsState = (assessment) => {
+const readAssessmentControlState = (assessment) => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(`${EXAM_CONTROLS_STATE_KEY}:${getAssessmentId(assessment)}`) || 'null')
     return parsed && typeof parsed === 'object' ? parsed : {}
@@ -97,64 +90,67 @@ const readExamControlsState = (assessment) => {
   }
 }
 
-const getAssessmentInvigilatorLock = (assessment, studentId = CURRENT_STUDENT_ID) => {
-  const lock = readExamControlsState(assessment)?.[studentId]?.invigilatorLock
-  return lock && typeof lock === 'object' ? lock : null
-}
+const getStudentAssessmentLockState = (assessment, studentId = CURRENT_STUDENT_ID, now = new Date()) => {
+  const state = readAssessmentControlState(assessment)?.[studentId] || {}
+  const lockedAt = Date.parse(state.invigilatorLock?.lockedAt || '')
+  const extensionUpdatedAt = Date.parse(state.extensionUpdatedAt || '')
+  const resumeUnlockedAt = Date.parse(state.resumeUnlockedAt || state.invigilatorLock?.unlockedAt || '')
+  const hasExplicitUnlock = Number.isFinite(resumeUnlockedAt)
+    && (!Number.isFinite(lockedAt) || resumeUnlockedAt >= lockedAt)
+  const hasResumeAfterLock = Number.isFinite(extensionUpdatedAt)
+    && (!Number.isFinite(lockedAt) || extensionUpdatedAt >= lockedAt)
+  const hasActiveResumeTime = [
+    state.liveUntilMs,
+    state.mcqLiveUntilMs,
+    state.descriptiveLiveUntilMs,
+  ].some((value) => Number(value || 0) > now.getTime())
+  const hasActiveLock = Boolean(state.invigilatorLock?.active)
+  const hasHardLock = Boolean(state.invigilatorLock?.exhausted)
+  const stateStatus = String(state.overallStatus || '').toLowerCase()
+  const hasViolationStatus = (
+    stateStatus.includes('locked')
+    || stateStatus.includes('violation')
+    || stateStatus.includes('fullscreen')
+  )
+  const isViolation = (hasActiveLock || hasViolationStatus || hasHardLock) && !hasExplicitUnlock && !hasResumeAfterLock && !hasActiveResumeTime
+  const isLocked = isViolation
 
-const clearAssessmentInvigilatorLock = (assessment, studentId = CURRENT_STUDENT_ID) => {
-  const assessmentId = getAssessmentId(assessment)
-  try {
-    const parsed = readExamControlsState(assessment)
-    const currentState = parsed[studentId] || {}
-    const lock = currentState.invigilatorLock || {}
-    const nextLog = {
-      id: `${studentId}-invigilator-unlock-${Date.now()}`,
-      time: formatDashboardTime(new Date()),
-      action: 'Exam Unlocked',
-      remarks: `Invigilator PIN accepted for fullscreen exit ${lock.exitCount || '-'}.`,
-      faculty: 'Invigilator',
-    }
-
-    const nextState = {
-      ...parsed,
-      [studentId]: {
-        ...currentState,
-        invigilatorLock: {
-          ...lock,
-          active: false,
-          unlockedAt: new Date().toISOString(),
-        },
-        overallStatus: 'In progress',
-        logs: [nextLog, ...(currentState.logs || [])],
-        updatedAt: new Date().toISOString(),
-      },
-    }
-
-    window.localStorage.setItem(`${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`, JSON.stringify(nextState))
-    window.dispatchEvent(new CustomEvent(EXAM_CONTROLS_STATE_CHANGED_EVENT, {
-      detail: { assessmentId, studentId },
-    }))
-  } catch {
-    // Unlock is best-effort; if storage fails the attempt will remain locked.
+  return {
+    isLocked,
+    isViolation,
+    isHardLocked: hasHardLock && !hasExplicitUnlock,
   }
 }
 
-const requestDashboardFullscreen = async () => {
-  if (typeof document === 'undefined') return false
-  if (document.fullscreenElement) return true
-  if (!document.documentElement?.requestFullscreen) return false
-
+const clearActiveProctorLock = (assessment, studentId = CURRENT_STUDENT_ID) => {
   try {
-    await document.documentElement.requestFullscreen({ navigationUI: 'hide' })
-    return true
-  } catch {
-    try {
-      await document.documentElement.requestFullscreen()
-      return true
-    } catch {
-      return false
+    const state = readAssessmentControlState(assessment)
+    if (!state || typeof state !== 'object' || !state[studentId]) return
+    const studentState = state[studentId]
+    const currentLock = studentState?.invigilatorLock
+    if (!currentLock?.active || currentLock?.exhausted) return
+
+    const nowIso = new Date().toISOString()
+    state[studentId] = {
+      ...studentState,
+      resumeUnlockedAt: nowIso,
+      invigilatorLock: {
+        ...currentLock,
+        active: false,
+        unlockedAt: nowIso,
+        reason: 'Dashboard auto-unlock',
+      },
+      overallStatus: 'In progress',
     }
+    window.localStorage.setItem(
+      `${EXAM_CONTROLS_STATE_KEY}:${getAssessmentId(assessment)}`,
+      JSON.stringify(state),
+    )
+    window.dispatchEvent(new CustomEvent(EXAM_CONTROLS_STATE_CHANGED_EVENT, {
+      detail: { assessmentId: getAssessmentId(assessment), studentId },
+    }))
+  } catch {
+    // keep flow best-effort
   }
 }
 
@@ -335,7 +331,6 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   const [myAssessmentSearchValue, setMyAssessmentSearchValue] = useState('')
   const [myAssessmentFilters, setMyAssessmentFilters] = useState(MY_ASSESSMENT_FILTER_DEFAULTS)
   const [isMyAssessmentFilterOpen, setIsMyAssessmentFilterOpen] = useState(false)
-  const [pinUnlockModal, setPinUnlockModal] = useState(null)
   const studentOnlineAssessments = publishedAssessments.filter((assessment) => (
     isOnlinePracticeAssessment(assessment) || isOnlineProctoredAssessment(assessment)
   ))
@@ -439,80 +434,15 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
 
   const handleStartAssessment = (assessment) => {
     if (!assessment) return
-
-    if (isOnlineProctoredAssessment(assessment)) {
-      const invigilatorLock = getAssessmentInvigilatorLock(assessment)
-      if (invigilatorLock?.active) {
-        setPinUnlockModal({
-          assessment,
-          pin: '',
-          error: '',
-          lock: invigilatorLock,
-        })
-        return
-      }
+    const lockState = isOnlineProctoredAssessment(assessment)
+      ? getStudentAssessmentLockState(assessment, CURRENT_STUDENT_ID, scheduleNow)
+      : null
+    if (lockState?.isHardLocked) return
+    if (lockState?.isLocked) {
+      clearActiveProctorLock(assessment, CURRENT_STUDENT_ID)
     }
 
     startAssessmentNow(assessment)
-  }
-
-  const confirmInvigilatorPin = async () => {
-    if (!pinUnlockModal?.assessment) return
-    const latestLock = getAssessmentInvigilatorLock(pinUnlockModal.assessment)
-    const enteredPin = String(pinUnlockModal.pin || '').trim()
-    const expectedPin = String(latestLock?.pin || pinUnlockModal.lock?.pin || '').trim()
-
-    if (!latestLock?.active || !expectedPin || enteredPin !== expectedPin) {
-      setPinUnlockModal((current) => current ? { ...current, error: 'Invalid Invigilator PIN.' } : current)
-      return
-    }
-
-    clearAssessmentInvigilatorLock(pinUnlockModal.assessment)
-    const assessmentToStart = pinUnlockModal.assessment
-    await requestDashboardFullscreen()
-    setPinUnlockModal(null)
-    startAssessmentNow(assessmentToStart)
-  }
-
-  const renderPinUnlockModal = () => {
-    if (!pinUnlockModal) return null
-
-    const content = (
-      <div className="online-practice-submit-overlay my-assessment-pin-overlay" role="presentation">
-        <section className="online-practice-submit-modal online-practice-exit-modal" role="dialog" aria-modal="true" aria-labelledby="my-assessment-pin-title">
-          <span className="online-practice-time-limit-icon" aria-hidden="true">
-            <ShieldCheck size={32} strokeWidth={2.4} />
-          </span>
-          <h2 id="my-assessment-pin-title">Invigilator PIN</h2>
-          <p>Enter the Invigilator PIN to continue this locked exam.</p>
-          <label className="my-assessment-pin-field">
-            <span>Invigilator PIN</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={pinUnlockModal.pin}
-              onChange={(event) => {
-                const nextPin = event.target.value.replace(/\D/g, '').slice(0, 6)
-                setPinUnlockModal((current) => current ? { ...current, pin: nextPin, error: '' } : current)
-              }}
-              autoFocus
-            />
-          </label>
-          {pinUnlockModal.error ? <p className="my-assessment-pin-error">{pinUnlockModal.error}</p> : null}
-          <div className="online-practice-submit-actions online-practice-exit-actions">
-            <button type="button" className="is-secondary" onClick={() => setPinUnlockModal(null)}>
-              Cancel
-            </button>
-            <button type="button" onClick={confirmInvigilatorPin}>
-              Unlock Exam
-            </button>
-          </div>
-        </section>
-      </div>
-    )
-
-    return typeof document === 'undefined' ? content : createPortal(content, document.body)
   }
 
   useEffect(() => {
@@ -652,10 +582,11 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                   const isProctoredExam = String(assessment.supervisionType || '').toLowerCase().includes('proctored')
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
-                  const invigilatorLock = isProctoredExam ? getAssessmentInvigilatorLock(assessment) : null
-                  const cardStatus = invigilatorLock?.active
-                    ? { type: 'locked', label: 'Locked' }
+                  const lockState = isProctoredExam ? getStudentAssessmentLockState(assessment, CURRENT_STUDENT_ID, scheduleNow) : null
+                  const cardStatus = lockState?.isViolation
+                    ? { type: 'violation', label: 'Violation' }
                     : scheduleStatus
+                  const isStartDisabled = scheduleStatus?.type === 'upcoming' || Boolean(lockState?.isHardLocked)
                   const durationValue = scheduleStatus?.type === 'live'
                     ? formatAssessmentRemainingTime(scheduleStatus.remainingMs)
                     : assessment.totalDuration || '-'
@@ -705,7 +636,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         <button
                           type="button"
                           className={`my-assessment-card-action is-${cardStatus?.type === 'completed' ? 'results' : 'start'} ${cardStatus?.type === 'live' ? 'is-live' : ''}`}
-                          disabled={scheduleStatus?.type === 'upcoming'}
+                          disabled={isStartDisabled}
                           onClick={() => {
                             if (cardStatus?.type === 'completed') {
                               handleViewAssessmentResults(assessment)
@@ -714,7 +645,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                             handleStartAssessment(assessment)
                           }}
                         >
-                          {cardStatus?.type === 'completed' ? 'View Results' : invigilatorLock?.active ? 'Enter PIN' : 'Start Assessment'}
+                          {cardStatus?.type === 'completed' ? 'View Results' : 'Start Assessment'}
                         </button>
                       </div>
                     </article>
@@ -756,8 +687,6 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
             </section>
           </>
         )}
-
-        {renderPinUnlockModal()}
       </div>
     </section>
   )

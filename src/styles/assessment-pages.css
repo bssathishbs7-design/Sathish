@@ -6929,6 +6929,11 @@
   color: #b91c1c;
 }
 
+.assessment-create-published-schedule-badge.is-violation {
+  background: #ffdddd;
+  color: #b91c1c;
+}
+
 .my-assessment-pin-field {
   display: grid;
   gap: 8px;
@@ -7317,43 +7322,47 @@
 }
 
 .exam-controls-table-wrap {
-  overflow-x: hidden;
-  border: 1px solid #dbe7e2;
-  border-radius: 8px;
+  overflow: auto;
+  border: 0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(14, 55, 38, 0.08);
 }
 
 .exam-controls-table,
 .exam-controls-log-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: #ffffff;
 }
 
 .exam-controls-table {
-  table-layout: fixed;
-  min-width: 0;
+  min-width: 980px;
+  table-layout: auto;
 }
 
 .exam-controls-log-table {
   min-width: 720px;
+  table-layout: auto;
 }
 
 .exam-controls-table.is-split {
-  min-width: 0;
-  table-layout: auto;
+  min-width: 1120px;
 }
 
 .exam-controls-table th,
 .exam-controls-table td,
 .exam-controls-log-table th,
 .exam-controls-log-table td {
-  padding: 10px 8px;
-  border-bottom: 1px solid #e3eee9;
+  padding: 13px 12px;
+  border-bottom: 0;
   color: #082431;
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 700;
   text-align: left;
   vertical-align: middle;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7361,37 +7370,58 @@
 
 .exam-controls-table th,
 .exam-controls-log-table th {
-  background: #f8fcfb;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f4fbf8;
+  backdrop-filter: blur(2px);
   color: #526876;
-  font-size: 0.64rem;
+  font-size: 0.66rem;
   font-weight: 950;
+  line-height: 1.2;
   white-space: nowrap;
+  border-bottom: 1px solid #d6ebdf;
+  box-shadow: 0 1px 0 #e4f3eb;
+}
+
+.exam-controls-table th:first-child,
+.exam-controls-log-table th:first-child {
+  border-top-left-radius: 10px;
+}
+
+.exam-controls-table th:last-child,
+.exam-controls-log-table th:last-child {
+  border-top-right-radius: 10px;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(1),
 .exam-controls-table:not(.is-split) td:nth-child(1) {
-  width: 10%;
+  width: 12%;
+  min-width: 115px;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(2),
 .exam-controls-table:not(.is-split) td:nth-child(2) {
-  width: 9%;
+  width: 76px;
   text-align: center;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(3),
 .exam-controls-table:not(.is-split) td:nth-child(3) {
   width: 20%;
+  max-width: 190px;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(4),
 .exam-controls-table:not(.is-split) td:nth-child(4) {
-  width: 10%;
+  width: 11%;
+  min-width: 90px;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(5),
 .exam-controls-table:not(.is-split) td:nth-child(5) {
-  width: 10%;
+  width: 12%;
+  min-width: 104px;
   text-align: center;
 }
 
@@ -7399,25 +7429,129 @@
 .exam-controls-table:not(.is-split) td:nth-child(6),
 .exam-controls-table:not(.is-split) th:nth-child(7),
 .exam-controls-table:not(.is-split) td:nth-child(7) {
-  width: 10%;
+  width: 13%;
+  min-width: 108px;
   text-align: center;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(8),
 .exam-controls-table:not(.is-split) td:nth-child(8) {
-  width: 10%;
+  width: 12%;
+  min-width: 98px;
   text-align: center;
 }
 
 .exam-controls-table:not(.is-split) th:nth-child(9),
 .exam-controls-table:not(.is-split) td:nth-child(9) {
+  width: 12%;
+  min-width: 108px;
+  text-align: center;
+}
+
+.exam-controls-table.is-split th:nth-child(1),
+.exam-controls-table.is-split td:nth-child(1) {
+  width: 13%;
+  min-width: 118px;
+}
+
+.exam-controls-table.is-split th:nth-child(2),
+.exam-controls-table.is-split td:nth-child(2) {
+  width: 68px;
+  text-align: center;
+}
+
+.exam-controls-table.is-split th:nth-child(3),
+.exam-controls-table.is-split td:nth-child(3) {
+  width: 18%;
+}
+
+.exam-controls-table.is-split th:nth-child(4),
+.exam-controls-table.is-split td:nth-child(4) {
   width: 10%;
+  min-width: 96px;
+}
+
+.exam-controls-table.is-split th:nth-child(5),
+.exam-controls-table.is-split td:nth-child(5) {
+  width: 10%;
+  min-width: 96px;
+}
+
+.exam-controls-table.is-split th:nth-child(6),
+.exam-controls-table.is-split td:nth-child(6) {
+  width: 16%;
+  min-width: 132px;
+}
+
+.exam-controls-table.is-split th:nth-child(7),
+.exam-controls-table.is-split td:nth-child(7) {
+  width: 14%;
+  min-width: 114px;
+}
+
+.exam-controls-table.is-split th:nth-child(8),
+.exam-controls-table.is-split td:nth-child(8) {
+  width: 14%;
+  min-width: 112px;
+}
+
+.exam-controls-table.is-split th:nth-child(9),
+.exam-controls-table.is-split td:nth-child(9) {
+  width: 12%;
+  min-width: 106px;
+}
+
+.exam-controls-table.is-split th:nth-child(10),
+.exam-controls-table.is-split td:nth-child(10) {
+  width: 12%;
+  min-width: 112px;
+}
+
+.exam-controls-table th:nth-child(6),
+.exam-controls-table th:nth-child(7),
+.exam-controls-table th:nth-child(8),
+.exam-controls-table td:nth-child(6),
+.exam-controls-table td:nth-child(7),
+.exam-controls-table td:nth-child(8),
+.exam-controls-log-table th,
+.exam-controls-log-table td {
   text-align: center;
 }
 
 .exam-controls-table tr:last-child td,
 .exam-controls-log-table tr:last-child td {
   border-bottom: 0;
+}
+
+.exam-controls-table tbody tr {
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.exam-controls-table tbody tr:hover td,
+.exam-controls-log-table tbody tr:hover td {
+  background: #f2fbf8;
+}
+
+.exam-controls-table tbody tr + tr td,
+.exam-controls-log-table tbody tr + tr td {
+  border-top: 1px solid #edf4f1;
+}
+
+.exam-controls-table tbody tr:nth-of-type(even):not(.exam-controls-split-parent-row):not(.exam-controls-split-subrow) td {
+  background: #ffffff;
+}
+
+.exam-controls-table.is-split .exam-controls-split-parent-row {
+  border-top: 2px solid #dceee7;
+}
+
+.exam-controls-table.is-split .exam-controls-split-parent-row:first-child,
+.exam-controls-table.is-split .exam-controls-split-subrow:first-child {
+  border-top: 0;
+}
+
+.exam-controls-table.is-split .exam-controls-split-subrow td {
+  background: #f9fdfc;
 }
 
 .exam-controls-attendance,
@@ -7457,6 +7591,7 @@
 }
 
 .exam-controls-overall.is-locked,
+.exam-controls-overall.is-violation,
 .exam-controls-overall.is-completed-due-to-fullscreen-violation-limit {
   background: #fee2e2;
   color: #b91c1c;
@@ -7466,6 +7601,10 @@
   border-radius: 8px;
   background: #f5f3ff;
   color: #6d28d9;
+}
+
+.exam-controls-table.is-split .exam-controls-sequence-pill {
+  gap: 6px;
 }
 
 .exam-controls-live-duration {
@@ -7479,27 +7618,52 @@
   white-space: nowrap;
 }
 
+.exam-controls-live-duration.is-extended {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid #5eead4;
+  border-radius: 999px;
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.exam-controls-extension-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 24px;
+  color: #64748b;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.exam-controls-extension-value.is-extended {
+  padding: 0 7px;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .exam-controls-extend-btn,
 .exam-controls-reset-btn,
 .exam-controls-log-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
+  min-height: 30px;
+  width: auto;
+  min-width: 92px;
   border: 1px solid #99f6e4;
   border-radius: 8px;
   background: #ecfdf5;
   color: #047857;
   font: inherit;
-  font-size: 0.62rem;
-  font-weight: 900;
+  font-size: 0.64rem;
+  font-weight: 800;
   cursor: pointer;
-}
-
-.exam-controls-extend-btn,
-.exam-controls-reset-btn,
-.exam-controls-log-btn {
-  padding: 0 8px;
+  padding: 0 11px;
 }
 
 .exam-controls-reset-btn {
@@ -8060,23 +8224,35 @@
 }
 
 .exam-controls-table-wrap {
-  border-color: #cbded7;
+  border: 0;
+  border-radius: 14px;
   background: #ffffff;
+  box-shadow: 0 12px 32px rgba(14, 55, 38, 0.08);
+  overflow: auto;
 }
 
 .exam-controls-table th,
 .exam-controls-log-table th {
+  background: #f4fbf8;
   position: sticky;
   top: 0;
   z-index: 1;
-  height: 38px;
-  background: #f2faf7;
+  padding: 13px 12px;
+  border-bottom: 1px solid #d6ebdf;
   color: #244756;
+  font-size: 0.66rem;
+  font-weight: 950;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 1px 0 #e4f3eb;
 }
 
 .exam-controls-table td,
 .exam-controls-log-table td {
-  height: 44px;
+  height: auto;
+  padding: 13px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .exam-controls-table tbody tr:hover td,
@@ -8085,19 +8261,21 @@
 }
 
 .exam-controls-log-btn {
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #2563eb;
+  border-color: #99f6e4;
+  background: #ecfdf5;
+  color: #047857;
 }
 
 .exam-controls-action-set button {
-  border-color: #b9eadf;
-  background: #f0fffb;
+  border-color: #99f6e4;
+  background: #ecfdf5;
+  color: #047857;
 }
 
 .exam-controls-reset-btn {
-  border-color: #fdba74;
+  border-color: #fed7aa;
   background: #fff7ed;
+  color: #c2410c;
 }
 
 .exam-controls-modal-backdrop {
@@ -8189,6 +8367,96 @@
 
 .exam-controls-modal-actions.is-single {
   grid-template-columns: 1fr;
+}
+
+.exam-controls-extension-options button.is-selected {
+  border-color: #0f766e;
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.exam-controls-resume-modal {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.exam-controls-resume-field,
+.exam-controls-minute-input {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+.exam-controls-resume-field > span,
+.exam-controls-minute-input > span {
+  color: #526876;
+  font-size: 0.68rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.exam-controls-toggle-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.exam-controls-toggle-group button {
+  min-height: 38px;
+  border: 1px solid #d8e5e0;
+  border-radius: 8px;
+  background: #f8fcfb;
+  color: #526876;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.exam-controls-toggle-group button.is-selected {
+  border-color: #5eead4;
+  background: #ccfbf1;
+  color: #047857;
+}
+
+.exam-controls-duration-reset-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid #99f6e4;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.exam-controls-minute-input input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #c9ddd6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #082431;
+  font: inherit;
+  font-weight: 850;
+  padding: 0 12px;
+  outline: none;
+}
+
+.exam-controls-minute-input input:focus {
+  border-color: #10b9a8;
+  box-shadow: 0 0 0 3px rgba(16, 185, 168, 0.12);
+}
+
+.exam-controls-form-error {
+  width: 100%;
+  margin: -2px 0 0;
+  color: #dc2626;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-align: left;
 }
 
 .exam-controls-reset-modal {
@@ -21607,6 +21875,11 @@
   color: #7dd3fc;
 }
 
+.theme-dark .assessment-create-published-schedule-badge.is-violation {
+  background: rgba(248, 113, 113, 0.22);
+  color: #fda4af;
+}
+
 .theme-dark .assessment-create-log-modal {
   border-color: rgba(94, 116, 145, 0.5);
   background: #101827;
@@ -30090,6 +30363,7 @@ body > .assessment-page-filter-menu {
 
 .theme-dark .exam-controls-table-wrap {
   border-color: #24404a;
+  overflow: auto;
 }
 
 .theme-dark .exam-controls-live-strip svg {
@@ -30170,8 +30444,61 @@ body > .assessment-page-filter-menu {
   border-bottom-color: #24404a;
 }
 
+.theme-dark .exam-controls-table tbody tr:nth-of-type(even):not(.exam-controls-split-parent-row):not(.exam-controls-split-subrow) td {
+  background: #111f32;
+}
+
+.theme-dark .exam-controls-table.is-split .exam-controls-split-parent-row {
+  border-top: 1px solid #24404a;
+}
+
+.theme-dark .exam-controls-table.is-split .exam-controls-split-subrow td {
+  background: #0f1f33;
+}
+
 .theme-dark .exam-controls-live-duration {
   color: #f8fafc;
+}
+
+.theme-dark .exam-controls-live-duration.is-extended {
+  border-color: rgba(45, 212, 191, 0.44);
+  background: rgba(20, 184, 166, 0.18);
+  color: #99f6e4;
+}
+
+.theme-dark .exam-controls-extension-value {
+  color: #94a3b8;
+}
+
+.theme-dark .exam-controls-extension-value.is-extended {
+  border-color: rgba(251, 146, 60, 0.34);
+  background: rgba(154, 52, 18, 0.16);
+  color: #fdba74;
+}
+
+.theme-dark .exam-controls-resume-field > span,
+.theme-dark .exam-controls-minute-input > span {
+  color: #94a3b8;
+}
+
+.theme-dark .exam-controls-toggle-group button,
+.theme-dark .exam-controls-minute-input input {
+  border-color: #334155;
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+.theme-dark .exam-controls-toggle-group button.is-selected,
+.theme-dark .exam-controls-extension-options button.is-selected {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.18);
+  color: #99f6e4;
+}
+
+.theme-dark .exam-controls-duration-reset-badge {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
 }
 
 .theme-dark .exam-controls-final-warning,

@@ -27,7 +27,6 @@ const PROCTOR_LOCK_SECONDS = 30
 const PROCTOR_VIOLATION_COOLDOWN_MS = 650
 const PROCTOR_TOP_EDGE_GUARD_PX = 18
 const EXAM_HEARTBEAT_INTERVAL_MS = 5000
-const INVIGILATOR_UNLOCK_LIMIT = 2
 const FULLSCREEN_EXIT_COMPLETE_LIMIT = 3
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
@@ -136,19 +135,6 @@ const writeExamControlsState = (assessment, studentId, stateUpdater) => {
   } catch {
     // Best-effort write so exams are not blocked by local storage failure.
   }
-}
-
-const generateInvigilatorPin = (previousPins = []) => {
-  const usedPins = new Set(previousPins.map((pin) => String(pin)))
-  let nextPin = ''
-  let attempts = 0
-
-  do {
-    nextPin = String(Math.floor(100000 + Math.random() * 900000))
-    attempts += 1
-  } while (usedPins.has(nextPin) && attempts < 20)
-
-  return nextPin
 }
 
 const formatCompactTime = (value) => (
@@ -1388,10 +1374,13 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const assessmentId = getAssessmentId(assessment)
     const controlsState = readExamControlsState(assessmentId)
     const currentState = controlsState[CURRENT_STUDENT_ID] || {}
-    const nextExitCount = Number(currentState.fullscreenExitCount || 0) + 1
-    const pinHistory = Array.isArray(currentState.invigilatorPinHistory)
-      ? currentState.invigilatorPinHistory.map((pin) => String(pin))
-      : []
+    const previousExitCount = Number(
+      currentState.fullscreenViolationTotal
+      ?? currentState.fullscreenExitCount
+      ?? currentState.invigilatorLock?.exitCount
+      ?? 0,
+    )
+    const nextExitCount = previousExitCount + 1
     const nowIso = new Date().toISOString()
     const timeLabel = formatCompactTime(new Date())
 
@@ -1413,14 +1402,14 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       persistCompletedAssessment()
       writeExamControlsState(assessment, CURRENT_STUDENT_ID, {
         fullscreenExitCount: nextExitCount,
-        invigilatorPinHistory: pinHistory,
+        fullscreenViolationTotal: nextExitCount,
         invigilatorLock: {
-          active: false,
+          active: true,
           exhausted: true,
           lockedAt: nowIso,
           reason,
           exitCount: nextExitCount,
-          maxUnlocks: INVIGILATOR_UNLOCK_LIMIT,
+          maxViolations: FULLSCREEN_EXIT_COMPLETE_LIMIT,
         },
         overallStatus: completionMessage,
         logs: [{
@@ -1432,8 +1421,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         }, ...(currentState.logs || [])],
       })
     } else {
-      const pin = generateInvigilatorPin(pinHistory)
-      const nextPinHistory = [...pinHistory, pin]
       setInvigilatorLockNotice({
         title: 'Exam Locked',
         message: 'Contact invigilator to continue.',
@@ -1445,21 +1432,20 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       })
       writeExamControlsState(assessment, CURRENT_STUDENT_ID, {
         fullscreenExitCount: nextExitCount,
-        invigilatorPinHistory: nextPinHistory,
+        fullscreenViolationTotal: nextExitCount,
         invigilatorLock: {
           active: true,
-          pin,
           lockedAt: nowIso,
           reason,
           exitCount: nextExitCount,
-          maxUnlocks: INVIGILATOR_UNLOCK_LIMIT,
+          maxViolations: FULLSCREEN_EXIT_COMPLETE_LIMIT,
         },
         overallStatus: 'Locked',
         logs: [{
           id: `${CURRENT_STUDENT_ID}-fullscreen-lock-${Date.now()}`,
           time: timeLabel,
           action: 'Exam Locked',
-          remarks: `${reason} | Unlock PIN ${nextExitCount}/${INVIGILATOR_UNLOCK_LIMIT} generated.`,
+          remarks: `${reason} | Fullscreen exit ${nextExitCount}/${FULLSCREEN_EXIT_COMPLETE_LIMIT}. Reset student required from Exam Controls.`,
           faculty: 'System',
         }, ...(currentState.logs || [])],
       })
