@@ -875,27 +875,92 @@ function ExamControlsPage({ onNavigate }) {
     </button>
   )
 
-  const getStudentLiveDuration = (student) => {
-    if (student.attendance !== 'P') return '-'
-    if (!student.startTime) return '-'
-    if (student.hasSubmissionAfterExtension) return '00:00'
+  const getLiveDurationParts = ({
+    startAt,
+    durationMinutes,
+    extensionMinutes = 0,
+    liveUntilMs = 0,
+    completed = false,
+  }) => {
+    if (!startAt || !durationMinutes) {
+      return { base: '-', extension: '', mode: 'empty', title: 'Timer unavailable' }
+    }
 
-    if (!baseDurationMinutes) return '-'
-
-    const baseEndAt = student.startTime.getTime() + (baseDurationMinutes * 60 * 1000)
-    const liveUntilMs = Number(student.liveUntilMs || 0)
+    const baseEndAt = startAt + (durationMinutes * 60 * 1000)
+    const extensionMs = Math.max(0, Number(extensionMinutes || 0)) * 60 * 1000
+    const extensionEndAt = Math.max(Number(liveUntilMs || 0), baseEndAt + extensionMs)
     const nowMs = now.getTime()
-    if (String(student.overallStatus || '').toLowerCase() === 'completed' && !liveUntilMs) return '00:00'
+    const hasExtension = extensionMs > 0
+
+    if (completed && !Number(liveUntilMs || 0)) {
+      return { base: '00:00', extension: '', mode: 'done', title: 'Exam timer completed' }
+    }
 
     if (nowMs < baseEndAt) {
-      return formatCountdown(baseEndAt - nowMs)
+      return {
+        base: formatCountdown(baseEndAt - nowMs),
+        extension: hasExtension ? formatCountdown(extensionMs) : '',
+        mode: hasExtension ? 'base-plus-extension' : 'base',
+        title: hasExtension
+          ? 'Base time remaining + extension time available'
+          : 'Base time remaining',
+      }
     }
 
-    if (liveUntilMs > nowMs) {
-      return formatCountdown(liveUntilMs - nowMs)
+    if (hasExtension && extensionEndAt > nowMs) {
+      return {
+        base: '00:00',
+        extension: formatCountdown(extensionEndAt - nowMs),
+        mode: 'extension',
+        title: 'Extension time remaining',
+      }
     }
 
-    return '00:00'
+    return { base: '00:00', extension: '', mode: 'done', title: 'Exam timer completed' }
+  }
+
+  const getStudentLiveDurationParts = (student) => {
+    if (student.attendance !== 'P') return { base: '-', extension: '', mode: 'empty', title: 'Student absent' }
+    if (!student.startTime) return { base: '-', extension: '', mode: 'empty', title: 'Student has not logged in' }
+    if (student.hasSubmissionAfterExtension) return { base: '00:00', extension: '', mode: 'done', title: 'Exam submitted' }
+
+    return getLiveDurationParts({
+      startAt: student.startTime.getTime(),
+      durationMinutes: baseDurationMinutes,
+      extensionMinutes: student.extensionMinutes,
+      liveUntilMs: student.liveUntilMs,
+      completed: String(student.overallStatus || '').toLowerCase() === 'completed',
+    })
+  }
+
+  const renderLiveDuration = (parts) => (
+    <span
+      className={`exam-controls-live-duration is-${parts.mode}`.trim()}
+      title={parts.title}
+    >
+      <span className="exam-controls-live-duration-base">{parts.base}</span>
+      {parts.extension ? (
+        <span className="exam-controls-live-duration-extension">
+          <span aria-hidden="true">+</span>
+          <span>Ext: {parts.extension}</span>
+        </span>
+      ) : null}
+    </span>
+  )
+
+  const renderExtensionOnlyDuration = (parts) => (
+    <span
+      className={`exam-controls-live-duration is-${parts.mode}`.trim()}
+      title={parts.title}
+    >
+      <span className="exam-controls-live-duration-base">
+        {parts.extension ? `Ext: ${parts.extension}` : parts.base}
+      </span>
+    </span>
+  )
+  const renderStudentLiveDuration = (student) => {
+    const parts = getStudentLiveDurationParts(student)
+    return parts.mode === 'extension' ? renderExtensionOnlyDuration(parts) : renderLiveDuration(parts)
   }
 
   const getOverallStatusLabel = (student) => {
@@ -917,12 +982,6 @@ function ExamControlsPage({ onNavigate }) {
     return 'in-progress'
   }
 
-  const hasExtendedDuration = (student) => (
-    Number(student.extensionMinutes || 0) > 0
-    || Number(student.mcqExtensionMinutes || 0) > 0
-    || Number(student.descriptiveExtensionMinutes || 0) > 0
-  )
-
   const getSplitSectionMinutes = (student, section) => {
     const isMcq = section === 'mcq'
     const duration = isMcq ? mcqDurationMinutes : descriptiveDurationMinutes
@@ -934,29 +993,41 @@ function ExamControlsPage({ onNavigate }) {
     }
   }
 
-  const getSplitSectionLiveDuration = (student, sectionIndex) => {
-    if (student.attendance !== 'P') return '-'
-    if (!student.startTime) return '-'
-    if (student.hasSubmissionAfterExtension) return '00:00'
+  const getSplitSectionLiveDurationParts = (student, sectionIndex) => {
+    if (student.attendance !== 'P') return { base: '-', extension: '', mode: 'empty', title: 'Student absent' }
+    if (!student.startTime) return { base: '-', extension: '', mode: 'empty', title: 'Student has not logged in' }
+    if (student.hasSubmissionAfterExtension) return { base: '00:00', extension: '', mode: 'done', title: 'Exam submitted' }
 
     const previousMinutes = splitOrder.slice(0, sectionIndex).reduce((sum, section) => (
       sum + getSplitSectionMinutes(student, section).total
     ), 0)
     const section = splitOrder[sectionIndex]
-    const { total, duration } = getSplitSectionMinutes(student, section)
-    if (!total) return '-'
+    const { total, duration, extension } = getSplitSectionMinutes(student, section)
+    if (!total) return { base: '-', extension: '', mode: 'empty', title: 'Timer unavailable' }
 
     const sectionStartAt = student.startTime.getTime() + (previousMinutes * 60 * 1000)
     const sectionLiveUntilMs = Number((section === 'mcq' ? student.mcqLiveUntilMs : student.descriptiveLiveUntilMs) || 0)
     const nowMs = now.getTime()
-    const sectionEndAt = sectionStartAt + (duration * 60 * 1000)
-    if (String(student.overallStatus || '').toLowerCase() === 'completed' && !sectionLiveUntilMs) return '00:00'
+    if (String(student.overallStatus || '').toLowerCase() === 'completed' && !sectionLiveUntilMs) {
+      return { base: '00:00', extension: '', mode: 'done', title: 'Exam timer completed' }
+    }
 
-    if (nowMs < sectionStartAt) return formatCountdown(sectionStartAt - nowMs)
-    if (nowMs < sectionEndAt) return formatCountdown(sectionEndAt - nowMs)
-    if (sectionLiveUntilMs > nowMs) return formatCountdown(sectionLiveUntilMs - nowMs)
+    if (nowMs < sectionStartAt) {
+      return { base: formatCountdown(sectionStartAt - nowMs), extension: '', mode: 'waiting', title: 'Section starts after the previous section' }
+    }
 
-    return '00:00'
+    return getLiveDurationParts({
+      startAt: sectionStartAt,
+      durationMinutes: duration,
+      extensionMinutes: extension,
+      liveUntilMs: sectionLiveUntilMs,
+      completed: false,
+    })
+  }
+
+  const renderSplitSectionLiveDuration = (student, sectionIndex) => {
+    const parts = getSplitSectionLiveDurationParts(student, sectionIndex)
+    return parts.mode === 'extension' ? renderExtensionOnlyDuration(parts) : renderLiveDuration(parts)
   }
 
   const renderSimpleTable = () => (
@@ -987,11 +1058,7 @@ function ExamControlsPage({ onNavigate }) {
                 </button>
               </td>
               <td>{renderResumeExtendButton(student)}</td>
-              <td>
-                <span className={`exam-controls-live-duration ${hasExtendedDuration(student) ? 'is-extended' : ''}`.trim()}>
-                  {getStudentLiveDuration(student)}
-                </span>
-              </td>
+              <td>{renderStudentLiveDuration(student)}</td>
               <td><span className={`exam-controls-overall is-${getOverallStatusClassName(student)}`}>{getOverallStatusLabel(student)}</span></td>
             </tr>
           ))}
@@ -1046,11 +1113,7 @@ function ExamControlsPage({ onNavigate }) {
                 </td>
                 <td>{formatDuration(sectionTiming.duration)}</td>
                 <td>{renderResumeExtendButton(student, section)}</td>
-                <td>
-                  <span className={`exam-controls-live-duration ${sectionTiming.extension ? 'is-extended' : ''}`.trim()}>
-                    {getSplitSectionLiveDuration(student, sectionIndex)}
-                  </span>
-                </td>
+                <td>{renderSplitSectionLiveDuration(student, sectionIndex)}</td>
                 <td><span className={`exam-controls-overall is-${getOverallStatusClassName(student)}`}>{getOverallStatusLabel(student)}</span></td>
               </tr>
             )

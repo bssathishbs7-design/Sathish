@@ -7611,6 +7611,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   min-width: 58px;
   color: #082431;
   font-weight: 900;
@@ -7618,8 +7619,33 @@
   white-space: nowrap;
 }
 
-.exam-controls-live-duration.is-extended {
+.exam-controls-live-duration.is-base-plus-extension,
+.exam-controls-live-duration.is-extension {
   min-height: 24px;
+}
+
+.exam-controls-live-duration-base {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  font-weight: 950;
+}
+
+.exam-controls-live-duration-extension {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.64rem;
+  font-weight: 950;
+}
+
+.exam-controls-live-duration.is-extension .exam-controls-live-duration-base {
   padding: 0 8px;
   border: 1px solid #5eead4;
   border-radius: 999px;
@@ -30460,7 +30486,18 @@ body > .assessment-page-filter-menu {
   color: #f8fafc;
 }
 
-.theme-dark .exam-controls-live-duration.is-extended {
+.theme-dark .exam-controls-live-duration.is-base-plus-extension,
+.theme-dark .exam-controls-live-duration.is-extension {
+  color: #f8fafc;
+}
+
+.theme-dark .exam-controls-live-duration-extension {
+  border-color: rgba(251, 146, 60, 0.34);
+  background: rgba(154, 52, 18, 0.16);
+  color: #fdba74;
+}
+
+.theme-dark .exam-controls-live-duration.is-extension .exam-controls-live-duration-base {
   border-color: rgba(45, 212, 191, 0.44);
   background: rgba(20, 184, 166, 0.18);
   color: #99f6e4;
