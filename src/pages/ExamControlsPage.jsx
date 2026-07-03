@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, ArrowLeft, CalendarDays, CheckCircle2, Clock3, FileText, Monitor, Search, ShieldCheck, TimerReset } from 'lucide-react'
+import { Activity, ArrowLeft, CalendarDays, CheckCircle2, Clock3, FileText, Info, Monitor, Search, ShieldCheck, TimerReset } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -330,7 +330,15 @@ function ExamControlsPage({ onNavigate }) {
   const [resetModal, setResetModal] = useState(null)
   const [resetMode, setResetMode] = useState('clear')
   const [classResetModal, setClassResetModal] = useState(false)
-  const [classResetMode, setClassResetMode] = useState('clear')
+  const [classResetForm, setClassResetForm] = useState({
+    clearAnswers: 'no',
+    completeTimeReset: 'no',
+    resetAccess: 'yes',
+    quickMinutes: '',
+    customMinutes: '',
+    extendSection: 'full',
+  })
+  const [classResetError, setClassResetError] = useState('')
   const [logModal, setLogModal] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
   const [submissionStatuses, setSubmissionStatuses] = useState(() => readStudentSubmissionStatuses())
@@ -427,6 +435,10 @@ function ExamControlsPage({ onNavigate }) {
     const descriptiveLiveUntilMs = Number(state.descriptiveLiveUntilMs || 0)
     const hasLiveExtension = liveUntilMs > now.getTime() || mcqLiveUntilMs > now.getTime() || descriptiveLiveUntilMs > now.getTime()
     const invigilatorLock = state.invigilatorLock || null
+    const violationCount = Math.max(
+      0,
+      Number(state.fullscreenViolationTotal ?? state.fullscreenExitCount ?? invigilatorLock?.exitCount ?? 0),
+    )
     const submissionState = submissionStatuses?.[assessmentId]?.[student.id] || {}
     const submittedStatus = submissionState.status || ''
     const completedSubmissionStatus = submittedStatus && !['Manual Submit', 'Auto Submit'].includes(submittedStatus)
@@ -476,6 +488,7 @@ function ExamControlsPage({ onNavigate }) {
       liveUntilMs,
       mcqLiveUntilMs,
       descriptiveLiveUntilMs,
+      violationCount,
       hasSubmissionAfterExtension,
       invigilatorLock,
       overallStatus,
@@ -703,11 +716,29 @@ function ExamControlsPage({ onNavigate }) {
     return value
   }
 
+  const getExtendMinutesError = () => {
+    const text = String(extendForm.customMinutes || '').trim()
+    if (Number(extendForm.quickMinutes || 0) > 0) return ''
+    if (!text) return 'Select quick time or enter custom minutes.'
+    if (!/^\d+$/.test(text)) return 'Only whole minutes are allowed.'
+    const value = Number(text)
+    if (value < 1) return 'Enter at least 1 minute.'
+    if (value > 90) return 'Maximum allowed extension is 90 minutes.'
+    return ''
+  }
+
+  const hasResumeExtendAction = () => (
+    extendForm.clearAnswers === 'yes'
+    || extendForm.completeTimeReset === 'yes'
+    || Number(extendForm.quickMinutes || 0) > 0
+    || Boolean(String(extendForm.customMinutes || '').trim() && !getExtendMinutesError())
+  )
+
   const submitResumeExtend = () => {
     if (!extendModal) return
     const { student } = extendModal
     const shouldClearAnswers = extendForm.clearAnswers === 'yes'
-    const shouldResetFullTime = shouldClearAnswers && extendForm.completeTimeReset === 'yes'
+    const shouldResetFullTime = extendForm.completeTimeReset === 'yes'
 
     if (shouldClearAnswers) {
       clearStudentExamState(student, 'clear')
@@ -720,8 +751,18 @@ function ExamControlsPage({ onNavigate }) {
     }
 
     const minutes = getValidatedExtendMinutes()
+    if (!minutes && shouldClearAnswers) {
+      addStudentLog(student.id, 'Resume attempt', 'Student attempt resumed and saved answers cleared.')
+      setExtendModal(null)
+      setExtendSuccessModal({
+        title: 'Resume Settings Applied',
+        message: `${student.name}'s answers were cleared and the attempt can continue.`,
+      })
+      return
+    }
+
     if (!minutes) {
-      setExtendError('Enter whole minutes between 1 and 90, or choose 5, 10, or 15 minutes.')
+      setExtendError(getExtendMinutesError())
       return
     }
 
@@ -783,20 +824,225 @@ function ExamControlsPage({ onNavigate }) {
 
   const openClassReset = () => {
     if (!classResetTargets.length) return
-    setClassResetMode('clear')
+    setClassResetForm({
+      clearAnswers: 'no',
+      completeTimeReset: 'no',
+      resetAccess: 'yes',
+      quickMinutes: '',
+      customMinutes: '',
+      extendSection: isSplitHybrid ? 'both' : 'full',
+    })
+    setClassResetError('')
     setClassResetModal(true)
+  }
+
+  const getClassExtensionMinutes = (section = '') => (
+    students.reduce((sum, student) => {
+      if (section === 'mcq') return sum + Number(student.mcqExtensionMinutes || 0)
+      if (section === 'descriptive') return sum + Number(student.descriptiveExtensionMinutes || 0)
+      return sum + Number(student.extensionMinutes || 0)
+    }, 0)
+  )
+
+  const getClassRemainingLabel = (remainingMs) => {
+    if (schedule.status === 'completed') return 'Completed'
+    if (schedule.status !== 'live') return 'Not started'
+    return formatCountdown(remainingMs)
+  }
+
+  const getClassResetTimeRows = () => {
+    if (isSplitHybrid) {
+      return [
+        {
+          label: 'MCQ remaining',
+          value: getClassRemainingLabel(schedule.remainingMs),
+          extension: `+${getClassExtensionMinutes('mcq')} mins`,
+        },
+        {
+          label: 'Descriptive remaining',
+          value: getClassRemainingLabel(schedule.remainingMs),
+          extension: `+${getClassExtensionMinutes('descriptive')} mins`,
+        },
+      ]
+    }
+
+    return [{
+      label: 'Remaining time',
+      value: getClassRemainingLabel(schedule.remainingMs),
+      extension: `+${getClassExtensionMinutes()} mins`,
+    }]
+  }
+
+  const getClassViolationCount = () => (
+    students.filter((student) => {
+      const statusText = String(student.overallStatus || '').toLowerCase()
+      return Number(student.violationCount || 0) > 0
+        || Boolean(student.invigilatorLock?.active)
+        || statusText.includes('locked')
+        || statusText.includes('violation')
+    }).length
+  )
+
+  const getClassValidatedExtendMinutes = () => {
+    const quickValue = Number(classResetForm.quickMinutes || 0)
+    if (quickValue > 0) return quickValue
+
+    const text = String(classResetForm.customMinutes || '').trim()
+    if (!text) return 0
+    if (!/^\d+$/.test(text)) return null
+    const value = Number(text)
+    if (value < 1 || value > 90) return null
+    return value
+  }
+
+  const getClassExtendError = () => {
+    const text = String(classResetForm.customMinutes || '').trim()
+    if (Number(classResetForm.quickMinutes || 0) > 0) return ''
+    if (!text) return ''
+    if (!/^\d+$/.test(text)) return 'Only whole minutes are allowed.'
+    const value = Number(text)
+    if (value < 1) return 'Enter at least 1 minute.'
+    if (value > 90) return 'Maximum allowed extension is 90 minutes.'
+    return ''
+  }
+
+  const getClassExtendScopeLabel = () => {
+    if (!isSplitHybrid) return 'Full exam'
+    if (classResetForm.extendSection === 'mcq') return 'MCQ section'
+    if (classResetForm.extendSection === 'descriptive') return 'Descriptive section'
+    return 'MCQ and Descriptive sections'
+  }
+
+  const getClassResetImpactRows = () => {
+    const classExtendMinutes = getClassValidatedExtendMinutes()
+    const rows = [
+      {
+        label: 'Exam access',
+        value: classResetForm.resetAccess === 'yes' ? 'Restored for eligible students' : 'No change',
+      },
+    ]
+
+    if (isProctored) {
+      rows.push({
+        label: 'Violation lock',
+        value: classResetForm.resetAccess === 'yes' ? 'Cleared for locked students' : 'Kept as-is',
+      })
+    }
+
+    rows.push(
+      {
+        label: 'Saved answers',
+        value: classResetForm.clearAnswers === 'yes' ? 'Cleared' : 'Kept',
+      },
+      {
+        label: 'Exam time',
+        value: classResetForm.completeTimeReset === 'yes'
+          ? isSplitHybrid
+            ? `Reset to MCQ ${formatDuration(mcqDurationMinutes)} and Descriptive ${formatDuration(descriptiveDurationMinutes)}`
+            : `Reset to ${formatDuration(baseDurationMinutes)}`
+          : 'No change',
+      },
+      {
+        label: 'Extra time',
+        value: classExtendMinutes > 0 ? `+${classExtendMinutes} mins to ${getClassExtendScopeLabel()}` : 'No extension',
+      },
+    )
+
+    return rows
+  }
+
+  const hasClassResetAction = () => (
+    classResetForm.clearAnswers === 'yes'
+    || classResetForm.completeTimeReset === 'yes'
+    || classResetForm.resetAccess === 'yes'
+    || Number(classResetForm.quickMinutes || 0) > 0
+    || Boolean(String(classResetForm.customMinutes || '').trim() && !getClassExtendError())
+  )
+
+  const updateClassResetForm = (key, value) => {
+    setClassResetError('')
+    setClassResetForm((current) => ({ ...current, [key]: value }))
+  }
+
+  const extendClassStudentTime = (student, minutes, section = '') => {
+    if (!minutes) return
+    const sectionList = section === 'both' ? splitOrder : [section]
+
+    sectionList.forEach((targetSection) => {
+      const extensionKey = targetSection === 'mcq'
+        ? 'mcqExtensionMinutes'
+        : targetSection === 'descriptive'
+          ? 'descriptiveExtensionMinutes'
+          : 'extensionMinutes'
+      const liveUntilKey = targetSection === 'mcq'
+        ? 'mcqLiveUntilMs'
+        : targetSection === 'descriptive'
+          ? 'descriptiveLiveUntilMs'
+          : 'liveUntilMs'
+      const currentState = controlState[student.id] || {}
+      const currentLiveUntilMs = Number(currentState[liveUntilKey] || 0)
+
+      writeStudentTimeExtension({
+        assessmentId,
+        studentId: student.id,
+        minutes,
+        section: targetSection === 'full' ? '' : targetSection,
+      })
+
+      setControlState((current) => {
+        const previous = current[student.id] || {}
+        const nextLiveUntilMs = Math.max(Number(previous[liveUntilKey] || 0), currentLiveUntilMs, now.getTime()) + (minutes * 60 * 1000)
+        return {
+          ...current,
+          [student.id]: {
+            ...previous,
+            [extensionKey]: Number(previous[extensionKey] || 0) + minutes,
+            [liveUntilKey]: nextLiveUntilMs,
+            extensionUpdatedAt: new Date().toISOString(),
+            resumeUnlockedAt: new Date().toISOString(),
+            fullscreenExitCount: 0,
+            fullscreenViolationTotal: 0,
+            invigilatorLock: {
+              active: false,
+              exhausted: false,
+              unlockedAt: new Date().toISOString(),
+              reason: 'Class Reset',
+            },
+            overallStatus: 'In progress',
+          },
+        }
+      })
+    })
   }
 
   const confirmClassReset = () => {
     if (!classResetModal || !classResetTargets.length) return
-    const classResetMessage = classResetMode === 'keep'
-      ? 'Class assessment reset. Students can continue with saved answers.'
-      : 'Class assessment reset. Students will start fresh attempts.'
+    if (!hasClassResetAction()) return
+    const shouldClearAnswers = classResetForm.clearAnswers === 'yes'
+    const shouldResetTime = classResetForm.completeTimeReset === 'yes'
+    const shouldResetAccess = classResetForm.resetAccess === 'yes'
+    const classExtendMinutes = getClassValidatedExtendMinutes()
+    if (classExtendMinutes === null) {
+      setClassResetError(getClassExtendError())
+      return
+    }
+    const shouldExtendTime = classExtendMinutes > 0
+    const classResetMessage = [
+      'Class reset completed.',
+      shouldResetAccess ? 'Exam access restored.' : '',
+      shouldClearAnswers ? 'Saved answers cleared.' : 'Saved answers retained.',
+      shouldResetTime ? 'Exam time reset.' : '',
+      shouldExtendTime ? `${getClassExtendScopeLabel()} extended by ${classExtendMinutes} minutes.` : '',
+    ].filter(Boolean).join(' ')
     classResetTargets.forEach((student) => {
-      writeStudentExamReset({ assessmentId, studentId: student.id, mode: classResetMode })
-      removeStudentStorageRecord(STUDENT_EXAM_SUBMISSION_STATUS_KEY, assessmentId, student.id)
-      removeStudentStorageRecord(STUDENT_EXAM_SESSION_KEY, assessmentId, student.id)
-      removeStudentStorageRecord(STUDENT_EXAM_TIME_EXTENSIONS_KEY, assessmentId, student.id)
+      writeStudentExamReset({ assessmentId, studentId: student.id, mode: shouldClearAnswers ? 'clear' : 'keep' })
+      if (shouldClearAnswers) {
+        removeStudentStorageRecord(STUDENT_EXAM_SUBMISSION_STATUS_KEY, assessmentId, student.id)
+        removeStudentStorageRecord(STUDENT_EXAM_SESSION_KEY, assessmentId, student.id)
+      }
+      if (shouldResetTime) {
+        removeStudentStorageRecord(STUDENT_EXAM_TIME_EXTENSIONS_KEY, assessmentId, student.id)
+      }
       addStudentLog(
         student.id,
         'Reset assessment',
@@ -807,12 +1053,16 @@ function ExamControlsPage({ onNavigate }) {
     window.dispatchEvent(new CustomEvent(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, {
       detail: { assessmentId },
     }))
-    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_SESSION_EVENT, {
-      detail: { assessmentId },
-    }))
-    window.dispatchEvent(new CustomEvent(STUDENT_EXAM_TIME_EXTENSION_EVENT, {
-      detail: { assessmentId },
-    }))
+    if (shouldClearAnswers) {
+      window.dispatchEvent(new CustomEvent(STUDENT_EXAM_SESSION_EVENT, {
+        detail: { assessmentId },
+      }))
+    }
+    if (shouldResetTime) {
+      window.dispatchEvent(new CustomEvent(STUDENT_EXAM_TIME_EXTENSION_EVENT, {
+        detail: { assessmentId },
+      }))
+    }
 
     setControlState((current) => {
       const next = { ...current }
@@ -820,30 +1070,42 @@ function ExamControlsPage({ onNavigate }) {
         const previous = next[student.id] || {}
         next[student.id] = {
           ...previous,
-          resetMode: classResetMode,
+          resetMode: shouldClearAnswers ? 'clear' : 'keep',
           resetCount: Number(previous.resetCount || 0) + 1,
-          extensionMinutes: 0,
-          mcqExtensionMinutes: 0,
-          descriptiveExtensionMinutes: 0,
-          liveUntilMs: 0,
-          mcqLiveUntilMs: 0,
-          descriptiveLiveUntilMs: 0,
-          extensionUpdatedAt: '',
-          fullscreenExitCount: 0,
-          fullscreenViolationTotal: 0,
-          invigilatorLock: null,
+          ...(shouldResetTime ? {
+            extensionMinutes: 0,
+            mcqExtensionMinutes: 0,
+            descriptiveExtensionMinutes: 0,
+            liveUntilMs: 0,
+            mcqLiveUntilMs: 0,
+            descriptiveLiveUntilMs: 0,
+            extensionUpdatedAt: '',
+          } : {}),
+          ...(shouldResetAccess ? {
+            fullscreenExitCount: 0,
+            fullscreenViolationTotal: 0,
+            invigilatorLock: null,
+          } : {}),
           overallStatus: 'Waiting',
         }
       })
       return next
     })
 
+    if (shouldExtendTime) {
+      classResetTargets.forEach((student) => {
+        extendClassStudentTime(student, classExtendMinutes, classResetForm.extendSection)
+      })
+    }
+
     clearAssessmentCompletedStatus(assessment)
     setSubmissionStatuses(readStudentSubmissionStatuses())
     setStudentSessions(readStudentExamSessions())
     setExtendSuccessModal({
       title: 'Class Reset',
-      message: `${classResetTargets.length} student(s) reset successfully.`,
+      message: shouldExtendTime
+        ? `${classResetTargets.length} student(s) updated. ${getClassExtendScopeLabel()} extended by ${classExtendMinutes} minutes.`
+        : `${classResetTargets.length} student(s) reset successfully.`,
     })
     setClassResetModal(false)
   }
@@ -1031,95 +1293,104 @@ function ExamControlsPage({ onNavigate }) {
   }
 
   const renderSimpleTable = () => (
-    <div className="exam-controls-table-wrap">
-      <table className="exam-controls-table">
-        <thead>
-          <tr>
-            <th>Student ID</th>
-            <th>Attendance</th>
-            <th>Student Name</th>
-            <th>Login Time</th>
-            <th>Status Log</th>
-            <th>Resume &amp; Extend</th>
-            <th>{isPractice ? 'Exam Duration' : 'Live Duration'}</th>
-            <th>Overall Status</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="exam-controls-student-grid-wrap">
+      <div className="exam-controls-student-grid" role="table" aria-label="Live exam tracking">
+        <div className="exam-controls-student-grid-head" role="row">
+          <span role="columnheader">Student ID</span>
+          <span role="columnheader">Attendance</span>
+          <span role="columnheader">Student Name</span>
+          <span role="columnheader">Login Time</span>
+          <span role="columnheader">Status Log</span>
+          <span role="columnheader">Resume &amp; Extend</span>
+          <span role="columnheader">{isPractice ? 'Exam Duration' : 'Live Duration'}</span>
+          <span role="columnheader">Overall Status</span>
+        </div>
+        <div className="exam-controls-student-grid-body">
           {visibleStudents.map((student) => (
-            <tr key={student.id}>
-              <td><strong>{student.id}</strong></td>
-              <td><span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span></td>
-              <td>{student.name}</td>
-              <td>{formatDisplayTime(student.startTime)}</td>
-              <td>
+            <div className="exam-controls-student-grid-row" role="row" key={student.id}>
+              <span className="exam-controls-student-cell is-student-id" role="cell"><strong>{student.id}</strong></span>
+              <span className="exam-controls-student-cell is-attendance" role="cell">
+                <span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span>
+              </span>
+              <span className="exam-controls-student-cell is-student-name" role="cell">{student.name}</span>
+              <span className="exam-controls-student-cell is-login" role="cell">{formatDisplayTime(student.startTime)}</span>
+              <span className="exam-controls-student-cell is-status-log" role="cell">
                 <button type="button" className="exam-controls-log-btn" onClick={() => setLogModal(student)}>
                   View Log
                 </button>
-              </td>
-              <td>{renderResumeExtendButton(student)}</td>
-              <td>{renderStudentLiveDuration(student)}</td>
-              <td><span className={`exam-controls-overall is-${getOverallStatusClassName(student)}`}>{getOverallStatusLabel(student)}</span></td>
-            </tr>
+              </span>
+              <span className="exam-controls-student-cell is-resume" role="cell">{renderResumeExtendButton(student)}</span>
+              <span className="exam-controls-student-cell is-live-duration" role="cell">{renderStudentLiveDuration(student)}</span>
+              <span className="exam-controls-student-cell is-overall" role="cell">
+                <span className={`exam-controls-overall is-${getOverallStatusClassName(student)}`}>{getOverallStatusLabel(student)}</span>
+              </span>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   )
 
   const renderSplitTable = () => (
-    <div className="exam-controls-table-wrap">
-      <table className="exam-controls-table is-split">
-        <thead>
-          <tr>
-            <th>Student ID</th>
-            <th>Attendance</th>
-            <th>Student Name</th>
-            <th>Login Time</th>
-            <th>Status Log</th>
-            <th>Duration Split</th>
-            <th>Duration</th>
-            <th>Resume &amp; Extend</th>
-            <th>Live Duration</th>
-            <th>Overall Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleStudents.flatMap((student) => splitOrder.map((section, sectionIndex) => {
+    <div className="exam-controls-split-grid-wrap">
+      <div className="exam-controls-split-grid" role="table" aria-label="Live exam tracking split duration">
+        <div className="exam-controls-split-grid-head" role="row">
+          <span role="columnheader">Student ID</span>
+          <span role="columnheader">Attendance</span>
+          <span role="columnheader">Student Name</span>
+          <span role="columnheader">Login Time</span>
+          <span role="columnheader">Status Log</span>
+          <span role="columnheader">Duration Split</span>
+          <span role="columnheader">Duration</span>
+          <span role="columnheader">Resume &amp; Extend</span>
+          <span role="columnheader">Live Duration</span>
+          <span role="columnheader">Overall Status</span>
+        </div>
+        <div className="exam-controls-split-grid-body">
+          {visibleStudents.map((student) => (
+            <div className="exam-controls-split-grid-group" role="rowgroup" key={student.id}>
+              <span className="exam-controls-split-cell is-student-id" role="cell"><strong>{student.id}</strong></span>
+              <span className="exam-controls-split-cell is-attendance" role="cell">
+                <span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span>
+              </span>
+              <span className="exam-controls-split-cell is-student-name" role="cell">{student.name}</span>
+              <span className="exam-controls-split-cell is-login" role="cell">{formatDisplayTime(student.startTime)}</span>
+              <span className="exam-controls-split-cell is-status-log" role="cell">
+                <button type="button" className="exam-controls-log-btn" onClick={() => setLogModal(student)}>
+                  View Log
+                </button>
+              </span>
+              {splitOrder.map((section, sectionIndex) => {
             const isMcq = section === 'mcq'
             const sectionTiming = getSplitSectionMinutes(student, section)
             return (
-              <tr
+                  <Fragment
                 key={`${student.id}-${section}`}
-                className={sectionIndex === 0 ? 'exam-controls-split-parent-row' : 'exam-controls-split-subrow'}
               >
-                {sectionIndex === 0 ? (
-                  <>
-                    <td rowSpan={2}><strong>{student.id}</strong></td>
-                    <td rowSpan={2}><span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span></td>
-                    <td rowSpan={2}>{student.name}</td>
-                    <td rowSpan={2}>{formatDisplayTime(student.startTime)}</td>
-                    <td rowSpan={2}>
-                      <button type="button" className="exam-controls-log-btn" onClick={() => setLogModal(student)}>
-                        View Log
-                      </button>
-                    </td>
-                  </>
-                ) : null}
-                <td>
+                    <span className={`exam-controls-split-cell is-duration-split is-section-${sectionIndex + 1}`} role="cell">
                   <span className="exam-controls-sequence-pill">
                     {isMcq ? 'MCQ' : 'Descriptive'} (Sequence {sectionIndex + 1})
                   </span>
-                </td>
-                <td>{formatDuration(sectionTiming.duration)}</td>
-                <td>{renderResumeExtendButton(student, section)}</td>
-                <td>{renderSplitSectionLiveDuration(student, sectionIndex)}</td>
-                <td><span className={`exam-controls-overall is-${getOverallStatusClassName(student)}`}>{getOverallStatusLabel(student)}</span></td>
-              </tr>
+                    </span>
+                    <span className={`exam-controls-split-cell is-duration is-section-${sectionIndex + 1}`} role="cell">
+                      <strong>{formatDuration(sectionTiming.duration)}</strong>
+                    </span>
+                    <span className={`exam-controls-split-cell is-resume is-section-${sectionIndex + 1}`} role="cell">
+                      {renderResumeExtendButton(student, section)}
+                    </span>
+                    <span className={`exam-controls-split-cell is-live-duration is-section-${sectionIndex + 1}`} role="cell">
+                      {renderSplitSectionLiveDuration(student, sectionIndex)}
+                    </span>
+                    <span className={`exam-controls-split-cell is-overall is-section-${sectionIndex + 1}`} role="cell">
+                      <span className={`exam-controls-overall is-${getOverallStatusClassName(student)}`}>{getOverallStatusLabel(student)}</span>
+                    </span>
+                  </Fragment>
             )
-          }))}
-        </tbody>
-      </table>
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 
@@ -1234,18 +1505,41 @@ function ExamControlsPage({ onNavigate }) {
       {extendModal ? renderModalPortal((
         <div className="exam-controls-modal-backdrop" role="presentation">
           <section className="exam-controls-modal exam-controls-resume-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-extend-title">
-            <span className="exam-controls-modal-icon" aria-hidden="true">
-              <Clock3 size={24} strokeWidth={2.3} />
-            </span>
-            <h2 id="exam-controls-extend-title">Resume &amp; Extend</h2>
-            <p>{extendModal.student.name} / {assessment.assessmentName || 'Assessment'}</p>
+            <div className="exam-controls-resume-head">
+              <span className="exam-controls-modal-icon" aria-hidden="true">
+                <Clock3 size={24} strokeWidth={2.3} />
+              </span>
+              <div className="exam-controls-resume-title">
+                <h2 id="exam-controls-extend-title">Resume &amp; Extend</h2>
+                <span className="exam-controls-resume-name-row">
+                  <strong>{extendModal.student.name}</strong>
+                  <em className="is-id">ID: {extendModal.student.id}</em>
+                  <em className={isProctored ? 'is-proctored' : 'is-practice'}>
+                    {assessment.supervisionType || (isProctored ? 'Proctored' : 'Practice')}
+                  </em>
+                  {isProctored ? (
+                    <em className={`is-violation ${Number(extendModal.student.violationCount || 0) > 0 ? 'has-count' : ''}`.trim()}>
+                      Violation: {Math.min(Number(extendModal.student.violationCount || 0), 3)}/3
+                    </em>
+                  ) : null}
+                </span>
+              </div>
+            </div>
             <p className="exam-controls-modal-summary">
-              Resume the student attempt, optionally clear answers, or add extra minutes.
+              Invigilator action required. Apply only after verifying the student.
             </p>
-            {extendModal.section ? <small>{extendModal.section.toUpperCase()} section</small> : null}
 
-            <div className="exam-controls-resume-field">
-              <span>Clear Answer</span>
+            <div className="exam-controls-resume-card">
+              <div className="exam-controls-resume-field">
+              <span className="exam-controls-resume-label">
+                Clear answer
+                <Info
+                  size={14}
+                  strokeWidth={2.3}
+                  aria-hidden="true"
+                  title="Yes will remove the student's saved answers before resuming."
+                />
+              </span>
               <div className="exam-controls-toggle-group" role="group" aria-label="Clear answer">
                 {['no', 'yes'].map((value) => (
                   <button
@@ -1257,7 +1551,6 @@ function ExamControlsPage({ onNavigate }) {
                       setExtendForm((current) => ({
                         ...current,
                         clearAnswers: value,
-                        completeTimeReset: value === 'yes' ? current.completeTimeReset : 'no',
                       }))
                     }}
                   >
@@ -1265,35 +1558,64 @@ function ExamControlsPage({ onNavigate }) {
                   </button>
                 ))}
               </div>
+              </div>
+
+              {extendForm.clearAnswers === 'yes' ? (
+                <p className="exam-controls-inline-warning">Student answers will be cleared after submit.</p>
+              ) : null}
             </div>
 
-            {extendForm.clearAnswers === 'yes' ? (
+            <div className="exam-controls-resume-card">
               <div className="exam-controls-resume-field">
-                <span>Complete Time Reset</span>
-                <div className="exam-controls-toggle-group" role="group" aria-label="Complete time reset">
-                  {['no', 'yes'].map((value) => (
-                    <button
-                      type="button"
-                      key={value}
-                      className={extendForm.completeTimeReset === value ? 'is-selected' : ''}
-                      onClick={() => {
-                        setExtendError('')
-                        setExtendForm((current) => ({ ...current, completeTimeReset: value }))
-                      }}
-                    >
-                      {value === 'yes' ? 'Yes' : 'No'}
-                    </button>
-                  ))}
-                </div>
+              <span className="exam-controls-resume-label">
+                Complete time reset
+                <Info
+                  size={14}
+                  strokeWidth={2.3}
+                  aria-hidden="true"
+                  title="Yes will reset the selected exam or section timer to its full configured duration."
+                />
+              </span>
+              {extendForm.completeTimeReset === 'yes' ? (
+                <em>Extra time fields are hidden because full time reset is selected.</em>
+              ) : null}
+              <div className="exam-controls-toggle-group" role="group" aria-label="Complete time reset">
+                {['no', 'yes'].map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={extendForm.completeTimeReset === value ? 'is-selected' : ''}
+                    onClick={() => {
+                      setExtendError('')
+                      setExtendForm((current) => ({
+                        ...current,
+                        completeTimeReset: value,
+                        quickMinutes: value === 'yes' ? '' : current.quickMinutes,
+                        customMinutes: value === 'yes' ? '' : current.customMinutes,
+                      }))
+                    }}
+                  >
+                    {value === 'yes' ? 'Yes' : 'No'}
+                  </button>
+                ))}
               </div>
-            ) : null}
+              </div>
 
-            {extendForm.clearAnswers === 'yes' && extendForm.completeTimeReset === 'yes' ? (
-              <div className="exam-controls-duration-reset-badge">
-                {getCompleteTimeResetBadge(extendModal.section)}
-              </div>
+              {extendForm.completeTimeReset === 'yes' ? (
+                <div className="exam-controls-duration-reset-badge">
+                  Full time will be reset to: {getCompleteTimeResetBadge(extendModal.section)}
+                </div>
+              ) : null}
+            </div>
+
+            {extendForm.completeTimeReset === 'yes' ? (
+              null
             ) : (
-              <>
+              <div className="exam-controls-resume-card">
+                <div className="exam-controls-extension-copy">
+                  <strong>Add extra time</strong>
+                  <span>Choose quick minutes or enter custom minutes.</span>
+                </div>
                 <div className="exam-controls-extension-options">
                   {[5, 10, 15].map((minutes) => (
                     <button
@@ -1301,35 +1623,47 @@ function ExamControlsPage({ onNavigate }) {
                       key={minutes}
                       className={Number(extendForm.quickMinutes) === minutes ? 'is-selected' : ''}
                       onClick={() => {
-                        setExtendError('')
-                        setExtendForm((current) => ({ ...current, quickMinutes: String(minutes), customMinutes: '' }))
-                      }}
-                    >
-                      {minutes} Mins
+                      setExtendError('')
+                      setExtendForm((current) => ({ ...current, quickMinutes: String(minutes), customMinutes: '' }))
+                    }}
+                  >
+                      +{minutes} min
                     </button>
                   ))}
                 </div>
                 <label className="exam-controls-minute-input">
-                  <span>Extend Time</span>
+                  <span>Extend time</span>
                   <input
                     type="text"
                     inputMode="numeric"
                     value={extendForm.customMinutes}
-                    placeholder="Minutes"
+                    placeholder="Enter minutes"
                     onChange={(event) => {
                       const nextValue = event.target.value
-                      setExtendError('')
                       setExtendForm((current) => ({ ...current, customMinutes: nextValue, quickMinutes: '' }))
+                      if (!nextValue.trim()) {
+                        setExtendError('')
+                      } else if (!/^\d+$/.test(nextValue.trim())) {
+                        setExtendError('Only whole minutes are allowed.')
+                      } else if (Number(nextValue) < 1) {
+                        setExtendError('Enter at least 1 minute.')
+                      } else if (Number(nextValue) > 90) {
+                        setExtendError('Maximum allowed extension is 90 minutes.')
+                      } else {
+                        setExtendError('')
+                      }
                     }}
                   />
                 </label>
-                {extendError ? <p className="exam-controls-form-error">{extendError}</p> : null}
-              </>
+                <p className={extendError ? 'exam-controls-form-error' : 'exam-controls-form-hint'}>
+                  {extendError || 'Maximum allowed extension is 90 minutes.'}
+                </p>
+              </div>
             )}
 
             <div className="exam-controls-modal-actions">
               <button type="button" className="is-secondary" onClick={() => setExtendModal(null)}>Cancel</button>
-              <button type="button" onClick={submitResumeExtend}>Submit</button>
+              <button type="button" onClick={submitResumeExtend} disabled={!hasResumeExtendAction()}>Apply Changes</button>
             </div>
           </section>
         </div>
@@ -1367,33 +1701,182 @@ function ExamControlsPage({ onNavigate }) {
 
       {classResetModal ? renderModalPortal((
         <div className="exam-controls-modal-backdrop" role="presentation">
-          <section className="exam-controls-reset-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-class-reset-title">
-            <span className="exam-controls-modal-icon is-reset" aria-hidden="true">
-              <TimerReset size={26} strokeWidth={2.3} />
-            </span>
-            <h2 id="exam-controls-class-reset-title">
-              <span>Overall Class Reset</span>
-              {assessment?.assessmentName || 'Assessment'}
-            </h2>
-            <label className={classResetMode === 'keep' ? 'is-selected' : ''}>
-              <input type="radio" checked={classResetMode === 'keep'} onChange={() => setClassResetMode('keep')} />
-              <span>Keep Answers</span>
-            </label>
-            <label className={classResetMode === 'clear' ? 'is-selected' : ''}>
-              <input type="radio" checked={classResetMode === 'clear'} onChange={() => setClassResetMode('clear')} />
-              <span>Clear Answers</span>
-            </label>
-            <div className="exam-controls-reset-note">
-              <TimerReset size={17} strokeWidth={2.3} />
-              <p>
-                {classResetTargets.length} students will be reset for this class.
-              {' '}
-                {classResetMode === 'keep' ? 'Saved answers are retained.' : 'Saved answers are cleared.'}
-              </p>
+          <section className="exam-controls-modal exam-controls-class-reset-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-class-reset-title">
+            <div className="exam-controls-resume-head">
+              <span className="exam-controls-modal-icon is-reset" aria-hidden="true">
+                <TimerReset size={24} strokeWidth={2.3} />
+              </span>
+              <div className="exam-controls-resume-title">
+                <h2 id="exam-controls-class-reset-title">Overall Class Reset</h2>
+                <span className="exam-controls-resume-name-row">
+                  <strong>{assessment?.assessmentName || 'Assessment'}</strong>
+                  <em className="is-id">Students: {classResetTargets.length}</em>
+                  <em className={isProctored ? 'is-proctored' : 'is-practice'}>
+                    {assessment.supervisionType || (isProctored ? 'Proctored' : 'Practice')}
+                  </em>
+                  <em className="is-section">{assessment.examType || 'Exam'}</em>
+                  {isSplitHybrid ? <em className="is-section">Duration split</em> : null}
+                </span>
+              </div>
             </div>
+            <p className="exam-controls-modal-summary">
+              Choose only the actions approved by the invigilator. The reset applies to all eligible students in this assessment.
+            </p>
+
+            <div className="exam-controls-class-panel">
+              <div className="exam-controls-class-panel-head">
+                <strong>Current exam status</strong>
+                <span>{isSplitHybrid ? 'Duration split exam' : 'Single duration exam'}</span>
+              </div>
+              <div className="exam-controls-class-status-grid">
+                {getClassResetTimeRows().map((item) => (
+                  <span className="exam-controls-class-status-item" key={item.label}>
+                    <em>{item.label}</em>
+                    <strong>{item.value}</strong>
+                    <small>Already added: {item.extension}</small>
+                  </span>
+                ))}
+                {isProctored ? (
+                  <span className="exam-controls-class-status-item is-warning">
+                    <em>Violations</em>
+                    <strong>{getClassViolationCount()}</strong>
+                    <small>Students with lock or violation</small>
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="exam-controls-class-panel">
+              <div className="exam-controls-class-panel-head">
+                <strong>Reset actions</strong>
+                <span>Select access, answers, or timer reset actions.</span>
+              </div>
+              <div className="exam-controls-class-option-list">
+                <button
+                  type="button"
+                  className={classResetForm.resetAccess === 'yes' ? 'exam-controls-class-option is-selected' : 'exam-controls-class-option'}
+                  onClick={() => updateClassResetForm('resetAccess', classResetForm.resetAccess === 'yes' ? 'no' : 'yes')}
+                >
+                  <span className="exam-controls-class-check" aria-hidden="true">
+                    {classResetForm.resetAccess === 'yes' ? <CheckCircle2 size={16} strokeWidth={2.4} /> : null}
+                  </span>
+                  <span>
+                    <strong>Restore exam access</strong>
+                    <em>
+                      Enables Start Assessment again.
+                      {isProctored ? ' Also clears violation locks for proctored exams.' : ''}
+                    </em>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={classResetForm.clearAnswers === 'yes' ? 'exam-controls-class-option is-selected is-danger' : 'exam-controls-class-option'}
+                  onClick={() => updateClassResetForm('clearAnswers', classResetForm.clearAnswers === 'yes' ? 'no' : 'yes')}
+                >
+                  <span className="exam-controls-class-check" aria-hidden="true">
+                    {classResetForm.clearAnswers === 'yes' ? <CheckCircle2 size={16} strokeWidth={2.4} /> : null}
+                  </span>
+                  <span>
+                    <strong>Clear saved answers</strong>
+                    <em>Removes saved student answers and starts attempts fresh.</em>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={classResetForm.completeTimeReset === 'yes' ? 'exam-controls-class-option is-selected' : 'exam-controls-class-option'}
+                  onClick={() => updateClassResetForm('completeTimeReset', classResetForm.completeTimeReset === 'yes' ? 'no' : 'yes')}
+                >
+                  <span className="exam-controls-class-check" aria-hidden="true">
+                    {classResetForm.completeTimeReset === 'yes' ? <CheckCircle2 size={16} strokeWidth={2.4} /> : null}
+                  </span>
+                  <span>
+                    <strong>Reset exam time</strong>
+                    <em>
+                      {isSplitHybrid
+                        ? `Restores MCQ to ${formatDuration(mcqDurationMinutes)} and Descriptive to ${formatDuration(descriptiveDurationMinutes)}.`
+                        : `Restores full exam time to ${formatDuration(baseDurationMinutes)}.`}
+                    </em>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="exam-controls-class-panel">
+              <div className="exam-controls-class-panel-head">
+                <strong>Add extra time</strong>
+                <span>This adds new extension minutes. It does not reset saved answers.</span>
+              </div>
+              {isSplitHybrid ? (
+                <div className="exam-controls-class-targets" role="group" aria-label="Extension target">
+                  {[
+                    { value: 'both', label: 'Both sections' },
+                    { value: 'mcq', label: 'MCQ only' },
+                    { value: 'descriptive', label: 'Descriptive only' },
+                  ].map((item) => (
+                    <button
+                      type="button"
+                      key={item.value}
+                      className={classResetForm.extendSection === item.value ? 'is-selected' : ''}
+                      onClick={() => updateClassResetForm('extendSection', item.value)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className="exam-controls-class-quick-row" role="group" aria-label="Quick class extension minutes">
+                {[5, 10, 15].map((minutes) => (
+                  <button
+                    type="button"
+                    key={minutes}
+                    className={Number(classResetForm.quickMinutes) === minutes ? 'is-selected' : ''}
+                    onClick={() => updateClassResetForm('quickMinutes', Number(classResetForm.quickMinutes) === minutes ? '' : String(minutes))}
+                  >
+                    +{minutes} min
+                  </button>
+                ))}
+              </div>
+              <label className="exam-controls-minute-input">
+                <span>Custom extra time</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={classResetForm.customMinutes}
+                  onChange={(event) => updateClassResetForm('customMinutes', event.target.value.replace(/\s+/g, ''))}
+                  onFocus={() => updateClassResetForm('quickMinutes', '')}
+                  placeholder="Enter minutes"
+                  aria-invalid={Boolean(classResetError || getClassExtendError())}
+                />
+              </label>
+              {classResetError || getClassExtendError() ? (
+                <p className="exam-controls-form-error">{classResetError || getClassExtendError()}</p>
+              ) : (
+                <p className="exam-controls-form-hint">Maximum allowed extension is 90 minutes.</p>
+              )}
+            </div>
+
+            <div className="exam-controls-class-panel">
+              <div className="exam-controls-class-panel-head">
+                <strong>Impact summary</strong>
+                <span>Review before applying the reset.</span>
+              </div>
+              <div className="exam-controls-class-impact-list">
+                <span>
+                  <em>Students affected</em>
+                  <strong>{classResetTargets.length}</strong>
+                </span>
+                {getClassResetImpactRows().map((item) => (
+                  <span key={item.label}>
+                    <em>{item.label}</em>
+                    <strong>{item.value}</strong>
+                  </span>
+                ))}
+              </div>
+            </div>
+
             <div className="exam-controls-modal-actions">
               <button type="button" className="is-secondary" onClick={() => setClassResetModal(false)}>Cancel</button>
-              <button type="button" onClick={confirmClassReset}>Reset Class</button>
+              <button type="button" onClick={confirmClassReset} disabled={!hasClassResetAction()}>Apply Class Reset</button>
             </div>
           </section>
         </div>
