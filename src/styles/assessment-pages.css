@@ -3340,7 +3340,9 @@
 }
 
 .assessment-page.is-my-assessment .my-assessment-published-grid {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 345px));
+  justify-content: start;
+  align-items: start;
 }
 
 .assessment-page.is-my-assessment .my-assessment-count-badges {
@@ -3404,7 +3406,9 @@
 
 .assessment-page.is-my-assessment .assessment-create-published-card {
   width: 100%;
-  max-width: none;
+  max-width: 345px;
+  gap: 10px;
+  padding: 16px;
 }
 
 .assessment-page.is-my-assessment .my-assessment-card-top-status {
@@ -6833,6 +6837,18 @@
   color: #2563eb;
 }
 
+.my-assessment-card-action.is-request {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.my-assessment-card-action.is-locked {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .my-assessment-card-action:hover:not(:disabled),
 .my-assessment-card-action:focus-visible:not(:disabled) {
   border-color: #0f766e;
@@ -6850,12 +6866,71 @@
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
 }
 
+.my-assessment-card-action.is-request:hover:not(:disabled),
+.my-assessment-card-action.is-request:focus-visible:not(:disabled) {
+  border-color: #fb923c;
+  background: #ffedd5;
+  color: #c2410c;
+  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.12);
+}
+
 .my-assessment-card-action:disabled {
   border-color: #d5e7e1;
   background: #f3f8f6;
   color: #8aa0af;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+.my-assessment-request-access-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(8, 24, 35, 0.34);
+  backdrop-filter: blur(6px);
+}
+
+.my-assessment-request-access-modal {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(360px, 100%);
+  padding: 22px 24px;
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 24px 72px rgba(8, 24, 35, 0.28);
+}
+
+.my-assessment-request-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+  background: #ecfdf5;
+  color: #0f766e;
+}
+
+.my-assessment-request-access-modal h2 {
+  margin: 2px 0 0;
+  color: #082431;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.my-assessment-request-access-modal p {
+  margin: 0;
+  color: #607380;
+  font-size: 0.78rem;
+  font-weight: 760;
+  line-height: 1.35;
 }
 
 .my-assessment-card-action.is-start.is-live {
@@ -7303,10 +7378,10 @@
   justify-content: center;
   min-height: 34px;
   padding: 0 12px;
-  border: 1px solid #fdba74;
+  border: 1px solid #14b8a6;
   border-radius: 8px;
-  background: #fff7ed;
-  color: #c2410c;
+  background: #0f9f94;
+  color: #ffffff;
   font: inherit;
   font-size: 0.72rem;
   font-weight: 900;
@@ -7316,9 +7391,11 @@
 
 .exam-controls-class-reset-btn:hover,
 .exam-controls-class-reset-btn:focus-visible {
-  border-color: #f97316;
-  background: #ffedd5;
+  border-color: #0f766e;
+  background: #08776d;
+  color: #ffffff;
   outline: none;
+  box-shadow: 0 8px 18px rgba(16, 185, 168, 0.16);
 }
 
 .exam-controls-table-wrap {
@@ -7733,6 +7810,41 @@
   box-shadow: 0 10px 24px rgba(13, 55, 38, 0.06);
 }
 
+.exam-controls-student-grid-row.is-violation-row,
+.exam-controls-split-grid-group.is-violation-row {
+  border-color: #fb923c;
+  background: #fff7ed;
+  box-shadow: none;
+}
+
+.exam-controls-student-grid-row.is-violation-row > .exam-controls-student-cell,
+.exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell,
+.exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-section-1,
+.exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-section-2,
+.exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-duration-split,
+.exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-duration,
+.exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-resume,
+.exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-live-duration,
+.exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-overall,
+.exam-controls-student-grid-row.has-access-request > .exam-controls-student-cell,
+.exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell,
+.exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-section-1,
+.exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-section-2,
+.exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-duration-split,
+.exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-duration,
+.exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-resume,
+.exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-live-duration,
+.exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-overall {
+  background: #fff7ed;
+}
+
+.exam-controls-student-grid-row.has-access-request,
+.exam-controls-split-grid-group.has-access-request {
+  border-color: #fb923c;
+  background: #fff7ed;
+  box-shadow: none;
+}
+
 .exam-controls-student-cell,
 .exam-controls-split-cell {
   display: flex;
@@ -7922,8 +8034,9 @@
 .exam-controls-overall.is-locked,
 .exam-controls-overall.is-violation,
 .exam-controls-overall.is-completed-due-to-fullscreen-violation-limit {
-  background: #fee2e2;
-  color: #b91c1c;
+  border: 1px solid #f97316;
+  background: #ffedd5;
+  color: #c2410c;
 }
 
 .exam-controls-sequence-pill {
@@ -7980,6 +8093,24 @@
   border-radius: 999px;
   background: #ccfbf1;
   color: #0f766e;
+}
+
+.exam-controls-live-duration.is-done-with-extension .exam-controls-live-duration-base {
+  padding: 0 8px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.64rem;
+}
+
+.exam-controls-live-duration.is-waiting .exam-controls-live-duration-base {
+  padding: 0 8px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.64rem;
 }
 
 .exam-controls-extension-value {
@@ -8756,11 +8887,80 @@
   color: #0f766e;
 }
 
+.exam-controls-extension-options button:disabled {
+  border-color: #d5e7e1;
+  background: #f3f8f6;
+  color: #8aa0af;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.exam-controls-active-section-note {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #d8e5e0;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.exam-controls-active-section-note span {
+  color: #607380;
+  font-size: 0.62rem;
+  font-weight: 850;
+}
+
+.exam-controls-active-section-note strong {
+  overflow: hidden;
+  color: #082431;
+  font-size: 0.7rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exam-controls-active-section-note em {
+  grid-column: 1 / -1;
+  color: #607380;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.exam-controls-active-section-note.is-ready {
+  border-color: #99f6e4;
+  background: #ecfdf5;
+}
+
+.exam-controls-active-section-note.is-ready span,
+.exam-controls-active-section-note.is-ready strong {
+  color: #0f766e;
+}
+
+.exam-controls-active-section-note.is-blocked {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.exam-controls-active-section-note.is-blocked span,
+.exam-controls-active-section-note.is-blocked strong {
+  color: #c2410c;
+}
+
 .exam-controls-resume-modal {
   width: min(440px, calc(100vw - 32px));
   align-items: stretch;
   gap: 8px;
   padding: 18px;
+}
+
+.exam-controls-overall-resume-modal {
+  width: min(520px, calc(100vw - 32px));
 }
 
 .exam-controls-class-reset-modal {
@@ -9146,6 +9346,63 @@
 .exam-controls-class-option-list {
   display: grid;
   gap: 7px;
+}
+
+.exam-controls-class-status-filter {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.exam-controls-class-status-filter button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid #d8e5e0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #526876;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.exam-controls-class-status-filter button:hover,
+.exam-controls-class-status-filter button:focus-visible {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+  outline: none;
+}
+
+.exam-controls-class-status-filter button.is-selected {
+  border-color: #14b8a6;
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.exam-controls-class-status-filter em {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.56rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.exam-controls-class-status-filter button.is-selected em {
+  background: #0f766e;
+  color: #ffffff;
 }
 
 .exam-controls-class-option {
@@ -22663,6 +22920,18 @@
   color: #bfdbfe;
 }
 
+.theme-dark .my-assessment-card-action.is-request {
+  border-color: rgba(251, 146, 60, 0.44);
+  background: rgba(154, 52, 18, 0.18);
+  color: #fdba74;
+}
+
+.theme-dark .my-assessment-card-action.is-locked {
+  border-color: rgba(248, 113, 113, 0.44);
+  background: rgba(127, 29, 29, 0.2);
+  color: #fca5a5;
+}
+
 .theme-dark .my-assessment-card-action:hover:not(:disabled),
 .theme-dark .my-assessment-card-action:focus-visible:not(:disabled) {
   border-color: rgba(45, 212, 191, 0.68);
@@ -22677,10 +22946,37 @@
   color: #dbeafe;
 }
 
+.theme-dark .my-assessment-card-action.is-request:hover:not(:disabled),
+.theme-dark .my-assessment-card-action.is-request:focus-visible:not(:disabled) {
+  border-color: rgba(251, 146, 60, 0.62);
+  background: rgba(154, 52, 18, 0.28);
+  color: #fed7aa;
+}
+
 .theme-dark .my-assessment-card-action:disabled {
   border-color: rgba(94, 116, 145, 0.44);
   background: rgba(15, 23, 42, 0.62);
   color: #8396ab;
+}
+
+.theme-dark .my-assessment-request-access-modal {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: #101827;
+  color: #eef6ff;
+}
+
+.theme-dark .my-assessment-request-icon {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
+}
+
+.theme-dark .my-assessment-request-access-modal h2 {
+  color: #eef6ff;
+}
+
+.theme-dark .my-assessment-request-access-modal p {
+  color: #9fb0c8;
 }
 
 .theme-dark .my-assessment-card-action.is-start.is-live {
@@ -31242,15 +31538,16 @@ body > .assessment-page-filter-menu {
 }
 
 .theme-dark .exam-controls-class-reset-btn {
-  border-color: rgba(251, 146, 60, 0.42);
-  background: rgba(124, 45, 18, 0.24);
-  color: #fdba74;
+  border-color: rgba(45, 212, 191, 0.52);
+  background: rgba(20, 184, 166, 0.72);
+  color: #ecfffb;
 }
 
 .theme-dark .exam-controls-class-reset-btn:hover,
 .theme-dark .exam-controls-class-reset-btn:focus-visible {
-  border-color: #fb923c;
-  background: rgba(154, 52, 18, 0.34);
+  border-color: rgba(45, 212, 191, 0.72);
+  background: rgba(13, 148, 136, 0.9);
+  color: #ffffff;
 }
 
 .theme-dark .exam-controls-success-modal p {
@@ -31338,6 +31635,41 @@ body > .assessment-page-filter-menu {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
+.theme-dark .exam-controls-student-grid-row.is-violation-row,
+.theme-dark .exam-controls-split-grid-group.is-violation-row {
+  border-color: rgba(251, 146, 60, 0.58);
+  background: rgba(154, 52, 18, 0.12);
+  box-shadow: none;
+}
+
+.theme-dark .exam-controls-student-grid-row.is-violation-row > .exam-controls-student-cell,
+.theme-dark .exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell,
+.theme-dark .exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-section-1,
+.theme-dark .exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-section-2,
+.theme-dark .exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-duration-split,
+.theme-dark .exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-duration,
+.theme-dark .exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-resume,
+.theme-dark .exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-live-duration,
+.theme-dark .exam-controls-split-grid-group.is-violation-row > .exam-controls-split-cell.is-overall,
+.theme-dark .exam-controls-student-grid-row.has-access-request > .exam-controls-student-cell,
+.theme-dark .exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell,
+.theme-dark .exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-section-1,
+.theme-dark .exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-section-2,
+.theme-dark .exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-duration-split,
+.theme-dark .exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-duration,
+.theme-dark .exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-resume,
+.theme-dark .exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-live-duration,
+.theme-dark .exam-controls-split-grid-group.has-access-request > .exam-controls-split-cell.is-overall {
+  background: rgba(154, 52, 18, 0.12);
+}
+
+.theme-dark .exam-controls-student-grid-row.has-access-request,
+.theme-dark .exam-controls-split-grid-group.has-access-request {
+  border-color: rgba(251, 146, 60, 0.58);
+  background: rgba(154, 52, 18, 0.12);
+  box-shadow: none;
+}
+
 .theme-dark .exam-controls-student-cell,
 .theme-dark .exam-controls-split-cell {
   color: #f8fafc;
@@ -31394,6 +31726,18 @@ body > .assessment-page-filter-menu {
   border-color: rgba(45, 212, 191, 0.44);
   background: rgba(20, 184, 166, 0.18);
   color: #99f6e4;
+}
+
+.theme-dark .exam-controls-live-duration.is-done-with-extension .exam-controls-live-duration-base {
+  border-color: rgba(59, 130, 246, 0.34);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+}
+
+.theme-dark .exam-controls-live-duration.is-waiting .exam-controls-live-duration-base {
+  border-color: rgba(59, 130, 246, 0.34);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
 }
 
 .theme-dark .exam-controls-extension-value {
@@ -31472,6 +31816,35 @@ body > .assessment-page-filter-menu {
 
 .theme-dark .exam-controls-class-status-item.is-warning small {
   color: #fdba74;
+}
+
+.theme-dark .exam-controls-class-status-filter button {
+  border-color: #334155;
+  background: #111c30;
+  color: #cbd5e1;
+}
+
+.theme-dark .exam-controls-class-status-filter button:hover,
+.theme-dark .exam-controls-class-status-filter button:focus-visible {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.1);
+  color: #99f6e4;
+}
+
+.theme-dark .exam-controls-class-status-filter button.is-selected {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.18);
+  color: #99f6e4;
+}
+
+.theme-dark .exam-controls-class-status-filter em {
+  background: rgba(15, 23, 42, 0.56);
+  color: #cbd5e1;
+}
+
+.theme-dark .exam-controls-class-status-filter button.is-selected em {
+  background: rgba(45, 212, 191, 0.24);
+  color: #ccfbf1;
 }
 
 .theme-dark .exam-controls-class-option {
@@ -31616,6 +31989,46 @@ body > .assessment-page-filter-menu {
   border-color: rgba(45, 212, 191, 0.42);
   background: rgba(20, 184, 166, 0.18);
   color: #99f6e4;
+}
+
+.theme-dark .exam-controls-extension-options button:disabled {
+  border-color: #334155;
+  background: #1e293b;
+  color: #64748b;
+}
+
+.theme-dark .exam-controls-active-section-note {
+  border-color: #334155;
+  background: #111c30;
+}
+
+.theme-dark .exam-controls-active-section-note span,
+.theme-dark .exam-controls-active-section-note em {
+  color: #94a3b8;
+}
+
+.theme-dark .exam-controls-active-section-note strong {
+  color: #f8fafc;
+}
+
+.theme-dark .exam-controls-active-section-note.is-ready {
+  border-color: rgba(45, 212, 191, 0.42);
+  background: rgba(20, 184, 166, 0.16);
+}
+
+.theme-dark .exam-controls-active-section-note.is-ready span,
+.theme-dark .exam-controls-active-section-note.is-ready strong {
+  color: #99f6e4;
+}
+
+.theme-dark .exam-controls-active-section-note.is-blocked {
+  border-color: rgba(251, 146, 60, 0.35);
+  background: rgba(154, 52, 18, 0.16);
+}
+
+.theme-dark .exam-controls-active-section-note.is-blocked span,
+.theme-dark .exam-controls-active-section-note.is-blocked strong {
+  color: #fdba74;
 }
 
 .theme-dark .exam-controls-modal-actions button:disabled {

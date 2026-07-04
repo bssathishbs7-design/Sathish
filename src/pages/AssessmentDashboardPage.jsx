@@ -104,53 +104,64 @@ const getStudentAssessmentLockState = (assessment, studentId = CURRENT_STUDENT_I
     state.mcqLiveUntilMs,
     state.descriptiveLiveUntilMs,
   ].some((value) => Number(value || 0) > now.getTime())
-  const hasActiveLock = Boolean(state.invigilatorLock?.active)
-  const hasHardLock = Boolean(state.invigilatorLock?.exhausted)
+  const hasActiveLock = state.invigilatorLock?.active === true
+  const hasHardLock = hasActiveLock && state.invigilatorLock?.exhausted === true
   const stateStatus = String(state.overallStatus || '').toLowerCase()
   const hasViolationStatus = (
     stateStatus.includes('locked')
     || stateStatus.includes('violation')
     || stateStatus.includes('fullscreen')
   )
-  const isViolation = (hasActiveLock || hasViolationStatus || hasHardLock) && !hasExplicitUnlock && !hasResumeAfterLock && !hasActiveResumeTime
+  const hasRestoredStatus = stateStatus === 'in progress' || stateStatus === 'assessment live'
+  const hasRestoredAccess = hasExplicitUnlock || hasResumeAfterLock || hasActiveResumeTime || hasRestoredStatus
+  const isViolation = (hasActiveLock || hasHardLock || (hasViolationStatus && state.invigilatorLock?.active === true)) && !hasRestoredAccess
   const isLocked = isViolation
 
   return {
     isLocked,
     isViolation,
-    isHardLocked: hasHardLock && !hasExplicitUnlock,
+    isHardLocked: hasHardLock && !hasRestoredAccess,
+    violationCount: Number(state.fullscreenViolationTotal ?? state.fullscreenExitCount ?? state.invigilatorLock?.exitCount ?? 0),
+    accessRequested: isViolation && Boolean(state.accessRequest?.active),
   }
 }
 
-const clearActiveProctorLock = (assessment, studentId = CURRENT_STUDENT_ID) => {
+const requestProctorAccess = (assessment, studentId = CURRENT_STUDENT_ID) => {
   try {
     const state = readAssessmentControlState(assessment)
-    if (!state || typeof state !== 'object' || !state[studentId]) return
-    const studentState = state[studentId]
-    const currentLock = studentState?.invigilatorLock
-    if (!currentLock?.active || currentLock?.exhausted) return
-
+    if (!state || typeof state !== 'object') return false
+    const studentState = state[studentId] || {}
     const nowIso = new Date().toISOString()
-    state[studentId] = {
+    const nextState = {
+      ...state,
+      [studentId]: {
       ...studentState,
-      resumeUnlockedAt: nowIso,
-      invigilatorLock: {
-        ...currentLock,
-        active: false,
-        unlockedAt: nowIso,
-        reason: 'Dashboard auto-unlock',
+      accessRequest: {
+        active: true,
+        requestedAt: nowIso,
+        requestedBy: studentId,
+        message: 'Student requested invigilator access after a proctoring violation.',
       },
-      overallStatus: 'In progress',
+      logs: [{
+        id: `${studentId}-access-request-${Date.now()}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        action: 'Access Requested',
+        remarks: 'Student requested invigilator access after violation.',
+        faculty: 'System',
+      }, ...(studentState.logs || [])],
+      },
     }
     window.localStorage.setItem(
       `${EXAM_CONTROLS_STATE_KEY}:${getAssessmentId(assessment)}`,
-      JSON.stringify(state),
+      JSON.stringify(nextState),
     )
     window.dispatchEvent(new CustomEvent(EXAM_CONTROLS_STATE_CHANGED_EVENT, {
       detail: { assessmentId: getAssessmentId(assessment), studentId },
     }))
+    return true
   } catch {
     // keep flow best-effort
+    return false
   }
 }
 
@@ -220,12 +231,27 @@ const applyAssessmentTime = (date, value) => {
   return nextDate
 }
 
+const parseDurationToSeconds = (value) => {
+  const text = String(value || '').trim()
+  if (!text) return 0
+
+  const normalized = Number(text)
+  if (Number.isFinite(normalized) && Number.isInteger(normalized)) {
+    return Math.max(0, normalized * 60)
+  }
+
+  const parts = text.split(':').map((part) => Number(part.trim()))
+  if (parts.some((part) => Number.isNaN(part))) return 0
+
+  if (parts.length === 1) return Math.max(0, parts[0] * 60)
+  if (parts.length === 2) return Math.max(0, (parts[0] * 3600) + (parts[1] * 60))
+  if (parts.length === 3) return Math.max(0, (parts[0] * 3600) + (parts[1] * 60) + parts[2])
+
+  return 0
+}
+
 const parseAssessmentDurationMs = (value) => {
-  const match = String(value || '').trim().match(/^(\d+)(?::(\d{2}))?$/)
-  if (!match) return 0
-  const hours = Number(match[1] || 0)
-  const minutes = Number(match[2] || 0)
-  return ((hours * 60) + minutes) * 60 * 1000
+  return parseDurationToSeconds(value) * 1000
 }
 
 const formatAssessmentRemainingTime = (value) => {
@@ -331,6 +357,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   const [myAssessmentSearchValue, setMyAssessmentSearchValue] = useState('')
   const [myAssessmentFilters, setMyAssessmentFilters] = useState(MY_ASSESSMENT_FILTER_DEFAULTS)
   const [isMyAssessmentFilterOpen, setIsMyAssessmentFilterOpen] = useState(false)
+  const [accessRequestNotice, setAccessRequestNotice] = useState(null)
   const studentOnlineAssessments = publishedAssessments.filter((assessment) => (
     isOnlinePracticeAssessment(assessment) || isOnlineProctoredAssessment(assessment)
   ))
@@ -437,13 +464,28 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     const lockState = isOnlineProctoredAssessment(assessment)
       ? getStudentAssessmentLockState(assessment, CURRENT_STUDENT_ID, scheduleNow)
       : null
-    if (lockState?.isHardLocked) return
-    if (lockState?.isLocked) {
-      clearActiveProctorLock(assessment, CURRENT_STUDENT_ID)
-    }
+    if (lockState?.isLocked) return
 
     startAssessmentNow(assessment)
   }
+
+  const handleRequestAccess = (assessment) => {
+    if (!assessment) return
+    const requested = requestProctorAccess(assessment, CURRENT_STUDENT_ID)
+    setPublishedAssessments(readPublishedAssessments())
+    setAccessRequestNotice({
+      title: requested ? 'Request Sent' : 'Request Failed',
+      message: requested
+        ? 'Your violation request has been sent to the invigilator.'
+        : 'Unable to send request right now. Please try again shortly.',
+    })
+  }
+
+  useEffect(() => {
+    if (!accessRequestNotice) return undefined
+    const timeoutId = window.setTimeout(() => setAccessRequestNotice(null), 1800)
+    return () => window.clearTimeout(timeoutId)
+  }, [accessRequestNotice])
 
   useEffect(() => {
     if (!isMyAssessment) return undefined
@@ -583,10 +625,31 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                   const lockState = isProctoredExam ? getStudentAssessmentLockState(assessment, CURRENT_STUDENT_ID, scheduleNow) : null
-                  const cardStatus = lockState?.isViolation
+                  const hasLockState = Boolean(lockState?.isLocked)
+                  const cardStatus = lockState?.isHardLocked
+                    ? { type: 'locked', label: 'Locked' }
+                    : hasLockState
                     ? { type: 'violation', label: 'Violation' }
                     : scheduleStatus
-                  const isStartDisabled = scheduleStatus?.type === 'upcoming' || Boolean(lockState?.isHardLocked)
+                  const isViolationCard = cardStatus?.type === 'violation'
+                  const isHardLockedCard = cardStatus?.type === 'locked'
+                  const isStartDisabled = scheduleStatus?.type === 'upcoming'
+                    || isHardLockedCard
+                    || (isViolationCard && Boolean(lockState?.accessRequested))
+                  const actionLabel = cardStatus?.type === 'completed'
+                    ? 'View Results'
+                    : isHardLockedCard
+                      ? 'Locked'
+                      : isViolationCard
+                        ? lockState?.accessRequested ? 'Request Sent' : 'Request Access'
+                        : 'Start Assessment'
+                  const actionClass = cardStatus?.type === 'completed'
+                    ? 'results'
+                    : isViolationCard
+                      ? 'request'
+                      : isHardLockedCard
+                        ? 'locked'
+                        : 'start'
                   const durationValue = scheduleStatus?.type === 'live'
                     ? formatAssessmentRemainingTime(scheduleStatus.remainingMs)
                     : assessment.totalDuration || '-'
@@ -635,17 +698,21 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         <span className="assessment-create-published-footer-status" />
                         <button
                           type="button"
-                          className={`my-assessment-card-action is-${cardStatus?.type === 'completed' ? 'results' : 'start'} ${cardStatus?.type === 'live' ? 'is-live' : ''}`}
+                          className={`my-assessment-card-action is-${actionClass} ${cardStatus?.type === 'live' ? 'is-live' : ''}`}
                           disabled={isStartDisabled}
                           onClick={() => {
                             if (cardStatus?.type === 'completed') {
                               handleViewAssessmentResults(assessment)
                               return
                             }
+                            if (isViolationCard) {
+                              handleRequestAccess(assessment)
+                              return
+                            }
                             handleStartAssessment(assessment)
                           }}
                         >
-                          {cardStatus?.type === 'completed' ? 'View Results' : 'Start Assessment'}
+                          {actionLabel}
                         </button>
                       </div>
                     </article>
@@ -662,6 +729,17 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
               </div>
             )}
             </section>
+            {accessRequestNotice ? (
+              <div className="my-assessment-request-access-overlay" role="presentation">
+                <section className="my-assessment-request-access-modal" role="dialog" aria-modal="true" aria-labelledby="my-assessment-request-title">
+                  <span className="my-assessment-request-icon" aria-hidden="true">
+                    <ShieldCheck size={22} strokeWidth={2.3} />
+                  </span>
+                  <h2 id="my-assessment-request-title">{accessRequestNotice.title}</h2>
+                  <p>{accessRequestNotice.message}</p>
+                </section>
+              </div>
+            ) : null}
           </>
         ) : (
           <>

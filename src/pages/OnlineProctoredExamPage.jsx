@@ -1385,7 +1385,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const timeLabel = formatCompactTime(new Date())
 
     if (nextExitCount >= FULLSCREEN_EXIT_COMPLETE_LIMIT) {
-      const completionMessage = 'Completed due to fullscreen violation limit'
       setInvigilatorLockNotice({
         title: 'Exam Locked',
         message: 'Maximum fullscreen exit limit reached. Contact invigilator/admin.',
@@ -1395,11 +1394,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         message: 'Maximum fullscreen exit limit reached. Contact invigilator/admin.',
         requiresFullscreen: false,
       })
-      setIsAssessmentSubmitted(true)
-      if (hasMcqSection) setIsMcqSubmitted(true)
-      if (hasDescriptiveSection) setIsDescriptiveSubmitted(true)
-      writeStudentSubmissionStatus(assessment, completionMessage)
-      persistCompletedAssessment()
       writeExamControlsState(assessment, CURRENT_STUDENT_ID, {
         fullscreenExitCount: nextExitCount,
         fullscreenViolationTotal: nextExitCount,
@@ -1411,11 +1405,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
           exitCount: nextExitCount,
           maxViolations: FULLSCREEN_EXIT_COMPLETE_LIMIT,
         },
-        overallStatus: completionMessage,
+        overallStatus: 'Locked',
         logs: [{
           id: `${CURRENT_STUDENT_ID}-fullscreen-completed-${Date.now()}`,
           time: timeLabel,
-          action: 'Exam Completed',
+          action: 'Exam Locked',
           remarks: `${reason} | Fullscreen exit ${nextExitCount}/${FULLSCREEN_EXIT_COMPLETE_LIMIT}.`,
           faculty: 'System',
         }, ...(currentState.logs || [])],
@@ -1592,6 +1586,63 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     setFullscreenError('')
   }
 
+  const syncExamControlsState = () => {
+    if (!assessment || isAssessmentSubmitted) return
+    const assessmentId = getAssessmentId(assessment)
+    const controlsState = readExamControlsState(assessmentId)
+    const studentState = controlsState[CURRENT_STUDENT_ID] || {}
+    const isLocked = Boolean(studentState.invigilatorLock?.active)
+    const exitCount = Number(
+      studentState.invigilatorLock?.exitCount
+      ?? studentState.fullscreenViolationTotal
+      ?? (studentState.fullscreenExitCount || 0),
+    )
+    const isHardLock = Boolean(studentState.invigilatorLock?.exhausted)
+      || exitCount >= FULLSCREEN_EXIT_COMPLETE_LIMIT
+
+    if (isLocked) {
+      invigilatorLockInProgressRef.current = true
+      const message = isHardLock
+        ? 'Maximum fullscreen exit limit reached. Contact invigilator/admin.'
+        : 'Contact invigilator to continue.'
+      if (!invigilatorLockNotice || invigilatorLockNotice.message !== message) {
+        setInvigilatorLockNotice({
+          title: 'Exam Locked',
+          message,
+        })
+      }
+      setExamPause({
+        active: true,
+        message,
+        requiresFullscreen: false,
+      })
+      setFullscreenError('')
+      return
+    }
+
+    invigilatorLockInProgressRef.current = false
+    setInvigilatorLockNotice(null)
+    setExamPause((current) => {
+      if (!current.active) return current
+      if (!current.message.includes('Contact invigilator to continue') && !current.message.includes('Maximum fullscreen exit limit')) {
+        return current
+      }
+      return {
+        active: false,
+        message: '',
+        requiresFullscreen: false,
+      }
+    })
+    if (hasStarted) {
+      setIsFullscreenMode(Boolean(document.fullscreenElement))
+      if (isFullscreenRequiredForDevice && !document.fullscreenElement) {
+        scheduleFullscreenRestore()
+      }
+      requestExamKeyboardLock()
+      setFullscreenError('')
+    }
+  }
+
   const showDescriptiveSection = (groupKey) => {
     if (shouldBlockProctoringActions) return
     if (!isSectionAccessibleInSequence('descriptive')) return
@@ -1618,6 +1669,35 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
     return () => window.clearInterval(timerId)
   }, [])
+
+  useEffect(() => {
+    if (!assessment || isAssessmentSubmitted) return undefined
+
+    const sync = () => syncExamControlsState()
+    const handleStorage = (event) => {
+      if (event.key === `${EXAM_CONTROLS_STATE_KEY}:${getAssessmentId(assessment)}`) {
+        sync()
+      }
+    }
+    const handleControlsStateChanged = (event) => {
+      if (!event?.detail) {
+        sync()
+        return
+      }
+      if (!event.detail.assessmentId || event.detail.assessmentId === getAssessmentId(assessment)) {
+        sync()
+      }
+    }
+
+    sync()
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener(EXAM_CONTROLS_STATE_CHANGED_EVENT, handleControlsStateChanged)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener(EXAM_CONTROLS_STATE_CHANGED_EVENT, handleControlsStateChanged)
+    }
+  }, [assessment, hasStarted, isAssessmentSubmitted])
 
   useEffect(() => {
     const updateEnvironmentRestriction = () => {

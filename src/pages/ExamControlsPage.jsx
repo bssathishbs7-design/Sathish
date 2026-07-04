@@ -29,6 +29,14 @@ const CONTROL_STUDENTS = [
   { id: 'MC2568', name: 'Karthik Subramanian', attendance: 'P' },
 ]
 
+const CLASS_RESUME_STATUS_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'waiting', label: 'Waiting' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'violation', label: 'Violation' },
+]
+
 const readExamControlsAssessment = () => {
   try {
     const parsed = JSON.parse(window.sessionStorage.getItem(EXAM_CONTROLS_ASSESSMENT_KEY) || 'null')
@@ -240,9 +248,17 @@ const applyAssessmentTime = (date, value) => {
 }
 
 const parseDurationMinutes = (value) => {
-  const match = String(value || '').trim().match(/^(\d+)(?::(\d{2}))?$/)
-  if (!match) return 0
-  return (Number(match[1] || 0) * 60) + Number(match[2] || 0)
+  const text = String(value || '').trim()
+  if (!text) return 0
+  if (text.includes(':')) {
+    const parts = text.split(':').map((part) => Number(part.trim()))
+    if (parts.some((part) => Number.isNaN(part))) return 0
+    if (parts.length === 2) return Math.max(0, (parts[0] * 60) + parts[1])
+    if (parts.length === 3) return Math.max(0, (parts[0] * 3600) + (parts[1] * 60) + parts[2])
+  }
+  const numeric = Number(text)
+  if (Number.isFinite(numeric) && numeric > 0) return Math.floor(Math.max(0, numeric))
+  return 0
 }
 
 const formatDuration = (minutes) => {
@@ -322,6 +338,7 @@ function ExamControlsPage({ onNavigate }) {
   const [extendForm, setExtendForm] = useState({
     clearAnswers: 'no',
     completeTimeReset: 'no',
+    restoreAccessOnly: 'yes',
     quickMinutes: '',
     customMinutes: '',
   })
@@ -337,12 +354,14 @@ function ExamControlsPage({ onNavigate }) {
     quickMinutes: '',
     customMinutes: '',
     extendSection: 'full',
+    targetStatus: 'all',
   })
   const [classResetError, setClassResetError] = useState('')
   const [logModal, setLogModal] = useState(null)
   const [studentSearch, setStudentSearch] = useState('')
   const [submissionStatuses, setSubmissionStatuses] = useState(() => readStudentSubmissionStatuses())
   const [studentSessions, setStudentSessions] = useState(() => readStudentExamSessions())
+  const [studentTimeExtensions, setStudentTimeExtensions] = useState(() => readStudentTimeExtensions())
 
   const goBackToPublishedTab = () => {
     window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'published')
@@ -362,16 +381,19 @@ function ExamControlsPage({ onNavigate }) {
   useEffect(() => {
     const syncSubmissionStatuses = () => setSubmissionStatuses(readStudentSubmissionStatuses())
     const syncStudentSessions = () => setStudentSessions(readStudentExamSessions())
+    const syncStudentTimeExtensions = () => setStudentTimeExtensions(readStudentTimeExtensions())
     const syncControlState = () => setControlState(readControlState(assessmentId))
 
     const handleStorage = (event) => {
       if (event.key === STUDENT_EXAM_SUBMISSION_STATUS_KEY) syncSubmissionStatuses()
       if (event.key === STUDENT_EXAM_SESSION_KEY) syncStudentSessions()
+      if (event.key === STUDENT_EXAM_TIME_EXTENSIONS_KEY) syncStudentTimeExtensions()
       if (event.key === `${EXAM_CONTROLS_STATE_KEY}:${assessmentId}`) syncControlState()
     }
 
     const handleStatusEvent = () => syncSubmissionStatuses()
     const handleSessionEvent = () => syncStudentSessions()
+    const handleTimeExtensionEvent = () => syncStudentTimeExtensions()
     const handleControlStateEvent = (event) => {
       if (!event?.detail) {
         syncControlState()
@@ -385,12 +407,14 @@ function ExamControlsPage({ onNavigate }) {
     window.addEventListener('storage', handleStorage)
     window.addEventListener(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, handleStatusEvent)
     window.addEventListener(STUDENT_EXAM_SESSION_EVENT, handleSessionEvent)
+    window.addEventListener(STUDENT_EXAM_TIME_EXTENSION_EVENT, handleTimeExtensionEvent)
     window.addEventListener(EXAM_CONTROLS_STATE_CHANGED_EVENT, handleControlStateEvent)
 
     return () => {
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener(STUDENT_EXAM_SUBMISSION_STATUS_EVENT, handleStatusEvent)
       window.removeEventListener(STUDENT_EXAM_SESSION_EVENT, handleSessionEvent)
+      window.removeEventListener(STUDENT_EXAM_TIME_EXTENSION_EVENT, handleTimeExtensionEvent)
       window.removeEventListener(EXAM_CONTROLS_STATE_CHANGED_EVENT, handleControlStateEvent)
     }
   }, [])
@@ -412,7 +436,7 @@ function ExamControlsPage({ onNavigate }) {
   const isHybrid = String(assessment?.examType || '').toLowerCase().includes('hybrid')
   const isSplitHybrid = Boolean(isProctored && isHybrid && setup.splitProctoredDuration)
   const isFinalFiveMinutes = schedule.status === 'live' && schedule.remainingMs <= 5 * 60 * 1000
-  const controlsDisabled = schedule.status !== 'live' || isFinalFiveMinutes
+  const controlsDisabled = schedule.status !== 'live'
   const baseDurationMinutes = parseDurationMinutes(assessment?.totalDuration)
   const mcqDurationMinutes = parseDurationMinutes(setup.mcqTimeLimit) || baseDurationMinutes
   const descriptiveDurationMinutes = parseDurationMinutes(setup.descriptiveTimeLimit) || baseDurationMinutes
@@ -422,14 +446,16 @@ function ExamControlsPage({ onNavigate }) {
 
   const students = useMemo(() => CONTROL_STUDENTS.map((student, index) => {
     const state = controlState[student.id] || {}
+    const storedExtension = studentTimeExtensions?.[assessmentId]?.[student.id] || {}
+    const storedSectionExtensions = storedExtension.sectionExtensions || {}
     const session = studentSessions?.[assessmentId]?.[student.id] || null
     const sessionLoginTime = session?.loginTime ? new Date(session.loginTime) : null
     const hasValidLoginTime = sessionLoginTime && !Number.isNaN(sessionLoginTime.getTime())
     const isPresent = Boolean(hasValidLoginTime)
     const startTime = hasValidLoginTime ? sessionLoginTime : null
-    const extensionMinutes = Number(state.extensionMinutes || 0)
-    const mcqExtensionMinutes = Number(state.mcqExtensionMinutes || 0)
-    const descriptiveExtensionMinutes = Number(state.descriptiveExtensionMinutes || 0)
+    const extensionMinutes = Math.max(Number(state.extensionMinutes || 0), Number(storedExtension.extensionMinutes || 0))
+    const mcqExtensionMinutes = Math.max(Number(state.mcqExtensionMinutes || 0), Number(storedSectionExtensions.mcq || 0))
+    const descriptiveExtensionMinutes = Math.max(Number(state.descriptiveExtensionMinutes || 0), Number(storedSectionExtensions.descriptive || 0))
     const liveUntilMs = Number(state.liveUntilMs || 0)
     const mcqLiveUntilMs = Number(state.mcqLiveUntilMs || 0)
     const descriptiveLiveUntilMs = Number(state.descriptiveLiveUntilMs || 0)
@@ -491,10 +517,11 @@ function ExamControlsPage({ onNavigate }) {
       violationCount,
       hasSubmissionAfterExtension,
       invigilatorLock,
+      accessRequest: state.accessRequest || null,
       overallStatus,
       logs: state.logs || buildDefaultLogs(student, assessment, schedule),
     }
-  }), [assessment, assessmentId, controlState, now, schedule, studentSessions, submissionStatuses])
+  }), [assessment, assessmentId, controlState, now, schedule, studentSessions, studentTimeExtensions, submissionStatuses])
 
   const classResetTargets = useMemo(() => {
     const seen = new Map()
@@ -530,15 +557,81 @@ function ExamControlsPage({ onNavigate }) {
     return Array.from(seen.values())
   }, [assessmentId, controlState, studentSessions, submissionStatuses])
 
+  const getClassResumeStatus = (student) => {
+    if (student.attendance !== 'P') return 'absent'
+    const statusText = String(student.overallStatus || '').toLowerCase()
+    if (
+      Boolean(student.invigilatorLock?.active)
+      || statusText.includes('locked')
+      || statusText.includes('violation')
+      || statusText.includes('fullscreen')
+    ) return 'violation'
+    if (statusText.includes('completed')) return 'completed'
+    if (statusText.includes('waiting')) return 'waiting'
+    return 'in-progress'
+  }
+
+  const isStudentViolationRequiringRequest = (student) => {
+    if (!isProctored) return false
+    const statusText = String(student.overallStatus || '').toLowerCase()
+    const hasActiveViolation = Boolean(student.invigilatorLock?.active)
+      || statusText.includes('locked')
+      || statusText.includes('violation')
+      || statusText.includes('fullscreen violation')
+      || statusText.includes('completed due to fullscreen violation limit')
+
+    return hasActiveViolation && !Boolean(student.accessRequest?.active)
+  }
+
+  const classResumeTargets = useMemo(() => (
+    students.filter((student) => {
+      const status = getClassResumeStatus(student)
+      if (status === 'absent') return false
+      return classResetForm.targetStatus === 'all' || status === classResetForm.targetStatus
+    })
+  ), [classResetForm.targetStatus, students])
+
+  const classResumeStatusCounts = useMemo(() => {
+    const counts = CLASS_RESUME_STATUS_OPTIONS.reduce((next, item) => ({ ...next, [item.value]: 0 }), {})
+    students.forEach((student) => {
+      const status = getClassResumeStatus(student)
+      if (status === 'absent') return
+      counts.all += 1
+      if (Object.prototype.hasOwnProperty.call(counts, status)) counts[status] += 1
+    })
+    return counts
+  }, [students])
+
   const visibleStudents = useMemo(() => {
     const query = studentSearch.trim().toLowerCase()
-    if (!query) return students
-    return students.filter((student) => (
+    const filteredStudents = query ? students.filter((student) => (
       String(student.id || '').toLowerCase().includes(query)
       || String(student.name || '').toLowerCase().includes(query)
       || String(student.attendance || '').toLowerCase().includes(query)
       || String(student.overallStatus || '').toLowerCase().includes(query)
-    ))
+    )) : students
+
+    return [...filteredStudents].sort((first, second) => {
+      const firstStatus = String(first.overallStatus || '').toLowerCase()
+      const secondStatus = String(second.overallStatus || '').toLowerCase()
+      const firstViolation = Boolean(first.invigilatorLock?.active)
+        || firstStatus.includes('locked')
+        || firstStatus.includes('violation')
+        || firstStatus.includes('fullscreen')
+        ? 1
+        : 0
+      const secondViolation = Boolean(second.invigilatorLock?.active)
+        || secondStatus.includes('locked')
+        || secondStatus.includes('violation')
+        || secondStatus.includes('fullscreen')
+        ? 1
+        : 0
+      if (firstViolation !== secondViolation) return secondViolation - firstViolation
+      const firstRequested = first.accessRequest?.active ? 1 : 0
+      const secondRequested = second.accessRequest?.active ? 1 : 0
+      if (firstRequested !== secondRequested) return secondRequested - firstRequested
+      return 0
+    })
   }, [studentSearch, students])
 
   const addStudentLog = (studentId, action, remarks) => {
@@ -622,17 +715,8 @@ function ExamControlsPage({ onNavigate }) {
         return student.startTime.getTime() + ((baseDurationMinutes + Number(student.extensionMinutes || 0)) * 60 * 1000)
       }
 
-      const previousMinutes = splitOrder.slice(0, sectionIndex).reduce((sum, splitSection) => {
-        const isMcq = splitSection === 'mcq'
-        const duration = isMcq ? mcqDurationMinutes : descriptiveDurationMinutes
-        const extension = isMcq ? Number(student.mcqExtensionMinutes || 0) : Number(student.descriptiveExtensionMinutes || 0)
-        return sum + duration + extension
-      }, 0)
-      const isMcq = section === 'mcq'
-      const duration = isMcq ? mcqDurationMinutes : descriptiveDurationMinutes
-      const extension = isMcq ? Number(student.mcqExtensionMinutes || 0) : Number(student.descriptiveExtensionMinutes || 0)
-      const sectionStartAt = student.startTime.getTime() + (previousMinutes * 60 * 1000)
-      return sectionStartAt + ((duration + extension) * 60 * 1000)
+      const sectionWindow = getSplitSectionWindow(student, sectionIndex)
+      return sectionWindow ? sectionWindow.sectionExtensionEndAt : now.getTime()
     })()
 
     const key = section === 'mcq' ? 'mcqExtensionMinutes' : section === 'descriptive' ? 'descriptiveExtensionMinutes' : 'extensionMinutes'
@@ -652,10 +736,12 @@ function ExamControlsPage({ onNavigate }) {
           unlockedAt: new Date().toISOString(),
           reason: 'Resume & Extend',
         },
+        accessRequest: null,
         overallStatus: 'In progress',
       }
     })
     writeStudentTimeExtension({ assessmentId, studentId: student.id, minutes, section })
+    setStudentTimeExtensions(readStudentTimeExtensions())
     addStudentLog(student.id, 'Time extended', `${section ? `${section.toUpperCase()} section` : 'Exam'} extended by ${minutes} minutes.`)
     setExtendModal(null)
     setExtendSuccessModal({
@@ -684,6 +770,7 @@ function ExamControlsPage({ onNavigate }) {
         unlockedAt: new Date().toISOString(),
         reason: 'Resume & Extend',
       },
+      accessRequest: null,
       overallStatus: 'In progress',
     })
     addStudentLog(student.id, 'Time reset', `${getSectionLabel(section)} timer reset to ${getCompleteTimeResetBadge(section)}.`)
@@ -697,6 +784,7 @@ function ExamControlsPage({ onNavigate }) {
     setExtendForm({
       clearAnswers: 'no',
       completeTimeReset: 'no',
+      restoreAccessOnly: 'yes',
       quickMinutes: '',
       customMinutes: '',
     })
@@ -730,6 +818,7 @@ function ExamControlsPage({ onNavigate }) {
   const hasResumeExtendAction = () => (
     extendForm.clearAnswers === 'yes'
     || extendForm.completeTimeReset === 'yes'
+    || extendForm.restoreAccessOnly === 'yes'
     || Number(extendForm.quickMinutes || 0) > 0
     || Boolean(String(extendForm.customMinutes || '').trim() && !getExtendMinutesError())
   )
@@ -739,6 +828,7 @@ function ExamControlsPage({ onNavigate }) {
     const { student } = extendModal
     const shouldClearAnswers = extendForm.clearAnswers === 'yes'
     const shouldResetFullTime = extendForm.completeTimeReset === 'yes'
+    const shouldRestoreAccessOnly = extendForm.restoreAccessOnly === 'yes'
 
     if (shouldClearAnswers) {
       clearStudentExamState(student, 'clear')
@@ -751,12 +841,22 @@ function ExamControlsPage({ onNavigate }) {
     }
 
     const minutes = getValidatedExtendMinutes()
-    if (!minutes && shouldClearAnswers) {
-      addStudentLog(student.id, 'Resume attempt', 'Student attempt resumed and saved answers cleared.')
+    if (!minutes && (shouldClearAnswers || shouldRestoreAccessOnly)) {
+      const messageParts = ['Access restored']
+      if (shouldClearAnswers) messageParts.push('saved answers cleared')
+      updateStudentControlState(student.id, {
+        resumeUnlockedAt: new Date().toISOString(),
+        fullscreenExitCount: 0,
+        fullscreenViolationTotal: 0,
+        invigilatorLock: null,
+        accessRequest: null,
+        overallStatus: 'In progress',
+      })
+      addStudentLog(student.id, 'Resume attempt', `${messageParts.join(' and ')}.`)
       setExtendModal(null)
       setExtendSuccessModal({
         title: 'Resume Settings Applied',
-        message: `${student.name}'s answers were cleared and the attempt can continue.`,
+        message: `${student.name}'s attempt can continue (${messageParts.join(' and ')}).`,
       })
       return
     }
@@ -831,6 +931,7 @@ function ExamControlsPage({ onNavigate }) {
       quickMinutes: '',
       customMinutes: '',
       extendSection: isSplitHybrid ? 'both' : 'full',
+      targetStatus: 'all',
     })
     setClassResetError('')
     setClassResetModal(true)
@@ -908,9 +1009,7 @@ function ExamControlsPage({ onNavigate }) {
 
   const getClassExtendScopeLabel = () => {
     if (!isSplitHybrid) return 'Full exam'
-    if (classResetForm.extendSection === 'mcq') return 'MCQ section'
-    if (classResetForm.extendSection === 'descriptive') return 'Descriptive section'
-    return 'MCQ and Descriptive sections'
+    return classResumeSplitTarget?.label || 'Active section'
   }
 
   const getClassResetImpactRows = () => {
@@ -955,8 +1054,10 @@ function ExamControlsPage({ onNavigate }) {
     classResetForm.clearAnswers === 'yes'
     || classResetForm.completeTimeReset === 'yes'
     || classResetForm.resetAccess === 'yes'
-    || Number(classResetForm.quickMinutes || 0) > 0
-    || Boolean(String(classResetForm.customMinutes || '').trim() && !getClassExtendError())
+    || ((!isSplitHybrid || classResumeSplitTarget?.canExtend) && (
+      Number(classResetForm.quickMinutes || 0) > 0
+      || Boolean(String(classResetForm.customMinutes || '').trim() && !getClassExtendError())
+    ))
   )
 
   const updateClassResetForm = (key, value) => {
@@ -1016,7 +1117,7 @@ function ExamControlsPage({ onNavigate }) {
   }
 
   const confirmClassReset = () => {
-    if (!classResetModal || !classResetTargets.length) return
+    if (!classResetModal || !classResumeTargets.length) return
     if (!hasClassResetAction()) return
     const shouldClearAnswers = classResetForm.clearAnswers === 'yes'
     const shouldResetTime = classResetForm.completeTimeReset === 'yes'
@@ -1027,6 +1128,13 @@ function ExamControlsPage({ onNavigate }) {
       return
     }
     const shouldExtendTime = classExtendMinutes > 0
+    if (shouldExtendTime && isSplitHybrid && !classResumeSplitTarget?.canExtend) {
+      setClassResetError(classResumeSplitTarget?.message || 'No active split section is available for extension.')
+      return
+    }
+    const classExtendTargets = isSplitHybrid
+      ? (classResumeSplitTarget?.targets || [])
+      : classResumeTargets
     const classResetMessage = [
       'Class reset completed.',
       shouldResetAccess ? 'Exam access restored.' : '',
@@ -1034,7 +1142,7 @@ function ExamControlsPage({ onNavigate }) {
       shouldResetTime ? 'Exam time reset.' : '',
       shouldExtendTime ? `${getClassExtendScopeLabel()} extended by ${classExtendMinutes} minutes.` : '',
     ].filter(Boolean).join(' ')
-    classResetTargets.forEach((student) => {
+    classResumeTargets.forEach((student) => {
       writeStudentExamReset({ assessmentId, studentId: student.id, mode: shouldClearAnswers ? 'clear' : 'keep' })
       if (shouldClearAnswers) {
         removeStudentStorageRecord(STUDENT_EXAM_SUBMISSION_STATUS_KEY, assessmentId, student.id)
@@ -1066,7 +1174,7 @@ function ExamControlsPage({ onNavigate }) {
 
     setControlState((current) => {
       const next = { ...current }
-      classResetTargets.forEach((student) => {
+      classResumeTargets.forEach((student) => {
         const previous = next[student.id] || {}
         next[student.id] = {
           ...previous,
@@ -1085,6 +1193,7 @@ function ExamControlsPage({ onNavigate }) {
             fullscreenExitCount: 0,
             fullscreenViolationTotal: 0,
             invigilatorLock: null,
+            accessRequest: null,
           } : {}),
           overallStatus: 'Waiting',
         }
@@ -1093,49 +1202,69 @@ function ExamControlsPage({ onNavigate }) {
     })
 
     if (shouldExtendTime) {
-      classResetTargets.forEach((student) => {
-        extendClassStudentTime(student, classExtendMinutes, classResetForm.extendSection)
+      classExtendTargets.forEach((student) => {
+        extendClassStudentTime(student, classExtendMinutes, isSplitHybrid ? classResumeSplitTarget.section : classResetForm.extendSection)
       })
+      setStudentTimeExtensions(readStudentTimeExtensions())
     }
 
     clearAssessmentCompletedStatus(assessment)
     setSubmissionStatuses(readStudentSubmissionStatuses())
     setStudentSessions(readStudentExamSessions())
     setExtendSuccessModal({
-      title: 'Class Reset',
+      title: 'Overall Resume & Extend',
       message: shouldExtendTime
-        ? `${classResetTargets.length} student(s) updated. ${getClassExtendScopeLabel()} extended by ${classExtendMinutes} minutes.`
-        : `${classResetTargets.length} student(s) reset successfully.`,
+        ? `${classExtendTargets.length} student(s) updated. ${getClassExtendScopeLabel()} extended by ${classExtendMinutes} minutes.`
+        : `${classResumeTargets.length} student(s) updated successfully.`,
     })
     setClassResetModal(false)
   }
 
-  const canUseResumeExtend = (student) => {
+  const canUseResumeExtend = (student, section = '') => {
     const statusText = String(student.overallStatus || '').toLowerCase()
     const hasActiveViolation = Boolean(student.invigilatorLock?.active)
       || statusText.includes('locked')
       || statusText.includes('violation')
       || statusText.includes('fullscreen violation')
     const isCompleted = statusText === 'completed' || statusText.includes('completed due to fullscreen violation limit')
+    const isBlockedByAccessRequest = isStudentViolationRequiringRequest(student)
 
-    if (controlsDisabled) return false
+    if (schedule.status !== 'live') return false
     if (student.attendance !== 'P') return false
+    if (isBlockedByAccessRequest) return false
     if (isCompleted && !hasActiveViolation) return false
+    if (section && isSplitHybrid) {
+      const sectionIndex = splitOrder.indexOf(section)
+      const sectionParts = sectionIndex >= 0 ? getSplitSectionLiveDurationParts(student, sectionIndex) : null
+      if (!sectionParts || ['waiting', 'done', 'done-with-extension', 'empty'].includes(sectionParts.mode)) return false
+      const sectionStatus = getSplitSectionStatus(student, sectionIndex)
+      if (sectionStatus.className !== 'in-progress' && sectionStatus.className !== 'violation') return false
+    }
 
     return true
   }
 
-  const renderResumeExtendButton = (student, section = '') => (
+const renderResumeExtendButton = (student, section = '') => {
+  const isBlockedByAccessRequest = isStudentViolationRequiringRequest(student)
+  const isAllowed = canUseResumeExtend(student, section)
+  const resumeDisabledReason = isAllowed
+    ? ''
+    : isBlockedByAccessRequest
+      ? 'Access request required before Resume & Extend.'
+      : 'Action unavailable for this row'
+
+  return (
     <button
       type="button"
       className="exam-controls-extend-btn"
-      disabled={!canUseResumeExtend(student)}
+      disabled={!isAllowed}
       onClick={() => openResumeExtendModal(student, section)}
-      title={!canUseResumeExtend(student) && isFinalFiveMinutes ? 'Controls disabled in final 5 minutes' : undefined}
+      title={resumeDisabledReason || undefined}
     >
       Resume & Extend
     </button>
   )
+}
 
   const getLiveDurationParts = ({
     startAt,
@@ -1227,11 +1356,9 @@ function ExamControlsPage({ onNavigate }) {
 
   const getOverallStatusLabel = (student) => {
     const statusText = String(student.overallStatus || '').toLowerCase()
-    if (statusText === 'completed due to fullscreen violation limit') {
-      return 'Completed,Violation'
+    if (statusText.includes('locked') || statusText.includes('violation') || statusText.includes('fullscreen violation')) {
+      return 'Violation'
     }
-    if (statusText.includes('locked')) return 'Violation'
-    if (statusText.includes('fullscreen violation')) return 'Violation'
     if (statusText.includes('completed')) return 'Completed'
     return 'In Progress'
   }
@@ -1255,27 +1382,86 @@ function ExamControlsPage({ onNavigate }) {
     }
   }
 
+  const getSplitSectionWindow = (student, sectionIndex) => {
+    if (student.attendance !== 'P' || !student.startTime) return null
+
+    const toMs = (minutes) => Math.max(0, Number(minutes || 0)) * 60 * 1000
+    const getSectionConfig = (section) => {
+      const isMcq = section === 'mcq'
+      return {
+        duration: isMcq ? mcqDurationMinutes : descriptiveDurationMinutes,
+        extensionMinutes: isMcq ? Number(student.mcqExtensionMinutes || 0) : Number(student.descriptiveExtensionMinutes || 0),
+        liveUntilMs: Number((isMcq ? student.mcqLiveUntilMs : student.descriptiveLiveUntilMs) || 0),
+      }
+    }
+
+    let sectionStartAt = student.startTime.getTime()
+    for (let index = 0; index < sectionIndex; index += 1) {
+      const prevSection = splitOrder[index]
+      const previous = getSectionConfig(prevSection)
+      const previousBaseEndAt = sectionStartAt + toMs(previous.duration)
+      const previousExtensionEndAt = Math.max(
+        previousBaseEndAt + toMs(previous.extensionMinutes),
+        previous.liveUntilMs,
+      )
+      sectionStartAt = previousExtensionEndAt
+    }
+
+    const section = splitOrder[sectionIndex]
+    const sectionConfig = getSectionConfig(section)
+    const sectionBaseEndAt = sectionStartAt + toMs(sectionConfig.duration)
+    const sectionExtensionEndAt = Math.max(
+      sectionBaseEndAt + toMs(sectionConfig.extensionMinutes),
+      sectionConfig.liveUntilMs,
+    )
+
+    return {
+      section,
+      sectionIndex,
+      duration: sectionConfig.duration,
+      extensionMinutes: sectionConfig.extensionMinutes,
+      sectionStartAt,
+      sectionBaseEndAt,
+      sectionExtensionEndAt,
+      sectionLiveUntilMs: sectionConfig.liveUntilMs,
+    }
+  }
+
   const getSplitSectionLiveDurationParts = (student, sectionIndex) => {
     if (student.attendance !== 'P') return { base: '-', extension: '', mode: 'empty', title: 'Student absent' }
     if (!student.startTime) return { base: '-', extension: '', mode: 'empty', title: 'Student has not logged in' }
     if (student.hasSubmissionAfterExtension) return { base: '00:00', extension: '', mode: 'done', title: 'Exam submitted' }
 
-    const previousMinutes = splitOrder.slice(0, sectionIndex).reduce((sum, section) => (
-      sum + getSplitSectionMinutes(student, section).total
-    ), 0)
-    const section = splitOrder[sectionIndex]
-    const { total, duration, extension } = getSplitSectionMinutes(student, section)
-    if (!total) return { base: '-', extension: '', mode: 'empty', title: 'Timer unavailable' }
+    const sectionWindow = getSplitSectionWindow(student, sectionIndex)
+    if (!sectionWindow) return { base: '-', extension: '', mode: 'empty', title: 'Timer unavailable' }
 
-    const sectionStartAt = student.startTime.getTime() + (previousMinutes * 60 * 1000)
-    const sectionLiveUntilMs = Number((section === 'mcq' ? student.mcqLiveUntilMs : student.descriptiveLiveUntilMs) || 0)
+    const section = splitOrder[sectionIndex]
+    const { duration, extension } = getSplitSectionMinutes(student, section)
+    if (!duration) return { base: '-', extension: '', mode: 'empty', title: 'Timer unavailable' }
+
+    const {
+      sectionStartAt,
+      sectionLiveUntilMs,
+      sectionExtensionEndAt,
+    } = sectionWindow
     const nowMs = now.getTime()
     if (String(student.overallStatus || '').toLowerCase() === 'completed' && !sectionLiveUntilMs) {
       return { base: '00:00', extension: '', mode: 'done', title: 'Exam timer completed' }
     }
 
     if (nowMs < sectionStartAt) {
-      return { base: formatCountdown(sectionStartAt - nowMs), extension: '', mode: 'waiting', title: 'Section starts after the previous section' }
+      return {
+        base: 'Waiting',
+        extension: extension > 0 ? formatCountdown(extension * 60 * 1000) : '',
+        mode: 'waiting',
+        title: extension > 0
+          ? 'Section is waiting. Extension duration is already added.'
+          : 'Section starts after the previous configured duration ends',
+      }
+    }
+
+    if (nowMs >= sectionExtensionEndAt) {
+      return { base: 'Completed', extension: '', mode: 'done', title: 'Section duration and extension completed' }
     }
 
     return getLiveDurationParts({
@@ -1292,6 +1478,81 @@ function ExamControlsPage({ onNavigate }) {
     return parts.mode === 'extension' ? renderExtensionOnlyDuration(parts) : renderLiveDuration(parts)
   }
 
+  const getSplitSectionStatus = (student, sectionIndex) => {
+    const statusText = String(student.overallStatus || '').toLowerCase()
+    if (statusText.includes('locked') || statusText.includes('violation') || statusText.includes('fullscreen violation')) {
+      return { label: 'Violation', className: 'violation' }
+    }
+    if (student.attendance !== 'P') return { label: 'Absent', className: 'absent' }
+
+    const parts = getSplitSectionLiveDurationParts(student, sectionIndex)
+    if (parts.mode === 'waiting') return { label: 'Waiting', className: 'waiting' }
+    if (parts.mode === 'done') return { label: 'Completed', className: 'completed' }
+    if (parts.mode === 'empty') return { label: 'Waiting', className: 'waiting' }
+    return { label: 'In Progress', className: 'in-progress' }
+  }
+
+  const getStudentActiveSplitSection = (student) => {
+    if (!isSplitHybrid || student.attendance !== 'P') return ''
+    const activeIndex = splitOrder.findIndex((section, sectionIndex) => {
+      const parts = getSplitSectionLiveDurationParts(student, sectionIndex)
+      return ['base', 'base-plus-extension', 'extension'].includes(parts.mode)
+    })
+    return activeIndex >= 0 ? splitOrder[activeIndex] : ''
+  }
+
+  const getSplitSectionDisplayLabel = (section) => {
+    const sectionIndex = splitOrder.indexOf(section)
+    const name = section === 'mcq' ? 'MCQ' : 'Descriptive'
+    return sectionIndex >= 0 ? `${name} (Sequence ${sectionIndex + 1})` : name
+  }
+
+  const classResumeSplitTarget = (() => {
+    if (!isSplitHybrid) {
+      return {
+        canExtend: true,
+        section: classResetForm.extendSection,
+        label: 'Full exam',
+        message: '',
+        targets: classResumeTargets,
+      }
+    }
+
+    const activeEntries = classResumeTargets
+      .map((student) => ({ student, section: getStudentActiveSplitSection(student) }))
+      .filter((item) => Boolean(item.section))
+    const activeSections = Array.from(new Set(activeEntries.map((item) => item.section)))
+
+    if (!activeEntries.length) {
+      return {
+        canExtend: false,
+        section: '',
+        label: 'No active section',
+        message: 'No live split section is available for the selected status.',
+        targets: [],
+      }
+    }
+
+    if (activeSections.length > 1) {
+      return {
+        canExtend: false,
+        section: '',
+        label: 'Mixed active sections',
+        message: 'Selected students are in different active sections. Choose a specific status or student to extend.',
+        targets: [],
+      }
+    }
+
+    const [section] = activeSections
+    return {
+      canExtend: true,
+      section,
+      label: getSplitSectionDisplayLabel(section),
+      message: '',
+      targets: activeEntries.map((item) => item.student),
+    }
+  })()
+
   const renderSimpleTable = () => (
     <div className="exam-controls-student-grid-wrap">
       <div className="exam-controls-student-grid" role="table" aria-label="Live exam tracking">
@@ -1306,8 +1567,11 @@ function ExamControlsPage({ onNavigate }) {
           <span role="columnheader">Overall Status</span>
         </div>
         <div className="exam-controls-student-grid-body">
-          {visibleStudents.map((student) => (
-            <div className="exam-controls-student-grid-row" role="row" key={student.id}>
+          {visibleStudents.map((student) => {
+            const rowStatus = getOverallStatusClassName(student)
+            const rowClassName = `exam-controls-student-grid-row ${rowStatus === 'violation' ? 'is-violation-row' : ''} ${student.accessRequest?.active ? 'has-access-request' : ''}`.trim()
+            return (
+            <div className={rowClassName} role="row" key={student.id}>
               <span className="exam-controls-student-cell is-student-id" role="cell"><strong>{student.id}</strong></span>
               <span className="exam-controls-student-cell is-attendance" role="cell">
                 <span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span>
@@ -1322,10 +1586,10 @@ function ExamControlsPage({ onNavigate }) {
               <span className="exam-controls-student-cell is-resume" role="cell">{renderResumeExtendButton(student)}</span>
               <span className="exam-controls-student-cell is-live-duration" role="cell">{renderStudentLiveDuration(student)}</span>
               <span className="exam-controls-student-cell is-overall" role="cell">
-                <span className={`exam-controls-overall is-${getOverallStatusClassName(student)}`}>{getOverallStatusLabel(student)}</span>
+                <span className={`exam-controls-overall is-${rowStatus}`}>{getOverallStatusLabel(student)}</span>
               </span>
             </div>
-          ))}
+          )})}
         </div>
       </div>
     </div>
@@ -1347,8 +1611,11 @@ function ExamControlsPage({ onNavigate }) {
           <span role="columnheader">Overall Status</span>
         </div>
         <div className="exam-controls-split-grid-body">
-          {visibleStudents.map((student) => (
-            <div className="exam-controls-split-grid-group" role="rowgroup" key={student.id}>
+          {visibleStudents.map((student) => {
+            const rowStatus = getOverallStatusClassName(student)
+            const rowClassName = `exam-controls-split-grid-group ${rowStatus === 'violation' ? 'is-violation-row' : ''} ${student.accessRequest?.active ? 'has-access-request' : ''}`.trim()
+            return (
+            <div className={rowClassName} role="rowgroup" key={student.id}>
               <span className="exam-controls-split-cell is-student-id" role="cell"><strong>{student.id}</strong></span>
               <span className="exam-controls-split-cell is-attendance" role="cell">
                 <span className={`exam-controls-attendance is-${student.attendance.toLowerCase()}`}>{student.attendance}</span>
@@ -1363,6 +1630,7 @@ function ExamControlsPage({ onNavigate }) {
               {splitOrder.map((section, sectionIndex) => {
             const isMcq = section === 'mcq'
             const sectionTiming = getSplitSectionMinutes(student, section)
+            const sectionStatus = getSplitSectionStatus(student, sectionIndex)
             return (
                   <Fragment
                 key={`${student.id}-${section}`}
@@ -1382,13 +1650,13 @@ function ExamControlsPage({ onNavigate }) {
                       {renderSplitSectionLiveDuration(student, sectionIndex)}
                     </span>
                     <span className={`exam-controls-split-cell is-overall is-section-${sectionIndex + 1}`} role="cell">
-                      <span className={`exam-controls-overall is-${getOverallStatusClassName(student)}`}>{getOverallStatusLabel(student)}</span>
+                      <span className={`exam-controls-overall is-${sectionStatus.className}`}>{sectionStatus.label}</span>
                     </span>
                   </Fragment>
             )
               })}
             </div>
-          ))}
+          )})}
         </div>
       </div>
     </div>
@@ -1467,7 +1735,7 @@ function ExamControlsPage({ onNavigate }) {
 
           {isFinalFiveMinutes ? (
             <div className="exam-controls-final-warning">
-              Controls disabled in final 5 minutes. Resume & Extend actions are unavailable for students.
+              Final 5 minutes warning: please review student states carefully.
             </div>
           ) : null}
         </section>
@@ -1492,7 +1760,7 @@ function ExamControlsPage({ onNavigate }) {
                 className="exam-controls-class-reset-btn"
                 disabled={controlsDisabled}
                 onClick={openClassReset}
-                title={controlsDisabled ? 'Controls disabled in final 5 minutes' : 'Reset class attempts'}
+                title={controlsDisabled ? 'Exam is not live' : 'Reset class attempts'}
               >
                 Overall Class Reset
               </button>
@@ -1528,6 +1796,35 @@ function ExamControlsPage({ onNavigate }) {
             <p className="exam-controls-modal-summary">
               Invigilator action required. Apply only after verifying the student.
             </p>
+
+            <div className="exam-controls-resume-card">
+              <div className="exam-controls-resume-field">
+                <span className="exam-controls-resume-label">
+                  Restore access only
+                  <Info
+                    size={14}
+                    strokeWidth={2.3}
+                    aria-hidden="true"
+                    title="Yes will clear invigilator lock and allow the student to continue."
+                  />
+                </span>
+                <div className="exam-controls-toggle-group" role="group" aria-label="Restore access only">
+                  {['no', 'yes'].map((value) => (
+                    <button
+                      type="button"
+                      key={value}
+                      className={extendForm.restoreAccessOnly === value ? 'is-selected' : ''}
+                      onClick={() => {
+                        setExtendError('')
+                        setExtendForm((current) => ({ ...current, restoreAccessOnly: value }))
+                      }}
+                    >
+                      {value === 'yes' ? 'Yes' : 'No'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
             <div className="exam-controls-resume-card">
               <div className="exam-controls-resume-field">
@@ -1701,16 +1998,16 @@ function ExamControlsPage({ onNavigate }) {
 
       {classResetModal ? renderModalPortal((
         <div className="exam-controls-modal-backdrop" role="presentation">
-          <section className="exam-controls-modal exam-controls-class-reset-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-class-reset-title">
+          <section className="exam-controls-modal exam-controls-resume-modal exam-controls-overall-resume-modal" role="dialog" aria-modal="true" aria-labelledby="exam-controls-class-reset-title">
             <div className="exam-controls-resume-head">
               <span className="exam-controls-modal-icon is-reset" aria-hidden="true">
                 <TimerReset size={24} strokeWidth={2.3} />
               </span>
               <div className="exam-controls-resume-title">
-                <h2 id="exam-controls-class-reset-title">Overall Class Reset</h2>
+                <h2 id="exam-controls-class-reset-title">Overall Resume &amp; Extend</h2>
                 <span className="exam-controls-resume-name-row">
                   <strong>{assessment?.assessmentName || 'Assessment'}</strong>
-                  <em className="is-id">Students: {classResetTargets.length}</em>
+                  <em className="is-id">Selected: {classResumeTargets.length}</em>
                   <em className={isProctored ? 'is-proctored' : 'is-practice'}>
                     {assessment.supervisionType || (isProctored ? 'Proctored' : 'Practice')}
                   </em>
@@ -1720,116 +2017,135 @@ function ExamControlsPage({ onNavigate }) {
               </div>
             </div>
             <p className="exam-controls-modal-summary">
-              Choose only the actions approved by the invigilator. The reset applies to all eligible students in this assessment.
+              Select one status group. Resume &amp; Extend applies only to that group. Absent students are excluded.
             </p>
 
-            <div className="exam-controls-class-panel">
-              <div className="exam-controls-class-panel-head">
-                <strong>Current exam status</strong>
-                <span>{isSplitHybrid ? 'Duration split exam' : 'Single duration exam'}</span>
+            <div className="exam-controls-resume-card">
+              <div className="exam-controls-extension-copy">
+                <strong>Apply to status</strong>
+                <span>Choose one group. Absent students are not included.</span>
               </div>
-              <div className="exam-controls-class-status-grid">
-                {getClassResetTimeRows().map((item) => (
-                  <span className="exam-controls-class-status-item" key={item.label}>
-                    <em>{item.label}</em>
-                    <strong>{item.value}</strong>
-                    <small>Already added: {item.extension}</small>
-                  </span>
+              <div className="exam-controls-class-status-filter" role="group" aria-label="Resume and extend status target">
+                {CLASS_RESUME_STATUS_OPTIONS.map((item) => (
+                  <button
+                    type="button"
+                    key={item.value}
+                    className={classResetForm.targetStatus === item.value ? 'is-selected' : ''}
+                    onClick={() => updateClassResetForm('targetStatus', item.value)}
+                  >
+                    <span>{item.label}</span>
+                    <em>{classResumeStatusCounts[item.value] || 0}</em>
+                  </button>
                 ))}
-                {isProctored ? (
-                  <span className="exam-controls-class-status-item is-warning">
-                    <em>Violations</em>
-                    <strong>{getClassViolationCount()}</strong>
-                    <small>Students with lock or violation</small>
-                  </span>
-                ) : null}
               </div>
+              {classResumeTargets.length ? (
+                <p className="exam-controls-form-hint">{classResumeTargets.length} non-absent student(s) selected.</p>
+              ) : (
+                <p className="exam-controls-form-error">No students available for this status.</p>
+              )}
             </div>
 
-            <div className="exam-controls-class-panel">
-              <div className="exam-controls-class-panel-head">
-                <strong>Reset actions</strong>
-                <span>Select access, answers, or timer reset actions.</span>
-              </div>
-              <div className="exam-controls-class-option-list">
-                <button
-                  type="button"
-                  className={classResetForm.resetAccess === 'yes' ? 'exam-controls-class-option is-selected' : 'exam-controls-class-option'}
-                  onClick={() => updateClassResetForm('resetAccess', classResetForm.resetAccess === 'yes' ? 'no' : 'yes')}
-                >
-                  <span className="exam-controls-class-check" aria-hidden="true">
-                    {classResetForm.resetAccess === 'yes' ? <CheckCircle2 size={16} strokeWidth={2.4} /> : null}
-                  </span>
-                  <span>
-                    <strong>Restore exam access</strong>
-                    <em>
-                      Enables Start Assessment again.
-                      {isProctored ? ' Also clears violation locks for proctored exams.' : ''}
-                    </em>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={classResetForm.clearAnswers === 'yes' ? 'exam-controls-class-option is-selected is-danger' : 'exam-controls-class-option'}
-                  onClick={() => updateClassResetForm('clearAnswers', classResetForm.clearAnswers === 'yes' ? 'no' : 'yes')}
-                >
-                  <span className="exam-controls-class-check" aria-hidden="true">
-                    {classResetForm.clearAnswers === 'yes' ? <CheckCircle2 size={16} strokeWidth={2.4} /> : null}
-                  </span>
-                  <span>
-                    <strong>Clear saved answers</strong>
-                    <em>Removes saved student answers and starts attempts fresh.</em>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={classResetForm.completeTimeReset === 'yes' ? 'exam-controls-class-option is-selected' : 'exam-controls-class-option'}
-                  onClick={() => updateClassResetForm('completeTimeReset', classResetForm.completeTimeReset === 'yes' ? 'no' : 'yes')}
-                >
-                  <span className="exam-controls-class-check" aria-hidden="true">
-                    {classResetForm.completeTimeReset === 'yes' ? <CheckCircle2 size={16} strokeWidth={2.4} /> : null}
-                  </span>
-                  <span>
-                    <strong>Reset exam time</strong>
-                    <em>
-                      {isSplitHybrid
-                        ? `Restores MCQ to ${formatDuration(mcqDurationMinutes)} and Descriptive to ${formatDuration(descriptiveDurationMinutes)}.`
-                        : `Restores full exam time to ${formatDuration(baseDurationMinutes)}.`}
-                    </em>
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="exam-controls-class-panel">
-              <div className="exam-controls-class-panel-head">
-                <strong>Add extra time</strong>
-                <span>This adds new extension minutes. It does not reset saved answers.</span>
-              </div>
-              {isSplitHybrid ? (
-                <div className="exam-controls-class-targets" role="group" aria-label="Extension target">
-                  {[
-                    { value: 'both', label: 'Both sections' },
-                    { value: 'mcq', label: 'MCQ only' },
-                    { value: 'descriptive', label: 'Descriptive only' },
-                  ].map((item) => (
+            <div className="exam-controls-resume-card">
+              <div className="exam-controls-resume-field">
+                <span className="exam-controls-resume-label">
+                  Clear answer
+                  <Info
+                    size={14}
+                    strokeWidth={2.3}
+                    aria-hidden="true"
+                    title="Yes will remove saved answers for the selected students before resuming."
+                  />
+                </span>
+                <div className="exam-controls-toggle-group" role="group" aria-label="Clear class answers">
+                  {['no', 'yes'].map((value) => (
                     <button
                       type="button"
-                      key={item.value}
-                      className={classResetForm.extendSection === item.value ? 'is-selected' : ''}
-                      onClick={() => updateClassResetForm('extendSection', item.value)}
+                      key={value}
+                      className={classResetForm.clearAnswers === value ? 'is-selected' : ''}
+                      onClick={() => updateClassResetForm('clearAnswers', value)}
                     >
-                      {item.label}
+                      {value === 'yes' ? 'Yes' : 'No'}
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {classResetForm.clearAnswers === 'yes' ? (
+                <p className="exam-controls-inline-warning">Selected student answers will be cleared after submit.</p>
               ) : null}
-              <div className="exam-controls-class-quick-row" role="group" aria-label="Quick class extension minutes">
+            </div>
+
+            <div className="exam-controls-resume-card">
+              <div className="exam-controls-resume-field">
+                <span className="exam-controls-resume-label">
+                  Complete time reset
+                  <Info
+                    size={14}
+                    strokeWidth={2.3}
+                    aria-hidden="true"
+                    title="Yes will reset the selected exam or section timer to its full configured duration."
+                  />
+                </span>
+                {classResetForm.completeTimeReset === 'yes' ? (
+                  <em>Extra time fields are hidden because full time reset is selected.</em>
+                ) : null}
+                <div className="exam-controls-toggle-group" role="group" aria-label="Complete class time reset">
+                  {['no', 'yes'].map((value) => (
+                    <button
+                      type="button"
+                      key={value}
+                      className={classResetForm.completeTimeReset === value ? 'is-selected' : ''}
+                      onClick={() => {
+                        setClassResetError('')
+                        setClassResetForm((current) => ({
+                          ...current,
+                          completeTimeReset: value,
+                          quickMinutes: value === 'yes' ? '' : current.quickMinutes,
+                          customMinutes: value === 'yes' ? '' : current.customMinutes,
+                        }))
+                      }}
+                    >
+                      {value === 'yes' ? 'Yes' : 'No'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {classResetForm.completeTimeReset === 'yes' ? (
+                <div className="exam-controls-duration-reset-badge">
+                  Full time will be reset to: {isSplitHybrid
+                    ? `MCQ ${formatDuration(mcqDurationMinutes)} / Descriptive ${formatDuration(descriptiveDurationMinutes)}`
+                    : formatDuration(baseDurationMinutes)}
+                </div>
+              ) : null}
+            </div>
+
+            {classResetForm.completeTimeReset === 'yes' ? (
+              null
+            ) : (
+            <div className="exam-controls-resume-card">
+              <div className="exam-controls-extension-copy">
+                <strong>Add extra time</strong>
+                <span>{isSplitHybrid ? 'Extra time applies only to the currently live section.' : 'Choose quick minutes or enter custom minutes.'}</span>
+              </div>
+              {isSplitHybrid ? (
+                <div className={`exam-controls-active-section-note ${classResumeSplitTarget.canExtend ? 'is-ready' : 'is-blocked'}`.trim()}>
+                  <span>{classResumeSplitTarget.canExtend ? 'Extending' : 'Extension paused'}</span>
+                  <strong>{classResumeSplitTarget.label}</strong>
+                  {classResumeSplitTarget.canExtend ? (
+                    <em>{classResumeSplitTarget.targets.length} active student(s)</em>
+                  ) : (
+                    <em>{classResumeSplitTarget.message}</em>
+                  )}
+                </div>
+              ) : null}
+              <div className="exam-controls-extension-options" role="group" aria-label="Quick class extension minutes">
                 {[5, 10, 15].map((minutes) => (
                   <button
                     type="button"
                     key={minutes}
                     className={Number(classResetForm.quickMinutes) === minutes ? 'is-selected' : ''}
+                    disabled={isSplitHybrid && !classResumeSplitTarget.canExtend}
                     onClick={() => updateClassResetForm('quickMinutes', Number(classResetForm.quickMinutes) === minutes ? '' : String(minutes))}
                   >
                     +{minutes} min
@@ -1837,11 +2153,12 @@ function ExamControlsPage({ onNavigate }) {
                 ))}
               </div>
               <label className="exam-controls-minute-input">
-                <span>Custom extra time</span>
+                <span>Extend time</span>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={classResetForm.customMinutes}
+                  disabled={isSplitHybrid && !classResumeSplitTarget.canExtend}
                   onChange={(event) => updateClassResetForm('customMinutes', event.target.value.replace(/\s+/g, ''))}
                   onFocus={() => updateClassResetForm('quickMinutes', '')}
                   placeholder="Enter minutes"
@@ -1850,33 +2167,17 @@ function ExamControlsPage({ onNavigate }) {
               </label>
               {classResetError || getClassExtendError() ? (
                 <p className="exam-controls-form-error">{classResetError || getClassExtendError()}</p>
+              ) : isSplitHybrid && !classResumeSplitTarget.canExtend ? (
+                <p className="exam-controls-form-error">{classResumeSplitTarget.message}</p>
               ) : (
                 <p className="exam-controls-form-hint">Maximum allowed extension is 90 minutes.</p>
               )}
             </div>
-
-            <div className="exam-controls-class-panel">
-              <div className="exam-controls-class-panel-head">
-                <strong>Impact summary</strong>
-                <span>Review before applying the reset.</span>
-              </div>
-              <div className="exam-controls-class-impact-list">
-                <span>
-                  <em>Students affected</em>
-                  <strong>{classResetTargets.length}</strong>
-                </span>
-                {getClassResetImpactRows().map((item) => (
-                  <span key={item.label}>
-                    <em>{item.label}</em>
-                    <strong>{item.value}</strong>
-                  </span>
-                ))}
-              </div>
-            </div>
+            )}
 
             <div className="exam-controls-modal-actions">
               <button type="button" className="is-secondary" onClick={() => setClassResetModal(false)}>Cancel</button>
-              <button type="button" onClick={confirmClassReset} disabled={!hasClassResetAction()}>Apply Class Reset</button>
+              <button type="button" onClick={confirmClassReset} disabled={!hasClassResetAction() || !classResumeTargets.length}>Apply Changes</button>
             </div>
           </section>
         </div>
