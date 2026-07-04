@@ -30,10 +30,6 @@ const CONTROL_STUDENTS = [
 ]
 
 const CLASS_RESUME_STATUS_OPTIONS = [
-  { value: 'all', label: 'All' },
-  { value: 'waiting', label: 'Waiting' },
-  { value: 'in-progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
   { value: 'violation', label: 'Violation' },
 ]
 
@@ -354,7 +350,7 @@ function ExamControlsPage({ onNavigate }) {
     quickMinutes: '',
     customMinutes: '',
     extendSection: 'full',
-    targetStatus: 'all',
+    targetStatus: 'violation',
   })
   const [classResetError, setClassResetError] = useState('')
   const [logModal, setLogModal] = useState(null)
@@ -488,21 +484,21 @@ function ExamControlsPage({ onNavigate }) {
           : 'Waiting'
     const persistedStatus = state.overallStatus || ''
     const isFullscreenLimitCompleted = invigilatorLock?.exhausted || persistedStatus === 'Completed due to fullscreen violation limit'
-    const overallStatus = invigilatorLock?.active
-      ? 'Locked'
-      : isFullscreenLimitCompleted
-        ? 'Completed due to fullscreen violation limit'
-        : submittedStatus
-          ? completedSubmissionStatus
-          : !isPresent
+    const overallStatus = !isPresent
       ? 'Absent'
-      : hasSubmissionAfterExtension
-        ? completedSubmissionStatus
-        : hasLiveExtension
-          ? 'In progress'
-        : persistedStatus === 'In progress' && schedule.status === 'completed'
-          ? 'Completed'
-          : persistedStatus || status
+      : invigilatorLock?.active
+        ? 'Locked'
+        : isFullscreenLimitCompleted
+          ? 'Completed due to fullscreen violation limit'
+          : submittedStatus
+            ? completedSubmissionStatus
+            : hasSubmissionAfterExtension
+              ? completedSubmissionStatus
+              : hasLiveExtension
+                ? 'In progress'
+                : persistedStatus === 'In progress' && schedule.status === 'completed'
+                  ? 'Completed'
+                  : persistedStatus || status
 
     return {
       ...student,
@@ -559,6 +555,7 @@ function ExamControlsPage({ onNavigate }) {
 
   const getClassResumeStatus = (student) => {
     if (student.attendance !== 'P') return 'absent'
+    if (!isProctored) return 'not-eligible'
     const statusText = String(student.overallStatus || '').toLowerCase()
     if (
       Boolean(student.invigilatorLock?.active)
@@ -571,25 +568,19 @@ function ExamControlsPage({ onNavigate }) {
     return 'in-progress'
   }
 
-  const isStudentViolationRequiringRequest = (student) => {
-    if (!isProctored) return false
-    const statusText = String(student.overallStatus || '').toLowerCase()
-    const hasActiveViolation = Boolean(student.invigilatorLock?.active)
-      || statusText.includes('locked')
-      || statusText.includes('violation')
-      || statusText.includes('fullscreen violation')
-      || statusText.includes('completed due to fullscreen violation limit')
+  const isStudentViolationActive = (student) => (
+    isProctored
+    && student.attendance === 'P'
+    && Boolean(student.invigilatorLock?.active)
+  )
 
-    return hasActiveViolation && !Boolean(student.accessRequest?.active)
+  const isStudentViolationRequiringRequest = (student) => {
+    return isStudentViolationActive(student) && !Boolean(student.accessRequest?.active)
   }
 
   const classResumeTargets = useMemo(() => (
-    students.filter((student) => {
-      const status = getClassResumeStatus(student)
-      if (status === 'absent') return false
-      return classResetForm.targetStatus === 'all' || status === classResetForm.targetStatus
-    })
-  ), [classResetForm.targetStatus, students])
+    students.filter((student) => isStudentViolationActive(student))
+  ), [students])
 
   const classResumeStatusCounts = useMemo(() => {
     const counts = CLASS_RESUME_STATUS_OPTIONS.reduce((next, item) => ({ ...next, [item.value]: 0 }), {})
@@ -907,7 +898,7 @@ function ExamControlsPage({ onNavigate }) {
           fullscreenExitCount: Number(previous.fullscreenExitCount ?? previous.fullscreenViolationTotal ?? previous.invigilatorLock?.exitCount ?? 0),
           fullscreenViolationTotal: Number(previous.fullscreenViolationTotal ?? previous.fullscreenExitCount ?? previous.invigilatorLock?.exitCount ?? 0),
           invigilatorLock: null,
-          overallStatus: 'Waiting',
+          overallStatus: shouldResetAccess ? 'In progress' : previous.overallStatus || 'Waiting',
         },
       }
     })
@@ -931,7 +922,7 @@ function ExamControlsPage({ onNavigate }) {
       quickMinutes: '',
       customMinutes: '',
       extendSection: isSplitHybrid ? 'both' : 'full',
-      targetStatus: 'all',
+      targetStatus: 'violation',
     })
     setClassResetError('')
     setClassResetModal(true)
@@ -1221,19 +1212,13 @@ function ExamControlsPage({ onNavigate }) {
   }
 
   const canUseResumeExtend = (student, section = '') => {
-    const statusText = String(student.overallStatus || '').toLowerCase()
-    const hasActiveViolation = Boolean(student.invigilatorLock?.active)
-      || statusText.includes('locked')
-      || statusText.includes('violation')
-      || statusText.includes('fullscreen violation')
-    const isCompleted = statusText === 'completed' || statusText.includes('completed due to fullscreen violation limit')
-    const isBlockedByAccessRequest = isStudentViolationRequiringRequest(student)
-
     if (schedule.status !== 'live') return false
+    if (!isProctored) return false
     if (student.attendance !== 'P') return false
-    if (isBlockedByAccessRequest) return false
-    if (isCompleted && !hasActiveViolation) return false
+    if (!isStudentViolationActive(student)) return false
     if (section && isSplitHybrid) {
+      const activeSplitSection = getStudentActiveSplitSection(student)
+      if (activeSplitSection && section !== activeSplitSection) return false
       const sectionIndex = splitOrder.indexOf(section)
       const sectionParts = sectionIndex >= 0 ? getSplitSectionLiveDurationParts(student, sectionIndex) : null
       if (!sectionParts || ['waiting', 'done', 'done-with-extension', 'empty'].includes(sectionParts.mode)) return false
@@ -1242,16 +1227,21 @@ function ExamControlsPage({ onNavigate }) {
     }
 
     return true
-  }
+}
 
 const renderResumeExtendButton = (student, section = '') => {
-  const isBlockedByAccessRequest = isStudentViolationRequiringRequest(student)
   const isAllowed = canUseResumeExtend(student, section)
   const resumeDisabledReason = isAllowed
     ? ''
-    : isBlockedByAccessRequest
-      ? 'Access request required before Resume & Extend.'
-      : 'Action unavailable for this row'
+    : student.attendance !== 'P'
+      ? 'Absent students cannot be resumed or extended.'
+      : !isProctored
+        ? 'Resume & Extend is only for proctored violation recovery.'
+        : schedule.status !== 'live'
+          ? 'Exam is not live.'
+          : !isStudentViolationActive(student)
+            ? 'Available only when the student status is Violation.'
+            : 'Action unavailable for this row.'
 
   return (
     <button
@@ -1356,18 +1346,22 @@ const renderResumeExtendButton = (student, section = '') => {
 
   const getOverallStatusLabel = (student) => {
     const statusText = String(student.overallStatus || '').toLowerCase()
+    if (student.attendance !== 'P' || statusText.includes('absent')) return 'Absent'
     if (statusText.includes('locked') || statusText.includes('violation') || statusText.includes('fullscreen violation')) {
       return 'Violation'
     }
     if (statusText.includes('completed')) return 'Completed'
+    if (statusText.includes('waiting')) return 'Waiting'
     return 'In Progress'
   }
 
   const getOverallStatusClassName = (student) => {
     const statusText = String(student.overallStatus || '').toLowerCase()
+    if (student.attendance !== 'P' || statusText.includes('absent')) return 'absent'
     if (statusText === 'completed due to fullscreen violation limit') return 'violation'
     if (statusText.includes('locked') || statusText.includes('fullscreen violation') || statusText.includes('violation')) return 'violation'
     if (statusText.includes('completed')) return 'completed'
+    if (statusText.includes('waiting')) return 'waiting'
     return 'in-progress'
   }
 
@@ -1480,10 +1474,10 @@ const renderResumeExtendButton = (student, section = '') => {
 
   const getSplitSectionStatus = (student, sectionIndex) => {
     const statusText = String(student.overallStatus || '').toLowerCase()
+    if (student.attendance !== 'P' || statusText.includes('absent')) return { label: 'Absent', className: 'absent' }
     if (statusText.includes('locked') || statusText.includes('violation') || statusText.includes('fullscreen violation')) {
       return { label: 'Violation', className: 'violation' }
     }
-    if (student.attendance !== 'P') return { label: 'Absent', className: 'absent' }
 
     const parts = getSplitSectionLiveDurationParts(student, sectionIndex)
     if (parts.mode === 'waiting') return { label: 'Waiting', className: 'waiting' }
@@ -1569,7 +1563,7 @@ const renderResumeExtendButton = (student, section = '') => {
         <div className="exam-controls-student-grid-body">
           {visibleStudents.map((student) => {
             const rowStatus = getOverallStatusClassName(student)
-            const rowClassName = `exam-controls-student-grid-row ${rowStatus === 'violation' ? 'is-violation-row' : ''} ${student.accessRequest?.active ? 'has-access-request' : ''}`.trim()
+            const rowClassName = `exam-controls-student-grid-row ${rowStatus === 'violation' ? 'is-violation-row' : ''} ${rowStatus === 'violation' && student.accessRequest?.active ? 'has-access-request' : ''}`.trim()
             return (
             <div className={rowClassName} role="row" key={student.id}>
               <span className="exam-controls-student-cell is-student-id" role="cell"><strong>{student.id}</strong></span>
@@ -1613,7 +1607,7 @@ const renderResumeExtendButton = (student, section = '') => {
         <div className="exam-controls-split-grid-body">
           {visibleStudents.map((student) => {
             const rowStatus = getOverallStatusClassName(student)
-            const rowClassName = `exam-controls-split-grid-group ${rowStatus === 'violation' ? 'is-violation-row' : ''} ${student.accessRequest?.active ? 'has-access-request' : ''}`.trim()
+            const rowClassName = `exam-controls-split-grid-group ${rowStatus === 'violation' ? 'is-violation-row' : ''} ${rowStatus === 'violation' && student.accessRequest?.active ? 'has-access-request' : ''}`.trim()
             return (
             <div className={rowClassName} role="rowgroup" key={student.id}>
               <span className="exam-controls-split-cell is-student-id" role="cell"><strong>{student.id}</strong></span>
@@ -1758,11 +1752,19 @@ const renderResumeExtendButton = (student, section = '') => {
               <button
                 type="button"
                 className="exam-controls-class-reset-btn"
-                disabled={controlsDisabled}
+                disabled={controlsDisabled || !isProctored || !classResumeTargets.length}
                 onClick={openClassReset}
-                title={controlsDisabled ? 'Exam is not live' : 'Reset class attempts'}
+                title={
+                  controlsDisabled
+                    ? 'Exam is not live'
+                    : !isProctored
+                      ? 'Available only for proctored violation recovery'
+                      : !classResumeTargets.length
+                        ? 'No violation students available'
+                        : 'Resume and extend violation students'
+                }
               >
-                Overall Class Reset
+                Overall Resume &amp; Extend
               </button>
             </div>
           </div>
@@ -2017,21 +2019,21 @@ const renderResumeExtendButton = (student, section = '') => {
               </div>
             </div>
             <p className="exam-controls-modal-summary">
-              Select one status group. Resume &amp; Extend applies only to that group. Absent students are excluded.
+              Violation recovery only. This applies to present proctored students whose current status is Violation.
             </p>
 
             <div className="exam-controls-resume-card">
               <div className="exam-controls-extension-copy">
-                <strong>Apply to status</strong>
-                <span>Choose one group. Absent students are not included.</span>
+                <strong>Apply to violation students</strong>
+                <span>Absent, waiting, in-progress, completed, and practice exam students are excluded.</span>
               </div>
               <div className="exam-controls-class-status-filter" role="group" aria-label="Resume and extend status target">
                 {CLASS_RESUME_STATUS_OPTIONS.map((item) => (
                   <button
                     type="button"
                     key={item.value}
-                    className={classResetForm.targetStatus === item.value ? 'is-selected' : ''}
-                    onClick={() => updateClassResetForm('targetStatus', item.value)}
+                    className="is-selected"
+                    disabled
                   >
                     <span>{item.label}</span>
                     <em>{classResumeStatusCounts[item.value] || 0}</em>
@@ -2039,9 +2041,9 @@ const renderResumeExtendButton = (student, section = '') => {
                 ))}
               </div>
               {classResumeTargets.length ? (
-                <p className="exam-controls-form-hint">{classResumeTargets.length} non-absent student(s) selected.</p>
+                <p className="exam-controls-form-hint">{classResumeTargets.length} violation student(s) selected.</p>
               ) : (
-                <p className="exam-controls-form-error">No students available for this status.</p>
+                <p className="exam-controls-form-error">No violation students available.</p>
               )}
             </div>
 
