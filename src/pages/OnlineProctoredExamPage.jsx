@@ -27,7 +27,6 @@ const PROCTOR_LOCK_SECONDS = 30
 const PROCTOR_VIOLATION_COOLDOWN_MS = 650
 const PROCTOR_TOP_EDGE_GUARD_PX = 18
 const EXAM_HEARTBEAT_INTERVAL_MS = 5000
-const FULLSCREEN_EXIT_COMPLETE_LIMIT = 3
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
   { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
@@ -1384,66 +1383,35 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const nowIso = new Date().toISOString()
     const timeLabel = formatCompactTime(new Date())
 
-    if (nextExitCount >= FULLSCREEN_EXIT_COMPLETE_LIMIT) {
-      setInvigilatorLockNotice({
-        title: 'Exam Locked',
-        message: 'Maximum fullscreen exit limit reached. Contact invigilator/admin.',
-      })
-      setExamPause({
+    setInvigilatorLockNotice({
+      title: 'Exam Locked',
+      message: 'Contact invigilator to continue.',
+    })
+    setExamPause({
+      active: true,
+      message: 'Contact invigilator to continue.',
+      requiresFullscreen: false,
+    })
+    writeExamControlsState(assessment, CURRENT_STUDENT_ID, {
+      fullscreenExitCount: nextExitCount,
+      fullscreenViolationTotal: nextExitCount,
+      resumeUnlockedAt: '',
+      accessRequest: null,
+      invigilatorLock: {
         active: true,
-        message: 'Maximum fullscreen exit limit reached. Contact invigilator/admin.',
-        requiresFullscreen: false,
-      })
-      writeExamControlsState(assessment, CURRENT_STUDENT_ID, {
-        fullscreenExitCount: nextExitCount,
-        fullscreenViolationTotal: nextExitCount,
-        invigilatorLock: {
-          active: true,
-          exhausted: true,
-          lockedAt: nowIso,
-          reason,
-          exitCount: nextExitCount,
-          maxViolations: FULLSCREEN_EXIT_COMPLETE_LIMIT,
-        },
-        overallStatus: 'Locked',
-        logs: [{
-          id: `${CURRENT_STUDENT_ID}-fullscreen-completed-${Date.now()}`,
-          time: timeLabel,
-          action: 'Exam Locked',
-          remarks: `${reason} | Fullscreen exit ${nextExitCount}/${FULLSCREEN_EXIT_COMPLETE_LIMIT}.`,
-          faculty: 'System',
-        }, ...(currentState.logs || [])],
-      })
-    } else {
-      setInvigilatorLockNotice({
-        title: 'Exam Locked',
-        message: 'Contact invigilator to continue.',
-      })
-      setExamPause({
-        active: true,
-        message: 'Contact invigilator to continue.',
-        requiresFullscreen: false,
-      })
-      writeExamControlsState(assessment, CURRENT_STUDENT_ID, {
-        fullscreenExitCount: nextExitCount,
-        fullscreenViolationTotal: nextExitCount,
-        invigilatorLock: {
-          active: true,
-          lockedAt: nowIso,
-          reason,
-          exitCount: nextExitCount,
-          maxViolations: FULLSCREEN_EXIT_COMPLETE_LIMIT,
-        },
-        overallStatus: 'Locked',
-        logs: [{
-          id: `${CURRENT_STUDENT_ID}-fullscreen-lock-${Date.now()}`,
-          time: timeLabel,
-          action: 'Exam Locked',
-          remarks: `${reason} | Fullscreen exit ${nextExitCount}/${FULLSCREEN_EXIT_COMPLETE_LIMIT}. Reset student required from Exam Controls.`,
-          faculty: 'System',
-        }, ...(currentState.logs || [])],
-      })
-    }
+        lockedAt: nowIso,
+        reason,
+        exitCount: nextExitCount,
+      },
+      overallStatus: 'Violation',
+      logs: [{
+        id: `${CURRENT_STUDENT_ID}-fullscreen-lock-${Date.now()}`,
+        time: timeLabel,
+        action: 'Exam Locked',
+        remarks: `${reason} | Resume & Extend required from Exam Controls.`,
+        faculty: 'System',
+      }, ...(currentState.logs || [])],
+    })
 
     window.setTimeout(() => {
       onExit?.(APP_PAGES.MY_ASSESSMENT)
@@ -1592,19 +1560,10 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const controlsState = readExamControlsState(assessmentId)
     const studentState = controlsState[CURRENT_STUDENT_ID] || {}
     const isLocked = Boolean(studentState.invigilatorLock?.active)
-    const exitCount = Number(
-      studentState.invigilatorLock?.exitCount
-      ?? studentState.fullscreenViolationTotal
-      ?? (studentState.fullscreenExitCount || 0),
-    )
-    const isHardLock = Boolean(studentState.invigilatorLock?.exhausted)
-      || exitCount >= FULLSCREEN_EXIT_COMPLETE_LIMIT
 
     if (isLocked) {
       invigilatorLockInProgressRef.current = true
-      const message = isHardLock
-        ? 'Maximum fullscreen exit limit reached. Contact invigilator/admin.'
-        : 'Contact invigilator to continue.'
+      const message = 'Contact invigilator to continue.'
       if (!invigilatorLockNotice || invigilatorLockNotice.message !== message) {
         setInvigilatorLockNotice({
           title: 'Exam Locked',
@@ -1624,7 +1583,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     setInvigilatorLockNotice(null)
     setExamPause((current) => {
       if (!current.active) return current
-      if (!current.message.includes('Contact invigilator to continue') && !current.message.includes('Maximum fullscreen exit limit')) {
+      if (!current.message.includes('Contact invigilator to continue')) {
         return current
       }
       return {

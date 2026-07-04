@@ -92,35 +92,12 @@ const readAssessmentControlState = (assessment) => {
 
 const getStudentAssessmentLockState = (assessment, studentId = CURRENT_STUDENT_ID, now = new Date()) => {
   const state = readAssessmentControlState(assessment)?.[studentId] || {}
-  const lockedAt = Date.parse(state.invigilatorLock?.lockedAt || '')
-  const extensionUpdatedAt = Date.parse(state.extensionUpdatedAt || '')
-  const resumeUnlockedAt = Date.parse(state.resumeUnlockedAt || state.invigilatorLock?.unlockedAt || '')
-  const hasExplicitUnlock = Number.isFinite(resumeUnlockedAt)
-    && (!Number.isFinite(lockedAt) || resumeUnlockedAt >= lockedAt)
-  const hasResumeAfterLock = Number.isFinite(extensionUpdatedAt)
-    && (!Number.isFinite(lockedAt) || extensionUpdatedAt >= lockedAt)
-  const hasActiveResumeTime = [
-    state.liveUntilMs,
-    state.mcqLiveUntilMs,
-    state.descriptiveLiveUntilMs,
-  ].some((value) => Number(value || 0) > now.getTime())
-  const hasActiveLock = state.invigilatorLock?.active === true
-  const hasHardLock = hasActiveLock && state.invigilatorLock?.exhausted === true
-  const stateStatus = String(state.overallStatus || '').toLowerCase()
-  const hasViolationStatus = (
-    stateStatus.includes('locked')
-    || stateStatus.includes('violation')
-    || stateStatus.includes('fullscreen')
-  )
-  const hasRestoredStatus = stateStatus === 'in progress' || stateStatus === 'assessment live'
-  const hasRestoredAccess = hasExplicitUnlock || hasResumeAfterLock || hasActiveResumeTime || hasRestoredStatus
-  const isViolation = (hasActiveLock || hasHardLock || (hasViolationStatus && state.invigilatorLock?.active === true)) && !hasRestoredAccess
+  const isViolation = state.invigilatorLock?.active === true
   const isLocked = isViolation
 
   return {
     isLocked,
     isViolation,
-    isHardLocked: hasHardLock && !hasRestoredAccess,
     violationCount: Number(state.fullscreenViolationTotal ?? state.fullscreenExitCount ?? state.invigilatorLock?.exitCount ?? 0),
     accessRequested: isViolation && Boolean(state.accessRequest?.active),
   }
@@ -131,24 +108,30 @@ const requestProctorAccess = (assessment, studentId = CURRENT_STUDENT_ID) => {
     const state = readAssessmentControlState(assessment)
     if (!state || typeof state !== 'object') return false
     const studentState = state[studentId] || {}
+    const statusText = String(studentState.overallStatus || '').toLowerCase()
+    const hasViolationState = Boolean(studentState.invigilatorLock?.active)
+      || statusText.includes('violation')
+      || statusText.includes('locked')
+      || statusText.includes('fullscreen')
+    if (!hasViolationState) return false
     const nowIso = new Date().toISOString()
     const nextState = {
       ...state,
       [studentId]: {
-      ...studentState,
-      accessRequest: {
-        active: true,
-        requestedAt: nowIso,
-        requestedBy: studentId,
-        message: 'Student requested invigilator access after a proctoring violation.',
-      },
-      logs: [{
-        id: `${studentId}-access-request-${Date.now()}`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        action: 'Access Requested',
-        remarks: 'Student requested invigilator access after violation.',
-        faculty: 'System',
-      }, ...(studentState.logs || [])],
+        ...studentState,
+        accessRequest: {
+          active: true,
+          requestedAt: nowIso,
+          requestedBy: studentId,
+          message: 'Student requested invigilator access after a proctoring violation.',
+        },
+        logs: [{
+          id: `${studentId}-access-request-${Date.now()}`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          action: 'Access Requested',
+          remarks: 'Student requested invigilator access after violation.',
+          faculty: 'System',
+        }, ...(studentState.logs || [])],
       },
     }
     window.localStorage.setItem(
@@ -160,7 +143,6 @@ const requestProctorAccess = (assessment, studentId = CURRENT_STUDENT_ID) => {
     }))
     return true
   } catch {
-    // keep flow best-effort
     return false
   }
 }
@@ -626,30 +608,23 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                   const lockState = isProctoredExam ? getStudentAssessmentLockState(assessment, CURRENT_STUDENT_ID, scheduleNow) : null
                   const hasLockState = Boolean(lockState?.isLocked)
-                  const cardStatus = lockState?.isHardLocked
-                    ? { type: 'locked', label: 'Locked' }
-                    : hasLockState
+                  const cardStatus = hasLockState
                     ? { type: 'violation', label: 'Violation' }
                     : scheduleStatus
                   const isViolationCard = cardStatus?.type === 'violation'
-                  const isHardLockedCard = cardStatus?.type === 'locked'
-                  const isStartDisabled = scheduleStatus?.type === 'upcoming'
-                    || isHardLockedCard
-                    || (isViolationCard && Boolean(lockState?.accessRequested))
+                  const isStartDisabled = isViolationCard
+                    ? Boolean(lockState?.accessRequested)
+                    : scheduleStatus?.type === 'upcoming'
                   const actionLabel = cardStatus?.type === 'completed'
                     ? 'View Results'
-                    : isHardLockedCard
-                      ? 'Locked'
-                      : isViolationCard
-                        ? lockState?.accessRequested ? 'Request Sent' : 'Request Access'
-                        : 'Start Assessment'
+                    : isViolationCard
+                      ? lockState?.accessRequested ? 'Request Sent' : 'Request Access'
+                      : 'Start Assessment'
                   const actionClass = cardStatus?.type === 'completed'
                     ? 'results'
                     : isViolationCard
                       ? 'request'
-                      : isHardLockedCard
-                        ? 'locked'
-                        : 'start'
+                      : 'start'
                   const durationValue = scheduleStatus?.type === 'live'
                     ? formatAssessmentRemainingTime(scheduleStatus.remainingMs)
                     : assessment.totalDuration || '-'
