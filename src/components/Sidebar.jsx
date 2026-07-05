@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, X } from 'lucide-react'
+import { CornerDownRight, ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandLogoDark from '../assets/brand-logo-dark.svg'
 import brandMark from '../assets/brand-mark.svg'
@@ -111,11 +111,11 @@ export default function Sidebar({
                 <div
                   key={item.label}
                   ref={(node) => { groupRefs.current[item.label] = node }}
-                  className={`vx-link-group ${activeGroupMap[item.label] ? 'active' : ''}`}
+                  className={`vx-link-group ${activeGroupMap[item.label] ? 'active' : ''} ${openGroupLabel === item.label ? 'is-open' : ''}`}
                 >
                   <button
                     type="button"
-                    className={`vx-link vx-link-parent ${activeGroupMap[item.label] ? 'active' : ''}`}
+                    className={`vx-link vx-link-parent ${activeGroupMap[item.label] ? 'active' : ''} ${openGroupLabel === item.label ? 'is-open' : ''}`}
                     onClick={() => setOpenGroupLabel((current) => (current === item.label ? null : item.label))}
                     aria-expanded={openGroupLabel === item.label}
                   >
@@ -136,6 +136,9 @@ export default function Sidebar({
                         className={`vx-sublink ${(child.page ?? child.label) === activePage ? 'active' : ''}`}
                         onClick={() => handleSelectSidebarPage(child.page ?? child.label)}
                       >
+                        <span className="vx-sublink-arrow" aria-hidden="true">
+                          <CornerDownRight size={15} strokeWidth={2.4} />
+                        </span>
                         <span className="vx-sublink-icon" aria-hidden="true">
                           <child.icon size={14} strokeWidth={2} />
                         </span>

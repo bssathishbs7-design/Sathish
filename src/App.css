@@ -580,7 +580,27 @@
 }
 
 .vx-link-parent.active {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #4b635d;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.vx-link-parent.active.is-open {
+  color: #244f43;
+  background: #f2fbf7;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.vx-link-parent.active .vx-link-icon {
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.vx-link-parent.active.is-open .vx-link-icon {
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.08);
 }
 
 .vx-link-caret {
@@ -644,6 +664,7 @@
 }
 
 .vx-sublink {
+  position: relative;
   width: 100%;
   min-height: 44px;
   border: 1px solid transparent;
@@ -673,12 +694,26 @@
   transform: translateX(2px);
 }
 
+.vx-sublink-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  color: #64748b;
+  line-height: 1;
+}
+
 .vx-sublink.active {
   color: #0f6844;
-  background: linear-gradient(180deg, #effff7, #ddfff0);
-  border-color: #88ffd0;
-  font-weight: 500;
+  background: #eafff5;
+  border-color: rgba(95, 232, 177, 0.42);
+  font-weight: 750;
   box-shadow: 0 10px 22px rgba(95, 232, 177, 0.18);
+}
+
+.vx-sublink.active .vx-sublink-arrow {
+  color: #0f9f75;
 }
 
 .vx-sublink-icon {
@@ -2549,6 +2584,20 @@
   box-shadow: 0 14px 28px rgba(2, 6, 23, 0.22);
 }
 
+.theme-dark .vx-link-parent.active {
+  color: #cbd5e1;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.theme-dark .vx-link-parent.active.is-open {
+  color: #d7fff5;
+  background: rgba(45, 212, 191, 0.07);
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .theme-dark .vx-link-icon {
   color: #9fb0c3;
   background: rgba(148, 163, 184, 0.12);
@@ -2557,6 +2606,16 @@
 .theme-dark .vx-link.active .vx-link-icon {
   color: #7af0c1;
   background: rgba(122, 240, 193, 0.12);
+}
+
+.theme-dark .vx-link-parent.active .vx-link-icon {
+  color: #9fb0c3;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.theme-dark .vx-link-parent.active.is-open .vx-link-icon {
+  color: #99f6e4;
+  background: rgba(45, 212, 191, 0.1);
 }
 
 .theme-dark .vx-link-badge {
@@ -2583,10 +2642,18 @@
   border-color: rgba(122, 240, 193, 0.12);
 }
 
+.theme-dark .vx-sublink-arrow {
+  color: #94a3b8;
+}
+
 .theme-dark .vx-sublink.active {
   color: #7af0c1;
-  background: linear-gradient(180deg, rgba(122, 240, 193, 0.14), rgba(95, 232, 177, 0.08));
+  background: rgba(122, 240, 193, 0.12);
   border-color: rgba(122, 240, 193, 0.28);
+}
+
+.theme-dark .vx-sublink.active .vx-sublink-arrow {
+  color: #5eead4;
 }
 
 .theme-dark .vx-sublink-icon {
