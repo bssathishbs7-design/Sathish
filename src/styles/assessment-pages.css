@@ -5709,8 +5709,9 @@
 }
 
 .question-bank-non-create-page:has(.question-bank-metrics-landing) {
+  max-height: calc(100svh - 82px);
   overflow: auto;
-  padding: 12px;
+  padding: 12px 12px 120px;
   scrollbar-gutter: stable;
 }
 
@@ -28294,7 +28295,8 @@
 .question-bank-non-create-page.is-grid-view:not(.is-embedded):has(.question-bank-metrics-landing) {
   overflow-x: hidden;
   overflow-y: auto;
-  padding-bottom: 18px;
+  max-height: calc(100svh - 82px);
+  padding-bottom: 120px;
   scrollbar-gutter: stable;
 }
 
@@ -28305,7 +28307,7 @@
 }
 
 .question-bank-non-create-page.is-grid-view:not(.is-embedded):has(.question-bank-metrics-landing) .question-bank-metrics-landing {
-  padding-bottom: 18px;
+  padding-bottom: 32px;
 }
 
 .question-bank-overview-grid.is-calm {
@@ -29386,6 +29388,21 @@ body > .assessment-page-filter-menu {
 
 .question-bank-non-create-page.is-full-page.is-grid-view:not(.is-embedded) {
   overflow: hidden;
+}
+
+.question-bank-non-create-page.is-full-page.is-grid-view:not(.is-embedded):has(.question-bank-metrics-landing) {
+  height: calc(100svh - 82px);
+  max-height: calc(100svh - 82px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 120px;
+  scrollbar-gutter: stable;
+}
+
+.question-bank-non-create-page.is-full-page.is-grid-view:not(.is-embedded):has(.question-bank-metrics-landing) .question-bank-overview-shell {
+  height: auto;
+  min-height: max-content;
+  overflow: visible;
 }
 
 .question-bank-non-create-page.is-full-page.is-grid-view:not(.is-embedded) .question-bank-overview-shell:not(:has(.question-bank-metrics-landing)) {
