@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, Award, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Clock3, FileText, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, RotateCcw, Search, Sun, UserX, Users, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Award, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Clock3, Download, FileText, Filter, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, RotateCcw, Search, Sun, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -419,7 +419,8 @@ const readEvaluationStudents = (assessment, studentSessions = {}, submissionStat
 }
 
 export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 'light', onToggleTheme, view = 'list' }) {
-  const isStudentEvaluationView = view === 'student'
+  const isStudentResultView = view === 'result'
+  const isStudentEvaluationView = view === 'student' || isStudentResultView
   const [assessment] = useState(() => readSelectedAssessment())
   const [selectedStudent, setSelectedStudent] = useState(() => readSelectedStudent())
   const [studentSessions, setStudentSessions] = useState(() => readStorageObject(STUDENT_EXAM_SESSION_KEY))
@@ -429,6 +430,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [studentSearch, setStudentSearch] = useState('')
   const [attendanceFilter, setAttendanceFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [isEvaluationFilterOpen, setIsEvaluationFilterOpen] = useState(false)
   const [sortConfig, setSortConfig] = useState({ key: 'studentId', direction: 'asc' })
   const [currentPage, setCurrentPage] = useState(1)
   const [studentDetailSearch, setStudentDetailSearch] = useState('')
@@ -586,6 +588,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       tone: 'percentage',
     },
   ]
+  const evaluationFilterCount = (attendanceFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0)
   const filteredRows = useMemo(() => {
     const query = studentSearch.trim().toLowerCase()
     return normalizedRows.filter((row) => {
@@ -643,6 +646,56 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       tone: 'primary',
       message: `${action} selected for ${row.name}.`,
     })
+  }
+
+  const publishEvaluationAssessment = () => {
+    onAlert?.({
+      tone: 'success',
+      message: 'Assessment published successfully.',
+    })
+  }
+
+  const downloadEvaluationExcel = () => {
+    const headers = [
+      'Student ID',
+      'Attendance',
+      'Student Name',
+      'Evaluation Status',
+      'MCQ',
+      'Descriptive',
+      'Attempted Questions',
+      'Max Mark',
+      'Obtained Marks',
+      'Percentage',
+    ]
+    const escapeCell = (value) => `"${String(value ?? '-').replace(/"/g, '""')}"`
+    const rows = sortedRows.map((row) => [
+      row.id,
+      row.attendance,
+      row.name,
+      row.evalStatus,
+      row.mcqDisplay,
+      row.descriptiveDisplay,
+      row.attemptedDisplay,
+      row.maxMark,
+      row.obtainedDisplay,
+      row.percentageDisplay,
+    ])
+    const csvContent = [headers, ...rows].map((row) => row.map(escapeCell).join(',')).join('\n')
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const assessmentName = String(assessment?.name || assessment?.title || 'assessment-evaluation')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'assessment-evaluation'
+    link.href = url
+    link.download = `${assessmentName}-evaluation.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
   }
 
   const openEvaluationActionConfirm = (type, row) => {
@@ -710,6 +763,25 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     onNavigate?.(APP_PAGES.ASSESSMENT_STUDENT_EVALUATION)
   }
 
+  const openStudentResult = (row) => {
+    if (row.isAbsent) {
+      onAlert?.({ tone: 'warning', message: 'Absent student result is not available.' })
+      return
+    }
+    if (row.evalStatus !== 'Completed') {
+      onAlert?.({ tone: 'warning', message: 'Result is available after evaluation is completed.' })
+      return
+    }
+    const nextStudent = {
+      ...row,
+      evaluationStatus: 'Completed',
+      attendanceStatus: row.attendance === 'P' ? 'Present' : 'Absent',
+    }
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_STUDENT_KEY, JSON.stringify(nextStudent))
+    setSelectedStudent(nextStudent)
+    onNavigate?.(APP_PAGES.ASSESSMENT_STUDENT_RESULT)
+  }
+
   const backToStudentList = () => {
     window.sessionStorage.removeItem(ASSESSMENT_EVALUATION_STUDENT_KEY)
     setSelectedStudent(null)
@@ -730,6 +802,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       return
     }
     if (matchedStudent) openStudentEvaluation(matchedStudent)
+  }
+
+  const downloadStudentResultPdf = () => {
+    window.print()
   }
 
   const markSelectedStudentEvaluated = () => {
@@ -975,6 +1051,14 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     </div>
   )
 
+  const renderQuestionEndBadges = (maxMarks, question, fallbackQuestion, tagKey, resultMeta, showTags = true) => (
+    <div className="assessment-question-badges">
+      {isStudentResultView ? renderQuestionResultBadges(resultMeta) : null}
+      {showTags ? renderQuestionTagInfo(question, fallbackQuestion, tagKey) : null}
+      <span className="assessment-question-badge is-mark">Max Mark : {maxMarks || 0}</span>
+    </div>
+  )
+
   const renderAnswerKey = (item, label = 'Answer Key') => {
     const answerText = getAnswerKeyText(item)
     if (!answerText) return null
@@ -1083,6 +1167,64 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     </button>
   )
 
+  const getQuestionThresholdPercent = (question = {}) => {
+    const setup = assessment?.setup || assessment || {}
+    const thinkingLevel = getTagValues(question?.thinkingLevel).join(' ').toLowerCase()
+    const thresholdValue = thinkingLevel.includes('hot')
+      ? setup.hotThreshold
+      : thinkingLevel.includes('lot')
+        ? setup.lotThreshold
+        : setup.questionThreshold ?? setup.passThreshold ?? setup.threshold
+    const numericThreshold = Number(thresholdValue)
+    return Number.isFinite(numericThreshold) && numericThreshold >= 0 ? numericThreshold : 50
+  }
+
+  const getMcqResultMeta = (question, questionKey, index, maxMarks) => {
+    const result = questionEvaluationState[questionKey] || {}
+    const attempt = readStoredAttempt(assessment, selectedStudent)
+    const storedStudentAnswer = attempt?.answers?.[getOnlineMcqQuestionKey(question, index)]
+    const selectedOptionIndex = Number.isFinite(Number(storedStudentAnswer)) ? Number(storedStudentAnswer) : null
+    const correctIndexes = getCorrectOptionIndexes(question)
+    const isCorrect = result.status === 'correct'
+      || (result.status !== 'wrong' && result.status !== 'not-attempted' && Number.isInteger(selectedOptionIndex) && correctIndexes.includes(selectedOptionIndex))
+    const obtainedMarks = isCorrect ? maxMarks : 0
+
+    return {
+      isCorrect,
+      thresholdAchieved: isCorrect,
+      obtainedMarks,
+    }
+  }
+
+  const getDescriptiveResultMeta = (question, questionKey, maxMarks) => {
+    const result = questionEvaluationState[questionKey] || {}
+    const obtainedMarks = result.status === 'not-attempted' ? 0 : parseMarksValue(result.marks)
+    const thresholdPercent = getQuestionThresholdPercent(question)
+    const thresholdMarks = (parseMarksValue(maxMarks) * thresholdPercent) / 100
+    const thresholdAchieved = parseMarksValue(maxMarks) > 0 && obtainedMarks >= thresholdMarks
+
+    return {
+      isCorrect: thresholdAchieved,
+      thresholdAchieved,
+      obtainedMarks,
+    }
+  }
+
+  const renderQuestionResultBadges = (meta) => {
+    if (!isStudentResultView) return null
+
+    return (
+      <>
+        <span className={`assessment-question-badge ${meta.isCorrect ? 'is-result-correct' : 'is-result-incorrect'}`}>
+          {meta.isCorrect ? 'Correct' : 'Incorrect'}
+        </span>
+        <span className={`assessment-question-badge ${meta.thresholdAchieved ? 'is-threshold-achieved' : 'is-threshold-not-achieved'}`}>
+          {meta.thresholdAchieved ? 'Threshold Achieved' : 'Threshold Not Achieved'}
+        </span>
+      </>
+    )
+  }
+
   const renderMcqQuestion = (question, index, displayNumber = index + 1) => {
     const questionKey = getQuestionKey(question, `mcq-${index + 1}`)
     const result = questionEvaluationState[questionKey]?.status || 'pending'
@@ -1092,6 +1234,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const studentAnswerIndex = Number.isFinite(Number(storedStudentAnswer)) ? Number(storedStudentAnswer) : null
     const shouldShowOnlineMcqDetails = !isOffline
     const isExpanded = Boolean(expandedMcqQuestions[questionKey])
+    const resultMeta = getMcqResultMeta(question, questionKey, index, maxMarks)
 
     return (
       <article key={questionKey} className={`assessment-question-row is-mcq is-${result}`}>
@@ -1103,7 +1246,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 {getQuestionText(question, `MCQ question ${displayNumber}`)}
                 {renderQuestionImageBadge(question)}
               </p>
-              {renderQuestionBadges(maxMarks, question, {}, questionKey)}
+              {renderQuestionEndBadges(maxMarks, question, {}, questionKey, resultMeta)}
             </div>
             {renderQuestionTagsPanel(question, {}, questionKey)}
             {isExpanded ? renderMcqOptions(question) : null}
@@ -1115,32 +1258,36 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             {renderMcqDetailsToggle(questionKey, isExpanded)}
           </div>
           <div className="assessment-question-actions">
-            <button
-              type="button"
-              className={result === 'correct' ? 'is-active is-correct' : 'is-correct'}
-              onClick={() => setQuestionResult(questionKey, { status: 'correct', marks: maxMarks })}
-              aria-label={`Mark question ${displayNumber} correct`}
-            >
-              <Check size={16} strokeWidth={2.6} />
-            </button>
-            <button
-              type="button"
-              className={result === 'wrong' ? 'is-active is-wrong' : 'is-wrong'}
-              onClick={() => setQuestionResult(questionKey, { status: 'wrong', marks: 0 })}
-              aria-label={`Mark question ${displayNumber} wrong`}
-            >
-              <X size={16} strokeWidth={2.6} />
-            </button>
-            <button
-              type="button"
-              className={result === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
-              onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
-            >
-              Not Attempted
-            </button>
-            <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${displayNumber}`}>
-              <RotateCcw size={15} strokeWidth={2.4} />
-            </button>
+            {isStudentResultView ? null : (
+              <>
+                <button
+                  type="button"
+                  className={result === 'correct' ? 'is-active is-correct' : 'is-correct'}
+                  onClick={() => setQuestionResult(questionKey, { status: 'correct', marks: maxMarks })}
+                  aria-label={`Mark question ${displayNumber} correct`}
+                >
+                  <Check size={16} strokeWidth={2.6} />
+                </button>
+                <button
+                  type="button"
+                  className={result === 'wrong' ? 'is-active is-wrong' : 'is-wrong'}
+                  onClick={() => setQuestionResult(questionKey, { status: 'wrong', marks: 0 })}
+                  aria-label={`Mark question ${displayNumber} wrong`}
+                >
+                  <X size={16} strokeWidth={2.6} />
+                </button>
+                <button
+                  type="button"
+                  className={result === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
+                  onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
+                >
+                  Not Attempted
+                </button>
+                <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${displayNumber}`}>
+                  <RotateCcw size={15} strokeWidth={2.4} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </article>
@@ -1150,6 +1297,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const renderDescriptiveScoringRow = (question, indexLabel, questionKey) => {
     const result = questionEvaluationState[questionKey] || {}
     const maxMarks = getQuestionMarksTotal(question) || parseMarksValue(question?.marks)
+    const resultMeta = getDescriptiveResultMeta(question, questionKey, maxMarks)
 
     return (
       <article key={questionKey} className={`assessment-question-row is-descriptive ${result.status === 'not-attempted' ? 'is-not-attempted' : ''}`}>
@@ -1161,7 +1309,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 {getQuestionText(question, `Descriptive question ${indexLabel}`)}
                 {renderQuestionImageBadge(question)}
               </p>
-              {renderQuestionBadges(maxMarks, question, {}, questionKey, false)}
+              {renderQuestionEndBadges(maxMarks, question, {}, questionKey, resultMeta, false)}
             </div>
           </div>
         </div>
@@ -1176,33 +1324,37 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           </div>
           {result.error ? <span className="assessment-mark-inline-error">{result.error}</span> : null}
           <div className="assessment-question-actions">
-            <label className="assessment-mark-field">
-              <input
-                type="number"
-                min="0"
-                max={maxMarks || undefined}
-                step="any"
-                value={result.marks ?? ''}
-                onKeyDown={(event) => {
-                  if (['e', 'E', '+', '-'].includes(event.key)) event.preventDefault()
-                }}
-                onChange={(event) => setDescriptiveMarksResult(questionKey, event.target.value, maxMarks)}
-                placeholder="Enter mark"
-                aria-label={`Enter obtained mark for question ${indexLabel}`}
-                aria-invalid={Boolean(result.error)}
-                className={result.error ? 'is-invalid' : ''}
-              />
-            </label>
-            <button
-              type="button"
-              className={result.status === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
-              onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
-            >
-              Not Attempted
-            </button>
-            <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${indexLabel}`}>
-              <RotateCcw size={15} strokeWidth={2.4} />
-            </button>
+            {isStudentResultView ? null : (
+              <>
+                <label className="assessment-mark-field">
+                  <input
+                    type="number"
+                    min="0"
+                    max={maxMarks || undefined}
+                    step="any"
+                    value={result.marks ?? ''}
+                    onKeyDown={(event) => {
+                      if (['e', 'E', '+', '-'].includes(event.key)) event.preventDefault()
+                    }}
+                    onChange={(event) => setDescriptiveMarksResult(questionKey, event.target.value, maxMarks)}
+                    placeholder="Enter mark"
+                    aria-label={`Enter obtained mark for question ${indexLabel}`}
+                    aria-invalid={Boolean(result.error)}
+                    className={result.error ? 'is-invalid' : ''}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className={result.status === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
+                  onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
+                >
+                  Not Attempted
+                </button>
+                <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${indexLabel}`}>
+                  <RotateCcw size={15} strokeWidth={2.4} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </article>
@@ -1374,6 +1526,19 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }, [attendanceFilter, statusFilter, studentSearch])
 
   useEffect(() => {
+    if (!isEvaluationFilterOpen) return undefined
+
+    const closeFilters = (event) => {
+      if (!event.target?.closest?.('.assessment-evaluation-filter-menu-wrap')) {
+        setIsEvaluationFilterOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', closeFilters)
+    return () => document.removeEventListener('pointerdown', closeFilters)
+  }, [isEvaluationFilterOpen])
+
+  useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages))
   }, [totalPages])
 
@@ -1382,9 +1547,9 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }, [assessment, selectedStudent])
 
   useEffect(() => {
-    if (!isStudentEvaluationView || selectedStudent || !presentEvaluationRows.length) return
+    if (isStudentResultView || !isStudentEvaluationView || selectedStudent || !presentEvaluationRows.length) return
     openStudentEvaluation(presentEvaluationRows[0])
-  }, [isStudentEvaluationView, presentEvaluationRows, selectedStudent])
+  }, [isStudentEvaluationView, isStudentResultView, presentEvaluationRows, selectedStudent])
 
   useEffect(() => {
     if (!selectedStudent) return
@@ -1399,6 +1564,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }, [normalizedRows, onAlert, onNavigate, selectedStudent])
 
   useEffect(() => {
+    if (isStudentResultView) return
     if (!selectedStudent) return
     const studentId = selectedStudent.id
     const nextStatus = selectedStudentEvaluationStatus
@@ -1425,9 +1591,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       window.sessionStorage.setItem(ASSESSMENT_EVALUATION_STUDENT_KEY, JSON.stringify(nextStudent))
       setSelectedStudent(nextStudent)
     }
-  }, [assessment, selectedStudent, selectedStudentEvaluationStatus])
+  }, [assessment, isStudentResultView, selectedStudent, selectedStudentEvaluationStatus])
 
   useEffect(() => {
+    if (isStudentResultView) return
     if (!selectedStudent || isOffline || !mcqQuestions.length) return
     const attempt = readStoredAttempt(assessment, selectedStudent)
     const answers = attempt?.answers || {}
@@ -1451,7 +1618,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
 
     if (!Object.keys(autoResults).length) return
     saveQuestionEvaluationState((current) => ({ ...autoResults, ...current }))
-  }, [assessment, selectedStudent, isOffline, assessmentQuestions, questionEvaluationState])
+  }, [assessment, selectedStudent, isOffline, assessmentQuestions, questionEvaluationState, isStudentResultView])
 
   return (
     <section className="assessment-evaluation-workspace">
@@ -1500,7 +1667,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
 
       {isStudentEvaluationView ? (
         selectedStudent ? (
-        <section className="assessment-student-evaluation-card" aria-label="Selected student evaluation">
+        <section className={`assessment-student-evaluation-card ${isStudentResultView ? 'is-result-view' : ''}`} aria-label={isStudentResultView ? 'Selected student result' : 'Selected student evaluation'}>
           <div className="assessment-student-evaluation-head">
             <button type="button" className="assessment-student-back-icon" onClick={backToStudentList} title="Back to Student List" aria-label="Back to Student List">
               <ArrowLeft size={18} strokeWidth={2.4} />
@@ -1515,15 +1682,22 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 <strong className={selectedStudentEvaluationStatus === 'Completed' ? 'is-completed' : 'is-not-completed'}>{selectedStudentEvaluationStatus}</strong>
               </p>
             </div>
-            <label className="assessment-student-search">
-              <Search size={15} strokeWidth={2.3} aria-hidden="true" />
-              <input
-                type="search"
-                value={studentDetailSearch}
-                onChange={(event) => handleStudentDetailSearch(event.target.value)}
-                placeholder="Search by Student ID or Name"
-              />
-            </label>
+            {isStudentResultView ? (
+              <button type="button" className="assessment-student-download-result-btn" onClick={downloadStudentResultPdf}>
+                <Download size={16} strokeWidth={2.4} />
+                Download Result PDF
+              </button>
+            ) : (
+              <label className="assessment-student-search">
+                <Search size={15} strokeWidth={2.3} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={studentDetailSearch}
+                  onChange={(event) => handleStudentDetailSearch(event.target.value)}
+                  placeholder="Search by Student ID or Name"
+                />
+              </label>
+            )}
           </div>
 
           <div className="assessment-student-detail-grid">
@@ -1542,13 +1716,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             ))}
           </div>
 
-          <section className="assessment-student-question-area" aria-label="Question evaluation workspace">
+          <section className="assessment-student-question-area" aria-label={isStudentResultView ? 'Question result workspace' : 'Question evaluation workspace'}>
             {previewSectionGroups.length ? (
               previewSectionGroups.map((section, sectionIndex) => {
                 const sectionLabel = ['I', 'II', 'III', 'IV', 'V', 'VI'][sectionIndex] || `${sectionIndex + 1}`
                 const isDescriptiveSection = section.questions.some((question) => isDescriptiveQuestionType(question?.type))
                 const sectionStatus = getSectionEvaluationStatus(section)
-                const isSectionCollapsed = collapsedQuestionSections[section.key] ?? true
+                const isSectionCollapsed = collapsedQuestionSections[section.key] ?? (isStudentResultView ? false : true)
 
                 return (
                   <section
@@ -1569,7 +1743,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                     >
                       <h3>{sectionLabel}. {section.title}</h3>
                       <span className="assessment-section-head-meta">
-                        {renderSectionStatusBadge(sectionStatus)}
+                        {isStudentResultView ? null : renderSectionStatusBadge(sectionStatus)}
                         <span className="assessment-section-mark-badge">{formatTwoDigit(section.marks)} Marks</span>
                         <button
                           type="button"
@@ -1608,22 +1782,24 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               </div>
             )}
           </section>
-          <nav className="assessment-student-floating-controls" aria-label="Student evaluation navigation">
-            <span className="assessment-student-completed-badge">
-              No. of Evaluation Completed : {formatTwoDigit(completedPresentEvaluations)} out of {formatTwoDigit(totalPresentEvaluations)}
-            </span>
-            <span className="assessment-student-floating-actions">
-              <button
-                type="button"
-                className={`assessment-student-floating-btn is-mark-evaluated ${isSelectedStudentMarkedEvaluated ? 'is-evaluated' : canMarkSelectedStudentEvaluated ? 'is-ready' : ''}`}
-                onClick={handleEvaluationFooterAction}
-                disabled={!canMarkSelectedStudentEvaluated && !isSelectedStudentMarkedEvaluated}
-              >
-                {isSelectedStudentMarkedEvaluated ? <ChevronRight size={16} strokeWidth={2.5} /> : <Check size={16} strokeWidth={2.5} />}
-                {isSelectedStudentMarkedEvaluated ? 'Continue to Next' : 'Mark as Evaluated'}
-              </button>
-            </span>
-          </nav>
+          {isStudentResultView ? null : (
+            <nav className="assessment-student-floating-controls" aria-label="Student evaluation navigation">
+              <span className="assessment-student-completed-badge">
+                No. of Evaluation Completed : {formatTwoDigit(completedPresentEvaluations)} out of {formatTwoDigit(totalPresentEvaluations)}
+              </span>
+              <span className="assessment-student-floating-actions">
+                <button
+                  type="button"
+                  className={`assessment-student-floating-btn is-mark-evaluated ${isSelectedStudentMarkedEvaluated ? 'is-evaluated' : canMarkSelectedStudentEvaluated ? 'is-ready' : ''}`}
+                  onClick={handleEvaluationFooterAction}
+                  disabled={!canMarkSelectedStudentEvaluated && !isSelectedStudentMarkedEvaluated}
+                >
+                  {isSelectedStudentMarkedEvaluated ? <ChevronRight size={16} strokeWidth={2.5} /> : <Check size={16} strokeWidth={2.5} />}
+                  {isSelectedStudentMarkedEvaluated ? 'Continue to Next' : 'Mark as Evaluated'}
+                </button>
+              </span>
+            </nav>
+          )}
         </section>
         ) : (
           <section className="assessment-student-evaluation-card" aria-label="Selected student evaluation">
@@ -1656,29 +1832,58 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         </div>
         <div className="assessment-evaluation-table-tools">
           <h2>Student Evaluation</h2>
-          <label>
-            <input
-              type="search"
-              value={studentSearch}
-              onChange={(event) => setStudentSearch(event.target.value)}
-              placeholder="Search student..."
-            />
-          </label>
-          <label>
-            <select value={attendanceFilter} onChange={(event) => setAttendanceFilter(event.target.value)}>
-              <option value="all">Attendance: All</option>
-              <option value="P">Attendance: Present</option>
-              <option value="A">Attendance: Absent</option>
-            </select>
-          </label>
-          <label>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="all">Status: All</option>
-              <option value="Yet to Start">Status: Yet to Start</option>
-              <option value="Completed">Status: Completed</option>
-              <option value="Absent">Status: Absent</option>
-            </select>
-          </label>
+          <div className="assessment-evaluation-toolbar-actions">
+            <button type="button" className="assessment-evaluation-publish-btn" onClick={publishEvaluationAssessment}>
+              Publish Assessment
+            </button>
+            <button type="button" className="assessment-evaluation-download-btn" onClick={downloadEvaluationExcel}>
+              <Download size={15} strokeWidth={2.4} />
+              Download Excel
+            </button>
+            <label className="assessment-evaluation-search-field">
+              <Search size={15} strokeWidth={2.4} aria-hidden="true" />
+              <input
+                type="search"
+                value={studentSearch}
+                onChange={(event) => setStudentSearch(event.target.value)}
+                placeholder="Search student..."
+              />
+            </label>
+            <div className="assessment-evaluation-filter-menu-wrap">
+              <button
+                type="button"
+                className={`assessment-evaluation-filter-icon-btn ${evaluationFilterCount ? 'has-active-filters' : ''}`}
+                onClick={() => setIsEvaluationFilterOpen((current) => !current)}
+                aria-expanded={isEvaluationFilterOpen}
+                aria-label="Open evaluation filters"
+                title="Filters"
+              >
+                <Filter size={16} strokeWidth={2.4} />
+                {evaluationFilterCount ? <span>{evaluationFilterCount}</span> : null}
+              </button>
+              {isEvaluationFilterOpen ? (
+                <div className="assessment-evaluation-filter-menu" role="dialog" aria-label="Evaluation filters">
+                  <label>
+                    <span>Attendance</span>
+                    <select value={attendanceFilter} onChange={(event) => setAttendanceFilter(event.target.value)}>
+                      <option value="all">All</option>
+                      <option value="P">Present</option>
+                      <option value="A">Absent</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Status</span>
+                    <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                      <option value="all">All</option>
+                      <option value="Yet to Start">Yet to Start</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Absent">Absent</option>
+                    </select>
+                  </label>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
         <div className="assessment-evaluation-table-wrap">
           <table className="assessment-evaluation-table">
@@ -1765,7 +1970,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                         <button
                           type="button"
                           className={evalStatus === 'Completed' ? 'is-view-result' : 'is-primary'}
-                          onClick={() => openStudentEvaluation(row)}
+                          onClick={() => (evalStatus === 'Completed' ? openStudentResult(row) : openStudentEvaluation(row))}
                           disabled={isAbsent}
                         >
                           {evalStatus === 'Completed' ? 'View Result' : 'Start Evaluation'}

@@ -41,6 +41,7 @@ const PAGE_PATHS = {
   [APP_PAGES.CREATE_ASSESSMENT]: '/createassessment',
   [APP_PAGES.ASSESSMENT_EVALUATION]: '/assessment/evaluation',
   [APP_PAGES.ASSESSMENT_STUDENT_EVALUATION]: '/assessment/startstudentevaluation',
+  [APP_PAGES.ASSESSMENT_STUDENT_RESULT]: '/assessment/assessmentstudentresult',
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
   [APP_PAGES.EXAM_CONTROLS]: '/assessment/exam-controls',
   [APP_PAGES.MY_ASSESSMENT]: '/my-assessment',
@@ -88,6 +89,7 @@ const PHONE_UNSUPPORTED_PAGES = new Set([
   APP_PAGES.BLUEPRINT,
   APP_PAGES.ASSESSMENT_EVALUATION,
   APP_PAGES.ASSESSMENT_STUDENT_EVALUATION,
+  APP_PAGES.ASSESSMENT_STUDENT_RESULT,
   APP_PAGES.ASSESSMENT_DASHBOARD,
   APP_PAGES.QUERY_REQUEST,
 ])
@@ -439,6 +441,7 @@ function App() {
   const isPlainAssessmentMode = activePage === APP_PAGES.CREATE_ASSESSMENT
     || activePage === APP_PAGES.ASSESSMENT_EVALUATION
     || activePage === APP_PAGES.ASSESSMENT_STUDENT_EVALUATION
+    || activePage === APP_PAGES.ASSESSMENT_STUDENT_RESULT
   const shouldShowMobileUnsupported = isPhoneScreen && PHONE_UNSUPPORTED_PAGES.has(activePage)
   const hideShellChrome = isExamMode || isPlainAssessmentMode
   const activeEvaluationRecord = selectedEvaluationRecord
@@ -1319,6 +1322,14 @@ function App() {
           ) : activePage === APP_PAGES.ASSESSMENT_STUDENT_EVALUATION ? (
             <AssessmentEvaluationPage
               view="student"
+              onNavigate={navigateToPage}
+              onAlert={showAlert}
+              theme={theme}
+              onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+            />
+          ) : activePage === APP_PAGES.ASSESSMENT_STUDENT_RESULT ? (
+            <AssessmentEvaluationPage
+              view="result"
               onNavigate={navigateToPage}
               onAlert={showAlert}
               theme={theme}
