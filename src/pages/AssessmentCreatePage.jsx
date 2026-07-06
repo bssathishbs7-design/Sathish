@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, BadgeCheck, BarChart3, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ArrowRight, BadgeCheck, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -41,6 +41,12 @@ const assessmentMetrics = [
     count: 0,
     icon: ClipboardCheck,
     tone: 'evaluation',
+  },
+  {
+    label: 'Results',
+    count: 0,
+    icon: BadgeCheck,
+    tone: 'results',
   },
 ]
 
@@ -845,6 +851,7 @@ const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
 const splitPublishedAssessmentRows = (rows = [], now = new Date()) => {
   const published = []
   const evaluation = []
+  const results = []
 
   rows.forEach((assessment) => {
     if (getPublishedAssessmentScheduleStatus(assessment, now)?.type === 'completed') {
@@ -854,7 +861,7 @@ const splitPublishedAssessmentRows = (rows = [], now = new Date()) => {
     }
   })
 
-  return { published, evaluation }
+  return { published, evaluation, results }
 }
 
 const isPublishedAssessmentActionLocked = (assessment, now = new Date()) => {
@@ -922,10 +929,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
     const rows = readPublishedAssessments()
     const drafts = readAssessmentDrafts()
     if (requestedTab === 'evaluation') return 'evaluation'
+    if (requestedTab === 'results') return 'results'
     if (requestedTab === 'published') return 'published'
     return drafts.length ? 'draft' : rows.length ? 'published' : 'draft'
   })
-  const { published: activePublishedAssessments, evaluation: evaluationAssessments } = splitPublishedAssessmentRows(publishedAssessments, scheduleNow)
+  const { published: activePublishedAssessments, evaluation: evaluationAssessments, results: resultAssessments } = splitPublishedAssessmentRows(publishedAssessments, scheduleNow)
   const metrics = assessmentMetrics.map((metric) => (
     metric.tone === 'draft'
       ? { ...metric, count: draftAssessments.length }
@@ -933,6 +941,8 @@ export default function AssessmentCreatePage({ onNavigate }) {
         ? { ...metric, count: activePublishedAssessments.length }
         : metric.tone === 'evaluation'
           ? { ...metric, count: evaluationAssessments.length }
+          : metric.tone === 'results'
+            ? { ...metric, count: resultAssessments.length }
           : metric
   ))
   const assessmentTabItems = metrics.map((metric) => ({
@@ -946,7 +956,8 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const shouldShowDraftAssessments = activeAssessmentTab === 'draft'
   const shouldShowPublishedAssessments = activeAssessmentTab === 'published'
   const shouldShowEvaluationAssessments = activeAssessmentTab === 'evaluation'
-  const activeEmptyTab = !['draft', 'published', 'evaluation'].includes(activeAssessmentTab)
+  const shouldShowResultAssessments = activeAssessmentTab === 'results'
+  const activeEmptyTab = !['draft', 'published', 'evaluation', 'results'].includes(activeAssessmentTab)
     ? assessmentTabItems.find((item) => item.key === activeAssessmentTab)
     : null
   const activeTabLabel = assessmentTabItems.find((item) => item.key === activeAssessmentTab)?.label || 'Assessment'
@@ -1226,14 +1237,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
         <div className="assessment-create-page-header">
           <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Assessment']} />
           <div className="assessment-create-header-actions" aria-label="Assessment page actions">
-            <button
-              type="button"
-              className="assessment-create-dashboard-btn"
-              onClick={() => onNavigate?.(APP_PAGES.ASSESSMENT_DASHBOARD)}
-            >
-              <BarChart3 size={16} strokeWidth={2.3} />
-              Assessment Analytics
-            </button>
             <button
               type="button"
               className="assessment-create-new-btn"
@@ -1580,6 +1583,20 @@ export default function AssessmentCreatePage({ onNavigate }) {
                 <p>No completed assessments available.</p>
               </div>
             )}
+          </section>
+        ) : null}
+
+        {shouldShowResultAssessments ? (
+          <section className="assessment-create-draft-shell assessment-create-published-shell" aria-label="Result assessments">
+            <div className="assessment-create-card-heading">
+              <div className="assessment-create-published-title">
+                <h2>Results</h2>
+              </div>
+              {renderAssessmentSearchToolbar()}
+            </div>
+            <div className="assessment-create-placeholder">
+              <p>Results flow will be added later.</p>
+            </div>
           </section>
         ) : null}
 

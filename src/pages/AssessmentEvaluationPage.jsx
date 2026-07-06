@@ -936,6 +936,15 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       return
     }
 
+    if (numericValue === 0) {
+      setQuestionResult(questionKey, {
+        status: 'invalid',
+        marks: value,
+        error: 'Marks must be greater than 0.',
+      })
+      return
+    }
+
     if (maxValue && numericValue > maxValue) {
       setQuestionResult(questionKey, {
         status: 'invalid',
@@ -1044,20 +1053,33 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     )
   }
 
-  const renderQuestionBadges = (maxMarks, question, fallbackQuestion = {}, tagKey = getQuestionKey(question, 'question-tags'), showTags = true) => (
-    <div className="assessment-question-badges">
-      {showTags ? renderQuestionTagInfo(question, fallbackQuestion, tagKey) : null}
-      <span className="assessment-question-badge is-mark">Max Mark : {maxMarks || 0}</span>
-    </div>
-  )
+  const renderQuestionBadges = (maxMarks, question, fallbackQuestion = {}, tagKey = getQuestionKey(question, 'question-tags'), showTags = true, showMark = true) => {
+    const tagNode = showTags ? renderQuestionTagInfo(question, fallbackQuestion, tagKey) : null
+    const markNode = showMark ? <span className="assessment-question-badge is-mark">Max Mark : {maxMarks || 0}</span> : null
+    if (!tagNode && !markNode) return null
 
-  const renderQuestionEndBadges = (maxMarks, question, fallbackQuestion, tagKey, resultMeta, showTags = true) => (
-    <div className="assessment-question-badges">
-      {isStudentResultView ? renderQuestionResultBadges(resultMeta) : null}
-      {showTags ? renderQuestionTagInfo(question, fallbackQuestion, tagKey) : null}
-      <span className="assessment-question-badge is-mark">Max Mark : {maxMarks || 0}</span>
-    </div>
-  )
+    return (
+      <div className="assessment-question-badges">
+        {tagNode}
+        {markNode}
+      </div>
+    )
+  }
+
+  const renderQuestionEndBadges = (maxMarks, question, fallbackQuestion, tagKey, resultMeta, showTags = true, showMark = true) => {
+    const resultNode = isStudentResultView ? renderQuestionResultBadges(resultMeta) : null
+    const tagNode = showTags ? renderQuestionTagInfo(question, fallbackQuestion, tagKey) : null
+    const markNode = showMark ? <span className="assessment-question-badge is-mark">Max Mark : {maxMarks || 0}</span> : null
+    if (!resultNode && !tagNode && !markNode) return null
+
+    return (
+      <div className="assessment-question-badges">
+        {resultNode}
+        {tagNode}
+        {markNode}
+      </div>
+    )
+  }
 
   const renderAnswerKey = (item, label = 'Answer Key') => {
     const answerText = getAnswerKeyText(item)
@@ -1103,9 +1125,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           className="assessment-answer-key-toggle"
           onClick={() => toggleDescriptiveAnswerKey(questionKey)}
           aria-expanded={isExpanded}
+          aria-label={`${isExpanded ? 'Hide' : 'Show'} answer key`}
+          title={isExpanded ? 'Hide answer key' : 'Show answer key'}
         >
           {isExpanded ? <ChevronUp size={13} strokeWidth={2.4} /> : <ChevronDown size={13} strokeWidth={2.4} />}
-          {isExpanded ? 'Hide Answer Key' : 'Show Answer Key'}
         </button>
       </div>
     )
@@ -1294,22 +1317,60 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     )
   }
 
-  const renderDescriptiveScoringRow = (question, indexLabel, questionKey) => {
+  const renderDescriptiveScoringRow = (question, indexLabel, questionKey, isNestedSubQuestion = false) => {
     const result = questionEvaluationState[questionKey] || {}
     const maxMarks = getQuestionMarksTotal(question) || parseMarksValue(question?.marks)
     const resultMeta = getDescriptiveResultMeta(question, questionKey, maxMarks)
+    const hasValidMarks = result.status === 'evaluated' && !result.error && String(result.marks ?? '').trim() !== ''
+    const descriptiveActionControls = isStudentResultView ? null : (
+      <div className="assessment-question-actions is-descriptive-header-actions">
+        <label className="assessment-mark-field assessment-compact-mark-control">
+          <input
+            type="number"
+            min="0"
+            max={maxMarks || undefined}
+            step="any"
+            value={result.marks ?? ''}
+            onKeyDown={(event) => {
+              if (['e', 'E', '+', '-'].includes(event.key)) event.preventDefault()
+            }}
+            onChange={(event) => setDescriptiveMarksResult(questionKey, event.target.value, maxMarks)}
+            placeholder="Obt. Marks"
+            aria-label={`Enter obtained mark for question ${indexLabel}`}
+            aria-invalid={Boolean(result.error)}
+            className={result.error ? 'is-invalid' : ''}
+          />
+        </label>
+        <span className="assessment-max-mark-box">Max Mark : {maxMarks || 0}</span>
+        <button
+          type="button"
+          className={result.status === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
+          onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
+        >
+          Not Attempted
+        </button>
+        <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${indexLabel}`}>
+          <RotateCcw size={15} strokeWidth={2.4} />
+        </button>
+      </div>
+    )
 
     return (
-      <article key={questionKey} className={`assessment-question-row is-descriptive ${result.status === 'not-attempted' ? 'is-not-attempted' : ''}`}>
+      <article key={questionKey} className={`assessment-question-row is-descriptive ${isNestedSubQuestion ? 'is-nested-subquestion' : ''} ${result.status === 'not-attempted' ? 'is-not-attempted' : ''} ${hasValidMarks ? 'is-marked' : ''}`}>
         <div className="assessment-question-main">
+          {isNestedSubQuestion ? <span className="assessment-question-nested-arrow" aria-hidden="true">-&gt;</span> : null}
           <span className="assessment-question-number">{indexLabel}</span>
           <div>
             <div className="assessment-question-content-head">
               <p>
                 {getQuestionText(question, `Descriptive question ${indexLabel}`)}
                 {renderQuestionImageBadge(question)}
+                {renderDescriptiveAnswerKeyToggle(question, questionKey)}
               </p>
-              {renderQuestionEndBadges(maxMarks, question, {}, questionKey, resultMeta, false)}
+              <div className="assessment-question-end-actions">
+                {renderQuestionEndBadges(maxMarks, question, {}, questionKey, resultMeta, false, false)}
+                {descriptiveActionControls}
+              </div>
             </div>
           </div>
         </div>
@@ -1318,45 +1379,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             {renderDescriptiveAnswerKeyContent(question)}
           </div>
         ) : null}
-        <div className="assessment-question-control-row is-descriptive-controls">
-          <div className="assessment-question-control-start">
-            {renderDescriptiveAnswerKeyToggle(question, questionKey)}
+        {result.error ? (
+          <div className="assessment-question-control-row is-descriptive-controls">
+            <span className="assessment-mark-inline-error">{result.error}</span>
           </div>
-          {result.error ? <span className="assessment-mark-inline-error">{result.error}</span> : null}
-          <div className="assessment-question-actions">
-            {isStudentResultView ? null : (
-              <>
-                <label className="assessment-mark-field">
-                  <input
-                    type="number"
-                    min="0"
-                    max={maxMarks || undefined}
-                    step="any"
-                    value={result.marks ?? ''}
-                    onKeyDown={(event) => {
-                      if (['e', 'E', '+', '-'].includes(event.key)) event.preventDefault()
-                    }}
-                    onChange={(event) => setDescriptiveMarksResult(questionKey, event.target.value, maxMarks)}
-                    placeholder="Enter mark"
-                    aria-label={`Enter obtained mark for question ${indexLabel}`}
-                    aria-invalid={Boolean(result.error)}
-                    className={result.error ? 'is-invalid' : ''}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className={result.status === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
-                  onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
-                >
-                  Not Attempted
-                </button>
-                <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${indexLabel}`}>
-                  <RotateCcw size={15} strokeWidth={2.4} />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+        ) : null}
       </article>
     )
   }
@@ -1379,10 +1406,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 {getQuestionText(question, `Descriptive question ${displayNumber}`)}
                 {renderQuestionImageBadge(question)}
               </p>
-              {renderQuestionBadges(getQuestionMarksTotal(question) || parseMarksValue(question?.marks), question, {}, baseKey)}
+              {renderQuestionBadges(getQuestionMarksTotal(question) || parseMarksValue(question?.marks), question, {}, baseKey, true, false)}
             </div>
-            {renderQuestionTagsPanel(question, {}, baseKey)}
           </div>
+          {renderQuestionTagsPanel(question, {}, baseKey)}
         </div>
         <div className="assessment-descriptive-children">
           {sections.map((section, sectionIndex) => {
@@ -1407,6 +1434,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                   child,
                   getAlphaLabel(childIndex),
                   getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`),
+                  true,
                 ))}
               </section>
             )
