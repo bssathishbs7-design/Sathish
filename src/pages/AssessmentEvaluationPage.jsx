@@ -1181,12 +1181,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const renderMcqDetailsToggle = (questionKey, isExpanded) => (
     <button
       type="button"
-      className="assessment-mcq-toggle"
+      className={`assessment-mcq-toggle ${isExpanded ? 'is-open' : ''}`}
       onClick={() => toggleMcqDetails(questionKey)}
       aria-expanded={isExpanded}
+      aria-label={isExpanded ? 'Hide answer key and options' : 'View answer key and options'}
+      title={isExpanded ? 'Hide answer key and options' : 'View answer key and options'}
     >
       {isExpanded ? <ChevronUp size={13} strokeWidth={2.4} /> : <ChevronDown size={13} strokeWidth={2.4} />}
-      {isExpanded ? 'Hide Options' : 'Show Options'}
     </button>
   )
 
@@ -1258,6 +1259,36 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const shouldShowOnlineMcqDetails = !isOffline
     const isExpanded = Boolean(expandedMcqQuestions[questionKey])
     const resultMeta = getMcqResultMeta(question, questionKey, index, maxMarks)
+    const mcqActionControls = isStudentResultView ? null : (
+      <div className="assessment-question-actions is-mcq-header-actions">
+        <button
+          type="button"
+          className={result === 'correct' ? 'is-active is-correct' : 'is-correct'}
+          onClick={() => setQuestionResult(questionKey, { status: 'correct', marks: maxMarks })}
+          aria-label={`Mark question ${displayNumber} correct`}
+        >
+          <Check size={16} strokeWidth={2.6} />
+        </button>
+        <button
+          type="button"
+          className={result === 'wrong' ? 'is-active is-wrong' : 'is-wrong'}
+          onClick={() => setQuestionResult(questionKey, { status: 'wrong', marks: 0 })}
+          aria-label={`Mark question ${displayNumber} wrong`}
+        >
+          <X size={16} strokeWidth={2.6} />
+        </button>
+        <button
+          type="button"
+          className={result === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
+          onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
+        >
+          Not Attempted
+        </button>
+        <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${displayNumber}`}>
+          <RotateCcw size={15} strokeWidth={2.4} />
+        </button>
+      </div>
+    )
 
     return (
       <article key={questionKey} className={`assessment-question-row is-mcq is-${result}`}>
@@ -1268,49 +1299,20 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               <p>
                 {getQuestionText(question, `MCQ question ${displayNumber}`)}
                 {renderQuestionImageBadge(question)}
+                {renderMcqDetailsToggle(questionKey, isExpanded)}
               </p>
-              {renderQuestionEndBadges(maxMarks, question, {}, questionKey, resultMeta)}
+              <div className="assessment-question-end-actions">
+                {renderQuestionEndBadges(maxMarks, question, {}, questionKey, resultMeta)}
+                {mcqActionControls}
+              </div>
             </div>
             {renderQuestionTagsPanel(question, {}, questionKey)}
-            {isExpanded ? renderMcqOptions(question) : null}
-          </div>
-        </div>
-        <div className="assessment-question-control-row">
-          <div className="assessment-question-control-start">
-            {renderMcqAnswerKeyOnly(question)}
-            {renderMcqDetailsToggle(questionKey, isExpanded)}
-          </div>
-          <div className="assessment-question-actions">
-            {isStudentResultView ? null : (
-              <>
-                <button
-                  type="button"
-                  className={result === 'correct' ? 'is-active is-correct' : 'is-correct'}
-                  onClick={() => setQuestionResult(questionKey, { status: 'correct', marks: maxMarks })}
-                  aria-label={`Mark question ${displayNumber} correct`}
-                >
-                  <Check size={16} strokeWidth={2.6} />
-                </button>
-                <button
-                  type="button"
-                  className={result === 'wrong' ? 'is-active is-wrong' : 'is-wrong'}
-                  onClick={() => setQuestionResult(questionKey, { status: 'wrong', marks: 0 })}
-                  aria-label={`Mark question ${displayNumber} wrong`}
-                >
-                  <X size={16} strokeWidth={2.6} />
-                </button>
-                <button
-                  type="button"
-                  className={result === 'not-attempted' ? 'is-active is-not-attempted' : 'is-not-attempted'}
-                  onClick={() => setQuestionResult(questionKey, { status: 'not-attempted', marks: 0 })}
-                >
-                  Not Attempted
-                </button>
-                <button type="button" className="is-reset is-icon-only" onClick={() => resetQuestionResult(questionKey)} title="Reset" aria-label={`Reset question ${displayNumber}`}>
-                  <RotateCcw size={15} strokeWidth={2.4} />
-                </button>
-              </>
-            )}
+            {isExpanded ? (
+              <div className="assessment-mcq-details-panel">
+                {renderMcqAnswerKeyOnly(question)}
+                {renderMcqOptions(question)}
+              </div>
+            ) : null}
           </div>
         </div>
       </article>
@@ -1322,6 +1324,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const maxMarks = getQuestionMarksTotal(question) || parseMarksValue(question?.marks)
     const resultMeta = getDescriptiveResultMeta(question, questionKey, maxMarks)
     const hasValidMarks = result.status === 'evaluated' && !result.error && String(result.marks ?? '').trim() !== ''
+    const hasInvalidMarks = Boolean(result.error)
+    const shouldPromptMarks = !hasValidMarks && !hasInvalidMarks && result.status !== 'not-attempted'
     const descriptiveActionControls = isStudentResultView ? null : (
       <div className="assessment-question-actions is-descriptive-header-actions">
         <label className="assessment-mark-field assessment-compact-mark-control">
@@ -1335,10 +1339,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               if (['e', 'E', '+', '-'].includes(event.key)) event.preventDefault()
             }}
             onChange={(event) => setDescriptiveMarksResult(questionKey, event.target.value, maxMarks)}
-            placeholder="Obt. Marks"
+            placeholder="Obtained Marks"
             aria-label={`Enter obtained mark for question ${indexLabel}`}
             aria-invalid={Boolean(result.error)}
-            className={result.error ? 'is-invalid' : ''}
+            className={`${result.error ? 'is-invalid' : ''} ${shouldPromptMarks ? 'is-mark-prompt' : ''}`.trim()}
           />
         </label>
         <span className="assessment-max-mark-box">Max Mark : {maxMarks || 0}</span>
@@ -1356,7 +1360,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     )
 
     return (
-      <article key={questionKey} className={`assessment-question-row is-descriptive ${isNestedSubQuestion ? 'is-nested-subquestion' : ''} ${result.status === 'not-attempted' ? 'is-not-attempted' : ''} ${hasValidMarks ? 'is-marked' : ''}`}>
+      <article key={questionKey} className={`assessment-question-row is-descriptive ${isNestedSubQuestion ? 'is-nested-subquestion' : ''} ${result.status === 'not-attempted' ? 'is-not-attempted' : ''} ${hasValidMarks ? 'is-marked' : ''} ${hasInvalidMarks ? 'is-invalid-mark' : ''}`}>
         <div className="assessment-question-main">
           {isNestedSubQuestion ? <span className="assessment-question-nested-arrow" aria-hidden="true">-&gt;</span> : null}
           <span className="assessment-question-number">{indexLabel}</span>
