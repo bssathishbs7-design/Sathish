@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, Award, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Clock3, Download, FileText, Filter, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, RotateCcw, Search, Sun, UserX, Users, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Award, ChartColumnBig, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Clock3, Download, FileText, Filter, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, RotateCcw, Search, Sun, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -551,6 +551,8 @@ const readEvaluationStudents = (assessment, studentSessions = {}, submissionStat
 
 export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 'light', onToggleTheme, view = 'list' }) {
   const isStudentResultView = view === 'result'
+  const isOverallAnalyticsView = view === 'overall'
+  const isReadOnlyQuestionView = isStudentResultView || isOverallAnalyticsView
   const isStudentEvaluationView = view === 'student' || isStudentResultView
   const [assessment] = useState(() => readSelectedAssessment())
   const [selectedStudent, setSelectedStudent] = useState(() => readSelectedStudent())
@@ -574,6 +576,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [skillTooltip, setSkillTooltip] = useState(null)
   const [masteryTooltip, setMasteryTooltip] = useState(null)
   const [thinkingTooltip, setThinkingTooltip] = useState(null)
+  const [overallAnalyticsTab, setOverallAnalyticsTab] = useState('subject')
   const [confirmAction, setConfirmAction] = useState(null)
   const [questionEvaluationState, setQuestionEvaluationState] = useState(() => (
     readStorageObject(getStudentQuestionEvaluationStorageKey(readSelectedAssessment(), readSelectedStudent()))
@@ -695,6 +698,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const overallPercentage = completedMaxMarks
     ? Math.round((completedObtainedMarks / completedMaxMarks) * 100)
     : 0
+  const presentRows = normalizedRows.filter((row) => !row.isAbsent)
   const metricItems = [
     {
       label: 'Total Marks :',
@@ -793,11 +797,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     })
   }
 
-  const publishEvaluationAssessment = () => {
-    onAlert?.({
-      tone: 'success',
-      message: 'Assessment published successfully.',
-    })
+  const viewOverallAnalytics = () => {
+    onNavigate?.(APP_PAGES.ASSESSMENT_OVERALL_ANALYTICS)
   }
 
   const downloadEvaluationExcel = () => {
@@ -1217,7 +1218,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const renderQuestionEndBadges = (maxMarks, question, fallbackQuestion, tagKey, resultMeta, showTags = true, showMark = true) => {
-    const resultNode = isStudentResultView ? renderQuestionResultBadges(resultMeta) : null
+    const resultNode = isReadOnlyQuestionView ? renderQuestionResultBadges(resultMeta) : null
     const tagNode = showTags ? renderQuestionTagInfo(question, fallbackQuestion, tagKey) : null
     const markNode = showMark ? <span className="assessment-question-badge is-mark">Max Mark : {maxMarks || 0}</span> : null
     if (!resultNode && !tagNode && !markNode) return null
@@ -1353,6 +1354,181 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     return Number.isFinite(numericThreshold) && numericThreshold >= 0 ? numericThreshold : 50
   }
 
+  const overallQuestionStats = useMemo(() => {
+    const completedRows = normalizedRows.filter((row) => !row.isAbsent && row.evalStatus === 'Completed')
+    const statesByStudent = completedRows.map((row) => readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, row)))
+    const buildStats = (key, maxMarks, question = {}) => {
+      const safeMaxMarks = parseMarksValue(maxMarks)
+      const thresholdMarks = (safeMaxMarks * getQuestionThresholdPercent(question)) / 100
+      const scores = statesByStudent.map((state) => {
+        const result = state[key] || {}
+        const hasMarks = result.marks !== undefined && result.marks !== null && result.marks !== ''
+        const isValid = !result.error && result.status !== 'invalid'
+        if (!isValid || result.status === 'not-attempted') return 0
+        if (hasMarks) return Math.max(0, Math.min(safeMaxMarks, parseMarksValue(result.marks)))
+        if (result.status === 'correct') return safeMaxMarks
+        return 0
+      })
+      const obtained = scores.reduce((total, score) => total + score, 0)
+      const averageMarks = scores.length ? obtained / scores.length : 0
+      const averagePercentage = safeMaxMarks && scores.length
+        ? Math.round((averageMarks / safeMaxMarks) * 100)
+        : 0
+
+      return {
+        averageMarks,
+        averagePercentage,
+        maxMarks: safeMaxMarks,
+        loaCount: scores.filter((score) => safeMaxMarks > 0 && score >= thresholdMarks).length,
+        evaluatedCount: scores.length,
+      }
+    }
+
+    const stats = {}
+    previewSectionGroups.forEach((section) => {
+      section.questions.forEach((question, questionIndex) => {
+        const key = getQuestionKey(question, `${section.key}-${questionIndex}`)
+        if (isDescriptiveQuestionType(question?.type)) {
+          const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+          const baseKey = getQuestionKey(question, `descriptive-${questionIndex + 1}`)
+          if (!sections.length) {
+            stats[baseKey] = buildStats(baseKey, getQuestionMarksTotal(question) || parseMarksValue(question?.marks), question)
+            return
+          }
+
+          sections.forEach((sectionItem, sectionIndex) => {
+            const sectionKey = getQuestionKey(sectionItem, `${baseKey}-section-${sectionIndex + 1}`)
+            const children = Array.isArray(sectionItem.children) ? sectionItem.children : []
+            if (!children.length) {
+              stats[sectionKey] = buildStats(sectionKey, getDescriptiveSectionMarks(sectionItem), sectionItem)
+              return
+            }
+            children.forEach((child, childIndex) => {
+              const childKey = getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`)
+              stats[childKey] = buildStats(childKey, getQuestionMarksTotal(child) || parseMarksValue(child?.marks), child)
+            })
+          })
+          return
+        }
+
+        const mcqKey = getQuestionKey(question, `mcq-${questionIndex + 1}`)
+        stats[mcqKey] = buildStats(mcqKey, getQuestionMarksTotal(question) || 1, question)
+      })
+    })
+
+    return stats
+  }, [assessment, normalizedRows, previewSectionGroups])
+
+  const getQuestionStatKeys = (question, questionIndex) => {
+    if (!isDescriptiveQuestionType(question?.type)) {
+      return [getQuestionKey(question, `mcq-${questionIndex + 1}`)]
+    }
+
+    const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+    const baseKey = getQuestionKey(question, `descriptive-${questionIndex + 1}`)
+    if (!sections.length) return [baseKey]
+
+    return sections.flatMap((sectionItem, sectionIndex) => {
+      const sectionKey = getQuestionKey(sectionItem, `${baseKey}-section-${sectionIndex + 1}`)
+      const children = Array.isArray(sectionItem.children) ? sectionItem.children : []
+      return children.length
+        ? children.map((child, childIndex) => getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`))
+        : [sectionKey]
+    })
+  }
+
+  const overallAttainmentTabs = [
+    { key: 'subject', label: 'Subject', column: 'Subject Name' },
+    { key: 'topics', label: 'Topics', column: 'Topics Name' },
+    { key: 'competency', label: 'Competency', column: 'Competency No & Name' },
+  ]
+
+  const getOverallQuestionGroupValues = (question, tabKey, fallbackIndex) => {
+    if (tabKey === 'subject') {
+      return getTagValues(question?.subject).length
+        ? getTagValues(question?.subject)
+        : [getAssessmentValue(assessment, 'subject', `Subject ${fallbackIndex + 1}`)]
+    }
+
+    if (tabKey === 'topics') {
+      return getTagValues(question?.topics).length
+        ? getTagValues(question?.topics)
+        : [question?.topic || `Topic ${fallbackIndex + 1}`]
+    }
+
+    return getTagValues(question?.competencies).length
+      ? getTagValues(question?.competencies)
+      : [question?.competency || `Competency ${fallbackIndex + 1}`]
+  }
+
+  const overallAttainmentRows = useMemo(() => {
+    const groups = new Map()
+
+    assessmentQuestions.forEach((question, questionIndex) => {
+      const values = getOverallQuestionGroupValues(question, overallAnalyticsTab, questionIndex).filter(Boolean)
+      const statKeys = getQuestionStatKeys(question, questionIndex)
+      values.forEach((value) => {
+        const key = String(value)
+        const group = groups.get(key) || { name: key, averageMarks: 0, maxMarks: 0 }
+        statKeys.forEach((statKey) => {
+          const stat = overallQuestionStats[statKey]
+          if (!stat) return
+          group.averageMarks += stat.averageMarks || 0
+          group.maxMarks += stat.maxMarks || 0
+        })
+        groups.set(key, group)
+      })
+    })
+
+    return [...groups.values()].map((group) => {
+      const percentage = group.maxMarks ? Math.round((group.averageMarks / group.maxMarks) * 100) : 0
+      const level = Math.max(0, Math.min(5, Math.round(percentage / 20)))
+      return {
+        ...group,
+        level,
+        attained: level > 0,
+      }
+    })
+  }, [assessmentQuestions, overallAnalyticsTab, overallQuestionStats])
+
+  const getOverallSectionAverage = (section) => {
+    const totals = section.questions.reduce((summary, question, questionIndex) => {
+      const collectStat = (key) => {
+        const stat = overallQuestionStats[key]
+        if (!stat) return
+        summary.averageMarks += stat.averageMarks || 0
+        summary.maxMarks += stat.maxMarks || 0
+      }
+
+      if (isDescriptiveQuestionType(question?.type)) {
+        const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+        const baseKey = getQuestionKey(question, `descriptive-${questionIndex + 1}`)
+        if (!sections.length) {
+          collectStat(baseKey)
+          return summary
+        }
+
+        sections.forEach((sectionItem, sectionIndex) => {
+          const sectionKey = getQuestionKey(sectionItem, `${baseKey}-section-${sectionIndex + 1}`)
+          const children = Array.isArray(sectionItem.children) ? sectionItem.children : []
+          if (!children.length) {
+            collectStat(sectionKey)
+            return
+          }
+          children.forEach((child, childIndex) => {
+            collectStat(getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`))
+          })
+        })
+        return summary
+      }
+
+      collectStat(getQuestionKey(question, `mcq-${questionIndex + 1}`))
+      return summary
+    }, { averageMarks: 0, maxMarks: 0 })
+
+    return totals.maxMarks ? Math.round((totals.averageMarks / totals.maxMarks) * 100) : 0
+  }
+
   const getMcqResultMeta = (question, questionKey, index, maxMarks) => {
     const result = questionEvaluationState[questionKey] || {}
     const attempt = readStoredAttempt(assessment, selectedStudent)
@@ -1385,6 +1561,19 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const renderQuestionResultBadges = (meta) => {
+    if (isOverallAnalyticsView) {
+      return (
+        <>
+          <span className="assessment-question-badge is-average">
+            Class Avg : {formatTwoDigit(meta?.averagePercentage || 0)}%
+          </span>
+          <span className="assessment-question-badge is-loa">
+            LoA : {formatTwoDigit(meta?.loaCount || 0)}
+          </span>
+        </>
+      )
+    }
+
     if (!isStudentResultView) return null
 
     return (
@@ -1408,8 +1597,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const studentAnswerIndex = Number.isFinite(Number(storedStudentAnswer)) ? Number(storedStudentAnswer) : null
     const shouldShowOnlineMcqDetails = !isOffline
     const isExpanded = Boolean(expandedMcqQuestions[questionKey])
-    const resultMeta = getMcqResultMeta(question, questionKey, index, maxMarks)
-    const mcqActionControls = isStudentResultView ? null : (
+    const resultMeta = isOverallAnalyticsView
+      ? overallQuestionStats[questionKey]
+      : getMcqResultMeta(question, questionKey, index, maxMarks)
+    const mcqActionControls = isReadOnlyQuestionView ? null : (
       <div className="assessment-question-actions is-mcq-header-actions">
         <button
           type="button"
@@ -1472,11 +1663,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const renderDescriptiveScoringRow = (question, indexLabel, questionKey, isNestedSubQuestion = false) => {
     const result = questionEvaluationState[questionKey] || {}
     const maxMarks = getQuestionMarksTotal(question) || parseMarksValue(question?.marks)
-    const resultMeta = getDescriptiveResultMeta(question, questionKey, maxMarks)
+    const resultMeta = isOverallAnalyticsView
+      ? overallQuestionStats[questionKey]
+      : getDescriptiveResultMeta(question, questionKey, maxMarks)
     const hasValidMarks = result.status === 'evaluated' && !result.error && String(result.marks ?? '').trim() !== ''
     const hasInvalidMarks = Boolean(result.error)
     const shouldPromptMarks = !hasValidMarks && !hasInvalidMarks && result.status !== 'not-attempted'
-    const descriptiveActionControls = isStudentResultView ? null : (
+    const descriptiveActionControls = isReadOnlyQuestionView ? null : (
       <div className="assessment-question-actions is-descriptive-header-actions">
         <label className="assessment-mark-field assessment-compact-mark-control">
           <input
@@ -1693,6 +1886,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       tone: studentResultOutcome.achieved ? 'result-achieved' : 'result-not-achieved',
     }] : []),
   ] : []
+  const overallAnalyticsDetails = [
+    { label: 'Students', badge: `${formatTwoDigit(presentRows.length)} Present / ${formatTwoDigit(absentCount)} Absent`, value: `${formatTwoDigit(completedScoreRows.length)} Evaluated`, icon: Users, tone: 'students' },
+    { label: 'Questions', badge: `${formatTwoDigit(questionSummary.mcqCount)} MCQ / ${formatTwoDigit(questionSummary.descriptiveCount)} Desc.`, value: `${formatTwoDigit(questionSummary.totalCount)} Total`, icon: ClipboardList, tone: 'questions' },
+    { label: 'Average Marks', value: `${formatTwoDigit(completedObtainedMarks)} / ${formatTwoDigit(completedMaxMarks)}`, icon: Award, tone: 'marks' },
+    { label: 'Average Percentage', value: `${formatTwoDigit(overallPercentage)}%`, icon: Percent, tone: 'percentage' },
+  ]
+  const detailItems = isOverallAnalyticsView ? overallAnalyticsDetails : selectedStudentDetails
 
   const renderSemiDonut = (value, label, color = '#2ecda3', className = '', tooltipItem = null) => {
     const percentage = Math.max(0, Math.min(100, Number(value) || 0))
@@ -1981,8 +2181,69 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     </div>
   )
 
+  const renderOverallAttainmentTabs = () => {
+    if (!isOverallAnalyticsView) return null
+    const activeTab = overallAttainmentTabs.find((tab) => tab.key === overallAnalyticsTab) || overallAttainmentTabs[0]
+
+    return (
+      <section className="assessment-overall-attainment-panel" aria-label="Overall level of attainment">
+        <div className="assessment-overall-attainment-toolbar">
+          <div className="assessment-overall-attainment-tabs" role="tablist" aria-label="Attainment category">
+            {overallAttainmentTabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                className={overallAnalyticsTab === tab.key ? 'is-active' : ''}
+                onClick={() => setOverallAnalyticsTab(tab.key)}
+                aria-selected={overallAnalyticsTab === tab.key}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <span className="assessment-overall-attainment-level">Level Of Attainment - 5</span>
+        </div>
+
+        <div className="assessment-overall-attainment-table-wrap">
+          <table className="assessment-overall-attainment-table">
+            <thead>
+              <tr>
+                <th>{activeTab.column}</th>
+                <th>Level of Attainment</th>
+                <th>Attained/Not Attained</th>
+              </tr>
+            </thead>
+            <tbody>
+              {overallAttainmentRows.length ? overallAttainmentRows.map((row) => (
+                <tr key={`${overallAnalyticsTab}-${row.name}`}>
+                  <td>
+                    <span className={`assessment-overall-attainment-name ${row.attained ? '' : 'is-not-attained'}`}>
+                      <Info size={11} strokeWidth={2.4} />
+                      {row.name}
+                    </span>
+                  </td>
+                  <td>{row.level}</td>
+                  <td>
+                    <span className={`assessment-overall-attainment-status ${row.attained ? 'is-attained' : 'is-not-attained'}`}>
+                      {row.attained ? 'Attained' : 'Not Attained'}
+                    </span>
+                  </td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan="3">No attainment data available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
+
   const renderQuestionTagPerformance = () => {
-    if (!isStudentResultView) return null
+    if (!isReadOnlyQuestionView) return null
     const categorySeries = resultTagAnalytics.questionCategory
     const thinkingSeries = resultTagAnalytics.thinkingLevel
 
@@ -2198,29 +2459,33 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         </div>
       </header>
 
-      {isStudentEvaluationView ? (
-        selectedStudent ? (
-        <section className={`assessment-student-evaluation-card ${isStudentResultView ? 'is-result-view' : ''}`} aria-label={isStudentResultView ? 'Selected student result' : 'Selected student evaluation'}>
-          <div className="assessment-student-evaluation-head">
+      {isStudentEvaluationView || isOverallAnalyticsView ? (
+        selectedStudent || isOverallAnalyticsView ? (
+        <section className={`assessment-student-evaluation-card ${isReadOnlyQuestionView ? 'is-result-view' : ''}`} aria-label={isOverallAnalyticsView ? 'Overall assessment analytics' : isStudentResultView ? 'Selected student result' : 'Selected student evaluation'}>
+          <div className={`assessment-student-evaluation-head ${isOverallAnalyticsView ? 'is-overall-analytics-head' : ''}`}>
             <button type="button" className="assessment-student-back-icon" onClick={backToStudentList} title="Back to Student List" aria-label="Back to Student List">
               <ArrowLeft size={18} strokeWidth={2.4} />
             </button>
             <div>
-              <h2>{selectedStudent.name}</h2>
-              <p className="assessment-student-evaluation-subtitle">
-                <span>{selectedStudent.id}</span>
-                <span className="assessment-student-evaluation-divider">/</span>
-                <span>{selectedStudent.attendanceStatus || (selectedStudent.attendance === 'P' ? 'Present' : 'Absent')}</span>
-                <span className="assessment-student-evaluation-divider">/</span>
-                <strong className={selectedStudentEvaluationStatus === 'Completed' ? 'is-completed' : 'is-not-completed'}>{selectedStudentEvaluationStatus}</strong>
-              </p>
+              <h2>{isOverallAnalyticsView ? 'Overall Analytics' : selectedStudent.name}</h2>
+              {isOverallAnalyticsView ? null : (
+                <p className="assessment-student-evaluation-subtitle">
+                  <span>{selectedStudent.id}</span>
+                  <span className="assessment-student-evaluation-divider">/</span>
+                  <span>{selectedStudent.attendanceStatus || (selectedStudent.attendance === 'P' ? 'Present' : 'Absent')}</span>
+                  <span className="assessment-student-evaluation-divider">/</span>
+                  <strong className={selectedStudentEvaluationStatus === 'Completed' ? 'is-completed' : 'is-not-completed'}>
+                    {selectedStudentEvaluationStatus}
+                  </strong>
+                </p>
+              )}
             </div>
             {isStudentResultView ? (
               <button type="button" className="assessment-student-download-result-btn" onClick={downloadStudentResultPdf}>
                 <Download size={16} strokeWidth={2.4} />
                 Download Result PDF
               </button>
-            ) : (
+            ) : isOverallAnalyticsView ? null : (
               <label className="assessment-student-search">
                 <Search size={15} strokeWidth={2.3} aria-hidden="true" />
                 <input
@@ -2233,8 +2498,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             )}
           </div>
 
-          <div className="assessment-student-detail-grid">
-            {selectedStudentDetails.map((item) => (
+          <div className={`assessment-student-detail-grid ${isOverallAnalyticsView ? 'is-overall-analytics-grid' : ''}`}>
+            {detailItems.map((item) => (
               <span key={item.label} className={item.tone ? `is-${item.tone}` : ''}>
                 {item.icon ? <i aria-hidden="true"><item.icon size={15} strokeWidth={2.3} /></i> : null}
                 <span>
@@ -2249,15 +2514,17 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             ))}
           </div>
 
+          {renderOverallAttainmentTabs()}
+
           {renderQuestionTagPerformance()}
 
-          <section className="assessment-student-question-area" aria-label={isStudentResultView ? 'Question result workspace' : 'Question evaluation workspace'}>
+          <section className="assessment-student-question-area" aria-label={isOverallAnalyticsView ? 'Overall question analytics workspace' : isStudentResultView ? 'Question result workspace' : 'Question evaluation workspace'}>
             {previewSectionGroups.length ? (
               previewSectionGroups.map((section, sectionIndex) => {
                 const sectionLabel = ['I', 'II', 'III', 'IV', 'V', 'VI'][sectionIndex] || `${sectionIndex + 1}`
                 const isDescriptiveSection = section.questions.some((question) => isDescriptiveQuestionType(question?.type))
                 const sectionStatus = getSectionEvaluationStatus(section)
-                const isSectionCollapsed = collapsedQuestionSections[section.key] ?? (isStudentResultView ? false : true)
+                const isSectionCollapsed = collapsedQuestionSections[section.key] ?? (isReadOnlyQuestionView ? false : true)
 
                 return (
                   <section
@@ -2278,8 +2545,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                     >
                       <h3>{sectionLabel}. {section.title}</h3>
                       <span className="assessment-section-head-meta">
-                        {isStudentResultView ? null : renderSectionStatusBadge(sectionStatus)}
-                        <span className="assessment-section-mark-badge">{formatTwoDigit(section.marks)} Marks</span>
+                        {isReadOnlyQuestionView ? null : renderSectionStatusBadge(sectionStatus)}
+                        <span className={`assessment-section-mark-badge ${isOverallAnalyticsView ? 'is-section-average' : ''}`}>
+                          {isOverallAnalyticsView ? `Section Avg : ${formatTwoDigit(getOverallSectionAverage(section))}%` : `${formatTwoDigit(section.marks)} Marks`}
+                        </span>
                         <button
                           type="button"
                           className="assessment-section-toggle"
@@ -2317,7 +2586,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               </div>
             )}
           </section>
-          {isStudentResultView ? null : (
+          {isReadOnlyQuestionView ? null : (
             <nav className="assessment-student-floating-controls" aria-label="Student evaluation navigation">
               <span className="assessment-student-completed-badge">
                 No. of Evaluation Completed : {formatTwoDigit(completedPresentEvaluations)} out of {formatTwoDigit(totalPresentEvaluations)}
@@ -2368,8 +2637,9 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         <div className="assessment-evaluation-table-tools">
           <h2>Student Evaluation</h2>
           <div className="assessment-evaluation-toolbar-actions">
-            <button type="button" className="assessment-evaluation-publish-btn" onClick={publishEvaluationAssessment}>
-              Publish Assessment
+            <button type="button" className="assessment-evaluation-publish-btn" onClick={viewOverallAnalytics}>
+              <ChartColumnBig size={15} strokeWidth={2.4} />
+              View Overall Analytics
             </button>
             <button type="button" className="assessment-evaluation-download-btn" onClick={downloadEvaluationExcel}>
               <Download size={15} strokeWidth={2.4} />

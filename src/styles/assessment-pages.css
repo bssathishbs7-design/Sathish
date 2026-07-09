@@ -1203,6 +1203,11 @@
   font-weight: 900;
 }
 
+.assessment-student-evaluation-head.is-overall-analytics-head {
+  grid-template-columns: 38px minmax(0, 1fr);
+  min-height: 58px;
+}
+
 .assessment-student-evaluation-head p {
   margin: 4px 0 0;
   color: #60788c;
@@ -1357,6 +1362,46 @@
   min-width: 0;
 }
 
+.assessment-student-detail-grid.is-overall-analytics-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  top: 139px;
+}
+
+.assessment-student-detail-grid.is-overall-analytics-grid > span {
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 22px;
+}
+
+.assessment-student-detail-grid.is-overall-analytics-grid > span > span {
+  justify-content: center;
+  gap: 7px;
+}
+
+.assessment-student-detail-grid.is-overall-analytics-grid i {
+  width: 34px;
+  height: 34px;
+}
+
+.assessment-student-detail-grid.is-overall-analytics-grid em,
+.assessment-student-detail-grid.is-overall-analytics-grid strong,
+.assessment-student-detail-grid.is-overall-analytics-grid small {
+  line-height: 1.2;
+}
+
+.assessment-student-detail-grid.is-overall-analytics-grid em {
+  gap: 8px;
+}
+
+.assessment-student-detail-grid.is-overall-analytics-grid em b {
+  min-height: 18px;
+  padding: 0 8px;
+  font-size: 0.64rem;
+}
+
 .assessment-student-detail-grid i {
   display: inline-flex;
   align-items: center;
@@ -1496,6 +1541,163 @@
   padding: 16px 18px 18px;
   border-bottom: 1px solid #dcece8;
   background: #fbfefd;
+}
+
+.assessment-overall-attainment-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px 18px 16px;
+  border-bottom: 1px solid #dcece8;
+  background: linear-gradient(180deg, #f8fffd 0%, #ffffff 100%);
+}
+
+.assessment-overall-attainment-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.assessment-overall-attainment-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #d7eee9;
+  border-radius: 10px;
+  background: #f2fbf8;
+}
+
+.assessment-overall-attainment-tabs button {
+  min-width: 118px;
+  min-height: 32px;
+  padding: 0 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #60788c;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.assessment-overall-attainment-tabs button.is-active {
+  border-color: #8ddfd5;
+  background: #ffffff;
+  color: #007c6f;
+  box-shadow: 0 6px 14px rgba(20, 184, 166, 0.12);
+}
+
+.assessment-overall-attainment-level {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.assessment-overall-attainment-table-wrap {
+  overflow: hidden;
+  border: 1px solid #d7eee9;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.assessment-overall-attainment-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.78rem;
+}
+
+.assessment-overall-attainment-table th {
+  height: 36px;
+  padding: 0 14px;
+  border-right: 1px solid #d7eee9;
+  border-bottom: 1px solid #d7eee9;
+  background: #eefaf7;
+  color: #006b5f;
+  font-weight: 900;
+  text-align: left;
+}
+
+.assessment-overall-attainment-table th:last-child {
+  border-right: 0;
+}
+
+.assessment-overall-attainment-table td {
+  min-height: 42px;
+  padding: 8px 14px;
+  border-right: 1px solid #edf5f2;
+  border-top: 1px solid #edf5f2;
+  background: #ffffff;
+  color: #111827;
+  font-weight: 850;
+  text-align: left;
+}
+
+.assessment-overall-attainment-table td:last-child {
+  border-right: 0;
+}
+
+.assessment-overall-attainment-table th:nth-child(2),
+.assessment-overall-attainment-table th:nth-child(3),
+.assessment-overall-attainment-table td:nth-child(2),
+.assessment-overall-attainment-table td:nth-child(3) {
+  text-align: center;
+}
+
+.assessment-overall-attainment-name,
+.assessment-overall-attainment-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.assessment-overall-attainment-name {
+  gap: 5px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+  white-space: normal;
+}
+
+.assessment-overall-attainment-name.is-not-attained {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.assessment-overall-attainment-status {
+  min-width: 108px;
+  padding: 0 14px;
+}
+
+.assessment-overall-attainment-status.is-attained {
+  border: 1px solid #86efac;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.assessment-overall-attainment-status.is-not-attained {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #be123c;
 }
 
 .assessment-result-tag-analytics-head {
@@ -2579,6 +2781,12 @@
   line-height: 1;
 }
 
+.assessment-section-mark-badge.is-section-average {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .assessment-section-status.is-in-progress {
   border-color: #facc15;
   background: #fffbeb;
@@ -3144,6 +3352,18 @@
   border-color: #fecaca;
   background: #fff1f2;
   color: #be123c;
+}
+
+.assessment-question-badge.is-average {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.assessment-question-badge.is-loa {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
 }
 
 .assessment-question-image-popover {
@@ -4110,6 +4330,76 @@
   background: #0f1a2a;
 }
 
+.theme-dark .assessment-overall-attainment-panel {
+  border-bottom-color: #263a52;
+  background: #0f1a2a;
+}
+
+.theme-dark .assessment-overall-attainment-tabs {
+  border-color: #30465f;
+  background: #101d2d;
+}
+
+.theme-dark .assessment-overall-attainment-tabs button {
+  border-color: transparent;
+  background: transparent;
+  color: #71869d;
+}
+
+.theme-dark .assessment-overall-attainment-tabs button.is-active {
+  border-color: rgba(45, 212, 191, 0.45);
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
+  box-shadow: none;
+}
+
+.theme-dark .assessment-overall-attainment-level {
+  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+}
+
+.theme-dark .assessment-overall-attainment-table-wrap {
+  border-color: #30465f;
+  background: #101d2d;
+}
+
+.theme-dark .assessment-overall-attainment-table th {
+  border-color: #30465f;
+  background: rgba(20, 184, 166, 0.12);
+  color: #99f6e4;
+}
+
+.theme-dark .assessment-overall-attainment-table td {
+  border-color: #263a52;
+  background: #101d2d;
+  color: #f7fbff;
+}
+
+.theme-dark .assessment-overall-attainment-name {
+  border-color: rgba(45, 212, 191, 0.45);
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
+}
+
+.theme-dark .assessment-overall-attainment-name.is-not-attained {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.24);
+  color: #fca5a5;
+}
+
+.theme-dark .assessment-overall-attainment-status.is-attained {
+  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(22, 101, 52, 0.22);
+  color: #86efac;
+}
+
+.theme-dark .assessment-overall-attainment-status.is-not-attained {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.24);
+  color: #fca5a5;
+}
+
 .theme-dark .assessment-result-tag-analytics-head h3,
 .theme-dark .assessment-result-chart-card h4 {
   border-color: rgba(45, 212, 191, 0.36);
@@ -4480,6 +4770,12 @@
   color: #cbd5e1;
 }
 
+.theme-dark .assessment-section-mark-badge.is-section-average {
+  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+}
+
 .theme-dark .assessment-question-row {
   border-color: #2c4058;
   background: #132235;
@@ -4755,6 +5051,18 @@
   color: #fca5a5;
 }
 
+.theme-dark .assessment-question-badge.is-loa {
+  border-color: rgba(45, 212, 191, 0.5);
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
+}
+
+.theme-dark .assessment-question-badge.is-average {
+  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+}
+
 .theme-dark .assessment-question-image-tooltip {
   border-color: #30465f;
   background: #101d2d;
@@ -4839,6 +5147,34 @@
 
   .assessment-student-detail-grid {
     top: 193px;
+  }
+
+  .assessment-student-detail-grid.is-overall-analytics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .assessment-student-detail-grid.is-overall-analytics-grid > span:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .assessment-overall-attainment-toolbar {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .assessment-overall-attainment-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .assessment-overall-attainment-tabs button {
+    min-width: 0;
+  }
+
+  .assessment-overall-attainment-level {
+    min-width: 0;
+    width: 100%;
   }
 
   .assessment-evaluation-right-block {
