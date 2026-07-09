@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Activity, BadgeCheck, CalendarClock, ChartColumnBig, ClipboardList, EyeOff, ListFilter, Monitor, Search, ShieldCheck, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
@@ -51,7 +52,7 @@ const MY_ASSESSMENT_FILTER_GROUPS = [
     options: [
       { value: 'all', label: 'All Types' },
       { value: 'practice', label: 'Practice Exam' },
-      { value: 'proctored', label: 'Proctored Exams' },
+      { value: 'proctored', label: 'Proctored Exam' },
     ],
   },
   {
@@ -65,6 +66,10 @@ const MY_ASSESSMENT_FILTER_GROUPS = [
     ],
   },
 ]
+
+const formatSupervisionTypeLabel = (value) => (
+  value === 'Proctored Exams' ? 'Proctored Exam' : value
+)
 
 const isSameAssessmentRecord = (first, second) => {
   if (!first || !second) return false
@@ -464,12 +469,6 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   }
 
   useEffect(() => {
-    if (!accessRequestNotice) return undefined
-    const timeoutId = window.setTimeout(() => setAccessRequestNotice(null), 1800)
-    return () => window.clearTimeout(timeoutId)
-  }, [accessRequestNotice])
-
-  useEffect(() => {
     if (!isMyAssessment) return undefined
 
     const refreshPublishedAssessments = () => {
@@ -658,7 +657,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         </span>
                         <span className={`assessment-create-published-supervision ${isPracticeExam ? 'is-practice' : 'is-proctored'}`}>
                           <SupervisionIcon size={13} strokeWidth={2.3} />
-                          {assessment.supervisionType || '-'}
+                          {formatSupervisionTypeLabel(assessment.supervisionType) || '-'}
                         </span>
                       </span>
                       <div className="assessment-create-published-details" aria-label="Published assessment details">
@@ -704,17 +703,27 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
               </div>
             )}
             </section>
-            {accessRequestNotice ? (
-              <div className="my-assessment-request-access-overlay" role="presentation">
+            {accessRequestNotice ? createPortal((
+              <div
+                className={`my-assessment-request-access-overlay ${typeof document !== 'undefined' && document.querySelector('.vx-shell.theme-dark') ? 'is-dark' : ''}`.trim()}
+                role="presentation"
+              >
                 <section className="my-assessment-request-access-modal" role="dialog" aria-modal="true" aria-labelledby="my-assessment-request-title">
                   <span className="my-assessment-request-icon" aria-hidden="true">
                     <ShieldCheck size={22} strokeWidth={2.3} />
                   </span>
                   <h2 id="my-assessment-request-title">{accessRequestNotice.title}</h2>
                   <p>{accessRequestNotice.message}</p>
+                  <button
+                    type="button"
+                    className="my-assessment-request-close-btn"
+                    onClick={() => setAccessRequestNotice(null)}
+                  >
+                    Close
+                  </button>
                 </section>
               </div>
-            ) : null}
+            ), document.body) : null}
           </>
         ) : (
           <>

@@ -132,6 +132,7 @@ const DEFAULT_STUDENT_INSTRUCTIONS = [
   '<p><strong><em>[Instructions]</em></strong></p>',
   '<ul><li><strong>Time Limit :</strong> <em>60 minutes once started (cannot be paused).</em></li></ul>',
 ].join('')
+const isProctoredSupervisionType = (value) => String(value || '').toLowerCase().includes('proctored')
 const CREATE_ASSESSMENT_SELECT_OPTIONS = {
   colleges: [DEFAULT_COLLEGE_NAME],
   examCategories: DEFAULT_EXAM_CATEGORIES,
@@ -150,7 +151,7 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   course: '',
   year: '',
   examDeliveryMode: 'Online',
-  supervisionType: 'Proctored Exams',
+  supervisionType: 'Proctored Exam',
   approvalFlow: 'Send to Approval',
   examDate: '',
   startTime: '',
@@ -1322,7 +1323,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const normalizeResultPublishSettings = (draft) => {
     const nextDraft = { ...draft }
-    if (nextDraft.supervisionType === 'Proctored Exams') {
+    if (isProctoredSupervisionType(nextDraft.supervisionType)) {
       nextDraft.mcqAutoPublish = 'Off'
       nextDraft.descriptiveEvaluationRequired = 'Yes'
     }
@@ -2155,7 +2156,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       )
     }
 
-    if (setupDraft.supervisionType === 'Proctored Exams') {
+    if (isProctoredSupervisionType(setupDraft.supervisionType)) {
       const hasMcqSplit = TIME_LIMIT_PATTERN.test(setupDraft.mcqTimeLimit || '')
       const hasDescriptiveSplit = TIME_LIMIT_PATTERN.test(setupDraft.descriptiveTimeLimit || '')
       const splitMatchesTotal = !setupDraft.splitProctoredDuration || !hasMcq || !hasDescriptive || !hasMcqSplit || !hasDescriptiveSplit || (
@@ -4756,11 +4757,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           <label className={`create-assessment-schedule-toggle-field is-inline ${setupErrors.supervisionType ? 'has-error' : ''}`}>
                             <span>Supervision Type <em>*</em></span>
                             <div className="create-assessment-mode-toggle" role="group" aria-label="Supervision type">
-                              {['Practice Exam', 'Proctored Exams'].map((option) => (
+                              {['Practice Exam', 'Proctored Exam'].map((option) => (
                                 <button
                                   key={option}
                                   type="button"
-                                  className={setupDraft.supervisionType === option ? 'is-active' : ''}
+                                  className={setupDraft.supervisionType === option || (option === 'Proctored Exam' && isProctoredSupervisionType(setupDraft.supervisionType)) ? 'is-active' : ''}
                                   onClick={() => updateSupervisionType(option)}
                                 >
                                   {option}
@@ -4792,7 +4793,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             })}
                             {renderScheduleStartTimeField('practiceEndTime', 'practiceEndPeriod', 'End Time', 'practiceEndTime', { required: false })}
                           </div>
-                        ) : setupDraft.supervisionType === 'Proctored Exams' ? (
+                        ) : isProctoredSupervisionType(setupDraft.supervisionType) ? (
                           <>
                             <div className="create-assessment-schedule-grid is-proctored-shared">
                               {renderScheduleDateField('examDate', 'Exam Date')}

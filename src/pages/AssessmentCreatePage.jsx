@@ -130,7 +130,7 @@ const PUBLISHED_FILTER_GROUPS = [
     options: [
       { value: 'all', label: 'All Types' },
       { value: 'practice', label: 'Practice Exam' },
-      { value: 'proctored', label: 'Proctored Exams' },
+      { value: 'proctored', label: 'Proctored Exam' },
     ],
   },
   {
@@ -144,6 +144,10 @@ const PUBLISHED_FILTER_GROUPS = [
     ],
   },
 ]
+
+const formatSupervisionTypeLabel = (value) => (
+  value === 'Proctored Exams' ? 'Proctored Exam' : value
+)
 
 const isDescriptiveQuestionType = (type) => (
   type === 'Descriptive Question'
@@ -1436,7 +1440,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           {!isOfflineExam ? (
                             <span className={`assessment-create-published-supervision ${isPracticeExam ? 'is-practice' : 'is-proctored'}`}>
                               <SupervisionIcon size={13} strokeWidth={2.3} />
-                              {assessment.supervisionType || '-'}
+                              {formatSupervisionTypeLabel(assessment.supervisionType) || '-'}
                             </span>
                           ) : publishedQuestionRows.length ? (
                             <button type="button" className="assessment-create-published-download-btn" onClick={() => downloadQuestionPaperPdf(assessment)}>
@@ -1541,7 +1545,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           {!isOfflineExam ? (
                             <span className={`assessment-create-published-supervision ${isPracticeExam ? 'is-practice' : 'is-proctored'}`}>
                               <SupervisionIcon size={13} strokeWidth={2.3} />
-                              {assessment.supervisionType || '-'}
+                              {formatSupervisionTypeLabel(assessment.supervisionType) || '-'}
                             </span>
                           ) : publishedQuestionRows.length ? (
                             <button type="button" className="assessment-create-published-download-btn" onClick={() => downloadQuestionPaperPdf(assessment)}>

@@ -8672,8 +8672,12 @@
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(8, 24, 35, 0.34);
-  backdrop-filter: blur(6px);
+  min-height: 100dvh;
+  background: #f7fffc;
+}
+
+.my-assessment-request-access-overlay.is-dark {
+  background: #08111f;
 }
 
 .my-assessment-request-access-modal {
@@ -8714,6 +8718,27 @@
   font-size: 0.78rem;
   font-weight: 760;
   line-height: 1.35;
+}
+
+.my-assessment-request-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  min-height: 36px;
+  margin-top: 8px;
+  border: 1px solid #0f9f94;
+  border-radius: 8px;
+  background: #0f9f94;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(15, 159, 148, 0.22);
+}
+
+.my-assessment-request-close-btn:hover {
+  background: #0d8f85;
 }
 
 .my-assessment-card-action.is-start.is-live {
@@ -24877,24 +24902,41 @@
   color: #8396ab;
 }
 
-.theme-dark .my-assessment-request-access-modal {
+.theme-dark .my-assessment-request-access-modal,
+.my-assessment-request-access-overlay.is-dark .my-assessment-request-access-modal {
   border-color: rgba(45, 212, 191, 0.42);
   background: #101827;
   color: #eef6ff;
 }
 
-.theme-dark .my-assessment-request-icon {
+.theme-dark .my-assessment-request-icon,
+.my-assessment-request-access-overlay.is-dark .my-assessment-request-icon {
   border-color: rgba(45, 212, 191, 0.42);
   background: rgba(20, 184, 166, 0.16);
   color: #99f6e4;
 }
 
-.theme-dark .my-assessment-request-access-modal h2 {
+.theme-dark .my-assessment-request-access-modal h2,
+.my-assessment-request-access-overlay.is-dark .my-assessment-request-access-modal h2 {
   color: #eef6ff;
 }
 
-.theme-dark .my-assessment-request-access-modal p {
+.theme-dark .my-assessment-request-access-modal p,
+.my-assessment-request-access-overlay.is-dark .my-assessment-request-access-modal p {
   color: #9fb0c8;
+}
+
+.theme-dark .my-assessment-request-close-btn,
+.my-assessment-request-access-overlay.is-dark .my-assessment-request-close-btn {
+  border-color: rgba(45, 212, 191, 0.7);
+  background: #14b8a6;
+  color: #ffffff;
+  box-shadow: 0 12px 26px rgba(20, 184, 166, 0.18);
+}
+
+.theme-dark .my-assessment-request-close-btn:hover,
+.my-assessment-request-access-overlay.is-dark .my-assessment-request-close-btn:hover {
+  background: #0f9f94;
 }
 
 .theme-dark .my-assessment-card-action.is-start.is-live {

@@ -2813,7 +2813,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               <div className="online-proctored-side-meta" aria-label="Proctored assessment summary">
                 <span className="online-proctored-side-badge">
                   <Monitor size={14} strokeWidth={2.3} />
-                  Proctored Exams
+                  Proctored Exam
                 </span>
                 <div className="online-proctored-side-meta-grid">
                   {sideNavMetaItems.map((item) => (
