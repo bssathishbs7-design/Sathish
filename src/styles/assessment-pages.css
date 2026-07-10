@@ -1129,6 +1129,11 @@
   color: #b45309;
 }
 
+.assessment-evaluation-confirm-icon.is-publish {
+  background: #ecfdf5;
+  color: #047857;
+}
+
 .assessment-evaluation-confirm-modal h2 {
   margin: 0;
   color: #0f172a;
@@ -1613,12 +1618,170 @@
 }
 
 .assessment-student-evaluation-head.is-overall-analytics-head {
-  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-columns: 38px minmax(0, 1fr) minmax(420px, 620px);
   min-height: 58px;
 }
 
 .assessment-student-evaluation-head.is-student-evaluation-head {
   grid-template-columns: 38px minmax(0, 1fr) minmax(390px, 520px);
+}
+
+.assessment-overall-head-actions {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  min-width: 0;
+  width: 100%;
+}
+
+.assessment-overall-download-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.assessment-overall-student-search {
+  position: relative;
+  display: grid;
+  width: min(100%, 330px);
+  min-width: 0;
+}
+
+.assessment-overall-student-search svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  color: #0f766e;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.assessment-overall-student-search input {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 12px 0 35px;
+  border: 1px solid #cbe6df;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #092235;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.assessment-overall-download-btn:hover,
+.assessment-overall-download-btn:focus-visible,
+.assessment-overall-student-search input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+}
+
+.assessment-overall-student-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #cbe6df;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 35, 52, 0.16);
+}
+
+.assessment-overall-student-suggestions button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #092235;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assessment-overall-student-suggestions button:hover,
+.assessment-overall-student-suggestions button:focus-visible {
+  background: #eef9f5;
+  outline: none;
+}
+
+.assessment-overall-student-suggestions span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.assessment-overall-student-suggestions strong,
+.assessment-overall-student-suggestions small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assessment-overall-student-suggestions strong {
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.assessment-overall-student-suggestions small {
+  color: #60788c;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.assessment-overall-student-suggestions em {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #e9f0f7;
+  color: #476075;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.assessment-overall-student-suggestions em.is-completed {
+  background: #dff7ff;
+  color: #0369a1;
+}
+
+.assessment-overall-student-suggestions em.is-absent {
+  background: #ffe3e7;
+  color: #c5223a;
+}
+
+.assessment-overall-student-suggestions p {
+  margin: 0;
+  padding: 10px;
+  color: #60788c;
+  font-size: 0.74rem;
+  font-weight: 850;
 }
 
 .assessment-student-evaluation-head p {
@@ -4908,6 +5071,11 @@
   color: #fcd34d;
 }
 
+.theme-dark .assessment-evaluation-confirm-icon.is-publish {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
 .theme-dark .assessment-threshold-config-modal {
   border-color: #30465f;
   background: #101d2d;
@@ -5049,6 +5217,42 @@
 .theme-dark .assessment-student-detail-grid strong,
 .theme-dark .assessment-student-evaluation-empty strong {
   color: #f7fbff;
+}
+
+.theme-dark .assessment-overall-download-btn {
+  border-color: rgba(96, 165, 250, 0.48);
+  background: rgba(96, 165, 250, 0.16);
+  color: #bfdbfe;
+}
+
+.theme-dark .assessment-overall-student-search input {
+  border-color: #30465f;
+  background: #0b1726;
+  color: #f7fbff;
+}
+
+.theme-dark .assessment-overall-student-search svg {
+  color: #99f6e4;
+}
+
+.theme-dark .assessment-overall-student-suggestions {
+  border-color: #30465f;
+  background: #101d2d;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+}
+
+.theme-dark .assessment-overall-student-suggestions button {
+  color: #f7fbff;
+}
+
+.theme-dark .assessment-overall-student-suggestions button:hover,
+.theme-dark .assessment-overall-student-suggestions button:focus-visible {
+  background: #182a40;
+}
+
+.theme-dark .assessment-overall-student-suggestions small,
+.theme-dark .assessment-overall-student-suggestions p {
+  color: #a9bad0;
 }
 
 .theme-dark .assessment-student-evaluation-head p,
@@ -6086,6 +6290,21 @@
 
   .assessment-student-evaluation-head.is-student-evaluation-head {
     grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .assessment-student-evaluation-head.is-overall-analytics-head {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .assessment-overall-head-actions {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    flex-wrap: wrap;
+  }
+
+  .assessment-overall-student-search {
+    flex: 1 1 260px;
+    width: auto;
   }
 
   .assessment-student-head-actions {
@@ -10155,6 +10374,11 @@
 .assessment-create-published-schedule-badge.is-in-progress {
   background: #fffbeb;
   color: #b45309;
+}
+
+.assessment-create-published-schedule-badge.is-published {
+  background: #dcfce7;
+  color: #047857;
 }
 
 .assessment-create-published-schedule-badge.is-locked {
@@ -26328,6 +26552,11 @@
 .theme-dark .assessment-create-published-schedule-badge.is-in-progress {
   background: rgba(245, 158, 11, 0.18);
   color: #fcd34d;
+}
+
+.theme-dark .assessment-create-published-schedule-badge.is-published {
+  background: rgba(22, 163, 74, 0.22);
+  color: #86efac;
 }
 
 .theme-dark .assessment-create-published-schedule-badge.is-violation {

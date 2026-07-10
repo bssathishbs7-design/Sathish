@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, BadgeCheck, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ArrowRight, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -95,6 +95,7 @@ const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
 const EXAM_CONTROLS_ASSESSMENT_KEY = 'vx-exam-controls-assessment'
 const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
 const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
+const ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY = 'vx-assessment-overall-analytics-source'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const PUBLISHED_LOG_PAGE_SIZE = 5
 const PUBLISHED_ACTION_VERIFICATION_CODE = '1234'
@@ -858,7 +859,9 @@ const splitPublishedAssessmentRows = (rows = [], now = new Date()) => {
   const results = []
 
   rows.forEach((assessment) => {
-    if (getPublishedAssessmentScheduleStatus(assessment, now)?.type === 'completed') {
+    if (String(assessment?.resultStatus || '').toLowerCase() === 'published' || String(assessment?.evaluationStatus || '').toLowerCase() === 'published') {
+      results.push(assessment)
+    } else if (getPublishedAssessmentScheduleStatus(assessment, now)?.type === 'completed') {
       evaluation.push(assessment)
     } else {
       published.push(assessment)
@@ -1012,6 +1015,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
   })
   const filteredPublishedAssessments = filterAssessmentCards(activePublishedAssessments)
   const filteredEvaluationAssessments = filterAssessmentCards(evaluationAssessments)
+  const filteredResultAssessments = filterAssessmentCards(resultAssessments)
 
   const clearPublishedSearchFilters = () => {
     setPublishedSearchValue('')
@@ -1199,6 +1203,16 @@ export default function AssessmentCreatePage({ onNavigate }) {
     ))
   }
 
+  const editPublishedAssessmentResult = (assessment) => {
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify({
+      ...assessment,
+      resultEditMode: true,
+      returnTab: 'results',
+    }))
+    window.sessionStorage.removeItem(ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY)
+    onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)
+  }
+
   const submitPublishedActionVerification = (event) => {
     event.preventDefault()
     if (!publishedActionModal?.assessment) return
@@ -1220,6 +1234,10 @@ export default function AssessmentCreatePage({ onNavigate }) {
     setPublishedActionModal(null)
     if (action === 'edit') {
       editPublishedAssessment(assessment)
+      return
+    }
+    if (action === 'result-edit') {
+      editPublishedAssessmentResult(assessment)
       return
     }
     deletePublishedAssessment(assessment.id)
@@ -1245,7 +1263,14 @@ export default function AssessmentCreatePage({ onNavigate }) {
     })
 
     window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(nextAssessment))
+    window.sessionStorage.removeItem(ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY)
     onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)
+  }
+
+  const viewPublishedAssessmentResult = (assessment) => {
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(assessment))
+    window.sessionStorage.setItem(ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY, 'results')
+    onNavigate?.(APP_PAGES.ASSESSMENT_OVERALL_ANALYTICS)
   }
 
   return (
@@ -1612,9 +1637,94 @@ export default function AssessmentCreatePage({ onNavigate }) {
               </div>
               {renderAssessmentSearchToolbar()}
             </div>
-            <div className="assessment-create-placeholder">
-              <p>Results flow will be added later.</p>
-            </div>
+            {resultAssessments.length ? (
+              filteredResultAssessments.length ? (
+                <div className="assessment-create-draft-grid">
+                  {filteredResultAssessments.map((assessment) => {
+                    const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
+                    const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
+                    const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
+                    const durationValue = assessment.totalDuration || '-'
+
+                    return (
+                      <article
+                        key={assessment.id}
+                        className="assessment-create-draft-card assessment-create-published-card"
+                      >
+                        <div className="assessment-create-published-head">
+                          <div>
+                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong>
+                            <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
+                          </div>
+                          <span className="assessment-create-published-actions">
+                            <button
+                              type="button"
+                              className="assessment-create-published-icon-btn is-edit"
+                              onClick={() => openPublishedActionModal('result-edit', assessment)}
+                              title="Edit published result"
+                              aria-label={`Edit published result for ${assessment.assessmentName || 'assessment'}`}
+                            >
+                              <Pencil size={13} strokeWidth={2.2} />
+                            </button>
+                            <button
+                              type="button"
+                              className="assessment-create-published-info"
+                              onClick={() => {
+                                setSelectedPublishedLogAssessment(assessment)
+                                setPublishedLogPage(1)
+                                setPublishedLogActiveTab('exam')
+                              }}
+                              title="Assessment log details"
+                              aria-label={`View logs for ${assessment.assessmentName || 'assessment'}`}
+                            >
+                              <Info size={14} strokeWidth={2.2} />
+                            </button>
+                          </span>
+                        </div>
+                        <span className="assessment-create-published-status-row">
+                          <span className={`assessment-create-published-status is-${isOfflineExam ? 'offline' : 'online'}`}>
+                            {assessment.examMode || '-'}
+                          </span>
+                          {!isOfflineExam ? (
+                            <span className={`assessment-create-published-supervision ${isPracticeExam ? 'is-practice' : 'is-proctored'}`}>
+                              <SupervisionIcon size={13} strokeWidth={2.3} />
+                              {formatSupervisionTypeLabel(assessment.supervisionType) || '-'}
+                            </span>
+                          ) : null}
+                        </span>
+                        <div className="assessment-create-published-details" aria-label="Result assessment details">
+                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em>Start Date</em></span>
+                          <span><strong>{assessment.startTime || '-'}</strong><em>Start Time</em></span>
+                          <span><strong>{durationValue}</strong><em>Total Duration</em></span>
+                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em>End Date</em></span>
+                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
+                          <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
+                        </div>
+                        <div className="assessment-create-draft-footer assessment-create-published-footer">
+                          <span className="assessment-create-published-footer-status">
+                            <span className="assessment-create-published-schedule-badge is-published">
+                              Published
+                            </span>
+                          </span>
+                          <button type="button" className="assessment-create-exam-controls-btn is-results" onClick={() => viewPublishedAssessmentResult(assessment)}>
+                            <ChartColumnBig size={12} strokeWidth={2.4} />
+                            View Result
+                          </button>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="assessment-create-placeholder">
+                  <p>No result assessments match your search.</p>
+                </div>
+              )
+            ) : (
+              <div className="assessment-create-placeholder">
+                <p>No published results available.</p>
+              </div>
+            )}
           </section>
         ) : null}
 
@@ -1642,12 +1752,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
           >
             {publishedActionModal.step === 'confirm' ? (
               <>
-                <span className={`assessment-create-action-guard-icon is-${publishedActionModal.action}`} aria-hidden="true">
-                  {publishedActionModal.action === 'edit' ? <Pencil size={26} strokeWidth={2.2} /> : <Trash2 size={26} strokeWidth={2.2} />}
+                <span className={`assessment-create-action-guard-icon is-${publishedActionModal.action === 'delete' ? 'delete' : 'edit'}`} aria-hidden="true">
+                  {publishedActionModal.action === 'delete' ? <Trash2 size={26} strokeWidth={2.2} /> : <Pencil size={26} strokeWidth={2.2} />}
                 </span>
                 <div className="assessment-create-action-guard-copy">
                   <h3 id="assessment-create-action-guard-title">
-                    {publishedActionModal.action === 'edit' ? 'Are you sure edit?' : 'Are you sure delete?'}
+                    {publishedActionModal.action === 'delete' ? 'Are you sure delete?' : publishedActionModal.action === 'result-edit' ? 'Are you sure edit published result?' : 'Are you sure edit?'}
                   </h3>
                   <p>{publishedActionModal.assessment?.assessmentName || 'Untitled Assessment'}</p>
                 </div>
@@ -1662,12 +1772,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
               </>
             ) : (
               <form className="assessment-create-action-guard-form" onSubmit={submitPublishedActionVerification}>
-                <span className={`assessment-create-action-guard-icon is-${publishedActionModal.action}`} aria-hidden="true">
-                  {publishedActionModal.action === 'edit' ? <Pencil size={26} strokeWidth={2.2} /> : <Trash2 size={26} strokeWidth={2.2} />}
+                <span className={`assessment-create-action-guard-icon is-${publishedActionModal.action === 'delete' ? 'delete' : 'edit'}`} aria-hidden="true">
+                  {publishedActionModal.action === 'delete' ? <Trash2 size={26} strokeWidth={2.2} /> : <Pencil size={26} strokeWidth={2.2} />}
                 </span>
                 <div className="assessment-create-action-guard-copy">
                   <h3 id="assessment-create-action-guard-title">
-                    Verify {publishedActionModal.action === 'edit' ? 'Edit' : 'Delete'} Action
+                    Verify {publishedActionModal.action === 'delete' ? 'Delete' : 'Edit'} Action
                   </h3>
                   <p>Select Password or OTP, then enter the code to continue.</p>
                 </div>

@@ -6,6 +6,7 @@ import '../styles/assessment-pages.css'
 const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
+const ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY = 'vx-assessment-overall-analytics-source'
 const ASSESSMENT_EVALUATION_STUDENT_KEY = 'vx-assessment-evaluation-student'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
@@ -640,6 +641,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const isOverallAnalyticsView = view === 'overall'
   const isReadOnlyQuestionView = isStudentResultView || isOverallAnalyticsView
   const isStudentEvaluationView = view === 'student' || isStudentResultView
+  const shouldHideOverallAnalyticsBack = isOverallAnalyticsView && window.sessionStorage.getItem(ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY) === 'results'
   const [assessment] = useState(() => readSelectedAssessment())
   const [selectedStudent, setSelectedStudent] = useState(() => readSelectedStudent())
   const [studentSessions, setStudentSessions] = useState(() => readStorageObject(STUDENT_EXAM_SESSION_KEY))
@@ -647,6 +649,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [manualAttendance, setManualAttendance] = useState(() => readStorageObject(getManualAttendanceStorageKey(readSelectedAssessment())))
   const [studentEvaluationStatuses, setStudentEvaluationStatuses] = useState(() => readStorageObject(getStudentEvaluationStatusStorageKey(readSelectedAssessment())))
   const [studentSearch, setStudentSearch] = useState('')
+  const [overallStudentSearch, setOverallStudentSearch] = useState('')
   const [attendanceFilter, setAttendanceFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [isEvaluationFilterOpen, setIsEvaluationFilterOpen] = useState(false)
@@ -668,6 +671,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [confirmAction, setConfirmAction] = useState(null)
   const [isThresholdConfirmOpen, setIsThresholdConfirmOpen] = useState(false)
   const [isThresholdConfigOpen, setIsThresholdConfigOpen] = useState(false)
+  const [isDirectPublishConfirmOpen, setIsDirectPublishConfirmOpen] = useState(false)
   const [thresholdConfig, setThresholdConfig] = useState(() => buildAssessmentThresholdConfig(readSelectedAssessment()))
   const [thresholdDraft, setThresholdDraft] = useState(() => buildAssessmentThresholdConfig(readSelectedAssessment()))
   const [thinkingThresholdTab, setThinkingThresholdTab] = useState('hotLot')
@@ -846,6 +850,16 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       return matchesSearch && matchesAttendance && matchesStatus
     })
   }, [attendanceFilter, normalizedRows, statusFilter, studentSearch])
+  const overallStudentSuggestions = useMemo(() => {
+    const query = overallStudentSearch.trim().toLowerCase()
+    if (!query) return []
+    return normalizedRows
+      .filter((row) => (
+        String(row.id).toLowerCase().includes(query)
+        || String(row.name).toLowerCase().includes(query)
+      ))
+      .slice(0, 6)
+  }, [normalizedRows, overallStudentSearch])
   const sortedRows = useMemo(() => {
     const sortValue = (row) => {
       if (sortConfig.key === 'studentId') return row.id
@@ -892,6 +906,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const viewOverallAnalytics = () => {
+    window.sessionStorage.removeItem(ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY)
     onNavigate?.(APP_PAGES.ASSESSMENT_OVERALL_ANALYTICS)
   }
 
@@ -900,7 +915,48 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const directPublishEvaluationResult = () => {
-    onAlert?.({ tone: 'success', message: 'Evaluation result published directly.' })
+    setIsDirectPublishConfirmOpen(true)
+  }
+
+  const confirmDirectPublishEvaluationResult = () => {
+    const publishedAt = new Date().toISOString()
+    const nextAssessment = {
+      ...assessment,
+      resultStatus: 'Published',
+      evaluationStatus: 'Published',
+      publishedResultAt: publishedAt,
+      resultsPublishedAt: publishedAt,
+    }
+
+    try {
+      const publishedAssessments = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
+      if (Array.isArray(publishedAssessments)) {
+        const nextPublished = publishedAssessments.map((item) => (
+          item.id === assessment?.id
+            ? {
+              ...item,
+              resultStatus: 'Published',
+              evaluationStatus: 'Published',
+              publishedResultAt: publishedAt,
+              resultsPublishedAt: publishedAt,
+            }
+            : item
+        ))
+        window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
+        window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
+      }
+    } catch {
+      // Session storage still carries the published result status for navigation.
+    }
+
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(nextAssessment))
+    window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'results')
+    setIsDirectPublishConfirmOpen(false)
+    onAlert?.({
+      tone: 'success',
+      message: 'The assessment results have been successfully published to the student portal.',
+    })
+    onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
   }
 
   const downloadEvaluationExcel = () => {
@@ -1151,6 +1207,21 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     if (matchedStudent) openStudentEvaluation(matchedStudent)
   }
 
+  const handleOverallStudentSearchSubmit = (event) => {
+    event.preventDefault()
+    const query = overallStudentSearch.trim().toLowerCase()
+    if (!query) return
+    const matchedStudent = normalizedRows.find((row) => (
+      String(row.id).toLowerCase().includes(query)
+      || String(row.name).toLowerCase().includes(query)
+    ))
+    if (!matchedStudent) {
+      onAlert?.({ tone: 'warning', message: 'No student found for this search.' })
+      return
+    }
+    openStudentResult(matchedStudent)
+  }
+
   const downloadStudentResultPdf = () => {
     window.print()
   }
@@ -1242,7 +1313,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const exitToEvaluationTab = () => {
-    window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'evaluation')
+    window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, assessment?.returnTab === 'results' || assessment?.resultEditMode ? 'results' : 'evaluation')
     onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
   }
 
@@ -2691,9 +2762,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         selectedStudent || isOverallAnalyticsView ? (
         <section className={`assessment-student-evaluation-card ${isReadOnlyQuestionView ? 'is-result-view' : ''}`} aria-label={isOverallAnalyticsView ? 'Overall assessment analytics' : isStudentResultView ? 'Selected student result' : 'Selected student evaluation'}>
           <div className={`assessment-student-evaluation-head ${isOverallAnalyticsView ? 'is-overall-analytics-head' : ''} ${!isReadOnlyQuestionView ? 'is-student-evaluation-head' : ''}`}>
-            <button type="button" className="assessment-student-back-icon" onClick={backToStudentList} title="Back to Student List" aria-label="Back to Student List">
-              <ArrowLeft size={18} strokeWidth={2.4} />
-            </button>
+            {shouldHideOverallAnalyticsBack ? (
+              <span aria-hidden="true" />
+            ) : (
+              <button type="button" className="assessment-student-back-icon" onClick={backToStudentList} title="Back to Student List" aria-label="Back to Student List">
+                <ArrowLeft size={18} strokeWidth={2.4} />
+              </button>
+            )}
             <div>
               <h2>{isOverallAnalyticsView ? 'Overall Analytics' : selectedStudent.name}</h2>
               {isOverallAnalyticsView ? null : (
@@ -2713,7 +2788,47 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 <Download size={16} strokeWidth={2.4} />
                 Download Result PDF
               </button>
-            ) : isOverallAnalyticsView ? null : (
+            ) : isOverallAnalyticsView ? (
+              <div className="assessment-overall-head-actions">
+                <button type="button" className="assessment-overall-download-btn" onClick={downloadEvaluationExcel}>
+                  <Download size={15} strokeWidth={2.4} />
+                  Download Excel
+                </button>
+                <form className="assessment-overall-student-search" onSubmit={handleOverallStudentSearchSubmit}>
+                  <Search size={15} strokeWidth={2.4} aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={overallStudentSearch}
+                    onChange={(event) => setOverallStudentSearch(event.target.value)}
+                    placeholder="Search by Student ID or Name"
+                  />
+                  {overallStudentSearch.trim() ? (
+                    <div className="assessment-overall-student-suggestions" role="listbox" aria-label="Matching students">
+                      {overallStudentSuggestions.length ? overallStudentSuggestions.map((row) => (
+                        <button
+                          type="button"
+                          key={row.id}
+                          role="option"
+                          onMouseDown={(event) => {
+                            event.preventDefault()
+                            setOverallStudentSearch('')
+                            openStudentResult(row)
+                          }}
+                        >
+                          <span>
+                            <strong>{row.name}</strong>
+                            <small>{row.id}</small>
+                          </span>
+                          <em className={row.evalStatus === 'Completed' ? 'is-completed' : row.isAbsent ? 'is-absent' : ''}>{row.evalStatus}</em>
+                        </button>
+                      )) : (
+                        <p>No student found</p>
+                      )}
+                    </div>
+                  ) : null}
+                </form>
+              </div>
+            ) : (
               <div className="assessment-student-head-actions">
                 <button
                   type="button"
@@ -3315,6 +3430,21 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               <button type="button" className="is-clear" onClick={clearThresholdDraft}>Clear</button>
               <button type="button" className="is-close" onClick={closeThresholdConfig}>Close</button>
             </footer>
+          </article>
+        </div>
+      ) : null}
+      {isDirectPublishConfirmOpen ? (
+        <div className="assessment-evaluation-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="direct-publish-confirm-title">
+          <article className="assessment-evaluation-confirm-modal">
+            <span className="assessment-evaluation-confirm-icon is-publish" aria-hidden="true">
+              <Award size={24} strokeWidth={2.4} />
+            </span>
+            <h2 id="direct-publish-confirm-title">Are you sure publish assessment results to students?</h2>
+            <p>{assessmentName}</p>
+            <div className="assessment-evaluation-confirm-actions">
+              <button type="button" className="is-secondary" onClick={() => setIsDirectPublishConfirmOpen(false)}>No</button>
+              <button type="button" className="is-primary" onClick={confirmDirectPublishEvaluationResult}>Yes</button>
+            </div>
           </article>
         </div>
       ) : null}
