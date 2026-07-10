@@ -8,6 +8,7 @@ const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY = 'vx-assessment-overall-analytics-source'
 const ASSESSMENT_EVALUATION_STUDENT_KEY = 'vx-assessment-evaluation-student'
+const ASSESSMENT_STUDENT_RESULT_SOURCE_KEY = 'vx-assessment-student-result-source'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
 const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
@@ -1186,9 +1187,15 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const backToStudentList = () => {
+    const resultSource = window.sessionStorage.getItem(ASSESSMENT_STUDENT_RESULT_SOURCE_KEY)
     window.sessionStorage.removeItem(ASSESSMENT_EVALUATION_STUDENT_KEY)
+    window.sessionStorage.removeItem(ASSESSMENT_STUDENT_RESULT_SOURCE_KEY)
     setSelectedStudent(null)
     setStudentDetailSearch('')
+    if (isStudentResultView && resultSource === 'my-assessment') {
+      onNavigate?.(APP_PAGES.MY_ASSESSMENT)
+      return
+    }
     onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)
   }
 

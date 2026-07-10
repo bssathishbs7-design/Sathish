@@ -24,6 +24,9 @@ const dashboardCards = [
 ]
 
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
+const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
+const ASSESSMENT_EVALUATION_STUDENT_KEY = 'vx-assessment-evaluation-student'
+const ASSESSMENT_STUDENT_RESULT_SOURCE_KEY = 'vx-assessment-student-result-source'
 const ONLINE_PRACTICE_EXAM_STORAGE_KEY = 'vx-online-practice-exam-assessment'
 const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
 const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
@@ -84,6 +87,38 @@ const isSameAssessmentRecord = (first, second) => {
 
 const getAssessmentId = (assessment) => (
   assessment?.id || assessment?.assessmentId || assessment?.setup?.assessmentId || 'selected-assessment'
+)
+
+const getAssessmentStudents = (assessment) => {
+  const students = [
+    assessment?.students,
+    assessment?.assignedStudents,
+    assessment?.studentRows,
+    assessment?.setup?.students,
+    assessment?.setup?.assignedStudents,
+  ].find((items) => Array.isArray(items))
+
+  return students || []
+}
+
+const getCurrentStudentForAssessment = (assessment) => {
+  const students = getAssessmentStudents(assessment)
+  const matchedStudent = students.find((student) => (
+    String(student?.id ?? student?.studentId ?? student?.registerId ?? '') === String(CURRENT_STUDENT_ID)
+  )) || students[0]
+
+  return {
+    id: matchedStudent?.id || matchedStudent?.studentId || matchedStudent?.registerId || CURRENT_STUDENT_ID,
+    name: matchedStudent?.name || matchedStudent?.studentName || 'Karthik Subramanian',
+    attendance: matchedStudent?.attendance || matchedStudent?.attendanceStatus || 'P',
+    attendanceStatus: String(matchedStudent?.attendance || matchedStudent?.attendanceStatus || 'P').toUpperCase() === 'A' ? 'Absent' : 'Present',
+    evaluationStatus: 'Completed',
+  }
+}
+
+const hasPublishedAssessmentResult = (assessment) => (
+  String(assessment?.resultStatus || '').toLowerCase() === 'published'
+  || String(assessment?.evaluationStatus || '').toLowerCase() === 'published'
 )
 
 const readAssessmentControlState = (assessment) => {
@@ -319,10 +354,6 @@ const sortAssessmentsByStatusPriority = (assessments, now = new Date()) => {
   })
 }
 
-const handleViewAssessmentResults = (assessment) => {
-  console.info('View assessment results', assessment?.id)
-}
-
 const isOnlinePracticeAssessment = (assessment) => (
   String(assessment?.examMode || '').toLowerCase() === 'online'
   && String(assessment?.supervisionType || '').toLowerCase().includes('practice')
@@ -355,7 +386,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'upcoming'
   )).length
   const completedOnlineAssessmentCount = studentOnlineAssessments.filter((assessment) => (
-    getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'completed'
+    hasPublishedAssessmentResult(assessment) || getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'completed'
   )).length
   const myAssessmentMetrics = [
     {
@@ -391,7 +422,9 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   const hasMyAssessmentFilter = activeMyAssessmentFilterCount > 0
   const hasMyAssessmentSearch = Boolean(myAssessmentSearchValue.trim())
   const filteredOnlineAssessments = sortAssessmentsByStatusPriority(studentOnlineAssessments.filter((assessment) => {
-    const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
+    const scheduleStatus = hasPublishedAssessmentResult(assessment)
+      ? { type: 'completed', label: 'Completed' }
+      : getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
     const searchText = [
       assessment.assessmentName,
       assessment.examCategory,
@@ -454,6 +487,14 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     if (lockState?.isLocked) return
 
     startAssessmentNow(assessment)
+  }
+
+  const handleViewAssessmentResults = (assessment) => {
+    if (!assessment) return
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(assessment))
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_STUDENT_KEY, JSON.stringify(getCurrentStudentForAssessment(assessment)))
+    window.sessionStorage.setItem(ASSESSMENT_STUDENT_RESULT_SOURCE_KEY, 'my-assessment')
+    onNavigate?.(APP_PAGES.ASSESSMENT_STUDENT_RESULT)
   }
 
   const handleRequestAccess = (assessment) => {
@@ -604,7 +645,10 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                   const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
                   const isProctoredExam = String(assessment.supervisionType || '').toLowerCase().includes('proctored')
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
-                  const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
+                  const hasPublishedResult = hasPublishedAssessmentResult(assessment)
+                  const scheduleStatus = hasPublishedResult
+                    ? { type: 'completed', label: 'Completed' }
+                    : getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                   const lockState = isProctoredExam ? getStudentAssessmentLockState(assessment, CURRENT_STUDENT_ID, scheduleNow) : null
                   const hasLockState = Boolean(lockState?.isLocked)
                   const cardStatus = hasLockState
