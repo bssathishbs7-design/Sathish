@@ -1,9 +1,11 @@
-import { AlertCircle, ArrowLeft, Award, ChartColumnBig, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Clock3, Download, FileText, Filter, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, RotateCcw, Search, Sun, UserX, Users, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Award, ChartColumnBig, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Clock3, Download, FileText, Filter, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Sun, Trash2, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 
 const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
+const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
+const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const ASSESSMENT_EVALUATION_STUDENT_KEY = 'vx-assessment-evaluation-student'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const CREATE_ASSESSMENT_SECTION_TITLES_KEY = 'vx-create-assessment-section-titles'
@@ -492,6 +494,90 @@ const getAttainmentResult = (percentage, threshold) => {
   }
 }
 
+const DEFAULT_ATTAINMENT_LEVELS = [
+  { level: '0', minPercentage: '0', maxPercentage: '30' },
+  { level: '1', minPercentage: '31', maxPercentage: '49' },
+  { level: '2', minPercentage: '50', maxPercentage: '70' },
+  { level: '3', minPercentage: '71', maxPercentage: '100' },
+]
+
+const DEFAULT_BLOOMS_THRESHOLDS = {
+  remember: '50',
+  understand: '50',
+  apply: '50',
+  analyze: '60',
+  evaluate: '60',
+  create: '60',
+}
+
+const BLOOMS_THRESHOLD_FIELDS = [
+  ['remember', 'Remember'],
+  ['understand', 'Understand'],
+  ['apply', 'Apply'],
+  ['analyze', 'Analyze'],
+  ['evaluate', 'Evaluate'],
+  ['create', 'Create'],
+]
+
+const cloneThresholdLevels = (levels) => (
+  Array.isArray(levels) && levels.length
+    ? levels.map((row, index) => ({
+      level: String(row?.level ?? index),
+      minPercentage: String(row?.minPercentage ?? ''),
+      maxPercentage: String(row?.maxPercentage ?? ''),
+    }))
+    : DEFAULT_ATTAINMENT_LEVELS.map((row) => ({ ...row }))
+)
+
+const buildAssessmentThresholdConfig = (assessment) => {
+  const setup = assessment?.setup || {}
+  const bloomsThresholds = setup.bloomsThresholds || assessment?.bloomsThresholds || {}
+
+  return {
+    attainmentLevels: cloneThresholdLevels(assessment?.attainmentLevels || setup.attainmentLevels),
+    lotThreshold: String(setup.lotThreshold ?? assessment?.lotThreshold ?? '70'),
+    hotThreshold: String(setup.hotThreshold ?? assessment?.hotThreshold ?? '60'),
+    bloomsThresholds: BLOOMS_THRESHOLD_FIELDS.reduce((values, [key]) => ({
+      ...values,
+      [key]: String(bloomsThresholds[key] ?? DEFAULT_BLOOMS_THRESHOLDS[key]),
+    }), {}),
+  }
+}
+
+const normalizeThresholdConfig = (config) => ({
+  attainmentLevels: cloneThresholdLevels(config?.attainmentLevels)
+    .filter((row) => row.level !== '' || row.minPercentage !== '' || row.maxPercentage !== '')
+    .map((row, index) => ({
+      level: row.level === '' ? index : Number(row.level),
+      minPercentage: row.minPercentage === '' ? 0 : Number(row.minPercentage),
+      maxPercentage: row.maxPercentage === '' ? 0 : Number(row.maxPercentage),
+    })),
+  lotThreshold: config?.lotThreshold === '' ? '' : Number(config?.lotThreshold),
+  hotThreshold: config?.hotThreshold === '' ? '' : Number(config?.hotThreshold),
+  bloomsThresholds: BLOOMS_THRESHOLD_FIELDS.reduce((values, [key]) => ({
+    ...values,
+    [key]: config?.bloomsThresholds?.[key] === '' ? '' : Number(config?.bloomsThresholds?.[key]),
+  }), {}),
+})
+
+const mergeAssessmentThresholdConfig = (assessment, config) => {
+  const normalized = normalizeThresholdConfig(config)
+  return {
+    ...assessment,
+    attainmentLevels: normalized.attainmentLevels,
+    lotThreshold: normalized.lotThreshold,
+    hotThreshold: normalized.hotThreshold,
+    bloomsThresholds: normalized.bloomsThresholds,
+    setup: {
+      ...(assessment?.setup || {}),
+      attainmentLevels: normalized.attainmentLevels,
+      lotThreshold: normalized.lotThreshold,
+      hotThreshold: normalized.hotThreshold,
+      bloomsThresholds: normalized.bloomsThresholds,
+    },
+  }
+}
+
 const ROMAN_LABELS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']
 const ALPHA_LABELS = 'abcdefghijklmnopqrstuvwxyz'.split('')
 const getRomanLabel = (index) => `${ROMAN_LABELS[index] || index + 1}.`
@@ -567,6 +653,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [sortConfig, setSortConfig] = useState({ key: 'studentId', direction: 'asc' })
   const [currentPage, setCurrentPage] = useState(1)
   const [studentDetailSearch, setStudentDetailSearch] = useState('')
+  const [isStudentDrawerOpen, setIsStudentDrawerOpen] = useState(false)
+  const [studentDrawerSearch, setStudentDrawerSearch] = useState('')
   const [expandedMcqQuestions, setExpandedMcqQuestions] = useState({})
   const [expandedDescriptiveAnswerKeys, setExpandedDescriptiveAnswerKeys] = useState({})
   const [collapsedQuestionSections, setCollapsedQuestionSections] = useState({})
@@ -578,6 +666,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [thinkingTooltip, setThinkingTooltip] = useState(null)
   const [overallAnalyticsTab, setOverallAnalyticsTab] = useState('subject')
   const [confirmAction, setConfirmAction] = useState(null)
+  const [isThresholdConfirmOpen, setIsThresholdConfirmOpen] = useState(false)
+  const [isThresholdConfigOpen, setIsThresholdConfigOpen] = useState(false)
+  const [thresholdConfig, setThresholdConfig] = useState(() => buildAssessmentThresholdConfig(readSelectedAssessment()))
+  const [thresholdDraft, setThresholdDraft] = useState(() => buildAssessmentThresholdConfig(readSelectedAssessment()))
+  const [thinkingThresholdTab, setThinkingThresholdTab] = useState('hotLot')
   const [questionEvaluationState, setQuestionEvaluationState] = useState(() => (
     readStorageObject(getStudentQuestionEvaluationStorageKey(readSelectedAssessment(), readSelectedStudent()))
   ))
@@ -629,7 +722,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const shouldShowDescriptiveObtained = examTypeText.includes('descriptive') || examTypeText.includes('hybrid')
   const evaluationRows = readEvaluationStudents(assessment, studentSessions, submissionStatuses, manualAttendance)
   const maxMark = questionSummary.totalMarks || Number(assessment?.totalMarks ?? assessment?.setup?.totalMarks ?? 0) || 0
-  const attainmentThreshold = getAssessmentAttainmentThreshold(assessment)
+  const configuredAssessment = useMemo(() => mergeAssessmentThresholdConfig(assessment, thresholdConfig), [assessment, thresholdConfig])
+  const attainmentThreshold = getAssessmentAttainmentThreshold(configuredAssessment)
   const mcqScoringItems = mcqQuestions.map((question, index) => ({
     key: getQuestionKey(question, `mcq-${index + 1}`),
     maxMarks: getQuestionMarksTotal(question) || 1,
@@ -801,6 +895,14 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     onNavigate?.(APP_PAGES.ASSESSMENT_OVERALL_ANALYTICS)
   }
 
+  const sendEvaluationToApproval = () => {
+    onAlert?.({ tone: 'primary', message: 'Evaluation result sent to approval.' })
+  }
+
+  const directPublishEvaluationResult = () => {
+    onAlert?.({ tone: 'success', message: 'Evaluation result published directly.' })
+  }
+
   const downloadEvaluationExcel = () => {
     const headers = [
       'Student ID',
@@ -813,7 +915,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       'Max Mark',
       'Obtained Marks',
       'Percentage',
-      'Result',
+      'Threshold',
     ]
     const escapeCell = (value) => `"${String(value ?? '-').replace(/"/g, '""')}"`
     const rows = sortedRows.map((row) => [
@@ -844,6 +946,103 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     link.click()
     link.remove()
     URL.revokeObjectURL(url)
+  }
+
+  const openThresholdConfirm = () => {
+    setIsThresholdConfirmOpen(true)
+  }
+
+  const closeThresholdConfig = () => {
+    setIsThresholdConfigOpen(false)
+    setThresholdDraft(thresholdConfig)
+    setThinkingThresholdTab('hotLot')
+  }
+
+  const confirmThresholdConfigurationEdit = () => {
+    setThresholdDraft(thresholdConfig)
+    setThinkingThresholdTab('hotLot')
+    setIsThresholdConfirmOpen(false)
+    setIsThresholdConfigOpen(true)
+  }
+
+  const updateThresholdLevel = (index, key, value) => {
+    setThresholdDraft((current) => ({
+      ...current,
+      attainmentLevels: current.attainmentLevels.map((row, rowIndex) => (
+        rowIndex === index ? { ...row, [key]: value } : row
+      )),
+    }))
+  }
+
+  const addThresholdLevel = () => {
+    setThresholdDraft((current) => ({
+      ...current,
+      attainmentLevels: [
+        ...current.attainmentLevels,
+        { level: String(current.attainmentLevels.length), minPercentage: '', maxPercentage: '' },
+      ],
+    }))
+  }
+
+  const removeThresholdLevel = (index) => {
+    setThresholdDraft((current) => ({
+      ...current,
+      attainmentLevels: current.attainmentLevels.length > 1
+        ? current.attainmentLevels.filter((_, rowIndex) => rowIndex !== index)
+        : current.attainmentLevels,
+    }))
+  }
+
+  const setThresholdDefaults = () => {
+    setThresholdDraft(buildAssessmentThresholdConfig({}))
+  }
+
+  const clearThresholdDraft = () => {
+    setThresholdDraft({
+      attainmentLevels: [{ level: '', minPercentage: '', maxPercentage: '' }],
+      lotThreshold: '',
+      hotThreshold: '',
+      bloomsThresholds: BLOOMS_THRESHOLD_FIELDS.reduce((values, [key]) => ({ ...values, [key]: '' }), {}),
+    })
+  }
+
+  const updateThinkingThreshold = (key, value) => {
+    setThresholdDraft((current) => ({
+      ...current,
+      [key]: value,
+    }))
+  }
+
+  const updateBloomsThreshold = (key, value) => {
+    setThresholdDraft((current) => ({
+      ...current,
+      bloomsThresholds: {
+        ...current.bloomsThresholds,
+        [key]: value,
+      },
+    }))
+  }
+
+  const updateThresholdConfiguration = () => {
+    const nextConfig = buildAssessmentThresholdConfig(mergeAssessmentThresholdConfig(assessment, thresholdDraft))
+    const nextAssessment = mergeAssessmentThresholdConfig(assessment, nextConfig)
+    setThresholdConfig(nextConfig)
+    setThresholdDraft(nextConfig)
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(nextAssessment))
+
+    try {
+      const publishedAssessments = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
+      if (Array.isArray(publishedAssessments)) {
+        const nextPublished = publishedAssessments.map((item) => (item.id === assessment?.id ? mergeAssessmentThresholdConfig(item, nextConfig) : item))
+        window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
+        window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
+      }
+    } catch {
+      // Session storage still keeps this page updated if published storage is unavailable.
+    }
+
+    setIsThresholdConfigOpen(false)
+    onAlert?.({ tone: 'success', message: 'Threshold configuration updated successfully.' })
   }
 
   const openEvaluationActionConfirm = (type, row) => {
@@ -997,6 +1196,25 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const moveToEvaluationStudent = (row) => {
     if (!row) return
     openStudentEvaluation(row)
+  }
+
+  const openStudentFromDrawer = (row) => {
+    if (!row) return
+    openStudentEvaluation(row)
+    setIsStudentDrawerOpen(false)
+    setStudentDrawerSearch('')
+  }
+
+  const openDrawerEvaluationActionConfirm = (type, row) => {
+    setIsStudentDrawerOpen(false)
+    setStudentDrawerSearch('')
+    openEvaluationActionConfirm(type, row)
+  }
+
+  const openStudentResultFromDrawer = (row) => {
+    setIsStudentDrawerOpen(false)
+    setStudentDrawerSearch('')
+    openStudentResult(row)
   }
 
   const continueToNextEvaluationStudent = () => {
@@ -1343,7 +1561,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   )
 
   const getQuestionThresholdPercent = (question = {}) => {
-    const setup = assessment?.setup || assessment || {}
+    const setup = configuredAssessment?.setup || configuredAssessment || {}
     const thinkingLevel = getTagValues(question?.thinkingLevel).join(' ').toLowerCase()
     const thresholdValue = thinkingLevel.includes('hot')
       ? setup.hotThreshold
@@ -1855,6 +2073,16 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     : null
   const completedPresentEvaluations = presentEvaluationRows.filter((row) => row.markedEvaluated).length
   const totalPresentEvaluations = presentEvaluationRows.length
+  const studentDrawerRows = useMemo(() => {
+    const query = studentDrawerSearch.trim().toLowerCase()
+    if (!query) return presentEvaluationRows
+
+    return presentEvaluationRows.filter((row) => (
+      String(row.name ?? '').toLowerCase().includes(query)
+      || String(row.id ?? '').toLowerCase().includes(query)
+      || String(row.evalStatus ?? '').toLowerCase().includes(query)
+    ))
+  }, [presentEvaluationRows, studentDrawerSearch])
 
   const selectedStudentDetails = selectedStudent ? [
     { label: 'Questions', value: `Attempted: ${formatTwoDigit(studentScoringSummary.attempted)} of ${formatTwoDigit(studentScoringSummary.total)}`, icon: ClipboardList, tone: 'questions' },
@@ -1880,7 +2108,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       tone: 'percentage',
     },
     ...(studentResultOutcome ? [{
-      label: 'Result',
+      label: 'Threshold',
       value: studentResultOutcome.resultLabel,
       icon: Check,
       tone: studentResultOutcome.achieved ? 'result-achieved' : 'result-not-achieved',
@@ -2462,7 +2690,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       {isStudentEvaluationView || isOverallAnalyticsView ? (
         selectedStudent || isOverallAnalyticsView ? (
         <section className={`assessment-student-evaluation-card ${isReadOnlyQuestionView ? 'is-result-view' : ''}`} aria-label={isOverallAnalyticsView ? 'Overall assessment analytics' : isStudentResultView ? 'Selected student result' : 'Selected student evaluation'}>
-          <div className={`assessment-student-evaluation-head ${isOverallAnalyticsView ? 'is-overall-analytics-head' : ''}`}>
+          <div className={`assessment-student-evaluation-head ${isOverallAnalyticsView ? 'is-overall-analytics-head' : ''} ${!isReadOnlyQuestionView ? 'is-student-evaluation-head' : ''}`}>
             <button type="button" className="assessment-student-back-icon" onClick={backToStudentList} title="Back to Student List" aria-label="Back to Student List">
               <ArrowLeft size={18} strokeWidth={2.4} />
             </button>
@@ -2486,17 +2714,124 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 Download Result PDF
               </button>
             ) : isOverallAnalyticsView ? null : (
-              <label className="assessment-student-search">
-                <Search size={15} strokeWidth={2.3} aria-hidden="true" />
-                <input
-                  type="search"
-                  value={studentDetailSearch}
-                  onChange={(event) => handleStudentDetailSearch(event.target.value)}
-                  placeholder="Search by Student ID or Name"
-                />
-              </label>
+              <div className="assessment-student-head-actions">
+                <button
+                  type="button"
+                  className="assessment-student-view-students-btn"
+                  onClick={() => setIsStudentDrawerOpen(true)}
+                >
+                  <Users size={15} strokeWidth={2.4} />
+                  View Students
+                </button>
+              </div>
             )}
           </div>
+
+          {!isReadOnlyQuestionView ? (
+            <aside
+              className={`assessment-student-drawer ${isStudentDrawerOpen ? 'is-open' : ''}`}
+              aria-hidden={!isStudentDrawerOpen}
+              onClick={() => setIsStudentDrawerOpen(false)}
+            >
+              <div className="assessment-student-drawer-panel" role="dialog" aria-modal="true" aria-label="Students list" onClick={(event) => event.stopPropagation()}>
+                <header className="assessment-student-drawer-head">
+                  <div>
+                    <h3>Students</h3>
+                    <p>{formatTwoDigit(studentDrawerRows.length)} of {formatTwoDigit(presentEvaluationRows.length)} students</p>
+                  </div>
+                  <button type="button" onClick={() => setIsStudentDrawerOpen(false)} aria-label="Close students drawer">
+                    <X size={16} strokeWidth={2.5} />
+                  </button>
+                </header>
+                <label className="assessment-student-drawer-search">
+                  <Search size={14} strokeWidth={2.3} aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={studentDrawerSearch}
+                    onChange={(event) => setStudentDrawerSearch(event.target.value)}
+                    placeholder="Search student..."
+                  />
+                </label>
+                <div className="assessment-student-drawer-table-wrap">
+                  <table className="assessment-student-drawer-table">
+                    <thead>
+                      <tr>
+                        <th>Student Name</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentDrawerRows.length ? studentDrawerRows.map((row) => {
+                        const isCurrent = selectedStudent?.id === row.id
+                        const isCompleted = row.evalStatus === 'Completed'
+                        return (
+                          <tr key={row.id}>
+                            <td>
+                              <span className="assessment-student-drawer-name">
+                                <strong>{row.name}</strong>
+                                <span className="assessment-student-drawer-id-status">
+                                  <small>{row.id}</small>
+                                  <span className={`assessment-student-drawer-status ${row.evalStatus === 'Completed' ? 'is-completed' : 'is-pending'}`}>
+                                    {row.evalStatus}
+                                  </span>
+                                </span>
+                              </span>
+                            </td>
+                            <td>
+                              {isCompleted ? (
+                                <span className="assessment-student-drawer-actions">
+                                  <button
+                                    type="button"
+                                    className="is-reset"
+                                    onClick={() => openDrawerEvaluationActionConfirm('reset', row)}
+                                    title="Reset Evaluation"
+                                    aria-label={`Reset evaluation for ${row.name}`}
+                                  >
+                                    <RotateCcw size={13} strokeWidth={2.4} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="is-edit"
+                                    onClick={() => openDrawerEvaluationActionConfirm('edit', row)}
+                                    title="Edit Evaluation"
+                                    aria-label={`Edit evaluation for ${row.name}`}
+                                  >
+                                    <Pencil size={13} strokeWidth={2.4} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="is-result"
+                                    onClick={() => openStudentResultFromDrawer(row)}
+                                    title="View Result"
+                                    aria-label={`View result for ${row.name}`}
+                                  >
+                                    <FileText size={13} strokeWidth={2.4} />
+                                  </button>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className={isCurrent ? 'is-current' : ''}
+                                  onClick={() => openStudentFromDrawer(row)}
+                                  disabled={isCurrent}
+                                >
+                                  {isCurrent ? 'Selected' : 'Start Evaluation'}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      }) : (
+                        <tr>
+                          <td colSpan="2">No students found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </aside>
+          ) : null}
 
           <div className={`assessment-student-detail-grid ${isOverallAnalyticsView ? 'is-overall-analytics-grid' : ''}`}>
             {detailItems.map((item) => (
@@ -2619,6 +2954,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           </section>
         )
       ) : (
+      <>
       <section className="assessment-evaluation-table-card" aria-label="Student evaluation tracking">
         <div className="assessment-evaluation-metrics" aria-label="Evaluation summary">
           {metricItems.map((item) => {
@@ -2635,16 +2971,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           })}
         </div>
         <div className="assessment-evaluation-table-tools">
-          <h2>Student Evaluation</h2>
-          <div className="assessment-evaluation-toolbar-actions">
-            <button type="button" className="assessment-evaluation-publish-btn" onClick={viewOverallAnalytics}>
-              <ChartColumnBig size={15} strokeWidth={2.4} />
-              View Overall Analytics
-            </button>
-            <button type="button" className="assessment-evaluation-download-btn" onClick={downloadEvaluationExcel}>
-              <Download size={15} strokeWidth={2.4} />
-              Download Excel
-            </button>
+          <div className="assessment-evaluation-left-tools">
             <label className="assessment-evaluation-search-field">
               <Search size={15} strokeWidth={2.4} aria-hidden="true" />
               <input
@@ -2664,6 +2991,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 title="Filters"
               >
                 <Filter size={16} strokeWidth={2.4} />
+                <strong>Filter</strong>
                 {evaluationFilterCount ? <span>{evaluationFilterCount}</span> : null}
               </button>
               {isEvaluationFilterOpen ? (
@@ -2689,6 +3017,16 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               ) : null}
             </div>
           </div>
+          <div className="assessment-evaluation-toolbar-actions">
+            <button type="button" className="assessment-evaluation-threshold-btn" onClick={openThresholdConfirm}>
+              <Percent size={15} strokeWidth={2.4} />
+              Threshold Configuration
+            </button>
+            <button type="button" className="assessment-evaluation-publish-btn" onClick={viewOverallAnalytics}>
+              <ChartColumnBig size={15} strokeWidth={2.4} />
+              View Overall Analytics
+            </button>
+          </div>
         </div>
         <div className="assessment-evaluation-table-wrap">
           <table className="assessment-evaluation-table">
@@ -2704,7 +3042,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 <th>{sortLabel('maxMark', 'Max Mark')}</th>
                 <th>Obt. Marks</th>
                 <th>Percentage</th>
-                <th>Result</th>
+                <th>Threshold</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -2713,7 +3051,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 const { isAbsent, evalStatus } = row
                 const canUseCompletedActions = !isAbsent && evalStatus === 'Completed'
                 return (
-                  <tr key={row.id}>
+                  <tr key={row.id} className={isAbsent ? 'is-absent-row' : undefined}>
                     <td>{row.id}</td>
                     <td>
                       {isOffline ? (
@@ -2808,7 +3146,178 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           </div>
         </footer>
       </section>
+        <div className="assessment-evaluation-floating-card" aria-label="Evaluation result actions">
+          <button type="button" className="assessment-evaluation-floating-btn is-download" onClick={downloadEvaluationExcel}>
+            <Download size={15} strokeWidth={2.4} />
+            Download Excel
+          </button>
+          <button type="button" className="assessment-evaluation-floating-btn is-approval" onClick={sendEvaluationToApproval} disabled>
+            <Check size={15} strokeWidth={2.4} />
+            Send to Approval
+          </button>
+          <button type="button" className="assessment-evaluation-floating-btn is-publish" onClick={directPublishEvaluationResult}>
+            <Award size={15} strokeWidth={2.4} />
+            Direct Publish Result
+          </button>
+        </div>
+      </>
       )}
+      {isThresholdConfirmOpen ? (
+        <div className="assessment-evaluation-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="threshold-config-confirm-title">
+          <article className="assessment-evaluation-confirm-modal">
+            <span className="assessment-evaluation-confirm-icon is-threshold" aria-hidden="true">
+              <Percent size={24} strokeWidth={2.4} />
+            </span>
+            <h2 id="threshold-config-confirm-title">Are you sure edit this Threshold Configuration in this assessment?</h2>
+            <p>{assessmentName}</p>
+            <div className="assessment-evaluation-confirm-actions">
+              <button type="button" className="is-secondary" onClick={() => setIsThresholdConfirmOpen(false)}>No</button>
+              <button type="button" className="is-primary" onClick={confirmThresholdConfigurationEdit}>Yes</button>
+            </div>
+          </article>
+        </div>
+      ) : null}
+      {isThresholdConfigOpen ? (
+        <div className="assessment-threshold-config-overlay" role="dialog" aria-modal="true" aria-labelledby="assessment-threshold-config-title">
+          <article className="assessment-threshold-config-modal">
+            <header className="assessment-threshold-config-head">
+              <span aria-hidden="true">
+                <Settings size={18} strokeWidth={2.4} />
+              </span>
+              <div>
+                <h2 id="assessment-threshold-config-title">Assessment Configuration Threshold</h2>
+                <p>{assessmentName}</p>
+              </div>
+              <button type="button" onClick={closeThresholdConfig} aria-label="Close threshold configuration">
+                <X size={18} strokeWidth={2.4} />
+              </button>
+            </header>
+
+            <div className="assessment-threshold-config-grid">
+              <section className="assessment-threshold-panel" aria-label="Attainment levels threshold">
+                <div className="assessment-threshold-panel-head">
+                  <span>
+                    <SlidersHorizontal size={15} strokeWidth={2.4} />
+                    Attainment Levels Threshold
+                  </span>
+                  <button type="button" onClick={setThresholdDefaults}>Set as Default</button>
+                </div>
+                <div className="assessment-threshold-levels">
+                  {thresholdDraft.attainmentLevels.map((row, index) => (
+                    <div className="assessment-threshold-level-row" key={`threshold-level-${index}`}>
+                      <input
+                        type="number"
+                        min="0"
+                        value={row.level}
+                        onChange={(event) => updateThresholdLevel(index, 'level', event.target.value)}
+                        aria-label={`Level ${index + 1}`}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={row.minPercentage}
+                        onChange={(event) => updateThresholdLevel(index, 'minPercentage', event.target.value)}
+                        aria-label={`Level ${index + 1} minimum percentage`}
+                      />
+                      <b aria-hidden="true">-</b>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={row.maxPercentage}
+                        onChange={(event) => updateThresholdLevel(index, 'maxPercentage', event.target.value)}
+                        aria-label={`Level ${index + 1} maximum percentage`}
+                      />
+                      <button type="button" className="is-delete" onClick={() => removeThresholdLevel(index)} aria-label={`Delete level ${index + 1}`}>
+                        <Trash2 size={15} strokeWidth={2.4} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" className="assessment-threshold-add-btn" onClick={addThresholdLevel} aria-label="Add threshold level">
+                  <Plus size={17} strokeWidth={2.4} />
+                </button>
+              </section>
+
+              <section className="assessment-threshold-panel" aria-label="Thinking level threshold">
+                <div className="assessment-threshold-panel-head">
+                  <span>
+                    <Settings size={15} strokeWidth={2.4} />
+                    Thinking Level Threshold
+                  </span>
+                  <button type="button" onClick={setThresholdDefaults}>Set as Default</button>
+                </div>
+                <div className="assessment-threshold-tabs" role="tablist" aria-label="Thinking threshold type">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={thinkingThresholdTab === 'hotLot'}
+                    className={thinkingThresholdTab === 'hotLot' ? 'is-active' : ''}
+                    onClick={() => setThinkingThresholdTab('hotLot')}
+                  >
+                    HoT / LoT
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={thinkingThresholdTab === 'blooms'}
+                    className={thinkingThresholdTab === 'blooms' ? 'is-active' : ''}
+                    onClick={() => setThinkingThresholdTab('blooms')}
+                  >
+                    Blooms
+                  </button>
+                </div>
+                {thinkingThresholdTab === 'hotLot' ? (
+                  <div className="assessment-threshold-form">
+                    <label>
+                      <span>LoT Threshold *</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={thresholdDraft.lotThreshold}
+                        onChange={(event) => updateThinkingThreshold('lotThreshold', event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span>HoT Threshold *</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={thresholdDraft.hotThreshold}
+                        onChange={(event) => updateThinkingThreshold('hotThreshold', event.target.value)}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="assessment-threshold-form is-blooms">
+                    {BLOOMS_THRESHOLD_FIELDS.map(([key, label]) => (
+                      <label key={key}>
+                        <span>{label} Threshold</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={thresholdDraft.bloomsThresholds[key]}
+                          onChange={(event) => updateBloomsThreshold(key, event.target.value)}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+
+            <footer className="assessment-threshold-config-actions">
+              <button type="button" className="is-update" onClick={updateThresholdConfiguration}>Update Threshold Configuration</button>
+              <button type="button" className="is-clear" onClick={clearThresholdDraft}>Clear</button>
+              <button type="button" className="is-close" onClick={closeThresholdConfig}>Close</button>
+            </footer>
+          </article>
+        </div>
+      ) : null}
       {confirmAction ? (
         <div className="assessment-evaluation-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="assessment-evaluation-confirm-title">
           <article className="assessment-evaluation-confirm-modal">

@@ -1231,7 +1231,20 @@ export default function AssessmentCreatePage({ onNavigate }) {
   }
 
   const startAssessmentEvaluation = (assessment) => {
-    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(assessment))
+    const nextAssessment = {
+      ...assessment,
+      evaluationStatus: 'In Progress',
+      evaluationStartedAt: assessment.evaluationStartedAt ?? new Date().toISOString(),
+    }
+
+    setPublishedAssessments((current) => {
+      const nextPublished = current.map((item) => (item.id === assessment.id ? nextAssessment : item))
+      window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
+      window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
+      return nextPublished
+    })
+
+    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(nextAssessment))
     onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)
   }
 
@@ -1511,6 +1524,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                     const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
                     const publishedQuestionRows = getPublishedQuestionRows(assessment)
                     const durationValue = assessment.totalDuration || '-'
+                    const evaluationStatus = assessment.evaluationStatus === 'In Progress' ? 'In Progress' : 'Yet to Start'
 
                     return (
                       <article
@@ -1564,11 +1578,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
                         </div>
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
                           <span className="assessment-create-published-footer-status">
-                            <span className="assessment-create-published-schedule-badge is-yet-to-start">
-                              Yet to Start
+                            <span className={`assessment-create-published-schedule-badge ${evaluationStatus === 'In Progress' ? 'is-in-progress' : 'is-yet-to-start'}`}>
+                              {evaluationStatus}
                             </span>
                           </span>
-                          <button type="button" className="assessment-create-exam-controls-btn" onClick={() => startAssessmentEvaluation(assessment)}>
+                          <button type="button" className="assessment-create-exam-controls-btn is-start-evaluation" onClick={() => startAssessmentEvaluation(assessment)}>
                             <ClipboardCheck size={12} strokeWidth={2.4} />
                             Start Evaluation
                           </button>
