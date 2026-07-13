@@ -643,6 +643,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const isReadOnlyQuestionView = isStudentResultView || isOverallAnalyticsView
   const isStudentEvaluationView = view === 'student' || isStudentResultView
   const shouldHideOverallAnalyticsBack = isOverallAnalyticsView && window.sessionStorage.getItem(ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY) === 'results'
+  const studentResultSource = window.sessionStorage.getItem(ASSESSMENT_STUDENT_RESULT_SOURCE_KEY)
+  const isMyAssessmentStudentResult = isStudentResultView && studentResultSource === 'my-assessment'
   const [assessment] = useState(() => readSelectedAssessment())
   const [selectedStudent, setSelectedStudent] = useState(() => readSelectedStudent())
   const [studentSessions, setStudentSessions] = useState(() => readStorageObject(STUDENT_EXAM_SESSION_KEY))
@@ -2134,7 +2136,9 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const selectedStudentStatusRecord = selectedStudent
     ? studentEvaluationStatuses[selectedStudent.id] || {}
     : {}
-  const selectedStudentAutoStatus = selectedStudent && previewSectionGroups.length
+  const selectedStudentAutoStatus = isMyAssessmentStudentResult && selectedStudent?.evaluationStatus === 'Completed'
+    ? 'Completed'
+    : selectedStudent && previewSectionGroups.length
     ? previewSectionGroups.every((section) => getSectionEvaluationStatus(section) === 'completed')
       ? 'Completed'
       : 'Not Completed'
@@ -2653,6 +2657,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
 
   useEffect(() => {
     if (!selectedStudent) return
+    if (isMyAssessmentStudentResult) return
     const matchedRow = normalizedRows.find((row) => row.id === selectedStudent.id)
     const isAbsentSelected = matchedRow?.isAbsent || selectedStudent.attendance === 'A' || selectedStudent.attendanceStatus === 'Absent'
     if (!isAbsentSelected) return
@@ -2661,7 +2666,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     setSelectedStudent(null)
     onAlert?.({ tone: 'warning', message: 'Absent student cannot be evaluated.' })
     onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)
-  }, [normalizedRows, onAlert, onNavigate, selectedStudent])
+  }, [isMyAssessmentStudentResult, normalizedRows, onAlert, onNavigate, selectedStudent])
 
   useEffect(() => {
     if (isStudentResultView) return

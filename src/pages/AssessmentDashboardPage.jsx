@@ -106,12 +106,14 @@ const getCurrentStudentForAssessment = (assessment) => {
   const matchedStudent = students.find((student) => (
     String(student?.id ?? student?.studentId ?? student?.registerId ?? '') === String(CURRENT_STUDENT_ID)
   )) || students[0]
+  const rawAttendance = String(matchedStudent?.attendance || matchedStudent?.attendanceStatus || 'P')
+  const isAbsent = rawAttendance.toUpperCase() === 'A' || rawAttendance.toLowerCase() === 'absent'
 
   return {
     id: matchedStudent?.id || matchedStudent?.studentId || matchedStudent?.registerId || CURRENT_STUDENT_ID,
     name: matchedStudent?.name || matchedStudent?.studentName || 'Karthik Subramanian',
-    attendance: matchedStudent?.attendance || matchedStudent?.attendanceStatus || 'P',
-    attendanceStatus: String(matchedStudent?.attendance || matchedStudent?.attendanceStatus || 'P').toUpperCase() === 'A' ? 'Absent' : 'Present',
+    attendance: isAbsent ? 'A' : 'P',
+    attendanceStatus: isAbsent ? 'Absent' : 'Present',
     evaluationStatus: 'Completed',
   }
 }
