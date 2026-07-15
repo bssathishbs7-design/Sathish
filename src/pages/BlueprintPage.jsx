@@ -221,9 +221,9 @@ export default function BlueprintPage() {
   return (
     <section className="vx-content assessment-page assessment-evaluation-page">
       <div className="assessment-page-shell assessment-evaluation-page-shell">
-        <PageNavigationHeader items={['My Pages', 'Corelation Rating']} />
+        <PageNavigationHeader items={['My Pages', 'Correlation Rating']} />
 
-        <section className="corelation-rating-panel corelation-rating-panel-combined" aria-label="Corelation rating setup">
+        <section className="corelation-rating-panel corelation-rating-panel-combined" aria-label="Correlation rating setup">
           <div className="corelation-rating-controls">
             <label className="corelation-rating-field">
               <span>Subject</span>

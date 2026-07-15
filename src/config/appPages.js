@@ -29,7 +29,7 @@ export const APP_PAGES = {
   ONLINE_PROCTORED_EXAM: 'Online Proctored Exam',
   QUESTION_BANK: 'Question Bank',
   QUESTION_BANK_NON_CREATE: 'Question Bank Overall Question',
-  BLUEPRINT: 'Corelation Rating',
+  BLUEPRINT: 'Correlation Rating',
   QUERY_REQUEST: 'Query Request',
   ACTIVITY_RESULT: 'Activity Result',
   COMPLETED_EVALUATION: 'Completed Evaluation',
@@ -113,7 +113,7 @@ export const SIDEBAR_MENU = [
       },
       {
         label: APP_PAGES.BLUEPRINT,
-        navLabel: 'Corelation Rating',
+        navLabel: 'Correlation Rating',
         icon: LayoutTemplate,
       },
       {
