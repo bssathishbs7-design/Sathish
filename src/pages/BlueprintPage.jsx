@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Pencil } from 'lucide-react'
+import { BarChart3, BookOpen, Check, ChevronDown, ListTree, Pencil, Target } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PageNavigationHeader from '../components/PageNavigationHeader'
@@ -6,33 +6,70 @@ import { corelationRatingRows } from './corelationRatingData'
 import '../styles/assessment-pages.css'
 
 const CORELATION_PAGE_SIZE = 10
+const getSubjectKey = (row) => `${row.year || '1st Year'}::${row.subject}`
+const DEFAULT_RATIONALE = `This competency focuses on the basic structural and molecular organization of the eukaryotic cell, including the nucleus, cytoplasm, plasma membrane, and subcellular organelles. It also includes understanding the fluid mosaic model of biological membranes and the functions of cellular organelles in metabolism and homeostasis.
+
+The learning objectives require students to identify cell structures, describe membrane organization, and explain organelle functions. These elements provide fundamental biochemical and cellular biology knowledge that forms the scientific basis for understanding later concepts in physiology and pathology.
+
+Although applied correlations may help learners understand disease mechanisms at a molecular level, this competency primarily explains what cellular structures are and how they function rather than enabling direct clinical decision-making.
+
+Therefore, because the competency primarily describes cellular structure, membrane composition, and organelle function without influencing immediate patient-care decisions, it is classified as foundational scientific knowledge.`
 
 export default function BlueprintPage() {
   const [selectedSubject, setSelectedSubject] = useState('')
   const [selectedTopic, setSelectedTopic] = useState('')
+  const [isSubjectMenuOpen, setIsSubjectMenuOpen] = useState(false)
   const [isTopicMenuOpen, setIsTopicMenuOpen] = useState(false)
   const [topicSearch, setTopicSearch] = useState('')
   const [collapsedTopics, setCollapsedTopics] = useState({})
   const [selectedType, setSelectedType] = useState('')
   const [ratingValues, setRatingValues] = useState({})
+  const [rationaleValues, setRationaleValues] = useState({})
+  const [isRationaleEnabled, setIsRationaleEnabled] = useState(true)
+  const [openRationaleKey, setOpenRationaleKey] = useState('')
+  const [editingRationaleKey, setEditingRationaleKey] = useState('')
   const [savedRows, setSavedRows] = useState({})
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
 
   const subjectOptions = useMemo(
-    () => [...new Set(corelationRatingRows.map((row) => row.subject).filter(Boolean))],
+    () => {
+      const options = new Map()
+      corelationRatingRows.forEach((row) => {
+        if (!row.subject) {
+          return
+        }
+        const key = getSubjectKey(row)
+        if (!options.has(key)) {
+          options.set(key, {
+            key,
+            subject: row.subject,
+            year: row.year || '1st Year',
+          })
+        }
+      })
+      return [...options.values()]
+    },
     [],
+  )
+  const selectedSubjectOption = useMemo(
+    () => subjectOptions.find((option) => option.key === selectedSubject),
+    [selectedSubject, subjectOptions],
   )
   const availableTopics = useMemo(
     () => [
       ...new Set(
         corelationRatingRows
-          .filter((row) => row.subject === selectedSubject)
+          .filter((row) => getSubjectKey(row) === selectedSubject)
           .map((row) => row.topic)
           .filter(Boolean),
       ),
     ],
     [selectedSubject],
+  )
+  const allTopicOptions = useMemo(
+    () => [...new Set(corelationRatingRows.map((row) => row.topic).filter(Boolean))],
+    [],
   )
   const searchedTopics = useMemo(
     () => availableTopics.filter((topic) => (
@@ -47,7 +84,7 @@ export default function BlueprintPage() {
       }
 
       return corelationRatingRows.filter((row) => (
-        row.subject === selectedSubject
+        getSubjectKey(row) === selectedSubject
         && row.topic === selectedTopic
       ))
     },
@@ -84,9 +121,17 @@ export default function BlueprintPage() {
     setCurrentPage((page) => Math.min(page, totalPages))
   }, [totalPages])
 
-  const handleSubjectChange = (event) => {
-    setSelectedSubject(event.target.value)
+  const getTopicNumberLabel = (topic) => {
+    const row = corelationRatingRows.find((item) => (
+      getSubjectKey(item) === selectedSubject && item.topic === topic
+    ))
+    return row?.topicNumber || availableTopics.indexOf(topic) + 1
+  }
+
+  const handleSubjectSelect = (subjectKey) => {
+    setSelectedSubject(subjectKey)
     setSelectedTopic('')
+    setIsSubjectMenuOpen(false)
     setIsTopicMenuOpen(false)
     setTopicSearch('')
     setCollapsedTopics({})
@@ -95,6 +140,7 @@ export default function BlueprintPage() {
 
   const handleTopicSelect = (topic) => {
     setSelectedTopic(topic)
+    setIsSubjectMenuOpen(false)
     setIsTopicMenuOpen(false)
     setTopicSearch('')
     setCollapsedTopics({})
@@ -103,9 +149,14 @@ export default function BlueprintPage() {
   const resetCorrelationSelection = () => {
     setSelectedSubject('')
     setSelectedTopic('')
+    setIsSubjectMenuOpen(false)
     setSelectedType('')
     setCollapsedTopics({})
     setRatingValues({})
+    setRationaleValues({})
+    setIsRationaleEnabled(true)
+    setOpenRationaleKey('')
+    setEditingRationaleKey('')
     setSavedRows({})
     setIsSaveConfirmOpen(false)
     setCurrentPage(1)
@@ -122,7 +173,7 @@ export default function BlueprintPage() {
     value === undefined || value === null || value === '' ? fallback : value
   )
 
-  const getCompetencyKey = (row) => `${row.subject}::${row.topic}::${row.code}::${row.name}`
+  const getCompetencyKey = (row) => `${row.year || '1st Year'}::${row.subject}::${row.topic}::${row.code}::${row.name}`
 
   const updateRatingField = (key, field, value) => {
     if (!/^[1-3]?$/.test(value)) {
@@ -167,6 +218,15 @@ export default function BlueprintPage() {
     }))
   }
 
+  const updateRationaleValue = (key, value) => {
+    setRationaleValues((current) => ({
+      ...current,
+      [key]: value,
+    }))
+  }
+
+  const getRationaleValue = (key) => rationaleValues[key] ?? DEFAULT_RATIONALE
+
   const getRatingValue = (values) => {
     if (values?.rating) {
       return values.rating
@@ -198,6 +258,40 @@ export default function BlueprintPage() {
     })
     .filter(Boolean)
   const hasCompletedUnsavedRows = completedRowKeys.some((key) => !savedRows[key])
+  const metricCompetencyRows = useMemo(
+    () => corelationRatingRows.filter((row) => (
+      (!selectedSubject || getSubjectKey(row) === selectedSubject)
+      && (!selectedTopic || row.topic === selectedTopic)
+    )),
+    [selectedSubject, selectedTopic],
+  )
+  const savedMetricCount = metricCompetencyRows.filter((row) => savedRows[getCompetencyKey(row)]).length
+  const correlationMetrics = [
+    {
+      label: 'Subjects',
+      value: subjectOptions.length.toString().padStart(2, '0'),
+      icon: BookOpen,
+      tone: 'is-subjects',
+    },
+    {
+      label: 'Topics',
+      value: (selectedSubject ? availableTopics.length : allTopicOptions.length).toString().padStart(2, '0'),
+      icon: ListTree,
+      tone: 'is-topics',
+    },
+    {
+      label: 'Competency',
+      value: metricCompetencyRows.length.toString().padStart(2, '0'),
+      icon: Target,
+      tone: 'is-competency',
+    },
+    {
+      label: 'Correlation Rating',
+      value: `${savedMetricCount.toString().padStart(2, '0')} / ${metricCompetencyRows.length.toString().padStart(2, '0')}`,
+      icon: BarChart3,
+      tone: 'is-rating',
+    },
+  ]
 
   const saveCompletedCorrelationRows = () => {
     setSavedRows((current) => {
@@ -223,17 +317,70 @@ export default function BlueprintPage() {
       <div className="assessment-page-shell assessment-evaluation-page-shell">
         <PageNavigationHeader items={['My Pages', 'Correlation Rating']} />
 
+        <section className="corelation-rating-metrics" aria-label="Correlation rating metrics">
+          {correlationMetrics.map((metric) => {
+            const MetricIcon = metric.icon
+            return (
+              <div key={metric.label} className={`corelation-rating-metric ${metric.tone}`}>
+                <span aria-hidden="true">
+                  <MetricIcon size={15} strokeWidth={2.4} />
+                </span>
+                <div>
+                  <small>{metric.label}</small>
+                  <strong>{metric.value}</strong>
+                </div>
+              </div>
+            )
+          })}
+        </section>
+
         <section className="corelation-rating-panel corelation-rating-panel-combined" aria-label="Correlation rating setup">
           <div className="corelation-rating-controls">
-            <label className="corelation-rating-field">
+            <div className="corelation-rating-field corelation-rating-subject-field">
               <span>Subject</span>
-              <select value={selectedSubject} onChange={handleSubjectChange} disabled={isSelectionLocked}>
-                <option value="">Choose subject</option>
-                {subjectOptions.map((subject) => (
-                  <option key={subject} value={subject}>{subject}</option>
-                ))}
-              </select>
-            </label>
+              <button
+                type="button"
+                className="corelation-rating-topic-trigger corelation-rating-subject-trigger"
+                disabled={isSelectionLocked}
+                aria-expanded={isSubjectMenuOpen}
+                onClick={() => {
+                  setIsSubjectMenuOpen((current) => !current)
+                  setIsTopicMenuOpen(false)
+                }}
+              >
+                <span className="corelation-rating-trigger-value">
+                  {selectedSubjectOption ? (
+                    <>
+                      <span className="corelation-rating-subject-year">{selectedSubjectOption.year}</span>
+                      <span className="corelation-rating-subject-name">{selectedSubjectOption.subject}</span>
+                    </>
+                  ) : (
+                    'Choose subject'
+                  )}
+                </span>
+                <ChevronDown size={15} strokeWidth={2.4} aria-hidden="true" />
+              </button>
+
+              {isSubjectMenuOpen && (
+                <div className="corelation-rating-topic-menu corelation-rating-subject-menu" role="listbox" aria-label="Subject options">
+                  <div className="corelation-rating-topic-list corelation-rating-subject-list">
+                    {subjectOptions.map((subject) => (
+                      <button
+                        key={subject.key}
+                        type="button"
+                        className={selectedSubject === subject.key ? 'is-selected' : ''}
+                        onClick={() => handleSubjectSelect(subject.key)}
+                      >
+                        <span className="corelation-rating-subject-year">
+                          {subject.year}
+                        </span>
+                        <span className="corelation-rating-subject-name">{subject.subject}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="corelation-rating-field corelation-rating-topic-field">
               <span>Topics</span>
@@ -244,7 +391,16 @@ export default function BlueprintPage() {
                 aria-expanded={isTopicMenuOpen}
                 onClick={() => setIsTopicMenuOpen((current) => !current)}
               >
-                <span>{selectedTopic || (selectedSubject ? 'Choose topic' : 'Select subject first')}</span>
+                <span className="corelation-rating-trigger-value">
+                  {selectedTopic ? (
+                    <>
+                      <span className="corelation-rating-topic-number">Topic {getTopicNumberLabel(selectedTopic)}</span>
+                      <span className="corelation-rating-topic-name">{selectedTopic}</span>
+                    </>
+                  ) : (
+                    selectedSubject ? 'Choose topic' : 'Select subject first'
+                  )}
+                </span>
                 <ChevronDown size={15} strokeWidth={2.4} aria-hidden="true" />
               </button>
 
@@ -267,7 +423,10 @@ export default function BlueprintPage() {
                           className={selectedTopic === topic ? 'is-selected' : ''}
                           onClick={() => handleTopicSelect(topic)}
                         >
-                          {topic}
+                          <span className="corelation-rating-topic-number">
+                            Topic {getTopicNumberLabel(topic)}
+                          </span>
+                          <span className="corelation-rating-topic-name">{topic}</span>
                         </button>
                       ))
                     ) : (
@@ -312,11 +471,28 @@ export default function BlueprintPage() {
           </div>
 
           <div className="corelation-rating-table-wrap">
-            <table className="corelation-rating-table">
+            <table className={`corelation-rating-table${isRationaleEnabled ? '' : ' is-rationale-off'}`}>
               <thead>
                 <tr>
                   <th>Code</th>
                   <th>Competency Name</th>
+                  <th>
+                    <div className="corelation-rating-rationale-head">
+                      <span>Rationale</span>
+                      <button
+                        type="button"
+                        className={isRationaleEnabled ? 'is-on' : ''}
+                        aria-pressed={isRationaleEnabled}
+                        onClick={() => {
+                          setIsRationaleEnabled((current) => !current)
+                          setOpenRationaleKey('')
+                          setEditingRationaleKey('')
+                        }}
+                      >
+                        {isRationaleEnabled ? 'On' : 'Off'}
+                      </button>
+                    </div>
+                  </th>
                   <th title="Clinical uses Impact and Frequency. Non-Clinical uses direct Rating.">Type</th>
                   <th title="1 low, 2 medium, 3 high">Impact</th>
                   <th title="1 low, 2 medium, 3 high">Frequency</th>
@@ -331,7 +507,7 @@ export default function BlueprintPage() {
                     return (
                       <Fragment key={group.topic}>
                         <tr key={`${group.topic}-heading`} className="corelation-rating-topic-row">
-                          <td colSpan="7">
+                          <td colSpan="8">
                             <button
                               type="button"
                               onClick={() => toggleTopicGroup(group.topic)}
@@ -351,6 +527,10 @@ export default function BlueprintPage() {
                           const rowComplete = isRowComplete(currentValues, rowType)
                           const ratingValue = getRatingValue(currentValues)
                           const isRowSaved = Boolean(savedRows[competencyKey]) && rowComplete
+                          const rationaleValue = getRationaleValue(competencyKey)
+                          const isRationaleLong = rationaleValue.length > 120
+                          const rationalePreview = isRationaleLong ? `${rationaleValue.slice(0, 118).trim()}...` : rationaleValue
+                          const isEditingRationale = editingRationaleKey === competencyKey
 
                           return (
                             <tr key={`${row.code}-${row.topic}-${index}`} className={`corelation-rating-child-row${rowComplete ? ' is-complete' : ''}`}>
@@ -358,6 +538,100 @@ export default function BlueprintPage() {
                                 <span className="corelation-rating-code-badge">{row.code}</span>
                               </td>
                               <td>{row.name}</td>
+                              <td>
+                                {isRationaleEnabled ? (
+                                  <div className="corelation-rating-rationale-preview">
+                                    <span>
+                                      {rationalePreview}
+                                      {isRationaleLong && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setOpenRationaleKey((current) => {
+                                            setEditingRationaleKey('')
+                                            return current === competencyKey ? '' : competencyKey
+                                          })}
+                                        >
+                                          View More
+                                        </button>
+                                      )}
+                                    </span>
+                                    {openRationaleKey === competencyKey && typeof document !== 'undefined' && createPortal((
+                                      <div
+                                        className="corelation-rating-rationale-popover-backdrop"
+                                        role="presentation"
+                                        onClick={() => {
+                                          setEditingRationaleKey('')
+                                          setOpenRationaleKey('')
+                                        }}
+                                      >
+                                        <div
+                                          className="corelation-rating-rationale-popover"
+                                          role="dialog"
+                                          aria-modal="true"
+                                          aria-label={`Rationale for ${row.code}`}
+                                          onClick={(event) => event.stopPropagation()}
+                                        >
+                                        {isEditingRationale ? (
+                                          <div className="corelation-rating-rationale-edit">
+                                            <textarea
+                                              className="corelation-rating-rationale-textarea"
+                                              aria-label={`Edit rationale for ${row.code}`}
+                                              value={rationaleValue}
+                                              onChange={(event) => updateRationaleValue(competencyKey, event.target.value)}
+                                            />
+                                            <div className="corelation-rating-rationale-popover-actions">
+                                              <button
+                                                type="button"
+                                                className="is-edit"
+                                                onClick={() => setEditingRationaleKey('')}
+                                              >
+                                                Done
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="is-close"
+                                                onClick={() => {
+                                                  setEditingRationaleKey('')
+                                                  setOpenRationaleKey('')
+                                                }}
+                                              >
+                                                Close
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                          <p>{rationaleValue}</p>
+                                          <div className="corelation-rating-rationale-popover-actions">
+                                            <button
+                                              type="button"
+                                              className="is-edit"
+                                              onClick={() => setEditingRationaleKey(competencyKey)}
+                                            >
+                                              <Pencil size={13} strokeWidth={2.5} aria-hidden="true" />
+                                              Edit
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="is-close"
+                                              onClick={() => {
+                                                setEditingRationaleKey('')
+                                                setOpenRationaleKey('')
+                                              }}
+                                            >
+                                              Close
+                                            </button>
+                                          </div>
+                                          </>
+                                        )}
+                                        </div>
+                                      </div>
+                                    ), document.body)}
+                                  </div>
+                                ) : (
+                                  <span className="corelation-rating-rationale-off">-</span>
+                                )}
+                              </td>
                               <td>
                                 {isRowSaved ? (
                                   <span className={`corelation-rating-type-badge ${isNonClinical ? 'is-non-clinical' : 'is-clinical'}`}>
@@ -449,7 +723,7 @@ export default function BlueprintPage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="7" className="corelation-rating-empty">
+                    <td colSpan="8" className="corelation-rating-empty">
                       {!selectedSubject
                         ? 'Select subject to load topics.'
                         : !selectedTopic
