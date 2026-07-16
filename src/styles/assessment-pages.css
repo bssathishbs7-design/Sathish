@@ -1205,10 +1205,10 @@
   min-width: 42px;
   min-height: 22px;
   padding: 0 8px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #fecaca;
   border-radius: 999px;
-  background: #f8fafc;
-  color: #64748b;
+  background: #fff1f2;
+  color: #dc2626;
   font: inherit;
   font-size: 0.62rem;
   font-weight: 950;
@@ -2004,9 +2004,9 @@
 }
 
 .theme-dark .corelation-rating-rationale-head button {
-  border-color: rgba(148, 163, 184, 0.34);
-  background: rgba(30, 41, 59, 0.72);
-  color: #94a3b8;
+  border-color: rgba(248, 113, 113, 0.36);
+  background: rgba(127, 29, 29, 0.22);
+  color: #fca5a5;
 }
 
 .theme-dark .corelation-rating-rationale-head button.is-on {
