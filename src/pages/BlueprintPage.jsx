@@ -1,12 +1,34 @@
-import { BarChart3, BookOpen, Check, ChevronDown, ListTree, Pencil, Target, XCircle } from 'lucide-react'
+import { ChevronDown, Pencil, SlidersHorizontal } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { corelationRatingRows } from './corelationRatingData'
 import '../styles/assessment-pages.css'
 
-const CORELATION_PAGE_SIZE = 10
+const CORELATION_RATING_SAVED_ROWS_KEY = 'medsy-corelation-rating-saved-rows'
+const CORELATION_RATING_RATIONALE_KEY = 'medsy-corelation-rating-rationale-values'
 const getSubjectKey = (row) => `${row.year || '1st Year'}::${row.subject}`
+const readStoredObject = (key) => {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const writeStoredObject = (key, value) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(key, JSON.stringify(value))
+}
+
 const DEFAULT_RATIONALE = `This competency focuses on the basic structural and molecular organization of the eukaryotic cell, including the nucleus, cytoplasm, plasma membrane, and subcellular organelles. It also includes understanding the fluid mosaic model of biological membranes and the functions of cellular organelles in metabolism and homeostasis.
 
 The learning objectives require students to identify cell structures, describe membrane organization, and explain organelle functions. These elements provide fundamental biochemical and cellular biology knowledge that forms the scientific basis for understanding later concepts in physiology and pathology.
@@ -20,19 +42,30 @@ export default function BlueprintPage() {
   const [selectedTopic, setSelectedTopic] = useState('')
   const [isSubjectMenuOpen, setIsSubjectMenuOpen] = useState(false)
   const [isTopicMenuOpen, setIsTopicMenuOpen] = useState(false)
+  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false)
   const [topicSearch, setTopicSearch] = useState('')
-  const [collapsedTopics, setCollapsedTopics] = useState({})
   const [selectedType, setSelectedType] = useState('')
   const [ratingValues, setRatingValues] = useState({})
-  const [rationaleValues, setRationaleValues] = useState({})
+  const [rationaleValues, setRationaleValues] = useState(() => readStoredObject(CORELATION_RATING_RATIONALE_KEY))
   const [isRationaleEnabled, setIsRationaleEnabled] = useState(true)
   const [openRationaleKey, setOpenRationaleKey] = useState('')
   const [editingRationaleKey, setEditingRationaleKey] = useState('')
-  const [savedRows, setSavedRows] = useState({})
+  const [savedRows, setSavedRows] = useState(() => readStoredObject(CORELATION_RATING_SAVED_ROWS_KEY))
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false)
-  const [showImpactFrequencyFields, setShowImpactFrequencyFields] = useState(false)
+  const [activeCorrelationTab, setActiveCorrelationTab] = useState('entry')
+  const [ratingMethod, setRatingMethod] = useState('direct')
   const [rowImpactFrequencyEnabled, setRowImpactFrequencyEnabled] = useState({})
-  const [currentPage, setCurrentPage] = useState(1)
+  const [collapsedSavedTopics, setCollapsedSavedTopics] = useState({})
+  const [savedFilterSubject, setSavedFilterSubject] = useState('')
+  const [savedFilterTopic, setSavedFilterTopic] = useState('')
+
+  useEffect(() => {
+    writeStoredObject(CORELATION_RATING_SAVED_ROWS_KEY, savedRows)
+  }, [savedRows])
+
+  useEffect(() => {
+    writeStoredObject(CORELATION_RATING_RATIONALE_KEY, rationaleValues)
+  }, [rationaleValues])
 
   const subjectOptions = useMemo(
     () => {
@@ -92,36 +125,11 @@ export default function BlueprintPage() {
     },
     [selectedSubject, selectedTopic, selectedType],
   )
-  const totalPages = Math.max(1, Math.ceil(filteredCompetencies.length / CORELATION_PAGE_SIZE))
-  const paginatedCompetencies = useMemo(
-    () => filteredCompetencies.slice(
-      (currentPage - 1) * CORELATION_PAGE_SIZE,
-      currentPage * CORELATION_PAGE_SIZE,
-    ),
-    [currentPage, filteredCompetencies],
-  )
-  const groupedCompetencies = useMemo(
-    () => selectedTopic
-      ? [{
-        topic: selectedTopic,
-        rows: paginatedCompetencies.filter((row) => row.topic === selectedTopic),
-      }].filter((group) => group.rows.length)
-      : [],
-    [paginatedCompetencies, selectedTopic],
-  )
-  const pageStart = filteredCompetencies.length
-    ? ((currentPage - 1) * CORELATION_PAGE_SIZE) + 1
-    : 0
-  const pageEnd = Math.min(currentPage * CORELATION_PAGE_SIZE, filteredCompetencies.length)
   const isSetupComplete = Boolean(selectedSubject && selectedTopic && selectedType)
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [selectedSubject, selectedTopic, selectedType])
-
-  useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages))
-  }, [totalPages])
+  const showImpactFrequencyFields = selectedType === 'Clinical' && ratingMethod === 'impact-frequency'
+  const selectedTypeSummary = selectedType
+    ? `${selectedType}${showImpactFrequencyFields ? ' / I-F' : selectedType === 'Clinical' ? ' / Direct' : ''}`
+    : 'Choose Type'
 
   const getTopicNumberLabel = (topic) => {
     const row = corelationRatingRows.find((item) => (
@@ -135,46 +143,20 @@ export default function BlueprintPage() {
     setSelectedTopic('')
     setIsSubjectMenuOpen(false)
     setIsTopicMenuOpen(false)
+    setIsTypeMenuOpen(false)
     setTopicSearch('')
-    setCollapsedTopics({})
     setSelectedType('')
+    setRatingMethod('direct')
   }
 
   const handleTopicSelect = (topic) => {
     setSelectedTopic(topic)
     setIsSubjectMenuOpen(false)
     setIsTopicMenuOpen(false)
+    setIsTypeMenuOpen(false)
     setTopicSearch('')
-    setCollapsedTopics({})
     setRatingValues({})
     setRowImpactFrequencyEnabled({})
-    setSavedRows({})
-    setCurrentPage(1)
-  }
-
-  const resetCorrelationSelection = () => {
-    setSelectedSubject('')
-    setSelectedTopic('')
-    setIsSubjectMenuOpen(false)
-    setSelectedType('')
-    setCollapsedTopics({})
-    setRatingValues({})
-    setRationaleValues({})
-    setIsRationaleEnabled(true)
-    setOpenRationaleKey('')
-    setEditingRationaleKey('')
-    setSavedRows({})
-    setIsSaveConfirmOpen(false)
-    setShowImpactFrequencyFields(false)
-    setRowImpactFrequencyEnabled({})
-    setCurrentPage(1)
-  }
-
-  const toggleTopicGroup = (topic) => {
-    setCollapsedTopics((current) => ({
-      ...current,
-      [topic]: !current[topic],
-    }))
   }
 
   const renderValue = (value, fallback = '-') => (
@@ -262,10 +244,8 @@ export default function BlueprintPage() {
   const handleDefaultTypeSelect = (type) => {
     setSelectedType(type)
     setRatingValues({})
-    setSavedRows({})
     setRowImpactFrequencyEnabled({})
-    setShowImpactFrequencyFields((current) => (type === 'Clinical' ? current : false))
-    setCurrentPage(1)
+    setRatingMethod((current) => (type === 'Clinical' ? current : 'direct'))
   }
 
   const updateRationaleValue = (key, value) => {
@@ -292,11 +272,19 @@ export default function BlueprintPage() {
   const isRowComplete = (values, rowType, usesImpactFrequency = rowType === 'Clinical') => {
     const rating = getRatingValue(values)
 
-    if (rowType === 'Non-Clinical' || !usesImpactFrequency) {
+    if (rowType === 'Non-Clinical') {
       return Boolean(rating)
     }
 
-    return Boolean(values?.impact && values?.frequency && rating)
+    if (values?.rating) {
+      return true
+    }
+
+    if (usesImpactFrequency) {
+      return Boolean(values?.impact && values?.frequency && rating)
+    }
+
+    return Boolean(rating)
   }
 
   const completedRowKeys = filteredCompetencies
@@ -309,86 +297,192 @@ export default function BlueprintPage() {
     })
     .filter(Boolean)
   const hasCompletedUnsavedRows = completedRowKeys.some((key) => !savedRows[key])
-  const metricCompetencyRows = useMemo(
-    () => corelationRatingRows.filter((row) => (
-      (!selectedSubject || getSubjectKey(row) === selectedSubject)
-      && (!selectedTopic || row.topic === selectedTopic)
-    )),
-    [selectedSubject, selectedTopic],
+  const topicCompetencyCount = filteredCompetencies.length
+  const completedCompetencyCount = completedRowKeys.length
+  const isTopicComplete = topicCompetencyCount > 0 && completedCompetencyCount === topicCompetencyCount
+  const canSaveCorrelation = isTopicComplete && hasCompletedUnsavedRows
+  const completionStatusText = isTopicComplete
+    ? `All ${topicCompetencyCount} competencies completed`
+    : `Completed ${completedCompetencyCount} of ${topicCompetencyCount} competencies`
+  const savedCorrelationRows = useMemo(
+    () => corelationRatingRows
+      .map((row) => {
+        const key = getCompetencyKey(row)
+        const saved = savedRows[key]
+        return saved ? { ...row, key, savedValues: saved.values ?? {} } : null
+      })
+      .filter(Boolean),
+    [savedRows],
   )
-  const savedMetricCount = metricCompetencyRows.filter((row) => savedRows[getCompetencyKey(row)]).length
-  const correlationMetrics = [
-    {
-      label: 'Subjects',
-      value: subjectOptions.length.toString().padStart(2, '0'),
-      icon: BookOpen,
-      tone: 'is-subjects',
+  const savedMetricCount = savedCorrelationRows.length
+  const savedSubjectOptions = useMemo(
+    () => {
+      const options = new Map()
+      savedCorrelationRows.forEach((row) => {
+        const key = getSubjectKey(row)
+        if (!options.has(key)) {
+          options.set(key, {
+            key,
+            subject: row.subject,
+            year: row.year || '1st Year',
+          })
+        }
+      })
+      return [...options.values()]
     },
-    {
-      label: 'Topics',
-      value: (selectedSubject ? availableTopics.length : allTopicOptions.length).toString().padStart(2, '0'),
-      icon: ListTree,
-      tone: 'is-topics',
+    [savedCorrelationRows],
+  )
+  const savedTopicOptions = useMemo(
+    () => [
+      ...new Set(
+        savedCorrelationRows
+          .filter((row) => !savedFilterSubject || getSubjectKey(row) === savedFilterSubject)
+          .map((row) => row.topic)
+          .filter(Boolean),
+      ),
+    ],
+    [savedCorrelationRows, savedFilterSubject],
+  )
+  const filteredSavedCorrelationRows = useMemo(
+    () => savedCorrelationRows.filter((row) => (
+      (!savedFilterSubject || getSubjectKey(row) === savedFilterSubject)
+      && (!savedFilterTopic || row.topic === savedFilterTopic)
+    )),
+    [savedCorrelationRows, savedFilterSubject, savedFilterTopic],
+  )
+  const savedTopicGroups = useMemo(
+    () => {
+      const groups = new Map()
+      filteredSavedCorrelationRows.forEach((row) => {
+        const topic = row.topic || 'Untitled Topic'
+        if (!groups.has(topic)) {
+          groups.set(topic, [])
+        }
+        groups.get(topic).push(row)
+      })
+
+      return [...groups.entries()].map(([topic, rows]) => ({
+        topic,
+        rows,
+      }))
     },
-    {
-      label: 'Competency',
-      value: metricCompetencyRows.length.toString().padStart(2, '0'),
-      icon: Target,
-      tone: 'is-competency',
-    },
-    {
-      label: 'Correlation Rating',
-      value: `${savedMetricCount.toString().padStart(2, '0')} / ${metricCompetencyRows.length.toString().padStart(2, '0')}`,
-      icon: BarChart3,
-      tone: 'is-rating',
-    },
-  ]
+    [filteredSavedCorrelationRows],
+  )
+  const subjectCountLabel = subjectOptions.length.toString().padStart(2, '0')
+  const topicCountLabel = (selectedSubject ? availableTopics.length : allTopicOptions.length).toString().padStart(2, '0')
+  const correlationRatingLabel = `${savedMetricCount.toString().padStart(2, '0')} / ${corelationRatingRows.length.toString().padStart(2, '0')}`
 
   const saveCompletedCorrelationRows = () => {
+    const currentRows = new Map(filteredCompetencies.map((row) => [getCompetencyKey(row), row]))
     setSavedRows((current) => {
       const next = { ...current }
       completedRowKeys.forEach((key) => {
-        next[key] = true
+        const row = currentRows.get(key)
+        const values = ratingValues[key] ?? {}
+        const rowType = values.type || row?.type || selectedType || 'Clinical'
+        const usesImpactFrequency = rowType === 'Clinical' && (showImpactFrequencyFields || rowImpactFrequencyEnabled[key])
+        next[key] = {
+          values: {
+            ...values,
+            type: rowType,
+            impact: usesImpactFrequency ? values.impact : '',
+            frequency: usesImpactFrequency ? values.frequency : '',
+            rating: getRatingValue(values),
+          },
+        }
       })
       return next
     })
     setIsSaveConfirmOpen(false)
   }
 
-  const editSavedCorrelationRow = (key) => {
+  const toggleSavedTopic = (topic) => {
+    setCollapsedSavedTopics((current) => ({
+      ...current,
+      [topic]: !current[topic],
+    }))
+  }
+
+  const editSavedCorrelationTopic = (rows) => {
+    const firstRow = rows[0]
+
+    if (!firstRow) {
+      return
+    }
+
+    const firstValues = firstRow.savedValues ?? {}
+    const nextRatingValues = {}
+    const nextImpactFrequencyRows = {}
+
+    rows.forEach((row) => {
+      const values = row.savedValues ?? {}
+      nextRatingValues[row.key] = values
+      if (values.type === 'Clinical' && values.impact && values.frequency) {
+        nextImpactFrequencyRows[row.key] = true
+      }
+    })
+
+    setSelectedSubject(getSubjectKey(firstRow))
+    setSelectedTopic(firstRow.topic)
+    setSelectedType(firstValues.type || firstRow.type || 'Clinical')
+    setRatingMethod(firstValues.impact && firstValues.frequency ? 'impact-frequency' : 'direct')
+    setRatingValues((current) => ({
+      ...current,
+      ...nextRatingValues,
+    }))
+    setRowImpactFrequencyEnabled((current) => ({
+      ...current,
+      ...nextImpactFrequencyRows,
+    }))
     setSavedRows((current) => {
       const next = { ...current }
-      delete next[key]
+      rows.forEach((row) => {
+        delete next[row.key]
+      })
       return next
     })
+    setIsSubjectMenuOpen(false)
+    setIsTopicMenuOpen(false)
+    setIsTypeMenuOpen(false)
+    setActiveCorrelationTab('entry')
   }
 
   return (
     <section className="vx-content assessment-page assessment-evaluation-page">
       <div className="assessment-page-shell assessment-evaluation-page-shell">
-        <PageNavigationHeader items={['My Pages', 'Correlation Rating']} />
-
-        <section className="corelation-rating-metrics" aria-label="Correlation rating metrics">
-          {correlationMetrics.map((metric) => {
-            const MetricIcon = metric.icon
-            return (
-              <div key={metric.label} className={`corelation-rating-metric ${metric.tone}`}>
-                <span aria-hidden="true">
-                  <MetricIcon size={15} strokeWidth={2.4} />
-                </span>
-                <div>
-                  <small>{metric.label}</small>
-                  <strong>{metric.value}</strong>
-                </div>
-              </div>
-            )
-          })}
-        </section>
+        <div className="corelation-rating-page-head">
+          <PageNavigationHeader items={['My Pages', 'Correlation Rating']} />
+          <div className="corelation-rating-tabs" role="tablist" aria-label="Correlation rating views">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeCorrelationTab === 'entry'}
+              className={activeCorrelationTab === 'entry' ? 'is-active' : ''}
+              onClick={() => setActiveCorrelationTab('entry')}
+            >
+              Correlation Entry
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeCorrelationTab === 'saved'}
+              className={activeCorrelationTab === 'saved' ? 'is-active is-view-rating' : 'is-view-rating'}
+              onClick={() => setActiveCorrelationTab('saved')}
+            >
+              View Correlation Rating
+              <span>{correlationRatingLabel}</span>
+            </button>
+          </div>
+        </div>
 
         <section className="corelation-rating-panel corelation-rating-panel-combined" aria-label="Correlation rating setup">
+          {activeCorrelationTab === 'entry' && (
           <div className="corelation-rating-controls">
             <div className="corelation-rating-field corelation-rating-subject-field">
-              <span>Subject</span>
+              <span className="corelation-rating-required-label">
+                Subject <strong>*</strong>
+                <em className="corelation-rating-label-badge">{subjectCountLabel}</em>
+              </span>
               <button
                 type="button"
                 className="corelation-rating-topic-trigger corelation-rating-subject-trigger"
@@ -396,6 +490,7 @@ export default function BlueprintPage() {
                 onClick={() => {
                   setIsSubjectMenuOpen((current) => !current)
                   setIsTopicMenuOpen(false)
+                  setIsTypeMenuOpen(false)
                 }}
               >
                 <span className="corelation-rating-trigger-value">
@@ -430,13 +525,20 @@ export default function BlueprintPage() {
             </div>
 
             <div className="corelation-rating-field corelation-rating-topic-field">
-              <span>Topics</span>
+              <span className="corelation-rating-required-label">
+                Topics <strong>*</strong>
+                <em className="corelation-rating-label-badge is-topic-count">{topicCountLabel}</em>
+              </span>
               <button
                 type="button"
                 className="corelation-rating-topic-trigger"
                 disabled={!selectedSubject}
                 aria-expanded={isTopicMenuOpen}
-                onClick={() => setIsTopicMenuOpen((current) => !current)}
+                onClick={() => {
+                  setIsTopicMenuOpen((current) => !current)
+                  setIsSubjectMenuOpen(false)
+                  setIsTypeMenuOpen(false)
+                }}
               >
                 <span className="corelation-rating-trigger-value">
                   {selectedTopic ? (
@@ -485,114 +587,355 @@ export default function BlueprintPage() {
             </div>
 
             <div className="corelation-rating-field corelation-rating-type-field">
-              <span className="corelation-rating-required-label">Competency Type <strong>*</strong></span>
-              <div className="corelation-rating-type-switch" role="radiogroup" aria-label="Choose competency type">
-                {['Clinical', 'Non-Clinical'].map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    role="radio"
-                    aria-checked={selectedType === type}
-                    className={selectedType === type ? 'is-active' : ''}
-                    onClick={() => handleDefaultTypeSelect(type)}
-                  >
-                    <span aria-hidden="true" />
-                    {type}
-                  </button>
-                ))}
-              </div>
-              <div className="corelation-rating-type-note">
-                {selectedType === 'Clinical' && (
-                  <label className="corelation-rating-impact-toggle">
-                    <input
-                      type="checkbox"
-                      checked={showImpactFrequencyFields}
-                      onChange={(event) => setShowImpactFrequencyFields(event.target.checked)}
-                    />
-                    <span>Impact + Frequency</span>
-                  </label>
-                )}
-                <small className="corelation-rating-type-help">
-                  {!selectedType
-                    ? 'Choose Clinical or Non-Clinical to load competencies.'
-                    : selectedType === 'Clinical'
-                      ? 'Use Impact + Frequency when needed, or enter direct Rating.'
-                      : 'Enter direct Rating only.'}
-                </small>
-              </div>
-            </div>
-
-            <div className="corelation-rating-actions" aria-label="Correlation rating reset action">
+              <span className="corelation-rating-required-label">
+                Competency Type <strong>*</strong>
+              </span>
               <button
                 type="button"
-                className="is-reset"
-                disabled={!selectedSubject && !selectedTopic && !selectedType}
-                onClick={resetCorrelationSelection}
+                className={`corelation-rating-type-trigger${selectedType ? ' is-selected' : ''}`}
+                aria-expanded={isTypeMenuOpen}
+                onClick={() => {
+                  setIsTypeMenuOpen((current) => !current)
+                  setIsSubjectMenuOpen(false)
+                  setIsTopicMenuOpen(false)
+                }}
               >
-                <XCircle size={14} strokeWidth={2.4} aria-hidden="true" />
-                Clear
+                <span>
+                  <SlidersHorizontal size={14} strokeWidth={2.4} aria-hidden="true" />
+                  {selectedTypeSummary}
+                </span>
+                <ChevronDown size={15} strokeWidth={2.4} aria-hidden="true" />
               </button>
-            </div>
-          </div>
 
-          {isSetupComplete ? (
+              {isTypeMenuOpen && (
+                <div className="corelation-rating-type-menu" role="dialog" aria-label="Competency type controls">
+                  <div className="corelation-rating-type-menu-head">
+                    <strong>Competency Type</strong>
+                    <small>Choose how this topic should be rated.</small>
+                  </div>
+                  <div className="corelation-rating-type-switch" role="radiogroup" aria-label="Choose competency type">
+                    {['Clinical', 'Non-Clinical'].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        role="radio"
+                        aria-checked={selectedType === type}
+                        className={selectedType === type ? 'is-active' : ''}
+                        onClick={() => handleDefaultTypeSelect(type)}
+                      >
+                        <span aria-hidden="true" />
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="corelation-rating-type-note">
+                    {selectedType === 'Clinical' && (
+                      <div className="corelation-rating-method-section">
+                        <span>Rating Method</span>
+                        <div className="corelation-rating-method-switch" role="radiogroup" aria-label="Choose rating method">
+                          {[
+                            ['direct', 'Direct Rating'],
+                            ['impact-frequency', 'Impact + Frequency'],
+                          ].map(([method, label]) => (
+                            <button
+                              key={method}
+                              type="button"
+                              role="radio"
+                              aria-checked={ratingMethod === method}
+                              className={ratingMethod === method ? 'is-active' : ''}
+                              onClick={() => setRatingMethod(method)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <small className="corelation-rating-type-help">
+                      {!selectedType
+                        ? 'Choose Clinical or Non-Clinical to load competencies.'
+                        : selectedType === 'Clinical'
+                          ? ratingMethod === 'impact-frequency'
+                            ? 'Impact and Frequency will calculate the Rating.'
+                            : 'Enter the Rating directly for each competency.'
+                          : 'Enter direct Rating only.'}
+                    </small>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+          )}
+
+          {activeCorrelationTab === 'saved' ? (
+            <>
+              {savedCorrelationRows.length ? (
+                <>
+                <div className="corelation-rating-saved-filters" aria-label="Saved correlation filters">
+                  <label>
+                    <span>Subject</span>
+                    <select
+                      value={savedFilterSubject}
+                      onChange={(event) => {
+                        setSavedFilterSubject(event.target.value)
+                        setSavedFilterTopic('')
+                      }}
+                    >
+                      <option value="">All saved subjects</option>
+                      {savedSubjectOptions.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.year} - {option.subject}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Topic</span>
+                    <select
+                      value={savedFilterTopic}
+                      onChange={(event) => setSavedFilterTopic(event.target.value)}
+                    >
+                      <option value="">All saved topics</option>
+                      {savedTopicOptions.map((topic) => (
+                        <option key={topic} value={topic}>{topic}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                {filteredSavedCorrelationRows.length ? (
+                <div className="corelation-rating-saved-table-wrap">
+                  <table className={`corelation-rating-saved-table${isRationaleEnabled ? '' : ' is-rationale-off'}`}>
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>
+                          <div className="corelation-rating-competency-head">
+                            <span>Competency</span>
+                            <span className={`corelation-rating-rationale-head${isRationaleEnabled ? ' is-enabled' : ' is-disabled'}`}>
+                              <span>Show Rationale</span>
+                              <button
+                                type="button"
+                                className={isRationaleEnabled ? 'is-on' : ''}
+                                aria-pressed={isRationaleEnabled}
+                                onClick={() => {
+                                  setIsRationaleEnabled((current) => !current)
+                                  setOpenRationaleKey('')
+                                  setEditingRationaleKey('')
+                                }}
+                              >
+                                {isRationaleEnabled ? 'On' : 'Off'}
+                              </button>
+                            </span>
+                          </div>
+                        </th>
+                        {isRationaleEnabled && <th>Rationale</th>}
+                        <th>Type</th>
+                        <th>Impact</th>
+                        <th>Frequency</th>
+                        <th>Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {savedTopicGroups.map((group) => {
+                        const isCollapsed = Boolean(collapsedSavedTopics[group.topic])
+                        const topicColumnSpan = isRationaleEnabled ? 7 : 6
+                        return (
+                          <Fragment key={group.topic}>
+                            <tr key={`${group.topic}-topic`} className={`corelation-rating-saved-topic-row${isCollapsed ? ' is-collapsed' : ''}`}>
+                              <td colSpan={topicColumnSpan}>
+                                <div className="corelation-rating-saved-topic-header">
+                                  <button
+                                    type="button"
+                                    className="corelation-rating-saved-topic-toggle"
+                                    aria-expanded={!isCollapsed}
+                                    onClick={() => toggleSavedTopic(group.topic)}
+                                  >
+                                    <ChevronDown size={15} strokeWidth={2.5} aria-hidden="true" />
+                                    <span>{group.topic}</span>
+                                    <strong>{group.rows.length} Competencies</strong>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="corelation-rating-saved-topic-edit"
+                                    title={`Edit ${group.topic}`}
+                                    aria-label={`Edit ${group.topic}`}
+                                    onClick={() => editSavedCorrelationTopic(group.rows)}
+                                  >
+                                    <Pencil size={13} strokeWidth={2.5} aria-hidden="true" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {!isCollapsed && group.rows.map((row) => {
+                              const values = row.savedValues ?? {}
+                              const rationaleValue = getRationaleValue(row.key)
+                              const isRationaleLong = rationaleValue.length > 120
+                              const rationalePreview = isRationaleLong ? `${rationaleValue.slice(0, 118).trim()}...` : rationaleValue
+                              const isEditingRationale = editingRationaleKey === row.key
+                              return (
+                                <tr key={row.key}>
+                                  <td><span className="corelation-rating-code-badge">{row.code}</span></td>
+                                  <td>{row.name}</td>
+                                  {isRationaleEnabled && (
+                                    <td>
+                                      <div className="corelation-rating-rationale-preview">
+                                        <span>
+                                          {rationalePreview}
+                                          {isRationaleLong && (
+                                            <button
+                                              type="button"
+                                              onClick={() => setOpenRationaleKey((current) => {
+                                                setEditingRationaleKey('')
+                                                return current === row.key ? '' : row.key
+                                              })}
+                                            >
+                                              View More
+                                            </button>
+                                          )}
+                                        </span>
+                                        {openRationaleKey === row.key && typeof document !== 'undefined' && createPortal((
+                                          <div
+                                            className="corelation-rating-rationale-popover-backdrop"
+                                            role="presentation"
+                                            onClick={() => {
+                                              setEditingRationaleKey('')
+                                              setOpenRationaleKey('')
+                                            }}
+                                          >
+                                            <div
+                                              className="corelation-rating-rationale-popover"
+                                              role="dialog"
+                                              aria-modal="true"
+                                              aria-label={`Rationale for ${row.code}`}
+                                              onClick={(event) => event.stopPropagation()}
+                                            >
+                                              {isEditingRationale ? (
+                                                <div className="corelation-rating-rationale-edit">
+                                                  <textarea
+                                                    className="corelation-rating-rationale-textarea"
+                                                    aria-label={`Edit rationale for ${row.code}`}
+                                                    value={rationaleValue}
+                                                    onChange={(event) => updateRationaleValue(row.key, event.target.value)}
+                                                  />
+                                                  <div className="corelation-rating-rationale-popover-actions">
+                                                    <button
+                                                      type="button"
+                                                      className="is-edit"
+                                                      onClick={() => setEditingRationaleKey('')}
+                                                    >
+                                                      Done
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      className="is-close"
+                                                      onClick={() => {
+                                                        setEditingRationaleKey('')
+                                                        setOpenRationaleKey('')
+                                                      }}
+                                                    >
+                                                      Close
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <>
+                                                  <p>{rationaleValue}</p>
+                                                  <div className="corelation-rating-rationale-popover-actions">
+                                                    <button
+                                                      type="button"
+                                                      className="is-edit"
+                                                      onClick={() => setEditingRationaleKey(row.key)}
+                                                    >
+                                                      <Pencil size={13} strokeWidth={2.5} aria-hidden="true" />
+                                                      Edit
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      className="is-close"
+                                                      onClick={() => {
+                                                        setEditingRationaleKey('')
+                                                        setOpenRationaleKey('')
+                                                      }}
+                                                    >
+                                                      Close
+                                                    </button>
+                                                  </div>
+                                                </>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ), document.body)}
+                                      </div>
+                                    </td>
+                                  )}
+                                  <td>
+                                    <span className={`corelation-rating-type-badge ${values.type === 'Non-Clinical' ? 'is-non-clinical' : 'is-clinical'}`}>
+                                      {values.type || '-'}
+                                    </span>
+                                  </td>
+                                  <td>{renderValue(values.impact)}</td>
+                                  <td>{renderValue(values.frequency)}</td>
+                                  <td>{renderValue(values.rating)}</td>
+                                </tr>
+                              )
+                            })}
+                          </Fragment>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                ) : (
+                  <div className="corelation-rating-saved-empty">No saved correlation ratings for this filter.</div>
+                )}
+                </>
+              ) : (
+                <div className="corelation-rating-saved-empty">No saved correlation ratings yet.</div>
+              )}
+            </>
+          ) : isSetupComplete ? (
             <>
           <div className="corelation-rating-table-wrap">
             <table className={`corelation-rating-table${isRationaleEnabled ? '' : ' is-rationale-off'}${displayImpactFrequencyColumns ? '' : ' is-impact-frequency-hidden'}`}>
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Competency Name</th>
-                  <th>
-                    <div className="corelation-rating-rationale-head">
-                      <span>Rationale</span>
-                      <button
-                        type="button"
-                        className={isRationaleEnabled ? 'is-on' : ''}
-                        aria-pressed={isRationaleEnabled}
-                        onClick={() => {
-                          setIsRationaleEnabled((current) => !current)
-                          setOpenRationaleKey('')
-                          setEditingRationaleKey('')
-                        }}
-                      >
-                        {isRationaleEnabled ? 'On' : 'Off'}
-                      </button>
+                  <th className="is-code">Code</th>
+                  <th className="is-competency-name">
+                    <div className="corelation-rating-competency-head">
+                      <span>Competency</span>
+                      <span className={`corelation-rating-rationale-head${isRationaleEnabled ? ' is-enabled' : ' is-disabled'}`}>
+                        <span>Show Rationale</span>
+                        <button
+                          type="button"
+                          className={isRationaleEnabled ? 'is-on' : ''}
+                          aria-pressed={isRationaleEnabled}
+                          onClick={() => {
+                            setIsRationaleEnabled((current) => !current)
+                            setOpenRationaleKey('')
+                            setEditingRationaleKey('')
+                          }}
+                        >
+                          {isRationaleEnabled ? 'On' : 'Off'}
+                        </button>
+                      </span>
                     </div>
                   </th>
-                  <th title="Clinical uses Impact and Frequency. Non-Clinical uses direct Rating.">Type</th>
+                  {isRationaleEnabled && <th className="is-rationale">Rationale</th>}
+                  <th className="is-type" title="Clinical uses Impact and Frequency. Non-Clinical uses direct Rating.">Type</th>
                   {displayImpactFrequencyColumns && (
                     <>
-                      <th title="1 low, 2 medium, 3 high">Impact</th>
-                      <th title="1 low, 2 medium, 3 high">Frequency</th>
+                      <th className="is-impact" title="1 low, 2 medium, 3 high">Impact</th>
+                      <th className="is-frequency" title="1 low, 2 medium, 3 high">Frequency</th>
                     </>
                   )}
-                  <th title="Auto: Impact × Frequency, or enter 1-9 directly">Rating</th>
-                  <th>Status</th>
+                  <th className="is-rating" title="Auto: Impact × Frequency, or enter 1-9 directly">Rating</th>
                 </tr>
               </thead>
               <tbody>
-                {groupedCompetencies.length ? (
-                  groupedCompetencies.map((group) => {
-                    const isCollapsed = Boolean(collapsedTopics[group.topic])
-                    return (
-                      <Fragment key={group.topic}>
-                        <tr key={`${group.topic}-heading`} className="corelation-rating-topic-row">
-                          <td colSpan={displayImpactFrequencyColumns ? 8 : 6}>
-                            <button
-                              type="button"
-                              onClick={() => toggleTopicGroup(group.topic)}
-                              aria-expanded={!isCollapsed}
-                            >
-                              <ChevronDown size={16} strokeWidth={2.5} aria-hidden="true" />
-                              <span>{group.topic}</span>
-                              <strong>{group.rows.length} Competencies</strong>
-                            </button>
-                          </td>
-                        </tr>
-                        {!isCollapsed && group.rows.map((row, index) => {
+                {filteredCompetencies.map((row, index) => {
                           const competencyKey = getCompetencyKey(row)
-                          const currentValues = ratingValues[competencyKey] ?? {}
+                          const currentValues = ratingValues[competencyKey] ?? savedRows[competencyKey]?.values ?? {}
                           const rowType = currentValues.type || row.type || selectedType || 'Clinical'
                           const isNonClinical = rowType === 'Non-Clinical'
                           const isRowImpactFrequencyEnabled = Boolean(rowImpactFrequencyEnabled[competencyKey])
@@ -607,12 +950,12 @@ export default function BlueprintPage() {
 
                           return (
                             <tr key={`${row.code}-${row.topic}-${index}`} className={`corelation-rating-child-row${rowComplete ? ' is-complete' : ''}`}>
-                              <td>
+                              <td className="is-code">
                                 <span className="corelation-rating-code-badge">{row.code}</span>
                               </td>
-                              <td>{row.name}</td>
-                              <td>
-                                {isRationaleEnabled ? (
+                              <td className="is-competency-name">{row.name}</td>
+                              {isRationaleEnabled && (
+                              <td className="is-rationale">
                                   <div className="corelation-rating-rationale-preview">
                                     <span>
                                       {rationalePreview}
@@ -701,11 +1044,9 @@ export default function BlueprintPage() {
                                       </div>
                                     ), document.body)}
                                   </div>
-                                ) : (
-                                  <span className="corelation-rating-rationale-off">-</span>
-                                )}
                               </td>
-                              <td>
+                              )}
+                              <td className="is-type">
                                 {isRowSaved ? (
                                   <span className={`corelation-rating-type-badge ${isNonClinical ? 'is-non-clinical' : 'is-clinical'}`}>
                                     {rowType}
@@ -736,7 +1077,7 @@ export default function BlueprintPage() {
                               </td>
                               {displayImpactFrequencyColumns && (
                                 <>
-                                  <td>
+                                  <td className="is-impact">
                                     {isRowSaved ? (
                                       <span className="corelation-rating-score-value">{renderValue(currentValues.impact)}</span>
                                     ) : !rowUsesImpactFrequency ? (
@@ -754,7 +1095,7 @@ export default function BlueprintPage() {
                                       />
                                     )}
                                   </td>
-                                  <td>
+                                  <td className="is-frequency">
                                     {isRowSaved ? (
                                       <span className="corelation-rating-score-value">{renderValue(currentValues.frequency)}</span>
                                     ) : !rowUsesImpactFrequency ? (
@@ -774,7 +1115,7 @@ export default function BlueprintPage() {
                                   </td>
                                 </>
                               )}
-                              <td>
+                              <td className="is-rating">
                                 {isRowSaved ? (
                                   <span className="corelation-rating-score-value">{renderValue(ratingValue)}</span>
                                 ) : (
@@ -789,59 +1130,26 @@ export default function BlueprintPage() {
                                   />
                                 )}
                               </td>
-                              <td>
-                                {isRowSaved ? (
-                                  <button
-                                    type="button"
-                                    className="corelation-rating-edit-row"
-                                    title="Edit saved row"
-                                    aria-label={`Edit ${row.code}`}
-                                    onClick={() => editSavedCorrelationRow(competencyKey)}
-                                  >
-                                    <Pencil size={13} strokeWidth={2.5} aria-hidden="true" />
-                                  </button>
-                                ) : rowComplete && (
-                                  <span className="corelation-rating-complete-icon" title="Completed">
-                                    <Check size={13} strokeWidth={3} aria-hidden="true" />
-                                  </span>
-                                )}
-                              </td>
                             </tr>
                           )
                         })}
-                      </Fragment>
-                    )
-                  })
-                ) : null}
               </tbody>
             </table>
           </div>
 
           <div className="corelation-rating-table-footer">
-            <span>Showing {pageStart}-{pageEnd} of {filteredCompetencies.length}</span>
             <div>
-              <button
-                type="button"
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-              >
-                Next
-              </button>
+              <span className={`corelation-rating-completion-status${isTopicComplete ? ' is-complete' : ''}`}>
+                {completionStatusText}
+              </span>
               {isSetupComplete && (
                 <button
                   type="button"
                   className="is-save-corelation"
-                  disabled={!hasCompletedUnsavedRows}
+                  disabled={!canSaveCorrelation}
                   onClick={() => setIsSaveConfirmOpen(true)}
                 >
-                  Save Coreleation
+                  Save Correlation
                 </button>
               )}
             </div>
@@ -861,8 +1169,8 @@ export default function BlueprintPage() {
         {isSaveConfirmOpen && typeof document !== 'undefined' && createPortal((
           <div className="assessment-evaluation-confirm-overlay" role="presentation">
             <div className="assessment-evaluation-confirm-modal corelation-rating-save-modal" role="dialog" aria-modal="true" aria-labelledby="corelation-save-title">
-              <h2 id="corelation-save-title">Save Coreleation</h2>
-              <p>Are you sure you want to save the completed coreleation ratings?</p>
+              <h2 id="corelation-save-title">Save Correlation</h2>
+              <p>Are you sure you want to save all completed correlation ratings for this topic?</p>
               <div className="assessment-evaluation-confirm-actions">
                 <button type="button" className="is-secondary" onClick={() => setIsSaveConfirmOpen(false)}>
                   No
