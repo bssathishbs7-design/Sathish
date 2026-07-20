@@ -61,6 +61,76 @@ const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 
 
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
 const getCompetencyCode = (value) => String(value ?? '').trim().split(/\s+/)[0] || value
+const getCompetencyName = (value) => String(value ?? '').trim().replace(/^\S+\s+/, '')
+const getQuestionTypeCompactLabel = (questionOrType) => getQuestionTypeLabel(questionOrType).replace(/Qs$/, 'Q')
+const getQuestionCurriculumDisplay = (question) => {
+  const competency = (question.competencies ?? [])[0] ?? ''
+  const topic = (question.topics ?? [])[0] ?? ''
+  const subjectTopics = corelationRatingRows
+    .filter((row) => row.subject === question.subject)
+    .map((row) => row.topic)
+    .filter(Boolean)
+  const topicNumber = topic ? [...new Set(subjectTopics)].findIndex((item) => item === topic) + 1 : 0
+
+  return {
+    path: [
+      question.subject,
+      topic,
+    ].filter(Boolean),
+    competencyCode: getCompetencyCode(competency),
+    competencyName: getCompetencyName(competency),
+    topicNumber,
+  }
+}
+const renderCompetencyCodeBadge = (curriculum) => {
+  if (!curriculum.competencyCode) return null
+
+  return (
+    <span className="assessment-page-competency-code-wrap">
+      <button
+        type="button"
+        className="assessment-page-competency-code-badge"
+        aria-label={`View competency details for ${curriculum.competencyCode}`}
+      >
+        <span>{curriculum.competencyCode}</span>
+        {curriculum.competencyName ? <Info size={12} strokeWidth={2.4} aria-hidden="true" /> : null}
+      </button>
+      {curriculum.competencyName ? (
+        <span className="assessment-page-competency-tooltip" role="tooltip">
+          {curriculum.competencyName}
+        </span>
+      ) : null}
+    </span>
+  )
+}
+const renderQuestionCurriculumPath = (curriculum) => {
+  const [subject, topic] = curriculum.path
+  if (!subject && !topic) return null
+
+  return (
+    <span className="is-path">
+      {subject ? <span>{subject}</span> : null}
+      {subject && topic ? <span className="assessment-page-question-path-separator">›</span> : null}
+      {topic ? <span className="assessment-page-question-topic-text">{curriculum.topicNumber > 0 ? `Topic ${curriculum.topicNumber}: ` : ''}{topic}</span> : null}
+    </span>
+  )
+}
+const renderQuestionCompactMeta = (question, curriculum) => {
+  const hiddenTagCount = getOptionalTagGroups(question).reduce((total, group) => total + group.values.length, 0)
+
+  return (
+    <div className="assessment-page-question-compact-meta">
+      {renderQuestionCurriculumPath(curriculum)}
+      {renderCompetencyCodeBadge(curriculum)}
+      <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
+      {getQuestionMarksTotal(question) > 0 ? <span className="is-marks">{getQuestionMarksTotal(question)} marks</span> : null}
+      {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
+      {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
+      {hiddenTagCount ? <span className="is-extra-tags">+ {hiddenTagCount} more tags</span> : null}
+      {getQuestionAuthorName(question) ? <span className="is-author">Dept. of {question.subject || getQuestionAuthorName(question)}</span> : null}
+    </div>
+  )
+}
 const getQuestionCategoryLabel = (value, questionOrType) => {
   const normalized = String(value ?? '').trim().toLowerCase()
   const typeLabel = questionOrType ? getQuestionTypeLabel(questionOrType) : ''
@@ -203,7 +273,7 @@ const createMedsyDescriptiveSampleQuestions = (type, offset, idOffset, marks) =>
       id: `medsy-uploaded-sample-${questionNumber}`,
       type,
       authorName: 'Medsy',
-      questionText: `${isLaq ? 'Explain in detail' : 'Describe briefly'}: ${row.name}`,
+      questionText: row.name,
       marks: String(marks),
       ...meta,
       options: [],
@@ -2683,12 +2753,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
           <section className="assessment-page-question-list" aria-label="Sent question bank questions">
             {pagedQuestions.map((question, index) => {
               const questionNumber = pageStartIndex + index + 1
-              const curriculum = [
-                question.year,
-                question.subject,
-                ...(question.topics ?? []),
-                ...(question.competencies ?? []),
-              ].filter(Boolean)
+              const curriculum = getQuestionCurriculumDisplay(question)
               const imageRows = Array.isArray(question.images) ? question.images : []
               const optionRows = Array.isArray(question.options) ? question.options : []
               const tagGroups = getOptionalTagGroups(question)
@@ -2699,67 +2764,107 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               const isDescriptive = isDescriptiveQuestion(question)
               const isMcq = getQuestionTypeLabel(question) === 'MCQ'
               const descriptiveAnswerItems = isDescriptive ? getDescriptiveAnswerItems(question, descriptiveSections) : []
+              const isFavorite = isFavoriteQuestion(question)
 
               return (
                 <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
-                  <div className="assessment-page-question-head">
-                    <span className="assessment-page-question-type">{getQuestionTypeLabel(question)}</span>
-                    {renderSourceBadge(question, 'assessment-page-question-author', sourceBadgeTooltipHandlers)}
-                    {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
-                    {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
-                    {isCardOpen && tagGroups.length ? (
-                      <span className="assessment-page-question-tags-wrap">
+                  <div className="assessment-page-question-summary">
+                    <span className="assessment-page-question-type">{getQuestionTypeCompactLabel(question)}</span>
+                    <div className="assessment-page-question-main">
+                      <div className="assessment-page-question-title">
+                        <strong>Q{questionNumber}.</strong>
+                        <span>{getQuestionPreview(question)}</span>
+                      </div>
+                      {renderQuestionCompactMeta(question, curriculum)}
+                    </div>
+                    <div className="assessment-page-question-actions">
+                      {isEditable && !isReportMetricActive ? (
                         <button
                           type="button"
-                          className="assessment-page-question-tags-btn"
-                          onClick={() => setActiveTagsId(isTagsOpen ? '' : questionId)}
-                          aria-expanded={isTagsOpen}
+                          className="assessment-page-card-action"
+                          onClick={() => openEditModeModal(question)}
+                          title="Edit question"
+                          aria-label={`Edit question ${questionNumber}`}
                         >
-                          <Info size={13} strokeWidth={2.2} />
-                          View tags
+                          <Pencil size={14} strokeWidth={2.2} />
                         </button>
-                        {isTagsOpen ? (
-                          <span className="assessment-page-question-tags-popover" role="tooltip">
-                            {tagGroups.map((group) => (
-                              <span key={group.label} className="assessment-page-question-tags-group">
-                                <strong>{group.label}</strong>
-                                <span>
-                                  {group.values.map((value) => (
-                                    <span key={value}>{value}</span>
-                                  ))}
-                                </span>
-                              </span>
-                            ))}
-                          </span>
-                        ) : null}
-                      </span>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="assessment-page-card-collapse-btn"
-                      onClick={() => {
-                        setExpandedCardRows((current) => (
-                          current.includes(questionId)
-                            ? current.filter((id) => id !== questionId)
-                            : [...current, questionId]
-                        ))
-                      }}
-                      aria-expanded={isCardOpen}
-                      aria-label={`${isCardOpen ? 'Collapse' : 'Expand'} question ${questionNumber}`}
-                    >
-                      {isCardOpen ? <ChevronUp size={16} strokeWidth={2.4} /> : <ChevronDown size={16} strokeWidth={2.4} />}
-                    </button>
-                  </div>
-                  <div className="assessment-page-question-title">
-                    <strong>Q{questionNumber}.</strong>
-                    <span>{getQuestionPreview(question)}</span>
+                      ) : null}
+                      {isEditable ? (
+                        <button
+                          type="button"
+                          className="assessment-page-card-action is-report"
+                          onClick={() => {
+                            if (isReportMetricActive) {
+                              withdrawReportedQuestion(question.id)
+                              return
+                            }
+
+                            openReportModal(question)
+                          }}
+                          title={isReportMetricActive ? 'Withdraw report' : 'Report question'}
+                          aria-label={`${isReportMetricActive ? 'Withdraw report for' : 'Report'} question ${questionNumber}`}
+                        >
+                          <Flag size={14} strokeWidth={2.2} />
+                          <span>Report</span>
+                        </button>
+                      ) : null}
+                      {isEditable && !isReportMetricActive ? (
+                        <button
+                          type="button"
+                          className={`assessment-page-card-action is-favorite ${isFavorite ? 'is-active' : ''}`}
+                          onClick={() => toggleQuestionFavorite(questionId)}
+                          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                          aria-label={`${isFavorite ? 'Remove' : 'Add'} question ${questionNumber} ${isFavorite ? 'from' : 'to'} favorites`}
+                          aria-pressed={isFavorite}
+                        >
+                          <Star size={15} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="assessment-page-card-collapse-btn"
+                        onClick={() => {
+                          setExpandedCardRows((current) => (
+                            current.includes(questionId)
+                              ? current.filter((id) => id !== questionId)
+                              : [...current, questionId]
+                          ))
+                        }}
+                        aria-expanded={isCardOpen}
+                        aria-label={`${isCardOpen ? 'Collapse' : 'Expand'} question ${questionNumber}`}
+                      >
+                        {isCardOpen ? <ChevronUp size={16} strokeWidth={2.4} /> : <ChevronDown size={16} strokeWidth={2.4} />}
+                      </button>
+                    </div>
                   </div>
                   {isCardOpen ? (
                     <>
-                      {curriculum.length ? (
-                        <div className="assessment-page-question-path">
-                          {curriculum.join(' / ')}
-                        </div>
+                      {tagGroups.length ? (
+                        <span className="assessment-page-question-tags-wrap">
+                          <button
+                            type="button"
+                            className="assessment-page-question-tags-btn"
+                            onClick={() => setActiveTagsId(isTagsOpen ? '' : questionId)}
+                            aria-expanded={isTagsOpen}
+                          >
+                            <Info size={13} strokeWidth={2.2} />
+                            View tags
+                          </button>
+                          {isTagsOpen ? (
+                            <span className="assessment-page-question-tags-popover" role="tooltip">
+                              {tagGroups.map((group) => (
+                                <span key={group.label} className="assessment-page-question-tags-group">
+                                  <strong>{group.label}</strong>
+                                  <span>
+                                    {group.values.map((value) => (
+                                      <span key={value}>{value}</span>
+                                    ))}
+                                  </span>
+                                </span>
+                              ))}
+                            </span>
+                          ) : null}
+                        </span>
                       ) : null}
                       {imageRows.length ? (
                         <div className="assessment-page-question-images" aria-label="Question images">
@@ -2873,12 +2978,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   const questionId = question.id ?? `${question.type}-${index}`
                   const imageRows = Array.isArray(question.images) ? question.images : []
                   const optionRows = Array.isArray(question.options) ? question.options : []
-                  const curriculum = [
-                    question.year,
-                    question.subject,
-                    ...(question.topics ?? []),
-                    ...(question.competencies ?? []),
-                  ].filter(Boolean)
+                  const curriculum = getQuestionCurriculumDisplay(question)
                   const tagGroups = getOptionalTagGroups(question)
                   const tableTagsId = `table-tags-${questionId}`
                   const isTagsOpen = activeTagsId === tableTagsId
@@ -2907,7 +3007,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           aria-pressed={selectedGridAction ? isGridQuestionSelected : undefined}
                         >
                           <td className="assessment-page-grid-type-cell">
-                            <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)}`}>{getQuestionTypeLabel(question)}</span>
                           </td>
                           <td className="assessment-page-grid-question">
                             <span className="assessment-page-grid-row-layout">
@@ -2923,12 +3022,12 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                               ) : null}
                               <span className="assessment-page-grid-question-content">
                                 <strong title={`Q${questionNumber}. ${getQuestionPreview(question)}`}>Q{questionNumber}. {getQuestionPreview(question)}</strong>
+                                {renderQuestionCompactMeta(question, curriculum)}
                               </span>
                             </span>
                           </td>
                           <td className="assessment-page-grid-tags-cell">
                             <span className="assessment-page-grid-question-meta">
-                              {renderQuestionTagBadges(question)}
                             </span>
                           </td>
                           <td className="assessment-page-grid-actions-cell">
@@ -3089,7 +3188,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                   <span>{stripHtml(question.answerKey)}</span>
                                 </div>
                               ) : null}
-                              {tagGroups.length || curriculum.length ? (
+                              {tagGroups.length || curriculum.path.length || curriculum.competencyCode ? (
                                 <div className="assessment-page-grid-detail-footer-meta">
                                   {tagGroups.length ? (
                                     <div className="assessment-page-grid-question-meta assessment-page-grid-detail-extra-tags">
@@ -3123,8 +3222,11 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                       </span>
                                     </div>
                                   ) : null}
-                                  {curriculum.length ? (
-                                    <div className="assessment-page-table-curriculum">{curriculum.join(' / ')}</div>
+                                  {curriculum.path.length || curriculum.competencyCode ? (
+                                    <div className="assessment-page-table-curriculum">
+                                      {curriculum.path.length ? <span>{curriculum.path.join(' / ')}</span> : null}
+                                      {renderCompetencyCodeBadge(curriculum)}
+                                    </div>
                                   ) : null}
                                 </div>
                               ) : null}
