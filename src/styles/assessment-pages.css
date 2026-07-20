@@ -1132,10 +1132,15 @@
 
 .corelation-rating-saved-filters {
   display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(280px, 420px) auto;
+  grid-template-columns: minmax(220px, 300px) minmax(280px, 420px) minmax(180px, 220px) minmax(0, 1fr) auto;
   gap: 12px;
   align-items: end;
   padding: 0 0 10px;
+}
+
+.corelation-rating-saved-filters .corelation-rating-saved-collapse-switch {
+  grid-column: 5;
+  justify-self: end;
 }
 
 .corelation-rating-saved-filters label {
@@ -1218,6 +1223,18 @@
   outline: none;
 }
 
+.corelation-rating-saved-collapse-switch button.is-active {
+  background: #0f9f94;
+  color: #ffffff;
+}
+
+.corelation-rating-saved-collapse-switch button.is-active:hover,
+.corelation-rating-saved-collapse-switch button.is-active:focus-visible {
+  background: #008f83;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+
 .corelation-rating-saved-table {
   width: 100%;
   min-width: 940px;
@@ -1266,6 +1283,10 @@
 .corelation-rating-saved-table th:nth-last-child(-n+4),
 .corelation-rating-saved-table td:nth-last-child(-n+4) {
   text-align: center;
+}
+
+.corelation-rating-saved-table tbody tr:not(.corelation-rating-saved-topic-row):hover {
+  background: #f2faf8;
 }
 
 .corelation-rating-saved-table.is-rationale-off th:nth-child(2),
@@ -2590,11 +2611,11 @@
 }
 
 .corelation-rating-table tbody tr:nth-child(even) {
-  background: #fbfefd;
+  background: #f8fcfb;
 }
 
 .corelation-rating-table tbody tr:hover {
-  background: #f0fffb;
+  background: #f2faf8;
 }
 
 .corelation-rating-table tbody tr.corelation-rating-topic-row:hover {
@@ -2638,6 +2659,43 @@
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 118, 110, 0.14));
   border-color: rgba(45, 212, 191, 0.26);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+}
+
+.theme-dark .corelation-rating-tabs button {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.88);
+  color: #c3d4e8;
+}
+
+.theme-dark .corelation-rating-tabs button:hover,
+.theme-dark .corelation-rating-tabs button:focus-visible {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: rgba(20, 184, 166, 0.12);
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-tabs button.is-active,
+.theme-dark .corelation-rating-tabs button.is-view-rating.is-active {
+  border-color: #14b8a6;
+  background: rgba(20, 184, 166, 0.2);
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-tabs button.is-view-rating {
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #c3d4e8;
+}
+
+.theme-dark .corelation-rating-tabs button.is-view-rating:hover,
+.theme-dark .corelation-rating-tabs button.is-view-rating:focus-visible {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: rgba(20, 184, 166, 0.12);
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-tabs button span {
+  background: rgba(37, 99, 235, 0.24);
+  color: #bfdbfe;
 }
 
 .theme-dark .corelation-rating-metric {
@@ -2796,6 +2854,64 @@
   background: #14b8a6;
 }
 
+.theme-dark .corelation-rating-type-trigger {
+  border-color: rgba(45, 212, 191, 0.32);
+  background: rgba(15, 23, 42, 0.96);
+  color: #e6fffb;
+}
+
+.theme-dark .corelation-rating-type-trigger:hover,
+.theme-dark .corelation-rating-type-trigger:focus-visible,
+.theme-dark .corelation-rating-type-trigger[aria-expanded='true'],
+.theme-dark .corelation-rating-type-trigger.is-selected {
+  border-color: rgba(45, 212, 191, 0.72);
+  background: rgba(20, 184, 166, 0.12);
+  color: #99f6e4;
+  box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.12);
+}
+
+.theme-dark .corelation-rating-type-menu {
+  border-color: rgba(45, 212, 191, 0.32);
+  background: rgba(15, 23, 42, 0.98);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.36);
+}
+
+.theme-dark .corelation-rating-type-menu-head strong {
+  color: #e6fffb;
+}
+
+.theme-dark .corelation-rating-type-menu-head small {
+  color: #9fb9c8;
+}
+
+.theme-dark .corelation-rating-method-section > span {
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-method-switch button {
+  border-color: rgba(45, 212, 191, 0.26);
+  background: rgba(15, 23, 42, 0.96);
+  color: #c3d4e8;
+}
+
+.theme-dark .corelation-rating-method-switch button:hover,
+.theme-dark .corelation-rating-method-switch button:focus-visible {
+  border-color: rgba(45, 212, 191, 0.62);
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-method-switch button.is-active {
+  border-color: #14b8a6;
+  background: rgba(20, 184, 166, 0.2);
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-type-note .corelation-rating-type-help {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(37, 99, 235, 0.14);
+  color: #bfdbfe;
+}
+
 .theme-dark .corelation-rating-actions .is-reset {
   background: rgba(249, 115, 22, 0.16);
   color: #fdba74;
@@ -2834,8 +2950,8 @@
 }
 
 .theme-dark .corelation-rating-table th {
-  background: rgba(30, 41, 59, 0.96);
-  color: #e6fffb;
+  background: #1c2a3d;
+  color: #dbeafe;
 }
 
 .theme-dark .corelation-rating-table th,
@@ -2844,7 +2960,112 @@
 }
 
 .theme-dark .corelation-rating-table tbody tr:nth-child(even) {
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(15, 23, 42, 0.46);
+}
+
+.theme-dark .corelation-rating-table tbody tr:hover {
+  background: rgba(30, 41, 59, 0.66);
+}
+
+.theme-dark .corelation-rating-table td {
+  color: #d7e6f3;
+}
+
+.theme-dark .corelation-rating-setup-empty {
+  border-top-color: rgba(45, 212, 191, 0.2);
+  background: rgba(15, 23, 42, 0.72);
+  color: #c3d4e8;
+}
+
+.theme-dark .corelation-rating-saved-filters span {
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-saved-filters select {
+  background-color: rgba(15, 23, 42, 0.96);
+  background-image: url("data:image/svg+xml,%3Csvg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%2399f6e4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  border-color: rgba(45, 212, 191, 0.26);
+  color: #e6fffb;
+}
+
+.theme-dark .corelation-rating-saved-collapse-switch {
+  border-color: rgba(45, 212, 191, 0.26);
+  background: rgba(15, 23, 42, 0.96);
+}
+
+.theme-dark .corelation-rating-saved-collapse-switch button {
+  border-right-color: rgba(45, 212, 191, 0.18);
+  background: rgba(15, 23, 42, 0.96);
+  color: #9fb9c8;
+}
+
+.theme-dark .corelation-rating-saved-collapse-switch button:hover,
+.theme-dark .corelation-rating-saved-collapse-switch button:focus-visible {
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-saved-collapse-switch button.is-active {
+  background: #0f9f94;
+  color: #ffffff;
+}
+
+.theme-dark .corelation-rating-saved-table {
+  color: #e6fffb;
+}
+
+.theme-dark .corelation-rating-saved-table th {
+  background: rgba(30, 41, 59, 0.96);
+  color: #bfdbfe;
+}
+
+.theme-dark .corelation-rating-saved-table th,
+.theme-dark .corelation-rating-saved-table td {
+  border-bottom-color: rgba(148, 163, 184, 0.24);
+}
+
+.theme-dark .corelation-rating-saved-table tbody tr:not(.corelation-rating-saved-topic-row):hover {
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.theme-dark .corelation-rating-saved-topic-row td {
+  background: rgba(20, 184, 166, 0.14);
+}
+
+.theme-dark .corelation-rating-saved-topic-row.is-collapsed td {
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.theme-dark .corelation-rating-saved-topic-header {
+  border-bottom-color: rgba(45, 212, 191, 0.24);
+}
+
+.theme-dark .corelation-rating-saved-topic-row.is-collapsed .corelation-rating-saved-topic-header {
+  border-bottom-color: rgba(251, 146, 60, 0.28);
+}
+
+.theme-dark .corelation-rating-saved-topic-toggle {
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-saved-topic-row.is-collapsed .corelation-rating-saved-topic-toggle {
+  color: #fdba74;
+}
+
+.theme-dark .corelation-rating-saved-topic-edit {
+  color: #9fb9c8;
+}
+
+.theme-dark .corelation-rating-saved-topic-edit:hover,
+.theme-dark .corelation-rating-saved-topic-edit:focus-visible {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+}
+
+.theme-dark .corelation-rating-saved-empty {
+  border-color: rgba(45, 212, 191, 0.24);
+  color: #c3d4e8;
 }
 
 .theme-dark .corelation-rating-topic-row td {
@@ -2871,11 +3092,11 @@
 }
 
 .theme-dark .corelation-rating-child-row.is-complete {
-  background: transparent;
+  background: rgba(20, 184, 166, 0.05);
 }
 
 .theme-dark .corelation-rating-child-row.is-complete td {
-  border-bottom-color: rgba(148, 163, 184, 0.24);
+  border-bottom-color: rgba(148, 163, 184, 0.22);
 }
 
 .theme-dark .corelation-rating-child-row.is-complete td:first-child {
@@ -2925,14 +3146,27 @@
 }
 
 .theme-dark .corelation-rating-rationale-head button {
-  border-color: rgba(248, 113, 113, 0.36);
-  background: rgba(127, 29, 29, 0.22);
-  color: #fca5a5;
+  border-color: rgba(148, 163, 184, 0.34);
+  background: rgba(15, 23, 42, 0.72);
+  color: #9fb9c8;
 }
 
 .theme-dark .corelation-rating-rationale-head button.is-on {
   border-color: rgba(45, 212, 191, 0.42);
-  background: rgba(20, 184, 166, 0.16);
+  background: rgba(20, 184, 166, 0.22);
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-rationale-head {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.62);
+  color: #9fb9c8;
+  box-shadow: none;
+}
+
+.theme-dark .corelation-rating-rationale-head.is-enabled {
+  border-color: rgba(45, 212, 191, 0.34);
+  background: rgba(20, 184, 166, 0.1);
   color: #99f6e4;
 }
 
@@ -2977,6 +3211,18 @@
   background-position: right 8px center;
   background-size: 13px 13px;
   border-color: rgba(45, 212, 191, 0.26);
+  color: #e6fffb;
+}
+
+.theme-dark .corelation-rating-row-impact-toggle {
+  border-color: rgba(45, 212, 191, 0.32);
+  background: rgba(15, 23, 42, 0.72);
+  color: #99f6e4;
+}
+
+.theme-dark .corelation-rating-row-impact-toggle:has(input:checked) {
+  border-color: #14b8a6;
+  background: rgba(20, 184, 166, 0.22);
   color: #e6fffb;
 }
 
@@ -3041,6 +3287,11 @@
 
   .corelation-rating-saved-filters {
     grid-template-columns: 1fr;
+  }
+
+  .corelation-rating-saved-filters .corelation-rating-saved-collapse-switch {
+    grid-column: auto;
+    justify-self: start;
   }
 
   .corelation-rating-saved-collapse-switch {

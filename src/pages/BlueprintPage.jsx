@@ -58,6 +58,7 @@ export default function BlueprintPage() {
   const [collapsedSavedTopics, setCollapsedSavedTopics] = useState({})
   const [savedFilterSubject, setSavedFilterSubject] = useState('')
   const [savedFilterTopic, setSavedFilterTopic] = useState('')
+  const [savedFilterType, setSavedFilterType] = useState('')
 
   useEffect(() => {
     writeStoredObject(CORELATION_RATING_SAVED_ROWS_KEY, savedRows)
@@ -347,8 +348,9 @@ export default function BlueprintPage() {
     () => savedCorrelationRows.filter((row) => (
       (!savedFilterSubject || getSubjectKey(row) === savedFilterSubject)
       && (!savedFilterTopic || row.topic === savedFilterTopic)
+      && (!savedFilterType || row.savedValues?.type === savedFilterType)
     )),
-    [savedCorrelationRows, savedFilterSubject, savedFilterTopic],
+    [savedCorrelationRows, savedFilterSubject, savedFilterTopic, savedFilterType],
   )
   const savedTopicGroups = useMemo(
     () => {
@@ -371,6 +373,8 @@ export default function BlueprintPage() {
   const subjectCountLabel = subjectOptions.length.toString().padStart(2, '0')
   const topicCountLabel = (selectedSubject ? availableTopics.length : allTopicOptions.length).toString().padStart(2, '0')
   const correlationRatingLabel = `${savedMetricCount.toString().padStart(2, '0')} / ${corelationRatingRows.length.toString().padStart(2, '0')}`
+  const areAllSavedTopicsCollapsed = savedTopicGroups.length > 0
+    && savedTopicGroups.every((group) => collapsedSavedTopics[group.topic])
 
   const saveCompletedCorrelationRows = () => {
     const currentRows = new Map(filteredCompetencies.map((row) => [getCompetencyKey(row), row]))
@@ -702,7 +706,7 @@ export default function BlueprintPage() {
                         setSavedFilterTopic('')
                       }}
                     >
-                      <option value="">All saved subjects</option>
+                      <option value="">All</option>
                       {savedSubjectOptions.map((option) => (
                         <option key={option.key} value={option.key}>
                           {option.year} - {option.subject}
@@ -716,17 +720,42 @@ export default function BlueprintPage() {
                       value={savedFilterTopic}
                       onChange={(event) => setSavedFilterTopic(event.target.value)}
                     >
-                      <option value="">All saved topics</option>
+                      <option value="">All</option>
                       {savedTopicOptions.map((topic) => (
                         <option key={topic} value={topic}>{topic}</option>
                       ))}
                     </select>
                   </label>
+                  <label>
+                    <span>Type</span>
+                    <select
+                      value={savedFilterType}
+                      onChange={(event) => setSavedFilterType(event.target.value)}
+                    >
+                      <option value="">All</option>
+                      <option value="Clinical">Clinical</option>
+                      <option value="Non-Clinical">Non-Clinical</option>
+                    </select>
+                  </label>
                   <div className="corelation-rating-saved-collapse-switch" role="group" aria-label="Saved topic display controls">
-                    <button type="button" onClick={expandAllSavedTopics} title="Expand all topics" aria-label="Expand all topics">
+                    <button
+                      type="button"
+                      className={!areAllSavedTopicsCollapsed ? 'is-active' : ''}
+                      aria-pressed={!areAllSavedTopicsCollapsed}
+                      onClick={expandAllSavedTopics}
+                      title="Expand all topics"
+                      aria-label="Expand all topics"
+                    >
                       <ListChecks size={14} strokeWidth={2.4} aria-hidden="true" />
                     </button>
-                    <button type="button" onClick={collapseAllSavedTopics} title="Collapse all topics" aria-label="Collapse all topics">
+                    <button
+                      type="button"
+                      className={areAllSavedTopicsCollapsed ? 'is-active' : ''}
+                      aria-pressed={areAllSavedTopicsCollapsed}
+                      onClick={collapseAllSavedTopics}
+                      title="Collapse all topics"
+                      aria-label="Collapse all topics"
+                    >
                       <Grid2X2 size={14} strokeWidth={2.4} aria-hidden="true" />
                     </button>
                   </div>
