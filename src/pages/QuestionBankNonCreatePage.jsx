@@ -115,19 +115,37 @@ const renderQuestionCurriculumPath = (curriculum) => {
     </span>
   )
 }
-const renderQuestionCompactMeta = (question, curriculum) => {
+const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionControls = null, questionNumber = null) => {
   const hiddenTagCount = getOptionalTagGroups(question).reduce((total, group) => total + group.values.length, 0)
+  const { tagsId = '', isTagsOpen = false, onToggleTags } = tagToggle
+  const questionBankId = `MED-A01-${String(questionNumber ?? question.displayNumber ?? question.questionNumber ?? question.order ?? 1).replace(/\D/g, '').padStart(5, '0').slice(-5)}`
 
   return (
     <div className="assessment-page-question-compact-meta">
-      {renderQuestionCurriculumPath(curriculum)}
-      {renderCompetencyCodeBadge(curriculum)}
-      <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
-      {getQuestionMarksTotal(question) > 0 ? <span className="is-marks">{getQuestionMarksTotal(question)} marks</span> : null}
-      {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
-      {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
-      {hiddenTagCount ? <span className="is-extra-tags">+ {hiddenTagCount} more tags</span> : null}
-      {getQuestionAuthorName(question) ? <span className="is-author">Dept. of {question.subject || getQuestionAuthorName(question)}</span> : null}
+      <span className="assessment-page-question-meta-items">
+        {renderQuestionCurriculumPath(curriculum)}
+        {renderCompetencyCodeBadge(curriculum)}
+        <span className="assessment-page-question-source-badge">Medsy</span>
+        <span className="assessment-page-question-id-badge">{questionBankId}</span>
+        <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
+        {getQuestionMarksTotal(question) > 0 ? <span className="is-marks">{getQuestionMarksTotal(question)} marks</span> : null}
+        {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
+        {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
+        {hiddenTagCount ? (
+          <button
+            type="button"
+            className={`is-extra-tags ${isTagsOpen ? 'is-open' : ''}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggleTags?.(tagsId)
+            }}
+            aria-expanded={isTagsOpen}
+          >
+            + {hiddenTagCount} more tags
+          </button>
+        ) : null}
+      </span>
+      {actionControls}
     </div>
   )
 }
@@ -535,6 +553,36 @@ const getOptionalTagGroups = (question) => [
   ...group,
   values: group.values.filter((value) => value && value !== 'Not Applicable'),
 })).filter((group) => group.values.length)
+
+const getCompactTagLabel = (label) => ({
+  'Thinking Level': 'Thinking',
+  'Difficulty Level': 'Level',
+  'Cognitive Level': 'Cognitive',
+  'Cognitive Function': 'Function',
+  'Skill Focus': 'Skill Focus',
+  'Organ System': 'Organ',
+  'Organ Sub-System': 'Sub-System',
+  'Disease Tags': 'Disease',
+  'Key Concept': 'Concept',
+}[label] ?? label)
+
+const renderQuestionInlineTagPanel = (question) => {
+  const tagGroups = getOptionalTagGroups(question)
+  if (!tagGroups.length) return null
+
+  return (
+    <div className="assessment-page-inline-tags-panel" onClick={(event) => event.stopPropagation()}>
+      {tagGroups.flatMap((group) => (
+        group.values.map((value) => (
+          <span key={`${group.label}-${value}`} className="assessment-page-inline-tag-chip">
+            <strong>{getCompactTagLabel(group.label)}</strong>
+            <span>{value}</span>
+          </span>
+        ))
+      ))}
+    </div>
+  )
+}
 
 const getSentDate = (value) => {
   if (!value) return 'Sent date not available'
@@ -1755,23 +1803,81 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     setPublishedQuestions(readAllQuestionBankQuestions())
   }
 
+  const renderQuestionMetaActions = (question, questionId, questionNumber, isTableRowOpen) => {
+    const isFavorite = isFavoriteQuestion(question)
+
+    return (
+      <span className="assessment-page-question-meta-actions" onClick={(event) => event.stopPropagation()}>
+        {isEditable && isReportMetricActive ? (
+          <button
+            type="button"
+            className="assessment-page-question-meta-action"
+            onClick={() => withdrawReportedQuestion(question.id)}
+            aria-label={`Withdraw report for question ${questionNumber}`}
+          >
+            <Flag size={12} strokeWidth={2.2} />
+            Withdraw
+          </button>
+        ) : null}
+        {isEditable && !isReportMetricActive ? (
+          <>
+            <button
+              type="button"
+              className="assessment-page-question-meta-action is-edit"
+              onClick={() => openEditModeModal(question)}
+              aria-label={`Edit question ${questionNumber}`}
+              data-tooltip="Edit"
+            >
+              <Pencil size={12} strokeWidth={2.2} />
+            </button>
+            <button
+              type="button"
+              className="assessment-page-question-meta-action is-report"
+              onClick={() => openReportModal(question)}
+              aria-label={`Report question ${questionNumber}`}
+              data-tooltip="Report"
+            >
+              <Flag size={12} strokeWidth={2.2} />
+            </button>
+            <button
+              type="button"
+              className={`assessment-page-question-meta-action is-icon-only is-favorite ${isFavorite ? 'is-active' : ''}`}
+              onClick={() => toggleQuestionFavorite(questionId)}
+              aria-label={`${isFavorite ? 'Remove' : 'Add'} question ${questionNumber} ${isFavorite ? 'from' : 'to'} favorites`}
+              aria-pressed={isFavorite}
+              data-tooltip={isFavorite ? 'Remove favorite' : 'Add favorite'}
+            >
+              <Star size={13} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
+            </button>
+            <button
+              type="button"
+              className="assessment-page-question-meta-action is-icon-only is-institute"
+              aria-label={`Add question ${questionNumber} to institute`}
+              data-tooltip="Add to institute"
+            >
+              <Tags size={13} strokeWidth={2.2} />
+            </button>
+          </>
+        ) : null}
+        <button
+          type="button"
+          className="assessment-page-question-meta-action is-icon-only is-collapse"
+          onClick={() => toggleGridRowExpansion(questionId, isTableRowOpen)}
+          aria-label={`${isTableRowOpen ? 'Collapse' : 'Expand'} question ${questionNumber}`}
+          data-tooltip={isTableRowOpen ? 'Collapse' : 'Expand'}
+        >
+          {isTableRowOpen ? <ChevronUp size={14} strokeWidth={2.4} /> : <ChevronDown size={14} strokeWidth={2.4} />}
+        </button>
+      </span>
+    )
+  }
+
   const renderQuestionRowActions = (question, questionId, questionNumber, isTableRowOpen) => {
     const isFavorite = isFavoriteQuestion(question)
 
     return (
       <span className="assessment-page-grid-row-actions" onClick={(event) => event.stopPropagation()}>
-        {isEditable && !isReportMetricActive ? (
-          <button
-            type="button"
-            className="assessment-page-grid-row-action is-icon-only"
-            onClick={() => openEditModeModal(question)}
-            title="Edit question"
-            aria-label={`Edit question ${questionNumber}`}
-          >
-            <Pencil size={14} strokeWidth={2.2} />
-          </button>
-        ) : null}
-        {isEditable ? (
+        {isEditable && isReportMetricActive ? (
           <button
             type="button"
             className="assessment-page-grid-row-action"
@@ -1787,7 +1893,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
             aria-label={`${isReportMetricActive ? 'Withdraw report for' : 'Report'} question ${questionNumber}`}
           >
             <Flag size={14} strokeWidth={2.2} />
-            {isReportMetricActive ? 'Withdraw' : 'Report'}
+            {isReportMetricActive ? <span>Withdraw</span> : null}
           </button>
         ) : null}
         {isEditable && !isReportMetricActive ? (
@@ -2980,7 +3086,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   const optionRows = Array.isArray(question.options) ? question.options : []
                   const curriculum = getQuestionCurriculumDisplay(question)
                   const tagGroups = getOptionalTagGroups(question)
+                  const summaryTagsId = `summary-tags-${questionId}`
                   const tableTagsId = `table-tags-${questionId}`
+                  const areSummaryTagsOpen = activeTagsId === summaryTagsId
                   const isTagsOpen = activeTagsId === tableTagsId
                   const isTableRowOpen = expandedTableRows.includes(questionId)
                   const isGridQuestionSelected = selectedGridQuestionIds.includes(questionId)
@@ -3006,9 +3114,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           aria-expanded="false"
                           aria-pressed={selectedGridAction ? isGridQuestionSelected : undefined}
                         >
-                          <td className="assessment-page-grid-type-cell">
-                          </td>
-                          <td className="assessment-page-grid-question">
+                          <td className="assessment-page-grid-question" colSpan={hasEmbeddedAssessmentSelection ? 2 : 2}>
                             <span className="assessment-page-grid-row-layout">
                               {selectedGridAction ? (
                                 <label className="assessment-page-grid-row-checkbox" onClick={(event) => event.stopPropagation()}>
@@ -3022,16 +3128,14 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                               ) : null}
                               <span className="assessment-page-grid-question-content">
                                 <strong title={`Q${questionNumber}. ${getQuestionPreview(question)}`}>Q{questionNumber}. {getQuestionPreview(question)}</strong>
-                                {renderQuestionCompactMeta(question, curriculum)}
+                                {renderQuestionCompactMeta(question, curriculum, {
+                                  tagsId: summaryTagsId,
+                                  isTagsOpen: areSummaryTagsOpen,
+                                  onToggleTags: (nextTagsId) => setActiveTagsId((current) => (current === nextTagsId ? '' : nextTagsId)),
+                                }, renderQuestionMetaActions(question, questionId, questionNumber, false), questionNumber)}
+                                {areSummaryTagsOpen ? renderQuestionInlineTagPanel(question) : null}
                               </span>
                             </span>
-                          </td>
-                          <td className="assessment-page-grid-tags-cell">
-                            <span className="assessment-page-grid-question-meta">
-                            </span>
-                          </td>
-                          <td className="assessment-page-grid-actions-cell">
-                            {renderQuestionRowActions(question, questionId, questionNumber, false)}
                           </td>
                           {hasEmbeddedAssessmentSelection ? (
                             <td className="assessment-page-grid-select-cell">
@@ -3063,7 +3167,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           aria-expanded="true"
                           aria-pressed={selectedGridAction ? isGridQuestionSelected : undefined}
                         >
-                          <td colSpan={hasEmbeddedAssessmentSelection ? 5 : 4}>
+                          <td colSpan={hasEmbeddedAssessmentSelection ? 3 : 2}>
                             <div className="assessment-page-table-question-stack">
                               <div className="assessment-page-grid-detail-head">
                                 {selectedGridAction ? (
@@ -3076,14 +3180,15 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                     />
                                   </label>
                                 ) : null}
-                                <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)}`}>{getQuestionTypeLabel(question)}</span>
                                 <div className="assessment-page-table-full-question">
-                                  Q{questionNumber}. {getQuestionPreview(question)}
+                                  <strong>Q{questionNumber}. {getQuestionPreview(question)}</strong>
+                                  {renderQuestionCompactMeta(question, curriculum, {
+                                    tagsId: tableTagsId,
+                                    isTagsOpen,
+                                    onToggleTags: (nextTagsId) => setActiveTagsId((current) => (current === nextTagsId ? '' : nextTagsId)),
+                                  }, renderQuestionMetaActions(question, questionId, questionNumber, true), questionNumber)}
+                                  {isTagsOpen ? renderQuestionInlineTagPanel(question) : null}
                                 </div>
-                                <div className="assessment-page-grid-question-meta assessment-page-grid-detail-meta">
-                                  {renderQuestionTagBadges(question)}
-                                </div>
-                                {renderQuestionRowActions(question, questionId, questionNumber, true)}
                                 {hasEmbeddedAssessmentSelection ? (
                                   <label className="assessment-page-grid-row-checkbox is-detail-select" onClick={(event) => event.stopPropagation()}>
                                     <input
@@ -3188,9 +3293,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                   <span>{stripHtml(question.answerKey)}</span>
                                 </div>
                               ) : null}
-                              {tagGroups.length || curriculum.path.length || curriculum.competencyCode ? (
+                              {false && (tagGroups.length || curriculum.path.length || curriculum.competencyCode) ? (
                                 <div className="assessment-page-grid-detail-footer-meta">
-                                  {tagGroups.length ? (
+                                  {false && tagGroups.length ? (
                                     <div className="assessment-page-grid-question-meta assessment-page-grid-detail-extra-tags">
                                       <span className="assessment-page-question-tags-wrap">
                                         <button
