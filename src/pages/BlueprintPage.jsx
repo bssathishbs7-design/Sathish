@@ -1,4 +1,4 @@
-import { ChevronDown, Pencil, SlidersHorizontal } from 'lucide-react'
+import { ChevronDown, Grid2X2, ListChecks, Pencil, SlidersHorizontal } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PageNavigationHeader from '../components/PageNavigationHeader'
@@ -403,6 +403,26 @@ export default function BlueprintPage() {
     }))
   }
 
+  const expandAllSavedTopics = () => {
+    setCollapsedSavedTopics((current) => {
+      const next = { ...current }
+      savedTopicGroups.forEach((group) => {
+        delete next[group.topic]
+      })
+      return next
+    })
+  }
+
+  const collapseAllSavedTopics = () => {
+    setCollapsedSavedTopics((current) => {
+      const next = { ...current }
+      savedTopicGroups.forEach((group) => {
+        next[group.topic] = true
+      })
+      return next
+    })
+  }
+
   const editSavedCorrelationTopic = (rows) => {
     const firstRow = rows[0]
 
@@ -460,7 +480,7 @@ export default function BlueprintPage() {
               className={activeCorrelationTab === 'entry' ? 'is-active' : ''}
               onClick={() => setActiveCorrelationTab('entry')}
             >
-              Correlation Entry
+              Create Correlation
             </button>
             <button
               type="button"
@@ -702,6 +722,14 @@ export default function BlueprintPage() {
                       ))}
                     </select>
                   </label>
+                  <div className="corelation-rating-saved-collapse-switch" role="group" aria-label="Saved topic display controls">
+                    <button type="button" onClick={expandAllSavedTopics} title="Expand all topics" aria-label="Expand all topics">
+                      <ListChecks size={14} strokeWidth={2.4} aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={collapseAllSavedTopics} title="Collapse all topics" aria-label="Collapse all topics">
+                      <Grid2X2 size={14} strokeWidth={2.4} aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
                 {filteredSavedCorrelationRows.length ? (
                 <div className="corelation-rating-saved-table-wrap">

@@ -1127,12 +1127,12 @@
   border: 1px solid #d7eee9;
   border-left: 0;
   border-right: 0;
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 .corelation-rating-saved-filters {
   display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(280px, 420px);
+  grid-template-columns: minmax(220px, 300px) minmax(280px, 420px) auto;
   gap: 12px;
   align-items: end;
   padding: 0 0 10px;
@@ -1177,6 +1177,47 @@
   box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.12);
 }
 
+.corelation-rating-saved-collapse-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-height: 34px;
+  width: fit-content;
+  overflow: hidden;
+  border: 1px solid #cbe6df;
+  border-radius: 8px;
+  background: #f8fffd;
+}
+
+.corelation-rating-saved-collapse-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid #d7eee9;
+  background: #f8fffd;
+  color: #64748b;
+  font: inherit;
+  cursor: pointer;
+}
+
+.corelation-rating-saved-collapse-switch button:last-child {
+  border-right: 0;
+  background: #f8fffd;
+  color: #64748b;
+}
+
+.corelation-rating-saved-collapse-switch button:hover,
+.corelation-rating-saved-collapse-switch button:focus-visible {
+  background: #dffbf5;
+  color: #00766d;
+  box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.28);
+  outline: none;
+}
+
 .corelation-rating-saved-table {
   width: 100%;
   min-width: 940px;
@@ -1197,8 +1238,8 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #edf9f6;
-  color: #005f58;
+  background: #eaf3ff;
+  color: #1e3a8a;
   font-size: 0.64rem;
   font-weight: 900;
   text-align: left;
@@ -1234,8 +1275,12 @@
 
 .corelation-rating-saved-topic-row td {
   padding: 0;
-  background: #f2fffb;
+  background: #ecfdf5;
   text-align: left !important;
+}
+
+.corelation-rating-saved-topic-row.is-collapsed td {
+  background: #fff7ed;
 }
 
 .corelation-rating-saved-topic-header {
@@ -1245,7 +1290,11 @@
   gap: 8px;
   min-height: 38px;
   padding: 0 10px;
-  border-bottom: 1px solid #d7eee9;
+  border-bottom: 1px solid #bbf7d0;
+}
+
+.corelation-rating-saved-topic-row.is-collapsed .corelation-rating-saved-topic-header {
+  border-bottom-color: #fed7aa;
 }
 
 .corelation-rating-saved-topic-toggle {
@@ -1257,12 +1306,16 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #006f68;
+  color: #047857;
   font: inherit;
   font-size: 0.76rem;
   font-weight: 950;
   text-align: left;
   cursor: pointer;
+}
+
+.corelation-rating-saved-topic-row.is-collapsed .corelation-rating-saved-topic-toggle {
+  color: #c2410c;
 }
 
 .corelation-rating-saved-topic-toggle svg {
@@ -1298,27 +1351,35 @@
 
 .corelation-rating-saved-topic-toggle:hover,
 .corelation-rating-saved-topic-toggle:focus-visible {
-  color: #004f49;
+  color: #065f46;
   outline: none;
+}
+
+.corelation-rating-saved-topic-row.is-collapsed .corelation-rating-saved-topic-toggle:hover,
+.corelation-rating-saved-topic-row.is-collapsed .corelation-rating-saved-topic-toggle:focus-visible {
+  color: #9a3412;
 }
 
 .corelation-rating-saved-topic-edit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
   cursor: pointer;
+  opacity: 0.72;
 }
 
 .corelation-rating-saved-topic-edit:hover,
 .corelation-rating-saved-topic-edit:focus-visible {
-  border-color: #60a5fa;
-  background: #dbeafe;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  opacity: 1;
   outline: none;
 }
 
@@ -1725,13 +1786,13 @@
   position: sticky;
   top: 0;
   z-index: 4;
-  background: #edf9f6;
-  color: #005f58;
+  background: #eaf3ff;
+  color: #1e3a8a;
   font-weight: 800;
   text-align: center;
   text-transform: uppercase;
   font-size: 0.64rem;
-  box-shadow: 0 1px 0 #d7eee9;
+  box-shadow: 0 1px 0 #cfe0f5;
 }
 
 .corelation-rating-table th:first-child,
@@ -2980,6 +3041,10 @@
 
   .corelation-rating-saved-filters {
     grid-template-columns: 1fr;
+  }
+
+  .corelation-rating-saved-collapse-switch {
+    justify-content: flex-start;
   }
 
   .corelation-rating-panel {
