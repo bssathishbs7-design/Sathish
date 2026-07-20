@@ -4,6 +4,7 @@ import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight
 import { stripHtml } from '../utils/mathText'
 import { APP_PAGES } from '../config/appPages'
 import medsyIcon from '../assets/medsy-icon.svg'
+import { corelationRatingRows } from './corelationRatingData'
 import '../styles/assessment-pages.css'
 
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
@@ -73,137 +74,151 @@ const getQuestionCategoryLabel = (value, questionOrType) => {
   return value
 }
 
-const MEDSY_MCQ_SAMPLE_QUESTIONS = [
-  ['Which structure passes through the optic canal along with the ophthalmic artery?', 'Optic nerve', 'Oculomotor nerve', 'Trochlear nerve', 'Abducens nerve', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Nervous', 'Optic pathway', 'Optic nerve passes through the optic canal with the ophthalmic artery.'],
-  ['Which plane divides the body into superior and inferior parts?', 'Transverse plane', 'Sagittal plane', 'Coronal plane', 'Median plane', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'General anatomy', 'Body planes', 'The transverse plane divides the body into superior and inferior parts.'],
-  ['Which muscle initiates abduction of the shoulder joint?', 'Supraspinatus', 'Deltoid', 'Teres minor', 'Infraspinatus', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Musculoskeletal', 'Shoulder', 'Supraspinatus initiates the first 15 degrees of shoulder abduction.'],
-  ['Which nerve is most commonly injured in surgical neck fracture of humerus?', 'Axillary nerve', 'Radial nerve', 'Median nerve', 'Ulnar nerve', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Nervous', 'Peripheral nerve', 'The axillary nerve winds around the surgical neck of the humerus and is vulnerable in fractures.'],
-  ['Which artery is palpated in the anatomical snuffbox?', 'Radial artery', 'Ulnar artery', 'Brachial artery', 'Anterior interosseous artery', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Cardiovascular', 'Blood vessel', 'The radial artery passes through the anatomical snuffbox and can be palpated there.'],
-  ['Which carpal bone is most commonly fractured after a fall on the outstretched hand?', 'Scaphoid', 'Lunate', 'Triquetrum', 'Pisiform', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Skeletal', 'Bone', 'The scaphoid is the most commonly fractured carpal bone in a fall on an outstretched hand.'],
-  ['Which nerve supplies the diaphragm motor function?', 'Phrenic nerve', 'Vagus nerve', 'Intercostal nerve', 'Accessory nerve', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Respiratory', 'Diaphragm', 'The phrenic nerve provides motor supply to the diaphragm.'],
-  ['Which valve is best heard at the left fifth intercostal space in the midclavicular line?', 'Mitral valve', 'Aortic valve', 'Pulmonary valve', 'Tricuspid valve', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Cardiovascular', 'Heart', 'The mitral valve area is located at the cardiac apex in the left fifth intercostal space.'],
-  ['Which cranial nerve carries taste from the anterior two-thirds of the tongue?', 'Facial nerve', 'Glossopharyngeal nerve', 'Trigeminal nerve', 'Vagus nerve', 'Neuroanatomy', 'AN4.2 Identify major cranial nerve pathways', 'Nervous', 'Cranial nerve', 'Taste from the anterior two-thirds of the tongue is carried by the facial nerve via chorda tympani.'],
-  ['Which lung volume cannot be measured by simple spirometry?', 'Residual volume', 'Tidal volume', 'Inspiratory reserve volume', 'Expiratory reserve volume', 'Respiratory System', 'PY6.8 Interpret spirometry and lung volumes', 'Respiratory', 'Lung', 'Residual volume cannot be directly measured by simple spirometry.'],
+const MEDSY_QUESTION_BANK_SEED_COUNTS = {
+  mcq: 50,
+  saq: 50,
+  laq: 50,
+}
+
+const MEDSY_OPTION_DISTRACTORS = ['Terminology Confusion', 'False Association', 'Misclassification']
+const MEDSY_DESCRIPTIVE_INSIDE_PROMPTS = [
+  'State the key definition and one essential feature.',
+  'Explain the underlying mechanism in sequence.',
+  'Mention one applied or clinical correlation.',
+  'List the important structural or functional components.',
+  'Differentiate it from a closely related concept.',
+  'Add one investigation, observation, or interpretation point.',
+  'Describe the expected outcome or consequence.',
+  'Mention one common error students should avoid.',
+  'Summarize the high-yield exam point.',
+  'Connect the concept to patient-care relevance.',
 ]
 
-const MEDSY_DESCRIPTIVE_SAMPLE_QUESTIONS = [
-  ['Define anatomical position and mention two key features used to describe it.', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'General anatomy', 'Anatomical terminology'],
-  ['Describe the boundaries and clinical importance of the anatomical snuffbox.', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Musculoskeletal', 'Wrist anatomy'],
-  ['Explain the course and functional importance of the phrenic nerve.', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Respiratory', 'Diaphragm'],
-  ['Describe the surface marking of the mitral valve area and its auscultatory relevance.', 'Thorax', 'AN2.3 Explain mediastinal relations and surface anatomy', 'Cardiovascular', 'Heart sounds'],
-  ['Explain the anatomical basis for axillary nerve injury in surgical neck fracture of humerus.', 'Upper Limb', 'AN1.5 Describe muscles and movements of upper limb', 'Nervous', 'Peripheral nerve'],
-  ['Describe the role of type II pneumocytes in alveolar function.', 'Respiratory System', 'PY6.8 Interpret spirometry and lung volumes', 'Respiratory', 'Pulmonary surfactant'],
-  ['Explain why residual volume cannot be measured by simple spirometry.', 'Respiratory System', 'PY6.8 Interpret spirometry and lung volumes', 'Respiratory', 'Lung volumes'],
-  ['Describe the causes and peripheral smear features of macrocytic anemia.', 'Hematology', 'PA3.4 Classify anemia using peripheral smear findings', 'Cardiovascular', 'Anemia'],
-  ['Explain apoptosis and contrast it with necrosis.', 'General Pathology', 'PA1.2 Explain cell injury and adaptation', 'General pathology', 'Cell injury'],
-  ['Describe the regulation of blood calcium by parathyroid hormone.', 'General Physiology', 'PY1.4 Describe body fluid compartments and homeostasis', 'Endocrine', 'Calcium homeostasis'],
-]
+const getMedsySeedRows = (offset = 0, count = 50) => (
+  Array.from({ length: count }, (_, index) => corelationRatingRows[(offset + index) % corelationRatingRows.length])
+)
 
-const createMedsyMcqSampleQuestions = () => MEDSY_MCQ_SAMPLE_QUESTIONS.map(([
-  questionText,
-  correctAnswer,
-  optionB,
-  optionC,
-  optionD,
-  topic,
-  competency,
-  organSystem,
-  organSubSystem,
-  answerKey,
-], index) => {
+const getMedsyCompetencyValue = (row) => `${row.code} ${row.name}`.trim()
+
+const getMedsySeedMeta = (row, index) => ({
+  year: row.year || '1st Year',
+  subject: row.subject || 'Human Anatomy',
+  topics: row.topic ? [row.topic] : [],
+  competencies: [getMedsyCompetencyValue(row)].filter(Boolean),
+  questionCategory: index % 3 === 0 ? 'Application' : index % 3 === 1 ? 'Reasoning' : 'Direct',
+  cognitiveLevel: index % 3 === 0 ? 'Apply' : index % 3 === 1 ? 'Analyze' : 'Understand',
+  cognitiveFunction: index % 3 === 0 ? 'Clinical Reasoning' : index % 3 === 1 ? 'Concept Explanation' : 'Pattern Recognition',
+  skillFocus: index % 3 === 0 ? 'Diagnosis' : index % 3 === 1 ? 'Structured explanation' : 'Identification',
+  organSystem: 'Not Applicable',
+  organSubSystems: ['Not Applicable'],
+  diseaseTags: index % 4 === 0 ? ['Clinical correlation'] : ['Not Applicable'],
+  keyConcepts: ['Core concept'],
+  thinkingLevel: index % 3 === 0 ? 'HoT' : 'LoT',
+  difficultyLevel: index % 5 === 0 ? 'L2' : 'L1',
+})
+
+const createMedsyMcqSampleQuestions = () => getMedsySeedRows(0, MEDSY_QUESTION_BANK_SEED_COUNTS.mcq).map((row, index) => {
   const questionNumber = index + 1
-  const isHigherOrder = index % 3 === 1
+  const meta = getMedsySeedMeta(row, index)
+  const competencyCode = row.code || `C${questionNumber}`
 
   return {
     id: `medsy-uploaded-sample-${questionNumber}`,
     type: 'MCQ',
     authorName: 'Medsy',
-    questionText,
-    year: 'Year 1',
-    subject: ['Respiratory System', 'Cardiovascular System', 'General Physiology'].includes(topic) ? 'Physiology' : topic.includes('Pathology') || competency.startsWith('PA') ? 'Pathology' : 'Human Anatomy',
-    topics: [topic],
-    competencies: [competency],
-    questionCategory: isHigherOrder ? 'Application' : 'Direct',
-    cognitiveLevel: isHigherOrder ? 'Apply' : 'Recall',
-    cognitiveFunction: isHigherOrder ? 'Clinical Reasoning' : 'Pattern Recognition',
-    skillFocus: isHigherOrder ? 'Diagnosis' : 'Identification',
-    organSystem,
-    organSubSystems: [organSubSystem],
-    diseaseTags: index % 4 === 0 ? ['Clinical correlation'] : ['Not Applicable'],
-    keyConcepts: isHigherOrder ? ['Diagnostic clue'] : ['Core concept'],
-    thinkingLevel: isHigherOrder ? 'HoT' : 'LoT',
-    difficultyLevel: index % 5 === 0 ? 'L2' : 'L1',
+    questionText: `Which statement is most appropriate regarding ${row.topic || row.subject || 'the selected topic'}?`,
+    marks: '1',
+    ...meta,
     options: [
-      { id: `medsy-${questionNumber}-a`, label: correctAnswer, distractorErrors: [] },
-      { id: `medsy-${questionNumber}-b`, label: optionB, distractorErrors: ['Terminology Confusion'] },
-      { id: `medsy-${questionNumber}-c`, label: optionC, distractorErrors: ['False Association'] },
-      { id: `medsy-${questionNumber}-d`, label: optionD, distractorErrors: ['Misclassification'] },
+      { id: `medsy-${questionNumber}-a`, label: row.name, distractorErrors: [] },
+      { id: `medsy-${questionNumber}-b`, label: `A partially related statement about ${row.topic || 'the topic'}`, distractorErrors: [MEDSY_OPTION_DISTRACTORS[0]] },
+      { id: `medsy-${questionNumber}-c`, label: `An unrelated applied statement for ${row.subject || 'the subject'}`, distractorErrors: [MEDSY_OPTION_DISTRACTORS[1]] },
+      { id: `medsy-${questionNumber}-d`, label: 'A broad statement without the required competency focus', distractorErrors: [MEDSY_OPTION_DISTRACTORS[2]] },
     ],
     correctOptionIds: [`medsy-${questionNumber}-a`],
-    answerKey,
+    answerKey: `Correct answer: ${row.name}. This is the most appropriate statement for ${row.topic || 'the selected topic'}.`,
     questionBankSentAt: new Date(`2026-05-22T09:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
   }
 })
 
-const createMedsyDescriptiveSampleQuestions = () => MEDSY_DESCRIPTIVE_SAMPLE_QUESTIONS.map(([
-  questionText,
-  topic,
-  competency,
-  organSystem,
-  organSubSystem,
-], index) => {
-  const questionNumber = index + 11
-  const isHigherOrder = index % 2 === 0
-  const sectionAnswer = isHigherOrder
-    ? 'Cover the key anatomical or physiological basis, mechanism of injury, and expected functional consequence.'
-    : 'State the core concept clearly with the essential supporting points.'
-  const childAnswer = 'Add a clinically relevant correlation, common presentation, or practical application linked to the question.'
+const createMedsyDescriptiveSections = (row, questionNumber, marks, isLaq) => {
+  const prompts = MEDSY_DESCRIPTIVE_INSIDE_PROMPTS
+  const primaryPrompt = prompts[questionNumber % prompts.length]
+  const secondPrompt = prompts[(questionNumber + 3) % prompts.length]
+  const thirdPrompt = prompts[(questionNumber + 6) % prompts.length]
 
-  return {
-    id: `medsy-uploaded-sample-${questionNumber}`,
-    type: 'Descriptive Question',
-    authorName: 'Medsy',
-    questionText,
-    year: 'Year 1',
-    subject: ['Respiratory System', 'General Physiology'].includes(topic) ? 'Physiology' : topic.includes('Pathology') || competency.startsWith('PA') ? 'Pathology' : 'Human Anatomy',
-    topics: [topic],
-    competencies: [competency],
-    questionCategory: isHigherOrder ? 'Reasoning' : 'Direct',
-    cognitiveLevel: isHigherOrder ? 'Analyze' : 'Understand',
-    cognitiveFunction: isHigherOrder ? 'Concept Explanation' : 'Concept Recall',
-    skillFocus: isHigherOrder ? 'Structured explanation' : 'Definition',
-    organSystem,
-    organSubSystems: [organSubSystem],
-    diseaseTags: ['Not Applicable'],
-    keyConcepts: ['Core concept'],
-    thinkingLevel: isHigherOrder ? 'HoT' : 'LoT',
-    difficultyLevel: index % 3 === 0 ? 'L2' : 'L1',
-    options: [],
-    correctOptionIds: [],
-    descriptiveSections: [
-      {
-        id: `medsy-desc-${questionNumber}-section-1`,
-        questionText: 'Mention the key anatomical or physiological points.',
-        marks: '2',
-        answerKey: sectionAnswer,
-        children: [
+  return [
+    {
+      id: `medsy-desc-${questionNumber}-section-1`,
+      questionText: 'Discuss the core concept.',
+      marks: '',
+      answerKey: `Explain ${row.name} with the required key points.`,
+      children: isLaq
+        ? [
           {
             id: `medsy-desc-${questionNumber}-child-1`,
-            questionText: 'Add one relevant clinical correlation.',
-            marks: '1',
-            answerKey: childAnswer,
+            questionText: primaryPrompt,
+            marks: '4',
+            answerKey: 'Cover the definition, core concept, and essential details.',
+          },
+          {
+            id: `medsy-desc-${questionNumber}-child-2`,
+            questionText: secondPrompt,
+            marks: '3',
+            answerKey: `Add structured supporting points linked to ${row.topic || 'the topic'}.`,
+          },
+          {
+            id: `medsy-desc-${questionNumber}-child-3`,
+            questionText: thirdPrompt,
+            marks: '3',
+            answerKey: 'Include one applied correlation and a concise conclusion.',
+          },
+        ]
+        : [
+          {
+            id: `medsy-desc-${questionNumber}-child-1`,
+            questionText: primaryPrompt,
+            marks: '4',
+            answerKey: 'State the key facts required for the concept.',
+          },
+          {
+            id: `medsy-desc-${questionNumber}-child-2`,
+            questionText: secondPrompt,
+            marks: '4',
+            answerKey: `Add a relevant explanation or application linked to ${row.topic || 'the topic'}.`,
           },
         ],
-      },
-    ],
-    answerKey: sectionAnswer,
-    questionBankSentAt: new Date(`2026-05-22T09:${String(questionNumber).padStart(2, '0')}:00+05:30`).toISOString(),
-  }
-})
+    },
+  ]
+}
+
+const createMedsyDescriptiveSampleQuestions = (type, offset, idOffset, marks) => {
+  const isLaq = type === 'Desc Long Answer Questions (LAQs)'
+
+  return getMedsySeedRows(offset, isLaq ? MEDSY_QUESTION_BANK_SEED_COUNTS.laq : MEDSY_QUESTION_BANK_SEED_COUNTS.saq).map((row, index) => {
+    const questionNumber = idOffset + index + 1
+    const meta = getMedsySeedMeta(row, index + offset)
+
+    return {
+      id: `medsy-uploaded-sample-${questionNumber}`,
+      type,
+      authorName: 'Medsy',
+      questionText: `${isLaq ? 'Explain in detail' : 'Describe briefly'}: ${row.name}`,
+      marks: String(marks),
+      ...meta,
+      options: [],
+      correctOptionIds: [],
+      descriptiveSections: createMedsyDescriptiveSections(row, questionNumber, marks, isLaq),
+      answerKey: `Answer & Explanation: Present ${row.name} with clear structure, key facts, and one relevant correlation.`,
+      questionBankSentAt: new Date(`2026-05-22T10:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
+    }
+  })
+}
 
 const createMedsySampleQuestions = () => [
   ...createMedsyMcqSampleQuestions(),
-  ...createMedsyDescriptiveSampleQuestions(),
+  ...createMedsyDescriptiveSampleQuestions('Desc Short Answer Questions (SAQs)', 50, 50, 8),
+  ...createMedsyDescriptiveSampleQuestions('Desc Long Answer Questions (LAQs)', 100, 100, 10),
 ]
 
 const cleanQuestionBankItems = (items) => items

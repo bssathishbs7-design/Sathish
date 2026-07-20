@@ -34204,3 +34204,136 @@
     }
 ]
 
+const QUESTION_BANK_YEAR_LABELS = {
+    "1st Year": "Year 1",
+    "2nd Year": "Year 2",
+    "3rd Year": "Year 3",
+    "4th Year": "Year 4"
+}
+
+const CREATE_ASSESSMENT_YEAR_LABELS = {
+    "1st Year": "First Year",
+    "2nd Year": "Second Year",
+    "3rd Year": "Third Year",
+    "4th Year": "Fourth Year"
+}
+
+const YEAR_SORT_ORDER = {
+    "1st Year": 1,
+    "2nd Year": 2,
+    "3rd Year": 3,
+    "4th Year": 4
+}
+
+const normalizeCompetencyValue = (row) => `${row.code} ${row.name}`.trim()
+
+const buildCurriculumDirectory = (yearLabelMap) => {
+    const directory = {}
+
+    corelationRatingRows.forEach((row) => {
+        const year = yearLabelMap[row.year] ?? row.year
+        if (!year || !row.subject) return
+
+        directory[year] ??= {}
+        directory[year][row.subject] ??= {
+            topics: [],
+            competencies: [],
+        }
+
+        const subjectData = directory[year][row.subject]
+        if (row.topic && !subjectData.topics.includes(row.topic)) {
+            subjectData.topics.push(row.topic)
+        }
+
+        const competencyValue = normalizeCompetencyValue(row)
+        if (competencyValue && !subjectData.competencies.some((item) => item.value === competencyValue)) {
+            subjectData.competencies.push({
+                value: competencyValue,
+                label: row.name,
+                code: row.code,
+                topic: row.topic,
+                topicNumber: row.topicNumber,
+            })
+        }
+    })
+
+    Object.values(directory).forEach((yearDirectory) => {
+        Object.values(yearDirectory).forEach((subjectData) => {
+            subjectData.topics.sort((first, second) => {
+                const firstTopic = subjectData.competencies.find((item) => item.topic === first)?.topicNumber ?? 9999
+                const secondTopic = subjectData.competencies.find((item) => item.topic === second)?.topicNumber ?? 9999
+                return firstTopic - secondTopic || first.localeCompare(second)
+            })
+            subjectData.competencies.sort((first, second) => (
+                (first.topicNumber ?? 9999) - (second.topicNumber ?? 9999)
+                || first.code.localeCompare(second.code, undefined, { numeric: true })
+            ))
+        })
+    })
+
+    return directory
+}
+
+const buildSubjectDirectory = () => {
+    const directory = {}
+
+    corelationRatingRows.forEach((row) => {
+        if (!row.subject) return
+
+        directory[row.subject] ??= {
+            topics: [],
+            competencies: [],
+        }
+
+        const subjectData = directory[row.subject]
+        if (row.topic && !subjectData.topics.includes(row.topic)) {
+            subjectData.topics.push(row.topic)
+        }
+
+        const competencyValue = normalizeCompetencyValue(row)
+        if (competencyValue && !subjectData.competencies.some((item) => item.value === competencyValue)) {
+            subjectData.competencies.push({
+                value: competencyValue,
+                label: row.name,
+                code: row.code,
+                topic: row.topic,
+                topicNumber: row.topicNumber,
+                year: row.year,
+            })
+        }
+    })
+
+    Object.values(directory).forEach((subjectData) => {
+        subjectData.topics.sort((first, second) => {
+            const firstTopic = subjectData.competencies.find((item) => item.topic === first)?.topicNumber ?? 9999
+            const secondTopic = subjectData.competencies.find((item) => item.topic === second)?.topicNumber ?? 9999
+            return firstTopic - secondTopic || first.localeCompare(second)
+        })
+        subjectData.competencies.sort((first, second) => (
+            (YEAR_SORT_ORDER[first.year] ?? 999) - (YEAR_SORT_ORDER[second.year] ?? 999)
+            || (first.topicNumber ?? 9999) - (second.topicNumber ?? 9999)
+            || first.code.localeCompare(second.code, undefined, { numeric: true })
+        ))
+    })
+
+    return directory
+}
+
+const getMappedYearOptions = (yearLabelMap) => [...new Set(
+    corelationRatingRows
+        .map((row) => row.year)
+        .filter(Boolean)
+        .sort((first, second) => (YEAR_SORT_ORDER[first] ?? 999) - (YEAR_SORT_ORDER[second] ?? 999))
+        .map((year) => yearLabelMap[year] ?? year),
+)]
+
+const sharedSubjectDirectory = buildSubjectDirectory()
+
+export const questionBankYearOptions = getMappedYearOptions(QUESTION_BANK_YEAR_LABELS)
+export const questionBankCurriculumDirectory = buildCurriculumDirectory(QUESTION_BANK_YEAR_LABELS)
+export const questionBankSubjectDirectory = sharedSubjectDirectory
+
+export const createAssessmentYearOptions = getMappedYearOptions(CREATE_ASSESSMENT_YEAR_LABELS)
+export const createAssessmentCurriculumDirectory = buildCurriculumDirectory(CREATE_ASSESSMENT_YEAR_LABELS)
+export const createAssessmentSubjectDirectory = sharedSubjectDirectory
+

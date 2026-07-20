@@ -44,7 +44,7 @@ export default function BlueprintPage() {
   const [isTopicMenuOpen, setIsTopicMenuOpen] = useState(false)
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false)
   const [topicSearch, setTopicSearch] = useState('')
-  const [selectedType, setSelectedType] = useState('')
+  const [selectedType, setSelectedType] = useState('All')
   const [ratingValues, setRatingValues] = useState({})
   const [rationaleValues, setRationaleValues] = useState(() => readStoredObject(CORELATION_RATING_RATIONALE_KEY))
   const [isRationaleEnabled, setIsRationaleEnabled] = useState(true)
@@ -115,7 +115,7 @@ export default function BlueprintPage() {
   )
   const filteredCompetencies = useMemo(
     () => {
-      if (!selectedSubject || !selectedTopic || !selectedType) {
+      if (!selectedSubject || !selectedTopic) {
         return []
       }
 
@@ -124,9 +124,9 @@ export default function BlueprintPage() {
         && row.topic === selectedTopic
       ))
     },
-    [selectedSubject, selectedTopic, selectedType],
+    [selectedSubject, selectedTopic],
   )
-  const isSetupComplete = Boolean(selectedSubject && selectedTopic && selectedType)
+  const isSetupComplete = Boolean(selectedSubject && selectedTopic)
   const showImpactFrequencyFields = selectedType === 'Clinical' && ratingMethod === 'impact-frequency'
   const selectedTypeSummary = selectedType
     ? `${selectedType}${showImpactFrequencyFields ? ' / I-F' : selectedType === 'Clinical' ? ' / Direct' : ''}`
@@ -146,7 +146,7 @@ export default function BlueprintPage() {
     setIsTopicMenuOpen(false)
     setIsTypeMenuOpen(false)
     setTopicSearch('')
-    setSelectedType('')
+    setSelectedType('All')
     setRatingMethod('direct')
   }
 
@@ -200,7 +200,7 @@ export default function BlueprintPage() {
   }
 
   const updateRowType = (key, type) => {
-    if (type === 'Non-Clinical') {
+    if (type !== 'Clinical') {
       setRowImpactFrequencyEnabled((current) => {
         const next = { ...current }
         delete next[key]
@@ -213,8 +213,9 @@ export default function BlueprintPage() {
       [key]: {
         ...current[key],
         type,
-        impact: type === 'Non-Clinical' ? '' : current[key]?.impact,
-        frequency: type === 'Non-Clinical' ? '' : current[key]?.frequency,
+        impact: type !== 'Clinical' ? '' : current[key]?.impact,
+        frequency: type !== 'Clinical' ? '' : current[key]?.frequency,
+        rating: type === 'N/A' ? '' : current[key]?.rating,
       },
     }))
   }
@@ -273,6 +274,10 @@ export default function BlueprintPage() {
   const isRowComplete = (values, rowType, usesImpactFrequency = rowType === 'Clinical') => {
     const rating = getRatingValue(values)
 
+    if (rowType === 'N/A') {
+      return false
+    }
+
     if (rowType === 'Non-Clinical') {
       return Boolean(rating)
     }
@@ -292,7 +297,7 @@ export default function BlueprintPage() {
     .map((row) => {
       const key = getCompetencyKey(row)
       const values = ratingValues[key] ?? {}
-      const rowType = values.type || row.type || selectedType || 'Clinical'
+      const rowType = values.type || (selectedType === 'All' ? 'N/A' : selectedType)
       const usesImpactFrequency = rowType === 'Clinical' && (showImpactFrequencyFields || rowImpactFrequencyEnabled[key])
       return isRowComplete(values, rowType, usesImpactFrequency) ? key : null
     })
@@ -383,7 +388,7 @@ export default function BlueprintPage() {
       completedRowKeys.forEach((key) => {
         const row = currentRows.get(key)
         const values = ratingValues[key] ?? {}
-        const rowType = values.type || row?.type || selectedType || 'Clinical'
+        const rowType = values.type || (selectedType === 'All' ? 'N/A' : selectedType)
         const usesImpactFrequency = rowType === 'Clinical' && (showImpactFrequencyFields || rowImpactFrequencyEnabled[key])
         next[key] = {
           values: {
@@ -448,7 +453,7 @@ export default function BlueprintPage() {
 
     setSelectedSubject(getSubjectKey(firstRow))
     setSelectedTopic(firstRow.topic)
-    setSelectedType(firstValues.type || firstRow.type || 'Clinical')
+    setSelectedType(firstValues.type && firstValues.type !== 'N/A' ? firstValues.type : 'All')
     setRatingMethod(firstValues.impact && firstValues.frequency ? 'impact-frequency' : 'direct')
     setRatingValues((current) => ({
       ...current,
@@ -638,7 +643,7 @@ export default function BlueprintPage() {
                     <small>Choose how this topic should be rated.</small>
                   </div>
                   <div className="corelation-rating-type-switch" role="radiogroup" aria-label="Choose competency type">
-                    {['Clinical', 'Non-Clinical'].map((type) => (
+                    {['All', 'Clinical', 'Non-Clinical'].map((type) => (
                       <button
                         key={type}
                         type="button"
@@ -677,7 +682,9 @@ export default function BlueprintPage() {
                     )}
                     <small className="corelation-rating-type-help">
                       {!selectedType
-                        ? 'Choose Clinical or Non-Clinical to load competencies.'
+                        ? 'Choose a type to load competencies.'
+                        : selectedType === 'All'
+                          ? 'Select a type per competency row.'
                         : selectedType === 'Clinical'
                           ? ratingMethod === 'impact-frequency'
                             ? 'Impact and Frequency will calculate the Rating.'
@@ -993,10 +1000,11 @@ export default function BlueprintPage() {
                 {filteredCompetencies.map((row, index) => {
                           const competencyKey = getCompetencyKey(row)
                           const currentValues = ratingValues[competencyKey] ?? savedRows[competencyKey]?.values ?? {}
-                          const rowType = currentValues.type || row.type || selectedType || 'Clinical'
+                          const rowType = currentValues.type || (selectedType === 'All' ? 'N/A' : selectedType)
                           const isNonClinical = rowType === 'Non-Clinical'
+                          const isRowTypePending = rowType === 'N/A'
                           const isRowImpactFrequencyEnabled = Boolean(rowImpactFrequencyEnabled[competencyKey])
-                          const rowUsesImpactFrequency = !isNonClinical && (showImpactFrequencyFields || isRowImpactFrequencyEnabled)
+                          const rowUsesImpactFrequency = !isRowTypePending && !isNonClinical && (showImpactFrequencyFields || isRowImpactFrequencyEnabled)
                           const rowComplete = isRowComplete(currentValues, rowType, rowUsesImpactFrequency)
                           const ratingValue = getRatingValue(currentValues)
                           const isRowSaved = Boolean(savedRows[competencyKey]) && rowComplete
@@ -1116,10 +1124,11 @@ export default function BlueprintPage() {
                                       value={rowType}
                                       onChange={(event) => updateRowType(competencyKey, event.target.value)}
                                     >
+                                      <option value="N/A">N/A</option>
                                       <option value="Clinical">Clinical</option>
                                       <option value="Non-Clinical">Non-Clinical</option>
                                     </select>
-                                    {!isNonClinical && !showImpactFrequencyFields && (
+                                    {!isRowTypePending && !isNonClinical && !showImpactFrequencyFields && (
                                       <label className="corelation-rating-row-impact-toggle" title="Use Impact and Frequency rating">
                                         <input
                                           type="checkbox"
@@ -1175,6 +1184,16 @@ export default function BlueprintPage() {
                               <td className="is-rating">
                                 {isRowSaved ? (
                                   <span className="corelation-rating-score-value">{renderValue(ratingValue)}</span>
+                                ) : isRowTypePending ? (
+                                  <input
+                                    type="text"
+                                    aria-label={`Rating for ${row.code}`}
+                                    className="corelation-rating-score-input"
+                                    value=""
+                                    placeholder="-"
+                                    disabled
+                                    readOnly
+                                  />
                                 ) : (
                                   <input
                                     type="text"
@@ -1218,7 +1237,7 @@ export default function BlueprintPage() {
                 ? 'Choose a subject to begin.'
                 : !selectedTopic
                   ? 'Choose a topic for the selected subject.'
-                  : 'Choose Clinical or Non-Clinical to load competencies.'}
+                  : 'Choose a type for each competency row.'}
             </div>
           )}
         </section>

@@ -58,6 +58,10 @@ import {
   isDescriptiveQuestionType,
 } from '../utils/questionAuthoring'
 import QuestionBankNonCreatePage from './QuestionBankNonCreatePage'
+import {
+  createAssessmentSubjectDirectory,
+  createAssessmentYearOptions,
+} from './corelationRatingData'
 import '../styles/question-bank.css'
 import '../styles/assessment-pages.css'
 
@@ -74,36 +78,8 @@ const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 
-const SUBJECT_DIRECTORY = {
-  'Human Anatomy': {
-    topics: ['General Anatomy', 'Upper Limb', 'Thorax', 'Neuroanatomy'],
-    competencies: [
-      { value: 'AN1.1 Describe anatomical position and planes', topic: 'General Anatomy' },
-      { value: 'AN1.5 Describe muscles and movements of upper limb', topic: 'Upper Limb' },
-      { value: 'AN2.3 Explain mediastinal relations and surface anatomy', topic: 'Thorax' },
-      { value: 'AN4.2 Identify major cranial nerve pathways', topic: 'Neuroanatomy' },
-    ],
-  },
-  Physiology: {
-    topics: ['General Physiology', 'Hematology', 'Cardiovascular System', 'Respiratory System'],
-    competencies: [
-      { value: 'PY1.4 Describe body fluid compartments and homeostasis', topic: 'General Physiology' },
-      { value: 'PY2.11 Interpret complete blood count findings', topic: 'Hematology' },
-      { value: 'PY4.5 Explain regulation of cardiac output', topic: 'Cardiovascular System' },
-      { value: 'PY6.8 Interpret spirometry and lung volumes', topic: 'Respiratory System' },
-    ],
-  },
-  Pathology: {
-    topics: ['General Pathology', 'Hematology', 'Systemic Pathology'],
-    competencies: [
-      { value: 'PA1.2 Explain cell injury and adaptation', topic: 'General Pathology' },
-      { value: 'PA3.4 Classify anemia using peripheral smear findings', topic: 'Hematology' },
-      { value: 'PA5.7 Correlate systemic pathology with clinical presentation', topic: 'Systemic Pathology' },
-    ],
-  },
-}
-
-const YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year', 'Fourth Year']
+const SUBJECT_DIRECTORY = createAssessmentSubjectDirectory
+const YEAR_OPTIONS = createAssessmentYearOptions
 const DEFAULT_EXAM_CATEGORIES = ['Internal', 'Midterm', 'Final', 'Viva']
 const DEFAULT_COLLEGE_NAME = 'Sri Manakula Vinayagar Medical College and Hospital'
 const DEFAULT_ATTAINMENT_LEVELS = [

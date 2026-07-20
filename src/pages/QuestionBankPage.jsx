@@ -41,41 +41,18 @@ import {
   getShortCompetencyLabel,
   isDescriptiveQuestionType,
 } from '../utils/questionAuthoring'
+import {
+  questionBankCurriculumDirectory,
+  questionBankSubjectDirectory,
+  questionBankYearOptions,
+} from './corelationRatingData'
 import '../styles/question-bank.css'
-
-const SUBJECT_DIRECTORY = {
-  'Human Anatomy': {
-    topics: ['General Anatomy', 'Upper Limb', 'Thorax', 'Neuroanatomy'],
-    competencies: [
-      { value: 'AN1.1 Describe anatomical position and planes', topic: 'General Anatomy' },
-      { value: 'AN1.5 Describe muscles and movements of upper limb', topic: 'Upper Limb' },
-      { value: 'AN2.3 Explain mediastinal relations and surface anatomy', topic: 'Thorax' },
-      { value: 'AN4.2 Identify major cranial nerve pathways', topic: 'Neuroanatomy' },
-    ],
-  },
-  Physiology: {
-    topics: ['General Physiology', 'Hematology', 'Cardiovascular System', 'Respiratory System'],
-    competencies: [
-      { value: 'PY1.4 Describe body fluid compartments and homeostasis', topic: 'General Physiology' },
-      { value: 'PY2.11 Interpret complete blood count findings', topic: 'Hematology' },
-      { value: 'PY4.5 Explain regulation of cardiac output', topic: 'Cardiovascular System' },
-      { value: 'PY6.8 Interpret spirometry and lung volumes', topic: 'Respiratory System' },
-    ],
-  },
-  Pathology: {
-    topics: ['General Pathology', 'Hematology', 'Systemic Pathology'],
-    competencies: [
-      { value: 'PA1.2 Explain cell injury and adaptation', topic: 'General Pathology' },
-      { value: 'PA3.4 Classify anemia using peripheral smear findings', topic: 'Hematology' },
-      { value: 'PA5.7 Correlate systemic pathology with clinical presentation', topic: 'Systemic Pathology' },
-    ],
-  },
-}
 
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
 const DIFFICULTY_LEVEL_OPTIONS = ['L1', 'L2', 'L3']
-const YEAR_OPTIONS = ['Year 1', 'Year 2', 'Year 3', 'Year 4']
+const YEAR_OPTIONS = questionBankYearOptions
+const SUBJECT_DIRECTORY = questionBankSubjectDirectory
 const COGNITIVE_FUNCTION_OPTIONS = [
   'Attention & Cue Detection',
   'Working Memory',
@@ -213,10 +190,7 @@ const MAX_QUESTION_IMAGES = 4
 const DEFAULT_OPTIONAL_TAG = 'Not Applicable'
 const ROMAN_NUMERALS = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']
 
-const CURRICULUM_DIRECTORY = YEAR_OPTIONS.reduce((directory, year) => ({
-  ...directory,
-  [year]: SUBJECT_DIRECTORY,
-}), {})
+const CURRICULUM_DIRECTORY = questionBankCurriculumDirectory
 
 const QUESTION_TYPE_CARDS = [
   { type: 'MCQ', shortLabel: 'MCQ', icon: ListChecks },
@@ -1244,10 +1218,14 @@ const getQuestionOptionalTagGroups = (question) => [
 const getOptionValue = (item) => (typeof item === 'string' ? item : item.value)
 const getOptionLabel = (item) => (typeof item === 'string' ? item : item.value)
 const getYearDisplayLabel = (year) => ({
-  'Year 1': 'First Year',
-  'Year 2': 'Second Year',
-  'Year 3': 'Third Year',
-  'Year 4': 'Fourth Year',
+  'Year 1': '1st Year',
+  'Year 2': '2nd Year',
+  'Year 3': '3rd Year',
+  'Year 4': '4th Year',
+  'First Year': '1st Year',
+  'Second Year': '2nd Year',
+  'Third Year': '3rd Year',
+  'Fourth Year': '4th Year',
 }[year] ?? year)
 
 const getSelectionSummary = (selected, emptyLabel, formatter = (value) => value) => {
@@ -5191,7 +5169,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         const shouldShowQuestionDetails = ['Created', 'Sent to Approval', 'Approved', 'Approval Rejected'].includes(status)
                         const questionMarksLabel = getQuestionMarksLabel(question)
                         const curriculumMeta = [
-                          question.year,
+                          question.year ? getYearDisplayLabel(question.year) : null,
                           question.subject,
                           question.topics?.length ? getSelectionSummary(question.topics, '') : null,
                           question.competencies?.length
