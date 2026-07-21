@@ -59,6 +59,7 @@ import {
 } from '../utils/questionAuthoring'
 import QuestionBankNonCreatePage from './QuestionBankNonCreatePage'
 import {
+  corelationRatingRows,
   createAssessmentSubjectDirectory,
   createAssessmentYearOptions,
 } from './corelationRatingData'
@@ -77,6 +78,7 @@ const CREATE_ASSESSMENT_TEMPLATES_KEY = 'vx-create-assessment-templates'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
+const CORELATION_RATING_SAVED_ROWS_KEY = 'medsy-corelation-rating-saved-rows'
 
 const SUBJECT_DIRECTORY = createAssessmentSubjectDirectory
 const YEAR_OPTIONS = createAssessmentYearOptions
@@ -727,6 +729,27 @@ const toggleSelection = (items, value) => (
   items.includes(value) ? items.filter((item) => item !== value) : [...items, value]
 )
 
+const getCorelationRatingRowKey = (row) => `${row.year || '1st Year'}::${row.subject}::${row.topic}::${row.code}::${row.name}`
+
+const readSavedCorelationRatingRows = () => {
+  if (typeof window === 'undefined') return {}
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CORELATION_RATING_SAVED_ROWS_KEY) || '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const getBlueprintMarkRangeLabel = (value) => {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return ''
+  const start = Math.max(1, Math.floor(numericValue))
+  const end = Math.max(start + 1, Math.ceil(numericValue))
+  return `${start} to ${end}`
+}
+
 const getRichTextPreview = (value) => stripHtml(value).trim()
 const getQuestionTypeMeta = (type) => (
   QUESTION_TYPE_CARDS.find((item) => item.type === type)
@@ -1105,6 +1128,140 @@ function MappingSelectorPanel({ title, searchValue, onSearchChange, items, selec
   )
 }
 
+function BlueprintMultiSelect({ label, required = false, disabled = false, placeholder, options, selected, onChange, getOptionLabel = (option) => option.label, getOptionValue = (option) => option.value }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
+  const selectedSet = new Set(selected)
+  const filteredOptions = options.filter((option) => getOptionLabel(option).toLowerCase().includes(searchValue.trim().toLowerCase()))
+  const selectedLabels = options
+    .filter((option) => selectedSet.has(getOptionValue(option)))
+    .map(getOptionLabel)
+  const summary = selectedLabels.length
+    ? `${selectedLabels.length} selected`
+    : placeholder
+
+  const toggleOption = (value) => {
+    onChange(toggleSelection(selected, value))
+  }
+
+  return (
+    <label className={`create-assessment-blueprint-field ${disabled ? 'is-disabled' : ''}`}>
+      <span>
+        {label}
+        {required ? <em className="assessment-create-required-mark">*</em> : null}
+      </span>
+      <div className={`create-assessment-blueprint-multiselect ${isOpen ? 'is-open' : ''}`}>
+        <button
+          type="button"
+          className="create-assessment-blueprint-select-trigger"
+          onClick={() => {
+            if (!disabled) setIsOpen((current) => !current)
+          }}
+          disabled={disabled}
+          aria-expanded={isOpen}
+        >
+          <strong>{summary}</strong>
+          <ChevronDown size={15} strokeWidth={2.4} />
+        </button>
+        {isOpen ? (
+          <div className="create-assessment-blueprint-select-menu">
+            <label className="create-assessment-blueprint-search">
+              <Search size={13} strokeWidth={2.2} />
+              <input
+                value={searchValue}
+                onChange={(event) => setSearchValue(event.target.value)}
+                placeholder={`Search ${label.toLowerCase()}`}
+                autoFocus
+              />
+            </label>
+            <div className="create-assessment-blueprint-options">
+              {filteredOptions.length ? filteredOptions.map((option) => {
+                const value = getOptionValue(option)
+                const isSelected = selectedSet.has(value)
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={isSelected ? 'is-selected' : ''}
+                    onClick={() => toggleOption(value)}
+                  >
+                    <span>{isSelected ? <Check size={12} strokeWidth={2.5} /> : null}</span>
+                    <strong>{getOptionLabel(option)}</strong>
+                  </button>
+                )
+              }) : <small>No matches found.</small>}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </label>
+  )
+}
+
+function BlueprintSingleSelect({ label, required = false, disabled = false, placeholder, options, value, onChange, getOptionLabel = (option) => option.label, getOptionValue = (option) => option.value }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
+  const selectedOption = options.find((option) => getOptionValue(option) === value)
+  const filteredOptions = options.filter((option) => getOptionLabel(option).toLowerCase().includes(searchValue.trim().toLowerCase()))
+
+  return (
+    <label className={`create-assessment-blueprint-field ${disabled ? 'is-disabled' : ''}`}>
+      <span>
+        {label}
+        {required ? <em className="assessment-create-required-mark">*</em> : null}
+      </span>
+      <div className={`create-assessment-blueprint-multiselect ${isOpen ? 'is-open' : ''}`}>
+        <button
+          type="button"
+          className="create-assessment-blueprint-select-trigger"
+          onClick={() => {
+            if (!disabled) setIsOpen((current) => !current)
+          }}
+          disabled={disabled}
+          aria-expanded={isOpen}
+        >
+          <strong>{selectedOption ? getOptionLabel(selectedOption) : placeholder}</strong>
+          <ChevronDown size={15} strokeWidth={2.4} />
+        </button>
+        {isOpen ? (
+          <div className="create-assessment-blueprint-select-menu is-subject-menu">
+            <label className="create-assessment-blueprint-search">
+              <Search size={13} strokeWidth={2.2} />
+              <input
+                value={searchValue}
+                onChange={(event) => setSearchValue(event.target.value)}
+                placeholder={`Search ${label.toLowerCase()}`}
+                autoFocus
+              />
+            </label>
+            <div className="create-assessment-blueprint-options">
+              {filteredOptions.length ? filteredOptions.map((option) => {
+                const optionValue = getOptionValue(option)
+                const isSelected = optionValue === value
+                return (
+                  <button
+                    key={optionValue}
+                    type="button"
+                    className={isSelected ? 'is-selected' : ''}
+                    onClick={() => {
+                      onChange(optionValue)
+                      setIsOpen(false)
+                      setSearchValue('')
+                    }}
+                  >
+                    <span>{isSelected ? <Check size={12} strokeWidth={2.5} /> : null}</span>
+                    <strong>{getOptionLabel(option)}</strong>
+                  </button>
+                )
+              }) : <small>No subjects found.</small>}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </label>
+  )
+}
+
 function OptionalTagTextInput({ label, values, onChange }) {
   const [draftValue, setDraftValue] = useState('')
   const selected = normalizeOptionalTagValues(values)
@@ -1211,6 +1368,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
   const [isActionQuestionTypePickerOpen, setIsActionQuestionTypePickerOpen] = useState(false)
   const [isActionDescriptiveTypePickerOpen, setIsActionDescriptiveTypePickerOpen] = useState(false)
+  const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(false)
+  const [blueprintDraft, setBlueprintDraft] = useState({
+    subject: '',
+    topics: [],
+    competencies: [],
+    totalMark: '',
+  })
+  const [blueprintDistributionDraft, setBlueprintDistributionDraft] = useState({})
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
@@ -1255,6 +1420,176 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const competencyOptions = (subjectDirectory?.competencies ?? [])
     .filter((item) => !question?.topics.length || question.topics.includes(item.topic))
     .map((item) => item.value)
+  const savedCorelationRows = useMemo(() => readSavedCorelationRatingRows(), [])
+  const blueprintSubjectOptions = useMemo(() => {
+    const options = new Map()
+    corelationRatingRows.forEach((row) => {
+      if (!row.subject) return
+      const value = row.subject
+      if (!options.has(value)) {
+        options.set(value, { value, label: row.subject, year: row.year || '1st Year' })
+      }
+    })
+    return [...options.values()]
+  }, [])
+  const blueprintTopicOptions = useMemo(() => {
+    if (!blueprintDraft.subject) return []
+    const options = new Map()
+    corelationRatingRows
+      .filter((row) => row.subject === blueprintDraft.subject)
+      .forEach((row) => {
+        if (!row.topic) return
+        if (!options.has(row.topic)) {
+          options.set(row.topic, {
+            value: row.topic,
+            label: row.topic,
+            topicNumber: row.topicNumber,
+          })
+        }
+      })
+    return [...options.values()]
+  }, [blueprintDraft.subject])
+  const blueprintCompetencyOptions = useMemo(() => {
+    if (!blueprintDraft.subject || !blueprintDraft.topics.length) return []
+    return corelationRatingRows
+      .filter((row) => row.subject === blueprintDraft.subject && blueprintDraft.topics.includes(row.topic))
+      .map((row) => ({
+        value: getCorelationRatingRowKey(row),
+        label: `${row.code} ${row.name}`,
+        row,
+      }))
+  }, [blueprintDraft.subject, blueprintDraft.topics])
+  const selectedBlueprintRows = useMemo(() => {
+    const selectedSet = new Set(blueprintDraft.competencies)
+    return blueprintCompetencyOptions
+      .filter((option) => selectedSet.has(option.value))
+      .map((option) => {
+        const saved = savedCorelationRows[option.value]?.values ?? {}
+        const ratingValue = saved.rating || option.row.rating || ''
+        return {
+          ...option.row,
+          key: option.value,
+          savedValues: saved,
+          correlationLevel: ratingValue,
+          ratingNumber: Number(ratingValue) || 0,
+        }
+      })
+  }, [blueprintCompetencyOptions, blueprintDraft.competencies, savedCorelationRows])
+  const blueprintTotalMarkNumber = Number(blueprintDraft.totalMark) || 0
+  const blueprintRoundedTotalMark = blueprintTotalMarkNumber ? Math.round(blueprintTotalMarkNumber) : 0
+  const blueprintCorrelationTotal = selectedBlueprintRows.reduce((total, row) => total + (Number(row.correlationLevel) || 0), 0)
+  const blueprintSuggestedDistribution = useMemo(() => {
+    if (!blueprintRoundedTotalMark || !blueprintCorrelationTotal || !selectedBlueprintRows.length) return {}
+
+    const weightedRows = selectedBlueprintRows.map((row, index) => {
+      const rowCorrelation = Number(row.correlationLevel) || 0
+      const exactValue = rowCorrelation ? (rowCorrelation / blueprintCorrelationTotal) * blueprintRoundedTotalMark : 0
+      const baseValue = Math.floor(exactValue)
+      return {
+        key: row.key,
+        rowCorrelation,
+        baseValue,
+        remainder: exactValue - baseValue,
+        index,
+      }
+    })
+    const result = weightedRows.reduce((nextResult, row) => {
+      nextResult[row.key] = row.rowCorrelation ? String(row.baseValue) : ''
+      return nextResult
+    }, {})
+    let remainingMarks = blueprintRoundedTotalMark - weightedRows.reduce(
+      (total, row) => total + (row.rowCorrelation ? row.baseValue : 0),
+      0,
+    )
+
+    weightedRows
+      .filter((row) => row.rowCorrelation)
+      .sort((first, second) => second.remainder - first.remainder || first.index - second.index)
+      .forEach((row) => {
+        if (remainingMarks <= 0) return
+        result[row.key] = String((Number(result[row.key]) || 0) + 1)
+        remainingMarks -= 1
+      })
+
+    return result
+  }, [blueprintCorrelationTotal, blueprintRoundedTotalMark, selectedBlueprintRows])
+  const blueprintTableRows = selectedBlueprintRows.map((row) => {
+    const typeLabel = row.savedValues?.type || row.type || ''
+    const rowCorrelation = Number(row.correlationLevel) || 0
+    const hasDistributionOverride = Object.prototype.hasOwnProperty.call(blueprintDistributionDraft, row.key)
+    const distributionLabel = hasDistributionOverride
+      ? blueprintDistributionDraft[row.key]
+      : blueprintSuggestedDistribution[row.key] || ''
+    return {
+      ...row,
+      typeLabel,
+      weightageLabel: rowCorrelation && blueprintCorrelationTotal ? (rowCorrelation / blueprintCorrelationTotal).toFixed(2) : '',
+      distributionLabel,
+      markRangeLabel: getBlueprintMarkRangeLabel(distributionLabel),
+    }
+  })
+  const blueprintDistributionTotal = blueprintTableRows.reduce((total, row) => total + (Number(row.distributionLabel) || 0), 0)
+  const hasBlueprintDistribution = blueprintTableRows.some((row) => String(row.distributionLabel).trim())
+  const blueprintDistributionMatchesTotal = Boolean(
+    blueprintTableRows.length
+    && blueprintRoundedTotalMark
+    && hasBlueprintDistribution
+    && blueprintDistributionTotal === blueprintRoundedTotalMark
+  )
+  const blueprintDistributionHasError = Boolean(
+    blueprintTableRows.length
+    && blueprintRoundedTotalMark
+    && hasBlueprintDistribution
+    && !blueprintDistributionMatchesTotal
+  )
+  const updateBlueprintSubject = (subject) => {
+    setBlueprintDraft((current) => ({
+      ...current,
+      subject,
+      topics: [],
+      competencies: [],
+    }))
+    setBlueprintDistributionDraft({})
+  }
+  const updateBlueprintTopics = (topics) => {
+    setBlueprintDraft((current) => ({
+      ...current,
+      topics,
+      competencies: current.competencies.filter((competency) => corelationRatingRows.some((row) => (
+        getCorelationRatingRowKey(row) === competency
+        && row.subject === current.subject
+        && topics.includes(row.topic)
+      ))),
+    }))
+    setBlueprintDistributionDraft({})
+  }
+  const updateBlueprintCompetencies = (competencies) => {
+    setBlueprintDraft((current) => ({
+      ...current,
+      competencies,
+    }))
+    setBlueprintDistributionDraft((current) => Object.fromEntries(
+      Object.entries(current).filter(([key]) => competencies.includes(key)),
+    ))
+  }
+  const removeBlueprintCompetency = (competencyKey) => {
+    setBlueprintDraft((current) => ({
+      ...current,
+      competencies: current.competencies.filter((competency) => competency !== competencyKey),
+    }))
+    setBlueprintDistributionDraft((current) => {
+      const next = { ...current }
+      delete next[competencyKey]
+      return next
+    })
+  }
+  const updateBlueprintDistribution = (rowKey, value) => {
+    if (!/^\d*$/.test(value)) return
+    setBlueprintDistributionDraft((current) => ({
+      ...current,
+      [rowKey]: value,
+    }))
+  }
 
   const activeMappingItems = useMemo(() => {
     if (activeMappingPicker === 'years') return YEAR_OPTIONS
@@ -4091,7 +4426,181 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
       <div className="create-assessment-workspace-body">
       <main className="create-assessment-workspace-main">
-        {activeCreateTab === 'questionBank' ? (
+        {isBlueprintEnabled ? (
+          <section className="create-assessment-blueprint-panel" aria-label="Blueprint configuration">
+            <header className="create-assessment-blueprint-head">
+              <span className="create-assessment-blueprint-head-icon">
+                <SlidersHorizontal size={17} strokeWidth={2.3} />
+              </span>
+              <span>
+                <strong>Blueprint</strong>
+                <small>Plan subject, topic, competency, and mark distribution.</small>
+              </span>
+            </header>
+            <div className="create-assessment-blueprint-table-card">
+              <div className="create-assessment-blueprint-grid">
+                <BlueprintSingleSelect
+                  label="Subject"
+                  required
+                  placeholder="Choose subject"
+                  options={blueprintSubjectOptions}
+                  value={blueprintDraft.subject}
+                  onChange={updateBlueprintSubject}
+                />
+
+                <BlueprintMultiSelect
+                  label="Topics"
+                  required
+                  disabled={!blueprintDraft.subject}
+                  placeholder={blueprintDraft.subject ? 'Search and select topics' : 'Select subject first'}
+                  options={blueprintTopicOptions}
+                  selected={blueprintDraft.topics}
+                  onChange={updateBlueprintTopics}
+                  getOptionLabel={(option) => option.topicNumber ? `Topic ${option.topicNumber} ${option.label}` : option.label}
+                />
+
+                <BlueprintMultiSelect
+                  label="Competency"
+                  required
+                  disabled={!blueprintDraft.topics.length}
+                  placeholder={blueprintDraft.topics.length ? 'Search and select competency' : 'Select topics first'}
+                  options={blueprintCompetencyOptions}
+                  selected={blueprintDraft.competencies}
+                  onChange={updateBlueprintCompetencies}
+                />
+
+                <label className="create-assessment-blueprint-field">
+                  <span>
+                    Enter Total Mark
+                    <em className="assessment-create-required-mark">*</em>
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={blueprintDraft.totalMark}
+                    onChange={(event) => setBlueprintDraft((current) => ({ ...current, totalMark: event.target.value }))}
+                    placeholder="Total mark"
+                  />
+                </label>
+              </div>
+
+              <div className="create-assessment-blueprint-section-label">
+                <ListChecks size={14} strokeWidth={2.3} />
+                <span>Distribution of weightage of the selected topic</span>
+              </div>
+              {blueprintTableRows.length && blueprintTotalMarkNumber ? (
+                <div className={`create-assessment-blueprint-validation ${blueprintDistributionMatchesTotal ? 'is-valid' : 'is-invalid'}`}>
+                  {blueprintDistributionMatchesTotal
+                    ? `Distribution matches total mark ${blueprintRoundedTotalMark}.`
+                    : `Distribution total ${blueprintDistributionTotal} must equal total mark ${blueprintRoundedTotalMark}.`}
+                </div>
+              ) : null}
+
+              <div
+                className="create-assessment-blueprint-table-wrap"
+                style={{ '--blueprint-visible-rows': Math.min(Math.max(blueprintTableRows.length || 4, 3), 7) }}
+              >
+                <table className="create-assessment-blueprint-table">
+                <colgroup>
+                  <col className="is-code" />
+                  <col className="is-type" />
+                  <col className="is-correlation" />
+                  <col className="is-weightage" />
+                  <col className="is-distribution" />
+                  <col className="is-mark-range" />
+                  <col className="is-action" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Type</th>
+                    <th>Correlation</th>
+                    <th>Weightage</th>
+                    <th>Distribution</th>
+                    <th>Mark Range</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {blueprintTableRows.length ? blueprintTableRows.map((row) => (
+                    <tr key={row.key}>
+                      <td>
+                        <span className="create-assessment-blueprint-code">
+                          {row.code}
+                          <span
+                            className="create-assessment-blueprint-code-info"
+                            tabIndex={0}
+                            role="button"
+                            aria-label={`View competency name for ${row.code}`}
+                            data-tooltip={row.name}
+                          >
+                            <Info size={10} strokeWidth={2.3} />
+                          </span>
+                        </span>
+                      </td>
+                      <td>
+                        {row.typeLabel ? (
+                          <span className={`create-assessment-blueprint-type-badge ${row.typeLabel === 'Clinical' ? 'is-clinical' : 'is-non-clinical'}`}>
+                            {row.typeLabel}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td>{row.correlationLevel || '-'}</td>
+                      <td>{row.weightageLabel}</td>
+                      <td>
+                        <input
+                          className={`create-assessment-blueprint-distribution-input ${blueprintTotalMarkNumber ? (blueprintDistributionMatchesTotal ? 'is-valid' : 'is-invalid') : ''}`}
+                          value={row.distributionLabel}
+                          onChange={(event) => updateBlueprintDistribution(row.key, event.target.value)}
+                          placeholder="-"
+                          inputMode="numeric"
+                          aria-label={`Distribution marks for ${row.code}`}
+                        />
+                      </td>
+                      <td>
+                        <span className="create-assessment-blueprint-mark-range">
+                          {row.markRangeLabel || '-'}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="create-assessment-blueprint-delete-btn"
+                          aria-label={`Remove ${row.code} from blueprint`}
+                          onClick={() => removeBlueprintCompetency(row.key)}
+                        >
+                          <Trash2 size={14} strokeWidth={2.2} />
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={7} className="create-assessment-blueprint-empty">
+                        Select subject, topics, competency, and total mark to view blueprint distribution.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                </table>
+                {blueprintTableRows.length ? (
+                  <div className="create-assessment-blueprint-footer-row">
+                    <span />
+                    <span />
+                    <strong>{blueprintCorrelationTotal || '-'}</strong>
+                    <strong>{blueprintCorrelationTotal ? '1.00' : '-'}</strong>
+                    <strong className={blueprintDistributionHasError ? 'is-invalid' : blueprintDistributionMatchesTotal ? 'is-valid' : ''}>
+                      {blueprintRoundedTotalMark || '-'}
+                    </strong>
+                    <span />
+                    <span />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {!isBlueprintEnabled && activeCreateTab === 'questionBank' ? (
           <section className="create-assessment-question-bank-panel" aria-label="Question bank view">
             <QuestionBankNonCreatePage
               mode="readonly"
@@ -4102,7 +4611,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           </section>
         ) : null}
 
-        {activeCreateTab === 'preview' ? (
+        {!isBlueprintEnabled && activeCreateTab === 'preview' ? (
           <section className="create-assessment-tab-panel" aria-label="Assessment preview">
             <div className="create-assessment-tab-panel-head">
               <span className="create-assessment-preview-head-copy">
@@ -4525,7 +5034,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           </section>
         ) : null}
 
-        {activeCreateTab === 'configuration' ? (
+        {!isBlueprintEnabled && activeCreateTab === 'configuration' ? (
           <section className="create-assessment-tab-panel create-assessment-configuration-panel" aria-label="Assessment configuration">
             <div className="create-assessment-tab-panel-head">
               <strong>
@@ -5387,7 +5896,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           </section>
         ) : null}
 
-        {activeCreateTab === 'create' ? (
+        {!isBlueprintEnabled && activeCreateTab === 'create' ? (
           <>
         {!question ? (
           <div className="question-bank-create-strip has-empty-state">
@@ -6043,6 +6552,21 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         ) : null}
         <div className="create-assessment-action-panel" aria-label="Create actions">
         <strong>Create Assessment</strong>
+        <button
+          type="button"
+          className={`create-assessment-action-btn create-assessment-blueprint-btn ${isBlueprintEnabled ? 'is-enabled' : 'is-disabled'}`}
+          onClick={() => setIsBlueprintEnabled((current) => !current)}
+          aria-pressed={isBlueprintEnabled}
+        >
+          <SlidersHorizontal size={16} strokeWidth={2.2} />
+          <span>Blueprint</span>
+          <em className={`create-assessment-blueprint-badge ${isBlueprintEnabled ? 'is-enabled' : 'is-disabled'}`}>
+            {isBlueprintEnabled ? 'Enabled' : 'Disabled'}
+          </em>
+          <span className="create-assessment-blueprint-switch" aria-hidden="true">
+            <i />
+          </span>
+        </button>
         <div className={`question-bank-type-select-panel ${isActionQuestionTypePickerOpen ? 'is-open' : ''}`}>
           <button
             type="button"
