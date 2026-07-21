@@ -129,6 +129,7 @@ const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionC
         <span className="assessment-page-question-id-badge">{questionBankId}</span>
         <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
         {getQuestionMarksTotal(question) > 0 ? <span className="is-marks">{getQuestionMarksTotal(question)} marks</span> : null}
+        {renderQuestionStructureBadge(question)}
         {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
         {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
         {hiddenTagCount ? (
@@ -346,6 +347,7 @@ const readStoredQuestionList = (storageKey) => {
             return {
               ...sampleQuestion,
               isFavorite: isFavoriteQuestion(question),
+              isInstituteQuestion: isInstituteQuestion(question),
             }
           })
           const missingSamples = sampleQuestions.filter((sample) => (
@@ -407,6 +409,7 @@ const isApprovedQuestion = (question) => (
 const isAllQuestionBankQuestion = (question) => isMedsyQuestion(question) || isApprovedQuestion(question)
 
 const isFavoriteQuestion = (question) => Boolean(question?.isFavorite || question?.isFavourite)
+const isInstituteQuestion = (question) => Boolean(question?.isInstituteQuestion || question?.isInstitute)
 
 const readReportedQuestionRecords = () => {
   if (typeof window === 'undefined') return []
@@ -477,6 +480,37 @@ const updateQuestionFavoriteInStorage = (questionId, isFavorite) => {
           ...question,
           isFavorite,
           isFavourite: undefined,
+        }
+      })
+
+      if (didUpdate) {
+        window.localStorage.setItem(storageKey, JSON.stringify(nextQuestions))
+      }
+    } catch {
+      // Ignore malformed local storage entries and keep the in-memory UI responsive.
+    }
+  })
+
+  window.dispatchEvent(new Event('question-bank-published-questions'))
+  window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+}
+
+const updateQuestionInstituteInStorage = (questionId, isInstituteQuestionValue) => {
+  if (typeof window === 'undefined' || !questionId) return
+
+  QUESTION_BANK_FAVORITE_STORAGE_KEYS.forEach((storageKey) => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
+      if (!Array.isArray(parsed)) return
+
+      let didUpdate = false
+      const nextQuestions = parsed.map((question) => {
+        if (question?.id !== questionId) return question
+        didUpdate = true
+        return {
+          ...question,
+          isInstituteQuestion: isInstituteQuestionValue,
+          isInstitute: undefined,
         }
       })
 
@@ -663,6 +697,37 @@ const getQuestionTypeFilterLabel = (questionOrType) => {
 const isDescriptiveQuestion = (question) => (
   getQuestionTypeBadgeClassName(question) === 'is-descriptive'
 )
+
+const getDescriptiveStructureCounts = (question) => {
+  if (!isDescriptiveQuestion(question)) {
+    return { partCount: 0, subPartCount: 0 }
+  }
+
+  const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+  if (!sections.length) {
+    return { partCount: 0, subPartCount: 0 }
+  }
+
+  return sections.reduce((counts, section) => {
+    const children = Array.isArray(section?.children) ? section.children : []
+    return {
+      partCount: counts.partCount + 1,
+      subPartCount: counts.subPartCount + children.length,
+    }
+  }, { partCount: 0, subPartCount: 0 })
+}
+
+const renderQuestionStructureBadge = (question) => {
+  const { partCount, subPartCount } = getDescriptiveStructureCounts(question)
+  if (!partCount && !subPartCount) return null
+
+  return (
+    <span className="assessment-page-question-structure-badge" title="Question structure">
+      <ListChecks size={11} strokeWidth={2.4} />
+      {partCount} {partCount === 1 ? 'part' : 'parts'} &middot; {subPartCount} {subPartCount === 1 ? 'sub-part' : 'sub-parts'}
+    </span>
+  )
+}
 
 const getDescriptiveAnswerText = (question, section, child) => {
   const explicitAnswer = stripHtml(child?.answerKey)
@@ -1057,7 +1122,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
 
     return publishedQuestions.filter((question) => {
       if (activeMetric === 'medsy') return isMedsyQuestion(question)
-      if (activeMetric === 'created') return !isMedsyQuestion(question)
+      if (activeMetric === 'created') return isInstituteQuestion(question)
       if (activeMetric === 'favorites') return isFavoriteQuestion(question)
       if (activeMetric === 'shared') return isSharedToStudentsQuestion(question)
       return true
@@ -1357,11 +1422,11 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     {
       key: 'created',
       label: 'Institute Questions',
-      value: landingQuestions.filter((question) => !isMedsyQuestion(question)).length,
+      value: landingQuestions.filter(isInstituteQuestion).length,
       icon: ListChecks,
       tone: 'created',
       activeMetricKey: 'created',
-      distribution: createDistribution(getValueCounts(landingQuestions.filter((question) => !isMedsyQuestion(question)), (question) => getQuestionTypeFilterLabel(question))),
+      distribution: createDistribution(getValueCounts(landingQuestions.filter(isInstituteQuestion), (question) => getQuestionTypeFilterLabel(question))),
     },
     {
       key: 'mcq',
@@ -1491,7 +1556,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const questionListSummaryMetrics = [
     { key: 'total', label: 'Total Question', value: publishedQuestions.length, icon: ClipboardList, tone: 'total' },
     { key: 'medsy', label: 'Medsy Question', value: publishedQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy', activeMetricKey: 'medsy' },
-    { key: 'created', label: 'Institute Questions', value: publishedQuestions.filter((question) => !isMedsyQuestion(question)).length, icon: ListChecks, tone: 'created', activeMetricKey: 'created' },
+    { key: 'created', label: 'Institute Questions', value: publishedQuestions.filter(isInstituteQuestion).length, icon: ListChecks, tone: 'created', activeMetricKey: 'created' },
     { key: 'favorites', label: 'Favorites', value: publishedQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites', activeMetricKey: 'favorites' },
     { key: 'shared', label: 'Share to Students', value: publishedQuestions.filter(isSharedToStudentsQuestion).length, icon: Share2, tone: 'shared', activeMetricKey: 'shared' },
     { key: 'suggested', label: 'Report Question', value: [
@@ -1604,6 +1669,13 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     ))
   }
 
+  const toggleGridQuestionSelectionFromRow = (questionId) => {
+    if (!selectedGridAction && !hasEmbeddedAssessmentSelection) {
+      setSelectedGridAction('assessment')
+    }
+    toggleGridQuestionSelection(questionId)
+  }
+
   const resetAssessmentSelection = () => {
     setSelectedGridQuestionIds([])
     setSelectedGridAction('')
@@ -1698,6 +1770,19 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
         : item
     )))
     updateQuestionFavoriteInStorage(questionId, nextFavoriteState)
+  }
+
+  const toggleQuestionInstitute = (questionId) => {
+    const question = publishedQuestions.find((item) => item.id === questionId)
+    if (!question) return
+
+    const nextInstituteState = !isInstituteQuestion(question)
+    setPublishedQuestions((current) => current.map((item) => (
+      item.id === questionId
+        ? { ...item, isInstituteQuestion: nextInstituteState, isInstitute: undefined }
+        : item
+    )))
+    updateQuestionInstituteInStorage(questionId, nextInstituteState)
   }
 
   const resetReportModal = () => {
@@ -1805,6 +1890,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
 
   const renderQuestionMetaActions = (question, questionId, questionNumber, isTableRowOpen) => {
     const isFavorite = isFavoriteQuestion(question)
+    const isInstitute = isInstituteQuestion(question)
 
     return (
       <span className="assessment-page-question-meta-actions" onClick={(event) => event.stopPropagation()}>
@@ -1851,11 +1937,13 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
             </button>
             <button
               type="button"
-              className="assessment-page-question-meta-action is-icon-only is-institute"
-              aria-label={`Add question ${questionNumber} to institute`}
-              data-tooltip="Add to institute"
+              className={`assessment-page-question-meta-action is-icon-only is-institute ${isInstitute ? 'is-active' : ''}`}
+              onClick={() => toggleQuestionInstitute(questionId)}
+              aria-label={`${isInstitute ? 'Remove' : 'Add'} question ${questionNumber} ${isInstitute ? 'from' : 'to'} institute questions`}
+              aria-pressed={isInstitute}
+              data-tooltip={isInstitute ? 'Institute Question' : 'Add to Institute'}
             >
-              <Tags size={13} strokeWidth={2.2} />
+            <Tags size={13} strokeWidth={2.2} fill={isInstitute ? 'currentColor' : 'none'} />
             </button>
           </>
         ) : null}
@@ -2649,25 +2737,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                         onClick={() => onNavigate?.(APP_PAGES.QUESTION_BANK)}
                       >
                         <Plus size={15} strokeWidth={2.3} />
-                        Create New
-                      </button>
-                      <button
-                        type="button"
-                        className={`question-bank-action-add-assessment ${selectedGridAction === 'assessment' ? 'is-active' : ''}`}
-                        onClick={() => setSelectedGridAction('assessment')}
-                        disabled={selectedGridAction === 'learn' || isReportMetricActive}
-                      >
-                        <ListChecks size={15} strokeWidth={2.3} />
-                        Add to Assessment
-                      </button>
-                      <button
-                        type="button"
-                        className={`question-bank-action-share-students ${selectedGridAction === 'learn' ? 'is-active' : ''}`}
-                        onClick={() => setSelectedGridAction('learn')}
-                        disabled={selectedGridAction === 'assessment' || isReportMetricActive}
-                      >
-                        <Share2 size={15} strokeWidth={2.3} />
-                        Share to Students
+                        Create New Questions
                       </button>
                     </>
                   ) : null}
@@ -2789,7 +2859,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                       disabled={selectedGridAction === 'learn' || isReportMetricActive}
                     >
                       <ListChecks size={14} strokeWidth={2.3} />
-                      Add to Assessment
+                      Add to Students
                       {selectedGridAction === 'assessment' && selectedGridQuestionIds.length ? (
                         <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
                       ) : null}
@@ -3114,14 +3184,18 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           aria-expanded="false"
                           aria-pressed={selectedGridAction ? isGridQuestionSelected : undefined}
                         >
-                          <td className="assessment-page-grid-question" colSpan={hasEmbeddedAssessmentSelection ? 2 : 2}>
+                          <td className="assessment-page-grid-question" colSpan={hasEmbeddedAssessmentSelection ? 5 : 4}>
                             <span className="assessment-page-grid-row-layout">
-                              {selectedGridAction ? (
+                              {isEditable || hasEmbeddedAssessmentSelection ? (
                                 <label className="assessment-page-grid-row-checkbox" onClick={(event) => event.stopPropagation()}>
                                   <input
                                     type="checkbox"
                                     checked={isGridQuestionSelected}
-                                    onChange={() => toggleGridQuestionSelection(questionId)}
+                                    onChange={() => (
+                                      hasEmbeddedAssessmentSelection
+                                        ? toggleGridQuestionSelection(questionId)
+                                        : toggleGridQuestionSelectionFromRow(questionId)
+                                    )}
                                     aria-label={`Select question ${questionNumber}`}
                                   />
                                 </label>
@@ -3137,18 +3211,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                               </span>
                             </span>
                           </td>
-                          {hasEmbeddedAssessmentSelection ? (
-                            <td className="assessment-page-grid-select-cell">
-                              <label className="assessment-page-grid-row-checkbox" onClick={(event) => event.stopPropagation()}>
-                                <input
-                                  type="checkbox"
-                                  checked={isGridQuestionSelected}
-                                  onChange={() => toggleGridQuestionSelection(questionId)}
-                                  aria-label={`Select question ${questionNumber}`}
-                                />
-                              </label>
-                            </td>
-                          ) : null}
                         </tr>
                       ) : null}
                       {isTableRowOpen ? (
@@ -3167,15 +3229,19 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           aria-expanded="true"
                           aria-pressed={selectedGridAction ? isGridQuestionSelected : undefined}
                         >
-                          <td colSpan={hasEmbeddedAssessmentSelection ? 3 : 2}>
+                          <td colSpan={hasEmbeddedAssessmentSelection ? 5 : 4}>
                             <div className="assessment-page-table-question-stack">
                               <div className="assessment-page-grid-detail-head">
-                                {selectedGridAction ? (
+                                {isEditable || hasEmbeddedAssessmentSelection ? (
                                   <label className="assessment-page-grid-row-checkbox" onClick={(event) => event.stopPropagation()}>
                                     <input
                                       type="checkbox"
                                       checked={isGridQuestionSelected}
-                                      onChange={() => toggleGridQuestionSelection(questionId)}
+                                      onChange={() => (
+                                        hasEmbeddedAssessmentSelection
+                                          ? toggleGridQuestionSelection(questionId)
+                                          : toggleGridQuestionSelectionFromRow(questionId)
+                                      )}
                                       aria-label={`Select question ${questionNumber}`}
                                     />
                                   </label>
@@ -3189,16 +3255,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                   }, renderQuestionMetaActions(question, questionId, questionNumber, true), questionNumber)}
                                   {isTagsOpen ? renderQuestionInlineTagPanel(question) : null}
                                 </div>
-                                {hasEmbeddedAssessmentSelection ? (
-                                  <label className="assessment-page-grid-row-checkbox is-detail-select" onClick={(event) => event.stopPropagation()}>
-                                    <input
-                                      type="checkbox"
-                                      checked={isGridQuestionSelected}
-                                      onChange={() => toggleGridQuestionSelection(questionId)}
-                                      aria-label={`Select question ${questionNumber}`}
-                                    />
-                                  </label>
-                                ) : null}
                               </div>
                               {imageRows.length ? (
                                 <div className="assessment-page-table-inline-section">
@@ -3399,7 +3455,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               <button type="button" className="is-clear" onClick={() => setSelectedGridQuestionIds([])}>
                 Clear
               </button>
-              {hasEmbeddedAssessmentSelection || selectedGridAction === 'assessment' ? (
+              {hasEmbeddedAssessmentSelection || selectedGridAction ? (
                 <>
                   <button
                     type="button"
@@ -3439,6 +3495,17 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                     </span>
                     ) : null}
                 </>
+              ) : null}
+              {!hasEmbeddedAssessmentSelection ? (
+                <button
+                  type="button"
+                  className="is-primary is-share"
+                  onClick={() => setSelectedGridAction('learn')}
+                  disabled={!selectedGridQuestionIds.length}
+                >
+                  <Share2 size={14} strokeWidth={2.4} />
+                  Share to Students
+                </button>
               ) : null}
               <button
                 type="button"

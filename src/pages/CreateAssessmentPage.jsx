@@ -998,6 +998,37 @@ const getPreviewCurriculumText = (item) => {
   return values.length ? values.join(' / ') : 'Curriculum not selected'
 }
 
+const getPreviewTopicNumber = (item) => {
+  const subject = item?.subject ?? ''
+  const topic = getFirstValue(item?.topics)
+  const topics = SUBJECT_DIRECTORY[subject]?.topics ?? []
+  const topicIndex = topic ? topics.findIndex((value) => value === topic) : -1
+
+  return topicIndex >= 0 ? topicIndex + 1 : 0
+}
+
+const getPreviewStructureCounts = (item) => {
+  if (!isDescriptiveQuestionType(item?.type)) {
+    return { partCount: 0, subPartCount: 0 }
+  }
+
+  const sections = Array.isArray(item?.descriptiveSections) ? item.descriptiveSections : []
+  return sections.reduce((counts, section) => {
+    const children = Array.isArray(section?.children) ? section.children : []
+    return {
+      partCount: counts.partCount + 1,
+      subPartCount: counts.subPartCount + children.length,
+    }
+  }, { partCount: 0, subPartCount: 0 })
+}
+
+const getPreviewQuestionBankId = (item, displayNumber) => {
+  const existingId = item?.questionBankId || item?.bankId || item?.medsyQuestionId || item?.sourceQuestionId
+  if (existingId) return existingId
+
+  return `MED-A01-${String(displayNumber ?? item?.displayNumber ?? 1).replace(/\D/g, '').padStart(5, '0').slice(-5)}`
+}
+
 const getDescriptiveCompetencyCode = (item) => (
   (item?.competencies ?? []).length ? getShortCompetencyLabel(item.competencies[0]) : ''
 )
@@ -4215,7 +4246,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   const correctOptionTexts = getCorrectOptionTexts(item)
                   const visibleOptions = (item.options ?? []).filter((option) => getRichTextPreview(option.label))
                   const descriptiveSections = item.descriptiveSections ?? []
-                  const previewCurriculumText = isDescriptive && descriptiveSections.length ? '' : getPreviewCurriculumText(item)
+                  const previewSubject = item.subject ?? ''
+                  const previewTopic = getFirstValue(item.topics)
+                  const previewTopicNumber = getPreviewTopicNumber(item)
+                  const previewCompetencyCode = getDescriptiveCompetencyCode(item)
+                  const previewQuestionBankId = getPreviewQuestionBankId(item, displayNumber)
+                  const previewStructureCounts = getPreviewStructureCounts(item)
+                  const previewStructureLabel = previewStructureCounts.partCount || previewStructureCounts.subPartCount
+                    ? `${previewStructureCounts.partCount} ${previewStructureCounts.partCount === 1 ? 'part' : 'parts'} - ${previewStructureCounts.subPartCount} ${previewStructureCounts.subPartCount === 1 ? 'sub-part' : 'sub-parts'}`
+                    : ''
                   const rootDescriptiveAnswer = getRichTextPreview(item.answerKey)
                   const descriptiveAnswerItems = isDescriptive
                     ? descriptiveSections.length
@@ -4267,14 +4306,54 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         <div className="create-assessment-preview-title-row">
                           <div>
                             <strong>{displayNumber}. {getPreviewQuestionText(item)}</strong>
-                            {!isPreviewCardOpen ? (
-                              <span className="create-assessment-preview-subline">
-                                <em className={`create-assessment-preview-type-text ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>
-                                  {isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}
-                                </em>
-                                {previewCurriculumText ? <span>{previewCurriculumText}</span> : null}
-                              </span>
-                            ) : null}
+                            <span className="create-assessment-preview-meta-row">
+                              {previewSubject ? <span className="create-assessment-preview-path-subject">{previewSubject}</span> : null}
+                              {previewSubject && previewTopic ? <span className="create-assessment-preview-path-separator">›</span> : null}
+                              {previewTopic ? <span className="create-assessment-preview-path-topic">{previewTopicNumber ? `Topic ${previewTopicNumber}: ` : ''}{previewTopic}</span> : null}
+                              {previewCompetencyCode ? <span className="create-assessment-preview-chip is-competency">{previewCompetencyCode}</span> : null}
+                              <span className="create-assessment-preview-chip is-source">Medsy</span>
+                              <span className="create-assessment-preview-chip is-id">{previewQuestionBankId}</span>
+                              <span className={`create-assessment-preview-chip is-type ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>{isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}</span>
+                              {questionMarksTotal ? <span className="create-assessment-preview-chip is-marks">{questionMarksTotal} marks</span> : null}
+                              {previewStructureLabel ? (
+                                <span className="create-assessment-preview-chip is-structure">
+                                  <ListChecks size={11} strokeWidth={2.4} />
+                                  {previewStructureLabel}
+                                </span>
+                              ) : null}
+                              {item.thinkingLevel ? <span className={`create-assessment-preview-chip ${getThinkingBadgeClassName(item.thinkingLevel)}`}>{item.thinkingLevel}</span> : null}
+                              {item.difficultyLevel ? <span className="create-assessment-preview-chip assessment-page-difficulty-badge">{item.difficultyLevel}</span> : null}
+                              {optionalTagGroups.length ? (
+                                <span className="question-bank-created-tags-wrap">
+                                  <button
+                                    type="button"
+                                    className="create-assessment-preview-chip is-extra-tags"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      setOpenPreviewTagsId((current) => (current === item.id ? null : item.id))
+                                    }}
+                                    aria-expanded={openPreviewTagsId === item.id}
+                                  >
+                                    + {optionalTagGroups.reduce((total, group) => total + group.values.length, 0)} more tags
+                                  </button>
+                                  <span
+                                    className={`question-bank-created-tags-tooltip ${openPreviewTagsId === item.id ? 'is-open' : ''}`}
+                                    role="tooltip"
+                                  >
+                                    {optionalTagGroups.map((group) => (
+                                      <span key={group.label} className="question-bank-created-tags-group">
+                                        <strong>{group.label}</strong>
+                                        <span>
+                                          {group.values.map((value) => (
+                                            <span key={value}>{value}</span>
+                                          ))}
+                                        </span>
+                                      </span>
+                                    ))}
+                                  </span>
+                                </span>
+                              ) : null}
+                            </span>
                           </div>
                         </div>
 
@@ -4362,53 +4441,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             ) : null}
 
                             <div className="create-assessment-preview-bottom">
-                              <span className="create-assessment-preview-subline">
-                                <em className={`create-assessment-preview-type-text ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>
-                                  {isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}
-                                </em>
-                                {previewCurriculumText ? <span>{previewCurriculumText}</span> : null}
-                              </span>
-
-                              {(item.questionCategory || item.cognitiveLevel || item.isCritical || item.source || optionalTagGroups.length) ? (
-                                <div className="create-assessment-preview-meta">
-                                  {item.questionCategory ? <span className="question-bank-badge mint">{item.questionCategory}</span> : null}
-                                  {item.cognitiveLevel ? <span className="question-bank-badge blue">{item.cognitiveLevel}</span> : null}
-                                  {item.isCritical ? <span className="question-bank-badge soft">Critical</span> : null}
-                                  {item.source && item.source !== 'Create Assessment' ? <span className="question-bank-badge soft">{item.source}</span> : null}
-                                  {optionalTagGroups.length ? (
-                                    <span className="question-bank-created-tags-wrap">
-                                      <button
-                                        type="button"
-                                        className="question-bank-badge question-bank-created-tags-badge"
-                                        onClick={(event) => {
-                                          event.stopPropagation()
-                                          setOpenPreviewTagsId((current) => (current === item.id ? null : item.id))
-                                        }}
-                                        aria-expanded={openPreviewTagsId === item.id}
-                                      >
-                                        <Info size={13} strokeWidth={2.2} />
-                                        View tags
-                                      </button>
-                                      <span
-                                        className={`question-bank-created-tags-tooltip ${openPreviewTagsId === item.id ? 'is-open' : ''}`}
-                                        role="tooltip"
-                                      >
-                                        {optionalTagGroups.map((group) => (
-                                          <span key={group.label} className="question-bank-created-tags-group">
-                                            <strong>{group.label}</strong>
-                                            <span>
-                                              {group.values.map((value) => (
-                                                <span key={value}>{value}</span>
-                                              ))}
-                                            </span>
-                                          </span>
-                                        ))}
-                                      </span>
-                                    </span>
-                                  ) : null}
-                                </div>
-                              ) : null}
-
                               {isDescriptive && descriptiveAnswerItems.length ? (
                                 <p className="create-assessment-preview-answer create-assessment-preview-answer-list">
                                   <strong>Answer &amp; Explanation</strong>
@@ -4434,21 +4466,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         ) : null}
                       </div>
                       <div className="create-assessment-preview-actions">
-                        {(item.thinkingLevel || item.difficultyLevel || questionMarksTotal) ? (
-                          <span className="create-assessment-preview-action-badges">
-                            {item.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(item.thinkingLevel)}`}>{item.thinkingLevel}</span> : null}
-                            {item.difficultyLevel ? <span className="assessment-page-table-value-pill assessment-page-difficulty-badge">{item.difficultyLevel}</span> : null}
-                            {questionMarksTotal ? (
-                              <span className="create-assessment-preview-marks-badge">
-                                {questionMarksTotal}M
-                              </span>
-                            ) : (
-                              <span className="create-assessment-preview-marks-badge is-empty" aria-hidden="true">
-                                0M
-                              </span>
-                            )}
-                          </span>
-                        ) : null}
                         <button
                           type="button"
                           className="create-assessment-preview-edit"
