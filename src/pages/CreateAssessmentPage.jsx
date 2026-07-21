@@ -1128,16 +1128,27 @@ function MappingSelectorPanel({ title, searchValue, onSearchChange, items, selec
   )
 }
 
-function BlueprintMultiSelect({ label, required = false, disabled = false, placeholder, options, selected, onChange, getOptionLabel = (option) => option.label, getOptionValue = (option) => option.value }) {
+function BlueprintMultiSelect({
+  label,
+  required = false,
+  disabled = false,
+  placeholder,
+  options,
+  selected,
+  onChange,
+  getOptionLabel = (option) => option.label,
+  getOptionValue = (option) => option.value,
+  getSummaryLabel = getOptionLabel,
+}) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const selectedSet = new Set(selected)
   const filteredOptions = options.filter((option) => getOptionLabel(option).toLowerCase().includes(searchValue.trim().toLowerCase()))
   const selectedLabels = options
     .filter((option) => selectedSet.has(getOptionValue(option)))
-    .map(getOptionLabel)
+    .map(getSummaryLabel)
   const summary = selectedLabels.length
-    ? `${selectedLabels.length} selected`
+    ? `${selectedLabels.slice(0, 2).join(', ')}${selectedLabels.length > 2 ? ` +${selectedLabels.length - 2}` : ''}`
     : placeholder
 
   const toggleOption = (value) => {
@@ -4468,6 +4479,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   selected={blueprintDraft.topics}
                   onChange={updateBlueprintTopics}
                   getOptionLabel={(option) => option.topicNumber ? `Topic ${option.topicNumber} ${option.label}` : option.label}
+                  getSummaryLabel={(option) => option.label}
                 />
 
                 <BlueprintMultiSelect
@@ -4478,6 +4490,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   options={blueprintCompetencyOptions}
                   selected={blueprintDraft.competencies}
                   onChange={updateBlueprintCompetencies}
+                  getSummaryLabel={(option) => option.row?.code || option.label}
                 />
 
                 <label className="create-assessment-blueprint-field">
