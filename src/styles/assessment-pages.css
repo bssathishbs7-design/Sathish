@@ -18987,6 +18987,13 @@
   font-weight: 750;
 }
 
+.create-assessment-blueprint-section-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .create-assessment-blueprint-section-label {
   justify-self: start;
   display: inline-flex;
@@ -19054,6 +19061,15 @@
   display: grid;
   grid-template-columns: 13% 14% 13% 14% 20% 17% 9%;
   min-width: 0;
+}
+
+.create-assessment-blueprint-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.create-assessment-blueprint-table tbody tr:hover {
+  background: #f0fdfa;
 }
 
 .create-assessment-blueprint-table tbody {
@@ -19132,7 +19148,7 @@
   max-width: 100%;
   align-items: center;
   min-height: 26px;
-  margin: 0 0 8px;
+  margin: 0;
   padding: 0 10px;
   border: 1px solid #bfdbfe;
   border-radius: 7px;
@@ -19147,6 +19163,12 @@
   border-color: #86efac;
   background: #ecfdf5;
   color: #047857;
+}
+
+.create-assessment-blueprint-validation.is-remaining {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #b45309;
 }
 
 .create-assessment-blueprint-validation.is-invalid {
@@ -19192,17 +19214,18 @@
 
 .create-assessment-blueprint-mark-range {
   display: inline-flex;
-  min-width: 54px;
-  min-height: 24px;
+  width: 74px;
+  height: 26px;
   align-items: center;
   justify-content: center;
-  padding: 0 8px;
-  border: 1px solid #d7e9e4;
+  padding: 0 10px;
+  border: 1px solid #bfdbfe;
   border-radius: 7px;
-  background: #f8fbfa;
-  color: #526878;
-  font-size: 0.7rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.72rem;
   font-weight: 800;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -32817,6 +32840,10 @@
   color: #dceafa;
 }
 
+.theme-dark .create-assessment-blueprint-table tbody tr:hover {
+  background: rgba(20, 184, 166, 0.12);
+}
+
 .theme-dark .create-assessment-blueprint-footer-row {
   border-top-color: rgba(45, 212, 191, 0.34);
   background: rgba(30, 58, 138, 0.28);
@@ -32859,6 +32886,12 @@
   color: #86efac;
 }
 
+.theme-dark .create-assessment-blueprint-validation.is-remaining {
+  border-color: rgba(251, 191, 36, 0.46);
+  background: rgba(120, 53, 15, 0.26);
+  color: #fde68a;
+}
+
 .theme-dark .create-assessment-blueprint-validation.is-invalid {
   border-color: rgba(251, 113, 133, 0.5);
   background: rgba(127, 29, 29, 0.28);
@@ -32889,9 +32922,9 @@
 }
 
 .theme-dark .create-assessment-blueprint-mark-range {
-  border-color: rgba(148, 163, 184, 0.32);
-  background: rgba(15, 23, 42, 0.58);
-  color: #cbd5e1;
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(30, 58, 138, 0.24);
+  color: #bfdbfe;
 }
 
 .theme-dark .create-assessment-blueprint-delete-btn {

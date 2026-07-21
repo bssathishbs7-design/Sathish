@@ -1529,6 +1529,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
   })
   const blueprintDistributionTotal = blueprintTableRows.reduce((total, row) => total + (Number(row.distributionLabel) || 0), 0)
+  const blueprintDistributionRemaining = blueprintRoundedTotalMark - blueprintDistributionTotal
   const hasBlueprintDistribution = blueprintTableRows.some((row) => String(row.distributionLabel).trim())
   const blueprintDistributionMatchesTotal = Boolean(
     blueprintTableRows.length
@@ -1542,6 +1543,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     && hasBlueprintDistribution
     && !blueprintDistributionMatchesTotal
   )
+  const blueprintDistributionStatusMessage = blueprintDistributionMatchesTotal
+    ? `Distribution complete: ${blueprintRoundedTotalMark} / ${blueprintRoundedTotalMark}`
+    : blueprintDistributionRemaining > 0
+      ? `${blueprintDistributionRemaining} marks remaining`
+      : `Reduce ${Math.abs(blueprintDistributionRemaining)} marks`
+  const blueprintDistributionStatusClass = blueprintDistributionMatchesTotal
+    ? 'is-valid'
+    : blueprintDistributionRemaining > 0
+      ? 'is-remaining'
+      : 'is-invalid'
   const updateBlueprintSubject = (subject) => {
     setBlueprintDraft((current) => ({
       ...current,
@@ -4484,17 +4495,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                 </label>
               </div>
 
-              <div className="create-assessment-blueprint-section-label">
-                <ListChecks size={14} strokeWidth={2.3} />
-                <span>Distribution of weightage of the selected topic</span>
-              </div>
-              {blueprintTableRows.length && blueprintTotalMarkNumber ? (
-                <div className={`create-assessment-blueprint-validation ${blueprintDistributionMatchesTotal ? 'is-valid' : 'is-invalid'}`}>
-                  {blueprintDistributionMatchesTotal
-                    ? `Distribution matches total mark ${blueprintRoundedTotalMark}.`
-                    : `Distribution total ${blueprintDistributionTotal} must equal total mark ${blueprintRoundedTotalMark}.`}
+              <div className="create-assessment-blueprint-section-row">
+                <div className="create-assessment-blueprint-section-label">
+                  <ListChecks size={14} strokeWidth={2.3} />
+                  <span>Distribution of weightage of the selected topic</span>
                 </div>
-              ) : null}
+                {blueprintTableRows.length && blueprintTotalMarkNumber ? (
+                  <div className={`create-assessment-blueprint-validation ${blueprintDistributionStatusClass}`}>
+                    {blueprintDistributionStatusMessage}
+                  </div>
+                ) : null}
+              </div>
 
               <div
                 className="create-assessment-blueprint-table-wrap"
@@ -4517,7 +4528,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     <th>Correlation</th>
                     <th>Weightage</th>
                     <th>Distribution</th>
-                    <th>Mark Range</th>
+                    <th>Suggestion Marks</th>
                     <th>Action</th>
                   </tr>
                 </thead>
