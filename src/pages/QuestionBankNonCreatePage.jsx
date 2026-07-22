@@ -167,9 +167,11 @@ const MEDSY_QUESTION_BANK_SEED_COUNTS = {
   mcq: 50,
   saq: 50,
   laq: 50,
+  categorySaq: 10,
 }
 
 const MEDSY_OPTION_DISTRACTORS = ['Terminology Confusion', 'False Association', 'Misclassification']
+const MEDSY_CATEGORY_SAQ_TYPES = ['Direct', 'Reasoning', 'Aetcom', 'Application']
 const MEDSY_DESCRIPTIVE_INSIDE_PROMPTS = [
   'State the key definition and one essential feature.',
   'Explain the underlying mechanism in sequence.',
@@ -304,10 +306,48 @@ const createMedsyDescriptiveSampleQuestions = (type, offset, idOffset, marks) =>
   })
 }
 
+const createMedsyCategorySaqSampleQuestions = () => (
+  getMedsySeedRows(150, MEDSY_QUESTION_BANK_SEED_COUNTS.categorySaq).map((row, index) => {
+    const questionNumber = 150 + index + 1
+    const questionCategory = MEDSY_CATEGORY_SAQ_TYPES[index % MEDSY_CATEGORY_SAQ_TYPES.length]
+    const meta = {
+      ...getMedsySeedMeta(row, 150 + index),
+      questionCategory,
+      cognitiveLevel: questionCategory === 'Reasoning' ? 'Analyze' : questionCategory === 'Application' ? 'Apply' : 'Understand',
+      cognitiveFunction: questionCategory === 'Aetcom' ? 'Communication' : questionCategory === 'Application' ? 'Clinical Reasoning' : 'Concept Explanation',
+      skillFocus: questionCategory === 'Aetcom' ? 'Professional communication' : questionCategory === 'Reasoning' ? 'Structured explanation' : 'Identification',
+      thinkingLevel: questionCategory === 'Direct' ? 'LoT' : 'HoT',
+      difficultyLevel: questionCategory === 'Application' ? 'L2' : 'L1',
+    }
+
+    const categoryStem = {
+      Direct: `Describe the key features of ${row.name}.`,
+      Reasoning: `Explain the reasoning behind ${row.name} in relation to ${row.topic || 'the selected topic'}.`,
+      Aetcom: `Discuss the communication or ethical consideration related to ${row.name}.`,
+      Application: `Apply ${row.name} to a relevant practical or clinical context.`,
+    }[questionCategory]
+
+    return {
+      id: `medsy-uploaded-sample-${questionNumber}`,
+      type: 'Desc Short Answer Questions (SAQs)',
+      authorName: 'Medsy',
+      questionText: categoryStem,
+      marks: '8',
+      ...meta,
+      options: [],
+      correctOptionIds: [],
+      descriptiveSections: [],
+      answerKey: `Answer & Explanation: ${categoryStem} Include key facts, relevant context, and a concise conclusion.`,
+      questionBankSentAt: new Date(`2026-05-22T12:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
+    }
+  })
+)
+
 const createMedsySampleQuestions = () => [
   ...createMedsyMcqSampleQuestions(),
   ...createMedsyDescriptiveSampleQuestions('Desc Short Answer Questions (SAQs)', 50, 50, 8),
   ...createMedsyDescriptiveSampleQuestions('Desc Long Answer Questions (LAQs)', 100, 100, 10),
+  ...createMedsyCategorySaqSampleQuestions(),
 ]
 
 const cleanQuestionBankItems = (items) => items

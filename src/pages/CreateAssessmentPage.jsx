@@ -1380,6 +1380,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [isActionQuestionTypePickerOpen, setIsActionQuestionTypePickerOpen] = useState(false)
   const [isActionDescriptiveTypePickerOpen, setIsActionDescriptiveTypePickerOpen] = useState(false)
   const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(false)
+  const [activeBlueprintTab, setActiveBlueprintTab] = useState('distribution')
   const [blueprintDraft, setBlueprintDraft] = useState({
     subject: '',
     topics: [],
@@ -1564,6 +1565,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     : blueprintDistributionRemaining > 0
       ? 'is-remaining'
       : 'is-invalid'
+  const blueprintCognitionLotMarks = blueprintRoundedTotalMark ? Math.round(blueprintRoundedTotalMark * 0.6) : 0
+  const blueprintCognitionHotMarks = blueprintRoundedTotalMark ? blueprintRoundedTotalMark - blueprintCognitionLotMarks : 0
+  const blueprintSpecificationRows = blueprintTableRows.map((row) => ({
+    key: row.key,
+    code: row.code,
+    name: row.name,
+    total: Number(row.distributionLabel) || 0,
+  }))
+  const blueprintSpecificationTotal = blueprintDistributionTotal || blueprintRoundedTotalMark || 0
   const updateBlueprintSubject = (subject) => {
     setBlueprintDraft((current) => ({
       ...current,
@@ -4451,175 +4461,324 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         {isBlueprintEnabled ? (
           <section className="create-assessment-blueprint-panel" aria-label="Blueprint configuration">
             <header className="create-assessment-blueprint-head">
-              <span className="create-assessment-blueprint-head-icon">
-                <SlidersHorizontal size={17} strokeWidth={2.3} />
-              </span>
-              <span>
-                <strong>Blueprint</strong>
-                <small>Plan subject, topic, competency, and mark distribution.</small>
-              </span>
-            </header>
-            <div className="create-assessment-blueprint-table-card">
-              <div className="create-assessment-blueprint-grid">
-                <BlueprintSingleSelect
-                  label="Subject"
-                  required
-                  placeholder="Choose subject"
-                  options={blueprintSubjectOptions}
-                  value={blueprintDraft.subject}
-                  onChange={updateBlueprintSubject}
-                />
-
-                <BlueprintMultiSelect
-                  label="Topics"
-                  required
-                  disabled={!blueprintDraft.subject}
-                  placeholder={blueprintDraft.subject ? 'Search and select topics' : 'Select subject first'}
-                  options={blueprintTopicOptions}
-                  selected={blueprintDraft.topics}
-                  onChange={updateBlueprintTopics}
-                  getOptionLabel={(option) => option.topicNumber ? `Topic ${option.topicNumber} ${option.label}` : option.label}
-                  getSummaryLabel={(option) => option.label}
-                />
-
-                <BlueprintMultiSelect
-                  label="Competency"
-                  required
-                  disabled={!blueprintDraft.topics.length}
-                  placeholder={blueprintDraft.topics.length ? 'Search and select competency' : 'Select topics first'}
-                  options={blueprintCompetencyOptions}
-                  selected={blueprintDraft.competencies}
-                  onChange={updateBlueprintCompetencies}
-                  getSummaryLabel={(option) => option.row?.code || option.label}
-                />
-
-                <label className="create-assessment-blueprint-field">
-                  <span>
-                    Enter Total Mark
-                    <em className="assessment-create-required-mark">*</em>
-                  </span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={blueprintDraft.totalMark}
-                    onChange={(event) => setBlueprintDraft((current) => ({ ...current, totalMark: event.target.value }))}
-                    placeholder="Total mark"
-                  />
-                </label>
-              </div>
-
-              <div className="create-assessment-blueprint-section-row">
-                <div className="create-assessment-blueprint-section-label">
+              <div className="create-assessment-blueprint-tabs" role="tablist" aria-label="Blueprint sections">
+                <button
+                  type="button"
+                  className={activeBlueprintTab === 'distribution' ? 'is-active' : ''}
+                  onClick={() => setActiveBlueprintTab('distribution')}
+                  role="tab"
+                  aria-selected={activeBlueprintTab === 'distribution'}
+                >
                   <ListChecks size={14} strokeWidth={2.3} />
-                  <span>Distribution of weightage of the selected topic</span>
-                </div>
-                {blueprintTableRows.length && blueprintTotalMarkNumber ? (
-                  <div className={`create-assessment-blueprint-validation ${blueprintDistributionStatusClass}`}>
-                    {blueprintDistributionStatusMessage}
-                  </div>
-                ) : null}
+                  <span>Distribution</span>
+                </button>
+                <button
+                  type="button"
+                  className={activeBlueprintTab === 'questionSpecifications' ? 'is-active' : ''}
+                  onClick={() => setActiveBlueprintTab('questionSpecifications')}
+                  role="tab"
+                  aria-selected={activeBlueprintTab === 'questionSpecifications'}
+                >
+                  <FilePenLine size={14} strokeWidth={2.3} />
+                  <span>Specifications</span>
+                </button>
               </div>
+            </header>
+            <div className={`create-assessment-blueprint-table-card is-${activeBlueprintTab}`}>
+              {activeBlueprintTab === 'distribution' ? (
+                <>
+                  <div className="create-assessment-blueprint-grid">
+                    <BlueprintSingleSelect
+                      label="Subject"
+                      required
+                      placeholder="Choose subject"
+                      options={blueprintSubjectOptions}
+                      value={blueprintDraft.subject}
+                      onChange={updateBlueprintSubject}
+                    />
 
-              <div
-                className="create-assessment-blueprint-table-wrap"
-                style={{ '--blueprint-visible-rows': Math.min(Math.max(blueprintTableRows.length || 4, 3), 7) }}
-              >
-                <table className="create-assessment-blueprint-table">
-                <colgroup>
-                  <col className="is-code" />
-                  <col className="is-type" />
-                  <col className="is-correlation" />
-                  <col className="is-weightage" />
-                  <col className="is-distribution" />
-                  <col className="is-mark-range" />
-                  <col className="is-action" />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Type</th>
-                    <th>Correlation</th>
-                    <th>Weightage</th>
-                    <th>Distribution</th>
-                    <th>Suggestion Marks</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {blueprintTableRows.length ? blueprintTableRows.map((row) => (
-                    <tr key={row.key}>
-                      <td>
-                        <span className="create-assessment-blueprint-code">
-                          {row.code}
-                          <span
-                            className="create-assessment-blueprint-code-info"
-                            tabIndex={0}
-                            role="button"
-                            aria-label={`View competency name for ${row.code}`}
-                            data-tooltip={row.name}
-                          >
-                            <Info size={10} strokeWidth={2.3} />
-                          </span>
-                        </span>
-                      </td>
-                      <td>
-                        {row.typeLabel ? (
-                          <span className={`create-assessment-blueprint-type-badge ${row.typeLabel === 'Clinical' ? 'is-clinical' : 'is-non-clinical'}`}>
-                            {row.typeLabel}
-                          </span>
-                        ) : '-'}
-                      </td>
-                      <td>{row.correlationLevel || '-'}</td>
-                      <td>{row.weightageLabel}</td>
-                      <td>
-                        <input
-                          className={`create-assessment-blueprint-distribution-input ${blueprintTotalMarkNumber ? (blueprintDistributionMatchesTotal ? 'is-valid' : 'is-invalid') : ''}`}
-                          value={row.distributionLabel}
-                          onChange={(event) => updateBlueprintDistribution(row.key, event.target.value)}
-                          placeholder="-"
-                          inputMode="numeric"
-                          aria-label={`Distribution marks for ${row.code}`}
-                        />
-                      </td>
-                      <td>
-                        <span className="create-assessment-blueprint-mark-range">
-                          {row.markRangeLabel || '-'}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="create-assessment-blueprint-delete-btn"
-                          aria-label={`Remove ${row.code} from blueprint`}
-                          onClick={() => removeBlueprintCompetency(row.key)}
-                        >
-                          <Trash2 size={14} strokeWidth={2.2} />
-                        </button>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={7} className="create-assessment-blueprint-empty">
-                        Select subject, topics, competency, and total mark to view blueprint distribution.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-                </table>
-                {blueprintTableRows.length ? (
-                  <div className="create-assessment-blueprint-footer-row">
-                    <span />
-                    <span />
-                    <strong>{blueprintCorrelationTotal || '-'}</strong>
-                    <strong>{blueprintCorrelationTotal ? '1.00' : '-'}</strong>
-                    <strong className={blueprintDistributionHasError ? 'is-invalid' : blueprintDistributionMatchesTotal ? 'is-valid' : ''}>
-                      {blueprintRoundedTotalMark || '-'}
-                    </strong>
-                    <span />
-                    <span />
+                    <BlueprintMultiSelect
+                      label="Topics"
+                      required
+                      disabled={!blueprintDraft.subject}
+                      placeholder={blueprintDraft.subject ? 'Search and select topics' : 'Select subject first'}
+                      options={blueprintTopicOptions}
+                      selected={blueprintDraft.topics}
+                      onChange={updateBlueprintTopics}
+                      getOptionLabel={(option) => option.topicNumber ? `Topic ${option.topicNumber} ${option.label}` : option.label}
+                      getSummaryLabel={(option) => option.label}
+                    />
+
+                    <BlueprintMultiSelect
+                      label="Competency"
+                      required
+                      disabled={!blueprintDraft.topics.length}
+                      placeholder={blueprintDraft.topics.length ? 'Search and select competency' : 'Select topics first'}
+                      options={blueprintCompetencyOptions}
+                      selected={blueprintDraft.competencies}
+                      onChange={updateBlueprintCompetencies}
+                      getSummaryLabel={(option) => option.row?.code || option.label}
+                    />
+
+                    <label className="create-assessment-blueprint-field">
+                      <span>
+                        Enter Total Mark
+                        <em className="assessment-create-required-mark">*</em>
+                      </span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={blueprintDraft.totalMark}
+                        onChange={(event) => setBlueprintDraft((current) => ({ ...current, totalMark: event.target.value }))}
+                        placeholder="Total mark"
+                      />
+                    </label>
                   </div>
-                ) : null}
-              </div>
+
+                  <div className="create-assessment-blueprint-section-row">
+                    <div className="create-assessment-blueprint-section-label">
+                      <ListChecks size={14} strokeWidth={2.3} />
+                      <span>Distribution of weightage of the selected topic</span>
+                    </div>
+                    {blueprintTableRows.length && blueprintTotalMarkNumber ? (
+                      <div className={`create-assessment-blueprint-validation ${blueprintDistributionStatusClass}`}>
+                        {blueprintDistributionStatusMessage}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div
+                    className="create-assessment-blueprint-table-wrap"
+                    style={{ '--blueprint-visible-rows': Math.min(Math.max(blueprintTableRows.length || 4, 3), 7) }}
+                  >
+                    <table className="create-assessment-blueprint-table">
+                    <colgroup>
+                      <col className="is-code" />
+                      <col className="is-type" />
+                      <col className="is-correlation" />
+                      <col className="is-weightage" />
+                      <col className="is-distribution" />
+                      <col className="is-mark-range" />
+                      <col className="is-action" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Type</th>
+                        <th>Correlation</th>
+                        <th>Weightage</th>
+                        <th>Distribution</th>
+                        <th>Suggestion Marks</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {blueprintTableRows.length ? blueprintTableRows.map((row) => (
+                        <tr key={row.key}>
+                          <td>
+                            <span className="create-assessment-blueprint-code">
+                              {row.code}
+                              <span
+                                className="create-assessment-blueprint-code-info"
+                                tabIndex={0}
+                                role="button"
+                                aria-label={`View competency name for ${row.code}`}
+                                data-tooltip={row.name}
+                              >
+                                <Info size={10} strokeWidth={2.3} />
+                              </span>
+                            </span>
+                          </td>
+                          <td>
+                            {row.typeLabel ? (
+                              <span className={`create-assessment-blueprint-type-badge ${row.typeLabel === 'Clinical' ? 'is-clinical' : 'is-non-clinical'}`}>
+                                {row.typeLabel}
+                              </span>
+                            ) : '-'}
+                          </td>
+                          <td>{row.correlationLevel || '-'}</td>
+                          <td>{row.weightageLabel}</td>
+                          <td>
+                            <input
+                              className={`create-assessment-blueprint-distribution-input ${blueprintTotalMarkNumber ? (blueprintDistributionMatchesTotal ? 'is-valid' : 'is-invalid') : ''}`}
+                              value={row.distributionLabel}
+                              onChange={(event) => updateBlueprintDistribution(row.key, event.target.value)}
+                              placeholder="-"
+                              inputMode="numeric"
+                              aria-label={`Distribution marks for ${row.code}`}
+                            />
+                          </td>
+                          <td>
+                            <span className="create-assessment-blueprint-mark-range">
+                              {row.markRangeLabel || '-'}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="create-assessment-blueprint-delete-btn"
+                              aria-label={`Remove ${row.code} from blueprint`}
+                              onClick={() => removeBlueprintCompetency(row.key)}
+                            >
+                              <Trash2 size={14} strokeWidth={2.2} />
+                            </button>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={7} className="create-assessment-blueprint-empty">
+                            Select subject, topics, competency, and total mark to view blueprint distribution.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                    </table>
+                    {blueprintTableRows.length ? (
+                      <div className="create-assessment-blueprint-footer-row">
+                        <span />
+                        <span />
+                        <strong>{blueprintCorrelationTotal || '-'}</strong>
+                        <strong>{blueprintCorrelationTotal ? '1.00' : '-'}</strong>
+                        <strong className={blueprintDistributionHasError ? 'is-invalid' : blueprintDistributionMatchesTotal ? 'is-valid' : ''}>
+                          {blueprintRoundedTotalMark || '-'}
+                        </strong>
+                        <span />
+                        <span />
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <div className="create-assessment-blueprint-specifications">
+                  <section className="create-assessment-blueprint-spec-card is-type-summary" aria-label="Type of Questions">
+                    <h3>Type of Questions</h3>
+                    <table className="create-assessment-blueprint-spec-table">
+                      <thead>
+                        <tr>
+                          <th>Question Type</th>
+                          <th>Per Q. Marks</th>
+                          <th>No. of Qs</th>
+                          <th>Total Marks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {['MCQs', 'LAQs', 'SAQs (Direct)', 'SAQs (Reasoning)', 'SAQs (Aetcom)', 'SAQs (Application)'].map((label) => (
+                          <tr key={label}>
+                            <td>{label}</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                          </tr>
+                        ))}
+                        <tr className="is-total">
+                          <td>Total</td>
+                          <td>-</td>
+                          <td>-</td>
+                          <td>{blueprintSpecificationTotal || '-'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </section>
+
+                  <section className="create-assessment-blueprint-spec-card is-cognition-summary" aria-label="Level of Cognition">
+                    <h3>Level of Cognition</h3>
+                    <table className="create-assessment-blueprint-spec-table">
+                      <thead>
+                        <tr>
+                          <th>Level</th>
+                          <th>Weightage</th>
+                          <th>Marks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>LoT</td>
+                          <td>60%</td>
+                          <td>{blueprintCognitionLotMarks || '-'}</td>
+                        </tr>
+                        <tr>
+                          <td>HoT</td>
+                          <td>40%</td>
+                          <td>{blueprintCognitionHotMarks || '-'}</td>
+                        </tr>
+                        <tr className="is-total">
+                          <td>Total</td>
+                          <td>100%</td>
+                          <td>{blueprintRoundedTotalMark || '-'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </section>
+
+                  <section className="create-assessment-blueprint-spec-card is-test-spec-summary" aria-label="Table of Test Specifications">
+                    <h3>Table of Test Specifications</h3>
+                    <table className="create-assessment-blueprint-spec-table is-test-spec">
+                      <thead>
+                        <tr>
+                          <th rowSpan={2}>Competency</th>
+                          <th colSpan={2}>MCQ</th>
+                          <th colSpan={2}>LAQ</th>
+                          <th colSpan={2}>SAQ</th>
+                          <th rowSpan={2}>Total</th>
+                        </tr>
+                        <tr>
+                          <th>LoT</th>
+                          <th>HoT</th>
+                          <th>LoT</th>
+                          <th>HoT</th>
+                          <th>LoT</th>
+                          <th>HoT</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {blueprintSpecificationRows.length ? blueprintSpecificationRows.map((row) => (
+                          <tr key={row.key}>
+                            <td>
+                              <span
+                                className="create-assessment-blueprint-code-badge"
+                                data-tooltip={row.name}
+                                aria-label={row.name}
+                                tabIndex={0}
+                              >
+                                {row.code}
+                                <Info size={12} strokeWidth={2.4} />
+                              </span>
+                            </td>
+                            {['mcq-lot', 'mcq-hot', 'laq-lot', 'laq-hot', 'saq-lot', 'saq-hot'].map((field) => (
+                              <td key={`${row.key}-${field}`}>
+                                <input
+                                  className="create-assessment-blueprint-spec-number"
+                                  type="number"
+                                  min="0"
+                                  inputMode="numeric"
+                                  aria-label={`${row.code} ${field.replace('-', ' ')}`}
+                                />
+                              </td>
+                            ))}
+                            <td>{row.total || '-'}</td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={8} className="create-assessment-blueprint-spec-empty">
+                              Select distribution rows to build test specifications.
+                            </td>
+                          </tr>
+                        )}
+                        <tr className="is-total">
+                          <td>Total</td>
+                          <td>-</td>
+                          <td>-</td>
+                          <td>-</td>
+                          <td>-</td>
+                          <td>-</td>
+                          <td>-</td>
+                          <td>{blueprintSpecificationTotal || '-'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </section>
+                </div>
+              )}
             </div>
           </section>
         ) : null}
