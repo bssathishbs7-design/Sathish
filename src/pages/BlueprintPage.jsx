@@ -183,8 +183,22 @@ export default function BlueprintPage() {
     }))
   }
 
-  const updateManualRating = (key, value) => {
+  const isRatingInRange = (value, min, max) => {
+    if (!/^[1-9]$/.test(String(value || ''))) {
+      return false
+    }
+
+    const numericValue = Number(value)
+    return numericValue >= min && numericValue <= max
+  }
+
+  const updateManualRating = (key, value, rowType) => {
     if (!/^[1-9]?$/.test(value)) {
+      return
+    }
+
+    const maxRating = rowType === 'Non-Clinical' ? 3 : 9
+    if (value && Number(value) > maxRating) {
       return
     }
 
@@ -215,7 +229,9 @@ export default function BlueprintPage() {
         type,
         impact: type !== 'Clinical' ? '' : current[key]?.impact,
         frequency: type !== 'Clinical' ? '' : current[key]?.frequency,
-        rating: type === 'N/A' ? '' : current[key]?.rating,
+        rating: type === 'N/A' || (type === 'Non-Clinical' && Number(current[key]?.rating) > 3)
+          ? ''
+          : current[key]?.rating,
       },
     }))
   }
@@ -279,18 +295,22 @@ export default function BlueprintPage() {
     }
 
     if (rowType === 'Non-Clinical') {
-      return Boolean(rating)
+      return isRatingInRange(rating, 1, 3)
     }
 
     if (values?.rating) {
-      return true
+      return isRatingInRange(values.rating, 1, 9)
     }
 
     if (usesImpactFrequency) {
-      return Boolean(values?.impact && values?.frequency && rating)
+      return Boolean(
+        isRatingInRange(values?.impact, 1, 3)
+        && isRatingInRange(values?.frequency, 1, 3)
+        && isRatingInRange(rating, 1, 9),
+      )
     }
 
-    return Boolean(rating)
+    return isRatingInRange(rating, 1, 9)
   }
 
   const completedRowKeys = filteredCompetencies
@@ -1199,9 +1219,10 @@ export default function BlueprintPage() {
                                     type="text"
                                     inputMode="numeric"
                                     aria-label={`Rating for ${row.code}`}
+                                    title={rowType === 'Non-Clinical' ? 'Enter 1, 2, or 3' : 'Enter 1 to 9'}
                                     className="corelation-rating-score-input"
                                     value={ratingValue}
-                                    onChange={(event) => updateManualRating(competencyKey, event.target.value)}
+                                    onChange={(event) => updateManualRating(competencyKey, event.target.value, rowType)}
                                     placeholder="-"
                                   />
                                 )}
