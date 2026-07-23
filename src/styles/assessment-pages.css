@@ -19112,7 +19112,7 @@
   grid-area: test;
   align-self: start;
   grid-template-rows: auto minmax(0, 1fr);
-  height: min(var(--blueprint-spec-left-height, 450px), calc(100svh - 260px));
+  height: var(--blueprint-spec-left-height, 450px);
   min-height: 360px;
 }
 
