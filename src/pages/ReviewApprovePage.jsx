@@ -1,19 +1,11 @@
 import { useMemo, useState } from 'react'
 import {
-  Activity,
-  ArrowUpDown,
   BadgeCheck,
-  CalendarClock,
-  CheckCircle2,
   Eye,
-  FolderKanban,
-  GraduationCap,
-  Info,
-  LayoutGrid,
-  Rows3,
   Search,
-  Users,
+  SlidersHorizontal,
 } from 'lucide-react'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import '../styles/review-approve.css'
 
 const getDecisionTone = (value = '') => {
@@ -82,6 +74,35 @@ const getActivityMeta = (row) => ({
 
 const isQuestionBankRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'question bank'
 const isAssessmentRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'assessment'
+const isEvaluationRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'evaluation'
+
+const formatCountValue = (value, fallback = 'Not set') => {
+  const number = Number(value)
+  return Number.isFinite(number) && number > 0 ? String(number) : fallback
+}
+
+const formatCompactValue = (value, fallback = 'Not set') => {
+  if (Array.isArray(value)) {
+    const values = value.map((item) => String(item ?? '').trim()).filter(Boolean)
+    if (!values.length) return fallback
+    if (values.length === 1) return values[0]
+    return `${values[0]} +${values.length - 1}`
+  }
+
+  const text = String(value ?? '').trim()
+  return text || fallback
+}
+
+const getUniqueQuestionValue = (row, key, fallback = 'Not set') => {
+  const values = [...new Set((row.questionRows ?? [])
+    .flatMap((question) => Array.isArray(question?.[key]) ? question[key] : [question?.[key]])
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean))]
+
+  if (!values.length) return fallback
+  if (values.length === 1) return values[0]
+  return `${values[0]} +${values.length - 1}`
+}
 
 const getQuestionEditCount = (question) => {
   const explicitCount = Number(question?.editCount ?? question?.revisionCount ?? 0)
@@ -370,10 +391,9 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
 }
 
 export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onViewApproval }) {
-  const [activeInfoId, setActiveInfoId] = useState('')
-  const [viewMode, setViewMode] = useState('card')
+  const [activeModuleTab, setActiveModuleTab] = useState('assessment')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedType, setSelectedType] = useState('')
+  const [isReviewFilterOpen, setIsReviewFilterOpen] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState('')
   const [sortKey, setSortKey] = useState('receivedAt')
   const [sortDirection, setSortDirection] = useState('desc')
@@ -392,10 +412,29 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
     return [...activityRows.values()]
   }, [approvalQueueRows])
 
-  const typeOptions = useMemo(
-    () => [...new Set(reviewRows.map((row) => row.activityType).filter(Boolean))],
-    [reviewRows],
-  )
+  const getReviewModuleKey = (row) => {
+    const type = String(row.activityType ?? '').trim().toLowerCase()
+    const decision = String(getDisplayDecision(row)).trim().toLowerCase()
+
+    if (decision.includes('published')) return 'published'
+    if (type.includes('question bank')) return 'questionBank'
+    if (type.includes('assessment')) return 'assessment'
+    if (type.includes('evaluation')) return 'evaluation'
+    if (type.includes('skill')) return 'evaluation'
+    if (type.includes('interpretation') || type.includes('ospe') || type.includes('osce') || type.includes('activity')) return 'evaluation'
+    if (type.includes('result')) return 'results'
+
+    return 'evaluation'
+  }
+
+  const moduleTabs = [
+    { key: 'questionBank', label: 'Question Bank' },
+    { key: 'assessment', label: 'Assessment' },
+    { key: 'evaluation', label: 'Skill Assessment' },
+  ].map((tab) => ({
+    ...tab,
+    count: reviewRows.filter((row) => getReviewModuleKey(row) === tab.key).length,
+  }))
 
   const filteredRows = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase()
@@ -423,12 +462,12 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
         decision,
       ].some((value) => String(value ?? '').toLowerCase().includes(needle))
 
-      const matchesType = !selectedType || row.activityType === selectedType
+      const matchesModule = getReviewModuleKey(row) === activeModuleTab
       const matchesStatus = !selectedStatus || getDecisionTone(decision) === selectedStatus
 
-      return matchesSearch && matchesType && matchesStatus
+      return matchesSearch && matchesModule && matchesStatus
     })
-  }, [reviewRows, searchQuery, selectedStatus, selectedType])
+  }, [activeModuleTab, reviewRows, searchQuery, selectedStatus])
 
   const sortedRows = useMemo(() => {
     const rows = [...filteredRows]
@@ -457,21 +496,67 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
     return rows
   }, [filteredRows, sortDirection, sortKey])
 
-  const metrics = useMemo(() => ({
-    total: reviewRows.length,
-    pending: reviewRows.filter((row) => getDecisionTone(row.approvalStatus ?? row.status ?? row.resultStatus) === 'is-pending').length,
-    completed: reviewRows.filter((row) => getDecisionTone(row.approvalStatus ?? row.status ?? row.resultStatus) === 'is-completed').length,
-    years: new Set(reviewRows.map((row) => getActivityMeta(row).year).filter(Boolean)).size,
-    rejected: reviewRows.filter((row) => getDecisionTone(row.approvalStatus ?? row.status ?? row.resultStatus) === 'is-remedial').length,
-  }), [reviewRows])
+  const getCompactRowTitle = (row) => row.assessmentName ?? row.activityName ?? (
+    isQuestionBankRow(row) ? 'Question Bank Review' : 'Untitled Activity'
+  )
 
-  const metricItems = [
-    { label: 'Total', value: metrics.total, icon: BadgeCheck, tone: 'is-total' },
-    { label: 'Pending', value: metrics.pending, icon: Activity, tone: 'is-pending' },
-    { label: 'Completed', value: metrics.completed, icon: CheckCircle2, tone: 'is-complete' },
-    { label: 'Years', value: metrics.years, icon: GraduationCap, tone: 'is-years' },
-    { label: 'Rejected', value: metrics.rejected, icon: Info, tone: 'is-rejected' },
-  ]
+  const getCompactRowSummary = (row) => {
+    if (isQuestionBankRow(row)) {
+      const totalQuestions = Number(row.totalQuestions ?? row.questionRows?.length ?? row.totalStudents ?? 0) || 0
+      return `${totalQuestions} question${totalQuestions === 1 ? '' : 's'} • ${getQuestionTypeSummaryText(row)}`
+    }
+
+    if (isAssessmentRow(row)) {
+      return `${row.examCategory ?? 'Assessment'} • ${row.assessmentMode ?? 'Mode not set'} • ${row.examType ?? 'Type not set'}`
+    }
+
+    const meta = getActivityMeta(row)
+    return `${meta.students} students • ${meta.year} • ${meta.sgt}`
+  }
+
+  const getCompactCardDetails = (row, { receivedAt, sender, meta }) => {
+    if (isQuestionBankRow(row)) {
+      const totalQuestions = Number(row.totalQuestions ?? row.questionRows?.length ?? row.totalStudents ?? 0) || 0
+      const subject = formatCompactValue(row.subject ?? getUniqueQuestionValue(row, 'subject', meta.sgt))
+      const topic = formatCompactValue(row.topic ?? row.topics ?? getUniqueQuestionValue(row, 'topics', 'Topics not set'))
+
+      return [
+        { label: 'Question Types', value: getQuestionTypeSummaryText(row), hint: `${formatCountValue(totalQuestions, '0')} questions` },
+        { label: 'Subject', value: subject, hint: topic },
+        { label: 'Submitted By', value: sender.name, hint: sender.id },
+        { label: 'Received', value: receivedAt.date, hint: receivedAt.time || 'Time not set' },
+      ]
+    }
+
+    if (isAssessmentRow(row)) {
+      return [
+        { label: 'Marks', value: formatCountValue(row.totalMarks), hint: row.totalMarksDetail ?? 'Total marks' },
+        { label: 'Questions', value: formatCountValue(row.questionCount ?? row.totalQuestions ?? row.questionRows?.length, '0'), hint: row.examType ?? 'Question type not set' },
+        { label: 'Exam Setup', value: row.assessmentMode ?? 'Mode not set', hint: row.examCategory ?? 'Category not set' },
+        { label: 'Schedule', value: row.examDate ?? 'Date not set', hint: row.startTime ?? row.duration ?? 'Time not set' },
+      ]
+    }
+
+    if (isEvaluationRow(row)) {
+      const evaluated = Number(row.evaluatedCount ?? row.completedCount ?? row.completedStudents ?? 0) || 0
+      const totalStudents = Number(row.totalStudents ?? row.studentCount ?? meta.students ?? 0) || 0
+      const status = row.evaluationStatus ?? row.resultStatus ?? row.status ?? 'Status not set'
+
+      return [
+        { label: 'Evaluation', value: status, hint: `${evaluated} / ${totalStudents || 0} students` },
+        { label: 'Assessment', value: row.assessmentName ?? row.activityName ?? 'Untitled Assessment', hint: row.examType ?? 'Type not set' },
+        { label: 'Evaluator', value: sender.name, hint: sender.id },
+        { label: 'Received', value: receivedAt.date, hint: receivedAt.time || 'Time not set' },
+      ]
+    }
+
+    return [
+      { label: 'Received', value: receivedAt.date, hint: receivedAt.time || 'Time not set' },
+      { label: 'Submitted By', value: sender.name, hint: sender.id },
+      { label: 'Year', value: meta.year, hint: meta.sgt },
+      { label: 'Students', value: meta.students, hint: row.examType ?? 'Not set' },
+    ]
+  }
 
   const handleViewApproval = (row) => {
     onViewApproval?.(row)
@@ -491,160 +576,173 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
     setSortDirection(key === 'receivedAt' ? 'desc' : 'asc')
   }
 
+  const handleFilterSortChange = (value) => {
+    if (value === 'received-desc') {
+      setSortKey('receivedAt')
+      setSortDirection('desc')
+    } else if (value === 'received-asc') {
+      setSortKey('receivedAt')
+      setSortDirection('asc')
+    } else {
+      setSortKey('activityName')
+      setSortDirection('asc')
+    }
+  }
+
+  const activeFilterSort = sortKey === 'activityName'
+    ? 'item-asc'
+    : sortDirection === 'asc'
+      ? 'received-asc'
+      : 'received-desc'
+
   return (
-    <section className="vx-content eval-page review-approve-page">
-      <div className="eval-shell review-approve-shell">
-        <section className="eval-stats">
-          {metricItems.map((item) => {
-            const Icon = item.icon
+    <section className="vx-content eval-page review-approve-page assessment-page assessment-create-tracker-page">
+      <div className="eval-shell review-approve-shell assessment-page-shell assessment-create-page-shell">
+        <div className="assessment-create-page-header review-approve-breadcrumb-head">
+          <PageNavigationHeader items={['My Pages', 'Approval Queue']} />
+        </div>
 
-            return (
-              <article key={item.label} className={`eval-stat ${item.tone}`}>
-                <span className="eval-stat-icon"><Icon size={14} strokeWidth={2.1} /></span>
-                <div className="eval-stat-copy">
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </div>
-              </article>
-            )
-          })}
-        </section>
-
-        <section className="eval-toolbar review-approve-toolbar">
-          <div className="eval-toolbar-row">
-            <label className="eval-search">
-              <Search size={15} strokeWidth={2} />
-              <input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search activity, year, SGT"
-              />
-            </label>
-
-            <div className="eval-filters">
-              <label className="eval-filter-chip">
-                <span>Status</span>
-                <div className="forms-select-wrap">
-                  <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}>
-                    <option value="">All status</option>
-                    <option value="is-pending">Pending</option>
-                    <option value="is-completed">Completed</option>
-                    <option value="is-approved">Approved</option>
-                    <option value="is-remedial">Rejected</option>
-                  </select>
-                </div>
+        <section className="review-approve-board">
+          <section className="assessment-create-tabbar review-approve-module-tabbar" aria-label="Review module tabs">
+            <div className="assessment-create-tabs review-approve-module-tabs" role="tablist" aria-label="Review modules">
+              {moduleTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={`assessment-create-tab ${activeModuleTab === tab.key ? 'is-active' : ''}`.trim()}
+                  onClick={() => setActiveModuleTab(tab.key)}
+                  role="tab"
+                  aria-selected={activeModuleTab === tab.key}
+                >
+                  <span>{tab.label}</span>
+                  <strong>{tab.count}</strong>
+                </button>
+              ))}
+            </div>
+            <div className="review-approve-tab-actions">
+              <label className="eval-search">
+                <Search size={15} strokeWidth={2} />
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search review items..."
+                />
               </label>
 
-              <label className="eval-filter-chip">
-                <span>Type</span>
-                <div className="forms-select-wrap">
-                  <select value={selectedType} onChange={(event) => setSelectedType(event.target.value)}>
-                    <option value="">All types</option>
-                    {typeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                  </select>
-                </div>
-              </label>
+              <div className="review-approve-filter-wrap">
+                <button
+                  type="button"
+                  className={`review-approve-filter-btn ${isReviewFilterOpen ? 'is-open' : ''}`.trim()}
+                  onClick={() => setIsReviewFilterOpen((current) => !current)}
+                  aria-expanded={isReviewFilterOpen}
+                >
+                  <SlidersHorizontal size={15} strokeWidth={2.2} />
+                  Filter
+                </button>
+                {isReviewFilterOpen ? (
+                  <div className="review-approve-filter-popover" role="dialog" aria-label="Review filters">
+                    <label>
+                      <span>Module</span>
+                      <select value={activeModuleTab} onChange={(event) => setActiveModuleTab(event.target.value)}>
+                        {moduleTabs.map((tab) => (
+                          <option key={tab.key} value={tab.key}>{tab.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Review Status</span>
+                      <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}>
+                        <option value="">All Status</option>
+                        <option value="is-pending">Pending</option>
+                        <option value="is-completed">Completed</option>
+                        <option value="is-approved">Approved</option>
+                        <option value="is-remedial">Rejected</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Sort By</span>
+                      <select value={activeFilterSort} onChange={(event) => handleFilterSortChange(event.target.value)}>
+                        <option value="received-desc">Newest Received</option>
+                        <option value="received-asc">Oldest Received</option>
+                        <option value="item-asc">Item Name</option>
+                      </select>
+                    </label>
+                    <div className="review-approve-filter-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedStatus('')
+                          setActiveModuleTab('assessment')
+                          setSortKey('receivedAt')
+                          setSortDirection('desc')
+                        }}
+                      >
+                        Reset
+                      </button>
+                      <button type="button" className="is-primary" onClick={() => setIsReviewFilterOpen(false)}>
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
+          </section>
 
-            <div className="eval-view-switch" role="tablist" aria-label="Review approve layout">
-              <button type="button" className={`eval-view-btn ${viewMode === 'card' ? 'is-active' : ''}`} onClick={() => setViewMode('card')}>
-                <LayoutGrid size={14} strokeWidth={2} />
-                Cards
-              </button>
-              <button type="button" className={`eval-view-btn ${viewMode === 'table' ? 'is-active' : ''}`} onClick={() => setViewMode('table')}>
-                <Rows3 size={14} strokeWidth={2} />
-                Table
-              </button>
+          {sortedRows.length ? (
+            <section className="review-approve-content">
+            <div className="review-approve-compact-card-grid" role="list">
+              {sortedRows.map((row) => {
+                const decision = getDisplayDecision(row)
+                const receivedAt = formatReceivedDateTime(row.receivedAt ?? row.sentAt ?? row.submittedAt)
+                const sender = getSenderDetails(row)
+                const meta = getActivityMeta(row)
+                const moduleLabel = row.activityType ?? moduleTabs.find((tab) => tab.key === getReviewModuleKey(row))?.label ?? 'Activity'
+                const cardDetails = getCompactCardDetails(row, { receivedAt, sender, meta })
+
+                return (
+                  <article key={row.id} className="review-approve-compact-card" role="listitem">
+                    <div className="review-approve-compact-card-top">
+                      <div className="review-approve-compact-title">
+                        <strong>{getCompactRowTitle(row)}</strong>
+                        <span>{getCompactRowSummary(row)}</span>
+                      </div>
+                    </div>
+
+                    <div className="review-approve-compact-card-badges">
+                      <span className={`review-approve-type-chip ${getActivityToneClass(moduleLabel)}`}>{moduleLabel}</span>
+                      <span className={`review-approve-status-pill ${getDecisionTone(decision)}`}>{decision}</span>
+                    </div>
+
+                    <div className="review-approve-compact-card-details">
+                      {cardDetails.map((item) => (
+                        <span key={`${item.label}-${item.value}`}>
+                          <small>{item.label}</small>
+                          <strong>{item.value}</strong>
+                          <em>{item.hint}</em>
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="review-approve-compact-card-footer">
+                      <button type="button" className="tool-btn eval-view-btn review-approve-table-btn" onClick={() => handleViewApproval(row)}>
+                        <Eye size={13} strokeWidth={2} />
+                        View
+                      </button>
+                    </div>
+                  </article>
+                )
+              })}
             </div>
-          </div>
+            </section>
+          ) : (
+            <section className="eval-empty review-approve-empty">
+              <BadgeCheck size={22} strokeWidth={2} />
+              <strong>No approval records match these filters.</strong>
+              <p>Try a broader search or clear the active filters.</p>
+            </section>
+          )}
         </section>
-
-        {sortedRows.length ? (
-          <section className="review-approve-content">
-            {viewMode === 'card' ? (
-              <div className="eval-card-grid review-approve-card-grid">
-                {sortedRows.map((row) => (
-                  <ReviewApproveCard
-                    key={row.id}
-                    row={row}
-                    isInfoOpen={activeInfoId === row.id}
-                    onToggleInfo={() => setActiveInfoId((current) => (current === row.id ? '' : row.id))}
-                    onView={() => handleViewApproval(row)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="eval-table-wrap review-approve-table-wrap">
-                <table className="eval-table review-approve-table">
-                  <thead>
-                    <tr>
-                      <th>
-                        <button type="button" className={`eval-table-sort ${sortKey === 'activityName' ? 'is-active' : ''}`} onClick={() => handleSort('activityName')}>
-                          <span>Activity</span>
-                          <ArrowUpDown size={12} strokeWidth={2} />
-                        </button>
-                      </th>
-                      <th>Status</th>
-                      <th>
-                        <button type="button" className={`eval-table-sort ${sortKey === 'students' ? 'is-active' : ''}`} onClick={() => handleSort('students')}>
-                          <span>Students</span>
-                          <ArrowUpDown size={12} strokeWidth={2} />
-                        </button>
-                      </th>
-                      <th>Year</th>
-                      <th>SGT</th>
-                      <th>
-                        <button type="button" className={`eval-table-sort ${sortKey === 'receivedAt' ? 'is-active' : ''}`} onClick={() => handleSort('receivedAt')}>
-                          <span>Received</span>
-                          <ArrowUpDown size={12} strokeWidth={2} />
-                        </button>
-                      </th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedRows.map((row) => {
-                      const meta = getActivityMeta(row)
-                      const decision = getDisplayDecision(row)
-                      const receivedAt = formatReceivedDateTime(row.receivedAt ?? row.sentAt ?? row.submittedAt)
-
-                      return (
-                        <tr key={row.id}>
-                          <td>
-                            <div className="eval-table-title">
-                              <strong>{row.activityName ?? 'Untitled Activity'}</strong>
-                            </div>
-                          </td>
-                          <td>
-                            {shouldShowDecisionBadge(decision) ? (
-                              <span className={`review-approve-status-pill ${getDecisionTone(decision)}`}>{decision}</span>
-                            ) : null}
-                          </td>
-                          <td>{meta.students}</td>
-                          <td>{meta.year}</td>
-                          <td>{meta.sgt}</td>
-                          <td>{receivedAt.date}{receivedAt.time ? ` ${receivedAt.time}` : ''}</td>
-                          <td>
-                            <button type="button" className="tool-btn eval-view-btn review-approve-table-btn" onClick={() => handleViewApproval(row)}>
-                              <Eye size={13} strokeWidth={2} />
-                              View
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        ) : (
-          <section className="eval-empty review-approve-empty">
-            <BadgeCheck size={22} strokeWidth={2} />
-            <strong>No approval records match these filters.</strong>
-            <p>Try a broader search or clear the active filters.</p>
-          </section>
-        )}
       </div>
     </section>
   )
