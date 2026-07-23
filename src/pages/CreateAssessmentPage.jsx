@@ -1388,6 +1388,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     totalMark: '',
   })
   const [blueprintDistributionDraft, setBlueprintDistributionDraft] = useState({})
+  const [blueprintQuestionTypeDraft, setBlueprintQuestionTypeDraft] = useState({})
+  const [blueprintTestSpecificationDraft, setBlueprintTestSpecificationDraft] = useState({})
+  const [blueprintCognitionWeightage, setBlueprintCognitionWeightage] = useState({ lot: '60', hot: '40' })
+  const blueprintSpecLeftStackRef = useRef(null)
+  const [blueprintSpecLeftStackHeight, setBlueprintSpecLeftStackHeight] = useState(0)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
@@ -1421,6 +1426,35 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   useEffect(() => {
     savedQuestionsRef.current = savedQuestions
   }, [savedQuestions])
+
+  useEffect(() => {
+    if (activeBlueprintTab !== 'questionSpecifications') return undefined
+    const leftStack = blueprintSpecLeftStackRef.current
+    if (!leftStack) return undefined
+
+    let animationFrame = 0
+    const syncLeftStackHeight = () => {
+      cancelAnimationFrame(animationFrame)
+      animationFrame = requestAnimationFrame(() => {
+        setBlueprintSpecLeftStackHeight(Math.ceil(leftStack.getBoundingClientRect().height))
+      })
+    }
+
+    syncLeftStackHeight()
+
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(syncLeftStackHeight)
+      : null
+
+    observer?.observe(leftStack)
+    window.addEventListener('resize', syncLeftStackHeight)
+
+    return () => {
+      cancelAnimationFrame(animationFrame)
+      observer?.disconnect()
+      window.removeEventListener('resize', syncLeftStackHeight)
+    }
+  }, [activeBlueprintTab])
 
   const headerSetup = setupDraft ?? setup
   const detailItems = [headerSetup.collegeName, headerSetup.academicYear, headerSetup.examCategory, headerSetup.course, headerSetup.year].filter(Boolean)
@@ -1565,15 +1599,129 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     : blueprintDistributionRemaining > 0
       ? 'is-remaining'
       : 'is-invalid'
-  const blueprintCognitionLotMarks = blueprintRoundedTotalMark ? Math.round(blueprintRoundedTotalMark * 0.6) : 0
-  const blueprintCognitionHotMarks = blueprintRoundedTotalMark ? blueprintRoundedTotalMark - blueprintCognitionLotMarks : 0
+  const blueprintCognitionLotPercent = Math.max(0, Math.min(100, Number(blueprintCognitionWeightage.lot) || 0))
+  const blueprintCognitionHotPercent = 100 - blueprintCognitionLotPercent
   const blueprintSpecificationRows = blueprintTableRows.map((row) => ({
     key: row.key,
     code: row.code,
     name: row.name,
-    total: Number(row.distributionLabel) || 0,
+    targetMarks: Number(row.distributionLabel) || 0,
   }))
-  const blueprintSpecificationTotal = blueprintDistributionTotal || blueprintRoundedTotalMark || 0
+  const blueprintSpecificationTargetTotal = blueprintRoundedTotalMark
+  const blueprintTestSpecificationColumns = [
+    { key: 'mcqLot', label: 'LoT', group: 'MCQ' },
+    { key: 'mcqHot', label: 'HoT', group: 'MCQ' },
+    { key: 'laqLot', label: 'LoT', group: 'LAQ' },
+    { key: 'laqHot', label: 'HoT', group: 'LAQ' },
+    { key: 'saqLot', label: 'LoT', group: 'SAQ' },
+    { key: 'saqHot', label: 'HoT', group: 'SAQ' },
+  ]
+  const getBlueprintTestSpecificationValue = (rowKey, fieldKey) => blueprintTestSpecificationDraft[rowKey]?.[fieldKey] || ''
+  const getBlueprintTestSpecificationNumber = (rowKey, fieldKey) => Number(getBlueprintTestSpecificationValue(rowKey, fieldKey)) || 0
+  const getBlueprintTestSpecificationRowTotal = (rowKey) => blueprintTestSpecificationColumns.reduce(
+    (sum, column) => sum + getBlueprintTestSpecificationNumber(rowKey, column.key),
+    0,
+  )
+  const getBlueprintTestSpecificationRowData = (rowKey) => {
+    const target = Number(blueprintSpecificationRows.find((row) => row.key === rowKey)?.targetMarks || 0)
+    const actual = getBlueprintTestSpecificationRowTotal(rowKey)
+    return {
+      target,
+      actual,
+      totalText: String(actual),
+      statusClass: getBlueprintTestSpecificationStatus(target, actual),
+      resultClass: getBlueprintTestSpecificationResultClass(target, actual),
+    }
+  }
+  const getBlueprintTestSpecificationColumnTotal = (fieldKey) => blueprintSpecificationRows.reduce(
+    (sum, row) => sum + getBlueprintTestSpecificationNumber(row.key, fieldKey),
+    0,
+  )
+  const hasBlueprintTestSpecificationInput = blueprintSpecificationRows.some((row) => (
+    blueprintTestSpecificationColumns.some((column) => String(getBlueprintTestSpecificationValue(row.key, column.key)).trim())
+  ))
+  const blueprintCognitionLotMarks = ['mcqLot', 'laqLot', 'saqLot'].reduce(
+    (sum, fieldKey) => sum + getBlueprintTestSpecificationColumnTotal(fieldKey),
+    0,
+  )
+  const blueprintCognitionHotMarks = ['mcqHot', 'laqHot', 'saqHot'].reduce(
+    (sum, fieldKey) => sum + getBlueprintTestSpecificationColumnTotal(fieldKey),
+    0,
+  )
+  const blueprintCognitionTotalMarks = blueprintCognitionLotMarks + blueprintCognitionHotMarks
+  const hasBlueprintCognitionMarks = hasBlueprintTestSpecificationInput && blueprintCognitionTotalMarks > 0
+  const blueprintCognitionDisplayLotPercent = hasBlueprintCognitionMarks
+    ? Math.round((blueprintCognitionLotMarks / blueprintCognitionTotalMarks) * 100)
+    : blueprintCognitionLotPercent
+  const blueprintCognitionDisplayHotPercent = hasBlueprintCognitionMarks
+    ? 100 - blueprintCognitionDisplayLotPercent
+    : blueprintCognitionHotPercent
+  const blueprintTestSpecificationAllocatedTotal = blueprintSpecificationRows.reduce(
+    (sum, row) => sum + getBlueprintTestSpecificationRowTotal(row.key),
+    0,
+  )
+  const getBlueprintTestSpecificationStatus = (target, actual) => {
+    if (!target && !actual) return 'empty'
+    if (target === actual) return 'complete'
+    if (actual > target) return 'over'
+    return 'under'
+  }
+  const getBlueprintTestSpecificationResultClass = (target, actual) => {
+    return target > 0 && target === actual ? 'complete' : 'invalid'
+  }
+  const blueprintTestSpecificationTotalStatus = getBlueprintTestSpecificationStatus(
+    blueprintSpecificationTargetTotal,
+    blueprintTestSpecificationAllocatedTotal,
+  )
+  const blueprintTestSpecificationTotalResultClass = getBlueprintTestSpecificationResultClass(
+    blueprintSpecificationTargetTotal,
+    blueprintTestSpecificationAllocatedTotal,
+  )
+  const blueprintQuestionTypeSuggestions = {
+    MCQs: '1',
+    LAQs: '10',
+    'SAQs (Direct)': '8',
+    'SAQs (Reasoning)': '8',
+    'SAQs (Aetcom)': '8',
+    'SAQs (Application)': '8',
+  }
+  const blueprintQuestionTypeLabels = ['MCQs', 'LAQs', 'SAQs (Direct)', 'SAQs (Reasoning)', 'SAQs (Aetcom)', 'SAQs (Application)']
+  const blueprintQuestionTypeRows = blueprintQuestionTypeLabels.map((label) => {
+    const draft = blueprintQuestionTypeDraft[label] || {}
+    const perQuestionMarks = draft.perQuestionMarks || ''
+    const questionCount = draft.questionCount || ''
+    const rowTotal = perQuestionMarks && questionCount
+      ? (Number(perQuestionMarks) || 0) * (Number(questionCount) || 0)
+      : 0
+    return {
+      label,
+      suggestionMarks: blueprintQuestionTypeSuggestions[label] || '-',
+      perQuestionMarks,
+      questionCount,
+      total: rowTotal,
+    }
+  })
+  const blueprintQuestionTypeByLabel = blueprintQuestionTypeRows.reduce((lookup, row) => ({
+    ...lookup,
+    [row.label]: row,
+  }), {})
+  const blueprintSaqQuestionTypeRows = blueprintQuestionTypeRows
+    .filter((row) => row.label.startsWith('SAQs ('))
+    .map((row) => ({
+      ...row,
+      childLabel: row.label.replace('SAQs (', '').replace(')', ''),
+    }))
+  const blueprintSaqQuestionTypeTotal = blueprintSaqQuestionTypeRows.reduce((total, row) => total + row.total, 0)
+  const blueprintQuestionTypeTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.total, 0)
+  const blueprintQuestionTypeHasInput = blueprintQuestionTypeRows.some((row) => row.perQuestionMarks || row.questionCount)
+  const blueprintQuestionTypeDifference = blueprintRoundedTotalMark - blueprintQuestionTypeTotal
+  const blueprintQuestionTypeStatusText = !blueprintRoundedTotalMark || !blueprintQuestionTypeHasInput
+    ? ''
+    : blueprintQuestionTypeDifference === 0
+      ? `Question total complete: ${blueprintQuestionTypeTotal} / ${blueprintRoundedTotalMark}`
+      : blueprintQuestionTypeDifference > 0
+        ? `${blueprintQuestionTypeDifference} marks remaining`
+        : `Reduce ${Math.abs(blueprintQuestionTypeDifference)} marks`
   const updateBlueprintSubject = (subject) => {
     setBlueprintDraft((current) => ({
       ...current,
@@ -1582,6 +1730,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       competencies: [],
     }))
     setBlueprintDistributionDraft({})
+    setBlueprintTestSpecificationDraft({})
   }
   const updateBlueprintTopics = (topics) => {
     setBlueprintDraft((current) => ({
@@ -1594,6 +1743,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ))),
     }))
     setBlueprintDistributionDraft({})
+    setBlueprintTestSpecificationDraft({})
   }
   const updateBlueprintCompetencies = (competencies) => {
     setBlueprintDraft((current) => ({
@@ -1601,6 +1751,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       competencies,
     }))
     setBlueprintDistributionDraft((current) => Object.fromEntries(
+      Object.entries(current).filter(([key]) => competencies.includes(key)),
+    ))
+    setBlueprintTestSpecificationDraft((current) => Object.fromEntries(
       Object.entries(current).filter(([key]) => competencies.includes(key)),
     ))
   }
@@ -1614,6 +1767,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       delete next[competencyKey]
       return next
     })
+    setBlueprintTestSpecificationDraft((current) => {
+      const next = { ...current }
+      delete next[competencyKey]
+      return next
+    })
   }
   const updateBlueprintDistribution = (rowKey, value) => {
     if (!/^\d*$/.test(value)) return
@@ -1621,6 +1779,33 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ...current,
       [rowKey]: value,
     }))
+  }
+  const updateBlueprintTestSpecificationDraft = (rowKey, fieldKey, value) => {
+    if (!/^\d*$/.test(value)) return
+    setBlueprintTestSpecificationDraft((current) => ({
+      ...current,
+      [rowKey]: {
+        ...(current[rowKey] || {}),
+        [fieldKey]: value,
+      },
+    }))
+  }
+  const updateBlueprintQuestionTypeDraft = (label, field, value) => {
+    if (!/^\d*$/.test(value)) return
+    setBlueprintQuestionTypeDraft((current) => ({
+      ...current,
+      [label]: {
+        ...(current[label] || {}),
+        [field]: value,
+      },
+    }))
+  }
+  const updateBlueprintCognitionWeightage = (level, value) => {
+    if (!/^\d*$/.test(value)) return
+    const nextValue = Math.max(0, Math.min(100, Number(value || 0)))
+    setBlueprintCognitionWeightage(level === 'lot'
+      ? { lot: String(nextValue), hot: String(100 - nextValue) }
+      : { lot: String(100 - nextValue), hot: String(nextValue) })
   }
 
   const activeMappingItems = useMemo(() => {
@@ -4650,132 +4835,284 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                 </>
               ) : (
                 <div className="create-assessment-blueprint-specifications">
-                  <section className="create-assessment-blueprint-spec-card is-type-summary" aria-label="Type of Questions">
-                    <h3>Type of Questions</h3>
-                    <table className="create-assessment-blueprint-spec-table">
-                      <thead>
-                        <tr>
-                          <th>Question Type</th>
-                          <th>Per Q. Marks</th>
-                          <th>No. of Qs</th>
-                          <th>Total Marks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {['MCQs', 'LAQs', 'SAQs (Direct)', 'SAQs (Reasoning)', 'SAQs (Aetcom)', 'SAQs (Application)'].map((label) => (
-                          <tr key={label}>
-                            <td>{label}</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
+                  <div className="create-assessment-blueprint-spec-left-stack" ref={blueprintSpecLeftStackRef}>
+                    <section className="create-assessment-blueprint-spec-card is-type-summary" aria-label="Type of Questions">
+                      <div className="create-assessment-blueprint-spec-title-row">
+                        <h3>
+                          <ListChecks size={14} strokeWidth={2.4} />
+                          <span>Type of Questions</span>
+                        </h3>
+                        {blueprintQuestionTypeStatusText ? (
+                          <span className={`create-assessment-blueprint-spec-status ${blueprintQuestionTypeDifference === 0 ? 'is-complete' : 'is-warning'}`}>
+                            {blueprintQuestionTypeStatusText}
+                          </span>
+                        ) : null}
+                      </div>
+                      <table className="create-assessment-blueprint-spec-table">
+                        <thead>
+                          <tr>
+                            <th>Type</th>
+                            <th>Per Q.</th>
+                            <th>Qty</th>
+                            <th>Total</th>
                           </tr>
-                        ))}
-                        <tr className="is-total">
-                          <td>Total</td>
-                          <td>-</td>
-                          <td>-</td>
-                          <td>{blueprintSpecificationTotal || '-'}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </section>
-
-                  <section className="create-assessment-blueprint-spec-card is-cognition-summary" aria-label="Level of Cognition">
-                    <h3>Level of Cognition</h3>
-                    <table className="create-assessment-blueprint-spec-table">
-                      <thead>
-                        <tr>
-                          <th>Level</th>
-                          <th>Weightage</th>
-                          <th>Marks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>LoT</td>
-                          <td>60%</td>
-                          <td>{blueprintCognitionLotMarks || '-'}</td>
-                        </tr>
-                        <tr>
-                          <td>HoT</td>
-                          <td>40%</td>
-                          <td>{blueprintCognitionHotMarks || '-'}</td>
-                        </tr>
-                        <tr className="is-total">
-                          <td>Total</td>
-                          <td>100%</td>
-                          <td>{blueprintRoundedTotalMark || '-'}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </section>
-
-                  <section className="create-assessment-blueprint-spec-card is-test-spec-summary" aria-label="Table of Test Specifications">
-                    <h3>Table of Test Specifications</h3>
-                    <table className="create-assessment-blueprint-spec-table is-test-spec">
-                      <thead>
-                        <tr>
-                          <th rowSpan={2}>Competency</th>
-                          <th colSpan={2}>MCQ</th>
-                          <th colSpan={2}>LAQ</th>
-                          <th colSpan={2}>SAQ</th>
-                          <th rowSpan={2}>Total</th>
-                        </tr>
-                        <tr>
-                          <th>LoT</th>
-                          <th>HoT</th>
-                          <th>LoT</th>
-                          <th>HoT</th>
-                          <th>LoT</th>
-                          <th>HoT</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {blueprintSpecificationRows.length ? blueprintSpecificationRows.map((row) => (
-                          <tr key={row.key}>
-                            <td>
-                              <span
-                                className="create-assessment-blueprint-code-badge"
-                                data-tooltip={row.name}
-                                aria-label={row.name}
-                                tabIndex={0}
-                              >
-                                {row.code}
-                                <Info size={12} strokeWidth={2.4} />
-                              </span>
-                            </td>
-                            {['mcq-lot', 'mcq-hot', 'laq-lot', 'laq-hot', 'saq-lot', 'saq-hot'].map((field) => (
-                              <td key={`${row.key}-${field}`}>
+                        </thead>
+                        <tbody>
+                          {['MCQs', 'LAQs'].map((label) => {
+                            const row = blueprintQuestionTypeByLabel[label]
+                            return (
+                              <tr key={label} className="create-assessment-blueprint-question-type-row">
+                                <td>{label}</td>
+                                <td>
+                                  <input
+                                    className="create-assessment-blueprint-spec-number"
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={row.perQuestionMarks}
+                                    onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'perQuestionMarks', event.target.value)}
+                                    aria-label={`${row.label} per question marks`}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    className="create-assessment-blueprint-spec-number"
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={row.questionCount}
+                                    onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'questionCount', event.target.value)}
+                                    aria-label={`${row.label} number of questions`}
+                                  />
+                                </td>
+                                <td>{row.total || '-'}</td>
+                              </tr>
+                            )
+                          })}
+                          <tr className="create-assessment-blueprint-question-type-row is-saq-summary">
+                            <td>SAQs (Total)</td>
+                            <td />
+                            <td />
+                            <td>{blueprintSaqQuestionTypeTotal || '-'}</td>
+                          </tr>
+                          {blueprintSaqQuestionTypeRows.map((row) => (
+                            <tr key={row.label} className="create-assessment-blueprint-question-type-row is-child">
+                              <td>
+                                <span className="create-assessment-blueprint-question-type-child-label">
+                                  {row.childLabel}
+                                </span>
+                              </td>
+                              <td>
                                 <input
                                   className="create-assessment-blueprint-spec-number"
-                                  type="number"
-                                  min="0"
+                                  type="text"
                                   inputMode="numeric"
-                                  aria-label={`${row.code} ${field.replace('-', ' ')}`}
+                                  value={row.perQuestionMarks}
+                                  onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'perQuestionMarks', event.target.value)}
+                                  aria-label={`${row.label} per question marks`}
                                 />
                               </td>
-                            ))}
-                            <td>{row.total || '-'}</td>
-                          </tr>
-                        )) : (
-                          <tr>
-                            <td colSpan={8} className="create-assessment-blueprint-spec-empty">
-                              Select distribution rows to build test specifications.
+                              <td>
+                                <input
+                                  className="create-assessment-blueprint-spec-number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={row.questionCount}
+                                  onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'questionCount', event.target.value)}
+                                  aria-label={`${row.label} number of questions`}
+                                />
+                              </td>
+                              <td>{row.total || '-'}</td>
+                            </tr>
+                          ))}
+                          <tr className="is-total">
+                            <td>Total</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td className={blueprintQuestionTypeDifference === 0 && blueprintQuestionTypeTotal ? 'is-valid' : blueprintQuestionTypeHasInput && blueprintRoundedTotalMark ? 'is-invalid' : ''}>
+                              <span className="create-assessment-blueprint-spec-total-value">
+                                {blueprintQuestionTypeTotal || '-'}
+                              </span>
                             </td>
                           </tr>
-                        )}
-                        <tr className="is-total">
-                          <td>Total</td>
-                          <td>-</td>
-                          <td>-</td>
-                          <td>-</td>
-                          <td>-</td>
-                          <td>-</td>
-                          <td>-</td>
-                          <td>{blueprintSpecificationTotal || '-'}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                        </tbody>
+                      </table>
+                    </section>
+
+                    <section className="create-assessment-blueprint-spec-card is-cognition-summary" aria-label="Level of Cognition">
+                      <h3>
+                        <SlidersHorizontal size={14} strokeWidth={2.4} />
+                        <span>Level of Cognition</span>
+                      </h3>
+                      <table className="create-assessment-blueprint-spec-table">
+                        <thead>
+                          <tr>
+                            <th>Level</th>
+                            <th>Weightage</th>
+                            <th>Marks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>LoT</td>
+                            <td>
+                              <label className="create-assessment-blueprint-percent-field">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={blueprintCognitionDisplayLotPercent}
+                                  onChange={(event) => updateBlueprintCognitionWeightage('lot', event.target.value)}
+                                  aria-label="LoT weightage percentage"
+                                />
+                                <span>%</span>
+                              </label>
+                            </td>
+                            <td>{hasBlueprintTestSpecificationInput ? blueprintCognitionLotMarks : '-'}</td>
+                          </tr>
+                          <tr>
+                            <td>HoT</td>
+                            <td>
+                              <label className="create-assessment-blueprint-percent-field">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={blueprintCognitionDisplayHotPercent}
+                                  onChange={(event) => updateBlueprintCognitionWeightage('hot', event.target.value)}
+                                  aria-label="HoT weightage percentage"
+                                />
+                                <span>%</span>
+                              </label>
+                            </td>
+                            <td>{hasBlueprintTestSpecificationInput ? blueprintCognitionHotMarks : '-'}</td>
+                          </tr>
+                          <tr className="is-total">
+                            <td>Total</td>
+                            <td>100%</td>
+                            <td>{hasBlueprintTestSpecificationInput ? blueprintCognitionTotalMarks : '-'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </section>
+                  </div>
+
+                  <section
+                    className="create-assessment-blueprint-spec-card is-test-spec-summary"
+                    aria-label="Table of Test Specifications"
+                    style={blueprintSpecLeftStackHeight ? { '--blueprint-spec-left-height': `${blueprintSpecLeftStackHeight}px` } : undefined}
+                  >
+                    <div className="create-assessment-blueprint-spec-title-row">
+                      <h3>
+                        <FilePenLine size={14} strokeWidth={2.4} />
+                        <span>Table of Test Specifications</span>
+                      </h3>
+                      <span className={`create-assessment-blueprint-spec-status ${blueprintTestSpecificationTotalStatus}`}>
+                        Allocated: {blueprintTestSpecificationAllocatedTotal} / {blueprintSpecificationTargetTotal} Marks
+                      </span>
+                    </div>
+                    <div className="create-assessment-blueprint-spec-table-wrap create-assessment-blueprint-spec-table-wrap-test">
+                      <div className="create-assessment-blueprint-test-grid" role="table" aria-label="Table of Test Specifications">
+                        <div className="create-assessment-blueprint-test-grid-head" role="rowgroup">
+                          <div className="create-assessment-blueprint-test-grid-row is-group" role="row">
+                            <div className="create-assessment-blueprint-test-grid-cell is-competency" role="columnheader">Competency</div>
+                            <div className="create-assessment-blueprint-test-grid-cell is-group-title is-mcq" role="columnheader">MCQ</div>
+                            <div className="create-assessment-blueprint-test-grid-cell is-group-title is-laq" role="columnheader">LAQ</div>
+                            <div className="create-assessment-blueprint-test-grid-cell is-group-title is-saq" role="columnheader">SAQ</div>
+                            <div className="create-assessment-blueprint-test-grid-cell is-total-head" role="columnheader">Total Marks</div>
+                          </div>
+                          <div className="create-assessment-blueprint-test-grid-row is-sub" role="row">
+                            <div className="create-assessment-blueprint-test-grid-cell is-competency-spacer" />
+                            {blueprintTestSpecificationColumns.map((column) => (
+                              <div className="create-assessment-blueprint-test-grid-cell" key={column.key} role="columnheader">
+                                {column.label}
+                              </div>
+                            ))}
+                            <div className="create-assessment-blueprint-test-grid-cell is-total-target-head" role="columnheader">Target</div>
+                            <div className="create-assessment-blueprint-test-grid-cell is-total-actual-head" role="columnheader">Actual</div>
+                          </div>
+                        </div>
+                        <div className="create-assessment-blueprint-test-grid-body" role="rowgroup">
+                          {blueprintSpecificationRows.length ? blueprintSpecificationRows.map((row) => {
+                            const rowInfo = getBlueprintTestSpecificationRowData(row.key)
+                            return (
+                              <div className="create-assessment-blueprint-test-grid-row" key={row.key} role="row">
+                                <div className="create-assessment-blueprint-test-grid-cell is-competency" role="cell">
+                                  <span className="create-assessment-blueprint-code-badge">
+                                    <span>{row.code}</span>
+                                    <span
+                                      className="create-assessment-blueprint-code-info"
+                                      tabIndex={0}
+                                      role="button"
+                                      aria-label={`View competency name for ${row.code}`}
+                                      data-tooltip={row.name}
+                                    >
+                                      <Info size={12} strokeWidth={2.4} />
+                                    </span>
+                                  </span>
+                                </div>
+                                {blueprintTestSpecificationColumns.map((column) => (
+                                  <div className="create-assessment-blueprint-test-grid-cell" key={`${row.key}-${column.key}`} role="cell">
+                                    <input
+                                      className="create-assessment-blueprint-spec-small-number"
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={getBlueprintTestSpecificationValue(row.key, column.key)}
+                                      onChange={(event) => updateBlueprintTestSpecificationDraft(
+                                        row.key,
+                                        column.key,
+                                        event.target.value,
+                                      )}
+                                      aria-label={`${row.code} ${column.group} ${column.label}`}
+                                    />
+                                  </div>
+                                ))}
+                                <div className="create-assessment-blueprint-test-grid-cell is-test-spec-target" role="cell">
+                                  {rowInfo.target}
+                                </div>
+                                <div className={`create-assessment-blueprint-test-grid-cell is-test-spec-total ${rowInfo.resultClass}`} role="cell">
+                                  <span className="create-assessment-blueprint-test-spec-total">
+                                    <span className="create-assessment-blueprint-test-spec-total-main">
+                                      {rowInfo.totalText}
+                                      {rowInfo.resultClass === 'complete' ? (
+                                        <Check size={12} strokeWidth={2.6} />
+                                      ) : rowInfo.resultClass === 'invalid' ? (
+                                        <X size={12} strokeWidth={2.6} />
+                                      ) : null}
+                                    </span>
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          }) : (
+                            <div className="create-assessment-blueprint-spec-empty" role="row">
+                              Select distribution rows to build test specifications.
+                            </div>
+                          )}
+                        </div>
+                        <div className={`create-assessment-blueprint-test-grid-foot ${blueprintTestSpecificationTotalResultClass}`} role="rowgroup">
+                          <div className="create-assessment-blueprint-test-grid-row is-total" role="row">
+                            <div className="create-assessment-blueprint-test-grid-cell is-competency" role="cell">Column Totals:</div>
+                            {blueprintTestSpecificationColumns.map((column) => (
+                              <div className="create-assessment-blueprint-test-grid-cell" key={column.key} role="cell">
+                                {getBlueprintTestSpecificationColumnTotal(column.key) || ''}
+                              </div>
+                            ))}
+                            <div className="create-assessment-blueprint-test-grid-cell is-test-spec-target" role="cell">
+                              {blueprintSpecificationTargetTotal}
+                            </div>
+                            <div className="create-assessment-blueprint-test-grid-cell is-test-spec-total" role="cell">
+                              <span className="create-assessment-blueprint-test-spec-total">
+                                <span className="create-assessment-blueprint-test-spec-total-main">
+                                  {blueprintTestSpecificationAllocatedTotal}
+                                  {blueprintTestSpecificationTotalResultClass === 'complete' ? (
+                                    <Check size={12} strokeWidth={2.6} />
+                                  ) : blueprintTestSpecificationTotalResultClass === 'invalid' ? (
+                                    <X size={12} strokeWidth={2.6} />
+                                  ) : null}
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </section>
                 </div>
               )}
