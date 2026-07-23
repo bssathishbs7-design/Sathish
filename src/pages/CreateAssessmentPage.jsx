@@ -4837,27 +4837,28 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                 <div className="create-assessment-blueprint-specifications">
                   <div className="create-assessment-blueprint-spec-left-stack" ref={blueprintSpecLeftStackRef}>
                     <section className="create-assessment-blueprint-spec-card is-type-summary" aria-label="Type of Questions">
-                      <div className="create-assessment-blueprint-spec-title-row">
-                        <h3>
-                          <ListChecks size={14} strokeWidth={2.4} />
-                          <span>Type of Questions</span>
-                        </h3>
-                        {blueprintQuestionTypeStatusText ? (
-                          <span className={`create-assessment-blueprint-spec-status ${blueprintQuestionTypeDifference === 0 ? 'is-complete' : 'is-warning'}`}>
-                            {blueprintQuestionTypeStatusText}
-                          </span>
-                        ) : null}
-                      </div>
-                      <table className="create-assessment-blueprint-spec-table">
-                        <thead>
-                          <tr>
-                            <th>Type</th>
-                            <th>Per Q.</th>
-                            <th>Qty</th>
-                            <th>Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                      <div className="create-assessment-blueprint-spec-table-wrap create-assessment-blueprint-spec-table-wrap-type">
+                        <div className="create-assessment-blueprint-test-grid-title-row">
+                          <h3>
+                            <ListChecks size={14} strokeWidth={2.4} />
+                            <span>Type of Questions</span>
+                          </h3>
+                          {blueprintQuestionTypeStatusText ? (
+                            <span className={`create-assessment-blueprint-spec-status ${blueprintQuestionTypeDifference === 0 ? 'is-complete' : 'is-warning'}`}>
+                              {blueprintQuestionTypeStatusText}
+                            </span>
+                          ) : null}
+                        </div>
+                        <table className="create-assessment-blueprint-spec-table">
+                          <thead>
+                            <tr>
+                              <th>Type</th>
+                              <th>Per Q.</th>
+                              <th>Qty</th>
+                              <th>Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
                           {['MCQs', 'LAQs'].map((label) => {
                             const row = blueprintQuestionTypeByLabel[label]
                             return (
@@ -4933,63 +4934,56 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               </span>
                             </td>
                           </tr>
-                        </tbody>
-                      </table>
+                          </tbody>
+                        </table>
+                      </div>
                     </section>
 
                     <section className="create-assessment-blueprint-spec-card is-cognition-summary" aria-label="Level of Cognition">
-                      <h3>
-                        <SlidersHorizontal size={14} strokeWidth={2.4} />
-                        <span>Level of Cognition</span>
-                      </h3>
-                      <table className="create-assessment-blueprint-spec-table">
-                        <thead>
-                          <tr>
-                            <th>Level</th>
-                            <th>Weightage</th>
-                            <th>Marks</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td>LoT</td>
-                            <td>
-                              <label className="create-assessment-blueprint-percent-field">
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={blueprintCognitionDisplayLotPercent}
-                                  onChange={(event) => updateBlueprintCognitionWeightage('lot', event.target.value)}
-                                  aria-label="LoT weightage percentage"
-                                />
-                                <span>%</span>
-                              </label>
-                            </td>
-                            <td>{hasBlueprintTestSpecificationInput ? blueprintCognitionLotMarks : '-'}</td>
-                          </tr>
-                          <tr>
-                            <td>HoT</td>
-                            <td>
-                              <label className="create-assessment-blueprint-percent-field">
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={blueprintCognitionDisplayHotPercent}
-                                  onChange={(event) => updateBlueprintCognitionWeightage('hot', event.target.value)}
-                                  aria-label="HoT weightage percentage"
-                                />
-                                <span>%</span>
-                              </label>
-                            </td>
-                            <td>{hasBlueprintTestSpecificationInput ? blueprintCognitionHotMarks : '-'}</td>
-                          </tr>
-                          <tr className="is-total">
-                            <td>Total</td>
-                            <td>100%</td>
-                            <td>{hasBlueprintTestSpecificationInput ? blueprintCognitionTotalMarks : '-'}</td>
-                          </tr>
-                        </tbody>
-                      </table>
+                      <div
+                        className="create-assessment-blueprint-cognition-graph"
+                        style={{
+                          '--lot-percent': `${blueprintCognitionDisplayLotPercent}%`,
+                          '--hot-percent': `${blueprintCognitionDisplayHotPercent}%`,
+                        }}
+                      >
+                        <div className="create-assessment-blueprint-cognition-head">
+                          <h3>
+                            <SlidersHorizontal size={14} strokeWidth={2.4} />
+                            <span>Level of Cognition</span>
+                          </h3>
+                        </div>
+                        <div className="create-assessment-blueprint-cognition-bar">
+                          <span
+                            className="is-lot"
+                            tabIndex={0}
+                            aria-label={`LoT ${blueprintCognitionDisplayLotPercent} percent, ${hasBlueprintTestSpecificationInput ? `${blueprintCognitionLotMarks} marks` : 'no marks'}`}
+                            data-tooltip={`LoT: ${blueprintCognitionDisplayLotPercent}% / ${hasBlueprintTestSpecificationInput ? `${blueprintCognitionLotMarks} Marks` : '-'}`}
+                          />
+                          <span
+                            className="is-hot"
+                            tabIndex={0}
+                            aria-label={`HoT ${blueprintCognitionDisplayHotPercent} percent, ${hasBlueprintTestSpecificationInput ? `${blueprintCognitionHotMarks} marks` : 'no marks'}`}
+                            data-tooltip={`HoT: ${blueprintCognitionDisplayHotPercent}% / ${hasBlueprintTestSpecificationInput ? `${blueprintCognitionHotMarks} Marks` : '-'}`}
+                          />
+                        </div>
+                        <div className="create-assessment-blueprint-cognition-legend">
+                          <span className="is-lot">
+                            <strong>LoT</strong>
+                            <em>{blueprintCognitionDisplayLotPercent}%</em>
+                            <b>{hasBlueprintTestSpecificationInput ? `${blueprintCognitionLotMarks} Marks` : '-'}</b>
+                          </span>
+                          <span className="is-hot">
+                            <strong>HoT</strong>
+                            <em>{blueprintCognitionDisplayHotPercent}%</em>
+                            <b>{hasBlueprintTestSpecificationInput ? `${blueprintCognitionHotMarks} Marks` : '-'}</b>
+                          </span>
+                        </div>
+                        <div className="create-assessment-blueprint-cognition-total">
+                          <span>Total</span>
+                          <strong>{hasBlueprintTestSpecificationInput ? `${blueprintCognitionTotalMarks} Marks` : '-'}</strong>
+                        </div>
+                      </div>
                     </section>
                   </div>
 
@@ -4998,16 +4992,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     aria-label="Table of Test Specifications"
                     style={blueprintSpecLeftStackHeight ? { '--blueprint-spec-left-height': `${blueprintSpecLeftStackHeight}px` } : undefined}
                   >
-                    <div className="create-assessment-blueprint-spec-title-row">
-                      <h3>
-                        <FilePenLine size={14} strokeWidth={2.4} />
-                        <span>Table of Test Specifications</span>
-                      </h3>
-                      <span className={`create-assessment-blueprint-spec-status ${blueprintTestSpecificationTotalStatus}`}>
-                        Allocated: {blueprintTestSpecificationAllocatedTotal} / {blueprintSpecificationTargetTotal} Marks
-                      </span>
-                    </div>
                     <div className="create-assessment-blueprint-spec-table-wrap create-assessment-blueprint-spec-table-wrap-test">
+                      <div className="create-assessment-blueprint-test-grid-title-row">
+                        <h3>
+                          <FilePenLine size={14} strokeWidth={2.4} />
+                          <span>Table of Test Specifications</span>
+                        </h3>
+                        <span className={`create-assessment-blueprint-spec-status ${blueprintTestSpecificationTotalStatus}`}>
+                          Allocated: {blueprintTestSpecificationAllocatedTotal} / {blueprintSpecificationTargetTotal} Marks
+                        </span>
+                      </div>
                       <div className="create-assessment-blueprint-test-grid" role="table" aria-label="Table of Test Specifications">
                         <div className="create-assessment-blueprint-test-grid-head" role="rowgroup">
                           <div className="create-assessment-blueprint-test-grid-row is-group" role="row">
@@ -5018,10 +5012,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             <div className="create-assessment-blueprint-test-grid-cell is-total-head" role="columnheader">Total Marks</div>
                           </div>
                           <div className="create-assessment-blueprint-test-grid-row is-sub" role="row">
-                            <div className="create-assessment-blueprint-test-grid-cell is-competency-spacer" />
                             {blueprintTestSpecificationColumns.map((column) => (
                               <div className="create-assessment-blueprint-test-grid-cell" key={column.key} role="columnheader">
-                                {column.label}
+                                <span className={`create-assessment-blueprint-lot-hot-badge is-${column.label.toLowerCase()}`}>
+                                  {column.label}
+                                </span>
                               </div>
                             ))}
                             <div className="create-assessment-blueprint-test-grid-cell is-total-target-head" role="columnheader">Target</div>
@@ -5034,15 +5029,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             return (
                               <div className="create-assessment-blueprint-test-grid-row" key={row.key} role="row">
                                 <div className="create-assessment-blueprint-test-grid-cell is-competency" role="cell">
-                                  <span className="create-assessment-blueprint-code-badge">
+                                  <span
+                                    className="create-assessment-blueprint-code-badge"
+                                    tabIndex={0}
+                                    role="button"
+                                    aria-label={`View competency name for ${row.code}`}
+                                    data-tooltip={row.name}
+                                  >
                                     <span>{row.code}</span>
-                                    <span
-                                      className="create-assessment-blueprint-code-info"
-                                      tabIndex={0}
-                                      role="button"
-                                      aria-label={`View competency name for ${row.code}`}
-                                      data-tooltip={row.name}
-                                    >
+                                    <span className="create-assessment-blueprint-code-info" aria-hidden="true">
                                       <Info size={12} strokeWidth={2.4} />
                                     </span>
                                   </span>
@@ -5069,11 +5064,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 <div className={`create-assessment-blueprint-test-grid-cell is-test-spec-total ${rowInfo.resultClass}`} role="cell">
                                   <span className="create-assessment-blueprint-test-spec-total">
                                     <span className="create-assessment-blueprint-test-spec-total-main">
-                                      {rowInfo.totalText}
                                       {rowInfo.resultClass === 'complete' ? (
-                                        <Check size={12} strokeWidth={2.6} />
+                                        <Check size={13} strokeWidth={2.8} />
                                       ) : rowInfo.resultClass === 'invalid' ? (
-                                        <X size={12} strokeWidth={2.6} />
+                                        <X size={13} strokeWidth={2.8} />
                                       ) : null}
                                     </span>
                                   </span>
@@ -5088,24 +5082,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         </div>
                         <div className={`create-assessment-blueprint-test-grid-foot ${blueprintTestSpecificationTotalResultClass}`} role="rowgroup">
                           <div className="create-assessment-blueprint-test-grid-row is-total" role="row">
-                            <div className="create-assessment-blueprint-test-grid-cell is-competency" role="cell">Column Totals:</div>
+                            <div className="create-assessment-blueprint-test-grid-cell is-competency" role="cell">Totals:</div>
                             {blueprintTestSpecificationColumns.map((column) => (
                               <div className="create-assessment-blueprint-test-grid-cell" key={column.key} role="cell">
                                 {getBlueprintTestSpecificationColumnTotal(column.key) || ''}
                               </div>
                             ))}
-                            <div className="create-assessment-blueprint-test-grid-cell is-test-spec-target" role="cell">
-                              {blueprintSpecificationTargetTotal}
-                            </div>
-                            <div className="create-assessment-blueprint-test-grid-cell is-test-spec-total" role="cell">
+                            <div className="create-assessment-blueprint-test-grid-cell is-test-spec-total is-footer-total" role="cell">
                               <span className="create-assessment-blueprint-test-spec-total">
                                 <span className="create-assessment-blueprint-test-spec-total-main">
-                                  {blueprintTestSpecificationAllocatedTotal}
-                                  {blueprintTestSpecificationTotalResultClass === 'complete' ? (
-                                    <Check size={12} strokeWidth={2.6} />
-                                  ) : blueprintTestSpecificationTotalResultClass === 'invalid' ? (
-                                    <X size={12} strokeWidth={2.6} />
-                                  ) : null}
+                                  {blueprintSpecificationTargetTotal}
                                 </span>
                               </span>
                             </div>

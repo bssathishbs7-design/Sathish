@@ -19106,12 +19106,13 @@
 
 .create-assessment-blueprint-spec-card.is-cognition-summary {
   grid-area: auto;
+  overflow: visible;
 }
 
 .create-assessment-blueprint-spec-card.is-test-spec-summary {
   grid-area: test;
   align-self: start;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   height: var(--blueprint-spec-left-height, 450px);
   min-height: 360px;
 }
@@ -19327,6 +19328,224 @@
   box-shadow: 0 0 0 3px rgba(18, 184, 170, 0.12);
 }
 
+.create-assessment-blueprint-percent-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  color: #003149;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.create-assessment-blueprint-cognition-graph {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e6e0f5;
+  border-radius: 8px;
+  background: #fffefe;
+}
+
+.create-assessment-blueprint-cognition-head {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 7px 11px;
+  border-bottom: 1px solid #eeeaf7;
+  border-radius: 8px 8px 0 0;
+  background: #fbfaff;
+}
+
+.create-assessment-blueprint-cognition-head h3 {
+  color: #6d5fb6;
+  font-size: 0.76rem;
+}
+
+.create-assessment-blueprint-cognition-graph > :not(.create-assessment-blueprint-cognition-head) {
+  width: calc(100% - 22px);
+  margin-right: 11px;
+  margin-left: 11px;
+  box-sizing: border-box;
+}
+
+.create-assessment-blueprint-cognition-bar {
+  display: flex;
+  width: 100%;
+  height: 12px;
+  margin-top: 2px;
+  overflow: visible;
+  border-radius: 999px;
+  background: #f3f4f6;
+}
+
+.create-assessment-blueprint-cognition-bar span {
+  position: relative;
+  display: block;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.create-assessment-blueprint-cognition-bar .is-lot {
+  width: var(--lot-percent);
+  border-radius: 999px 0 0 999px;
+  background: #8b7cf6;
+}
+
+.create-assessment-blueprint-cognition-bar .is-hot {
+  width: var(--hot-percent);
+  border-radius: 0 999px 999px 0;
+  background: #f59e5b;
+}
+
+.create-assessment-blueprint-cognition-bar span::before,
+.create-assessment-blueprint-cognition-bar span::after {
+  position: absolute;
+  left: 50%;
+  z-index: 28;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+.create-assessment-blueprint-cognition-bar span::before {
+  content: "";
+  bottom: calc(100% + 5px);
+  width: 0;
+  height: 0;
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+  transform: translate(-50%, 4px);
+}
+
+.create-assessment-blueprint-cognition-bar span::after {
+  content: attr(data-tooltip);
+  bottom: calc(100% + 11px);
+  min-width: 128px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.14);
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  transform: translate(-50%, 4px);
+}
+
+.create-assessment-blueprint-cognition-bar span:hover::before,
+.create-assessment-blueprint-cognition-bar span:hover::after,
+.create-assessment-blueprint-cognition-bar span:focus-visible::before,
+.create-assessment-blueprint-cognition-bar span:focus-visible::after {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.create-assessment-blueprint-cognition-bar .is-lot::before {
+  border-top: 6px solid #6d5fec;
+}
+
+.create-assessment-blueprint-cognition-bar .is-lot::after {
+  background: #f2efff;
+  color: #5f50b5;
+  border: 1px solid #cfc4ff;
+}
+
+.create-assessment-blueprint-cognition-bar .is-hot::before {
+  border-top: 6px solid #e58b3d;
+}
+
+.create-assessment-blueprint-cognition-bar .is-hot::after {
+  background: #fff2e6;
+  color: #b45b18;
+  border: 1px solid #ffd3ad;
+}
+
+.create-assessment-blueprint-cognition-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.create-assessment-blueprint-cognition-legend > span {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 7px;
+  font-size: 0.7rem;
+  line-height: 1.1;
+  border: 1px solid transparent;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.create-assessment-blueprint-cognition-legend > span:hover {
+  transform: translateY(-1px);
+  cursor: pointer;
+}
+
+.create-assessment-blueprint-cognition-legend strong,
+.create-assessment-blueprint-cognition-legend em,
+.create-assessment-blueprint-cognition-legend b {
+  min-width: 0;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.create-assessment-blueprint-cognition-legend strong {
+  font-weight: 900;
+}
+
+.create-assessment-blueprint-cognition-legend em {
+  justify-self: end;
+  font-weight: 900;
+}
+
+.create-assessment-blueprint-cognition-legend b {
+  grid-column: 1 / -1;
+  font-weight: 750;
+}
+
+.create-assessment-blueprint-cognition-legend .is-lot {
+  background: #f7f5ff;
+  border-color: #eee8ff;
+  color: #5f50b5;
+}
+
+.create-assessment-blueprint-cognition-legend .is-lot:hover {
+  background: #f2efff;
+  border-color: #cfc4ff;
+}
+
+.create-assessment-blueprint-cognition-legend .is-hot {
+  background: #fff8f1;
+  border-color: #ffead7;
+  color: #b45b18;
+}
+
+.create-assessment-blueprint-cognition-legend .is-hot:hover {
+  background: #fff2e6;
+  border-color: #ffd3ad;
+}
+
+.create-assessment-blueprint-cognition-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0 10px;
+  border-top: 1px solid #f0ebfb;
+  color: #4b3f8f;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
 .create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table th,
 .create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table td {
   width: 33.33%;
@@ -19420,6 +19639,14 @@
   color: #5b21b6;
 }
 
+.create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table tbody tr:nth-child(1) td:first-child {
+  color: #6d28d9;
+}
+
+.create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table tbody tr:nth-child(2) td:first-child {
+  color: #dc2626;
+}
+
 .create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table tbody tr:not(.is-total):hover td {
   background: #fbfaff;
   cursor: pointer;
@@ -19470,7 +19697,7 @@
   background: #ffffff;
   color: #082431;
   font-size: 0.66rem;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1;
   text-align: center;
   outline: none;
@@ -19508,6 +19735,8 @@
 }
 
 .create-assessment-blueprint-spec-table-wrap-test {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
   max-height: none;
   min-height: 0;
@@ -19515,6 +19744,40 @@
   border: 1px solid #d8e7ee;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.create-assessment-blueprint-spec-table-wrap-type {
+  overflow: hidden;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.create-assessment-blueprint-spec-table-wrap-type .create-assessment-blueprint-test-grid-title-row {
+  border-bottom-color: #bbf7d0;
+  background: #fbfffd;
+}
+
+.create-assessment-blueprint-spec-table-wrap-type .create-assessment-blueprint-spec-table {
+  border: 0;
+  border-radius: 0;
+}
+
+.create-assessment-blueprint-test-grid-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-bottom: 1px solid #d8e7ee;
+  background: #fbfdfe;
+}
+
+.create-assessment-blueprint-test-grid-title-row h3 {
+  min-height: 0;
+  font-size: 0.76rem;
 }
 
 .create-assessment-blueprint-test-grid {
@@ -19530,6 +19793,12 @@
 .create-assessment-blueprint-test-grid-head,
 .create-assessment-blueprint-test-grid-foot {
   min-width: 0;
+}
+
+.create-assessment-blueprint-test-grid-head {
+  display: grid;
+  grid-template-columns: var(--test-spec-cols);
+  grid-template-rows: auto auto;
 }
 
 .create-assessment-blueprint-test-grid-body {
@@ -19558,30 +19827,71 @@
 
 .create-assessment-blueprint-test-grid-row.is-group {
   grid-template-columns: var(--test-spec-cols);
+  display: contents;
 }
 
 .create-assessment-blueprint-test-grid-row.is-sub {
   grid-template-columns: var(--test-spec-cols);
+  display: contents;
 }
 
 .create-assessment-blueprint-test-grid-row.is-group .is-competency {
   grid-column: 1 / 2;
+  grid-row: 1 / 3;
+  justify-content: center;
+  text-align: center;
 }
 
 .create-assessment-blueprint-test-grid-row.is-group .is-mcq {
   grid-column: 2 / 4;
+  grid-row: 1 / 2;
 }
 
 .create-assessment-blueprint-test-grid-row.is-group .is-laq {
   grid-column: 4 / 6;
+  grid-row: 1 / 2;
 }
 
 .create-assessment-blueprint-test-grid-row.is-group .is-saq {
   grid-column: 6 / 8;
+  grid-row: 1 / 2;
 }
 
 .create-assessment-blueprint-test-grid-row.is-group .is-total-head {
   grid-column: 8 / 10;
+  grid-row: 1 / 2;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:nth-child(1) {
+  grid-column: 2 / 3;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:nth-child(2) {
+  grid-column: 3 / 4;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:nth-child(3) {
+  grid-column: 4 / 5;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:nth-child(4) {
+  grid-column: 5 / 6;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:nth-child(5) {
+  grid-column: 6 / 7;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:nth-child(6) {
+  grid-column: 7 / 8;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .is-total-target-head {
+  grid-column: 8 / 9;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .is-total-actual-head {
+  grid-column: 9 / 10;
 }
 
 .create-assessment-blueprint-test-grid-cell {
@@ -19630,6 +19940,37 @@
   background: #f8fcfd;
 }
 
+.create-assessment-blueprint-lot-hot-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.58rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.create-assessment-blueprint-lot-hot-badge.is-lot {
+  color: #6d28d9;
+}
+
+.create-assessment-blueprint-lot-hot-badge.is-hot {
+  color: #dc2626;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:has(.create-assessment-blueprint-lot-hot-badge.is-lot) {
+  background: #f7f3ff;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:has(.create-assessment-blueprint-lot-hot-badge.is-hot) {
+  background: #fff5f5;
+}
+
 .create-assessment-blueprint-test-grid-head .is-total-head,
 .create-assessment-blueprint-test-grid-row.is-sub .is-total-target-head,
 .create-assessment-blueprint-test-grid-row.is-sub .is-total-actual-head {
@@ -19640,7 +19981,7 @@
 .create-assessment-blueprint-test-grid-cell.is-competency-spacer {
   justify-content: flex-start;
   text-align: left;
-  padding-left: 10px;
+  padding-left: 12px;
 }
 
 .create-assessment-blueprint-test-grid-cell.is-competency-spacer,
@@ -19663,6 +20004,11 @@
   box-shadow: inset 0 1px 0 #d8e7ee;
 }
 
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-cell.is-footer-total {
+  grid-column: 8 / 10;
+  border-right: 0;
+}
+
 .create-assessment-blueprint-test-grid-cell.is-test-spec-target {
   background: #fbfdfe;
   color: #426579;
@@ -19673,11 +20019,11 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  min-width: 72px;
-  min-height: 18px;
-  padding: 1px 6px;
+  justify-content: center;
+  gap: 3px;
+  width: 70px;
+  min-height: 20px;
+  padding: 1px 5px;
   border: 1px solid #abcbdc;
   border-radius: 5px;
   background: #eff8ff;
@@ -19685,6 +20031,7 @@
   font-size: 0.66rem;
   font-weight: 850;
   line-height: 1;
+  cursor: help;
 }
 
 .create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge .create-assessment-blueprint-code-info {
@@ -19693,6 +20040,38 @@
   border: 0;
   background: transparent;
   color: #4674b8;
+  pointer-events: none;
+}
+
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge .create-assessment-blueprint-code-info::before,
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge .create-assessment-blueprint-code-info::after {
+  display: none;
+  content: none;
+}
+
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge::before,
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge::after {
+  position: absolute;
+  z-index: 24;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge::after {
+  padding: 7px 9px;
+  border: 1px solid #1f4b5c;
+  border-radius: 7px;
+  background: #14313f;
+  box-shadow: 0 10px 20px rgba(15, 35, 46, 0.15);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
 }
 
 .create-assessment-blueprint-test-spec-total {
@@ -19789,15 +20168,15 @@
 }
 
 .create-assessment-blueprint-spec-small-number {
-  width: min(54px, 72%);
-  height: 22px;
-  padding: 2px 5px;
+  width: min(64px, 82%);
+  height: 25px;
+  padding: 3px 7px;
   border: 1px solid #c3e4de;
   border-radius: 6px;
   background: #fff;
   color: #083344;
-  font-size: 0.67rem;
-  font-weight: 800;
+  font-size: 0.7rem;
+  font-weight: 500;
   text-align: center;
   line-height: 1;
 }
@@ -20189,13 +20568,14 @@
   transform: translate(-50%, 0);
 }
 
-.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-info::before,
-.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-info::after {
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge::before,
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge::after {
   left: calc(100% + 8px);
   top: 50%;
 }
 
-.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-info::before {
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge::before {
+  content: "";
   border-top: 6px solid transparent;
   border-right: 6px solid #14313f;
   border-bottom: 6px solid transparent;
@@ -20203,19 +20583,24 @@
   transform: translate(0, -50%);
 }
 
-.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-info::after {
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge::after {
+  content: attr(data-tooltip);
   width: 230px;
   max-width: 24vw;
   transform: translate(8px, -50%);
 }
 
-.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-info:hover::before,
-.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-info:focus-visible::before {
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge:hover::before,
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge:focus-visible::before {
+  visibility: visible;
+  opacity: 1;
   transform: translate(0, -50%);
 }
 
-.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-info:hover::after,
-.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-info:focus-visible::after {
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge:hover::after,
+.create-assessment-blueprint-test-grid .create-assessment-blueprint-code-badge:focus-visible::after {
+  visibility: visible;
+  opacity: 1;
   transform: translate(8px, -50%);
 }
 
@@ -33759,6 +34144,21 @@
   background: #0f1d30;
 }
 
+.theme-dark .create-assessment-blueprint-spec-table-wrap-type {
+  border-color: rgba(74, 222, 128, 0.28);
+  background: #0b1728;
+}
+
+.theme-dark .create-assessment-blueprint-spec-table-wrap-type .create-assessment-blueprint-test-grid-title-row {
+  border-bottom-color: rgba(74, 222, 128, 0.24);
+  background: rgba(11, 23, 40, 0.92);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-title-row {
+  border-bottom-color: rgba(125, 211, 252, 0.28);
+  background: rgba(15, 29, 48, 0.92);
+}
+
 .theme-dark .create-assessment-blueprint-test-grid {
   background: #0b1728;
 }
@@ -33779,6 +34179,14 @@
 .theme-dark .create-assessment-blueprint-test-grid-row.is-sub .is-total-actual-head {
   background: rgba(14, 116, 144, 0.14);
   color: #bae6fd;
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:has(.create-assessment-blueprint-lot-hot-badge.is-lot) {
+  background: rgba(109, 40, 217, 0.18);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:has(.create-assessment-blueprint-lot-hot-badge.is-hot) {
+  background: rgba(220, 38, 38, 0.14);
 }
 
 .theme-dark .create-assessment-blueprint-test-grid-body .create-assessment-blueprint-test-grid-row:hover .create-assessment-blueprint-test-grid-cell {
@@ -33888,6 +34296,14 @@
   background: rgba(76, 29, 149, 0.2);
 }
 
+.theme-dark .create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table tbody tr:nth-child(1) td:first-child {
+  color: #c4b5fd;
+}
+
+.theme-dark .create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table tbody tr:nth-child(2) td:first-child {
+  color: #fca5a5;
+}
+
 .theme-dark .create-assessment-blueprint-question-type-child-label::before {
   color: #8aa0b3;
 }
@@ -33938,6 +34354,75 @@
   border-color: rgba(45, 212, 191, 0.4);
   background: #111d31;
   color: #e8f4ff;
+}
+
+.theme-dark .create-assessment-blueprint-percent-label {
+  color: #e8f4ff;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-graph {
+  border-color: rgba(167, 139, 250, 0.24);
+  background: #0b1728;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-head {
+  border-bottom-color: rgba(167, 139, 250, 0.2);
+  background: rgba(30, 41, 59, 0.36);
+}
+
+.theme-dark .create-assessment-blueprint-cognition-head h3 {
+  color: #c4b5fd;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-bar {
+  background: #18263a;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-bar .is-lot::before {
+  border-top-color: #8b7cf6;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-bar .is-lot::after {
+  border-color: rgba(196, 181, 253, 0.35);
+  background: #1f1b3d;
+  color: #ddd6fe;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-bar .is-hot::before {
+  border-top-color: #f59e5b;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-bar .is-hot::after {
+  border-color: rgba(253, 186, 116, 0.35);
+  background: #2f2118;
+  color: #fed7aa;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-legend .is-lot {
+  background: rgba(109, 40, 217, 0.18);
+  border-color: rgba(196, 181, 253, 0.2);
+  color: #c4b5fd;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-legend .is-lot:hover {
+  background: rgba(109, 40, 217, 0.26);
+  border-color: rgba(196, 181, 253, 0.38);
+}
+
+.theme-dark .create-assessment-blueprint-cognition-legend .is-hot {
+  background: rgba(249, 115, 22, 0.16);
+  border-color: rgba(253, 186, 116, 0.2);
+  color: #fdba74;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-legend .is-hot:hover {
+  background: rgba(249, 115, 22, 0.24);
+  border-color: rgba(253, 186, 116, 0.38);
+}
+
+.theme-dark .create-assessment-blueprint-cognition-total {
+  border-top-color: rgba(167, 139, 250, 0.24);
+  color: #ddd6fe;
 }
 
 .theme-dark .create-assessment-blueprint-percent-field:focus-within {
