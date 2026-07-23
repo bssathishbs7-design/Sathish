@@ -18778,7 +18778,7 @@
   gap: 14px;
   min-width: 0;
   margin-top: 0;
-  padding: 16px;
+  padding: 16px 16px 18px;
   border: 1px solid #cfe8df;
   border-radius: 8px;
   background: #ffffff;
@@ -19112,8 +19112,8 @@
   grid-area: test;
   align-self: start;
   grid-template-rows: auto minmax(0, 1fr);
-  height: var(--blueprint-spec-left-height, 450px);
-  min-height: 0;
+  height: min(var(--blueprint-spec-left-height, 450px), calc(100svh - 260px));
+  min-height: 360px;
 }
 
 .create-assessment-blueprint-spec-card.is-test-spec-summary .create-assessment-blueprint-spec-table {
@@ -19501,7 +19501,6 @@
 }
 
 .create-assessment-blueprint-spec-empty {
-  height: 180px !important;
   color: #5e7382;
   font-size: 0.8rem !important;
   font-weight: 800;
@@ -19546,7 +19545,7 @@
   justify-content: center;
   width: 100%;
   height: 100% !important;
-  min-height: 220px;
+  min-height: 0;
   padding: 16px;
   text-align: center !important;
 }
