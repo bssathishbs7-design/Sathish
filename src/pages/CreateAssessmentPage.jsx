@@ -1652,10 +1652,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const hasBlueprintCognitionMarks = hasBlueprintTestSpecificationInput && blueprintCognitionTotalMarks > 0
   const blueprintCognitionDisplayLotPercent = hasBlueprintCognitionMarks
     ? Math.round((blueprintCognitionLotMarks / blueprintCognitionTotalMarks) * 100)
-    : blueprintCognitionLotPercent
+    : 0
   const blueprintCognitionDisplayHotPercent = hasBlueprintCognitionMarks
     ? 100 - blueprintCognitionDisplayLotPercent
-    : blueprintCognitionHotPercent
+    : 0
   const blueprintTestSpecificationAllocatedTotal = blueprintSpecificationRows.reduce(
     (sum, row) => sum + getBlueprintTestSpecificationRowTotal(row.key),
     0,
@@ -4926,8 +4926,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           ))}
                           <tr className="is-total">
                             <td>Total</td>
-                            <td>-</td>
-                            <td>-</td>
+                            <td />
+                            <td />
                             <td className={blueprintQuestionTypeDifference === 0 && blueprintQuestionTypeTotal ? 'is-valid' : blueprintQuestionTypeHasInput && blueprintRoundedTotalMark ? 'is-invalid' : ''}>
                               <span className="create-assessment-blueprint-spec-total-value">
                                 {blueprintQuestionTypeTotal || '-'}
