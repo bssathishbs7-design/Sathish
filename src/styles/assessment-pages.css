@@ -19088,14 +19088,14 @@
 .create-assessment-blueprint-spec-left-stack {
   grid-area: left;
   display: grid;
-  gap: 22px;
+  gap: 14px;
   min-width: 0;
   align-content: start;
 }
 
 .create-assessment-blueprint-spec-card {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   align-content: start;
 }
@@ -19125,14 +19125,14 @@
   align-items: center;
   gap: 6px;
   justify-self: start;
-  min-height: 22px;
+  min-height: 18px;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: #083344;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -19219,9 +19219,9 @@
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td,
 .create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table th,
 .create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table td {
-  height: 28px;
-  padding: 5px 8px;
-  font-size: 0.72rem;
+  height: 25px;
+  padding: 3px 8px;
+  font-size: 0.69rem;
   line-height: 1.15;
 }
 
@@ -19300,15 +19300,15 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-width: 64px;
-  height: 24px;
+  min-width: 58px;
+  height: 22px;
   margin: 0 auto;
   padding: 0 8px;
   border: 1px solid #a7ded7;
   border-radius: 7px;
   background: #ffffff;
   color: #003149;
-  font-size: 0.72rem;
+  font-size: 0.69rem;
   font-weight: 800;
 }
 
@@ -19463,13 +19463,13 @@
 
 .create-assessment-blueprint-spec-number {
   width: 42px;
-  height: 22px;
+  height: 20px;
   padding: 2px 6px;
   border: 1px solid #bfe2dc;
   border-radius: 6px;
   background: #ffffff;
   color: #082431;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 800;
   line-height: 1;
   text-align: center;
