@@ -1689,15 +1689,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const blueprintQuestionTypeRows = blueprintQuestionTypeLabels.map((label) => {
     const draft = blueprintQuestionTypeDraft[label] || {}
     const perQuestionMarks = draft.perQuestionMarks || ''
-    const questionCount = draft.questionCount || ''
-    const rowTotal = perQuestionMarks && questionCount
-      ? (Number(perQuestionMarks) || 0) * (Number(questionCount) || 0)
+    const hotCount = draft.hotCount || ''
+    const lotCount = draft.lotCount || ''
+    const totalQuestions = (Number(hotCount) || 0) + (Number(lotCount) || 0)
+    const rowTotal = perQuestionMarks && totalQuestions
+      ? (Number(perQuestionMarks) || 0) * totalQuestions
       : 0
     return {
       label,
       suggestionMarks: blueprintQuestionTypeSuggestions[label] || '-',
       perQuestionMarks,
-      questionCount,
+      hotCount,
+      lotCount,
+      totalQuestions,
       total: rowTotal,
     }
   })
@@ -1711,9 +1715,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ...row,
       childLabel: row.label.replace('SAQs (', '').replace(')', ''),
     }))
+  const blueprintSaqQuestionTypeHotTotal = blueprintSaqQuestionTypeRows.reduce((total, row) => total + (Number(row.hotCount) || 0), 0)
+  const blueprintSaqQuestionTypeLotTotal = blueprintSaqQuestionTypeRows.reduce((total, row) => total + (Number(row.lotCount) || 0), 0)
+  const blueprintSaqQuestionTypeQuestionTotal = blueprintSaqQuestionTypeRows.reduce((total, row) => total + row.totalQuestions, 0)
   const blueprintSaqQuestionTypeTotal = blueprintSaqQuestionTypeRows.reduce((total, row) => total + row.total, 0)
   const blueprintQuestionTypeTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.total, 0)
-  const blueprintQuestionTypeHasInput = blueprintQuestionTypeRows.some((row) => row.perQuestionMarks || row.questionCount)
+  const blueprintQuestionTypeHotTotal = blueprintQuestionTypeRows.reduce((total, row) => total + (Number(row.hotCount) || 0), 0)
+  const blueprintQuestionTypeLotTotal = blueprintQuestionTypeRows.reduce((total, row) => total + (Number(row.lotCount) || 0), 0)
+  const blueprintQuestionTypeQuestionTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.totalQuestions, 0)
+  const blueprintQuestionTypeHasInput = blueprintQuestionTypeRows.some((row) => row.perQuestionMarks || row.hotCount || row.lotCount)
   const blueprintQuestionTypeDifference = blueprintRoundedTotalMark - blueprintQuestionTypeTotal
   const blueprintQuestionTypeStatusText = !blueprintRoundedTotalMark || !blueprintQuestionTypeHasInput
     ? ''
@@ -4854,8 +4864,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             <tr>
                               <th>Type</th>
                               <th>Per Q.</th>
-                              <th>Qty</th>
-                              <th>Total</th>
+                              <th>HoT</th>
+                              <th>LoT</th>
+                              <th>Total Questions</th>
+                              <th>Total Marks</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -4879,17 +4891,30 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                     className="create-assessment-blueprint-spec-number"
                                     type="text"
                                     inputMode="numeric"
-                                    value={row.questionCount}
-                                    onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'questionCount', event.target.value)}
-                                    aria-label={`${row.label} number of questions`}
+                                    value={row.hotCount}
+                                    onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotCount', event.target.value)}
+                                    aria-label={`${row.label} HoT questions`}
                                   />
                                 </td>
+                                <td>
+                                  <input
+                                    className="create-assessment-blueprint-spec-number"
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={row.lotCount}
+                                    onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotCount', event.target.value)}
+                                    aria-label={`${row.label} LoT questions`}
+                                  />
+                                </td>
+                                <td>{row.totalQuestions || '-'}</td>
                                 <td>{row.total || '-'}</td>
                               </tr>
                             )
                           })}
                           <tr className="create-assessment-blueprint-question-type-row is-saq-summary">
                             <td>SAQs (Total)</td>
+                            <td />
+                            <td />
                             <td />
                             <td />
                             <td>{blueprintSaqQuestionTypeTotal || '-'}</td>
@@ -4916,18 +4941,31 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   className="create-assessment-blueprint-spec-number"
                                   type="text"
                                   inputMode="numeric"
-                                  value={row.questionCount}
-                                  onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'questionCount', event.target.value)}
-                                  aria-label={`${row.label} number of questions`}
+                                  value={row.hotCount}
+                                  onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotCount', event.target.value)}
+                                  aria-label={`${row.label} HoT questions`}
                                 />
                               </td>
+                              <td>
+                                <input
+                                  className="create-assessment-blueprint-spec-number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={row.lotCount}
+                                  onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotCount', event.target.value)}
+                                  aria-label={`${row.label} LoT questions`}
+                                />
+                              </td>
+                              <td>{row.totalQuestions || '-'}</td>
                               <td>{row.total || '-'}</td>
                             </tr>
                           ))}
                           <tr className="is-total">
                             <td>Total</td>
                             <td />
-                            <td />
+                            <td>{blueprintQuestionTypeHotTotal || '-'}</td>
+                            <td>{blueprintQuestionTypeLotTotal || '-'}</td>
+                            <td>{blueprintQuestionTypeQuestionTotal || '-'}</td>
                             <td className={blueprintQuestionTypeDifference === 0 && blueprintQuestionTypeTotal ? 'is-valid' : blueprintQuestionTypeHasInput && blueprintRoundedTotalMark ? 'is-invalid' : ''}>
                               <span className="create-assessment-blueprint-spec-total-value">
                                 {blueprintQuestionTypeTotal || '-'}

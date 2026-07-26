@@ -128,7 +128,9 @@ const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionC
         <span className="assessment-page-question-source-badge">Medsy</span>
         <span className="assessment-page-question-id-badge">{questionBankId}</span>
         <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
-        {getQuestionMarksTotal(question) > 0 ? <span className="is-marks">{getQuestionMarksTotal(question)} marks</span> : null}
+        {!isMedsyQuestion(question) && getQuestionMarksTotal(question) > 0
+          ? <span className="is-marks">{getQuestionMarksTotal(question)} marks</span>
+          : null}
         {renderQuestionStructureBadge(question)}
         {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
         {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
@@ -300,7 +302,7 @@ const createMedsyDescriptiveSampleQuestions = (type, offset, idOffset, marks) =>
       options: [],
       correctOptionIds: [],
       descriptiveSections: createMedsyDescriptiveSections(row, questionNumber, marks, isLaq),
-      answerKey: `Answer & Explanation: Present ${row.name} with clear structure, key facts, and one relevant correlation.`,
+      answerKey: `Model Answer: Present ${row.name} with clear structure, key facts, and one relevant correlation.`,
       questionBankSentAt: new Date(`2026-05-22T10:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
     }
   })
@@ -337,7 +339,7 @@ const createMedsyCategorySaqSampleQuestions = () => (
       options: [],
       correctOptionIds: [],
       descriptiveSections: [],
-      answerKey: `Answer & Explanation: ${categoryStem} Include key facts, relevant context, and a concise conclusion.`,
+      answerKey: `Model Answer: ${categoryStem} Include key facts, relevant context, and a concise conclusion.`,
       questionBankSentAt: new Date(`2026-05-22T12:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
     }
   })
@@ -346,7 +348,6 @@ const createMedsyCategorySaqSampleQuestions = () => (
 const createMedsySampleQuestions = () => [
   ...createMedsyMcqSampleQuestions(),
   ...createMedsyDescriptiveSampleQuestions('Desc Short Answer Questions (SAQs)', 50, 50, 8),
-  ...createMedsyDescriptiveSampleQuestions('Desc Long Answer Questions (LAQs)', 100, 100, 10),
   ...createMedsyCategorySaqSampleQuestions(),
 ]
 
@@ -773,7 +774,7 @@ const getDescriptiveAnswerText = (question, section, child) => {
   const explicitAnswer = stripHtml(child?.answerKey)
     || stripHtml(section?.answerKey)
     || stripHtml(question?.answerKey)
-  if (explicitAnswer) return explicitAnswer
+  if (explicitAnswer) return explicitAnswer.replace(/^(main question\s*)?(answer\s*&\s*explanation|model answer)\s*:\s*/i, '').trim()
   if (!isMedsyQuestion(question)) return ''
 
   const targetText = stripHtml(child?.questionText)
@@ -781,14 +782,14 @@ const getDescriptiveAnswerText = (question, section, child) => {
     || getQuestionPreview(question)
   if (!targetText) return ''
 
-  return `Answer & Explanation: Explain ${targetText} with the key concept, relevant supporting points, and clinical significance.`
+  return `Model Answer: Explain ${targetText} with the key concept, relevant supporting points, and clinical significance.`
 }
 
 const getDescriptiveAnswerItems = (question, sections) => {
   const sectionList = Array.isArray(sections) ? sections : []
   if (!sectionList.length) {
-    const mainAnswer = stripHtml(question?.answerKey)
-    return mainAnswer ? [{ key: `${question?.id ?? 'question'}-main-answer`, label: 'Main question', text: mainAnswer }] : []
+    const mainAnswer = stripHtml(question?.answerKey).replace(/^(main question\s*)?(answer\s*&\s*explanation|model answer)\s*:\s*/i, '').trim()
+    return mainAnswer ? [{ key: `${question?.id ?? 'question'}-main-answer`, label: '', text: mainAnswer }] : []
   }
 
   return sectionList.flatMap((section, sectionIndex) => {
@@ -815,6 +816,69 @@ const getDescriptiveAnswerItems = (question, sections) => {
       .filter(Boolean)
   })
 }
+
+const renderQuestionParts = (question, sections, keyPrefix = 'question') => {
+  const sectionList = Array.isArray(sections) ? sections : []
+  if (!sectionList.length) return null
+
+  return (
+    <div className="assessment-page-question-parts-panel">
+      <strong className="assessment-page-question-parts-heading">Question Parts</strong>
+      <div className="assessment-page-question-parts-body">
+        <div className="assessment-page-question-parts-main">
+          {getQuestionPreview(question)}
+        </div>
+        {sectionList.map((section, sectionIndex) => {
+          const children = Array.isArray(section.children) ? section.children : []
+          const sectionMarks = Number(section.marks ?? 0)
+
+          return (
+            <div key={section.id ?? `${keyPrefix}-section-${sectionIndex}`} className="assessment-page-descriptive-item">
+              <div className="assessment-page-descriptive-line">
+                <strong>{sectionIndex + 1}.</strong>
+                <span>{stripHtml(section.questionText) || 'Question not added'}</span>
+                {!isMedsyQuestion(question) && !children.length && sectionMarks > 0
+                  ? <em>{sectionMarks} marks</em>
+                  : null}
+              </div>
+              {children.map((child, childIndex) => {
+                const childMarks = Number(child.marks ?? 0)
+
+                return (
+                  <div key={child.id ?? `${keyPrefix}-section-${sectionIndex}-child-${childIndex}`} className="assessment-page-descriptive-line is-child">
+                    <strong>{String.fromCharCode(97 + childIndex)}.</strong>
+                    <span>{stripHtml(child.questionText) || 'Question not added'}</span>
+                    {!isMedsyQuestion(question) && childMarks > 0
+                      ? <em>{childMarks} marks</em>
+                      : null}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+const renderMainQuestionPanel = (question) => (
+  <div className="assessment-page-main-question-block">
+    <div className="assessment-page-question-answer assessment-page-main-question-panel">
+      <strong className="assessment-page-question-parts-heading">Question Parts</strong>
+      <span>{getQuestionPreview(question)}</span>
+    </div>
+  </div>
+)
+
+const renderTableMainQuestionPanel = (question) => (
+  <div className="assessment-page-main-question-block">
+    <div className="assessment-page-table-inline-section assessment-page-main-question-panel">
+      <strong className="assessment-page-question-parts-heading">Question Parts</strong>
+      <span>{getQuestionPreview(question)}</span>
+    </div>
+  </div>
+)
 
 const parseMarksValue = (value) => {
   const parsed = Number(value)
@@ -2071,7 +2135,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const renderQuestionTagBadges = (question) => (
     <>
       {renderSourceBadge(question, 'assessment-page-grid-author-label', sourceBadgeTooltipHandlers)}
-      {getQuestionMarksTotal(question) > 0 ? (
+      {!isMedsyQuestion(question) && getQuestionMarksTotal(question) > 0 ? (
         <span className="assessment-page-table-value-pill assessment-page-marks-badge">
           {getQuestionMarksTotal(question)}M
         </span>
@@ -3127,43 +3191,27 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                         </div>
                       ) : null}
                       {isDescriptive && descriptiveSections.length ? (
-                        <div className="assessment-page-descriptive-lines">
-                          {descriptiveSections.map((section, sectionIndex) => (
-                            <div key={section.id ?? `${questionId}-section-${sectionIndex}`} className="assessment-page-descriptive-item">
-                              <div className="assessment-page-descriptive-line">
-                                <strong>{sectionIndex + 1}.</strong>
-                                <span>{stripHtml(section.questionText) || 'Question not added'}</span>
-                                {!(section.children ?? []).length && Number(section.marks ?? 0) > 0 ? <em>{section.marks} marks</em> : null}
-                              </div>
-                              {(section.children ?? []).map((child, childIndex) => (
-                                <Fragment key={child.id ?? `${section.id}-child-${childIndex}`}>
-                                  <div className="assessment-page-descriptive-line is-child">
-                                    <strong>{String.fromCharCode(97 + childIndex)}.</strong>
-                                    <span>{stripHtml(child.questionText) || 'Question not added'}</span>
-                                    {Number(child.marks ?? 0) > 0 ? <em>{child.marks} marks</em> : null}
-                                  </div>
-                                </Fragment>
-                              ))}
-                            </div>
-                          ))}
-                        </div>
+                        renderQuestionParts(question, descriptiveSections, questionId)
+                      ) : null}
+                      {isDescriptive && !descriptiveSections.length && stripHtml(question.answerKey) ? (
+                        renderMainQuestionPanel(question)
                       ) : null}
                       {isDescriptive && descriptiveAnswerItems.length ? (
                         <div className="assessment-page-question-answer assessment-page-descriptive-answer-list">
-                          <strong>Answer &amp; Explanation</strong>
+                          <strong className="assessment-page-model-answer-heading">Model Answer</strong>
                           <span>
                             {descriptiveAnswerItems.map((answerItem) => (
                               <span key={answerItem.key} className="assessment-page-descriptive-answer-row">
-                                <b>{answerItem.label}</b>
+                                {answerItem.label ? <b>{answerItem.label}</b> : null}
                                 <span>{answerItem.text}</span>
                               </span>
                             ))}
                           </span>
                         </div>
                       ) : null}
-                      {(!isDescriptive || !descriptiveSections.length) && stripHtml(question.answerKey) ? (
+                      {!isDescriptive && stripHtml(question.answerKey) ? (
                         <div className="assessment-page-question-answer">
-                          <strong>Answer & Explanation</strong>
+                          <strong className="assessment-page-model-answer-heading">Model Answer</strong>
                           <span>{stripHtml(question.answerKey)}</span>
                         </div>
                       ) : null}
@@ -3349,42 +3397,26 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                               ) : null}
                               {isDescriptive && descriptiveSections.length ? (
                                 <div className="assessment-page-table-inline-section">
-                                  <div className="assessment-page-descriptive-lines">
-                                    {descriptiveSections.map((section, sectionIndex) => (
-                                      <div key={section.id ?? `${questionId}-table-section-${sectionIndex}`} className="assessment-page-descriptive-item">
-                                        <div className="assessment-page-descriptive-line">
-                                          <strong>{sectionIndex + 1}.</strong>
-                                          <span>{stripHtml(section.questionText) || 'Question not added'}</span>
-                                          {!(section.children ?? []).length && Number(section.marks ?? 0) > 0 ? <em>{section.marks} marks</em> : null}
-                                        </div>
-                                        {(section.children ?? []).map((child, childIndex) => (
-                                          <Fragment key={child.id ?? `${section.id}-table-child-${childIndex}`}>
-                                            <div className="assessment-page-descriptive-line is-child">
-                                              <strong>{String.fromCharCode(97 + childIndex)}.</strong>
-                                              <span>{stripHtml(child.questionText) || 'Question not added'}</span>
-                                              {Number(child.marks ?? 0) > 0 ? <em>{child.marks} marks</em> : null}
-                                            </div>
-                                          </Fragment>
-                                        ))}
-                                      </div>
-                                    ))}
-                                  </div>
+                                  {renderQuestionParts(question, descriptiveSections, `${questionId}-table`)}
                                 </div>
+                              ) : null}
+                              {isDescriptive && !descriptiveSections.length && stripHtml(question.answerKey) ? (
+                                renderTableMainQuestionPanel(question)
                               ) : null}
                               {isDescriptive && descriptiveAnswerItems.length ? (
                                 <div className="assessment-page-table-inline-section assessment-page-descriptive-answer-list">
-                                  <strong>Answer &amp; Explanation</strong>
+                                  <strong className="assessment-page-model-answer-heading">Model Answer</strong>
                                   <span>
                                     {descriptiveAnswerItems.map((answerItem) => (
                                       <span key={answerItem.key} className="assessment-page-descriptive-answer-row">
-                                        <b>{answerItem.label}</b>
+                                        {answerItem.label ? <b>{answerItem.label}</b> : null}
                                         <span>{answerItem.text}</span>
                                       </span>
                                     ))}
                                   </span>
                                 </div>
                               ) : null}
-                              {(!isDescriptive || !descriptiveSections.length) && stripHtml(question.answerKey) ? (
+                              {!isDescriptive && stripHtml(question.answerKey) ? (
                                 <div className="assessment-page-table-inline-section assessment-page-table-answer">
                                   <span>{stripHtml(question.answerKey)}</span>
                                 </div>
