@@ -167,25 +167,11 @@ const getQuestionCategoryLabel = (value, questionOrType) => {
 
 const MEDSY_QUESTION_BANK_SEED_COUNTS = {
   mcq: 50,
-  saq: 50,
-  laq: 50,
   categorySaq: 10,
 }
 
 const MEDSY_OPTION_DISTRACTORS = ['Terminology Confusion', 'False Association', 'Misclassification']
 const MEDSY_CATEGORY_SAQ_TYPES = ['Direct', 'Reasoning', 'Aetcom', 'Application']
-const MEDSY_DESCRIPTIVE_INSIDE_PROMPTS = [
-  'State the key definition and one essential feature.',
-  'Explain the underlying mechanism in sequence.',
-  'Mention one applied or clinical correlation.',
-  'List the important structural or functional components.',
-  'Differentiate it from a closely related concept.',
-  'Add one investigation, observation, or interpretation point.',
-  'Describe the expected outcome or consequence.',
-  'Mention one common error students should avoid.',
-  'Summarize the high-yield exam point.',
-  'Connect the concept to patient-care relevance.',
-]
 
 const getMedsySeedRows = (offset = 0, count = 50) => (
   Array.from({ length: count }, (_, index) => corelationRatingRows[(offset + index) % corelationRatingRows.length])
@@ -234,80 +220,6 @@ const createMedsyMcqSampleQuestions = () => getMedsySeedRows(0, MEDSY_QUESTION_B
   }
 })
 
-const createMedsyDescriptiveSections = (row, questionNumber, marks, isLaq) => {
-  const prompts = MEDSY_DESCRIPTIVE_INSIDE_PROMPTS
-  const primaryPrompt = prompts[questionNumber % prompts.length]
-  const secondPrompt = prompts[(questionNumber + 3) % prompts.length]
-  const thirdPrompt = prompts[(questionNumber + 6) % prompts.length]
-
-  return [
-    {
-      id: `medsy-desc-${questionNumber}-section-1`,
-      questionText: 'Discuss the core concept.',
-      marks: '',
-      answerKey: `Explain ${row.name} with the required key points.`,
-      children: isLaq
-        ? [
-          {
-            id: `medsy-desc-${questionNumber}-child-1`,
-            questionText: primaryPrompt,
-            marks: '4',
-            answerKey: 'Cover the definition, core concept, and essential details.',
-          },
-          {
-            id: `medsy-desc-${questionNumber}-child-2`,
-            questionText: secondPrompt,
-            marks: '3',
-            answerKey: `Add structured supporting points linked to ${row.topic || 'the topic'}.`,
-          },
-          {
-            id: `medsy-desc-${questionNumber}-child-3`,
-            questionText: thirdPrompt,
-            marks: '3',
-            answerKey: 'Include one applied correlation and a concise conclusion.',
-          },
-        ]
-        : [
-          {
-            id: `medsy-desc-${questionNumber}-child-1`,
-            questionText: primaryPrompt,
-            marks: '4',
-            answerKey: 'State the key facts required for the concept.',
-          },
-          {
-            id: `medsy-desc-${questionNumber}-child-2`,
-            questionText: secondPrompt,
-            marks: '4',
-            answerKey: `Add a relevant explanation or application linked to ${row.topic || 'the topic'}.`,
-          },
-        ],
-    },
-  ]
-}
-
-const createMedsyDescriptiveSampleQuestions = (type, offset, idOffset, marks) => {
-  const isLaq = type === 'Desc Long Answer Questions (LAQs)'
-
-  return getMedsySeedRows(offset, isLaq ? MEDSY_QUESTION_BANK_SEED_COUNTS.laq : MEDSY_QUESTION_BANK_SEED_COUNTS.saq).map((row, index) => {
-    const questionNumber = idOffset + index + 1
-    const meta = getMedsySeedMeta(row, index + offset)
-
-    return {
-      id: `medsy-uploaded-sample-${questionNumber}`,
-      type,
-      authorName: 'Medsy',
-      questionText: row.name,
-      marks: String(marks),
-      ...meta,
-      options: [],
-      correctOptionIds: [],
-      descriptiveSections: createMedsyDescriptiveSections(row, questionNumber, marks, isLaq),
-      answerKey: `Model Answer: Present ${row.name} with clear structure, key facts, and one relevant correlation.`,
-      questionBankSentAt: new Date(`2026-05-22T10:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
-    }
-  })
-}
-
 const createMedsyCategorySaqSampleQuestions = () => (
   getMedsySeedRows(150, MEDSY_QUESTION_BANK_SEED_COUNTS.categorySaq).map((row, index) => {
     const questionNumber = 150 + index + 1
@@ -347,7 +259,6 @@ const createMedsyCategorySaqSampleQuestions = () => (
 
 const createMedsySampleQuestions = () => [
   ...createMedsyMcqSampleQuestions(),
-  ...createMedsyDescriptiveSampleQuestions('Desc Short Answer Questions (SAQs)', 50, 50, 8),
   ...createMedsyCategorySaqSampleQuestions(),
 ]
 

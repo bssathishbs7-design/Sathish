@@ -18775,8 +18775,10 @@
 .create-assessment-blueprint-table-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  align-content: start;
   gap: 14px;
   min-width: 0;
+  min-height: 0;
   margin-top: 0;
   padding: 16px 16px 18px;
   border: 1px solid #cfe8df;
@@ -18787,6 +18789,19 @@
 .create-assessment-blueprint-table-card.is-distribution,
 .create-assessment-blueprint-table-card.is-questionSpecifications {
   border-color: #34c2b3;
+}
+
+.create-assessment-blueprint-panel:has(.create-assessment-blueprint-table-card.is-questionSpecifications) {
+  height: max-content;
+  grid-template-rows: auto max-content;
+}
+
+.create-assessment-blueprint-table-card.is-questionSpecifications,
+.create-assessment-blueprint-table-card.is-questionSpecifications .create-assessment-blueprint-specifications,
+.create-assessment-blueprint-table-card.is-questionSpecifications .create-assessment-blueprint-spec-left-stack {
+  height: max-content;
+  min-height: max-content;
+  overflow: visible;
 }
 
 .create-assessment-blueprint-grid {
@@ -18853,6 +18868,17 @@
 .create-assessment-blueprint-select-trigger:focus-visible {
   border-color: #10b9a8;
   box-shadow: 0 0 0 2px rgba(16, 185, 168, 0.1);
+}
+
+.create-assessment-blueprint-field.is-disabled > span:first-child {
+  color: #718b8a;
+}
+
+.create-assessment-blueprint-field input:disabled {
+  border-color: #d7e5e1;
+  background: #f2f7f6;
+  color: #71858f;
+  cursor: not-allowed;
 }
 
 .create-assessment-blueprint-multiselect {
@@ -19036,12 +19062,20 @@
   margin-left: 0;
 }
 
-.create-assessment-blueprint-tabs button:hover,
-.create-assessment-blueprint-tabs button:focus-visible {
+.create-assessment-blueprint-tabs button:not(:disabled):hover,
+.create-assessment-blueprint-tabs button:not(:disabled):focus-visible {
   border-color: #9ee4d8;
   background: #f0fffc;
   color: #006c64;
   outline: none;
+}
+
+.create-assessment-blueprint-tabs button:disabled {
+  border-color: #dce8e5;
+  background: #f4f8f7;
+  color: #9aabae;
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 
 .create-assessment-blueprint-tabs button.is-active {
@@ -19078,9 +19112,10 @@
 
 .create-assessment-blueprint-specifications {
   display: grid;
-  grid-template-columns: minmax(390px, 0.78fr) minmax(0, 1.82fr);
-  grid-template-areas: "left test";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "left";
   align-items: start;
+  justify-items: stretch;
   gap: 22px 24px;
   min-width: 0;
 }
@@ -19088,33 +19123,224 @@
 .create-assessment-blueprint-spec-left-stack {
   grid-area: left;
   display: grid;
+  width: 100%;
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: center;
+  align-items: start;
   gap: 14px;
   min-width: 0;
   align-content: start;
 }
 
+.create-assessment-blueprint-specifications.has-question-split .create-assessment-blueprint-spec-left-stack {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .create-assessment-blueprint-spec-card {
   display: grid;
+  width: 100%;
   gap: 6px;
   min-width: 0;
   align-content: start;
+  box-sizing: border-box;
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary {
-  grid-area: auto;
+  display: grid;
+  order: 2;
 }
 
 .create-assessment-blueprint-spec-card.is-cognition-summary {
   grid-area: auto;
+  order: 1;
   overflow: visible;
 }
 
+.create-assessment-blueprint-spec-card.is-type-summary > *,
+.create-assessment-blueprint-spec-card.is-cognition-summary > * {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.create-assessment-blueprint-question-split-btn {
+  display: inline-flex;
+  min-width: 190px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 16px;
+  border: 1px solid #0ea99b;
+  border-radius: 7px;
+  background: #10b9a8;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+}
+
+.create-assessment-blueprint-question-split-btn:hover:not(:disabled),
+.create-assessment-blueprint-question-split-btn:focus-visible:not(:disabled) {
+  border-color: #087f75;
+  background: #0b9689;
+  outline: none;
+}
+
+.create-assessment-blueprint-question-split-btn:disabled {
+  border-color: #d5e2df;
+  background: #edf3f1;
+  color: #9aabaa;
+  cursor: not-allowed;
+}
+
+.create-assessment-blueprint-cognition-stage-row {
+  display: grid;
+  grid-template-columns: minmax(360px, 520px) minmax(330px, 350px) minmax(180px, 1fr);
+  align-items: stretch;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.create-assessment-blueprint-specifications.has-question-split .create-assessment-blueprint-cognition-stage-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-content: stretch;
+}
+
+.create-assessment-blueprint-cognition-marks-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid #d8e5e2;
+  border-radius: 7px;
+  background: #f8fbfa;
+  color: #334155;
+  box-sizing: border-box;
+}
+
+.create-assessment-blueprint-cognition-marks-summary strong,
+.create-assessment-blueprint-cognition-marks-summary span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 24px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.create-assessment-blueprint-cognition-marks-summary strong {
+  color: #0f766e;
+}
+
+.create-assessment-blueprint-cognition-marks-summary span {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 1px solid #d8e5e2;
+}
+
+.create-assessment-blueprint-cognition-marks-summary span:nth-child(2) {
+  color: #4f46e5;
+}
+
+.create-assessment-blueprint-cognition-marks-summary span:nth-child(3) {
+  color: #c2410c;
+}
+
+.create-assessment-blueprint-cognition-entry {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  height: 48px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #4f46e5;
+  box-sizing: border-box;
+}
+
+.create-assessment-blueprint-cognition-percentage-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+  height: 48px;
+  overflow: hidden;
+  border: 1px solid #d8e5e2;
+  border-radius: 7px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.create-assessment-blueprint-cognition-percentage-group .create-assessment-blueprint-cognition-entry {
+  height: 46px;
+  padding: 0 9px;
+}
+
+.create-assessment-blueprint-cognition-percentage-group .create-assessment-blueprint-cognition-entry + .create-assessment-blueprint-cognition-entry {
+  border-left: 1px solid #d8e5e2;
+}
+
+.create-assessment-blueprint-cognition-entry.is-hot {
+  color: #c2410c;
+}
+
+.create-assessment-blueprint-cognition-entry > strong {
+  color: #334155;
+  font-size: 0.71rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.create-assessment-blueprint-cognition-entry .create-assessment-blueprint-cognition-percent-field {
+  grid-column: auto;
+  grid-row: auto;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 34px;
+  margin-left: auto;
+}
+
+.create-assessment-blueprint-cognition-stage-action {
+  display: grid;
+  align-items: center;
+  align-content: center;
+  min-width: 0;
+}
+
+.create-assessment-blueprint-cognition-stage-row > .create-assessment-blueprint-cognition-total {
+  height: 48px;
+  justify-content: center;
+  padding: 8px 10px;
+  border: 1px solid #9ddfd5;
+  border-radius: 7px;
+  background: #ecfdf9;
+  color: #08776d;
+  box-sizing: border-box;
+}
+
+.create-assessment-blueprint-cognition-stage-row > .create-assessment-blueprint-cognition-total strong {
+  white-space: nowrap;
+}
+
+.create-assessment-blueprint-cognition-stage-action .create-assessment-blueprint-question-split-btn {
+  width: 100%;
+  height: 48px;
+  min-width: 0;
+  padding: 0 10px;
+}
+
 .create-assessment-blueprint-spec-card.is-test-spec-summary {
-  grid-area: test;
-  align-self: start;
-  grid-template-rows: minmax(0, 1fr);
-  height: var(--blueprint-spec-left-height, 450px);
-  min-height: 360px;
+  display: none;
 }
 
 .create-assessment-blueprint-spec-card.is-test-spec-summary .create-assessment-blueprint-spec-table {
@@ -19143,7 +19369,7 @@
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary h3 {
-  color: #047857;
+  color: #1d4ed8;
 }
 
 .create-assessment-blueprint-spec-card.is-cognition-summary h3 {
@@ -19226,6 +19452,18 @@
   line-height: 1.15;
 }
 
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th {
+  height: 32px;
+  padding: 5px 9px;
+  font-size: 0.74rem;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td {
+  height: 35px;
+  padding: 3px 9px;
+  font-size: 0.75rem;
+}
+
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th,
 .create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table th {
   white-space: normal;
@@ -19234,24 +19472,36 @@
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:first-child,
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:first-child {
-  width: 30%;
+  width: 18%;
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(2),
-.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(2),
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(2) {
+  width: 14%;
+  text-align: center;
+}
+
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(3),
-.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(3),
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(3) {
+  width: 12%;
+  text-align: center;
+}
+
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(4),
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(4) {
-  width: 12%;
+  width: 13%;
   text-align: center;
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(5),
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(5),
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(6),
-.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(6) {
-  width: 17%;
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(6),
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(7),
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(7),
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(8),
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td:nth-child(8) {
+  width: 10.75%;
   text-align: center;
 }
 
@@ -19345,38 +19595,55 @@
 
 .create-assessment-blueprint-cognition-graph {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   padding: 0;
   overflow: hidden;
-  border: 1px solid #e6e0f5;
+  border: 1px solid #d8e5e2;
   border-radius: 8px;
-  background: #fffefe;
+  background: #ffffff;
 }
 
 .create-assessment-blueprint-cognition-head {
   display: flex;
   align-items: center;
-  min-height: 32px;
-  padding: 7px 11px;
-  border-bottom: 1px solid #eeeaf7;
+  gap: 8px;
+  min-height: 34px;
+  padding: 5px 10px;
+  border-bottom: 1px solid #e3ece9;
   border-radius: 8px 8px 0 0;
-  background: #fbfaff;
+  background: #f8fbfa;
 }
 
 .create-assessment-blueprint-cognition-head h3 {
-  color: #6d5fb6;
+  flex: 0 0 auto;
+  color: #0f766e;
   font-size: 0.76rem;
 }
 
+.create-assessment-blueprint-cognition-instruction-badge {
+  display: inline-flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 .create-assessment-blueprint-cognition-graph > :not(.create-assessment-blueprint-cognition-head) {
-  width: calc(100% - 22px);
-  margin-right: 11px;
-  margin-left: 11px;
+  width: calc(100% - 20px);
+  margin-right: 10px;
+  margin-left: 10px;
   box-sizing: border-box;
 }
 
 .create-assessment-blueprint-cognition-bar {
-  display: flex;
+  display: none;
   width: 100%;
   height: 12px;
   margin-top: 2px;
@@ -19477,15 +19744,17 @@
 
 .create-assessment-blueprint-cognition-legend > span {
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 4px 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 8px;
+  height: 48px;
+  padding: 7px 9px;
   border-radius: 7px;
   font-size: 0.7rem;
   line-height: 1.1;
   border: 1px solid transparent;
+  box-sizing: border-box;
   transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
 }
 
@@ -19503,6 +19772,15 @@
 }
 
 .create-assessment-blueprint-cognition-legend strong {
+  grid-column: 1;
+  grid-row: 1;
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border: 1px solid;
+  border-radius: 5px;
   font-weight: 900;
 }
 
@@ -19511,14 +19789,63 @@
   font-weight: 900;
 }
 
+.create-assessment-blueprint-cognition-percent-field {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: 72px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.78);
+  box-sizing: border-box;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.create-assessment-blueprint-cognition-percent-field:focus-within {
+  box-shadow: 0 0 0 3px rgba(139, 124, 246, 0.13);
+}
+
+.create-assessment-blueprint-cognition-percent-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  text-align: right;
+}
+
+.create-assessment-blueprint-cognition-percent-field em {
+  flex: 0 0 auto;
+  font: inherit;
+}
+
 .create-assessment-blueprint-cognition-legend b {
-  grid-column: 1 / -1;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: start;
   font-weight: 750;
 }
 
 .create-assessment-blueprint-cognition-legend .is-lot {
   background: #f7f5ff;
   border-color: #eee8ff;
+  color: #5f50b5;
+}
+
+.create-assessment-blueprint-cognition-legend .is-lot strong {
+  border-color: #cfc4ff;
+  background: #ede9fe;
   color: #5f50b5;
 }
 
@@ -19530,6 +19857,12 @@
 .create-assessment-blueprint-cognition-legend .is-hot {
   background: #fff8f1;
   border-color: #ffead7;
+  color: #b45b18;
+}
+
+.create-assessment-blueprint-cognition-legend .is-hot strong {
+  border-color: #ffd3ad;
+  background: #ffeddc;
   color: #b45b18;
 }
 
@@ -19602,26 +19935,26 @@
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table {
-  border-color: #bbf7d0;
+  border-color: #bfdbfe;
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th {
-  background: #ecfdf5;
-  color: #047857;
+  background: #eff6ff;
+  color: #1e3a8a;
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td {
-  border-bottom-color: #dcfce7;
+  border-bottom-color: #dbeafe;
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td,
 .create-assessment-blueprint-question-type-row.is-saq-summary td {
-  background: #f0fdf4;
-  color: #166534;
+  background: #eff6ff;
+  color: #1e40af;
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tbody tr:not(.is-total):hover td {
-  background: #f7fef9;
+  background: #f8fbff;
   cursor: pointer;
 }
 
@@ -19693,18 +20026,21 @@
 }
 
 .create-assessment-blueprint-spec-number {
-  width: 42px;
-  height: 20px;
-  padding: 2px 6px;
+  display: block;
+  width: min(100%, 62px);
+  height: 26px;
+  margin: 0 auto;
+  padding: 4px 8px;
   border: 1px solid #bfe2dc;
   border-radius: 6px;
   background: #ffffff;
   color: #082431;
-  font-size: 0.66rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 650;
   line-height: 1;
   text-align: center;
   outline: none;
+  box-sizing: border-box;
 }
 
 .create-assessment-blueprint-spec-number::placeholder {
@@ -19719,6 +20055,46 @@
 .create-assessment-blueprint-spec-number:focus {
   border-color: #009d90;
   box-shadow: 0 0 0 2px rgba(52, 194, 179, 0.16);
+}
+
+.create-assessment-blueprint-spec-number.is-invalid {
+  border-color: #fda4af;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.create-assessment-blueprint-spec-number.is-calculated {
+  width: min(100%, 68px);
+}
+
+.create-assessment-blueprint-spec-number.is-calculated.is-auto {
+  border-color: #b7e4d8;
+  background: #f0fdf9;
+  color: #047857;
+  font-weight: 700;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number.is-calculated.is-auto {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-status.is-complete {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.create-assessment-blueprint-spec-number.is-calculated.is-edited {
+  border-color: #60a5fa;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.create-assessment-blueprint-question-type-row.is-invalid td {
+  background: #fffafa;
 }
 
 .create-assessment-blueprint-spec-number::-webkit-outer-spin-button,
@@ -19751,20 +20127,27 @@
 }
 
 .create-assessment-blueprint-spec-table-wrap-type {
-  overflow: hidden;
-  border: 1px solid #bbf7d0;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #bfdbfe;
   border-radius: 8px;
   background: #ffffff;
+  box-sizing: border-box;
 }
 
 .create-assessment-blueprint-spec-table-wrap-type .create-assessment-blueprint-test-grid-title-row {
-  border-bottom-color: #bbf7d0;
-  background: #fbfffd;
+  border-bottom-color: #dbeafe;
+  background: #f8fbff;
 }
 
 .create-assessment-blueprint-spec-table-wrap-type .create-assessment-blueprint-spec-table {
+  width: 100%;
+  min-width: 900px;
   border: 0;
   border-radius: 0;
+  box-sizing: border-box;
 }
 
 .create-assessment-blueprint-test-grid-title-row {
@@ -20199,10 +20582,42 @@
 @media (max-width: 980px) {
   .create-assessment-blueprint-specifications {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "left"
-      "test";
+    grid-template-areas: "left";
     align-items: start;
+  }
+
+  .create-assessment-blueprint-spec-left-stack {
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .create-assessment-blueprint-specifications.has-question-split .create-assessment-blueprint-spec-left-stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .create-assessment-blueprint-cognition-stage-row {
+    grid-template-columns: minmax(300px, 1fr) minmax(310px, 330px) 175px;
+  }
+
+  .create-assessment-blueprint-specifications.has-question-split .create-assessment-blueprint-cognition-stage-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .create-assessment-blueprint-cognition-legend {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .create-assessment-blueprint-cognition-stage-row > .create-assessment-blueprint-cognition-total {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+  }
+
+  .create-assessment-blueprint-cognition-stage-action {
+    grid-column: 2;
+    grid-row: 2;
+    align-items: center;
   }
 
   .create-assessment-blueprint-spec-card.is-test-spec-summary,
@@ -20225,11 +20640,84 @@
   }
 }
 
+@media (max-width: 640px) {
+  .create-assessment-blueprint-cognition-stage-row,
+  .create-assessment-blueprint-specifications.has-question-split .create-assessment-blueprint-cognition-stage-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .create-assessment-blueprint-cognition-legend,
+  .create-assessment-blueprint-cognition-stage-action {
+    grid-column: 1;
+    grid-row: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .create-assessment-blueprint-cognition-stage-row > .create-assessment-blueprint-cognition-total {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .create-assessment-blueprint-cognition-percent-field {
+    width: min(100%, 110px);
+  }
+}
+
 .create-assessment-blueprint-section-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.create-assessment-blueprint-matrix-actions {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.create-assessment-blueprint-matrix-btn {
+  display: inline-flex;
+  min-width: 190px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 16px;
+  border: 1px solid #0ea99b;
+  border-radius: 7px;
+  background: #10b9a8;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+}
+
+.create-assessment-blueprint-matrix-btn:hover:not(:disabled),
+.create-assessment-blueprint-matrix-btn:focus-visible:not(:disabled) {
+  border-color: #087f75;
+  background: #0b9689;
+  outline: none;
+}
+
+.create-assessment-blueprint-matrix-btn.is-edit {
+  border-color: #9dd9cf;
+  background: #effdfa;
+  color: #08776d;
+}
+
+.create-assessment-blueprint-matrix-btn.is-edit:hover,
+.create-assessment-blueprint-matrix-btn.is-edit:focus-visible {
+  border-color: #58c7b8;
+  background: #dcfaf4;
+}
+
+.create-assessment-blueprint-matrix-btn:disabled {
+  border-color: #d5e2df;
+  background: #edf3f1;
+  color: #9aabaa;
+  cursor: not-allowed;
 }
 
 .create-assessment-blueprint-section-label {
@@ -20277,12 +20765,12 @@
 }
 
 .create-assessment-blueprint-table-wrap:has(.create-assessment-blueprint-empty) {
-  height: 240px;
+  height: auto;
 }
 
 .create-assessment-blueprint-table:has(.create-assessment-blueprint-empty) {
-  height: 100%;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: auto;
+  grid-template-rows: auto auto;
 }
 
 .create-assessment-blueprint-table colgroup {
@@ -20655,7 +21143,7 @@
   grid-column: 1 / -1;
   display: flex;
   height: 100%;
-  min-height: 210px;
+  min-height: 72px;
   align-items: center;
   justify-content: center;
   color: #607381 !important;
@@ -20672,7 +21160,7 @@
   }
 
   .create-assessment-blueprint-table-wrap:has(.create-assessment-blueprint-empty) {
-    height: 220px;
+    height: auto;
   }
 
   .create-assessment-blueprint-table th,
@@ -20698,7 +21186,7 @@
   }
 
   .create-assessment-blueprint-table-wrap:has(.create-assessment-blueprint-empty) {
-    height: clamp(240px, 48vh, 380px);
+    height: auto;
   }
 
   .create-assessment-blueprint-table tr {
@@ -21621,6 +22109,46 @@
   min-width: 0;
 }
 
+.create-assessment-preview-answer-row.has-no-label {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.create-assessment-preview-card-heading {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 7px;
+  border: 1px solid;
+  border-radius: 5px;
+  font-size: 0.66rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.create-assessment-preview-card-heading.is-question-parts {
+  border-color: #9bded3;
+  background: #e8faf6;
+  color: #00796f;
+}
+
+.create-assessment-preview-card-heading.is-model-answer {
+  border-color: #c7b8f5;
+  background: #f1edff;
+  color: #6546b5;
+}
+
+.create-assessment-preview-main-question {
+  display: block;
+  min-width: 0;
+  color: #082431;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .create-assessment-preview-answer.is-nested {
   padding-left: 20px;
   color: #536879;
@@ -21629,6 +22157,7 @@
 
 .create-assessment-preview-sections {
   display: grid;
+  gap: 7px;
 }
 
 .create-assessment-preview-section {
@@ -34187,7 +34716,7 @@
 }
 
 .theme-dark .create-assessment-blueprint-spec-card.is-type-summary h3 {
-  color: #5eead4;
+  color: #93c5fd;
 }
 
 .theme-dark .create-assessment-blueprint-spec-card.is-cognition-summary h3 {
@@ -34240,12 +34769,12 @@
 }
 
 .theme-dark .create-assessment-blueprint-spec-table-wrap-type {
-  border-color: rgba(74, 222, 128, 0.28);
+  border-color: rgba(96, 165, 250, 0.34);
   background: #0b1728;
 }
 
 .theme-dark .create-assessment-blueprint-spec-table-wrap-type .create-assessment-blueprint-test-grid-title-row {
-  border-bottom-color: rgba(74, 222, 128, 0.24);
+  border-bottom-color: rgba(96, 165, 250, 0.28);
   background: rgba(11, 23, 40, 0.92);
 }
 
@@ -34365,9 +34894,24 @@
   color: #8beee0;
 }
 
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th {
+  background: #172554;
+  color: #bfdbfe;
+}
+
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td {
+  border-bottom-color: rgba(96, 165, 250, 0.2);
+}
+
 .theme-dark .create-assessment-blueprint-spec-table tr.is-total td {
   background: #13243a;
   color: #93e8ff;
+}
+
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td,
+.theme-dark .create-assessment-blueprint-question-type-row.is-saq-summary td {
+  background: rgba(30, 58, 138, 0.34);
+  color: #bfdbfe;
 }
 
 .theme-dark .create-assessment-blueprint-question-type-row td:first-child {
@@ -34384,7 +34928,7 @@
 }
 
 .theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tbody tr:not(.is-total):hover td {
-  background: rgba(20, 83, 45, 0.18);
+  background: rgba(30, 64, 175, 0.18);
 }
 
 .theme-dark .create-assessment-blueprint-spec-card.is-cognition-summary .create-assessment-blueprint-spec-table tbody tr:not(.is-total):hover td {
@@ -34445,6 +34989,30 @@
   background: #13243a;
 }
 
+.theme-dark .create-assessment-blueprint-spec-number.is-calculated.is-auto {
+  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(6, 78, 59, 0.42);
+  color: #a7f3d0;
+}
+
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number.is-calculated.is-auto {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(30, 64, 175, 0.28);
+  color: #bfdbfe;
+}
+
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-status.is-complete {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(30, 64, 175, 0.28);
+  color: #bfdbfe;
+}
+
+.theme-dark .create-assessment-blueprint-spec-number.is-calculated.is-edited {
+  border-color: rgba(96, 165, 250, 0.58);
+  background: rgba(30, 64, 175, 0.28);
+  color: #bfdbfe;
+}
+
 .theme-dark .create-assessment-blueprint-percent-field {
   border-color: rgba(45, 212, 191, 0.4);
   background: #111d31;
@@ -34456,17 +35024,23 @@
 }
 
 .theme-dark .create-assessment-blueprint-cognition-graph {
-  border-color: rgba(167, 139, 250, 0.24);
+  border-color: rgba(94, 234, 212, 0.22);
   background: #0b1728;
 }
 
 .theme-dark .create-assessment-blueprint-cognition-head {
-  border-bottom-color: rgba(167, 139, 250, 0.2);
+  border-bottom-color: rgba(94, 234, 212, 0.18);
   background: rgba(30, 41, 59, 0.36);
 }
 
 .theme-dark .create-assessment-blueprint-cognition-head h3 {
-  color: #c4b5fd;
+  color: #5eead4;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-instruction-badge {
+  border-color: transparent;
+  background: transparent;
+  color: #94a3b8;
 }
 
 .theme-dark .create-assessment-blueprint-cognition-bar {
@@ -34499,9 +35073,19 @@
   color: #c4b5fd;
 }
 
+.theme-dark .create-assessment-blueprint-cognition-legend .is-lot strong {
+  border-color: rgba(196, 181, 253, 0.38);
+  background: rgba(109, 40, 217, 0.28);
+  color: #ddd6fe;
+}
+
 .theme-dark .create-assessment-blueprint-cognition-legend .is-lot:hover {
   background: rgba(109, 40, 217, 0.26);
   border-color: rgba(196, 181, 253, 0.38);
+}
+
+.theme-dark .create-assessment-blueprint-cognition-percent-field {
+  background: rgba(15, 23, 42, 0.62);
 }
 
 .theme-dark .create-assessment-blueprint-cognition-legend .is-hot {
@@ -34510,14 +35094,68 @@
   color: #fdba74;
 }
 
+.theme-dark .create-assessment-blueprint-cognition-legend .is-hot strong {
+  border-color: rgba(253, 186, 116, 0.38);
+  background: rgba(249, 115, 22, 0.28);
+  color: #fed7aa;
+}
+
 .theme-dark .create-assessment-blueprint-cognition-legend .is-hot:hover {
   background: rgba(249, 115, 22, 0.24);
   border-color: rgba(253, 186, 116, 0.38);
 }
 
 .theme-dark .create-assessment-blueprint-cognition-total {
-  border-top-color: rgba(167, 139, 250, 0.24);
+  border-color: rgba(94, 234, 212, 0.35);
+  background: rgba(13, 148, 136, 0.2);
+  color: #99f6e4;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-marks-summary {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.42);
+  color: #cbd5e1;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-marks-summary strong {
+  color: #5eead4;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-marks-summary span {
+  border-left-color: rgba(148, 163, 184, 0.28);
+}
+
+.theme-dark .create-assessment-blueprint-cognition-marks-summary span:nth-child(2) {
+  color: #c4b5fd;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-marks-summary span:nth-child(3) {
+  color: #fdba74;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-entry {
+  border-color: transparent;
+  background: transparent;
   color: #ddd6fe;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-percentage-group {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.theme-dark .create-assessment-blueprint-cognition-percentage-group .create-assessment-blueprint-cognition-entry + .create-assessment-blueprint-cognition-entry {
+  border-left-color: rgba(148, 163, 184, 0.28);
+}
+
+.theme-dark .create-assessment-blueprint-cognition-entry.is-hot {
+  border-color: transparent;
+  background: transparent;
+  color: #fed7aa;
+}
+
+.theme-dark .create-assessment-blueprint-cognition-entry > strong {
+  color: #cbd5e1;
 }
 
 .theme-dark .create-assessment-blueprint-percent-field:focus-within {
@@ -44535,6 +45173,16 @@ body > .assessment-page-filter-menu {
   box-shadow: none !important;
 }
 
+.create-assessment-preview-list .create-assessment-preview-sections,
+.create-assessment-preview-list .create-assessment-preview-answer-list {
+  padding: 12px 14px !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-bottom {
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+
 .create-assessment-preview-list .create-assessment-preview-actions,
 .create-assessment-preview-list .create-assessment-preview-card.is-open .create-assessment-preview-actions {
   position: static !important;
@@ -44813,4 +45461,56 @@ body > .assessment-page-filter-menu {
   border-color: #d9ebe7 !important;
   border-radius: 7px !important;
   background: #ffffff !important;
+}
+
+/* Keep expanded preview content full-width while its actions stay in the header. */
+.create-assessment-preview-list .create-assessment-preview-card.is-open {
+  position: relative !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-card.is-open .create-assessment-preview-title-row {
+  padding-right: 112px !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-card.is-open .create-assessment-preview-actions {
+  position: absolute !important;
+  top: 16px !important;
+  right: 20px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-card .create-assessment-preview-card-heading {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: fit-content !important;
+  max-width: max-content !important;
+  padding: 3px 7px !important;
+  border-radius: 5px !important;
+  font-size: 0.66rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-card .create-assessment-preview-card-heading.is-question-parts {
+  border-color: #9bded3 !important;
+  background: #e8faf6 !important;
+  color: #00796f !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-card .create-assessment-preview-card-heading.is-model-answer {
+  border-color: #c7b8f5 !important;
+  background: #f1edff !important;
+  color: #6546b5 !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-main-question,
+.create-assessment-preview-list .create-assessment-preview-answer-row > span {
+  color: #082431 !important;
+  font-size: 0.74rem !important;
+  font-weight: 800 !important;
+  line-height: 1.45 !important;
 }
