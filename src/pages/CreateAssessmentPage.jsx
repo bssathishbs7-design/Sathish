@@ -1708,6 +1708,63 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     'SAQs (Application)': '8',
   }
   const blueprintQuestionTypeLabels = ['MCQs', 'LAQs', 'SAQs (Direct)', 'SAQs (Reasoning)', 'SAQs (Aetcom)', 'SAQs (Application)']
+  const blueprintQuestionTypeEnteredMarksTotal = blueprintQuestionTypeLabels.reduce(
+    (total, label) => total + (Number(blueprintQuestionTypeDraft[label]?.totalMarks) || 0),
+    0,
+  )
+  const blueprintManualHotMarksTotal = blueprintQuestionTypeLabels.reduce((total, label) => {
+    const draft = blueprintQuestionTypeDraft[label] || {}
+    const hasManualMarksSplit = Object.prototype.hasOwnProperty.call(draft, 'hotMarks')
+      || Object.prototype.hasOwnProperty.call(draft, 'lotMarks')
+    return total + (hasManualMarksSplit ? Number(draft.hotMarks) || 0 : 0)
+  }, 0)
+  const blueprintAutomaticMarksRows = blueprintQuestionTypeLabels
+    .map((label) => {
+      const draft = blueprintQuestionTypeDraft[label] || {}
+      const hasManualMarksSplit = Object.prototype.hasOwnProperty.call(draft, 'hotMarks')
+        || Object.prototype.hasOwnProperty.call(draft, 'lotMarks')
+      return {
+        label,
+        totalMarks: Number(draft.totalMarks) || 0,
+        hasManualMarksSplit,
+      }
+    })
+    .filter((row) => !row.hasManualMarksSplit && row.totalMarks > 0)
+  const blueprintAutomaticMarksTotal = blueprintAutomaticMarksRows.reduce((total, row) => total + row.totalMarks, 0)
+  const blueprintTargetHotMarksTotal = Math.round(
+    (blueprintQuestionTypeEnteredMarksTotal * blueprintCognitionHotPercent) / 100,
+  )
+  const blueprintAutomaticHotMarksTarget = Math.min(
+    Math.max(blueprintTargetHotMarksTotal - blueprintManualHotMarksTotal, 0),
+    blueprintAutomaticMarksTotal,
+  )
+  const blueprintAutomaticHotMarksAllocations = blueprintAutomaticMarksRows
+    .map((row) => {
+      const exactMarks = blueprintAutomaticMarksTotal > 0
+        ? (row.totalMarks * blueprintAutomaticHotMarksTarget) / blueprintAutomaticMarksTotal
+        : 0
+      const allocatedMarks = Math.floor(exactMarks)
+      return {
+        ...row,
+        exactMarks,
+        allocatedMarks,
+        remainder: exactMarks - allocatedMarks,
+      }
+    })
+  let blueprintAutomaticHotMarksRemaining = Math.round(
+    blueprintAutomaticHotMarksTarget
+      - blueprintAutomaticHotMarksAllocations.reduce((total, row) => total + row.allocatedMarks, 0),
+  )
+  blueprintAutomaticHotMarksAllocations
+    .sort((first, second) => second.remainder - first.remainder)
+    .forEach((row) => {
+      if (blueprintAutomaticHotMarksRemaining <= 0 || row.allocatedMarks >= row.totalMarks) return
+      row.allocatedMarks += 1
+      blueprintAutomaticHotMarksRemaining -= 1
+    })
+  const blueprintAutomaticHotMarksByLabel = Object.fromEntries(
+    blueprintAutomaticHotMarksAllocations.map((row) => [row.label, row.allocatedMarks]),
+  )
   const blueprintQuestionTypeRows = blueprintQuestionTypeLabels.map((label) => {
     const draft = blueprintQuestionTypeDraft[label] || {}
     const hasDraftValue = (field) => Object.prototype.hasOwnProperty.call(draft, field)
@@ -1735,7 +1792,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         : hasAutomaticQuestionTotal
     )
     const automaticHotMarks = hasRequiredValues
-      ? Math.round((totalMarksNumber * blueprintCognitionHotPercent) / 100)
+      ? blueprintAutomaticHotMarksByLabel[label] ?? Math.round((totalMarksNumber * blueprintCognitionHotPercent) / 100)
       : 0
     const automaticLotMarks = hasRequiredValues
       ? totalMarksNumber - automaticHotMarks
