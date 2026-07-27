@@ -1735,10 +1735,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         : hasAutomaticQuestionTotal
     )
     const automaticHotMarks = hasRequiredValues
-      ? Math.round(((totalMarksNumber * blueprintCognitionHotPercent) / 100) * 100) / 100
+      ? Math.round((totalMarksNumber * blueprintCognitionHotPercent) / 100)
       : 0
     const automaticLotMarks = hasRequiredValues
-      ? Math.round((totalMarksNumber - automaticHotMarks) * 100) / 100
+      ? totalMarksNumber - automaticHotMarks
       : 0
     const hotMarksValue = resolveSplitValue('hotMarks', automaticHotMarks, hasRequiredValues)
     const lotMarksValue = resolveSplitValue('lotMarks', automaticLotMarks, hasRequiredValues)
@@ -1889,13 +1889,75 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const isQuestionCount = ['totalQuestions', 'hotQuestions', 'lotQuestions'].includes(field)
     const isValidValue = isQuestionCount ? /^\d*$/.test(value) : /^\d*(?:\.\d{0,2})?$/.test(value)
     if (!isValidValue) return
-    setBlueprintQuestionTypeDraft((current) => ({
-      ...current,
-      [label]: {
-        ...(current[label] || {}),
+    setBlueprintQuestionTypeDraft((current) => {
+      const currentRowDraft = current[label] || {}
+      const currentRow = blueprintQuestionTypeByLabel[label]
+      const nextRowDraft = {
+        ...currentRowDraft,
         [field]: value,
-      },
-    }))
+      }
+      const dependentFields = ['totalQuestions', 'hotMarks', 'hotQuestions', 'lotMarks', 'lotQuestions']
+
+      if (value === '') {
+        dependentFields.forEach((dependentField) => {
+          delete nextRowDraft[dependentField]
+        })
+        return {
+          ...current,
+          [label]: nextRowDraft,
+        }
+      }
+
+      if (field === 'perQuestionMarks' || field === 'totalMarks') {
+        dependentFields.forEach((dependentField) => {
+          delete nextRowDraft[dependentField]
+        })
+      } else {
+        const perQuestionMarks = Number(currentRow?.perQuestionMarks) || 0
+        const totalMarks = Number(currentRow?.totalMarks) || 0
+        const totalQuestions = Number(currentRow?.totalQuestions) || 0
+        const numericValue = Number(value) || 0
+        const clamp = (number, minimum, maximum) => Math.min(Math.max(number, minimum), maximum)
+
+        if (field === 'totalQuestions') {
+          if (perQuestionMarks > 0) {
+            nextRowDraft.totalMarks = String(numericValue * perQuestionMarks)
+            dependentFields.forEach((dependentField) => {
+              delete nextRowDraft[dependentField]
+            })
+          }
+        } else if (field === 'hotMarks' || field === 'lotMarks') {
+          const editedMarks = clamp(numericValue, 0, totalMarks)
+          const hotMarks = field === 'hotMarks' ? editedMarks : totalMarks - editedMarks
+          const lotMarks = totalMarks - hotMarks
+          const hotQuestions = totalMarks > 0
+            ? clamp(Math.round((totalQuestions * hotMarks) / totalMarks), 0, totalQuestions)
+            : 0
+
+          nextRowDraft.hotMarks = String(hotMarks)
+          nextRowDraft.lotMarks = String(lotMarks)
+          nextRowDraft.hotQuestions = String(hotQuestions)
+          nextRowDraft.lotQuestions = String(totalQuestions - hotQuestions)
+        } else if (field === 'hotQuestions' || field === 'lotQuestions') {
+          const editedQuestions = clamp(numericValue, 0, totalQuestions)
+          const hotQuestions = field === 'hotQuestions' ? editedQuestions : totalQuestions - editedQuestions
+          const lotQuestions = totalQuestions - hotQuestions
+          const hotMarks = totalQuestions > 0
+            ? clamp(Math.round((totalMarks * hotQuestions) / totalQuestions), 0, totalMarks)
+            : 0
+
+          nextRowDraft.hotQuestions = String(hotQuestions)
+          nextRowDraft.lotQuestions = String(lotQuestions)
+          nextRowDraft.hotMarks = String(hotMarks)
+          nextRowDraft.lotMarks = String(totalMarks - hotMarks)
+        }
+      }
+
+      return {
+        ...current,
+        [label]: nextRowDraft,
+      }
+    })
   }
   const updateBlueprintCognitionWeightage = (level, value) => {
     if (!/^\d*$/.test(value)) return
