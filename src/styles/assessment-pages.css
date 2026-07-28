@@ -19541,10 +19541,36 @@
   white-space: nowrap;
 }
 
+.create-assessment-blueprint-header-edit-btn {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid #0f9f91;
+  border-radius: 6px;
+  background: #e9fbf8;
+  color: #087f75;
+  font-size: 0.64rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.create-assessment-blueprint-header-edit-btn:hover,
+.create-assessment-blueprint-header-edit-btn:focus-visible {
+  border-color: #087f75;
+  background: #ccf5ef;
+  color: #06665f;
+  outline: none;
+}
+
 .create-assessment-blueprint-reference-cognition {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto 8px minmax(0, 1fr);
+  grid-template-rows: auto minmax(112px, 1fr) auto;
   gap: 10px;
   height: 100%;
   padding: 12px;
@@ -19592,26 +19618,50 @@
   font-weight: 900;
 }
 
-.create-assessment-blueprint-reference-split-bar {
-  display: flex;
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #eef2f7;
+.create-assessment-blueprint-reference-chart {
+  display: grid;
+  min-height: 112px;
+  place-items: center;
 }
 
-.create-assessment-blueprint-reference-split-bar > span {
-  display: block;
-  height: 100%;
-  min-width: 0;
+.create-assessment-blueprint-reference-donut {
+  display: grid;
+  width: clamp(96px, 10vw, 126px);
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(
+    #c4b5fd 0 var(--lot-percent),
+    #fdba74 var(--lot-percent) 100%
+  );
+  box-shadow: none;
+  transition: transform 160ms ease;
 }
 
-.create-assessment-blueprint-reference-split-bar > .is-lot {
-  background: #8b7cf6;
+.create-assessment-blueprint-reference-donut:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: none;
 }
 
-.create-assessment-blueprint-reference-split-bar > .is-hot {
-  background: #f59a57;
+.create-assessment-blueprint-reference-donut > div {
+  display: grid;
+  width: 70%;
+  aspect-ratio: 1;
+  place-content: center;
+  gap: 3px;
+  border-radius: 50%;
+  background: #ffffff;
+  text-align: center;
+}
+
+.create-assessment-blueprint-reference-donut > div strong {
+  color: #315d92;
+  font-size: 0.68rem;
+}
+
+.create-assessment-blueprint-reference-donut > div small {
+  color: #718395;
+  font-size: 0.58rem;
 }
 
 .create-assessment-blueprint-reference-split-metrics {
@@ -19757,7 +19807,8 @@
   grid-template-areas:
     "intro intro"
     "questions cognition"
-    "test test";
+    "test test"
+    "actions actions";
   align-items: stretch;
   gap: 14px;
 }
@@ -19789,23 +19840,23 @@
 .create-assessment-blueprint-cognition-sidebar {
   display: grid;
   min-width: 0;
-  height: auto;
-  align-self: start;
-  grid-template-rows: auto auto;
+  height: 100%;
+  align-self: stretch;
+  grid-template-rows: minmax(0, 1fr);
   gap: 8px;
 }
 
 .create-assessment-blueprint-cognition-sidebar .create-assessment-blueprint-reference-card.is-cognition {
-  height: auto;
-  grid-template-rows: auto auto;
-  align-content: start;
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
 }
 
 .create-assessment-blueprint-specifications.is-multi-view .create-assessment-blueprint-cognition-sidebar .create-assessment-blueprint-reference-cognition {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto 8px auto;
-  gap: 6px;
-  height: auto;
+  grid-template-rows: auto minmax(112px, 1fr) auto;
+  gap: 8px;
+  height: 100%;
   padding: 8px;
 }
 
@@ -19831,6 +19882,105 @@
   background: #0b9689;
   color: #ffffff;
   outline: none;
+}
+
+.create-assessment-blueprint-reference-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.create-assessment-blueprint-specifications.is-competency-matrix {
+  position: relative;
+  padding-bottom: 0;
+}
+
+.create-assessment-blueprint-floating-actions {
+  position: static;
+  display: grid;
+  width: min(650px, 100%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  justify-self: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.create-assessment-blueprint-specifications.is-multi-view .create-assessment-blueprint-floating-actions {
+  grid-area: actions;
+}
+
+@media (max-width: 640px) {
+  .create-assessment-blueprint-floating-actions {
+    width: 100%;
+  }
+}
+
+.create-assessment-blueprint-reference-action-btn {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid;
+  border-radius: 7px;
+  font-size: 0.71rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.create-assessment-blueprint-reference-action-btn.is-clear {
+  border-color: #fda4af;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.create-assessment-blueprint-reference-action-btn.is-clear:hover,
+.create-assessment-blueprint-reference-action-btn.is-clear:focus-visible {
+  border-color: #fb7185;
+  background: #ffe4e6;
+  color: #9f1239;
+  outline: none;
+}
+
+.create-assessment-blueprint-reference-action-btn.is-auto-fill {
+  border-color: #0f9f91;
+  background: #10b9a8;
+  color: #ffffff;
+}
+
+.create-assessment-blueprint-reference-action-btn.is-auto-fill:hover,
+.create-assessment-blueprint-reference-action-btn.is-auto-fill:focus-visible {
+  border-color: #087f75;
+  background: #0b9689;
+  color: #ffffff;
+  outline: none;
+}
+
+.create-assessment-blueprint-reference-action-btn.is-save {
+  border-color: #15803d;
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.create-assessment-blueprint-reference-action-btn.is-save:hover,
+.create-assessment-blueprint-reference-action-btn.is-save:focus-visible {
+  border-color: #166534;
+  background: #15803d;
+  color: #ffffff;
+  outline: none;
+}
+
+.create-assessment-blueprint-reference-action-btn:disabled {
+  border-color: #cbd5e1;
+  background: #eef3f3;
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .create-assessment-blueprint-specifications.is-multi-view .create-assessment-blueprint-spec-table-wrap-test {
@@ -36760,6 +36910,19 @@
   color: #bfdbfe;
 }
 
+.theme-dark .create-assessment-blueprint-header-edit-btn {
+  border-color: rgba(45, 212, 191, 0.62);
+  background: rgba(13, 148, 136, 0.2);
+  color: #99f6e4;
+}
+
+.theme-dark .create-assessment-blueprint-header-edit-btn:hover,
+.theme-dark .create-assessment-blueprint-header-edit-btn:focus-visible {
+  border-color: #5eead4;
+  background: rgba(13, 148, 136, 0.34);
+  color: #ccfbf1;
+}
+
 .theme-dark .create-assessment-blueprint-view-toggle {
   border-color: rgba(96, 165, 250, 0.3);
   background: #111d31;
@@ -36788,6 +36951,54 @@
   background: #0d766d;
 }
 
+.theme-dark .create-assessment-blueprint-reference-action-btn.is-clear {
+  border-color: rgba(251, 113, 133, 0.56);
+  background: rgba(159, 18, 57, 0.2);
+  color: #fda4af;
+}
+
+.theme-dark .create-assessment-blueprint-reference-action-btn.is-clear:hover,
+.theme-dark .create-assessment-blueprint-reference-action-btn.is-clear:focus-visible {
+  border-color: #fb7185;
+  background: rgba(190, 24, 93, 0.3);
+  color: #fecdd3;
+}
+
+.theme-dark .create-assessment-blueprint-reference-action-btn.is-auto-fill {
+  border-color: #2dd4bf;
+  background: #0f8f82;
+  color: #ffffff;
+}
+
+.theme-dark .create-assessment-blueprint-reference-action-btn.is-auto-fill:hover,
+.theme-dark .create-assessment-blueprint-reference-action-btn.is-auto-fill:focus-visible {
+  border-color: #5eead4;
+  background: #0d766d;
+}
+
+.theme-dark .create-assessment-blueprint-reference-action-btn.is-save {
+  border-color: #4ade80;
+  background: #15803d;
+  color: #ffffff;
+}
+
+.theme-dark .create-assessment-blueprint-reference-action-btn.is-save:hover,
+.theme-dark .create-assessment-blueprint-reference-action-btn.is-save:focus-visible {
+  border-color: #86efac;
+  background: #166534;
+}
+
+.theme-dark .create-assessment-blueprint-reference-action-btn:disabled {
+  border-color: rgba(100, 116, 139, 0.45);
+  background: rgba(30, 41, 59, 0.72);
+  color: #64748b;
+}
+
+.theme-dark .create-assessment-blueprint-floating-actions {
+  background: transparent;
+  box-shadow: none;
+}
+
 .theme-dark .create-assessment-blueprint-reference-card > header {
   border-bottom-color: rgba(96, 165, 250, 0.22);
   background: rgba(30, 41, 59, 0.46);
@@ -36806,6 +37017,22 @@
 
 .theme-dark .create-assessment-blueprint-reference-cognition span,
 .theme-dark .create-assessment-blueprint-reference-cognition small {
+  color: #94a3b8;
+}
+
+.theme-dark .create-assessment-blueprint-reference-donut {
+  box-shadow: none;
+}
+
+.theme-dark .create-assessment-blueprint-reference-donut > div {
+  background: #0f1b2d;
+}
+
+.theme-dark .create-assessment-blueprint-reference-donut > div strong {
+  color: #dbeafe;
+}
+
+.theme-dark .create-assessment-blueprint-reference-donut > div small {
   color: #94a3b8;
 }
 

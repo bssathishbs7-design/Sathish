@@ -34,6 +34,7 @@ import {
   Save,
   Search,
   Settings,
+  Shuffle,
   SlidersHorizontal,
   Sparkles,
   Strikethrough,
@@ -76,6 +77,7 @@ const CREATE_ASSESSMENT_SECTION_ORDER_KEY = 'vx-create-assessment-section-order'
 const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-sections'
 const CREATE_ASSESSMENT_CUSTOM_EXAM_CATEGORIES_KEY = 'vx-create-assessment-custom-exam-categories'
 const CREATE_ASSESSMENT_TEMPLATES_KEY = 'vx-create-assessment-templates'
+const BLUEPRINT_PLANNER_STORAGE_KEY = 'vx-create-assessment-blueprint-planner'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
@@ -1155,6 +1157,7 @@ function BlueprintMultiSelect({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const containerRef = useRef(null)
   const selectedSet = new Set(selected)
   const filteredOptions = options.filter((option) => getOptionLabel(option).toLowerCase().includes(searchValue.trim().toLowerCase()))
   const filteredValues = filteredOptions.map(getOptionValue)
@@ -1170,13 +1173,24 @@ function BlueprintMultiSelect({
     onChange(toggleSelection(selected, value))
   }
 
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const handleOutsidePointerDown = (event) => {
+      if (containerRef.current?.contains(event.target)) return
+      setIsOpen(false)
+      setSearchValue('')
+    }
+    document.addEventListener('pointerdown', handleOutsidePointerDown)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown)
+  }, [isOpen])
+
   return (
     <label className={`create-assessment-blueprint-field ${disabled ? 'is-disabled' : ''}`}>
       <span>
         {label}
         {required ? <em className="assessment-create-required-mark">*</em> : null}
       </span>
-      <div className={`create-assessment-blueprint-multiselect ${isOpen ? 'is-open' : ''}`}>
+      <div ref={containerRef} className={`create-assessment-blueprint-multiselect ${isOpen ? 'is-open' : ''}`}>
         <button
           type="button"
           className="create-assessment-blueprint-select-trigger"
@@ -1247,8 +1261,20 @@ function BlueprintMultiSelect({
 function BlueprintSingleSelect({ label, required = false, disabled = false, placeholder, options, value, onChange, getOptionLabel = (option) => option.label, getOptionValue = (option) => option.value }) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const containerRef = useRef(null)
   const selectedOption = options.find((option) => getOptionValue(option) === value)
   const filteredOptions = options.filter((option) => getOptionLabel(option).toLowerCase().includes(searchValue.trim().toLowerCase()))
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const handleOutsidePointerDown = (event) => {
+      if (containerRef.current?.contains(event.target)) return
+      setIsOpen(false)
+      setSearchValue('')
+    }
+    document.addEventListener('pointerdown', handleOutsidePointerDown)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown)
+  }, [isOpen])
 
   return (
     <label className={`create-assessment-blueprint-field ${disabled ? 'is-disabled' : ''}`}>
@@ -1256,7 +1282,7 @@ function BlueprintSingleSelect({ label, required = false, disabled = false, plac
         {label}
         {required ? <em className="assessment-create-required-mark">*</em> : null}
       </span>
-      <div className={`create-assessment-blueprint-multiselect ${isOpen ? 'is-open' : ''}`}>
+      <div ref={containerRef} className={`create-assessment-blueprint-multiselect ${isOpen ? 'is-open' : ''}`}>
         <button
           type="button"
           className="create-assessment-blueprint-select-trigger"
@@ -1433,6 +1459,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [blueprintLaqQuestionSplits, setBlueprintLaqQuestionSplits] = useState([])
   const [isBlueprintLaqSplitOpen, setIsBlueprintLaqSplitOpen] = useState(true)
   const [blueprintTestSpecificationCountDraft, setBlueprintTestSpecificationCountDraft] = useState({})
+  const [blueprintAutoFillIteration, setBlueprintAutoFillIteration] = useState(0)
   const [blueprintCognitionWeightage, setBlueprintCognitionWeightage] = useState({ lot: '', hot: '' })
   const blueprintSpecLeftStackRef = useRef(null)
   const [blueprintSpecLeftStackHeight, setBlueprintSpecLeftStackHeight] = useState(0)
@@ -1480,6 +1507,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintLaqQuestionSplits([])
     setIsBlueprintLaqSplitOpen(true)
     setBlueprintTestSpecificationCountDraft({})
+    setBlueprintAutoFillIteration(0)
     setBlueprintCompetencyViewMode('multi')
     setActiveBlueprintTab('distribution')
   }, [isBlueprintEnabled])
@@ -1490,6 +1518,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setIsBlueprintCompetencyMatrixCreated(false)
     setIsBlueprintResetConfirmOpen(false)
     setIsBlueprintEditConfirmOpen(false)
+    setBlueprintAutoFillIteration(0)
     setBlueprintCompetencyViewMode('multi')
   }, [isBlueprintMatrixCreated])
 
@@ -2229,6 +2258,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     && blueprintSpecificationRows.every((row) => (
       getBlueprintTestSpecificationRowData(row.key).resultClass === 'complete'
     ))
+  const blueprintTestSpecificationMarksAndTargetsResultClass = (
+    blueprintTestSpecificationTotalResultClass === 'complete'
+    && blueprintTestSpecificationRowsComplete
+  )
+    ? 'complete'
+    : 'invalid'
   const blueprintAllocatedMcqQuestions = getBlueprintTestSpecificationColumnCountTotal('mcqLot')
     + getBlueprintTestSpecificationColumnCountTotal('mcqHot')
   const blueprintAllocatedSaqQuestions = getBlueprintTestSpecificationColumnCountTotal('saqLot')
@@ -2256,6 +2291,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     && blueprintTestSpecificationTotalResultClass === 'complete'
     && blueprintTestSpecificationRowsComplete
     && blueprintTestSpecificationMainQuestionTotalComplete
+  const blueprintTestSpecificationCanAutoFill = blueprintSpecificationRows.length > 0
+    && blueprintSpecificationTargetTotal > 0
+    && blueprintTestSpecificationColumns.every((column) => (
+      (blueprintTestSpecificationQuestionMarkUnits[column.key] || []).length
+      === (blueprintTestSpecificationQuestionCounts[column.key] || 0)
+    ))
   const blueprintTestSpecificationDisplayStatus = blueprintTestSpecificationMatrixIsValid
     ? 'complete'
     : blueprintTestSpecificationTotalStatus === 'complete'
@@ -2361,23 +2402,215 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const updateBlueprintTestSpecificationDraft = (rowKey, fieldKey, value) => {
     if (!/^\d*$/.test(value)) return
-    const requestedCount = Number(value) || 0
-    const otherRowsCount = blueprintSpecificationRows.reduce(
-      (total, row) => row.key === rowKey
-        ? total
-        : total + getBlueprintTestSpecificationCountNumber(row.key, fieldKey),
-      0,
-    )
     const availableCount = blueprintTestSpecificationQuestionCounts[fieldKey] || 0
-    if (requestedCount + otherRowsCount > availableCount) return
+    const requestedCount = value === ''
+      ? 0
+      : Math.min(Number(value) || 0, availableCount)
 
-    setBlueprintTestSpecificationCountDraft((current) => ({
-      ...current,
-      [rowKey]: {
-        ...(current[rowKey] || {}),
-        [fieldKey]: value,
-      },
-    }))
+    setBlueprintTestSpecificationCountDraft((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).map(([key, rowDraft]) => [key, { ...rowDraft }]),
+      )
+
+      next[rowKey] = {
+        ...(next[rowKey] || {}),
+        [fieldKey]: requestedCount > 0 ? String(requestedCount) : '',
+      }
+
+      const otherRowsCount = blueprintSpecificationRows.reduce((total, row) => {
+        if (row.key === rowKey) return total
+        return total + (Number(next[row.key]?.[fieldKey]) || 0)
+      }, 0)
+      let overflowCount = Math.max(0, requestedCount + otherRowsCount - availableCount)
+
+      if (overflowCount > 0) {
+        blueprintSpecificationRows.forEach((row) => {
+          if (row.key === rowKey || overflowCount <= 0) return
+          const currentCount = Number(next[row.key]?.[fieldKey]) || 0
+          if (currentCount <= 0) return
+
+          const countToRemove = Math.min(currentCount, overflowCount)
+          const remainingCount = currentCount - countToRemove
+          next[row.key] = {
+            ...(next[row.key] || {}),
+            [fieldKey]: remainingCount > 0 ? String(remainingCount) : '',
+          }
+          overflowCount -= countToRemove
+        })
+      }
+
+      return next
+    })
+  }
+  const clearBlueprintTestSpecificationMatrix = () => {
+    setBlueprintTestSpecificationCountDraft({})
+    setBlueprintAutoFillIteration(0)
+  }
+  const autoFillBlueprintTestSpecificationMatrix = () => {
+    if (!blueprintTestSpecificationCanAutoFill) return
+
+    const rowTargets = blueprintSpecificationRows.map((row) => Number(row.targetMarks) || 0)
+    const targetTotal = rowTargets.reduce((total, target) => total + target, 0) || 1
+    const columnCounts = Object.fromEntries(
+      blueprintTestSpecificationColumns.map((column) => {
+        const questionCount = blueprintTestSpecificationQuestionCounts[column.key] || 0
+        const exactShares = rowTargets.map((target) => (questionCount * target) / targetTotal)
+        const counts = exactShares.map((share) => Math.floor(share))
+        let remainingCount = questionCount - counts.reduce((total, count) => total + count, 0)
+        const remainderOrder = exactShares
+          .map((share, rowIndex) => ({ rowIndex, remainder: share - counts[rowIndex] }))
+          .sort((left, right) => right.remainder - left.remainder || left.rowIndex - right.rowIndex)
+
+        for (let index = 0; index < remainingCount; index += 1) {
+          counts[remainderOrder[index % remainderOrder.length].rowIndex] += 1
+        }
+        return [column.key, counts]
+      }),
+    )
+
+    const calculateRowMarks = (countsByColumn) => {
+      const totals = blueprintSpecificationRows.map(() => 0)
+      blueprintTestSpecificationColumns.forEach((column) => {
+        const units = blueprintTestSpecificationQuestionMarkUnits[column.key] || []
+        let offset = 0
+        countsByColumn[column.key].forEach((count, rowIndex) => {
+          totals[rowIndex] += units
+            .slice(offset, offset + count)
+            .reduce((sum, marks) => sum + marks, 0)
+          offset += count
+        })
+      })
+      return totals
+    }
+    const calculateDifference = (countsByColumn) => {
+      const totals = calculateRowMarks(countsByColumn)
+      return totals.reduce(
+        (difference, total, rowIndex) => difference + Math.abs(total - rowTargets[rowIndex]),
+        0,
+      )
+    }
+
+    let currentDifference = calculateDifference(columnCounts)
+    let keepOptimizing = true
+    let optimizationPass = 0
+
+    while (keepOptimizing && currentDifference > 0 && optimizationPass < 250) {
+      keepOptimizing = false
+      optimizationPass += 1
+      let bestMove = null
+      let bestDifference = currentDifference
+
+      blueprintTestSpecificationColumns.forEach((column) => {
+        const counts = columnCounts[column.key]
+        counts.forEach((count, fromRowIndex) => {
+          if (count <= 0) return
+          counts.forEach((_, toRowIndex) => {
+            if (fromRowIndex === toRowIndex) return
+            counts[fromRowIndex] -= 1
+            counts[toRowIndex] += 1
+            const nextDifference = calculateDifference(columnCounts)
+            counts[fromRowIndex] += 1
+            counts[toRowIndex] -= 1
+
+            if (nextDifference < bestDifference) {
+              bestDifference = nextDifference
+              bestMove = { columnKey: column.key, fromRowIndex, toRowIndex }
+            }
+          })
+        })
+      })
+
+      if (bestMove) {
+        columnCounts[bestMove.columnKey][bestMove.fromRowIndex] -= 1
+        columnCounts[bestMove.columnKey][bestMove.toRowIndex] += 1
+        currentDifference = bestDifference
+        keepOptimizing = true
+      }
+    }
+
+    let didReshuffle = false
+    if (blueprintAutoFillIteration > 0 && currentDifference === 0) {
+      const reshuffleCandidates = []
+
+      blueprintTestSpecificationColumns.forEach((leftColumn, leftColumnIndex) => {
+        const leftUnits = blueprintTestSpecificationQuestionMarkUnits[leftColumn.key] || []
+        const leftUnitMarks = leftUnits[0]
+        const leftIsUniform = leftUnits.length > 0
+          && leftUnits.every((marks) => marks === leftUnitMarks)
+        if (!leftIsUniform) return
+
+        blueprintTestSpecificationColumns.slice(leftColumnIndex + 1).forEach((rightColumn) => {
+          const rightUnits = blueprintTestSpecificationQuestionMarkUnits[rightColumn.key] || []
+          const rightIsCompatible = rightUnits.length > 0
+            && rightUnits.every((marks) => marks === leftUnitMarks)
+          if (!rightIsCompatible) return
+
+          const leftCounts = columnCounts[leftColumn.key]
+          const rightCounts = columnCounts[rightColumn.key]
+          leftCounts.forEach((leftCount, leftRowIndex) => {
+            if (leftCount <= 0) return
+            rightCounts.forEach((rightCount, rightRowIndex) => {
+              if (rightCount <= 0 || leftRowIndex === rightRowIndex) return
+              reshuffleCandidates.push({
+                leftColumnKey: leftColumn.key,
+                rightColumnKey: rightColumn.key,
+                leftRowIndex,
+                rightRowIndex,
+              })
+            })
+          })
+        })
+      })
+
+      if (reshuffleCandidates.length) {
+        const candidate = reshuffleCandidates[
+          (blueprintAutoFillIteration - 1) % reshuffleCandidates.length
+        ]
+        columnCounts[candidate.leftColumnKey][candidate.leftRowIndex] -= 1
+        columnCounts[candidate.leftColumnKey][candidate.rightRowIndex] += 1
+        columnCounts[candidate.rightColumnKey][candidate.rightRowIndex] -= 1
+        columnCounts[candidate.rightColumnKey][candidate.leftRowIndex] += 1
+        didReshuffle = true
+      }
+    }
+
+    setBlueprintTestSpecificationCountDraft(Object.fromEntries(
+      blueprintSpecificationRows.map((row, rowIndex) => [
+        row.key,
+        Object.fromEntries(
+          blueprintTestSpecificationColumns.map((column) => [
+            column.key,
+            columnCounts[column.key][rowIndex] > 0
+              ? String(columnCounts[column.key][rowIndex])
+              : '',
+          ]),
+        ),
+      ]),
+    ))
+    setBlueprintAutoFillIteration((current) => current + 1)
+    if (blueprintAutoFillIteration > 0) {
+      setSaveStatus(didReshuffle
+        ? 'Blueprint matrix reshuffled.'
+        : 'No alternative valid distribution is available.')
+    }
+  }
+  const saveBlueprintPlanner = () => {
+    if (!blueprintTestSpecificationMatrixIsValid) return
+
+    try {
+      window.localStorage.setItem(BLUEPRINT_PLANNER_STORAGE_KEY, JSON.stringify({
+        blueprintDraft,
+        blueprintDistributionDraft,
+        blueprintCognitionWeightage,
+        blueprintQuestionTypeDraft,
+        blueprintLaqQuestionSplits,
+        blueprintTestSpecificationCountDraft,
+        savedAt: new Date().toISOString(),
+      }))
+      setSaveStatus('Blueprint planner saved.')
+    } catch {
+      setSaveStatus('Unable to save the blueprint planner. Browser storage may be full.')
+    }
   }
   const updateBlueprintQuestionTypeDraft = (label, field, value) => {
     const isQuestionCount = ['totalQuestions', 'hotQuestions', 'lotQuestions'].includes(field)
@@ -2514,6 +2747,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const createBlueprintCompetencyMatrix = () => {
     if (!isBlueprintCompetencyMatrixReady) return
     setBlueprintCompetencyViewMode('multi')
+    setBlueprintAutoFillIteration(0)
     setIsBlueprintCompetencyMatrixCreated(true)
   }
   const confirmBlueprintMatrixReset = () => {
@@ -2522,6 +2756,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintLaqQuestionSplits([])
     setIsBlueprintLaqSplitOpen(true)
     setBlueprintTestSpecificationCountDraft({})
+    setBlueprintAutoFillIteration(0)
     setIsBlueprintQuestionSplitCreated(false)
     setIsBlueprintCompetencyMatrixCreated(false)
     setIsBlueprintResetConfirmOpen(false)
@@ -6282,7 +6517,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             </div>
                           )}
                         </div>
-                        <div className={`create-assessment-blueprint-test-grid-foot ${blueprintTestSpecificationTotalResultClass}`} role="rowgroup">
+                        <div className={`create-assessment-blueprint-test-grid-foot ${blueprintTestSpecificationMarksAndTargetsResultClass}`} role="rowgroup">
                           <div className="create-assessment-blueprint-test-grid-row is-total" role="row">
                             <div className="create-assessment-blueprint-test-grid-cell is-competency" role="cell">Total Marks:</div>
                             {blueprintTestSpecificationColumns.map((column) => {
@@ -6306,10 +6541,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             <div className="create-assessment-blueprint-test-grid-cell is-test-spec-target is-footer-target" role="cell">
                               {formatBlueprintSplitNumber(blueprintSpecificationTargetTotal)}
                             </div>
-                            <div className={`create-assessment-blueprint-test-grid-cell is-test-spec-total is-footer-total ${blueprintTestSpecificationTotalResultClass}`} role="cell">
+                            <div className={`create-assessment-blueprint-test-grid-cell is-test-spec-total is-footer-total ${blueprintTestSpecificationMarksAndTargetsResultClass}`} role="cell">
                               <span className="create-assessment-blueprint-test-spec-total">
                                 <span className="create-assessment-blueprint-test-spec-total-main">
-                                  {blueprintTestSpecificationTotalResultClass === 'complete' ? 'Matched' : 'Mismatched'}
+                                  {blueprintTestSpecificationMarksAndTargetsResultClass === 'complete' ? 'Matched' : 'Mismatched'}
                                 </span>
                               </span>
                             </div>
@@ -6356,6 +6591,18 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           <ListChecks size={14} strokeWidth={2.3} />
                           <strong>Type of Questions</strong>
                           <span>Read-only</span>
+                          <button
+                            type="button"
+                            className="create-assessment-blueprint-header-edit-btn"
+                            onClick={() => {
+                              setIsBlueprintCompetencyMatrixCreated(false)
+                              setBlueprintTestSpecificationCountDraft({})
+                              setBlueprintAutoFillIteration(0)
+                            }}
+                          >
+                            <Pencil size={12} strokeWidth={2.3} />
+                            Edit Matrix
+                          </button>
                         </header>
                         <div className="create-assessment-blueprint-reference-table-wrap">
                           <table>
@@ -6453,13 +6700,18 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               </span>
                               <strong>{blueprintCognitionTotalMarks}</strong>
                             </div>
-                            <div
-                              className="create-assessment-blueprint-reference-split-bar"
-                              role="img"
-                              aria-label={`LoT ${blueprintCognitionLotPercent} percent and HoT ${blueprintCognitionHotPercent} percent`}
-                            >
-                              <span className="is-lot" style={{ width: `${blueprintCognitionLotPercent}%` }} />
-                              <span className="is-hot" style={{ width: `${blueprintCognitionHotPercent}%` }} />
+                            <div className="create-assessment-blueprint-reference-chart">
+                              <div
+                                className="create-assessment-blueprint-reference-donut"
+                                role="img"
+                                aria-label={`LoT ${blueprintCognitionLotPercent} percent and HoT ${blueprintCognitionHotPercent} percent`}
+                                style={{ '--lot-percent': `${blueprintCognitionLotPercent}%` }}
+                              >
+                                <div>
+                                  <strong>{blueprintCognitionLotPercent}% / {blueprintCognitionHotPercent}%</strong>
+                                  <small>LoT / HoT</small>
+                                </div>
+                              </div>
                             </div>
                             <div className="create-assessment-blueprint-reference-split-metrics">
                               <div className="is-lot">
@@ -6475,18 +6727,45 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             </div>
                           </div>
                         </section>
-                        <button
-                          type="button"
-                          className="create-assessment-blueprint-edit-matrix-btn"
-                          onClick={() => {
-                            setIsBlueprintCompetencyMatrixCreated(false)
-                            setBlueprintTestSpecificationCountDraft({})
-                          }}
-                        >
-                          <Pencil size={14} strokeWidth={2.3} />
-                          <span>Edit Matrix</span>
-                        </button>
                       </aside>
+                    </div>
+                  ) : null}
+
+                  {isBlueprintCompetencyMatrixCreated ? (
+                    <div
+                      className="create-assessment-blueprint-floating-actions"
+                      role="group"
+                      aria-label="Table of Test Specifications actions"
+                    >
+                      <button
+                        type="button"
+                        className="create-assessment-blueprint-reference-action-btn is-clear"
+                        onClick={clearBlueprintTestSpecificationMatrix}
+                        disabled={!hasBlueprintTestSpecificationInput}
+                      >
+                        <Trash2 size={14} strokeWidth={2.3} />
+                        <span>Clear</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="create-assessment-blueprint-reference-action-btn is-auto-fill"
+                        onClick={autoFillBlueprintTestSpecificationMatrix}
+                        disabled={!blueprintTestSpecificationCanAutoFill}
+                      >
+                        {blueprintAutoFillIteration > 0
+                          ? <Shuffle size={14} strokeWidth={2.3} />
+                          : <Sparkles size={14} strokeWidth={2.3} />}
+                        <span>{blueprintAutoFillIteration > 0 ? 'Reshuffle AutoFill' : 'AutoFill'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="create-assessment-blueprint-reference-action-btn is-save"
+                        onClick={saveBlueprintPlanner}
+                        disabled={!blueprintTestSpecificationMatrixIsValid}
+                      >
+                        <Save size={14} strokeWidth={2.3} />
+                        <span>Save Blueprint Planner</span>
+                      </button>
                     </div>
                   ) : null}
                 </div>
@@ -8417,32 +8696,34 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       </main>
 
       <aside className="create-assessment-right-rail" aria-label="Assessment actions and summary">
-        <div className="create-assessment-summary-card" aria-label="Assessment question summary">
-          <div className="create-assessment-summary-total-row">
-            <span>Total Marks</span>
-            <strong className="is-marks">{formatSummaryNumber(assessmentSummary.totalMarks)}</strong>
-          </div>
-          <div className="create-assessment-summary-total-row">
-            <span>No. of Question</span>
-            <strong className="is-questions">{formatSummaryNumber(assessmentSummary.totalQuestions)}</strong>
-          </div>
-          {assessmentSummary.rows.length ? (
-            <div className="create-assessment-summary-table">
-              <div className="create-assessment-summary-head">
-                <span />
-                <span>No. of Qus</span>
-                <span>Marks</span>
-              </div>
-              {assessmentSummary.rows.map((row) => (
-                <div className="create-assessment-summary-row" key={row.type}>
-                  <span>{row.type}</span>
-                  <strong className="is-questions">{formatSummaryNumber(row.count)}</strong>
-                  <strong className="is-marks">{formatSummaryNumber(row.marks)}</strong>
-                </div>
-              ))}
+        {!isBlueprintEnabled && activeCreateTab === 'preview' ? (
+          <div className="create-assessment-summary-card" aria-label="Assessment question summary">
+            <div className="create-assessment-summary-total-row">
+              <span>Total Marks</span>
+              <strong className="is-marks">{formatSummaryNumber(assessmentSummary.totalMarks)}</strong>
             </div>
-          ) : null}
-        </div>
+            <div className="create-assessment-summary-total-row">
+              <span>No. of Question</span>
+              <strong className="is-questions">{formatSummaryNumber(assessmentSummary.totalQuestions)}</strong>
+            </div>
+            {assessmentSummary.rows.length ? (
+              <div className="create-assessment-summary-table">
+                <div className="create-assessment-summary-head">
+                  <span />
+                  <span>No. of Qus</span>
+                  <span>Marks</span>
+                </div>
+                {assessmentSummary.rows.map((row) => (
+                  <div className="create-assessment-summary-row" key={row.type}>
+                    <span>{row.type}</span>
+                    <strong className="is-questions">{formatSummaryNumber(row.count)}</strong>
+                    <strong className="is-marks">{formatSummaryNumber(row.marks)}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {isGeneratingQuestion ? (
           <div className="create-assessment-generation-card" aria-live="polite">
             <div className="create-assessment-generation-head">
