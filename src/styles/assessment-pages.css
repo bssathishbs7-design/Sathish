@@ -21388,6 +21388,14 @@
   border-right: 0;
 }
 
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-total .create-assessment-blueprint-test-grid-cell.is-footer-target {
+  grid-column: 8 / 9;
+}
+
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-total .create-assessment-blueprint-test-grid-cell.is-footer-total {
+  grid-column: 9 / 10;
+}
+
 .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-total .create-assessment-blueprint-test-grid-cell {
   border-bottom: 1px solid #d8e7ee;
 }

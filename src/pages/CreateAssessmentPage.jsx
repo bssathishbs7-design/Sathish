@@ -1433,7 +1433,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [blueprintLaqQuestionSplits, setBlueprintLaqQuestionSplits] = useState([])
   const [isBlueprintLaqSplitOpen, setIsBlueprintLaqSplitOpen] = useState(true)
   const [blueprintTestSpecificationCountDraft, setBlueprintTestSpecificationCountDraft] = useState({})
-  const [blueprintTestSpecificationDraft, setBlueprintTestSpecificationDraft] = useState({})
   const [blueprintCognitionWeightage, setBlueprintCognitionWeightage] = useState({ lot: '', hot: '' })
   const blueprintSpecLeftStackRef = useRef(null)
   const [blueprintSpecLeftStackHeight, setBlueprintSpecLeftStackHeight] = useState(0)
@@ -1481,7 +1480,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintLaqQuestionSplits([])
     setIsBlueprintLaqSplitOpen(true)
     setBlueprintTestSpecificationCountDraft({})
-    setBlueprintTestSpecificationDraft({})
     setBlueprintCompetencyViewMode('multi')
     setActiveBlueprintTab('distribution')
   }, [isBlueprintEnabled])
@@ -1709,60 +1707,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     { key: 'saqLot', label: 'LoT', group: 'SAQ' },
     { key: 'saqHot', label: 'HoT', group: 'SAQ' },
   ]
-  const getBlueprintTestSpecificationValue = (rowKey, fieldKey) => blueprintTestSpecificationDraft[rowKey]?.[fieldKey] || ''
-  const getBlueprintTestSpecificationNumber = (rowKey, fieldKey) => Number(getBlueprintTestSpecificationValue(rowKey, fieldKey)) || 0
-  const getBlueprintTestSpecificationRowTotal = (rowKey) => blueprintTestSpecificationColumns.reduce(
-    (sum, column) => sum + getBlueprintTestSpecificationNumber(rowKey, column.key),
-    0,
-  )
-  const getBlueprintTestSpecificationRowData = (rowKey) => {
-    const target = Number(blueprintSpecificationRows.find((row) => row.key === rowKey)?.targetMarks || 0)
-    const actual = getBlueprintTestSpecificationRowTotal(rowKey)
-    return {
-      target,
-      actual,
-      totalText: String(actual),
-      statusClass: getBlueprintTestSpecificationStatus(target, actual),
-      resultClass: getBlueprintTestSpecificationResultClass(target, actual),
-    }
-  }
-  const getBlueprintTestSpecificationColumnTotal = (fieldKey) => blueprintSpecificationRows.reduce(
-    (sum, row) => sum + getBlueprintTestSpecificationNumber(row.key, fieldKey),
-    0,
-  )
-  const hasBlueprintTestSpecificationInput = blueprintSpecificationRows.some((row) => (
-    blueprintTestSpecificationColumns.some((column) => String(getBlueprintTestSpecificationValue(row.key, column.key)).trim())
-  ))
-  const blueprintTestSpecificationLotMarks = ['mcqLot', 'laqLot', 'saqLot'].reduce(
-    (sum, fieldKey) => sum + getBlueprintTestSpecificationColumnTotal(fieldKey),
-    0,
-  )
-  const blueprintTestSpecificationHotMarks = ['mcqHot', 'laqHot', 'saqHot'].reduce(
-    (sum, fieldKey) => sum + getBlueprintTestSpecificationColumnTotal(fieldKey),
-    0,
-  )
-  const blueprintTestSpecificationCognitionTotal = blueprintTestSpecificationLotMarks + blueprintTestSpecificationHotMarks
-  const blueprintTestSpecificationAllocatedTotal = blueprintSpecificationRows.reduce(
-    (sum, row) => sum + getBlueprintTestSpecificationRowTotal(row.key),
-    0,
-  )
-  const getBlueprintTestSpecificationStatus = (target, actual) => {
-    if (!target && !actual) return 'empty'
-    if (target === actual) return 'complete'
-    if (actual > target) return 'over'
-    return 'under'
-  }
-  const getBlueprintTestSpecificationResultClass = (target, actual) => {
-    return target > 0 && target === actual ? 'complete' : 'invalid'
-  }
-  const blueprintTestSpecificationTotalStatus = getBlueprintTestSpecificationStatus(
-    blueprintSpecificationTargetTotal,
-    blueprintTestSpecificationAllocatedTotal,
-  )
-  const blueprintTestSpecificationTotalResultClass = getBlueprintTestSpecificationResultClass(
-    blueprintSpecificationTargetTotal,
-    blueprintTestSpecificationAllocatedTotal,
-  )
   const blueprintQuestionTypeSuggestions = {
     MCQs: '1',
     LAQs: '10',
@@ -1849,6 +1793,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       return {
         label,
         totalMarks: Number(draft.totalMarks) || 0,
+        perQuestionMarks: Number(draft.perQuestionMarks) || 0,
+        totalQuestions: Number(draft.perQuestionMarks) > 0
+          ? (Number(draft.totalMarks) || 0) / Number(draft.perQuestionMarks)
+          : 0,
         hasManualMarksSplit,
       }
     })
@@ -1861,32 +1809,69 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     Math.max(blueprintTargetHotMarksTotal - blueprintManualHotMarksTotal, 0),
     blueprintAutomaticMarksTotal,
   )
-  const blueprintAutomaticHotMarksAllocations = blueprintAutomaticMarksRows
-    .map((row) => {
-      const exactMarks = blueprintAutomaticMarksTotal > 0
-        ? (row.totalMarks * blueprintAutomaticHotMarksTarget) / blueprintAutomaticMarksTotal
-        : 0
-      const allocatedMarks = Math.floor(exactMarks)
-      return {
-        ...row,
-        exactMarks,
-        allocatedMarks,
-        remainder: exactMarks - allocatedMarks,
+  const blueprintAutomaticQuestionRows = blueprintAutomaticMarksRows.filter((row) => (
+    row.perQuestionMarks > 0
+    && Number.isInteger(row.totalQuestions)
+    && row.totalQuestions > 0
+  ))
+  const allocateBlueprintHotQuestions = (rows, targetMarks, hotPercent) => {
+    let states = new Map([[0, { allocations: [], deviation: 0 }]])
+
+    rows.forEach((row) => {
+      const markUnits = Math.round(row.perQuestionMarks * 100)
+      const expectedHotQuestions = (row.totalQuestions * hotPercent) / 100
+      const nextStates = new Map()
+
+      states.forEach((state, currentMarks) => {
+        for (let hotQuestions = 0; hotQuestions <= row.totalQuestions; hotQuestions += 1) {
+          const nextMarks = currentMarks + (hotQuestions * markUnits)
+          const candidate = {
+            allocations: [...state.allocations, hotQuestions],
+            deviation: state.deviation + Math.abs(hotQuestions - expectedHotQuestions),
+          }
+          const existing = nextStates.get(nextMarks)
+          if (!existing || candidate.deviation < existing.deviation) {
+            nextStates.set(nextMarks, candidate)
+          }
+        }
+      })
+
+      states = nextStates
+    })
+
+    const targetUnits = Math.round(targetMarks * 100)
+    let bestMarks = 0
+    let bestState = null
+    states.forEach((state, marks) => {
+      if (!bestState) {
+        bestMarks = marks
+        bestState = state
+        return
+      }
+      const difference = Math.abs(marks - targetUnits)
+      const bestDifference = Math.abs(bestMarks - targetUnits)
+      if (
+        difference < bestDifference
+        || (difference === bestDifference && state.deviation < bestState.deviation)
+        || (difference === bestDifference && state.deviation === bestState.deviation && marks > bestMarks)
+      ) {
+        bestMarks = marks
+        bestState = state
       }
     })
-  let blueprintAutomaticHotMarksRemaining = Math.round(
-    blueprintAutomaticHotMarksTarget
-      - blueprintAutomaticHotMarksAllocations.reduce((total, row) => total + row.allocatedMarks, 0),
-  )
-  blueprintAutomaticHotMarksAllocations
-    .sort((first, second) => second.remainder - first.remainder)
-    .forEach((row) => {
-      if (blueprintAutomaticHotMarksRemaining <= 0 || row.allocatedMarks >= row.totalMarks) return
-      row.allocatedMarks += 1
-      blueprintAutomaticHotMarksRemaining -= 1
-    })
-  const blueprintAutomaticHotMarksByLabel = Object.fromEntries(
-    blueprintAutomaticHotMarksAllocations.map((row) => [row.label, row.allocatedMarks]),
+
+    return Object.fromEntries(rows.map((row, index) => {
+      const hotQuestions = bestState?.allocations[index] || 0
+      return [row.label, {
+        hotQuestions,
+        hotMarks: hotQuestions * row.perQuestionMarks,
+      }]
+    }))
+  }
+  const blueprintAutomaticHotAllocationByLabel = allocateBlueprintHotQuestions(
+    blueprintAutomaticQuestionRows,
+    blueprintAutomaticHotMarksTarget,
+    blueprintCognitionHotPercent,
   )
   const blueprintQuestionTypeRows = blueprintQuestionTypeLabels.map((label) => {
     const draft = blueprintQuestionTypeDraft[label] || {}
@@ -1916,8 +1901,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     )
     const usesLaqSplit = label === 'LAQs' && hasRequiredValues && blueprintLaqSplitIsValid
     const hasIncompleteLaqSplit = label === 'LAQs' && hasRequiredValues && !blueprintLaqSplitIsValid
+    const automaticAllocation = blueprintAutomaticHotAllocationByLabel[label]
+    const automaticHotQuestions = hasValidQuestionTotal
+      ? automaticAllocation?.hotQuestions
+        ?? Math.round((totalQuestions * blueprintCognitionHotPercent) / 100)
+      : 0
+    const automaticLotQuestions = hasValidQuestionTotal ? totalQuestions - automaticHotQuestions : 0
     const automaticHotMarks = hasRequiredValues
-      ? blueprintAutomaticHotMarksByLabel[label] ?? Math.round((totalMarksNumber * blueprintCognitionHotPercent) / 100)
+      ? automaticAllocation?.hotMarks ?? automaticHotQuestions * perQuestionMarksNumber
       : 0
     const automaticLotMarks = hasRequiredValues
       ? totalMarksNumber - automaticHotMarks
@@ -1934,10 +1925,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         : resolveSplitValue('lotMarks', automaticLotMarks, hasRequiredValues)
     const hotMarks = Number(hotMarksValue) || 0
     const lotMarks = Number(lotMarksValue) || 0
-    const automaticHotQuestions = hasValidQuestionTotal
-      ? Math.round((totalQuestions * blueprintCognitionHotPercent) / 100)
-      : 0
-    const automaticLotQuestions = hasValidQuestionTotal ? totalQuestions - automaticHotQuestions : 0
     const hotQuestionsValue = usesLaqSplit
       ? formatBlueprintSplitNumber(blueprintLaqDerivedHotQuestions)
       : hasIncompleteLaqSplit
@@ -2099,6 +2086,63 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
     return { count: 0, calculatedMarks: 0, isValid: false }
   }
+  const getBlueprintTestSpecificationNumber = (rowKey, fieldKey) => (
+    getBlueprintTestSpecificationCellCountData(rowKey, fieldKey).calculatedMarks
+  )
+  const getBlueprintTestSpecificationRowTotal = (rowKey) => blueprintTestSpecificationColumns.reduce(
+    (sum, column) => sum + getBlueprintTestSpecificationNumber(rowKey, column.key),
+    0,
+  )
+  const getBlueprintTestSpecificationStatus = (target, actual) => {
+    if (!target && !actual) return 'empty'
+    if (target === actual) return 'complete'
+    if (actual > target) return 'over'
+    return 'under'
+  }
+  const getBlueprintTestSpecificationResultClass = (target, actual) => (
+    target > 0 && target === actual ? 'complete' : 'invalid'
+  )
+  const getBlueprintTestSpecificationRowData = (rowKey) => {
+    const target = Number(blueprintSpecificationRows.find((row) => row.key === rowKey)?.targetMarks || 0)
+    const actual = getBlueprintTestSpecificationRowTotal(rowKey)
+    return {
+      target,
+      actual,
+      totalText: String(actual),
+      statusClass: getBlueprintTestSpecificationStatus(target, actual),
+      resultClass: getBlueprintTestSpecificationResultClass(target, actual),
+    }
+  }
+  const getBlueprintTestSpecificationColumnTotal = (fieldKey) => blueprintSpecificationRows.reduce(
+    (sum, row) => sum + getBlueprintTestSpecificationNumber(row.key, fieldKey),
+    0,
+  )
+  const hasBlueprintTestSpecificationInput = blueprintSpecificationRows.some((row) => (
+    blueprintTestSpecificationColumns.some((column) => (
+      getBlueprintTestSpecificationCountValue(row.key, column.key) !== ''
+    ))
+  ))
+  const blueprintTestSpecificationLotMarks = ['mcqLot', 'laqLot', 'saqLot'].reduce(
+    (sum, fieldKey) => sum + getBlueprintTestSpecificationColumnTotal(fieldKey),
+    0,
+  )
+  const blueprintTestSpecificationHotMarks = ['mcqHot', 'laqHot', 'saqHot'].reduce(
+    (sum, fieldKey) => sum + getBlueprintTestSpecificationColumnTotal(fieldKey),
+    0,
+  )
+  const blueprintTestSpecificationCognitionTotal = blueprintTestSpecificationLotMarks + blueprintTestSpecificationHotMarks
+  const blueprintTestSpecificationAllocatedTotal = blueprintSpecificationRows.reduce(
+    (sum, row) => sum + getBlueprintTestSpecificationRowTotal(row.key),
+    0,
+  )
+  const blueprintTestSpecificationTotalStatus = getBlueprintTestSpecificationStatus(
+    blueprintSpecificationTargetTotal,
+    blueprintTestSpecificationAllocatedTotal,
+  )
+  const blueprintTestSpecificationTotalResultClass = getBlueprintTestSpecificationResultClass(
+    blueprintSpecificationTargetTotal,
+    blueprintTestSpecificationAllocatedTotal,
+  )
   useEffect(() => {
     const inactiveColumnKeys = blueprintTestSpecificationColumns
       .filter((column) => !isBlueprintTestSpecificationColumnActive(column.key))
@@ -2107,20 +2151,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     if (!inactiveColumnKeys.length) return
 
     setBlueprintTestSpecificationCountDraft((current) => {
-      let hasChanges = false
-      const next = Object.fromEntries(Object.entries(current).map(([rowKey, rowValues]) => {
-        const nextRowValues = { ...rowValues }
-        inactiveColumnKeys.forEach((columnKey) => {
-          if (Object.prototype.hasOwnProperty.call(nextRowValues, columnKey)) {
-            delete nextRowValues[columnKey]
-            hasChanges = true
-          }
-        })
-        return [rowKey, nextRowValues]
-      }))
-      return hasChanges ? next : current
-    })
-    setBlueprintTestSpecificationDraft((current) => {
       let hasChanges = false
       const next = Object.fromEntries(Object.entries(current).map(([rowKey, rowValues]) => {
         const nextRowValues = { ...rowValues }
@@ -2195,29 +2225,70 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       && isBlueprintTestSpecificationCountColumnComplete(column.key)
     ),
   )
+  const blueprintTestSpecificationRowsComplete = blueprintSpecificationRows.length > 0
+    && blueprintSpecificationRows.every((row) => (
+      getBlueprintTestSpecificationRowData(row.key).resultClass === 'complete'
+    ))
+  const blueprintAllocatedMcqQuestions = getBlueprintTestSpecificationColumnCountTotal('mcqLot')
+    + getBlueprintTestSpecificationColumnCountTotal('mcqHot')
+  const blueprintAllocatedSaqQuestions = getBlueprintTestSpecificationColumnCountTotal('saqLot')
+    + getBlueprintTestSpecificationColumnCountTotal('saqHot')
+  let blueprintRemainingAllocatedLaqLotSplits = getBlueprintTestSpecificationColumnCountTotal('laqLot')
+  let blueprintRemainingAllocatedLaqHotSplits = getBlueprintTestSpecificationColumnCountTotal('laqHot')
+  const blueprintAllocatedLaqMainQuestions = blueprintLaqQuestionCards.reduce((total, card) => {
+    if (
+      blueprintRemainingAllocatedLaqLotSplits < card.lotQuestions
+      || blueprintRemainingAllocatedLaqHotSplits < card.hotQuestions
+    ) {
+      return total
+    }
+    blueprintRemainingAllocatedLaqLotSplits -= card.lotQuestions
+    blueprintRemainingAllocatedLaqHotSplits -= card.hotQuestions
+    return total + 1
+  }, 0)
+  const blueprintTestSpecificationAllocatedMainQuestions = blueprintAllocatedMcqQuestions
+    + blueprintAllocatedLaqMainQuestions
+    + blueprintAllocatedSaqQuestions
+  const blueprintTestSpecificationMainQuestionTotalComplete = (
+    blueprintTestSpecificationAllocatedMainQuestions === blueprintQuestionTypeQuestionTotal
+  )
   const blueprintTestSpecificationMatrixIsValid = blueprintTestSpecificationColumnsComplete
     && blueprintTestSpecificationTotalResultClass === 'complete'
+    && blueprintTestSpecificationRowsComplete
+    && blueprintTestSpecificationMainQuestionTotalComplete
+  const blueprintTestSpecificationDisplayStatus = blueprintTestSpecificationMatrixIsValid
+    ? 'complete'
+    : blueprintTestSpecificationTotalStatus === 'complete'
+      ? 'over'
+      : blueprintTestSpecificationTotalStatus
   const blueprintQuestionTypeHasInput = blueprintQuestionTypeRows.some((row) => row.perQuestionMarks || row.totalMarks)
   const blueprintQuestionTypeHasInvalidRows = blueprintQuestionTypeRows.some((row) => row.hasRequiredValues && !row.hasValidQuestionTotal)
     || (blueprintLaqHasRequiredValues && !blueprintLaqSplitIsValid)
   const blueprintCognitionTotalMarks = blueprintRoundedTotalMark || blueprintQuestionTypeTotal || blueprintTestSpecificationCognitionTotal
   const hasBlueprintCognitionPercentages = blueprintCognitionWeightage.lot !== '' && blueprintCognitionWeightage.hot !== ''
   const hasBlueprintCognitionMarks = blueprintCognitionTotalMarks > 0 && hasBlueprintCognitionPercentages
-  const blueprintCognitionLotMarks = hasBlueprintCognitionMarks
-    ? Math.round((blueprintCognitionTotalMarks * blueprintCognitionLotPercent) / 100)
-    : 0
   const blueprintCognitionHotMarks = hasBlueprintCognitionMarks
-    ? blueprintCognitionTotalMarks - blueprintCognitionLotMarks
+    ? Math.round((blueprintCognitionTotalMarks * blueprintCognitionHotPercent) / 100)
+    : 0
+  const blueprintCognitionLotMarks = hasBlueprintCognitionMarks
+    ? blueprintCognitionTotalMarks - blueprintCognitionHotMarks
     : 0
   const blueprintCognitionDisplayLotPercent = blueprintCognitionLotPercent
   const blueprintCognitionDisplayHotPercent = blueprintCognitionHotPercent
   const blueprintQuestionTypeDifference = blueprintRoundedTotalMark - blueprintQuestionTypeTotal
+  const blueprintQuestionTypeCognitionMismatch = blueprintQuestionTypeDifference === 0
+    && (
+      blueprintQuestionTypeHotMarksTotal !== blueprintCognitionHotMarks
+      || blueprintQuestionTypeLotMarksTotal !== blueprintCognitionLotMarks
+    )
   const blueprintQuestionTypeStatusText = blueprintLaqHasRequiredValues && !blueprintLaqSplitIsValid
     ? 'Complete the LAQ split and match its marks with Mark per Qus'
     : blueprintQuestionTypeHasInvalidRows
     ? 'Total Marks must divide evenly by Mark per Question'
     : !blueprintRoundedTotalMark || !blueprintQuestionTypeHasInput
     ? ''
+    : blueprintQuestionTypeCognitionMismatch
+      ? `Closest valid split: HoT ${formatBlueprintSplitNumber(blueprintQuestionTypeHotMarksTotal)} / ${formatBlueprintSplitNumber(blueprintCognitionHotMarks)}, LoT ${formatBlueprintSplitNumber(blueprintQuestionTypeLotMarksTotal)} / ${formatBlueprintSplitNumber(blueprintCognitionLotMarks)}`
     : blueprintQuestionTypeDifference === 0
       ? `Question total complete: ${blueprintQuestionTypeTotal} / ${blueprintRoundedTotalMark}`
       : blueprintQuestionTypeDifference > 0
@@ -2239,7 +2310,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }))
     setBlueprintDistributionDraft({})
     setBlueprintTestSpecificationCountDraft({})
-    setBlueprintTestSpecificationDraft({})
   }
   const updateBlueprintTopics = (topics) => {
     setBlueprintDraft((current) => ({
@@ -2253,7 +2323,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }))
     setBlueprintDistributionDraft({})
     setBlueprintTestSpecificationCountDraft({})
-    setBlueprintTestSpecificationDraft({})
   }
   const updateBlueprintCompetencies = (competencies) => {
     setBlueprintDraft((current) => ({
@@ -2266,9 +2335,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintTestSpecificationCountDraft((current) => Object.fromEntries(
       Object.entries(current).filter(([key]) => competencies.includes(key)),
     ))
-    setBlueprintTestSpecificationDraft((current) => Object.fromEntries(
-      Object.entries(current).filter(([key]) => competencies.includes(key)),
-    ))
   }
   const removeBlueprintCompetency = (competencyKey) => {
     setBlueprintDraft((current) => ({
@@ -2276,11 +2342,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       competencies: current.competencies.filter((competency) => competency !== competencyKey),
     }))
     setBlueprintDistributionDraft((current) => {
-      const next = { ...current }
-      delete next[competencyKey]
-      return next
-    })
-    setBlueprintTestSpecificationDraft((current) => {
       const next = { ...current }
       delete next[competencyKey]
       return next
@@ -2310,34 +2371,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const availableCount = blueprintTestSpecificationQuestionCounts[fieldKey] || 0
     if (requestedCount + otherRowsCount > availableCount) return
 
-    setBlueprintTestSpecificationCountDraft((currentCounts) => {
-      const nextCounts = {
-        ...currentCounts,
-        [rowKey]: {
-          ...(currentCounts[rowKey] || {}),
-          [fieldKey]: value,
-        },
-      }
-      const units = blueprintTestSpecificationQuestionMarkUnits[fieldKey] || []
-      let offset = 0
-      setBlueprintTestSpecificationDraft((currentMarks) => {
-        const nextMarks = { ...currentMarks }
-        blueprintSpecificationRows.forEach((row) => {
-          const countValue = nextCounts[row.key]?.[fieldKey] || ''
-          const count = Number(countValue) || 0
-          const calculatedMarks = units
-            .slice(offset, offset + count)
-            .reduce((total, marks) => total + marks, 0)
-          nextMarks[row.key] = {
-            ...(nextMarks[row.key] || {}),
-            [fieldKey]: countValue === '' ? '' : String(calculatedMarks),
-          }
-          offset += count
-        })
-        return nextMarks
-      })
-      return nextCounts
-    })
+    setBlueprintTestSpecificationCountDraft((current) => ({
+      ...current,
+      [rowKey]: {
+        ...(current[rowKey] || {}),
+        [fieldKey]: value,
+      },
+    }))
   }
   const updateBlueprintQuestionTypeDraft = (label, field, value) => {
     const isQuestionCount = ['totalQuestions', 'hotQuestions', 'lotQuestions'].includes(field)
@@ -2382,11 +2422,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           }
         } else if (field === 'hotMarks' || field === 'lotMarks') {
           const editedMarks = clamp(numericValue, 0, totalMarks)
-          const hotMarks = field === 'hotMarks' ? editedMarks : totalMarks - editedMarks
-          const lotMarks = totalMarks - hotMarks
-          const hotQuestions = totalMarks > 0
-            ? clamp(Math.round((totalQuestions * hotMarks) / totalMarks), 0, totalQuestions)
+          const requestedHotMarks = field === 'hotMarks' ? editedMarks : totalMarks - editedMarks
+          const hotQuestions = perQuestionMarks > 0
+            ? clamp(Math.round(requestedHotMarks / perQuestionMarks), 0, totalQuestions)
             : 0
+          const hotMarks = hotQuestions * perQuestionMarks
+          const lotMarks = totalMarks - hotMarks
 
           nextRowDraft.hotMarks = String(hotMarks)
           nextRowDraft.lotMarks = String(lotMarks)
@@ -2396,9 +2437,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           const editedQuestions = clamp(numericValue, 0, totalQuestions)
           const hotQuestions = field === 'hotQuestions' ? editedQuestions : totalQuestions - editedQuestions
           const lotQuestions = totalQuestions - hotQuestions
-          const hotMarks = totalQuestions > 0
-            ? clamp(Math.round((totalMarks * hotQuestions) / totalQuestions), 0, totalMarks)
-            : 0
+          const hotMarks = hotQuestions * perQuestionMarks
 
           nextRowDraft.hotQuestions = String(hotQuestions)
           nextRowDraft.lotQuestions = String(lotQuestions)
@@ -2483,7 +2522,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintLaqQuestionSplits([])
     setIsBlueprintLaqSplitOpen(true)
     setBlueprintTestSpecificationCountDraft({})
-    setBlueprintTestSpecificationDraft({})
     setIsBlueprintQuestionSplitCreated(false)
     setIsBlueprintCompetencyMatrixCreated(false)
     setIsBlueprintResetConfirmOpen(false)
@@ -5603,7 +5641,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               <span>Type of Questions</span>
                             </h3>
                             {blueprintQuestionTypeStatusText ? (
-                              <span className={`create-assessment-blueprint-spec-status ${blueprintQuestionTypeDifference === 0 && !blueprintQuestionTypeHasInvalidRows ? 'is-complete' : 'is-warning'}`}>
+                              <span className={`create-assessment-blueprint-spec-status ${blueprintQuestionTypeDifference === 0 && !blueprintQuestionTypeHasInvalidRows && !blueprintQuestionTypeCognitionMismatch ? 'is-complete' : 'is-warning'}`}>
                                 {blueprintQuestionTypeStatusText}
                               </span>
                             ) : null}
@@ -5948,7 +5986,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               ? `is-footer-validation ${blueprintQuestionTypeDifference === 0 && !blueprintQuestionTypeHasInvalidRows ? 'is-valid' : 'is-invalid'}`
                               : ''}>
                               {blueprintQuestionTypeHasInput && blueprintRoundedTotalMark
-                                ? formatBlueprintSplitNumber(blueprintQuestionTypeTotal)
+                                ? `${formatBlueprintSplitNumber(blueprintQuestionTypeTotal)} / ${formatBlueprintSplitNumber(blueprintRoundedTotalMark)}`
                                 : '-'}
                             </td>
                             <td>{blueprintQuestionTypeQuestionTotal ? formatBlueprintSplitNumber(blueprintQuestionTypeQuestionTotal) : '-'}</td>
@@ -5956,7 +5994,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               ? `is-footer-validation ${blueprintQuestionTypeHotMarksTotal === blueprintCognitionHotMarks ? 'is-valid' : 'is-invalid'}`
                               : ''}>
                               {blueprintQuestionTypeHasInput && hasBlueprintCognitionMarks
-                                ? formatBlueprintSplitNumber(blueprintQuestionTypeHotMarksTotal)
+                                ? `${formatBlueprintSplitNumber(blueprintQuestionTypeHotMarksTotal)} / ${formatBlueprintSplitNumber(blueprintCognitionHotMarks)}`
                                 : '-'}
                             </td>
                             <td>{blueprintQuestionTypeHotQuestionsTotal ? formatBlueprintSplitNumber(blueprintQuestionTypeHotQuestionsTotal) : '-'}</td>
@@ -5964,7 +6002,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               ? `is-footer-validation ${blueprintQuestionTypeLotMarksTotal === blueprintCognitionLotMarks ? 'is-valid' : 'is-invalid'}`
                               : ''}>
                               {blueprintQuestionTypeHasInput && hasBlueprintCognitionMarks
-                                ? formatBlueprintSplitNumber(blueprintQuestionTypeLotMarksTotal)
+                                ? `${formatBlueprintSplitNumber(blueprintQuestionTypeLotMarksTotal)} / ${formatBlueprintSplitNumber(blueprintCognitionLotMarks)}`
                                 : '-'}
                             </td>
                             <td>{blueprintQuestionTypeLotQuestionsTotal ? formatBlueprintSplitNumber(blueprintQuestionTypeLotQuestionsTotal) : '-'}</td>
@@ -6123,7 +6161,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           <span>Table of Test Specifications</span>
                         </h3>
                         <div className="create-assessment-blueprint-test-grid-title-actions">
-                          <span className={`create-assessment-blueprint-spec-status ${blueprintTestSpecificationTotalStatus}`}>
+                          <span
+                            className={`create-assessment-blueprint-spec-status ${blueprintTestSpecificationDisplayStatus}`}
+                            title={blueprintTestSpecificationMatrixIsValid
+                              ? 'All marks, question counts, and competency targets are valid'
+                              : 'Complete all question counts and match every competency target'}
+                          >
                             Allocated: {blueprintTestSpecificationAllocatedTotal} / {blueprintSpecificationTargetTotal} Marks
                           </span>
                         </div>
@@ -6213,16 +6256,21 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   )
                                 })}
                                 <div className="create-assessment-blueprint-test-grid-cell is-test-spec-target" role="cell">
-                                  {rowInfo.target}
+                                  {formatBlueprintSplitNumber(rowInfo.actual)} / {formatBlueprintSplitNumber(rowInfo.target)}
                                 </div>
-                                <div className={`create-assessment-blueprint-test-grid-cell is-test-spec-total ${rowInfo.resultClass}`} role="cell">
+                                <div
+                                  className={`create-assessment-blueprint-test-grid-cell is-test-spec-total ${rowInfo.resultClass}`}
+                                  role="cell"
+                                  title={`${formatBlueprintSplitNumber(rowInfo.actual)} / ${formatBlueprintSplitNumber(rowInfo.target)} marks`}
+                                  aria-label={`${row.code} actual ${formatBlueprintSplitNumber(rowInfo.actual)} of ${formatBlueprintSplitNumber(rowInfo.target)} marks`}
+                                >
                                   <span className="create-assessment-blueprint-test-spec-total">
                                     <span className="create-assessment-blueprint-test-spec-total-main">
                                       {rowInfo.resultClass === 'complete' ? (
                                         <Check size={13} strokeWidth={2.8} />
-                                      ) : rowInfo.resultClass === 'invalid' ? (
+                                      ) : (
                                         <X size={13} strokeWidth={2.8} />
-                                      ) : null}
+                                      )}
                                     </span>
                                   </span>
                                 </div>
@@ -6255,10 +6303,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               </div>
                               )
                             })}
-                            <div className="create-assessment-blueprint-test-grid-cell is-test-spec-total is-footer-total" role="cell">
+                            <div className="create-assessment-blueprint-test-grid-cell is-test-spec-target is-footer-target" role="cell">
+                              {formatBlueprintSplitNumber(blueprintSpecificationTargetTotal)}
+                            </div>
+                            <div className={`create-assessment-blueprint-test-grid-cell is-test-spec-total is-footer-total ${blueprintTestSpecificationTotalResultClass}`} role="cell">
                               <span className="create-assessment-blueprint-test-spec-total">
                                 <span className="create-assessment-blueprint-test-spec-total-main">
-                                  {blueprintSpecificationTargetTotal} Marks
+                                  {blueprintTestSpecificationTotalResultClass === 'complete' ? 'Matched' : 'Mismatched'}
                                 </span>
                               </span>
                             </div>
@@ -6286,14 +6337,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               )
                             })}
                             <div
-                              className={`create-assessment-blueprint-test-grid-cell is-footer-total is-question-count-total ${blueprintTestSpecificationMatrixIsValid ? 'is-valid' : 'is-invalid'}`}
+                              className={`create-assessment-blueprint-test-grid-cell is-footer-total is-question-count-total ${blueprintTestSpecificationMainQuestionTotalComplete ? 'is-valid' : 'is-invalid'}`}
                               role="cell"
-                              title={`${blueprintQuestionTypeQuestionTotal} total questions`}
+                              title={`${blueprintTestSpecificationAllocatedMainQuestions} / ${blueprintQuestionTypeQuestionTotal} main questions allocated`}
                             >
-                              {formatBlueprintSplitNumber(blueprintTestSpecificationColumns.reduce(
-                                (total, column) => total + getBlueprintTestSpecificationColumnCountTotal(column.key),
-                                0,
-                              ))} / {formatBlueprintSplitNumber(blueprintQuestionTypeQuestionTotal)} Questions
+                              {formatBlueprintSplitNumber(blueprintTestSpecificationAllocatedMainQuestions)} / {formatBlueprintSplitNumber(blueprintQuestionTypeQuestionTotal)} Questions
                             </div>
                           </div>
                         </div>
@@ -6433,7 +6481,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           onClick={() => {
                             setIsBlueprintCompetencyMatrixCreated(false)
                             setBlueprintTestSpecificationCountDraft({})
-                            setBlueprintTestSpecificationDraft({})
                           }}
                         >
                           <Pencil size={14} strokeWidth={2.3} />
