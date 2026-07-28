@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Check,
+  CheckCheck,
   AlignCenter,
   AlignJustify,
   AlignLeft,
@@ -1152,6 +1153,8 @@ function BlueprintMultiSelect({
   const [searchValue, setSearchValue] = useState('')
   const selectedSet = new Set(selected)
   const filteredOptions = options.filter((option) => getOptionLabel(option).toLowerCase().includes(searchValue.trim().toLowerCase()))
+  const filteredValues = filteredOptions.map(getOptionValue)
+  const areAllFilteredOptionsSelected = filteredValues.length > 0 && filteredValues.every((value) => selectedSet.has(value))
   const selectedLabels = options
     .filter((option) => selectedSet.has(getOptionValue(option)))
     .map(getSummaryLabel)
@@ -1193,6 +1196,26 @@ function BlueprintMultiSelect({
                 autoFocus
               />
             </label>
+            <div className="create-assessment-blueprint-select-actions">
+              <button
+                type="button"
+                className="is-select-all"
+                disabled={!filteredValues.length || areAllFilteredOptionsSelected}
+                onClick={() => onChange([...new Set([...selected, ...filteredValues])])}
+              >
+                <CheckCheck size={13} strokeWidth={2.3} />
+                <span>Select All</span>
+              </button>
+              <button
+                type="button"
+                className="is-clear"
+                disabled={!selected.length}
+                onClick={() => onChange([])}
+              >
+                <X size={13} strokeWidth={2.3} />
+                <span>Clear</span>
+              </button>
+            </div>
             <div className="create-assessment-blueprint-options">
               {filteredOptions.length ? filteredOptions.map((option) => {
                 const value = getOptionValue(option)
@@ -1253,6 +1276,17 @@ function BlueprintSingleSelect({ label, required = false, disabled = false, plac
                 autoFocus
               />
             </label>
+            <div className="create-assessment-blueprint-select-actions is-single-action">
+              <button
+                type="button"
+                className="is-clear"
+                disabled={!value}
+                onClick={() => onChange('')}
+              >
+                <X size={13} strokeWidth={2.3} />
+                <span>Clear</span>
+              </button>
+            </div>
             <div className="create-assessment-blueprint-options">
               {filteredOptions.length ? filteredOptions.map((option) => {
                 const optionValue = getOptionValue(option)
@@ -1391,6 +1425,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [activeBlueprintTab, setActiveBlueprintTab] = useState('distribution')
   const [isBlueprintMatrixCreated, setIsBlueprintMatrixCreated] = useState(false)
   const [isBlueprintQuestionSplitCreated, setIsBlueprintQuestionSplitCreated] = useState(false)
+  const [isBlueprintCompetencyMatrixCreated, setIsBlueprintCompetencyMatrixCreated] = useState(false)
+  const [isBlueprintResetConfirmOpen, setIsBlueprintResetConfirmOpen] = useState(false)
+  const [isBlueprintEditConfirmOpen, setIsBlueprintEditConfirmOpen] = useState(false)
+  const [blueprintCompetencyViewMode, setBlueprintCompetencyViewMode] = useState('single')
   const [blueprintDraft, setBlueprintDraft] = useState({
     subject: '',
     topics: [],
@@ -1441,13 +1479,39 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     if (isBlueprintEnabled) return
     setIsBlueprintMatrixCreated(false)
     setIsBlueprintQuestionSplitCreated(false)
+    setIsBlueprintCompetencyMatrixCreated(false)
+    setIsBlueprintResetConfirmOpen(false)
+    setIsBlueprintEditConfirmOpen(false)
+    setBlueprintCompetencyViewMode('single')
     setActiveBlueprintTab('distribution')
   }, [isBlueprintEnabled])
 
   useEffect(() => {
     if (isBlueprintMatrixCreated) return
     setIsBlueprintQuestionSplitCreated(false)
+    setIsBlueprintCompetencyMatrixCreated(false)
+    setIsBlueprintResetConfirmOpen(false)
+    setIsBlueprintEditConfirmOpen(false)
+    setBlueprintCompetencyViewMode('single')
   }, [isBlueprintMatrixCreated])
+
+  useEffect(() => {
+    if (!isBlueprintResetConfirmOpen) return undefined
+    const handleResetConfirmKeyDown = (event) => {
+      if (event.key === 'Escape') setIsBlueprintResetConfirmOpen(false)
+    }
+    window.addEventListener('keydown', handleResetConfirmKeyDown)
+    return () => window.removeEventListener('keydown', handleResetConfirmKeyDown)
+  }, [isBlueprintResetConfirmOpen])
+
+  useEffect(() => {
+    if (!isBlueprintEditConfirmOpen) return undefined
+    const handleEditConfirmKeyDown = (event) => {
+      if (event.key === 'Escape') setIsBlueprintEditConfirmOpen(false)
+    }
+    window.addEventListener('keydown', handleEditConfirmKeyDown)
+    return () => window.removeEventListener('keydown', handleEditConfirmKeyDown)
+  }, [isBlueprintEditConfirmOpen])
 
   useEffect(() => {
     if (activeBlueprintTab !== 'questionSpecifications') return undefined
@@ -1874,6 +1938,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       : blueprintQuestionTypeDifference > 0
         ? `${blueprintQuestionTypeDifference} marks remaining`
         : `Reduce ${Math.abs(blueprintQuestionTypeDifference)} marks`
+  const isBlueprintCompetencyMatrixReady = isBlueprintQuestionSplitCreated
+    && hasBlueprintCognitionPercentages
+    && blueprintQuestionTypeTotal > 0
+    && blueprintQuestionTypeDifference === 0
+    && !blueprintQuestionTypeHasInvalidRows
+    && blueprintQuestionTypeHotMarksTotal === blueprintCognitionHotMarks
+    && blueprintQuestionTypeLotMarksTotal === blueprintCognitionLotMarks
   const updateBlueprintSubject = (subject) => {
     setBlueprintDraft((current) => ({
       ...current,
@@ -2032,15 +2103,34 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     if (!hasBlueprintCognitionPercentages) return
     setIsBlueprintQuestionSplitCreated(true)
   }
+  const createBlueprintCompetencyMatrix = () => {
+    if (!isBlueprintCompetencyMatrixReady) return
+    setBlueprintCompetencyViewMode('single')
+    setIsBlueprintCompetencyMatrixCreated(true)
+  }
+  const confirmBlueprintMatrixReset = () => {
+    setBlueprintCognitionWeightage({ lot: '', hot: '' })
+    setBlueprintQuestionTypeDraft({})
+    setBlueprintTestSpecificationDraft({})
+    setIsBlueprintQuestionSplitCreated(false)
+    setIsBlueprintCompetencyMatrixCreated(false)
+    setIsBlueprintResetConfirmOpen(false)
+    setBlueprintCompetencyViewMode('single')
+    setBlueprintSpecLeftStackHeight(0)
+  }
   const handleBlueprintMatrixAction = () => {
     if (isBlueprintMatrixCreated) {
-      setIsBlueprintMatrixCreated(false)
-      setActiveBlueprintTab('distribution')
+      setIsBlueprintEditConfirmOpen(true)
       return
     }
     if (!isBlueprintDistributionReady) return
     setIsBlueprintMatrixCreated(true)
     setActiveBlueprintTab('questionSpecifications')
+  }
+  const confirmBlueprintDistributionEdit = () => {
+    setIsBlueprintEditConfirmOpen(false)
+    setIsBlueprintMatrixCreated(false)
+    setActiveBlueprintTab('distribution')
   }
 
   const activeMappingItems = useMemo(() => {
@@ -4876,6 +4966,62 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         </div>
       ) : null}
 
+      {isBlueprintResetConfirmOpen ? (
+        <div className="create-assessment-blueprint-reset-backdrop" role="presentation">
+          <section
+            className="create-assessment-blueprint-reset-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="create-assessment-blueprint-reset-title"
+            aria-describedby="create-assessment-blueprint-reset-description"
+          >
+            <span className="create-assessment-blueprint-reset-icon" aria-hidden="true">
+              <RotateCcw size={20} strokeWidth={2.3} />
+            </span>
+            <h2 id="create-assessment-blueprint-reset-title">Reset Matrix?</h2>
+            <p id="create-assessment-blueprint-reset-description">
+              This will clear the Level of Cognition, Type of Questions, and competency matrix values.
+            </p>
+            <div className="create-assessment-blueprint-reset-actions">
+              <button type="button" className="is-cancel" autoFocus onClick={() => setIsBlueprintResetConfirmOpen(false)}>
+                No, Cancel
+              </button>
+              <button type="button" className="is-confirm" onClick={confirmBlueprintMatrixReset}>
+                Yes, Reset
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {isBlueprintEditConfirmOpen ? (
+        <div className="create-assessment-blueprint-reset-backdrop" role="presentation">
+          <section
+            className="create-assessment-blueprint-reset-modal is-edit-distribution"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="create-assessment-blueprint-edit-title"
+            aria-describedby="create-assessment-blueprint-edit-description"
+          >
+            <span className="create-assessment-blueprint-reset-icon" aria-hidden="true">
+              <Pencil size={20} strokeWidth={2.3} />
+            </span>
+            <h2 id="create-assessment-blueprint-edit-title">Edit Distribution?</h2>
+            <p id="create-assessment-blueprint-edit-description">
+              This will unlock the Distribution fields so you can change the blueprint values.
+            </p>
+            <div className="create-assessment-blueprint-reset-actions">
+              <button type="button" className="is-cancel" autoFocus onClick={() => setIsBlueprintEditConfirmOpen(false)}>
+                No
+              </button>
+              <button type="button" className="is-confirm" onClick={confirmBlueprintDistributionEdit}>
+                Yes
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       <div className="create-assessment-workspace-body">
       <main className="create-assessment-workspace-main">
         {isBlueprintEnabled ? (
@@ -5074,7 +5220,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   </div>
                 </>
               ) : (
-                <div className={`create-assessment-blueprint-specifications ${isBlueprintQuestionSplitCreated ? 'has-question-split' : 'is-cognition-only'}`}>
+                <div className={`create-assessment-blueprint-specifications ${isBlueprintQuestionSplitCreated ? 'has-question-split' : 'is-cognition-only'} ${isBlueprintCompetencyMatrixCreated ? `is-competency-matrix is-${blueprintCompetencyViewMode}-view` : ''}`}>
                   <div className="create-assessment-blueprint-spec-left-stack" ref={blueprintSpecLeftStackRef}>
                     {isBlueprintQuestionSplitCreated ? (
                       <section className="create-assessment-blueprint-spec-card is-type-summary" aria-label="Type of Questions">
@@ -5396,10 +5542,63 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         </div>
                       </div>
                     </section>
+
+                    <div className="create-assessment-blueprint-competency-actions">
+                      <button
+                        type="button"
+                        className="create-assessment-blueprint-reset-btn"
+                        onClick={() => setIsBlueprintResetConfirmOpen(true)}
+                      >
+                        <RotateCcw size={15} strokeWidth={2.3} />
+                        <span>Reset Matrix</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="create-assessment-blueprint-competency-btn"
+                        onClick={createBlueprintCompetencyMatrix}
+                        disabled={!isBlueprintCompetencyMatrixReady}
+                      >
+                        <LayoutGrid size={15} strokeWidth={2.3} />
+                        <span>Create Competency Matrix</span>
+                      </button>
+                    </div>
                   </div>
 
+                  {isBlueprintCompetencyMatrixCreated ? (
+                    <section className="create-assessment-blueprint-competency-intro" aria-label="Competency matrix view options">
+                      <div>
+                        <strong>Competency Matrix</strong>
+                        <p>
+                          Use Multi View to compare the source values while completing the specifications.
+                        </p>
+                      </div>
+                      <div className="create-assessment-blueprint-view-toggle" role="group" aria-label="Competency matrix view">
+                        <button
+                          type="button"
+                          className={blueprintCompetencyViewMode === 'single' ? 'is-active' : ''}
+                          onClick={() => setBlueprintCompetencyViewMode('single')}
+                          aria-pressed={blueprintCompetencyViewMode === 'single'}
+                          title="Single View"
+                        >
+                          <List size={15} strokeWidth={2.3} />
+                          <span>Single View</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={blueprintCompetencyViewMode === 'multi' ? 'is-active' : ''}
+                          onClick={() => setBlueprintCompetencyViewMode('multi')}
+                          aria-pressed={blueprintCompetencyViewMode === 'multi'}
+                          title="Multi View"
+                        >
+                          <LayoutGrid size={15} strokeWidth={2.3} />
+                          <span>Multi View</span>
+                        </button>
+                      </div>
+                    </section>
+                  ) : null}
+
                   <section
-                    className="create-assessment-blueprint-spec-card is-test-spec-summary"
+                    className={`create-assessment-blueprint-spec-card is-test-spec-summary ${isBlueprintCompetencyMatrixCreated ? 'is-visible' : ''}`}
                     aria-label="Table of Test Specifications"
                     style={blueprintSpecLeftStackHeight ? { '--blueprint-spec-left-height': `${blueprintSpecLeftStackHeight}px` } : undefined}
                   >
@@ -5409,9 +5608,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           <FilePenLine size={14} strokeWidth={2.4} />
                           <span>Table of Test Specifications</span>
                         </h3>
-                        <span className={`create-assessment-blueprint-spec-status ${blueprintTestSpecificationTotalStatus}`}>
-                          Allocated: {blueprintTestSpecificationAllocatedTotal} / {blueprintSpecificationTargetTotal} Marks
-                        </span>
+                        <div className="create-assessment-blueprint-test-grid-title-actions">
+                          <span className={`create-assessment-blueprint-spec-status ${blueprintTestSpecificationTotalStatus}`}>
+                            Allocated: {blueprintTestSpecificationAllocatedTotal} / {blueprintSpecificationTargetTotal} Marks
+                          </span>
+                        </div>
                       </div>
                       <div className="create-assessment-blueprint-test-grid" role="table" aria-label="Table of Test Specifications">
                         <div className="create-assessment-blueprint-test-grid-head" role="rowgroup">
@@ -5511,6 +5712,107 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                       </div>
                     </div>
                   </section>
+
+                  {isBlueprintCompetencyMatrixCreated && blueprintCompetencyViewMode === 'multi' ? (
+                    <div className="create-assessment-blueprint-reference-grid">
+                      <section className="create-assessment-blueprint-reference-card is-question-types" aria-label="Type of Questions reference">
+                        <header>
+                          <ListChecks size={14} strokeWidth={2.3} />
+                          <strong>Type of Questions</strong>
+                          <span>Read-only</span>
+                        </header>
+                        <div className="create-assessment-blueprint-reference-table-wrap">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Type</th>
+                                <th>Mark per Qus</th>
+                                <th>Total Marks</th>
+                                <th>Total Qus</th>
+                                <th>HoT Marks</th>
+                                <th>HoT Qus</th>
+                                <th>LoT Marks</th>
+                                <th>LoT Qus</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {blueprintQuestionTypeRows.map((row) => (
+                                <tr key={row.label}>
+                                  <td>{row.label.replace('SAQs (', '').replace(')', '')}</td>
+                                  <td>{formatBlueprintSplitNumber(row.perQuestionMarks)}</td>
+                                  <td>{formatBlueprintSplitNumber(row.totalMarksNumber)}</td>
+                                  <td>{formatBlueprintSplitNumber(row.totalQuestions)}</td>
+                                  <td>{formatBlueprintSplitNumber(row.hotMarks)}</td>
+                                  <td>{formatBlueprintSplitNumber(row.hotQuestions)}</td>
+                                  <td>{formatBlueprintSplitNumber(row.lotMarks)}</td>
+                                  <td>{formatBlueprintSplitNumber(row.lotQuestions)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr>
+                                <td>Total</td>
+                                <td>-</td>
+                                <td>{formatBlueprintSplitNumber(blueprintQuestionTypeTotal)}</td>
+                                <td>{formatBlueprintSplitNumber(blueprintQuestionTypeQuestionTotal)}</td>
+                                <td>{formatBlueprintSplitNumber(blueprintQuestionTypeHotMarksTotal)}</td>
+                                <td>{formatBlueprintSplitNumber(blueprintQuestionTypeHotQuestionsTotal)}</td>
+                                <td>{formatBlueprintSplitNumber(blueprintQuestionTypeLotMarksTotal)}</td>
+                                <td>{formatBlueprintSplitNumber(blueprintQuestionTypeLotQuestionsTotal)}</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </section>
+
+                      <aside className="create-assessment-blueprint-cognition-sidebar" aria-label="Level of Cognition and matrix actions">
+                        <section className="create-assessment-blueprint-reference-card is-cognition" aria-label="Level of Cognition reference">
+                          <header>
+                            <SlidersHorizontal size={14} strokeWidth={2.3} />
+                            <strong>Level of Cognition</strong>
+                            <span>Read-only</span>
+                          </header>
+                          <div className="create-assessment-blueprint-reference-cognition">
+                            <div className="is-total">
+                              <span>
+                                <Database size={13} strokeWidth={2.3} />
+                                Total Marks
+                              </span>
+                              <strong>{blueprintCognitionTotalMarks}</strong>
+                            </div>
+                            <div
+                              className="create-assessment-blueprint-reference-split-bar"
+                              role="img"
+                              aria-label={`LoT ${blueprintCognitionLotPercent} percent and HoT ${blueprintCognitionHotPercent} percent`}
+                            >
+                              <span className="is-lot" style={{ width: `${blueprintCognitionLotPercent}%` }} />
+                              <span className="is-hot" style={{ width: `${blueprintCognitionHotPercent}%` }} />
+                            </div>
+                            <div className="create-assessment-blueprint-reference-split-metrics">
+                              <div className="is-lot">
+                                <span>LoT</span>
+                                <strong>{blueprintCognitionLotPercent}%</strong>
+                                <small>{blueprintCognitionLotMarks} Marks</small>
+                              </div>
+                              <div className="is-hot">
+                                <span>HoT</span>
+                                <strong>{blueprintCognitionHotPercent}%</strong>
+                                <small>{blueprintCognitionHotMarks} Marks</small>
+                              </div>
+                            </div>
+                          </div>
+                        </section>
+                        <button
+                          type="button"
+                          className="create-assessment-blueprint-edit-matrix-btn"
+                          onClick={() => setIsBlueprintCompetencyMatrixCreated(false)}
+                        >
+                          <Pencil size={14} strokeWidth={2.3} />
+                          <span>Edit Matrix</span>
+                        </button>
+                      </aside>
+                    </div>
+                  ) : null}
                 </div>
               )}
               {activeBlueprintTab === 'distribution' ? (
