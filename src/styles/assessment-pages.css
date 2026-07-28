@@ -19733,6 +19733,25 @@
   box-shadow: inset 3px 0 0 #60a5fa;
 }
 
+.create-assessment-blueprint-reference-table-wrap tbody tr.is-saq-summary td,
+.create-assessment-blueprint-reference-table-wrap tbody tr.is-saq-summary:hover td {
+  background: #eef5fd;
+  color: #315d92;
+  font-weight: 900;
+}
+
+.create-assessment-blueprint-reference-table-wrap tbody tr.is-saq-child td:first-child {
+  position: relative;
+  padding-left: 20px;
+}
+
+.create-assessment-blueprint-reference-table-wrap tbody tr.is-saq-child td:first-child::before {
+  position: absolute;
+  left: 9px;
+  color: #7890a4;
+  content: "•";
+}
+
 .create-assessment-blueprint-specifications.is-multi-view {
   grid-template-columns: minmax(0, 2.65fr) minmax(250px, 1fr);
   grid-template-areas:
@@ -19770,20 +19789,23 @@
 .create-assessment-blueprint-cognition-sidebar {
   display: grid;
   min-width: 0;
-  height: 100%;
-  grid-template-rows: minmax(0, 1fr) auto;
+  height: auto;
+  align-self: start;
+  grid-template-rows: auto auto;
   gap: 8px;
 }
 
 .create-assessment-blueprint-cognition-sidebar .create-assessment-blueprint-reference-card.is-cognition {
-  height: 100%;
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: stretch;
+  height: auto;
+  grid-template-rows: auto auto;
+  align-content: start;
 }
 
 .create-assessment-blueprint-specifications.is-multi-view .create-assessment-blueprint-cognition-sidebar .create-assessment-blueprint-reference-cognition {
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 8px auto;
   gap: 6px;
+  height: auto;
   padding: 8px;
 }
 
@@ -20799,6 +20821,30 @@
   font-weight: 900;
 }
 
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-footer-validation.is-valid {
+  background: #dcfce7;
+  color: #047857;
+  box-shadow: inset 0 0 0 1px #4ade80;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-footer-validation.is-invalid {
+  background: #ffe4e6;
+  color: #be123c;
+  box-shadow: inset 0 0 0 1px #fb7185;
+}
+
+.create-assessment-blueprint-reference-footer-validation {
+  font-weight: 950;
+}
+
+.create-assessment-blueprint-reference-footer-validation.is-valid {
+  color: #059669;
+}
+
+.create-assessment-blueprint-reference-footer-validation.is-invalid {
+  color: #e11d48;
+}
+
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tbody tr:not(.is-total):hover td {
   background: #fbfdff;
   cursor: pointer;
@@ -21225,6 +21271,50 @@
   background: #f8fcfd;
 }
 
+.create-assessment-blueprint-test-grid-head .is-group-title {
+  gap: 7px;
+}
+
+.create-assessment-blueprint-test-grid-head .is-group-title small {
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: inherit;
+  font-size: 0.57rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.create-assessment-blueprint-test-grid-cell.is-disabled {
+  background: #f3f6f8;
+  color: #94a3b8;
+}
+
+.create-assessment-blueprint-test-grid-head .is-group-title.is-disabled,
+.create-assessment-blueprint-test-grid-head .is-group-title.is-disabled small {
+  background: #eef2f5;
+  color: #8796a3;
+}
+
+.create-assessment-blueprint-test-grid-cell.is-disabled .create-assessment-blueprint-lot-hot-badge {
+  border-color: #d7e0e5;
+  background: #f1f4f6;
+  color: #94a3b8;
+}
+
+.create-assessment-blueprint-test-grid-cell.is-disabled .create-assessment-blueprint-spec-small-number,
+.create-assessment-blueprint-test-grid-cell.is-disabled .create-assessment-blueprint-spec-small-number:disabled {
+  border-color: #d9e2e7;
+  background: #edf2f4;
+  color: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .create-assessment-blueprint-lot-hot-badge {
   display: inline-flex;
   align-items: center;
@@ -21254,6 +21344,10 @@
 
 .create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:has(.create-assessment-blueprint-lot-hot-badge.is-hot) {
   background: #fff5f5;
+}
+
+.create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell.is-disabled {
+  background: #f3f6f8;
 }
 
 .create-assessment-blueprint-test-grid-head .is-total-head,
@@ -21292,6 +21386,38 @@
 .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-cell.is-footer-total {
   grid-column: 8 / 10;
   border-right: 0;
+}
+
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-total .create-assessment-blueprint-test-grid-cell {
+  border-bottom: 1px solid #d8e7ee;
+}
+
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .create-assessment-blueprint-test-grid-cell {
+  min-height: 34px;
+  background: #eef5fd;
+  color: #315d92;
+  box-shadow: none;
+}
+
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .is-competency {
+  color: #234f7d;
+  font-size: 0.66rem;
+}
+
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .is-question-count-total {
+  background: #f5f8fc;
+}
+
+.create-assessment-blueprint-test-grid-foot .is-column-validation.is-valid,
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .create-assessment-blueprint-test-grid-cell.is-count-validation.is-valid,
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .is-question-count-total.is-valid {
+  color: #047857;
+}
+
+.create-assessment-blueprint-test-grid-foot .is-column-validation.is-invalid,
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .create-assessment-blueprint-test-grid-cell.is-count-validation.is-invalid,
+.create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .is-question-count-total.is-invalid {
+  color: #be123c;
 }
 
 .create-assessment-blueprint-test-grid-cell.is-test-spec-target {
@@ -21423,7 +21549,7 @@
 }
 
 .create-assessment-blueprint-test-grid-foot.complete .create-assessment-blueprint-test-grid-cell.is-test-spec-total {
-  background: #ecfdf5;
+  background: #f4f9fb;
 }
 
 .create-assessment-blueprint-test-grid-cell.is-test-spec-total.invalid,
@@ -21436,7 +21562,7 @@
 }
 
 .create-assessment-blueprint-test-grid-foot.invalid .create-assessment-blueprint-test-grid-cell.is-test-spec-total {
-  background: #fff1f2;
+  background: #f4f9fb;
 }
 
 .create-assessment-blueprint-test-grid-cell.is-test-spec-total.invalid svg {
@@ -21475,6 +21601,40 @@
   border-color: #009d90;
   box-shadow: 0 0 0 2px rgba(52, 194, 179, 0.16);
   outline: none;
+}
+
+.create-assessment-blueprint-test-grid-body .create-assessment-blueprint-test-grid-cell.is-count-entry {
+  min-height: 46px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.create-assessment-blueprint-test-grid-cell.is-count-entry small {
+  color: #64748b;
+  font-size: 0.55rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.create-assessment-blueprint-test-grid-cell.is-count-entry.is-valid .create-assessment-blueprint-spec-small-number {
+  border-color: #4ade80;
+  color: #047857;
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.16);
+}
+
+.create-assessment-blueprint-test-grid-cell.is-count-entry.is-valid small {
+  color: #059669;
+}
+
+.create-assessment-blueprint-test-grid-cell.is-count-entry.is-invalid .create-assessment-blueprint-spec-small-number {
+  border-color: #fb7185;
+  color: #be123c;
+  box-shadow: 0 0 0 1px rgba(251, 113, 133, 0.16);
+}
+
+.create-assessment-blueprint-test-grid-cell.is-count-entry.is-invalid small {
+  color: #e11d48;
 }
 
 @media (max-width: 980px) {
@@ -35841,12 +36001,40 @@
   color: #bae6fd;
 }
 
+.theme-dark .create-assessment-blueprint-test-grid-head .is-group-title small {
+  background: rgba(15, 23, 42, 0.56);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-disabled,
+.theme-dark .create-assessment-blueprint-test-grid-head .is-group-title.is-disabled,
+.theme-dark .create-assessment-blueprint-test-grid-head .is-group-title.is-disabled small {
+  background: rgba(30, 41, 59, 0.72);
+  color: #64748b;
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-disabled .create-assessment-blueprint-lot-hot-badge {
+  border-color: rgba(100, 116, 139, 0.4);
+  background: rgba(30, 41, 59, 0.72);
+  color: #718096;
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-disabled .create-assessment-blueprint-spec-small-number,
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-disabled .create-assessment-blueprint-spec-small-number:disabled {
+  border-color: rgba(71, 85, 105, 0.58);
+  background: rgba(15, 23, 42, 0.72);
+  color: #64748b;
+}
+
 .theme-dark .create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:has(.create-assessment-blueprint-lot-hot-badge.is-lot) {
   background: rgba(109, 40, 217, 0.18);
 }
 
 .theme-dark .create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell:has(.create-assessment-blueprint-lot-hot-badge.is-hot) {
   background: rgba(220, 38, 38, 0.14);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-row.is-sub .create-assessment-blueprint-test-grid-cell.is-disabled {
+  background: rgba(30, 41, 59, 0.72);
 }
 
 .theme-dark .create-assessment-blueprint-test-grid-body .create-assessment-blueprint-test-grid-row:hover .create-assessment-blueprint-test-grid-cell {
@@ -35857,6 +36045,36 @@
   background: rgba(14, 116, 144, 0.14);
   color: #bae6fd;
   box-shadow: inset 0 1px 0 rgba(125, 211, 252, 0.22);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-total .create-assessment-blueprint-test-grid-cell {
+  border-bottom-color: rgba(96, 165, 250, 0.24);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .create-assessment-blueprint-test-grid-cell {
+  background: rgba(30, 58, 138, 0.24);
+  color: #bfdbfe;
+  box-shadow: none;
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .is-competency {
+  color: #dbeafe;
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .is-question-count-total {
+  background: rgba(30, 41, 59, 0.46);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-foot .is-column-validation.is-valid,
+.theme-dark .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .create-assessment-blueprint-test-grid-cell.is-count-validation.is-valid,
+.theme-dark .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .is-question-count-total.is-valid {
+  color: #bbf7d0;
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-foot .is-column-validation.is-invalid,
+.theme-dark .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .create-assessment-blueprint-test-grid-cell.is-count-validation.is-invalid,
+.theme-dark .create-assessment-blueprint-test-grid-foot .create-assessment-blueprint-test-grid-row.is-question-count .is-question-count-total.is-invalid {
+  color: #fecdd3;
 }
 
 .theme-dark .create-assessment-blueprint-test-spec-total small {
@@ -35873,6 +36091,10 @@
   background: rgba(22, 101, 52, 0.28);
 }
 
+.theme-dark .create-assessment-blueprint-test-grid-foot.complete .create-assessment-blueprint-test-grid-cell.is-test-spec-total {
+  background: rgba(14, 116, 144, 0.14);
+}
+
 .theme-dark .create-assessment-blueprint-test-grid-cell.is-test-spec-total.invalid,
 .theme-dark .create-assessment-blueprint-test-grid-foot.invalid .create-assessment-blueprint-test-grid-cell.is-test-spec-total {
   color: #fecdd3;
@@ -35881,6 +36103,10 @@
 .theme-dark .create-assessment-blueprint-test-grid-cell.is-test-spec-total.invalid,
 .theme-dark .create-assessment-blueprint-test-grid-foot.invalid .create-assessment-blueprint-test-grid-cell.is-test-spec-total {
   background: rgba(159, 18, 57, 0.26);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-foot.invalid .create-assessment-blueprint-test-grid-cell.is-test-spec-total {
+  background: rgba(14, 116, 144, 0.14);
 }
 
 .theme-dark .create-assessment-blueprint-test-grid-cell.is-test-spec-total.empty,
@@ -35912,6 +36138,30 @@
   border-color: rgba(45, 212, 191, 0.38);
   background: #111d31;
   color: #e8f4ff;
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-count-entry small {
+  color: #94a3b8;
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-count-entry.is-valid .create-assessment-blueprint-spec-small-number {
+  border-color: rgba(74, 222, 128, 0.64);
+  color: #bbf7d0;
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.18);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-count-entry.is-valid small {
+  color: #86efac;
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-count-entry.is-invalid .create-assessment-blueprint-spec-small-number {
+  border-color: rgba(251, 113, 133, 0.66);
+  color: #fecdd3;
+  box-shadow: 0 0 0 1px rgba(251, 113, 133, 0.2);
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-count-entry.is-invalid small {
+  color: #fda4af;
 }
 
 .theme-dark .create-assessment-blueprint-spec-table {
@@ -35952,6 +36202,26 @@
 
 .theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-invalid {
   background: rgba(159, 18, 57, 0.32);
+  color: #fda4af;
+}
+
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-footer-validation.is-valid {
+  background: rgba(22, 101, 52, 0.34);
+  color: #bbf7d0;
+  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.62);
+}
+
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-footer-validation.is-invalid {
+  background: rgba(127, 29, 29, 0.36);
+  color: #fecdd3;
+  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.66);
+}
+
+.theme-dark .create-assessment-blueprint-reference-footer-validation.is-valid {
+  color: #86efac;
+}
+
+.theme-dark .create-assessment-blueprint-reference-footer-validation.is-invalid {
   color: #fda4af;
 }
 
@@ -36592,6 +36862,16 @@
 
 .theme-dark .create-assessment-blueprint-reference-table-wrap tbody tr:hover td:first-child {
   box-shadow: inset 3px 0 0 #60a5fa;
+}
+
+.theme-dark .create-assessment-blueprint-reference-table-wrap tbody tr.is-saq-summary td,
+.theme-dark .create-assessment-blueprint-reference-table-wrap tbody tr.is-saq-summary:hover td {
+  background: rgba(30, 58, 138, 0.3);
+  color: #bfdbfe;
+}
+
+.theme-dark .create-assessment-blueprint-reference-table-wrap tbody tr.is-saq-child td:first-child::before {
+  color: #7f95aa;
 }
 
 .theme-dark .create-assessment-blueprint-reference-table-wrap tfoot td {
