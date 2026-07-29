@@ -21795,6 +21795,20 @@
   color: #e11d48;
 }
 
+@keyframes blueprint-reshuffled-cell {
+  0%,
+  100% {
+    background: transparent;
+  }
+  35% {
+    background: #fef3c7;
+  }
+}
+
+.create-assessment-blueprint-test-grid-cell.is-count-entry.is-reshuffled {
+  animation: blueprint-reshuffled-cell 850ms ease;
+}
+
 @media (max-width: 980px) {
   .create-assessment-blueprint-specifications {
     grid-template-columns: 1fr;
@@ -22152,6 +22166,43 @@
   border-color: #fda4af;
   background: #fff1f2;
   color: #be123c;
+}
+
+.create-assessment-blueprint-distribution-cell {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.create-assessment-blueprint-low-weightage {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid #fbbf24;
+  border-radius: 50%;
+  background: #fffbeb;
+  color: #b45309;
+  cursor: help;
+}
+
+.create-assessment-blueprint-rebalanced-badge {
+  display: inline-flex;
+  min-height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border: 1px solid #c4b5fd;
+  border-radius: 999px;
+  background: #f5f3ff;
+  color: #6d28d9;
+  font-size: 0.58rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: help;
 }
 
 .create-assessment-blueprint-mark-range {
@@ -36322,6 +36373,20 @@
   color: #fda4af;
 }
 
+@keyframes blueprint-reshuffled-cell-dark {
+  0%,
+  100% {
+    background: transparent;
+  }
+  35% {
+    background: rgba(180, 83, 9, 0.28);
+  }
+}
+
+.theme-dark .create-assessment-blueprint-test-grid-cell.is-count-entry.is-reshuffled {
+  animation-name: blueprint-reshuffled-cell-dark;
+}
+
 .theme-dark .create-assessment-blueprint-spec-table {
   border-color: rgba(45, 212, 191, 0.28);
   background: #0b1728;
@@ -37306,6 +37371,18 @@
   border-color: rgba(251, 113, 133, 0.58);
   background: rgba(127, 29, 29, 0.28);
   color: #fecdd3;
+}
+
+.theme-dark .create-assessment-blueprint-low-weightage {
+  border-color: rgba(251, 191, 36, 0.58);
+  background: rgba(120, 53, 15, 0.28);
+  color: #fde68a;
+}
+
+.theme-dark .create-assessment-blueprint-rebalanced-badge {
+  border-color: rgba(196, 181, 253, 0.48);
+  background: rgba(109, 40, 217, 0.22);
+  color: #ddd6fe;
 }
 
 .theme-dark .create-assessment-blueprint-mark-range {

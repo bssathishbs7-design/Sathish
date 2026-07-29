@@ -46,6 +46,11 @@ import {
 } from 'lucide-react'
 import RichMathEditor from '../components/RichMathEditor'
 import { APP_PAGES } from '../config/appPages'
+import {
+  autoFillBlueprintAllocations,
+  rebalanceCompetencyTargets,
+  reshuffleBlueprintAllocations,
+} from '../utils/blueprintAllocation'
 import { stripHtml } from '../utils/mathText'
 import {
   DESCRIPTIVE_QUESTION_TYPES,
@@ -1459,7 +1464,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [blueprintLaqQuestionSplits, setBlueprintLaqQuestionSplits] = useState([])
   const [isBlueprintLaqSplitOpen, setIsBlueprintLaqSplitOpen] = useState(true)
   const [blueprintTestSpecificationCountDraft, setBlueprintTestSpecificationCountDraft] = useState({})
+  const [blueprintTestSpecificationMarkDraft, setBlueprintTestSpecificationMarkDraft] = useState({})
   const [blueprintAutoFillIteration, setBlueprintAutoFillIteration] = useState(0)
+  const [blueprintRebalanceMetadata, setBlueprintRebalanceMetadata] = useState({})
+  const [blueprintChangedSpecificationCells, setBlueprintChangedSpecificationCells] = useState([])
   const [blueprintCognitionWeightage, setBlueprintCognitionWeightage] = useState({ lot: '', hot: '' })
   const blueprintSpecLeftStackRef = useRef(null)
   const [blueprintSpecLeftStackHeight, setBlueprintSpecLeftStackHeight] = useState(0)
@@ -1498,6 +1506,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }, [savedQuestions])
 
   useEffect(() => {
+    if (!blueprintChangedSpecificationCells.length) return undefined
+    const timeoutId = window.setTimeout(() => {
+      setBlueprintChangedSpecificationCells([])
+    }, 900)
+    return () => window.clearTimeout(timeoutId)
+  }, [blueprintChangedSpecificationCells])
+
+  useEffect(() => {
     if (isBlueprintEnabled) return
     setIsBlueprintMatrixCreated(false)
     setIsBlueprintQuestionSplitCreated(false)
@@ -1507,7 +1523,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintLaqQuestionSplits([])
     setIsBlueprintLaqSplitOpen(true)
     setBlueprintTestSpecificationCountDraft({})
+    setBlueprintTestSpecificationMarkDraft({})
     setBlueprintAutoFillIteration(0)
+    setBlueprintRebalanceMetadata({})
+    setBlueprintChangedSpecificationCells([])
     setBlueprintCompetencyViewMode('multi')
     setActiveBlueprintTab('distribution')
   }, [isBlueprintEnabled])
@@ -1679,11 +1698,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const distributionLabel = hasDistributionOverride
       ? blueprintDistributionDraft[row.key]
       : blueprintSuggestedDistribution[row.key] || ''
+    const distributionNumber = Number(distributionLabel) || 0
+    const exactTargetMarks = rowCorrelation && blueprintCorrelationTotal
+      ? (rowCorrelation / blueprintCorrelationTotal) * blueprintRoundedTotalMark
+      : 0
     return {
       ...row,
       typeLabel,
-      weightageLabel: rowCorrelation && blueprintCorrelationTotal ? (rowCorrelation / blueprintCorrelationTotal).toFixed(2) : '',
+      weightageLabel: distributionNumber && blueprintRoundedTotalMark
+        ? (distributionNumber / blueprintRoundedTotalMark).toFixed(2)
+        : '',
       distributionLabel,
+      exactTargetMarks,
+      fractionalIntent: exactTargetMarks - Math.floor(exactTargetMarks),
       markRangeLabel: getBlueprintMarkRangeLabel(distributionLabel),
     }
   })
@@ -2024,6 +2051,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const blueprintQuestionTypeLotMarksTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.lotMarks, 0)
   const blueprintQuestionTypeLotQuestionsTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.lotQuestions, 0)
   const blueprintQuestionTypeQuestionTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.totalQuestions, 0)
+  const blueprintActiveDenominations = [
+    Number(blueprintQuestionTypeByLabel.MCQs?.perQuestionMarks) || 0,
+    ...blueprintSaqQuestionTypeRows.map((row) => Number(row.perQuestionMarks) || 0),
+    ...blueprintLaqQuestionCards.map((card) => (
+      card.splits.reduce((total, split) => total + (Number(split.marks) || 0), 0)
+    )),
+  ].filter((marks) => marks > 0)
+  const blueprintUniqueDenominations = [...new Set(blueprintActiveDenominations)].sort(
+    (left, right) => left - right,
+  )
+  const blueprintLowWeightageThreshold = blueprintUniqueDenominations.length > 1
+    ? blueprintUniqueDenominations[1]
+    : 0
   const blueprintTestSpecificationQuestionCounts = {
     mcqLot: blueprintQuestionTypeByLabel.MCQs?.lotQuestions || 0,
     mcqHot: blueprintQuestionTypeByLabel.MCQs?.hotQuestions || 0,
@@ -2088,6 +2128,70 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       blueprintSaqQuestionTypeSummary.hotMarks,
     ),
   }
+  const blueprintAllocationColumns = blueprintTestSpecificationColumns.map((column) => {
+    const units = blueprintTestSpecificationQuestionMarkUnits[column.key] || []
+    const firstWeight = Number(units[0]) || 0
+    const hasUniformWeight = units.length > 0
+      && firstWeight > 0
+      && units.every((marks) => Number(marks) === firstWeight)
+    return {
+      ...column,
+      weight: hasUniformWeight ? firstWeight : 0,
+      targetQuestionCount: blueprintTestSpecificationQuestionCounts[column.key] || 0,
+      hasUniformWeight,
+    }
+  })
+  const blueprintAutoFillColumns = blueprintTestSpecificationColumns.flatMap((column) => {
+    const units = blueprintTestSpecificationQuestionMarkUnits[column.key] || []
+    const denominationCounts = units.reduce((counts, marks) => {
+      const weight = Number(marks) || 0
+      if (weight <= 0 || !Number.isInteger(weight)) return counts
+      counts.set(weight, (counts.get(weight) || 0) + 1)
+      return counts
+    }, new Map())
+    return [...denominationCounts.entries()]
+      .sort(([leftWeight], [rightWeight]) => rightWeight - leftWeight)
+      .map(([weight, targetQuestionCount]) => ({
+        key: `${column.key}::${weight}`,
+        label: `${column.group} ${column.label}`,
+        group: column.group,
+        level: column.label,
+        uiColumnKey: column.key,
+        weight,
+        targetQuestionCount,
+      }))
+  })
+  const getBlueprintAutoFillColumnsFor = (uiColumnKey) => (
+    blueprintAutoFillColumns.filter((column) => column.uiColumnKey === uiColumnKey)
+  )
+  const blueprintCoupledAllocationGroups = (
+    blueprintTestSpecificationQuestionCounts.laqLot > 0
+    && blueprintTestSpecificationQuestionCounts.laqLot
+      === blueprintTestSpecificationQuestionCounts.laqHot
+  )
+    ? [{
+      key: 'laq',
+      label: 'LAQ',
+      columnKeys: ['laqLot', 'laqHot'],
+    }]
+    : []
+  const blueprintAutoFillLaqLotColumns = getBlueprintAutoFillColumnsFor('laqLot')
+  const blueprintAutoFillLaqHotColumns = getBlueprintAutoFillColumnsFor('laqHot')
+  const blueprintAutoFillCoupledGroups = (
+    blueprintAutoFillLaqLotColumns.length === 1
+    && blueprintAutoFillLaqHotColumns.length === 1
+    && blueprintAutoFillLaqLotColumns[0].targetQuestionCount
+      === blueprintAutoFillLaqHotColumns[0].targetQuestionCount
+  )
+    ? [{
+      key: 'laq',
+      label: 'LAQ',
+      columnKeys: [
+        blueprintAutoFillLaqLotColumns[0].key,
+        blueprintAutoFillLaqHotColumns[0].key,
+      ],
+    }]
+    : []
   const getBlueprintTestSpecificationCountValue = (rowKey, fieldKey) => (
     blueprintTestSpecificationCountDraft[rowKey]?.[fieldKey] || ''
   )
@@ -2105,10 +2209,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       const count = getBlueprintTestSpecificationCountNumber(row.key, fieldKey)
       if (row.key === rowKey) {
         const allocatedUnits = units.slice(offset, offset + count)
+        const hasCalculatedMarkOverride = Object.prototype.hasOwnProperty.call(
+          blueprintTestSpecificationMarkDraft[rowKey] || {},
+          fieldKey,
+        )
+        const calculatedMarks = hasCalculatedMarkOverride
+          ? Number(blueprintTestSpecificationMarkDraft[rowKey][fieldKey]) || 0
+          : allocatedUnits.reduce((total, marks) => total + marks, 0)
         return {
           count,
-          calculatedMarks: allocatedUnits.reduce((total, marks) => total + marks, 0),
-          isValid: count > 0 && allocatedUnits.length === count,
+          calculatedMarks,
+          isValid: count > 0 && (
+            hasCalculatedMarkOverride || allocatedUnits.length === count
+          ),
         }
       }
       offset += count
@@ -2180,6 +2293,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     if (!inactiveColumnKeys.length) return
 
     setBlueprintTestSpecificationCountDraft((current) => {
+      let hasChanges = false
+      const next = Object.fromEntries(Object.entries(current).map(([rowKey, rowValues]) => {
+        const nextRowValues = { ...rowValues }
+        inactiveColumnKeys.forEach((columnKey) => {
+          if (Object.prototype.hasOwnProperty.call(nextRowValues, columnKey)) {
+            delete nextRowValues[columnKey]
+            hasChanges = true
+          }
+        })
+        return [rowKey, nextRowValues]
+      }))
+      return hasChanges ? next : current
+    })
+    setBlueprintTestSpecificationMarkDraft((current) => {
       let hasChanges = false
       const next = Object.fromEntries(Object.entries(current).map(([rowKey, rowValues]) => {
         const nextRowValues = { ...rowValues }
@@ -2295,7 +2422,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     && blueprintSpecificationTargetTotal > 0
     && blueprintTestSpecificationColumns.every((column) => (
       (blueprintTestSpecificationQuestionMarkUnits[column.key] || []).length
-      === (blueprintTestSpecificationQuestionCounts[column.key] || 0)
+        === (blueprintTestSpecificationQuestionCounts[column.key] || 0)
+      && (blueprintTestSpecificationQuestionMarkUnits[column.key] || []).every(
+        (marks) => Number(marks) > 0 && Number.isInteger(Number(marks)),
+      )
     ))
   const blueprintTestSpecificationDisplayStatus = blueprintTestSpecificationMatrixIsValid
     ? 'complete'
@@ -2351,6 +2481,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }))
     setBlueprintDistributionDraft({})
     setBlueprintTestSpecificationCountDraft({})
+    setBlueprintTestSpecificationMarkDraft({})
+    setBlueprintRebalanceMetadata({})
   }
   const updateBlueprintTopics = (topics) => {
     setBlueprintDraft((current) => ({
@@ -2364,6 +2496,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }))
     setBlueprintDistributionDraft({})
     setBlueprintTestSpecificationCountDraft({})
+    setBlueprintTestSpecificationMarkDraft({})
+    setBlueprintRebalanceMetadata({})
   }
   const updateBlueprintCompetencies = (competencies) => {
     setBlueprintDraft((current) => ({
@@ -2374,6 +2508,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       Object.entries(current).filter(([key]) => competencies.includes(key)),
     ))
     setBlueprintTestSpecificationCountDraft((current) => Object.fromEntries(
+      Object.entries(current).filter(([key]) => competencies.includes(key)),
+    ))
+    setBlueprintTestSpecificationMarkDraft((current) => Object.fromEntries(
+      Object.entries(current).filter(([key]) => competencies.includes(key)),
+    ))
+    setBlueprintRebalanceMetadata((current) => Object.fromEntries(
       Object.entries(current).filter(([key]) => competencies.includes(key)),
     ))
   }
@@ -2392,6 +2532,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       delete next[competencyKey]
       return next
     })
+    setBlueprintTestSpecificationMarkDraft((current) => {
+      const next = { ...current }
+      delete next[competencyKey]
+      return next
+    })
+    setBlueprintRebalanceMetadata((current) => {
+      const next = { ...current }
+      delete next[competencyKey]
+      return next
+    })
   }
   const updateBlueprintDistribution = (rowKey, value) => {
     if (!/^\d*$/.test(value)) return
@@ -2399,9 +2549,23 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ...current,
       [rowKey]: value,
     }))
+    setBlueprintRebalanceMetadata((current) => {
+      if (!Object.prototype.hasOwnProperty.call(current, rowKey)) return current
+      const next = { ...current }
+      delete next[rowKey]
+      return next
+    })
   }
   const updateBlueprintTestSpecificationDraft = (rowKey, fieldKey, value) => {
     if (!/^\d*$/.test(value)) return
+    setBlueprintChangedSpecificationCells([])
+    setBlueprintTestSpecificationMarkDraft((current) => Object.fromEntries(
+      Object.entries(current).map(([currentRowKey, rowValues]) => {
+        const nextRowValues = { ...rowValues }
+        delete nextRowValues[fieldKey]
+        return [currentRowKey, nextRowValues]
+      }),
+    ))
     const availableCount = blueprintTestSpecificationQuestionCounts[fieldKey] || 0
     const requestedCount = value === ''
       ? 0
@@ -2444,155 +2608,118 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const clearBlueprintTestSpecificationMatrix = () => {
     setBlueprintTestSpecificationCountDraft({})
+    setBlueprintTestSpecificationMarkDraft({})
     setBlueprintAutoFillIteration(0)
+    setBlueprintChangedSpecificationCells([])
   }
   const autoFillBlueprintTestSpecificationMatrix = () => {
     if (!blueprintTestSpecificationCanAutoFill) return
 
-    const rowTargets = blueprintSpecificationRows.map((row) => Number(row.targetMarks) || 0)
-    const targetTotal = rowTargets.reduce((total, target) => total + target, 0) || 1
-    const columnCounts = Object.fromEntries(
-      blueprintTestSpecificationColumns.map((column) => {
-        const questionCount = blueprintTestSpecificationQuestionCounts[column.key] || 0
-        const exactShares = rowTargets.map((target) => (questionCount * target) / targetTotal)
-        const counts = exactShares.map((share) => Math.floor(share))
-        let remainingCount = questionCount - counts.reduce((total, count) => total + count, 0)
-        const remainderOrder = exactShares
-          .map((share, rowIndex) => ({ rowIndex, remainder: share - counts[rowIndex] }))
-          .sort((left, right) => right.remainder - left.remainder || left.rowIndex - right.rowIndex)
-
-        for (let index = 0; index < remainingCount; index += 1) {
-          counts[remainderOrder[index % remainderOrder.length].rowIndex] += 1
-        }
-        return [column.key, counts]
-      }),
-    )
-
-    const calculateRowMarks = (countsByColumn) => {
-      const totals = blueprintSpecificationRows.map(() => 0)
-      blueprintTestSpecificationColumns.forEach((column) => {
-        const units = blueprintTestSpecificationQuestionMarkUnits[column.key] || []
-        let offset = 0
-        countsByColumn[column.key].forEach((count, rowIndex) => {
-          totals[rowIndex] += units
-            .slice(offset, offset + count)
-            .reduce((sum, marks) => sum + marks, 0)
-          offset += count
-        })
-      })
-      return totals
-    }
-    const calculateDifference = (countsByColumn) => {
-      const totals = calculateRowMarks(countsByColumn)
-      return totals.reduce(
-        (difference, total, rowIndex) => difference + Math.abs(total - rowTargets[rowIndex]),
-        0,
-      )
-    }
-
-    let currentDifference = calculateDifference(columnCounts)
-    let keepOptimizing = true
-    let optimizationPass = 0
-
-    while (keepOptimizing && currentDifference > 0 && optimizationPass < 250) {
-      keepOptimizing = false
-      optimizationPass += 1
-      let bestMove = null
-      let bestDifference = currentDifference
-
-      blueprintTestSpecificationColumns.forEach((column) => {
-        const counts = columnCounts[column.key]
-        counts.forEach((count, fromRowIndex) => {
-          if (count <= 0) return
-          counts.forEach((_, toRowIndex) => {
-            if (fromRowIndex === toRowIndex) return
-            counts[fromRowIndex] -= 1
-            counts[toRowIndex] += 1
-            const nextDifference = calculateDifference(columnCounts)
-            counts[fromRowIndex] += 1
-            counts[toRowIndex] -= 1
-
-            if (nextDifference < bestDifference) {
-              bestDifference = nextDifference
-              bestMove = { columnKey: column.key, fromRowIndex, toRowIndex }
-            }
-          })
-        })
-      })
-
-      if (bestMove) {
-        columnCounts[bestMove.columnKey][bestMove.fromRowIndex] -= 1
-        columnCounts[bestMove.columnKey][bestMove.toRowIndex] += 1
-        currentDifference = bestDifference
-        keepOptimizing = true
-      }
-    }
-
-    let didReshuffle = false
-    if (blueprintAutoFillIteration > 0 && currentDifference === 0) {
-      const reshuffleCandidates = []
-
-      blueprintTestSpecificationColumns.forEach((leftColumn, leftColumnIndex) => {
-        const leftUnits = blueprintTestSpecificationQuestionMarkUnits[leftColumn.key] || []
-        const leftUnitMarks = leftUnits[0]
-        const leftIsUniform = leftUnits.length > 0
-          && leftUnits.every((marks) => marks === leftUnitMarks)
-        if (!leftIsUniform) return
-
-        blueprintTestSpecificationColumns.slice(leftColumnIndex + 1).forEach((rightColumn) => {
-          const rightUnits = blueprintTestSpecificationQuestionMarkUnits[rightColumn.key] || []
-          const rightIsCompatible = rightUnits.length > 0
-            && rightUnits.every((marks) => marks === leftUnitMarks)
-          if (!rightIsCompatible) return
-
-          const leftCounts = columnCounts[leftColumn.key]
-          const rightCounts = columnCounts[rightColumn.key]
-          leftCounts.forEach((leftCount, leftRowIndex) => {
-            if (leftCount <= 0) return
-            rightCounts.forEach((rightCount, rightRowIndex) => {
-              if (rightCount <= 0 || leftRowIndex === rightRowIndex) return
-              reshuffleCandidates.push({
-                leftColumnKey: leftColumn.key,
-                rightColumnKey: rightColumn.key,
-                leftRowIndex,
-                rightRowIndex,
-              })
-            })
-          })
-        })
-      })
-
-      if (reshuffleCandidates.length) {
-        const candidate = reshuffleCandidates[
-          (blueprintAutoFillIteration - 1) % reshuffleCandidates.length
-        ]
-        columnCounts[candidate.leftColumnKey][candidate.leftRowIndex] -= 1
-        columnCounts[candidate.leftColumnKey][candidate.rightRowIndex] += 1
-        columnCounts[candidate.rightColumnKey][candidate.rightRowIndex] -= 1
-        columnCounts[candidate.rightColumnKey][candidate.leftRowIndex] += 1
-        didReshuffle = true
-      }
-    }
-
-    setBlueprintTestSpecificationCountDraft(Object.fromEntries(
-      blueprintSpecificationRows.map((row, rowIndex) => [
+    const toDraftState = (allocations) => Object.fromEntries(
+      blueprintSpecificationRows.map((row) => [
         row.key,
         Object.fromEntries(
-          blueprintTestSpecificationColumns.map((column) => [
-            column.key,
-            columnCounts[column.key][rowIndex] > 0
-              ? String(columnCounts[column.key][rowIndex])
-              : '',
-          ]),
+          blueprintTestSpecificationColumns.map((column) => {
+            const count = Number(allocations[row.key]?.[column.key]) || 0
+            return [column.key, count > 0 ? String(count) : '']
+          }),
         ),
       ]),
-    ))
-    setBlueprintAutoFillIteration((current) => current + 1)
-    if (blueprintAutoFillIteration > 0) {
-      setSaveStatus(didReshuffle
-        ? 'Blueprint matrix reshuffled.'
-        : 'No alternative valid distribution is available.')
+    )
+    const collapseAutoFillAllocations = (allocations) => {
+      const countDraft = {}
+      const markDraft = {}
+      blueprintSpecificationRows.forEach((row) => {
+        countDraft[row.key] = {}
+        markDraft[row.key] = {}
+        blueprintTestSpecificationColumns.forEach((column) => {
+          const internalColumns = getBlueprintAutoFillColumnsFor(column.key)
+          const count = internalColumns.reduce(
+            (total, internalColumn) => (
+              total + (Number(allocations[row.key]?.[internalColumn.key]) || 0)
+            ),
+            0,
+          )
+          const marks = internalColumns.reduce(
+            (total, internalColumn) => (
+              total
+              + (Number(allocations[row.key]?.[internalColumn.key]) || 0)
+                * internalColumn.weight
+            ),
+            0,
+          )
+          countDraft[row.key][column.key] = count > 0 ? String(count) : ''
+          markDraft[row.key][column.key] = marks
+        })
+      })
+      return { countDraft, markDraft }
     }
+
+    if (blueprintAutoFillIteration > 0 && blueprintTestSpecificationMatrixIsValid) {
+      const currentAllocations = Object.fromEntries(
+        blueprintSpecificationRows.map((row) => [
+          row.key,
+          Object.fromEntries(
+            blueprintTestSpecificationColumns.map((column) => [
+              column.key,
+              getBlueprintTestSpecificationCountNumber(row.key, column.key),
+            ]),
+          ),
+        ]),
+      )
+      const coupledColumnKeys = new Set(
+        blueprintCoupledAllocationGroups.flatMap((group) => group.columnKeys),
+      )
+      const reshuffleResult = reshuffleBlueprintAllocations({
+        allocations: currentAllocations,
+        rows: blueprintSpecificationRows,
+        columns: blueprintAllocationColumns.filter((column) => (
+          column.targetQuestionCount > 0 && !coupledColumnKeys.has(column.key)
+        )),
+        seed: Date.now() + blueprintAutoFillIteration,
+        cyclesPerTier: 14,
+      })
+
+      if (!reshuffleResult.successfulCycles) {
+        setSaveStatus('No alternative valid distribution is available.')
+        return
+      }
+      const nextCountDraft = toDraftState(reshuffleResult.allocations)
+      setBlueprintTestSpecificationCountDraft(nextCountDraft)
+      setBlueprintTestSpecificationMarkDraft((current) => Object.fromEntries(
+        blueprintSpecificationRows.map((row) => [
+          row.key,
+          Object.fromEntries(blueprintAllocationColumns.map((column) => {
+            const count = Number(nextCountDraft[row.key]?.[column.key]) || 0
+            const currentMarks = Number(current[row.key]?.[column.key]) || 0
+            return [
+              column.key,
+              column.hasUniformWeight ? count * column.weight : currentMarks,
+            ]
+          })),
+        ]),
+      ))
+      setBlueprintChangedSpecificationCells(reshuffleResult.changedCells)
+      setBlueprintAutoFillIteration((current) => current + 1)
+      setSaveStatus('Blueprint matrix reshuffled.')
+      return
+    }
+
+    const autoFillResult = autoFillBlueprintAllocations({
+      rows: blueprintSpecificationRows,
+      columns: blueprintAutoFillColumns,
+      coupledGroups: blueprintAutoFillCoupledGroups,
+    })
+    if (autoFillResult.error || !autoFillResult.allocations) {
+      setSaveStatus(autoFillResult.error || 'Unable to create a valid blueprint allocation.')
+      return
+    }
+
+    const collapsedAllocations = collapseAutoFillAllocations(autoFillResult.allocations)
+    setBlueprintTestSpecificationCountDraft(collapsedAllocations.countDraft)
+    setBlueprintTestSpecificationMarkDraft(collapsedAllocations.markDraft)
+    setBlueprintChangedSpecificationCells([])
+    setBlueprintAutoFillIteration(1)
   }
   const saveBlueprintPlanner = () => {
     if (!blueprintTestSpecificationMatrixIsValid) return
@@ -2605,6 +2732,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         blueprintQuestionTypeDraft,
         blueprintLaqQuestionSplits,
         blueprintTestSpecificationCountDraft,
+        blueprintTestSpecificationMarkDraft,
+        blueprintRebalanceMetadata,
+        validationStatus: blueprintTestSpecificationMatrixIsValid ? 'matched' : 'mismatched',
+        schemaVersion: 2,
         savedAt: new Date().toISOString(),
       }))
       setSaveStatus('Blueprint planner saved.')
@@ -2746,6 +2877,41 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const createBlueprintCompetencyMatrix = () => {
     if (!isBlueprintCompetencyMatrixReady) return
+    const rebalanceResult = rebalanceCompetencyTargets({
+      rows: blueprintTableRows.map((row) => ({
+        key: row.key,
+        code: row.code,
+        targetMarks: blueprintRebalanceMetadata[row.key]?.originalTargetMarks
+          ?? (Number(row.distributionLabel) || 0),
+        fractionalIntent: row.fractionalIntent,
+      })),
+      denominations: blueprintActiveDenominations,
+      totalMarks: blueprintRoundedTotalMark,
+    })
+    if (rebalanceResult.error) {
+      setSaveStatus(rebalanceResult.error)
+      return
+    }
+
+    setBlueprintDistributionDraft((current) => ({
+      ...current,
+      ...Object.fromEntries(rebalanceResult.rows.map((row) => [
+        row.key,
+        String(row.targetMarks),
+      ])),
+    }))
+    setBlueprintRebalanceMetadata(Object.fromEntries(
+      rebalanceResult.rows.map((row) => [row.key, {
+        originalTargetMarks: row.originalTargetMarks,
+        adjustedTargetMarks: row.targetMarks,
+        isRebalanced: row.isRebalanced,
+        delta: row.rebalanceDelta,
+        gcd: rebalanceResult.gcd,
+      }]),
+    ))
+    setBlueprintTestSpecificationCountDraft({})
+    setBlueprintTestSpecificationMarkDraft({})
+    setBlueprintChangedSpecificationCells([])
     setBlueprintCompetencyViewMode('multi')
     setBlueprintAutoFillIteration(0)
     setIsBlueprintCompetencyMatrixCreated(true)
@@ -2756,7 +2922,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintLaqQuestionSplits([])
     setIsBlueprintLaqSplitOpen(true)
     setBlueprintTestSpecificationCountDraft({})
+    setBlueprintTestSpecificationMarkDraft({})
     setBlueprintAutoFillIteration(0)
+    setBlueprintRebalanceMetadata({})
+    setBlueprintChangedSpecificationCells([])
     setIsBlueprintQuestionSplitCreated(false)
     setIsBlueprintCompetencyMatrixCreated(false)
     setIsBlueprintResetConfirmOpen(false)
@@ -5787,7 +5956,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                       </tr>
                     </thead>
                     <tbody>
-                      {blueprintTableRows.length ? blueprintTableRows.map((row) => (
+                      {blueprintTableRows.length ? blueprintTableRows.map((row) => {
+                        const rebalanceInfo = blueprintRebalanceMetadata[row.key]
+                        const isLowWeightage = blueprintLowWeightageThreshold > 0
+                          && Number(row.distributionLabel) > 0
+                          && Number(row.distributionLabel) < blueprintLowWeightageThreshold
+                        return (
                         <tr key={row.key}>
                           <td>
                             <span className="create-assessment-blueprint-code">
@@ -5813,15 +5987,37 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           <td>{row.correlationLevel || '-'}</td>
                           <td>{row.weightageLabel}</td>
                           <td>
-                            <input
-                              className={`create-assessment-blueprint-distribution-input ${blueprintTotalMarkNumber ? (blueprintDistributionMatchesTotal ? 'is-valid' : 'is-invalid') : ''}`}
-                              value={row.distributionLabel}
-                              onChange={(event) => updateBlueprintDistribution(row.key, event.target.value)}
-                              placeholder="-"
-                              inputMode="numeric"
-                              aria-label={`Distribution marks for ${row.code}`}
-                              disabled={isBlueprintMatrixCreated}
-                            />
+                            <div className="create-assessment-blueprint-distribution-cell">
+                              <input
+                                className={`create-assessment-blueprint-distribution-input ${blueprintTotalMarkNumber ? (blueprintDistributionMatchesTotal ? 'is-valid' : 'is-invalid') : ''}`}
+                                value={row.distributionLabel}
+                                onChange={(event) => updateBlueprintDistribution(row.key, event.target.value)}
+                                placeholder="-"
+                                inputMode="numeric"
+                                aria-label={`Distribution marks for ${row.code}`}
+                                disabled={isBlueprintMatrixCreated}
+                              />
+                              {isLowWeightage ? (
+                                <span
+                                  className="create-assessment-blueprint-low-weightage"
+                                  tabIndex={0}
+                                  role="img"
+                                  aria-label="Low-weightage allocation"
+                                  data-tooltip="Allocation is smaller than larger question denominations; this competency will be restricted exclusively to smallest-weight assessment formats."
+                                >
+                                  <Info size={12} strokeWidth={2.4} />
+                                </span>
+                              ) : null}
+                              {rebalanceInfo?.isRebalanced ? (
+                                <span
+                                  className="create-assessment-blueprint-rebalanced-badge"
+                                  tabIndex={0}
+                                  data-tooltip={`Target mark was automatically adjusted from ${rebalanceInfo.originalTargetMarks} to ${rebalanceInfo.adjustedTargetMarks} to match available question denominations. Correlation ratio remains locked.`}
+                                >
+                                  Rebalanced {rebalanceInfo.delta > 0 ? '+' : ''}{rebalanceInfo.delta}
+                                </span>
+                              ) : null}
+                            </div>
                           </td>
                           <td>
                             <span className="create-assessment-blueprint-mark-range">
@@ -5840,7 +6036,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             </button>
                           </td>
                         </tr>
-                      )) : (
+                        )
+                      }) : (
                         <tr>
                           <td colSpan={7} className="create-assessment-blueprint-empty">
                             Select subject, topics, competency, and total mark to view blueprint distribution.
@@ -6462,9 +6659,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   const countValue = getBlueprintTestSpecificationCountValue(row.key, column.key)
                                   const countData = getBlueprintTestSpecificationCellCountData(row.key, column.key)
                                   const hasCountValue = isActive && countValue !== ''
+                                  const isChanged = blueprintChangedSpecificationCells.includes(
+                                    `${row.key}:${column.key}`,
+                                  )
                                   return (
                                   <div
-                                    className={`create-assessment-blueprint-test-grid-cell is-count-entry ${isActive ? '' : 'is-disabled'} ${hasCountValue ? (countData.isValid ? 'is-valid' : 'is-invalid') : ''}`}
+                                    className={`create-assessment-blueprint-test-grid-cell is-count-entry ${isActive ? '' : 'is-disabled'} ${hasCountValue ? (countData.isValid ? 'is-valid' : 'is-invalid') : ''} ${isChanged ? 'is-reshuffled' : ''}`}
                                     key={`${row.key}-${column.key}`}
                                     role="cell"
                                     title={isActive
@@ -6597,6 +6797,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             onClick={() => {
                               setIsBlueprintCompetencyMatrixCreated(false)
                               setBlueprintTestSpecificationCountDraft({})
+                              setBlueprintTestSpecificationMarkDraft({})
                               setBlueprintAutoFillIteration(0)
                             }}
                           >
