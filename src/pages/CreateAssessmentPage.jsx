@@ -1106,6 +1106,10 @@ const hasGeneratedTagValues = (values) => (
 )
 
 const getQuestionOptionalTagGroups = (item) => [
+  { label: 'Category', values: [getQuestionCategorySectionLabel(item.questionCategory)].filter(Boolean) },
+  { label: 'Thinking Level', values: [item.thinkingLevel].filter(Boolean) },
+  { label: 'Difficulty Level', values: [item.difficultyLevel].filter(Boolean) },
+  { label: 'Cognitive Level', values: [item.cognitiveLevel].filter(Boolean) },
   { label: 'Cognitive Function', values: item.cognitiveFunction ? [item.cognitiveFunction] : [] },
   { label: 'Skill Focus', values: item.skillFocus ? [item.skillFocus] : [] },
   { label: 'Organ System', values: item.organSystem ? [item.organSystem] : [] },
@@ -1114,8 +1118,20 @@ const getQuestionOptionalTagGroups = (item) => [
   { label: 'Key Concept', values: item.keyConcepts ?? [] },
 ].map((group) => ({
   ...group,
-  values: group.values.filter((value) => value && value !== DEFAULT_OPTIONAL_TAG),
+  values: group.values.filter((value) => value && value !== DEFAULT_OPTIONAL_TAG && value !== 'Not Applicable'),
 })).filter((group) => group.values.length)
+
+const getCompactPreviewTagLabel = (label) => ({
+  'Thinking Level': 'Thinking',
+  'Difficulty Level': 'Level',
+  'Cognitive Level': 'Cognitive',
+  'Cognitive Function': 'Function',
+  'Skill Focus': 'Skill Focus',
+  'Organ System': 'Organ',
+  'Organ Sub System': 'Sub-System',
+  'Disease Tags': 'Disease',
+  'Key Concept': 'Concept',
+}[label] ?? label)
 
 function MappingSelectorPanel({ title, searchValue, onSearchChange, items, selected, onToggle, emptyLabel }) {
   const normalizedSearch = searchValue.trim().toLowerCase()
@@ -7187,6 +7203,18 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                       }] : []
                     : []
                   const isPreviewCardOpen = openPreviewCardIds.includes(item.id)
+                  const previewInlineTagsPanel = openPreviewTagsId === item.id && optionalTagGroups.length ? (
+                    <div className="assessment-page-inline-tags-panel create-assessment-preview-inline-tags-panel">
+                      {optionalTagGroups.flatMap((group) => (
+                        group.values.map((value) => (
+                          <span key={`${group.label}-${value}`} className="assessment-page-inline-tag-chip">
+                            <strong>{getCompactPreviewTagLabel(group.label)}</strong>
+                            <span>{value}</span>
+                          </span>
+                        ))
+                      ))}
+                    </div>
+                  ) : null
                   return (
                     <article
                       key={item.id}
@@ -7206,7 +7234,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                       <div className="create-assessment-preview-main">
                         <div className="create-assessment-preview-title-row">
                           <div>
-                            <strong>{displayNumber}. {getPreviewQuestionText(item)}</strong>
+                            <strong title={getPreviewQuestionText(item)}>{displayNumber}. {getPreviewQuestionText(item)}</strong>
                             <span className="create-assessment-preview-meta-row">
                               {previewSubject ? <span className="create-assessment-preview-path-subject">{previewSubject}</span> : null}
                               {previewSubject && previewTopic ? <span className="create-assessment-preview-path-separator">›</span> : null}
@@ -7237,30 +7265,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   >
                                     + {optionalTagGroups.reduce((total, group) => total + group.values.length, 0)} more tags
                                   </button>
-                                  <span
-                                    className={`question-bank-created-tags-tooltip ${openPreviewTagsId === item.id ? 'is-open' : ''}`}
-                                    role="tooltip"
-                                  >
-                                    {optionalTagGroups.map((group) => (
-                                      <span key={group.label} className="question-bank-created-tags-group">
-                                        <strong>{group.label}</strong>
-                                        <span>
-                                          {group.values.map((value) => (
-                                            <span key={value}>{value}</span>
-                                          ))}
-                                        </span>
-                                      </span>
-                                    ))}
-                                  </span>
                                 </span>
                               ) : null}
                             </span>
                           </div>
                         </div>
 
+                        {isPreviewCardOpen ? previewInlineTagsPanel : null}
                         {isPreviewCardOpen ? (
                           <div className="create-assessment-preview-detail">
-                            {(item.images ?? []).length ? (
+                            {isDescriptive && (item.images ?? []).length ? (
                               <div className="create-assessment-preview-images" aria-label="Question images">
                                 {item.images.map((image, imageIndex) => (
                                   <figure key={image.id ?? `${image.name}-${imageIndex}`}>
@@ -7271,37 +7285,46 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               </div>
                             ) : null}
 
-                            {!isDescriptive && visibleOptions.length ? (
-                              <div className="create-assessment-preview-options">
-                                {visibleOptions.map((option, optionIndex) => {
-                                  const isCorrect = (item.correctOptionIds ?? []).includes(option.id)
-                                  const distractorError = (option.distractorErrors ?? [])[0]
-                                  return (
-                                    <span key={option.id} className={isCorrect ? 'is-correct' : ''}>
-                                      <strong>{String.fromCharCode(65 + optionIndex)}.</strong>
-                                      <span>{getRichTextPreview(option.label)}</span>
-                                      {distractorError ? (
-                                        <span className="create-assessment-preview-option-info">
-                                          <button type="button" aria-label={`View distractor error for option ${String.fromCharCode(65 + optionIndex)}`}>
-                                            <Info size={12} strokeWidth={2.2} />
-                                          </button>
-                                          <span className="create-assessment-preview-option-tooltip" role="tooltip">
-                                            <strong>Distractor Error</strong>
-                                            <span>{distractorError}</span>
-                                          </span>
+                            {!isDescriptive ? (
+                              <div className="create-assessment-preview-sections create-assessment-preview-mcq-parts">
+                                <strong className="create-assessment-preview-card-heading is-question-parts">Question Parts</strong>
+                                <span className="create-assessment-preview-main-question">{getPreviewQuestionText(item)}</span>
+                                {(item.images ?? []).length ? (
+                                  <div className="create-assessment-preview-images" aria-label="Question images">
+                                    {item.images.map((image, imageIndex) => (
+                                      <figure key={image.id ?? `${image.name}-${imageIndex}`}>
+                                        <span>{String.fromCharCode(65 + imageIndex)}</span>
+                                        <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
+                                      </figure>
+                                    ))}
+                                  </div>
+                                ) : null}
+                                {visibleOptions.length ? (
+                                  <div className="create-assessment-preview-options">
+                                    {visibleOptions.map((option, optionIndex) => {
+                                      const isCorrect = (item.correctOptionIds ?? []).includes(option.id)
+                                      const distractorError = (option.distractorErrors ?? [])[0]
+                                      return (
+                                        <span key={option.id} className={isCorrect ? 'is-correct' : ''}>
+                                          <strong>{String.fromCharCode(65 + optionIndex)}.</strong>
+                                          <span>{getRichTextPreview(option.label)}</span>
+                                          {distractorError ? (
+                                            <span className="create-assessment-preview-option-info">
+                                              <button type="button" aria-label={`View distractor error for option ${String.fromCharCode(65 + optionIndex)}`}>
+                                                <Info size={12} strokeWidth={2.2} />
+                                              </button>
+                                              <span className="create-assessment-preview-option-tooltip" role="tooltip">
+                                                <strong>Distractor Error</strong>
+                                                <span>{distractorError}</span>
+                                              </span>
+                                            </span>
+                                          ) : null}
                                         </span>
-                                      ) : null}
-                                    </span>
-                                  )
-                                })}
+                                      )
+                                    })}
+                                  </div>
+                                ) : null}
                               </div>
-                            ) : null}
-
-                            {!isDescriptive && correctOptionTexts.length ? (
-                              <p className="create-assessment-preview-answer">
-                                <strong>Answer</strong>
-                                <span>{correctOptionTexts.join(', ')}</span>
-                              </p>
                             ) : null}
 
                             {isDescriptive ? (
@@ -7358,10 +7381,22 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 </p>
                               ) : null}
 
-                              {!isDescriptive && getRichTextPreview(item.answerKey) ? (
-                                <p className="create-assessment-preview-answer">
-                                  <strong>Explanation</strong>
-                                  <span>{getRichTextPreview(item.answerKey)}</span>
+                              {!isDescriptive && (correctOptionTexts.length || getRichTextPreview(item.answerKey)) ? (
+                                <p className="create-assessment-preview-answer create-assessment-preview-answer-list create-assessment-preview-mcq-answer">
+                                  <strong className="create-assessment-preview-card-heading is-model-answer">Model Answer</strong>
+                                  <span>
+                                    {correctOptionTexts.length ? (
+                                      <span className="create-assessment-preview-answer-row">
+                                        <b>Correct answer:</b>
+                                        <span>{correctOptionTexts.join(', ')}</span>
+                                      </span>
+                                    ) : null}
+                                    {getRichTextPreview(item.answerKey) ? (
+                                      <span className="create-assessment-preview-answer-row has-no-label">
+                                        <span>{getRichTextPreview(item.answerKey)}</span>
+                                      </span>
+                                    ) : null}
+                                  </span>
                                 </p>
                               ) : null}
                             </div>
@@ -7398,6 +7433,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           {isPreviewCardOpen ? <ChevronUp size={15} strokeWidth={2.2} /> : <ChevronDown size={15} strokeWidth={2.2} />}
                         </button>
                       </div>
+                      {!isPreviewCardOpen ? previewInlineTagsPanel : null}
                     </article>
                   )
                 }) : (

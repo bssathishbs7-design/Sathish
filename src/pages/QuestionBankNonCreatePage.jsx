@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, Upload, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
+import { assignInstituteQuestionBankIds, getInstituteQuestionBankId } from '../utils/questionBankIdentity'
 import { APP_PAGES } from '../config/appPages'
 import medsyIcon from '../assets/medsy-icon.svg'
 import { corelationRatingRows } from './corelationRatingData'
@@ -118,14 +119,30 @@ const renderQuestionCurriculumPath = (curriculum) => {
 const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionControls = null, questionNumber = null) => {
   const hiddenTagCount = getOptionalTagGroups(question).reduce((total, group) => total + group.values.length, 0)
   const { tagsId = '', isTagsOpen = false, onToggleTags } = tagToggle
-  const questionBankId = `MED-A01-${String(questionNumber ?? question.displayNumber ?? question.questionNumber ?? question.order ?? 1).replace(/\D/g, '').padStart(5, '0').slice(-5)}`
+  const isMedsySource = isMedsyQuestion(question)
+  const isInstituteTagged = isInstituteQuestion(question)
+  const isInstituteSource = !isMedsySource && isInstituteTagged
+  const instituteQuestionBankId = getInstituteQuestionBankId(question)
+  const questionBankId = isInstituteSource
+    ? instituteQuestionBankId || `INS-A01-${String(questionNumber ?? question.displayNumber ?? question.questionNumber ?? question.order ?? 1).replace(/\D/g, '').padStart(5, '0').slice(-5)}`
+    : `MED-A01-${String(questionNumber ?? question.displayNumber ?? question.questionNumber ?? question.order ?? 1).replace(/\D/g, '').padStart(5, '0').slice(-5)}`
+  const sourceLabel = isMedsySource && isInstituteTagged
+    ? 'M/I'
+    : isInstituteSource
+      ? 'Institute'
+      : 'Medsy'
+  const sourceClassName = isMedsySource && isInstituteTagged
+    ? 'is-medsy-institute'
+    : isInstituteSource
+      ? 'is-institute'
+      : 'is-medsy'
 
   return (
     <div className="assessment-page-question-compact-meta">
       <span className="assessment-page-question-meta-items">
         {renderQuestionCurriculumPath(curriculum)}
         {renderCompetencyCodeBadge(curriculum)}
-        <span className="assessment-page-question-source-badge">Medsy</span>
+        <span className={`assessment-page-question-source-badge ${sourceClassName}`}>{sourceLabel}</span>
         <span className="assessment-page-question-id-badge">{questionBankId}</span>
         <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
         {!isMedsyQuestion(question) && getQuestionMarksTotal(question) > 0
@@ -493,11 +510,35 @@ const readApprovedCreatedQuestions = () => {
 const readAllQuestionBankQuestions = () => {
   const questionsById = new Map()
   const reportedQuestionIds = getReportedQuestionIds()
+  const storedPublishedQuestions = readStoredQuestionList(QUESTION_BANK_PUBLISHED_KEY)
+  const institutePublishedQuestions = storedPublishedQuestions.filter((question) => (
+    !isMedsyQuestion(question) && isApprovedQuestion(question)
+  ))
+  const identifiedInstituteQuestions = assignInstituteQuestionBankIds(
+    institutePublishedQuestions,
+    storedPublishedQuestions,
+  )
+  const identifiedInstituteById = new Map(
+    identifiedInstituteQuestions.map((question) => [question.id, question]),
+  )
+  const publishedQuestions = storedPublishedQuestions.map((question) => (
+    identifiedInstituteById.get(question.id) ?? question
+  ))
+
+  if (
+    typeof window !== 'undefined'
+    && publishedQuestions.some((question, index) => (
+      question.questionBankId !== storedPublishedQuestions[index]?.questionBankId
+      || question.isInstituteQuestion !== storedPublishedQuestions[index]?.isInstituteQuestion
+    ))
+  ) {
+    window.localStorage.setItem(QUESTION_BANK_PUBLISHED_KEY, JSON.stringify(publishedQuestions))
+  }
 
   ;[
-    ...readStoredQuestionList(QUESTION_BANK_PUBLISHED_KEY),
-    ...readStoredQuestionList(QUESTION_BANK_UPLOADED_KEY),
     ...readApprovedCreatedQuestions(),
+    ...readStoredQuestionList(QUESTION_BANK_UPLOADED_KEY),
+    ...publishedQuestions,
   ].forEach((question, index) => {
     if (reportedQuestionIds.has(question.id)) return
     questionsById.set(question.id ?? `question-${index}`, question)
@@ -775,18 +816,22 @@ const renderQuestionParts = (question, sections, keyPrefix = 'question') => {
 
 const renderMainQuestionPanel = (question) => (
   <div className="assessment-page-main-question-block">
-    <div className="assessment-page-question-answer assessment-page-main-question-panel">
+    <div className="assessment-page-question-parts-panel assessment-page-main-question-panel">
       <strong className="assessment-page-question-parts-heading">Question Parts</strong>
-      <span>{getQuestionPreview(question)}</span>
+      <div className="assessment-page-question-parts-body">
+        <div className="assessment-page-question-parts-main">{getQuestionPreview(question)}</div>
+      </div>
     </div>
   </div>
 )
 
 const renderTableMainQuestionPanel = (question) => (
   <div className="assessment-page-main-question-block">
-    <div className="assessment-page-table-inline-section assessment-page-main-question-panel">
+    <div className="assessment-page-question-parts-panel assessment-page-main-question-panel">
       <strong className="assessment-page-question-parts-heading">Question Parts</strong>
-      <span>{getQuestionPreview(question)}</span>
+      <div className="assessment-page-question-parts-body">
+        <div className="assessment-page-question-parts-main">{getQuestionPreview(question)}</div>
+      </div>
     </div>
   </div>
 )
@@ -1789,7 +1834,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
 
   const toggleQuestionInstitute = (questionId) => {
     const question = publishedQuestions.find((item) => item.id === questionId)
-    if (!question) return
+    if (!question || !isMedsyQuestion(question)) return
 
     const nextInstituteState = !isInstituteQuestion(question)
     setPublishedQuestions((current) => current.map((item) => (
@@ -1903,9 +1948,75 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     setPublishedQuestions(readAllQuestionBankQuestions())
   }
 
+  const renderMcqQuestionParts = (question, optionRows, imageRows, questionId, isTableView = false) => (
+    <div className="assessment-page-question-parts-panel assessment-page-mcq-question-parts">
+      <strong className="assessment-page-question-parts-heading">Question Parts</strong>
+      <div className="assessment-page-question-parts-body">
+        <div className="assessment-page-question-parts-main">{getQuestionPreview(question)}</div>
+        {imageRows.length ? (
+          <div
+            className={isTableView ? 'assessment-page-table-images' : 'assessment-page-question-images'}
+            aria-label="Question images"
+          >
+            {imageRows.map((image, imageIndex) => (
+              <figure
+                key={image.id ?? `${questionId}-mcq-image-${imageIndex}`}
+                className={isTableView ? undefined : 'assessment-page-question-image'}
+              >
+                <img src={image.url} alt={image.name || `Question image ${imageIndex + 1}`} />
+                <figcaption>{String.fromCharCode(65 + imageIndex)}</figcaption>
+              </figure>
+            ))}
+          </div>
+        ) : null}
+        {optionRows.length ? (
+          <div className={isTableView ? 'assessment-page-table-options' : 'assessment-page-question-options'}>
+            {optionRows
+              .filter((option) => stripHtml(option.label ?? option.content))
+              .map((option, optionIndex) => {
+                const optionLabel = String.fromCharCode(65 + optionIndex)
+                const isCorrect = (question.correctOptionIds ?? []).includes(option.id)
+                const optionPreviewId = `${isTableView ? 'table-' : ''}${questionId}-${option.id ?? optionIndex}`
+
+                return (
+                  <span key={option.id ?? `${questionId}-mcq-option-${optionIndex}`} className={isCorrect ? 'is-correct' : ''}>
+                    <strong>{optionLabel}.</strong>
+                    {stripHtml(option.label ?? option.content)}
+                    <span className={isTableView ? 'question-bank-option-distractor-preview assessment-page-table-option-info' : 'assessment-page-option-distractor'}>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          if (isTableView) event.stopPropagation()
+                          setActiveOptionDistractorId((current) => (current === optionPreviewId ? '' : optionPreviewId))
+                        }}
+                        aria-expanded={activeOptionDistractorId === optionPreviewId}
+                        aria-label={`View distractor errors for option ${optionLabel}`}
+                      >
+                        <Info size={12} strokeWidth={2.2} />
+                      </button>
+                      {activeOptionDistractorId === optionPreviewId ? (
+                        <span
+                          className={isTableView ? 'question-bank-option-distractor-tooltip' : 'assessment-page-option-distractor-tooltip'}
+                          role="tooltip"
+                        >
+                          <strong>Distractor Error</strong>
+                          <span>{(option.distractorErrors ?? [])[0] ?? 'No distractor error selected'}</span>
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
+                )
+              })}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+
   const renderQuestionMetaActions = (question, questionId, questionNumber, isTableRowOpen) => {
     const isFavorite = isFavoriteQuestion(question)
     const isInstitute = isInstituteQuestion(question)
+    const canTagAsInstitute = isMedsyQuestion(question)
 
     return (
       <span className="assessment-page-question-meta-actions" onClick={(event) => event.stopPropagation()}>
@@ -1950,16 +2061,18 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
             >
               <Star size={13} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
             </button>
-            <button
-              type="button"
-              className={`assessment-page-question-meta-action is-icon-only is-institute ${isInstitute ? 'is-active' : ''}`}
-              onClick={() => toggleQuestionInstitute(questionId)}
-              aria-label={`${isInstitute ? 'Remove' : 'Add'} question ${questionNumber} ${isInstitute ? 'from' : 'to'} institute questions`}
-              aria-pressed={isInstitute}
-              data-tooltip={isInstitute ? 'Institute Question' : 'Add to Institute'}
-            >
-            <Tags size={13} strokeWidth={2.2} fill={isInstitute ? 'currentColor' : 'none'} />
-            </button>
+            {canTagAsInstitute ? (
+              <button
+                type="button"
+                className={`assessment-page-question-meta-action is-icon-only is-institute ${isInstitute ? 'is-active' : ''}`}
+                onClick={() => toggleQuestionInstitute(questionId)}
+                aria-label={`${isInstitute ? 'Remove' : 'Add'} question ${questionNumber} ${isInstitute ? 'from' : 'to'} institute questions`}
+                aria-pressed={isInstitute}
+                data-tooltip={isInstitute ? 'Remove from Institute' : 'Add to Institute'}
+              >
+                <Tags size={13} strokeWidth={2.2} fill={isInstitute ? 'currentColor' : 'none'} />
+              </button>
+            ) : null}
           </>
         ) : null}
         <button
@@ -2956,6 +3069,8 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               const isMcq = getQuestionTypeLabel(question) === 'MCQ'
               const descriptiveAnswerItems = isDescriptive ? getDescriptiveAnswerItems(question, descriptiveSections) : []
               const isFavorite = isFavoriteQuestion(question)
+              const isInstitute = isInstituteQuestion(question)
+              const canTagAsInstitute = isMedsyQuestion(question)
 
               return (
                 <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
@@ -2964,7 +3079,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                     <div className="assessment-page-question-main">
                       <div className="assessment-page-question-title">
                         <strong>Q{questionNumber}.</strong>
-                        <span>{getQuestionPreview(question)}</span>
+                        <span title={getQuestionPreview(question)}>{getQuestionPreview(question)}</span>
                       </div>
                       {renderQuestionCompactMeta(question, curriculum)}
                     </div>
@@ -3009,6 +3124,18 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           aria-pressed={isFavorite}
                         >
                           <Star size={15} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
+                        </button>
+                      ) : null}
+                      {isEditable && !isReportMetricActive && canTagAsInstitute ? (
+                        <button
+                          type="button"
+                          className={`assessment-page-card-action is-institute ${isInstitute ? 'is-active' : ''}`}
+                          onClick={() => toggleQuestionInstitute(questionId)}
+                          title={isInstitute ? 'Remove from Institute' : 'Add to Institute'}
+                          aria-label={`${isInstitute ? 'Remove' : 'Add'} question ${questionNumber} ${isInstitute ? 'from' : 'to'} institute questions`}
+                          aria-pressed={isInstitute}
+                        >
+                          <Tags size={15} strokeWidth={2.2} fill={isInstitute ? 'currentColor' : 'none'} />
                         </button>
                       ) : null}
                       <button
@@ -3057,7 +3184,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           ) : null}
                         </span>
                       ) : null}
-                      {imageRows.length ? (
+                      {isMcq ? (
+                        renderMcqQuestionParts(question, optionRows, imageRows, questionId)
+                      ) : imageRows.length ? (
                         <div className="assessment-page-question-images" aria-label="Question images">
                           {imageRows.map((image, imageIndex) => (
                             <figure key={image.id ?? `${question.id}-image-${imageIndex}`} className="assessment-page-question-image">
@@ -3067,40 +3196,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                           ))}
                         </div>
                       ) : null}
-                      {isMcq && optionRows.length ? (
-                        <div className="assessment-page-question-options">
-                          {optionRows
-                            .filter((option) => stripHtml(option.label ?? option.content))
-                            .map((option, optionIndex) => {
-                              const optionLabel = String.fromCharCode(65 + optionIndex)
-                              const isCorrect = (question.correctOptionIds ?? []).includes(option.id)
-                              const optionPreviewId = `${questionId}-${option.id ?? optionIndex}`
-
-                              return (
-                                <span key={option.id ?? `${questionId}-option-${optionIndex}`} className={isCorrect ? 'is-correct' : ''}>
-                                  <strong>{optionLabel}.</strong>
-                                  {stripHtml(option.label ?? option.content)}
-                                  <span className="assessment-page-option-distractor">
-                                    <button
-                                      type="button"
-                                      onClick={() => setActiveOptionDistractorId((current) => (current === optionPreviewId ? '' : optionPreviewId))}
-                                      aria-expanded={activeOptionDistractorId === optionPreviewId}
-                                      aria-label={`View distractor errors for option ${optionLabel}`}
-                                    >
-                                      <Info size={12} strokeWidth={2.2} />
-                                    </button>
-                                    {activeOptionDistractorId === optionPreviewId ? (
-                                      <span className="assessment-page-option-distractor-tooltip" role="tooltip">
-                                        <strong>Distractor Error</strong>
-                                        <span>{(option.distractorErrors ?? [])[0] ?? 'No distractor error selected'}</span>
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                </span>
-                              )
-                            })}
-                        </div>
-                      ) : null}
                       {isDescriptive && descriptiveSections.length ? (
                         renderQuestionParts(question, descriptiveSections, questionId)
                       ) : null}
@@ -3108,7 +3203,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                         renderMainQuestionPanel(question)
                       ) : null}
                       {isDescriptive && descriptiveAnswerItems.length ? (
-                        <div className="assessment-page-question-answer assessment-page-descriptive-answer-list">
+                        <div className="assessment-page-question-answer assessment-page-descriptive-answer-list assessment-page-answer-card">
                           <strong className="assessment-page-model-answer-heading">Model Answer</strong>
                           <span>
                             {descriptiveAnswerItems.map((answerItem) => (
@@ -3121,7 +3216,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                         </div>
                       ) : null}
                       {!isDescriptive && stripHtml(question.answerKey) ? (
-                        <div className="assessment-page-question-answer">
+                        <div className="assessment-page-question-answer assessment-page-mcq-model-answer assessment-page-answer-card">
                           <strong className="assessment-page-model-answer-heading">Model Answer</strong>
                           <span>{stripHtml(question.answerKey)}</span>
                         </div>
@@ -3206,9 +3301,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                   isTagsOpen: areSummaryTagsOpen,
                                   onToggleTags: (nextTagsId) => setActiveTagsId((current) => (current === nextTagsId ? '' : nextTagsId)),
                                 }, renderQuestionMetaActions(question, questionId, questionNumber, false), questionNumber)}
-                                {areSummaryTagsOpen ? renderQuestionInlineTagPanel(question) : null}
                               </span>
                             </span>
+                            {areSummaryTagsOpen ? renderQuestionInlineTagPanel(question) : null}
                           </td>
                         </tr>
                       ) : null}
@@ -3252,10 +3347,14 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                     isTagsOpen,
                                     onToggleTags: (nextTagsId) => setActiveTagsId((current) => (current === nextTagsId ? '' : nextTagsId)),
                                   }, renderQuestionMetaActions(question, questionId, questionNumber, true), questionNumber)}
-                                  {isTagsOpen ? renderQuestionInlineTagPanel(question) : null}
                                 </div>
                               </div>
-                              {imageRows.length ? (
+                              {isTagsOpen ? renderQuestionInlineTagPanel(question) : null}
+                              {isMcq ? (
+                                <div className="assessment-page-table-inline-section">
+                                  {renderMcqQuestionParts(question, optionRows, imageRows, questionId, true)}
+                                </div>
+                              ) : imageRows.length ? (
                                 <div className="assessment-page-table-inline-section">
                                   <div className="assessment-page-table-images" aria-label={`Images for question ${questionNumber}`}>
                                     {imageRows.map((image, imageIndex) => (
@@ -3264,45 +3363,6 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                         <figcaption>{String.fromCharCode(65 + imageIndex)}</figcaption>
                                       </figure>
                                     ))}
-                                  </div>
-                                </div>
-                              ) : null}
-                              {isMcq && optionRows.length ? (
-                                <div className="assessment-page-table-inline-section">
-                                  <div className="assessment-page-table-options">
-                                    {optionRows
-                                      .filter((option) => stripHtml(option.label ?? option.content))
-                                      .map((option, optionIndex) => {
-                                        const optionLabel = String.fromCharCode(65 + optionIndex)
-                                        const isCorrect = (question.correctOptionIds ?? []).includes(option.id)
-                                        const optionPreviewId = `table-${questionId}-${option.id ?? optionIndex}`
-
-                                        return (
-                                          <span key={option.id ?? `${questionId}-table-option-${optionIndex}`} className={isCorrect ? 'is-correct' : ''}>
-                                            <strong>{optionLabel}.</strong>
-                                            {stripHtml(option.label ?? option.content)}
-                                            <span className="question-bank-option-distractor-preview assessment-page-table-option-info">
-                                              <button
-                                                type="button"
-                                                onClick={(event) => {
-                                                  event.stopPropagation()
-                                                  setActiveOptionDistractorId((current) => (current === optionPreviewId ? '' : optionPreviewId))
-                                                }}
-                                                aria-expanded={activeOptionDistractorId === optionPreviewId}
-                                                aria-label={`View distractor errors for option ${optionLabel}`}
-                                              >
-                                                <Info size={12} strokeWidth={2.2} />
-                                              </button>
-                                              {activeOptionDistractorId === optionPreviewId ? (
-                                                <span className="question-bank-option-distractor-tooltip" role="tooltip">
-                                                  <strong>Distractor Error</strong>
-                                                  <span>{(option.distractorErrors ?? [])[0] ?? 'No distractor error selected'}</span>
-                                                </span>
-                                              ) : null}
-                                            </span>
-                                          </span>
-                                        )
-                                      })}
                                   </div>
                                 </div>
                               ) : null}
@@ -3315,7 +3375,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                 renderTableMainQuestionPanel(question)
                               ) : null}
                               {isDescriptive && descriptiveAnswerItems.length ? (
-                                <div className="assessment-page-table-inline-section assessment-page-descriptive-answer-list">
+                                <div className="assessment-page-table-inline-section assessment-page-descriptive-answer-list assessment-page-answer-card">
                                   <strong className="assessment-page-model-answer-heading">Model Answer</strong>
                                   <span>
                                     {descriptiveAnswerItems.map((answerItem) => (
@@ -3328,7 +3388,8 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                 </div>
                               ) : null}
                               {!isDescriptive && stripHtml(question.answerKey) ? (
-                                <div className="assessment-page-table-inline-section assessment-page-table-answer">
+                                <div className="assessment-page-table-inline-section assessment-page-table-answer assessment-page-mcq-model-answer assessment-page-answer-card">
+                                  <strong className="assessment-page-model-answer-heading">Model Answer</strong>
                                   <span>{stripHtml(question.answerKey)}</span>
                                 </div>
                               ) : null}

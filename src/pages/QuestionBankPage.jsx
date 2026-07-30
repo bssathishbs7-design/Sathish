@@ -29,6 +29,7 @@ import {
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import RichMathEditor from '../components/RichMathEditor'
 import { stripHtml } from '../utils/mathText'
+import { assignInstituteQuestionBankIds } from '../utils/questionBankIdentity'
 import {
   DESCRIPTIVE_QUESTION_TYPES,
   QUESTION_CATEGORY_OPTIONS,
@@ -2904,18 +2905,49 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     if (!selectedApprovedCards.length) return
 
     const sentAt = new Date().toISOString()
-    const nextPublishedQuestions = selectedApprovedCards.map((question) => ({
+    const existingQuestions = readPublishedQuestionBankQuestions()
+    const existingQuestionById = new Map(existingQuestions.map((question) => [question.id, question]))
+    const pendingPublishedQuestions = selectedApprovedCards.map((question) => ({
       ...question,
+      questionBankId: existingQuestionById.get(question.id)?.questionBankId ?? question.questionBankId,
       authorName: getQuestionAuthorName(question),
+      source: 'Institute',
+      sourceType: 'Institute',
+      isInstituteQuestion: true,
+      isInstitute: undefined,
       status: 'Approved',
       questionBankStatus: 'Sent to Question Bank',
       questionBankSentAt: sentAt,
     }))
-    const existingQuestions = readPublishedQuestionBankQuestions()
+    const existingInstituteQuestions = existingQuestions.filter((question) => (
+      String(getQuestionAuthorName(question)).trim().toLowerCase() !== 'medsy'
+      && (
+        question?.questionBankStatus === 'Sent to Question Bank'
+        || Boolean(question?.questionBankSentAt)
+        || question?.isInstituteQuestion
+        || question?.isInstitute
+      )
+    ))
+    const assignedInstituteQuestions = assignInstituteQuestionBankIds(
+      [...existingInstituteQuestions, ...pendingPublishedQuestions],
+      [
+        ...existingQuestions,
+        ...readStoredQuestionBankQuestions(),
+        ...readUploadedQuestionBankQuestions(),
+      ],
+    )
+    const assignedInstituteById = new Map(
+      assignedInstituteQuestions.map((question) => [question.id, question]),
+    )
+    const nextPublishedQuestions = pendingPublishedQuestions.map((question) => (
+      assignedInstituteById.get(question.id) ?? question
+    ))
     const nextQuestionIds = new Set(nextPublishedQuestions.map((question) => question.id))
     const mergedQuestions = [
       ...nextPublishedQuestions,
-      ...existingQuestions.filter((question) => !nextQuestionIds.has(question.id)),
+      ...existingQuestions
+        .filter((question) => !nextQuestionIds.has(question.id))
+        .map((question) => assignedInstituteById.get(question.id) ?? question),
     ]
 
     window.localStorage.setItem(QUESTION_BANK_PUBLISHED_KEY, JSON.stringify(mergedQuestions))
@@ -2924,6 +2956,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       nextQuestionIds.has(item.id)
         ? {
           ...item,
+          questionBankId: assignedInstituteById.get(item.id)?.questionBankId,
+          source: 'Institute',
+          sourceType: 'Institute',
+          isInstituteQuestion: true,
+          isInstitute: undefined,
           questionBankStatus: 'Sent to Question Bank',
           questionBankSentAt: sentAt,
         }
