@@ -116,18 +116,33 @@ const renderQuestionCurriculumPath = (curriculum) => {
     </span>
   )
 }
+const isMedsySaqQuestion = (question) => (
+  isMedsyQuestion(question) && getQuestionTypeLabel(question) === 'SAQs'
+)
+const getQuestionBankDisplayId = (question, questionNumber = null) => {
+  const isMedsySource = isMedsyQuestion(question)
+  const isInstituteSource = !isMedsySource && isInstituteQuestion(question)
+  const instituteQuestionBankId = getInstituteQuestionBankId(question)
+  const displayNumber = String(
+    questionNumber ?? question.displayNumber ?? question.questionNumber ?? question.order ?? 1,
+  ).replace(/\D/g, '').padStart(5, '0').slice(-5)
+
+  return isInstituteSource
+    ? instituteQuestionBankId || `INS-A01-${displayNumber}`
+    : `MED-A01-${displayNumber}`
+}
 const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionControls = null, questionNumber = null) => {
+  const isMedsySaq = isMedsySaqQuestion(question)
+  const categoryLabel = getQuestionCategoryLabel(question?.questionCategory, question)
   const hiddenTagCount = getOptionalTagGroups(question).reduce((total, group) => total + group.values.length, 0)
+    + 1
+    + (isMedsySaq ? 1 : 0)
   const { tagsId = '', isTagsOpen = false, onToggleTags } = tagToggle
   const isMedsySource = isMedsyQuestion(question)
   const isInstituteTagged = isInstituteQuestion(question)
   const isInstituteSource = !isMedsySource && isInstituteTagged
-  const instituteQuestionBankId = getInstituteQuestionBankId(question)
-  const questionBankId = isInstituteSource
-    ? instituteQuestionBankId || `INS-A01-${String(questionNumber ?? question.displayNumber ?? question.questionNumber ?? question.order ?? 1).replace(/\D/g, '').padStart(5, '0').slice(-5)}`
-    : `MED-A01-${String(questionNumber ?? question.displayNumber ?? question.questionNumber ?? question.order ?? 1).replace(/\D/g, '').padStart(5, '0').slice(-5)}`
   const sourceLabel = isMedsySource && isInstituteTagged
-    ? 'M/I'
+    ? 'Inst (Medsy)'
     : isInstituteSource
       ? 'Institute'
       : 'Medsy'
@@ -140,15 +155,15 @@ const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionC
   return (
     <div className="assessment-page-question-compact-meta">
       <span className="assessment-page-question-meta-items">
+        <span className={`assessment-page-question-source-badge ${sourceClassName}`}>{sourceLabel}</span>
         {renderQuestionCurriculumPath(curriculum)}
         {renderCompetencyCodeBadge(curriculum)}
-        <span className={`assessment-page-question-source-badge ${sourceClassName}`}>{sourceLabel}</span>
-        <span className="assessment-page-question-id-badge">{questionBankId}</span>
         <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
-        {!isMedsyQuestion(question) && getQuestionMarksTotal(question) > 0
+        {!isMedsySource && getQuestionMarksTotal(question) > 0
           ? <span className="is-marks">{getQuestionMarksTotal(question)} marks</span>
           : null}
         {renderQuestionStructureBadge(question)}
+        {categoryLabel ? <span className="assessment-page-question-category-badge">{categoryLabel}</span> : null}
         {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
         {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
         {hiddenTagCount ? (
@@ -566,7 +581,6 @@ const getTableTagSummary = (question) => {
 }
 
 const getOptionalTagGroups = (question) => [
-  { label: 'Category', values: [getQuestionCategoryLabel(question?.questionCategory, question)].filter(Boolean) },
   { label: 'Thinking Level', values: [question?.thinkingLevel].filter(Boolean) },
   { label: 'Difficulty Level', values: [question?.difficultyLevel].filter(Boolean) },
   { label: 'Cognitive Level', values: [question?.cognitiveLevel].filter(Boolean) },
@@ -593,8 +607,18 @@ const getCompactTagLabel = (label) => ({
   'Key Concept': 'Concept',
 }[label] ?? label)
 
-const renderQuestionInlineTagPanel = (question) => {
-  const tagGroups = getOptionalTagGroups(question)
+const getQuestionInlineTagGroups = (question, questionNumber = null) => [
+  { label: 'Question ID', values: [getQuestionBankDisplayId(question, questionNumber)] },
+  ...(isMedsySaqQuestion(question)
+    ? [
+      { label: 'Suggestion Marks', values: [`${getQuestionMarksTotal(question)} Marks`] },
+    ]
+    : []),
+  ...getOptionalTagGroups(question),
+]
+
+const renderQuestionInlineTagPanel = (question, questionNumber = null) => {
+  const tagGroups = getQuestionInlineTagGroups(question, questionNumber)
   if (!tagGroups.length) return null
 
   return (
@@ -2159,7 +2183,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const renderQuestionTagBadges = (question) => (
     <>
       {renderSourceBadge(question, 'assessment-page-grid-author-label', sourceBadgeTooltipHandlers)}
-      {!isMedsyQuestion(question) && getQuestionMarksTotal(question) > 0 ? (
+      {getQuestionMarksTotal(question) > 0 ? (
         <span className="assessment-page-table-value-pill assessment-page-marks-badge">
           {getQuestionMarksTotal(question)}M
         </span>
@@ -3060,7 +3084,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               const curriculum = getQuestionCurriculumDisplay(question)
               const imageRows = Array.isArray(question.images) ? question.images : []
               const optionRows = Array.isArray(question.options) ? question.options : []
-              const tagGroups = getOptionalTagGroups(question)
+              const tagGroups = getQuestionInlineTagGroups(question, questionNumber)
               const questionId = question.id ?? `${question.type}-${index}`
               const isTagsOpen = activeTagsId === questionId
               const isCardOpen = expandedCardRows.includes(questionId)
@@ -3071,9 +3095,10 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
               const isFavorite = isFavoriteQuestion(question)
               const isInstitute = isInstituteQuestion(question)
               const canTagAsInstitute = isMedsyQuestion(question)
+              const isInstituteTaggedQuestion = canTagAsInstitute && isInstitute
 
               return (
-                <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'}`}>
+                <article key={questionId} className={`assessment-page-question-card ${isCardOpen ? 'is-open' : 'is-closed'} ${isFavorite ? 'is-favorite-question' : ''} ${isInstituteTaggedQuestion ? 'is-institute-tagged-question' : ''}`}>
                   <div className="assessment-page-question-summary">
                     <span className="assessment-page-question-type">{getQuestionTypeCompactLabel(question)}</span>
                     <div className="assessment-page-question-main">
@@ -3081,7 +3106,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                         <strong>Q{questionNumber}.</strong>
                         <span title={getQuestionPreview(question)}>{getQuestionPreview(question)}</span>
                       </div>
-                      {renderQuestionCompactMeta(question, curriculum)}
+                      {renderQuestionCompactMeta(question, curriculum, {}, null, questionNumber)}
                     </div>
                     <div className="assessment-page-question-actions">
                       {isEditable && !isReportMetricActive ? (
@@ -3259,13 +3284,15 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
                   const isDescriptive = isDescriptiveQuestion(question)
                   const isMcq = getQuestionTypeLabel(question) === 'MCQ'
+                  const isFavorite = isFavoriteQuestion(question)
+                  const isInstituteTaggedQuestion = isMedsyQuestion(question) && isInstituteQuestion(question)
                   const descriptiveAnswerItems = isDescriptive ? getDescriptiveAnswerItems(question, descriptiveSections) : []
 
                   return (
                     <Fragment key={questionId}>
                       {!isTableRowOpen ? (
                         <tr
-                          className={`assessment-page-grid-summary-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''}`}
+                          className={`assessment-page-grid-summary-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''} ${isFavorite ? 'is-favorite-question' : ''} ${isInstituteTaggedQuestion ? 'is-institute-tagged-question' : ''}`}
                           onClick={() => handleGridRowAction(questionId, false)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -3303,14 +3330,14 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                 }, renderQuestionMetaActions(question, questionId, questionNumber, false), questionNumber)}
                               </span>
                             </span>
-                            {areSummaryTagsOpen ? renderQuestionInlineTagPanel(question) : null}
+                            {areSummaryTagsOpen ? renderQuestionInlineTagPanel(question, questionNumber) : null}
                           </td>
                         </tr>
                       ) : null}
                       {isTableRowOpen ? (
                         <tr
                           key={`${questionId}-details`}
-                          className={`assessment-page-grid-detail-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''}`}
+                          className={`assessment-page-grid-detail-row ${selectedGridAction ? 'is-selection-mode' : ''} ${isGridQuestionSelected ? 'is-selected' : ''} ${isFavorite ? 'is-favorite-question' : ''} ${isInstituteTaggedQuestion ? 'is-institute-tagged-question' : ''}`}
                           onClick={() => handleGridRowAction(questionId, true)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -3349,7 +3376,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                   }, renderQuestionMetaActions(question, questionId, questionNumber, true), questionNumber)}
                                 </div>
                               </div>
-                              {isTagsOpen ? renderQuestionInlineTagPanel(question) : null}
+                              {isTagsOpen ? renderQuestionInlineTagPanel(question, questionNumber) : null}
                               {isMcq ? (
                                 <div className="assessment-page-table-inline-section">
                                   {renderMcqQuestionParts(question, optionRows, imageRows, questionId, true)}

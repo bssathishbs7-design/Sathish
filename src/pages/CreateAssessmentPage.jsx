@@ -1072,6 +1072,22 @@ const getPreviewQuestionBankId = (item, displayNumber) => {
   return `MED-A01-${String(displayNumber ?? item?.displayNumber ?? 1).replace(/\D/g, '').padStart(5, '0').slice(-5)}`
 }
 
+const getPreviewQuestionSourceMeta = (item, displayNumber) => {
+  const authorName = String(item?.authorName ?? item?.createdByName ?? item?.senderName ?? '').trim().toLowerCase()
+  const questionBankId = getPreviewQuestionBankId(item, displayNumber)
+  const isMedsy = authorName === 'medsy'
+  const isInstituteTagged = Boolean(item?.isInstituteQuestion || item?.isInstitute)
+  const isInstitute = !isMedsy && (isInstituteTagged || /^INS-A01-/i.test(questionBankId))
+
+  if (isMedsy && isInstituteTagged) {
+    return { label: 'Inst (Medsy)', className: 'is-medsy-institute', isMedsy: true }
+  }
+  if (isInstitute) {
+    return { label: 'Institute', className: 'is-institute', isMedsy: false }
+  }
+  return { label: 'Medsy', className: 'is-medsy', isMedsy: true }
+}
+
 const getDescriptiveCompetencyCode = (item) => (
   (item?.competencies ?? []).length ? getShortCompetencyLabel(item.competencies[0]) : ''
 )
@@ -7152,7 +7168,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   const displayNumber = previewQuestionDisplayNumbers[item.id] ?? index + 1
                   const isDescriptive = isDescriptiveQuestionType(item.type)
                   const questionMarksTotal = getQuestionMarksTotal(item)
-                  const optionalTagGroups = getQuestionOptionalTagGroups(item)
+                  const previewTypeLabel = isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'
+                  const previewQuestionBankId = getPreviewQuestionBankId(item, displayNumber)
+                  const previewSourceMeta = getPreviewQuestionSourceMeta(item, displayNumber)
+                  const isMedsySaq = previewSourceMeta.isMedsy && previewTypeLabel === 'SAQs'
+                  const optionalTagGroups = [
+                    { label: 'Question ID', values: [previewQuestionBankId] },
+                    ...(isMedsySaq
+                      ? [{ label: 'Suggestion Marks', values: [`${questionMarksTotal} Marks`] }]
+                      : []),
+                    ...getQuestionOptionalTagGroups(item).filter((group) => group.label !== 'Category'),
+                  ]
                     .map((group) => ({
                       ...group,
                       values: group.values.filter((value) => value && value !== DEFAULT_OPTIONAL_TAG),
@@ -7165,7 +7191,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   const previewTopic = getFirstValue(item.topics)
                   const previewTopicNumber = getPreviewTopicNumber(item)
                   const previewCompetencyCode = getDescriptiveCompetencyCode(item)
-                  const previewQuestionBankId = getPreviewQuestionBankId(item, displayNumber)
                   const previewStructureCounts = getPreviewStructureCounts(item)
                   const previewStructureLabel = previewStructureCounts.partCount || previewStructureCounts.subPartCount
                     ? `${previewStructureCounts.partCount} ${previewStructureCounts.partCount === 1 ? 'part' : 'parts'} - ${previewStructureCounts.subPartCount} ${previewStructureCounts.subPartCount === 1 ? 'sub-part' : 'sub-parts'}`
@@ -7236,20 +7261,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           <div>
                             <strong title={getPreviewQuestionText(item)}>{displayNumber}. {getPreviewQuestionText(item)}</strong>
                             <span className="create-assessment-preview-meta-row">
+                              <span className={`create-assessment-preview-chip is-source ${previewSourceMeta.className}`}>{previewSourceMeta.label}</span>
                               {previewSubject ? <span className="create-assessment-preview-path-subject">{previewSubject}</span> : null}
                               {previewSubject && previewTopic ? <span className="create-assessment-preview-path-separator">›</span> : null}
                               {previewTopic ? <span className="create-assessment-preview-path-topic">{previewTopicNumber ? `Topic ${previewTopicNumber}: ` : ''}{previewTopic}</span> : null}
                               {previewCompetencyCode ? <span className="create-assessment-preview-chip is-competency">{previewCompetencyCode}</span> : null}
-                              <span className="create-assessment-preview-chip is-source">Medsy</span>
-                              <span className="create-assessment-preview-chip is-id">{previewQuestionBankId}</span>
-                              <span className={`create-assessment-preview-chip is-type ${isDescriptive ? 'is-desc' : 'is-mcq'}`}>{isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'}</span>
-                              {questionMarksTotal ? <span className="create-assessment-preview-chip is-marks">{questionMarksTotal} marks</span> : null}
+                              <span className={`create-assessment-preview-chip is-type ${isDescriptive ? 'is-desc' : 'is-mcq'} ${previewTypeLabel === 'SAQs' ? 'is-saq' : ''}`}>{previewTypeLabel}</span>
+                              {!previewSourceMeta.isMedsy && questionMarksTotal ? <span className="create-assessment-preview-chip is-marks">{questionMarksTotal} marks</span> : null}
                               {previewStructureLabel ? (
                                 <span className="create-assessment-preview-chip is-structure">
                                   <ListChecks size={11} strokeWidth={2.4} />
                                   {previewStructureLabel}
                                 </span>
                               ) : null}
+                              {item.questionCategory ? <span className="create-assessment-preview-chip is-category">{getQuestionCategorySectionLabel(item.questionCategory)}</span> : null}
                               {item.thinkingLevel ? <span className={`create-assessment-preview-chip ${getThinkingBadgeClassName(item.thinkingLevel)}`}>{item.thinkingLevel}</span> : null}
                               {item.difficultyLevel ? <span className="create-assessment-preview-chip assessment-page-difficulty-badge">{item.difficultyLevel}</span> : null}
                               {optionalTagGroups.length ? (
