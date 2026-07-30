@@ -48788,3 +48788,237 @@ body > .assessment-page-filter-menu {
   background: rgba(76, 29, 149, 0.34) !important;
   color: #ddd6fe !important;
 }
+
+/* Preview actions: match the compact Question Bank icon controls. */
+.create-assessment-preview-list .create-assessment-preview-toggle,
+.create-assessment-preview-list .create-assessment-preview-edit,
+.create-assessment-preview-list .create-assessment-preview-delete {
+  flex: 0 0 25px !important;
+  flex-basis: 25px !important;
+  width: 25px !important;
+  min-width: 25px !important;
+  height: 25px !important;
+  min-height: 25px !important;
+  padding: 0 !important;
+  border-radius: 7px !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-toggle svg,
+.create-assessment-preview-list .create-assessment-preview-edit svg,
+.create-assessment-preview-list .create-assessment-preview-delete svg {
+  width: 12px !important;
+  height: 12px !important;
+  stroke-width: 2.2 !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-edit,
+.create-assessment-preview-list .create-assessment-preview-toggle {
+  border-color: #cfe2dd !important;
+  background: #fdfefe !important;
+  color: #3f6070 !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-delete {
+  border-color: #fecdd3 !important;
+  background: #fff7f8 !important;
+  color: #e11d48 !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-edit:hover,
+.create-assessment-preview-list .create-assessment-preview-edit:focus-visible,
+.create-assessment-preview-list .create-assessment-preview-toggle:hover,
+.create-assessment-preview-list .create-assessment-preview-toggle:focus-visible {
+  border-color: #a9d3ca !important;
+  background: #f2fbf8 !important;
+  color: #08776d !important;
+}
+
+.theme-dark .create-assessment-preview-list .create-assessment-preview-edit,
+.theme-dark .create-assessment-preview-list .create-assessment-preview-toggle {
+  border-color: rgba(94, 234, 212, 0.34) !important;
+  background: rgba(15, 30, 42, 0.72) !important;
+  color: #b6d8d2 !important;
+}
+
+.theme-dark .create-assessment-preview-list .create-assessment-preview-delete {
+  border-color: rgba(251, 113, 133, 0.42) !important;
+  background: rgba(136, 19, 55, 0.24) !important;
+  color: #fda4af !important;
+}
+
+.create-assessment-preview-list button.create-assessment-preview-chip.is-competency {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  border-style: solid;
+  font-family: inherit;
+  cursor: help;
+}
+
+.create-assessment-preview-list button.create-assessment-preview-chip.is-competency svg {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+}
+
+.create-assessment-preview-list .assessment-page-competency-code-wrap {
+  z-index: 2;
+  height: 18px;
+}
+
+.create-assessment-preview-list .assessment-page-competency-code-wrap:hover,
+.create-assessment-preview-list .assessment-page-competency-code-wrap:focus-within {
+  z-index: 80;
+}
+
+.create-assessment-preview-list .assessment-page-competency-code-wrap .assessment-page-competency-tooltip {
+  top: calc(100% + 8px);
+  bottom: auto;
+  z-index: 100;
+}
+
+.create-assessment-preview-list .assessment-page-competency-code-wrap .assessment-page-competency-tooltip::after {
+  top: -5px;
+  bottom: auto;
+  border: 0;
+  border-top: 1px solid #bde6dc;
+  border-left: 1px solid #bde6dc;
+}
+
+.theme-dark .create-assessment-preview-list .assessment-page-competency-code-wrap .assessment-page-competency-tooltip::after {
+  border-top-color: rgba(94, 234, 212, 0.35);
+  border-left-color: rgba(94, 234, 212, 0.35);
+}
+
+/* Keep competency details visible above compact Question Bank and Preview rows. */
+.create-assessment-preview-list .assessment-page-competency-code-wrap .assessment-page-competency-tooltip {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.create-assessment-preview-list .assessment-page-competency-code-wrap .assessment-page-competency-tooltip::after {
+  top: auto;
+  bottom: -5px;
+  border: 0;
+  border-right: 1px solid #bde6dc;
+  border-bottom: 1px solid #bde6dc;
+}
+
+.theme-dark .create-assessment-preview-list .assessment-page-competency-code-wrap .assessment-page-competency-tooltip::after {
+  border-right-color: rgba(94, 234, 212, 0.35);
+  border-bottom-color: rgba(94, 234, 212, 0.35);
+}
+
+.create-assessment-preview-list .create-assessment-preview-card:has(.assessment-page-competency-code-wrap:hover),
+.create-assessment-preview-list .create-assessment-preview-card:has(.assessment-page-competency-code-wrap:focus-within),
+.question-bank-non-create-page .assessment-page-question-card:has(.assessment-page-competency-code-wrap:hover),
+.question-bank-non-create-page .assessment-page-question-card:has(.assessment-page-competency-code-wrap:focus-within) {
+  position: relative;
+  z-index: 90;
+  overflow: visible !important;
+}
+
+.create-assessment-preview-list .create-assessment-preview-meta-row:has(.assessment-page-competency-code-wrap:hover),
+.create-assessment-preview-list .create-assessment-preview-meta-row:has(.assessment-page-competency-code-wrap:focus-within),
+.question-bank-non-create-page .assessment-page-question-meta-items:has(.assessment-page-competency-code-wrap:hover),
+.question-bank-non-create-page .assessment-page-question-meta-items:has(.assessment-page-competency-code-wrap:focus-within) {
+  overflow: visible !important;
+}
+
+.create-assessment-preview-list .assessment-page-competency-code-wrap {
+  min-width: 0;
+  height: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  line-height: 1 !important;
+  vertical-align: middle;
+}
+
+.create-assessment-preview-list .assessment-page-competency-code-wrap > button.create-assessment-preview-chip.is-competency {
+  box-sizing: border-box !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  margin: 0 !important;
+  padding: 0 7px !important;
+  gap: 3px !important;
+  border-width: 1px !important;
+  border-radius: 5px !important;
+  font-family: inherit !important;
+  font-size: 0.61rem !important;
+  font-style: normal !important;
+  font-weight: 760 !important;
+  letter-spacing: 0 !important;
+  line-height: 1 !important;
+  text-transform: none !important;
+  white-space: nowrap !important;
+}
+
+.create-assessment-preview-list .assessment-page-competency-code-wrap > button.create-assessment-preview-chip.is-competency > span {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  font: inherit !important;
+  line-height: 1 !important;
+}
+
+.create-assessment-preview-list .assessment-page-competency-code-wrap > button.create-assessment-preview-chip.is-competency svg {
+  width: 10px !important;
+  height: 10px !important;
+  margin: 0 !important;
+}
+
+/* Competency tooltip parity across Preview and embedded Question Bank cards. */
+.create-assessment-preview-list .assessment-page-competency-tooltip,
+.create-assessment-workspace .question-bank-non-create-page.is-embedded .assessment-page-competency-tooltip {
+  box-sizing: border-box !important;
+  width: 520px !important;
+  max-width: min(520px, calc(100vw - 32px)) !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 11px 14px !important;
+  border: 1px solid #b9ded8 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #49606e !important;
+  box-shadow: 0 12px 28px rgba(15, 55, 67, 0.14) !important;
+  font-family: inherit !important;
+  font-size: 0.76rem !important;
+  font-style: normal !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.4 !important;
+  text-align: left !important;
+  text-transform: none !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+}
+
+.create-assessment-preview-list .assessment-page-competency-tooltip::after,
+.create-assessment-workspace .question-bank-non-create-page.is-embedded .assessment-page-competency-tooltip::after {
+  width: 10px !important;
+  height: 10px !important;
+  border-right-color: #b9ded8 !important;
+  border-bottom-color: #b9ded8 !important;
+  background: #ffffff !important;
+}
+
+.theme-dark .create-assessment-preview-list .assessment-page-competency-tooltip,
+.theme-dark .create-assessment-workspace .question-bank-non-create-page.is-embedded .assessment-page-competency-tooltip {
+  border-color: rgba(94, 234, 212, 0.36) !important;
+  background: #101827 !important;
+  color: #d8e6ef !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34) !important;
+}
+
+.theme-dark .create-assessment-preview-list .assessment-page-competency-tooltip::after,
+.theme-dark .create-assessment-workspace .question-bank-non-create-page.is-embedded .assessment-page-competency-tooltip::after {
+  border-right-color: rgba(94, 234, 212, 0.36) !important;
+  border-bottom-color: rgba(94, 234, 212, 0.36) !important;
+  background: #101827 !important;
+}

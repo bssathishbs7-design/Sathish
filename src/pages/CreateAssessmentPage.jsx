@@ -1092,6 +1092,41 @@ const getDescriptiveCompetencyCode = (item) => (
   (item?.competencies ?? []).length ? getShortCompetencyLabel(item.competencies[0]) : ''
 )
 
+const getPreviewCompetencyName = (item) => {
+  const competency = (item?.competencies ?? [])[0]
+  const directName = typeof competency === 'object'
+    ? String(
+      competency?.name
+      ?? competency?.label
+      ?? competency?.description
+      ?? competency?.value
+      ?? '',
+    ).trim()
+    : String(competency ?? '').trim()
+  const parsedName = directName.replace(/^\S+\s+/, '').trim()
+
+  if (parsedName) return parsedName
+
+  const fallbackName = String(
+    item?.competencyName
+    ?? item?.competencyDescription
+    ?? item?.competencyLabel
+    ?? '',
+  ).trim()
+
+  if (fallbackName) return fallbackName.replace(/^\S+\s+/, '').trim() || fallbackName
+
+  const competencyCode = getDescriptiveCompetencyCode(item)
+  const directoryMatch = Object.values(SUBJECT_DIRECTORY)
+    .flatMap((subject) => subject?.competencies ?? [])
+    .find((entry) => getShortCompetencyLabel(entry?.value ?? entry) === competencyCode)
+
+  return String(directoryMatch?.value ?? '')
+    .trim()
+    .replace(/^\S+\s+/, '')
+    .trim()
+}
+
 const getCorrectOptionTexts = (item) => (
   (item.options ?? [])
     .filter((option) => (item.correctOptionIds ?? []).includes(option.id))
@@ -3748,6 +3783,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const selectedQuestionTypeLabel = selectedCreateQuestionTypeLabel || 'Create New Question'
   const previewQuestions = useMemo(
     () => savedQuestions,
+    [savedQuestions],
+  )
+  const addedQuestionBankIds = useMemo(
+    () => savedQuestions
+      .map((item) => item.originalQuestionId ?? item.sourceQuestionId)
+      .filter(Boolean),
     [savedQuestions],
   )
   const previewQuestionCount = previewQuestions.length
@@ -7029,6 +7070,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
               embedded
               onNavigate={onNavigate}
               onAddToAssessment={addQuestionBankSelectionToAssessment}
+              addedQuestionIds={addedQuestionBankIds}
             />
           </section>
         ) : null}
@@ -7191,6 +7233,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   const previewTopic = getFirstValue(item.topics)
                   const previewTopicNumber = getPreviewTopicNumber(item)
                   const previewCompetencyCode = getDescriptiveCompetencyCode(item)
+                  const previewCompetencyName = getPreviewCompetencyName(item)
                   const previewStructureCounts = getPreviewStructureCounts(item)
                   const previewStructureLabel = previewStructureCounts.partCount || previewStructureCounts.subPartCount
                     ? `${previewStructureCounts.partCount} ${previewStructureCounts.partCount === 1 ? 'part' : 'parts'} - ${previewStructureCounts.subPartCount} ${previewStructureCounts.subPartCount === 1 ? 'sub-part' : 'sub-parts'}`
@@ -7265,7 +7308,23 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               {previewSubject ? <span className="create-assessment-preview-path-subject">{previewSubject}</span> : null}
                               {previewSubject && previewTopic ? <span className="create-assessment-preview-path-separator">›</span> : null}
                               {previewTopic ? <span className="create-assessment-preview-path-topic">{previewTopicNumber ? `Topic ${previewTopicNumber}: ` : ''}{previewTopic}</span> : null}
-                              {previewCompetencyCode ? <span className="create-assessment-preview-chip is-competency">{previewCompetencyCode}</span> : null}
+                              {previewCompetencyCode ? (
+                                <span className="assessment-page-competency-code-wrap">
+                                  <button
+                                    type="button"
+                                    className="assessment-page-competency-code-badge create-assessment-preview-chip is-competency"
+                                    aria-label={`View competency details for ${previewCompetencyCode}`}
+                                  >
+                                    <span>{previewCompetencyCode}</span>
+                                    <Info size={12} strokeWidth={2.4} aria-hidden="true" />
+                                  </button>
+                                  {previewCompetencyName ? (
+                                    <span className="assessment-page-competency-tooltip" role="tooltip">
+                                      {previewCompetencyName}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              ) : null}
                               <span className={`create-assessment-preview-chip is-type ${isDescriptive ? 'is-desc' : 'is-mcq'} ${previewTypeLabel === 'SAQs' ? 'is-saq' : ''}`}>{previewTypeLabel}</span>
                               {!previewSourceMeta.isMedsy && questionMarksTotal ? <span className="create-assessment-preview-chip is-marks">{questionMarksTotal} marks</span> : null}
                               {previewStructureLabel ? (
@@ -7436,7 +7495,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           aria-label={`Edit question ${displayNumber}`}
                           title="Edit question"
                         >
-                          <FilePenLine size={15} strokeWidth={2.2} />
+                          <Pencil size={12} strokeWidth={2.2} />
                         </button>
                         <button
                           type="button"

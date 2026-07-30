@@ -1134,7 +1134,13 @@ const createImportedAssessmentQuestions = (questions = [], setup = {}) => (
   }))
 )
 
-export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly', embedded = false, onAddToAssessment }) {
+export default function QuestionBankNonCreatePage({
+  onNavigate,
+  mode = 'readonly',
+  embedded = false,
+  onAddToAssessment,
+  addedQuestionIds = [],
+}) {
   const resolvedMode = mode === 'editable' ? 'editable' : 'readonly'
   const isEditable = resolvedMode === 'editable'
   const isReadonly = resolvedMode === 'readonly'
@@ -1179,6 +1185,14 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   const [editQuestionMode, setEditQuestionMode] = useState('overwrite')
   const [assessmentChooserOpen, setAssessmentChooserOpen] = useState(false)
   const [draftAssessmentOptions, setDraftAssessmentOptions] = useState(() => readAssessmentDrafts())
+  const addedQuestionIdSet = useMemo(
+    () => new Set((addedQuestionIds ?? []).map((id) => String(id ?? '')).filter(Boolean)),
+    [addedQuestionIds],
+  )
+  const isQuestionAddedToAssessment = (question) => (
+    addedQuestionIdSet.has(String(question?.id ?? ''))
+    || addedQuestionIdSet.has(String(question?.originalQuestionId ?? ''))
+  )
 
   useEffect(() => {
     if (!isReadonly || embedded) return
@@ -1192,6 +1206,11 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
     if (selectedGridQuestionIds.length) return
     setAssessmentChooserOpen(false)
   }, [selectedGridQuestionIds.length])
+
+  useEffect(() => {
+    if (!addedQuestionIdSet.size) return
+    setSelectedGridQuestionIds((current) => current.filter((id) => !addedQuestionIdSet.has(String(id))))
+  }, [addedQuestionIdSet])
 
   const metricFilteredQuestions = useMemo(() => {
     if (activeMetric === 'suggested') {
@@ -1744,6 +1763,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }
 
   const toggleGridQuestionSelection = (questionId) => {
+    if (addedQuestionIdSet.has(String(questionId))) return
     setIsEmbeddedSelectionBarClosed(false)
     setIsEmbeddedSelectionBarVisible(true)
     setSelectedGridQuestionIds((current) => (
@@ -1770,7 +1790,9 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
   }
 
   const getSelectedAssessmentQuestions = () => (
-    publishedQuestions.filter((item) => selectedGridQuestionIds.includes(item.id))
+    publishedQuestions.filter((item) => (
+      selectedGridQuestionIds.includes(item.id) && !isQuestionAddedToAssessment(item)
+    ))
   )
 
   const addSelectedQuestionsToEmbeddedAssessment = () => {
@@ -3286,6 +3308,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                   const isMcq = getQuestionTypeLabel(question) === 'MCQ'
                   const isFavorite = isFavoriteQuestion(question)
                   const isInstituteTaggedQuestion = isMedsyQuestion(question) && isInstituteQuestion(question)
+                  const isAlreadyAddedToAssessment = hasEmbeddedAssessmentSelection && isQuestionAddedToAssessment(question)
                   const descriptiveAnswerItems = isDescriptive ? getDescriptiveAnswerItems(question, descriptiveSections) : []
 
                   return (
@@ -3312,6 +3335,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                   <input
                                     type="checkbox"
                                     checked={isGridQuestionSelected}
+                                    disabled={isAlreadyAddedToAssessment}
                                     onChange={() => (
                                       hasEmbeddedAssessmentSelection
                                         ? toggleGridQuestionSelection(questionId)
@@ -3358,6 +3382,7 @@ export default function QuestionBankNonCreatePage({ onNavigate, mode = 'readonly
                                     <input
                                       type="checkbox"
                                       checked={isGridQuestionSelected}
+                                      disabled={isAlreadyAddedToAssessment}
                                       onChange={() => (
                                         hasEmbeddedAssessmentSelection
                                           ? toggleGridQuestionSelection(questionId)
