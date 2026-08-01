@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ArrowUpDown,
   CheckCircle2,
@@ -270,7 +270,7 @@ export default function CompletedEvaluationPage({
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortKey, setSortKey] = useState('studentName')
   const [sortDirection, setSortDirection] = useState('asc')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [requestedPage, setCurrentPage] = useState(1)
   const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false)
   const pageSize = 10
 
@@ -414,10 +414,6 @@ export default function CompletedEvaluationPage({
     { key: 'actions', label: 'Actions', sortable: false },
   ]), [visibleSections])
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchValue, sortDirection, sortKey, statusFilter])
-
   const sortedRows = useMemo(() => {
     const getSortValue = (row, key) => {
       if (key.endsWith('-score')) {
@@ -448,6 +444,7 @@ export default function CompletedEvaluationPage({
   }, [filteredRows, sortDirection, sortKey])
 
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize))
+  const currentPage = Math.min(requestedPage, totalPages)
   const paginatedRows = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize
     return sortedRows.slice(startIndex, startIndex + pageSize)
@@ -785,13 +782,13 @@ export default function CompletedEvaluationPage({
             </section>
           )}
         </section>
-        <SendApprovalModal
+        {isApprovalPopupOpen ? <SendApprovalModal
           open={isApprovalPopupOpen}
           title="Send to Approval"
           contextLabel={activityRecord?.activityName ?? sourceRows[0]?.activityName ?? 'Completed evaluations'}
           onClose={() => setIsApprovalPopupOpen(false)}
           onSend={handleSendApproval}
-        />
+        /> : null}
       </div>
     </section>
   )

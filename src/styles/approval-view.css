@@ -877,10 +877,6 @@
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .approval-view-actions,
-  .approval-view-info-actions {
-    grid-column: 2;
-  }
 
   .approval-view-info-tooltip {
     right: auto;
@@ -921,11 +917,6 @@
   border-radius: 14px;
 }
 
-.approval-view-back {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-}
 
 .approval-view-badges {
   gap: 8px;
@@ -953,9 +944,6 @@
   font-size: 0.82rem;
 }
 
-.approval-view-actions {
-  gap: 8px;
-}
 
 .approval-view-actions button {
   min-height: 38px;
@@ -964,10 +952,6 @@
   font-size: 0.88rem;
 }
 
-.approval-view-info-btn {
-  width: 34px;
-  height: 34px;
-}
 
 .approval-view-stats {
   gap: 10px;
@@ -1047,17 +1031,6 @@
   border-color: rgba(117, 230, 215, 0.28);
   background: #12243a;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
-}
-
-@media (max-width: 1120px) {
-  .approval-view-header {
-    grid-template-columns: 38px minmax(0, 1fr);
-  }
-
-  .approval-view-actions,
-  .approval-view-info-actions {
-    grid-column: 2;
-  }
 }
 
 /* Friendly approval view header */

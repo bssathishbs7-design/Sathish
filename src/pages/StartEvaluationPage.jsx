@@ -105,17 +105,6 @@ const getActivityTypeTone = (value) => {
   return ''
 }
 
-const getActivityTypeIcon = (value) => {
-  const normalized = String(value ?? '').trim().toLowerCase()
-
-  if (normalized === 'ospe') return Microscope
-  if (normalized === 'osce') return Stethoscope
-  if (normalized === 'interpretation') return FileText
-  if (normalized === 'image') return ImageIcon
-
-  return Shapes
-}
-
 const isActivityCertifiable = (activity) => Boolean(
   activity?.certifiable
   ?? activity?.isCertifiable
@@ -311,10 +300,6 @@ const getStudentResultStatus = (student) => getNormalizedResultStatus(
   ?? student?.evaluationResult?.resultStatus
   ?? '',
 )
-const hasStudentEvaluationResult = (student) => Boolean(
-  student?.evaluationResult
-  || isCompletedRowStatus(student?.evaluationStatus),
-)
 const isReevaluationResult = (value = '') => {
   const normalized = getNormalizedResultStatus(value)
   return normalized === 'repeat' || normalized === 'remedial'
@@ -346,7 +331,7 @@ const getStudentEvaluationBadge = (student) => {
   return { label: 'Pending', tone: 'is-pending' }
 }
 
-const buildStudentName = (index, sgt = 'SGT') => {
+const buildStudentName = (index) => {
   const names = [
     'Aarav Menon',
     'Diya Krishnan',
@@ -628,14 +613,12 @@ const buildStudentRoster = (record, assignment, latestSubmission) => {
 
 function StudentResponsePanel({
   student,
-  record,
   savedDraft,
   marksDisabled,
   onObtainedMarksChange,
   onEvaluationStateChange,
   onRegisterActions,
 }) {
-  const activityType = String(record?.activityType ?? '').toLowerCase()
   const submission = student?.submission
   const isSubmittedStudent = student?.submissionStatus === 'Submitted'
   const [checklistRemarks, setChecklistRemarks] = useState({})
@@ -681,17 +664,9 @@ function StudentResponsePanel({
     return Object.entries(groups).map(([label, items]) => ({ label, items }))
   }, [visibleSubmissionItems])
   const [activeSection, setActiveSection] = useState('')
-
-  useEffect(() => {
-    if (!groupedItems.length) {
-      setActiveSection('')
-      return
-    }
-
-    if (!activeSection || !groupedItems.some((group) => group.label === activeSection)) {
-      setActiveSection(groupedItems[0].label)
-    }
-  }, [activeSection, groupedItems])
+  const resolvedActiveSection = groupedItems.some((group) => group.label === activeSection)
+    ? activeSection
+    : groupedItems[0]?.label ?? ''
 
   useEffect(() => {
     const buildInitialDraft = () => {
@@ -816,7 +791,7 @@ function StudentResponsePanel({
         manualQuestionRemarks,
         manualQuestionDecisions,
         manualQuestionMarks,
-        activeSection: activeSection || groupedItems[0]?.label || '',
+        activeSection: resolvedActiveSection,
       }),
       resetDraft: () => {
         const checklistItems = visibleSubmissionItems.filter((item) => item.type === 'checklist')
@@ -852,7 +827,7 @@ function StudentResponsePanel({
 
     return () => onRegisterActions?.(null)
   }, [
-    activeSection,
+    resolvedActiveSection,
     checklistDecisions,
     checklistMarks,
     checklistRemarks,
@@ -1042,7 +1017,7 @@ function StudentResponsePanel({
     )
   }
 
-  const activeGroup = groupedItems.find((group) => group.label === activeSection) ?? groupedItems[0]
+  const activeGroup = groupedItems.find((group) => group.label === resolvedActiveSection) ?? groupedItems[0]
   const activeItems = activeGroup?.items ?? []
   const evaluatedCount = activeItems.reduce((count, item) => {
     if (item.type === 'checklist') {
@@ -1095,8 +1070,8 @@ function StudentResponsePanel({
                 key={group.label}
                 type="button"
                 role="tab"
-                aria-selected={group.label === activeSection}
-                className={`start-eval-section-tab ${group.label === activeSection ? 'is-active' : ''}`}
+                aria-selected={group.label === resolvedActiveSection}
+                className={`start-eval-section-tab ${group.label === resolvedActiveSection ? 'is-active' : ''}`}
                 onClick={() => setActiveSection(group.label)}
               >
                 <span>{group.label}</span>
@@ -1629,7 +1604,6 @@ export default function StartEvaluationPage({
   initialSelectedStudentId,
   completedEvaluationRows = [],
   approvalQueueRows = [],
-  onBackToEvaluation,
   onOpenCompletedEvaluation,
   onOpenExamLog,
   onSaveCompletedEvaluation,
@@ -1638,7 +1612,7 @@ export default function StartEvaluationPage({
 }) {
   const [studentSearch, setStudentSearch] = useState('')
   const [studentFilter, setStudentFilter] = useState('all')
-  const [selectedStudentId, setSelectedStudentId] = useState('')
+  const [selectedStudentId, setSelectedStudentId] = useState(() => initialSelectedStudentId || '')
   const [isStudentPickerOpen, setIsStudentPickerOpen] = useState(false)
   const [obtainedMarks, setObtainedMarks] = useState(0)
   const [evaluationState, setEvaluationState] = useState({
@@ -1650,8 +1624,8 @@ export default function StartEvaluationPage({
   })
   const [isSubmitPopupOpen, setIsSubmitPopupOpen] = useState(false)
   const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false)
-  const [decisionOptions, setDecisionOptions] = useState(() => buildDefaultDecisionOptions())
-  const [selectedDecisionId, setSelectedDecisionId] = useState('')
+  const [decisionOptions] = useState(() => buildDefaultDecisionOptions())
+  const [selectedDecisionId, setSelectedDecisionId] = useState(() => evaluationRecord?.editingDecisionId || '')
   const [submittedEvaluations, setSubmittedEvaluations] = useState({})
   const [savedEvaluationDrafts, setSavedEvaluationDrafts] = useState({})
   const [panelActions, setPanelActions] = useState(null)
@@ -1685,7 +1659,7 @@ export default function StartEvaluationPage({
     ]
       .filter(Boolean)
       .map((value) => String(value))
-  ), [activeApprovalRecord?.nextAttemptStudentIds, evaluationRecord?.approvalRecord?.nextAttemptStudentIds, evaluationRecord?.nextAttemptStudentIds])
+  ), [activeApprovalRecord, evaluationRecord])
   const activeNextAttemptNumber = Number(
     evaluationRecord?.nextAttemptNumber
     ?? evaluationRecord?.approvalRecord?.nextAttemptNumber
@@ -1910,34 +1884,12 @@ export default function StartEvaluationPage({
     ))
   }, [finishedStudentIds, initialSelectedStudentId, isApprovalRejected, isEditingCompletedEvaluation, roster, studentFilter, studentSearch])
 
-  useEffect(() => {
-    const allowedFilters = ['all', 'submitted']
-
-    if (!allowedFilters.includes(studentFilter)) {
-      setStudentFilter('all')
-    }
-  }, [studentFilter])
-
-  useEffect(() => {
-    if (!filteredStudents.length) {
-      setSelectedStudentId('')
-      return
-    }
-
-    if (!selectedStudentId || !filteredStudents.some((student) => student.id === selectedStudentId)) {
-      const firstSubmitted = filteredStudents.find((student) => student.submissionStatus === 'Submitted')
-      setSelectedStudentId(firstSubmitted?.id ?? filteredStudents[0].id)
-    }
-  }, [filteredStudents, selectedStudentId])
-
-  useEffect(() => {
-    if (!initialSelectedStudentId) return
-    if (!filteredStudents.some((student) => student.id === initialSelectedStudentId)) return
-
-    setSelectedStudentId(initialSelectedStudentId)
-  }, [filteredStudents, initialSelectedStudentId])
-
-  const selectedStudent = filteredStudents.find((student) => student.id === selectedStudentId) ?? null
+  const resolvedSelectedStudentId = filteredStudents.some((student) => student.id === selectedStudentId)
+    ? selectedStudentId
+    : filteredStudents.some((student) => student.id === initialSelectedStudentId)
+      ? initialSelectedStudentId
+      : filteredStudents.find((student) => student.submissionStatus === 'Submitted')?.id ?? filteredStudents[0]?.id ?? ''
+  const selectedStudent = filteredStudents.find((student) => student.id === resolvedSelectedStudentId) ?? null
   const editingStudentDraft = selectedStudent?.id && selectedStudent.id === initialSelectedStudentId
     ? evaluationRecord?.editingStudentDraft ?? null
     : null
@@ -1945,7 +1897,7 @@ export default function StartEvaluationPage({
     ? selectedStudent?.evaluationResult?.evaluationDraft ?? null
     : null
   const selectedStudentBadge = getStudentEvaluationBadge(selectedStudent)
-  const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === selectedStudentId)
+  const selectedStudentIndex = filteredStudents.findIndex((student) => student.id === resolvedSelectedStudentId)
   const approvalStudentRows = hasActiveApprovalGate && Array.isArray(activeApprovalRecord?.studentRows) ? activeApprovalRecord.studentRows : []
   const approvalTotalStudents = hasActiveApprovalGate
     ? (Number(activeApprovalRecord?.totalStudents) || approvalStudentRows.length || 0)
@@ -2073,6 +2025,17 @@ export default function StartEvaluationPage({
   const handleSelectStudent = (studentId) => {
     setSelectedStudentId(studentId)
     setIsStudentPickerOpen(false)
+    setEvaluationState({
+      groupedSections: [],
+      requiredSections: [],
+      itemSummaries: [],
+      isReadyToSubmit: false,
+      completedSectionCount: 0,
+    })
+    setIsSubmitPopupOpen(false)
+    setSelectedDecisionId('')
+    setPanelActions(null)
+    setObtainedMarks(0)
   }
 
   const handleOpenCompletedEvaluation = () => {
@@ -2132,13 +2095,13 @@ export default function StartEvaluationPage({
 
   const handlePreviousStudent = () => {
     if (selectedStudentIndex > 0) {
-      setSelectedStudentId(filteredStudents[selectedStudentIndex - 1].id)
+      handleSelectStudent(filteredStudents[selectedStudentIndex - 1].id)
     }
   }
 
   const handleNextStudent = () => {
     if (selectedStudentIndex > -1 && selectedStudentIndex < filteredStudents.length - 1) {
-      setSelectedStudentId(filteredStudents[selectedStudentIndex + 1].id)
+      handleSelectStudent(filteredStudents[selectedStudentIndex + 1].id)
     }
   }
 
@@ -2253,47 +2216,9 @@ export default function StartEvaluationPage({
     })
 
     if (hasNextStudent) {
-      setSelectedStudentId(filteredStudents[selectedStudentIndex + 1].id)
+      handleSelectStudent(filteredStudents[selectedStudentIndex + 1].id)
     }
   }
-
-  const handleResetEvaluation = () => {
-    if (isMarksDisabled) return
-    if (!selectedStudent?.id || !panelActions?.resetDraft) return
-
-    panelActions.resetDraft()
-    setSavedEvaluationDrafts((current) => {
-      const nextDrafts = { ...current }
-      delete nextDrafts[selectedStudent.id]
-      return nextDrafts
-    })
-  }
-
-  useEffect(() => {
-    setEvaluationState({
-      groupedSections: [],
-      requiredSections: [],
-      itemSummaries: [],
-      isReadyToSubmit: false,
-      completedSectionCount: 0,
-    })
-  }, [selectedStudentId])
-
-  useEffect(() => {
-    if (!selectedStudent?.id || selectedStudent.id !== initialSelectedStudentId) return
-    if (!evaluationRecord?.editingDecisionId) return
-
-    setSelectedDecisionId(evaluationRecord.editingDecisionId)
-  }, [evaluationRecord?.editingDecisionId, initialSelectedStudentId, selectedStudent?.id])
-
-  useEffect(() => {
-    if (!isMarksDisabled) return
-
-    setIsSubmitPopupOpen(false)
-    setSelectedDecisionId('')
-    setPanelActions(null)
-    setObtainedMarks(0)
-  }, [isMarksDisabled, selectedStudentId])
 
   useEffect(() => {
     if (!isSubmitPopupOpen) return undefined
@@ -2455,7 +2380,6 @@ export default function StartEvaluationPage({
                 <StudentResponsePanel
                   key={selectedStudent?.id ?? 'no-student'}
                   student={selectedStudent}
-                  record={evaluationRecord}
                   savedDraft={selectedStudent?.id ? (savedEvaluationDrafts[selectedStudent.id] ?? editingStudentDraft ?? rejectedRevisionDraft ?? null) : null}
                   marksDisabled={isMarksDisabled}
                   onObtainedMarksChange={setObtainedMarks}
@@ -2585,7 +2509,7 @@ export default function StartEvaluationPage({
                     <button
                       key={student.id}
                       type="button"
-                      className={`start-eval-student-item ${student.id === selectedStudentId ? 'is-active' : ''}`}
+                      className={`start-eval-student-item ${student.id === resolvedSelectedStudentId ? 'is-active' : ''}`}
                       onClick={() => handleSelectStudent(student.id)}
                     >
                       <div className="start-eval-student-main">
@@ -2765,13 +2689,13 @@ export default function StartEvaluationPage({
           </div>,
           document.body,
         ) : null}
-        <SendApprovalModal
+        {isApprovalPopupOpen ? <SendApprovalModal
           open={isApprovalPopupOpen}
           title="Send to Approval"
           contextLabel={evaluationRecord?.activityName ?? 'Evaluation activity'}
           onClose={() => setIsApprovalPopupOpen(false)}
           onSend={handleSendApproval}
-        />
+        /> : null}
       </div>
     </section>
   )

@@ -120,7 +120,7 @@ export default function ActivityResultPage({
   completedEvaluationRows = [],
   onBack,
 }) {
-  const [selectedAttemptKey, setSelectedAttemptKey] = useState('overall')
+  const [selectedAttemptSelection, setSelectedAttemptKey] = useState('overall')
   const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false)
 
   const activityId = resultRecord?.id ?? resultRecord?.activityId
@@ -146,15 +146,10 @@ export default function ActivityResultPage({
     [...new Set(activityRows.map((row) => getAttemptNumber(row)))].sort((left, right) => right - left)
   ), [activityRows])
 
-  useEffect(() => {
-    if (selectedAttemptKey === 'overall') return
-
-    const selectedAttemptExists = attemptNumbers.includes(Number(selectedAttemptKey))
-
-    if (!selectedAttemptExists) {
-      setSelectedAttemptKey('overall')
-    }
-  }, [attemptNumbers, selectedAttemptKey])
+  const selectedAttemptKey = selectedAttemptSelection === 'overall'
+    || attemptNumbers.includes(Number(selectedAttemptSelection))
+    ? selectedAttemptSelection
+    : 'overall'
 
   useEffect(() => {
     if (!isDownloadMenuOpen) return undefined

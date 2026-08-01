@@ -46,7 +46,21 @@ export default function Sidebar({
     if (ASSESSMENT_PAGES.includes(page)) return 'Assessment'
     return null
   }
-  const [openGroupLabel, setOpenGroupLabel] = useState(() => getActiveGroupLabel(activePage))
+  const [openGroupSelection, setOpenGroupSelection] = useState(() => ({
+    page: activePage,
+    label: getActiveGroupLabel(activePage),
+  }))
+  const openGroupLabel = openGroupSelection.page === activePage
+    ? openGroupSelection.label
+    : getActiveGroupLabel(activePage)
+  const setOpenGroupLabel = (nextValue) => {
+    setOpenGroupSelection((current) => ({
+      page: activePage,
+      label: typeof nextValue === 'function' ? nextValue(
+        current.page === activePage ? current.label : getActiveGroupLabel(activePage),
+      ) : nextValue,
+    }))
+  }
   const groupRefs = useRef({})
   const useCollapsedFlyout = sidebarCollapsed && !mobileSidebarOpen
   const getNotificationCount = (page) => (
@@ -63,22 +77,18 @@ export default function Sidebar({
   }
 
   useEffect(() => {
-    setOpenGroupLabel(getActiveGroupLabel(activePage))
-  }, [activePage])
-
-  useEffect(() => {
     if (!useCollapsedFlyout || !openGroupLabel) return undefined
 
     const handlePointerDown = (event) => {
       const clickedInsideOpenGroup = groupRefs.current[openGroupLabel]?.contains(event.target)
       if (!clickedInsideOpenGroup) {
-        setOpenGroupLabel(null)
+        setOpenGroupSelection({ page: activePage, label: null })
       }
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [openGroupLabel, useCollapsedFlyout])
+  }, [activePage, openGroupLabel, useCollapsedFlyout])
 
   return (
     <aside className={`vx-sidebar ${mobileSidebarOpen ? 'open' : ''}`}>

@@ -29,10 +29,6 @@ const CONTROL_STUDENTS = [
   { id: 'MC2568', name: 'Karthik Subramanian', attendance: 'P' },
 ]
 
-const CLASS_RESUME_STATUS_OPTIONS = [
-  { value: 'violation', label: 'Violation' },
-]
-
 const readExamControlsAssessment = () => {
   try {
     const parsed = JSON.parse(window.sessionStorage.getItem(EXAM_CONTROLS_ASSESSMENT_KEY) || 'null')
@@ -305,9 +301,6 @@ const getAssessmentSchedule = (assessment, now) => {
   return { status: 'upcoming', label: 'Upcoming', remainingMs: startAt.getTime() - now.getTime(), startAt, endAt, durationMinutes }
 }
 
-const hasDescriptiveType = (assessment) => String(assessment?.examType || '').toLowerCase().includes('descriptive') || String(assessment?.examType || '').toLowerCase().includes('hybrid')
-const hasMcqType = (assessment) => String(assessment?.examType || '').toLowerCase().includes('mcq') || String(assessment?.examType || '').toLowerCase().includes('hybrid')
-
 const buildDefaultLogs = (student, assessment, schedule) => [
   {
     id: `${student.id}-joined`,
@@ -407,7 +400,7 @@ function ExamControlsPage({ onNavigate }) {
       window.removeEventListener(STUDENT_EXAM_TIME_EXTENSION_EVENT, handleTimeExtensionEvent)
       window.removeEventListener(EXAM_CONTROLS_STATE_CHANGED_EVENT, handleControlStateEvent)
     }
-  }, [])
+  }, [assessmentId])
 
   useEffect(() => {
     if (!extendSuccessModal) return undefined
@@ -434,7 +427,7 @@ function ExamControlsPage({ onNavigate }) {
     ? ['descriptive', 'mcq']
     : ['mcq', 'descriptive']
 
-  const students = useMemo(() => CONTROL_STUDENTS.map((student, index) => {
+  const students = useMemo(() => CONTROL_STUDENTS.map((student) => {
     const state = controlState[student.id] || {}
     const storedExtension = studentTimeExtensions?.[assessmentId]?.[student.id] || {}
     const storedSectionExtensions = storedExtension.sectionExtensions || {}
@@ -549,41 +542,13 @@ function ExamControlsPage({ onNavigate }) {
     return Array.from(seen.values())
   }, [assessmentId, controlState, studentSessions, submissionStatuses])
 
-  const getClassResumeStatus = (student) => {
-    if (student.attendance !== 'P') return 'absent'
-    if (!isProctored) return 'not-eligible'
-    const statusText = String(student.overallStatus || '').toLowerCase()
-    if (
-      Boolean(student.invigilatorLock?.active)
-      || statusText.includes('locked')
-      || statusText.includes('violation')
-      || statusText.includes('fullscreen')
-    ) return 'violation'
-    if (statusText.includes('completed')) return 'completed'
-    if (statusText.includes('waiting')) return 'waiting'
-    return 'in-progress'
-  }
-
   const isStudentViolationActive = (student) => (
     isProctored
     && student.attendance === 'P'
     && Boolean(student.invigilatorLock?.active)
   )
 
-  const classResumeTargets = useMemo(() => (
-    students.filter((student) => isStudentViolationActive(student))
-  ), [students])
-
-  const classResumeStatusCounts = useMemo(() => {
-    const counts = CLASS_RESUME_STATUS_OPTIONS.reduce((next, item) => ({ ...next, [item.value]: 0 }), {})
-    students.forEach((student) => {
-      const status = getClassResumeStatus(student)
-      if (status === 'absent') return
-      counts.all += 1
-      if (Object.prototype.hasOwnProperty.call(counts, status)) counts[status] += 1
-    })
-    return counts
-  }, [students])
+  const classResumeTargets = students.filter((student) => isStudentViolationActive(student))
 
   const visibleStudents = useMemo(() => {
     const query = studentSearch.trim().toLowerCase()
@@ -621,7 +586,7 @@ function ExamControlsPage({ onNavigate }) {
     const currentState = readControlState(assessmentId)
     const previous = currentState[studentId] || {}
     const nextLog = {
-      id: `${studentId}-${Date.now()}`,
+      id: `${studentId}-${new Date().getTime()}`,
       time: formatDisplayTime(new Date()),
       action,
       remarks,
@@ -849,6 +814,7 @@ function ExamControlsPage({ onNavigate }) {
   const confirmReset = () => {
     if (!resetModal) return
     const { student } = resetModal
+    const shouldResetAccess = true
     const resetMessage = resetMode === 'keep'
       ? 'Assessment reset. Student can continue with saved answers.'
       : 'Assessment reset. Student will start a fresh attempt.'
@@ -917,53 +883,6 @@ function ExamControlsPage({ onNavigate }) {
     setClassResetModal(true)
   }
 
-  const getClassExtensionMinutes = (section = '') => (
-    students.reduce((sum, student) => {
-      if (section === 'mcq') return sum + Number(student.mcqExtensionMinutes || 0)
-      if (section === 'descriptive') return sum + Number(student.descriptiveExtensionMinutes || 0)
-      return sum + Number(student.extensionMinutes || 0)
-    }, 0)
-  )
-
-  const getClassRemainingLabel = (remainingMs) => {
-    if (schedule.status === 'completed') return 'Completed'
-    if (schedule.status !== 'live') return 'Not started'
-    return formatCountdown(remainingMs)
-  }
-
-  const getClassResetTimeRows = () => {
-    if (isSplitHybrid) {
-      return [
-        {
-          label: 'MCQ remaining',
-          value: getClassRemainingLabel(schedule.remainingMs),
-          extension: `+${getClassExtensionMinutes('mcq')} mins`,
-        },
-        {
-          label: 'Descriptive remaining',
-          value: getClassRemainingLabel(schedule.remainingMs),
-          extension: `+${getClassExtensionMinutes('descriptive')} mins`,
-        },
-      ]
-    }
-
-    return [{
-      label: 'Remaining time',
-      value: getClassRemainingLabel(schedule.remainingMs),
-      extension: `+${getClassExtensionMinutes()} mins`,
-    }]
-  }
-
-  const getClassViolationCount = () => (
-    students.filter((student) => {
-      const statusText = String(student.overallStatus || '').toLowerCase()
-      return Number(student.violationCount || 0) > 0
-        || Boolean(student.invigilatorLock?.active)
-        || statusText.includes('locked')
-        || statusText.includes('violation')
-    }).length
-  )
-
   const getClassValidatedExtendMinutes = () => {
     const quickValue = Number(classResetForm.quickMinutes || 0)
     if (quickValue > 0) return quickValue
@@ -990,44 +909,6 @@ function ExamControlsPage({ onNavigate }) {
   const getClassExtendScopeLabel = () => {
     if (!isSplitHybrid) return 'Full exam'
     return classResumeSplitTarget?.label || 'Active section'
-  }
-
-  const getClassResetImpactRows = () => {
-    const classExtendMinutes = getClassValidatedExtendMinutes()
-    const rows = [
-      {
-        label: 'Exam access',
-        value: classResetForm.resetAccess === 'yes' ? 'Restored for eligible students' : 'No change',
-      },
-    ]
-
-    if (isProctored) {
-      rows.push({
-        label: 'Violation lock',
-        value: classResetForm.resetAccess === 'yes' ? 'Cleared for locked students' : 'Kept as-is',
-      })
-    }
-
-    rows.push(
-      {
-        label: 'Saved answers',
-        value: classResetForm.clearAnswers === 'yes' ? 'Cleared' : 'Kept',
-      },
-      {
-        label: 'Exam time',
-        value: classResetForm.completeTimeReset === 'yes'
-          ? isSplitHybrid
-            ? `Reset to MCQ ${formatDuration(mcqDurationMinutes)} and Descriptive ${formatDuration(descriptiveDurationMinutes)}`
-            : `Reset to ${formatDuration(baseDurationMinutes)}`
-          : 'No change',
-      },
-      {
-        label: 'Extra time',
-        value: classExtendMinutes > 0 ? `+${classExtendMinutes} mins to ${getClassExtendScopeLabel()}` : 'No extension',
-      },
-    )
-
-    return rows
   }
 
   const hasClassResetAction = () => (

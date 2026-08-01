@@ -356,11 +356,6 @@
   color: #d8e7e0;
 }
 
-.theme-dark .approval-modal-option:hover,
-.theme-dark .approval-modal-option.is-selected {
-  background: rgba(95, 232, 177, 0.1);
-  color: #8ee4ca;
-}
 
 .theme-dark .approval-modal-option-empty {
   color: #9fb5ad;

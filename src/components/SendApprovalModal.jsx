@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BriefcaseBusiness, Check, ChevronDown, IdCard, SendHorizonal, UserRound, X } from 'lucide-react'
 import '../styles/approval-modal.css'
@@ -9,13 +9,6 @@ const FACULTY_OPTIONS = [
   { facultyName: 'Dr. Priya Shah', employeeId: 'EMP1098', designation: 'Assistant Professor' },
   { facultyName: 'Dr. Karthik Raman', employeeId: 'EMP1120', designation: 'Professor' },
 ]
-
-const emptyForm = {
-  facultyName: '',
-  employeeId: '',
-  designation: '',
-  note: '',
-}
 
 const defaultForm = {
   ...FACULTY_OPTIONS[0],
@@ -96,12 +89,6 @@ export default function SendApprovalModal({ open, title = 'Send to Approval', co
     employeeId: uniqueValues(FACULTY_OPTIONS.map((item) => item.employeeId)),
     designation: uniqueValues(FACULTY_OPTIONS.map((item) => item.designation)),
   }), [])
-
-  useEffect(() => {
-    if (open) {
-      setForm(defaultForm)
-    }
-  }, [open])
 
   if (!open) return null
 

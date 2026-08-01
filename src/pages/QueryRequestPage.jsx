@@ -50,7 +50,6 @@ const getRequestStatus = (request) => {
   return 'open'
 }
 const isRequestResolved = (request) => getRequestStatus(request) === 'resolved'
-const isRequestPending = (request) => !isRequestResolved(request) && Boolean(request?.authorAction)
 const getRequestStatusLabel = (request) => {
   const status = getRequestStatus(request)
   if (status === 'resolved') return 'Resolved'
@@ -96,10 +95,6 @@ export default function QueryRequestPage() {
       window.removeEventListener('question-bank-reported-questions', syncReportedRequests)
     }
   }, [])
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [reportedRequests.length])
 
   const resolveReport = (questionId) => {
     const resolvedAt = new Date().toISOString()

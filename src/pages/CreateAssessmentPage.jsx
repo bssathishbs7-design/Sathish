@@ -1,5 +1,12 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { createElement, Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { sanitizeRichHtml } from '../utils/sanitizeHtml'
+import {
+  allocateWeightedMarks,
+  calculateCognitionMarks,
+  roundHalfUp,
+  summarizeQuestionTypeRows,
+} from '../utils/blueprintCalculations'
 import {
   Check,
   CheckCheck,
@@ -85,7 +92,6 @@ const CREATE_ASSESSMENT_TEMPLATES_KEY = 'vx-create-assessment-templates'
 const BLUEPRINT_PLANNER_STORAGE_KEY = 'vx-create-assessment-blueprint-planner'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
-const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
 const CORELATION_RATING_SAVED_ROWS_KEY = 'medsy-corelation-rating-saved-rows'
 
 const SUBJECT_DIRECTORY = createAssessmentSubjectDirectory
@@ -275,12 +281,6 @@ function TimeStepperSelect({ value, onChange, emptyLabel = '--:--', maxHour = 23
   const [hourDraft, setHourDraft] = useState(String(hour).padStart(2, '0'))
   const [minuteDraft, setMinuteDraft] = useState(String(minute).padStart(2, '0'))
 
-  useEffect(() => {
-    if (!isOpen) return
-    setHourDraft(String(hour).padStart(2, '0'))
-    setMinuteDraft(String(minute).padStart(2, '0'))
-  }, [isOpen])
-
   const setTimePart = (nextHour, nextMinute) => {
     const safeHour = Math.max(minHour, Math.min(maxHour, nextHour))
     const safeMinute = Math.max(0, Math.min(59, nextMinute))
@@ -315,6 +315,10 @@ function TimeStepperSelect({ value, onChange, emptyLabel = '--:--', maxHour = 23
     <span className="create-assessment-time-stepper">
       <button type="button" className="create-assessment-time-stepper-trigger" onClick={() => {
         if (disabled) return
+        if (!isOpen) {
+          setHourDraft(String(hour).padStart(2, '0'))
+          setMinuteDraft(String(minute).padStart(2, '0'))
+        }
         setIsOpen((current) => !current)
       }} aria-expanded={isOpen} disabled={disabled}>
         <Clock3 size={16} strokeWidth={2.2} aria-hidden="true" />
@@ -1030,17 +1034,6 @@ const getPreviewQuestionText = (item) => (
   || 'Untitled question'
 )
 
-const getPreviewCurriculumText = (item) => {
-  const values = [
-    item.year,
-    item.subject,
-    getFirstValue(item.topics),
-    getFirstValue(item.competencies) ? getShortCompetencyLabel(getFirstValue(item.competencies)) : '',
-  ].filter(Boolean)
-
-  return values.length ? values.join(' / ') : 'Curriculum not selected'
-}
-
 const getPreviewTopicNumber = (item) => {
   const subject = item?.subject ?? ''
   const topic = getFirstValue(item?.topics)
@@ -1724,40 +1717,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const blueprintRoundedTotalMark = blueprintTotalMarkNumber ? Math.round(blueprintTotalMarkNumber) : 0
   const blueprintCorrelationTotal = selectedBlueprintRows.reduce((total, row) => total + (Number(row.correlationLevel) || 0), 0)
   const blueprintSuggestedDistribution = useMemo(() => {
-    if (!blueprintRoundedTotalMark || !blueprintCorrelationTotal || !selectedBlueprintRows.length) return {}
-
-    const weightedRows = selectedBlueprintRows.map((row, index) => {
-      const rowCorrelation = Number(row.correlationLevel) || 0
-      const exactValue = rowCorrelation ? (rowCorrelation / blueprintCorrelationTotal) * blueprintRoundedTotalMark : 0
-      const baseValue = Math.floor(exactValue)
-      return {
+    return allocateWeightedMarks({
+      totalMarks: blueprintRoundedTotalMark,
+      rows: selectedBlueprintRows.map((row) => ({
         key: row.key,
-        rowCorrelation,
-        baseValue,
-        remainder: exactValue - baseValue,
-        index,
-      }
+        weight: row.correlationLevel,
+      })),
     })
-    const result = weightedRows.reduce((nextResult, row) => {
-      nextResult[row.key] = row.rowCorrelation ? String(row.baseValue) : ''
-      return nextResult
-    }, {})
-    let remainingMarks = blueprintRoundedTotalMark - weightedRows.reduce(
-      (total, row) => total + (row.rowCorrelation ? row.baseValue : 0),
-      0,
-    )
-
-    weightedRows
-      .filter((row) => row.rowCorrelation)
-      .sort((first, second) => second.remainder - first.remainder || first.index - second.index)
-      .forEach((row) => {
-        if (remainingMarks <= 0) return
-        result[row.key] = String((Number(result[row.key]) || 0) + 1)
-        remainingMarks -= 1
-      })
-
-    return result
-  }, [blueprintCorrelationTotal, blueprintRoundedTotalMark, selectedBlueprintRows])
+  }, [blueprintRoundedTotalMark, selectedBlueprintRows])
   const blueprintTableRows = selectedBlueprintRows.map((row) => {
     const typeLabel = row.savedValues?.type || row.type || ''
     const rowCorrelation = Number(row.correlationLevel) || 0
@@ -1925,7 +1892,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     })
     .filter((row) => !row.hasManualMarksSplit && row.totalMarks > 0)
   const blueprintAutomaticMarksTotal = blueprintAutomaticMarksRows.reduce((total, row) => total + row.totalMarks, 0)
-  const blueprintTargetHotMarksTotal = Math.round(
+  const blueprintTargetHotMarksTotal = roundHalfUp(
     (blueprintQuestionTypeEnteredMarksTotal * blueprintCognitionHotPercent) / 100,
   )
   const blueprintAutomaticHotMarksTarget = Math.min(
@@ -2097,27 +2064,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ...row,
       childLabel: row.label.replace('SAQs (', '').replace(')', ''),
     }))
-  const blueprintSaqQuestionTypeSummary = blueprintSaqQuestionTypeRows.reduce((summary, row) => ({
-    totalMarks: summary.totalMarks + row.totalMarksNumber,
-    totalQuestions: summary.totalQuestions + row.totalQuestions,
-    hotMarks: summary.hotMarks + row.hotMarks,
-    hotQuestions: summary.hotQuestions + row.hotQuestions,
-    lotMarks: summary.lotMarks + row.lotMarks,
-    lotQuestions: summary.lotQuestions + row.lotQuestions,
-  }), {
-    totalMarks: 0,
-    totalQuestions: 0,
-    hotMarks: 0,
-    hotQuestions: 0,
-    lotMarks: 0,
-    lotQuestions: 0,
-  })
-  const blueprintQuestionTypeTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.total, 0)
-  const blueprintQuestionTypeHotMarksTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.hotMarks, 0)
-  const blueprintQuestionTypeHotQuestionsTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.hotQuestions, 0)
-  const blueprintQuestionTypeLotMarksTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.lotMarks, 0)
-  const blueprintQuestionTypeLotQuestionsTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.lotQuestions, 0)
-  const blueprintQuestionTypeQuestionTotal = blueprintQuestionTypeRows.reduce((total, row) => total + row.totalQuestions, 0)
+  const blueprintSaqQuestionTypeSummary = summarizeQuestionTypeRows(blueprintSaqQuestionTypeRows)
+  const blueprintQuestionTypeSummary = summarizeQuestionTypeRows(blueprintQuestionTypeRows)
+  const blueprintQuestionTypeTotal = blueprintQuestionTypeSummary.totalMarks
+  const blueprintQuestionTypeHotMarksTotal = blueprintQuestionTypeSummary.hotMarks
+  const blueprintQuestionTypeHotQuestionsTotal = blueprintQuestionTypeSummary.hotQuestions
+  const blueprintQuestionTypeLotMarksTotal = blueprintQuestionTypeSummary.lotMarks
+  const blueprintQuestionTypeLotQuestionsTotal = blueprintQuestionTypeSummary.lotQuestions
+  const blueprintQuestionTypeQuestionTotal = blueprintQuestionTypeSummary.totalQuestions
   const blueprintActiveDenominations = [
     Number(blueprintQuestionTypeByLabel.MCQs?.perQuestionMarks) || 0,
     ...blueprintSaqQuestionTypeRows.map((row) => Number(row.perQuestionMarks) || 0),
@@ -2505,12 +2459,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const blueprintCognitionTotalMarks = blueprintRoundedTotalMark || blueprintQuestionTypeTotal || blueprintTestSpecificationCognitionTotal
   const hasBlueprintCognitionPercentages = blueprintCognitionWeightage.lot !== '' && blueprintCognitionWeightage.hot !== ''
   const hasBlueprintCognitionMarks = blueprintCognitionTotalMarks > 0 && hasBlueprintCognitionPercentages
-  const blueprintCognitionHotMarks = hasBlueprintCognitionMarks
-    ? Math.round((blueprintCognitionTotalMarks * blueprintCognitionHotPercent) / 100)
-    : 0
-  const blueprintCognitionLotMarks = hasBlueprintCognitionMarks
-    ? blueprintCognitionTotalMarks - blueprintCognitionHotMarks
-    : 0
+  const blueprintCognitionMarks = calculateCognitionMarks({
+    totalMarks: hasBlueprintCognitionMarks ? blueprintCognitionTotalMarks : 0,
+    hotPercentage: blueprintCognitionHotPercent,
+  })
+  const blueprintCognitionHotMarks = blueprintCognitionMarks.hotMarks
+  const blueprintCognitionLotMarks = blueprintCognitionMarks.lotMarks
   const blueprintCognitionDisplayLotPercent = blueprintCognitionLotPercent
   const blueprintCognitionDisplayHotPercent = blueprintCognitionHotPercent
   const blueprintQuestionTypeDifference = blueprintRoundedTotalMark - blueprintQuestionTypeTotal
@@ -3143,8 +3097,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       [field]: value,
     }))
     setSetupErrors((current) => {
-      const { [field]: removed, ...rest } = current
-      return rest
+      const next = { ...current }
+      delete next[field]
+      return next
     })
   }
 
@@ -3163,15 +3118,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setupDraft.practiceStartTime,
     setupDraft.supervisionType,
   ])
-
-  const validatePublicationHeaderDraft = (draft = setupDraft) => {
-    const errors = {}
-    if (!draft.collegeName) errors.collegeName = 'Select college name.'
-    if (!String(draft.assessmentName || '').trim()) errors.assessmentName = 'Enter assessment name.'
-    if (!draft.examCategory) errors.examCategory = 'Select exam category.'
-    if (!draft.academicYear) errors.academicYear = 'Select academic year.'
-    return errors
-  }
 
   const updateThinkingThresholdMode = (value) => {
     revealConfigurationValidationForField(value === 'blooms' ? 'applyThreshold' : 'lotThreshold')
@@ -3204,13 +3150,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   useEffect(() => {
     if (!isStudentInstructionsOpen) return
     const editor = studentInstructionsEditorRef.current
-    if (editor && editor.innerHTML !== (setupDraft.studentInstructions ?? '')) {
-      editor.innerHTML = setupDraft.studentInstructions ?? ''
+    const safeInstructions = sanitizeRichHtml(setupDraft.studentInstructions ?? '')
+    if (editor && editor.innerHTML !== safeInstructions) {
+      editor.innerHTML = safeInstructions
     }
   }, [isStudentInstructionsOpen, setupDraft.studentInstructions])
 
   const emitStudentInstructionsChange = () => {
-    updateSetupDraft('studentInstructions', studentInstructionsEditorRef.current?.innerHTML ?? '')
+    updateSetupDraft('studentInstructions', sanitizeRichHtml(studentInstructionsEditorRef.current?.innerHTML ?? ''))
   }
 
   const runStudentInstructionCommand = (command, value = null) => {
@@ -3753,7 +3700,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const hasQuestionText = Boolean(getRichTextPreview(question?.questionText ?? ''))
   const isMcqQuestion = question?.type === 'MCQ'
   const isDescriptiveCurrentQuestion = isDescriptiveQuestionType(question?.type)
-  const currentDescriptiveSections = question?.descriptiveSections ?? []
   const requiredProgress = [
     Boolean(question?.year),
     Boolean(question?.subject),
@@ -4125,8 +4071,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       return nextDraft
     })
     setSetupErrors((current) => {
-      const { [field]: removed, proctoredTotalDuration: _proctoredTotalDuration, ...rest } = current
-      return rest
+      const next = { ...current }
+      delete next[field]
+      delete next.proctoredTotalDuration
+      return next
     })
   }
 
@@ -4174,7 +4122,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const renderScheduleDurationField = (field, label, errorKey = field, options = {}) => (
     <label className={`create-assessment-schedule-field ${setupErrors[errorKey] ? 'has-error' : ''} ${options.disabled ? 'is-disabled' : ''}`.trim()}>
       <span>
-        {options.htmlLabel ? <span dangerouslySetInnerHTML={{ __html: label }} /> : label}
+        {options.htmlLabel ? <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(label) }} /> : label}
         {options.required === false ? null : <> <em>*</em></>}
       </span>
       <DurationTimeSelect
@@ -4186,30 +4134,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       {setupErrors[errorKey] ? <small>{setupErrors[errorKey]}</small> : null}
     </label>
   )
-
-  const renderDisplayTypeToggle = (type, field, errorKey = field) => {
-    const isDescriptive = type === 'Descriptive'
-    const value = isDescriptive ? 'Read-Only' : (setupDraft[field] || '')
-    return (
-      <label className={`create-assessment-schedule-toggle-field create-assessment-display-toggle-field ${setupErrors[errorKey] ? 'has-error' : ''}`}>
-        <span>Display Type <em>*</em></span>
-        <div className="create-assessment-mode-toggle" role="group" aria-label={`${type} display type`}>
-          {['Answer Input', 'Read-Only'].map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={value === option ? 'is-active' : ''}
-              disabled={isDescriptive && option === 'Answer Input'}
-              onClick={() => updateDisplayType(field, option)}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-        {setupErrors[errorKey] ? <small>{setupErrors[errorKey]}</small> : null}
-      </label>
-    )
-  }
 
   const renderAnswerModePanel = () => {
     if (!configurationQuestionSummary.hasMcq && !configurationQuestionSummary.hasDescriptive) return null
@@ -4603,16 +4527,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     generationTimersRef.current.set(jobId, timerId)
   }
 
-  const clearQuestion = () => {
-    setQuestion(null)
-    setIsQuestionTypePickerOpen(false)
-    setIsDescriptiveTypePickerOpen(false)
-    setActiveMappingPicker(null)
-    setMappingSearchValue('')
-    setIsOptionalTagsOpen(false)
-    setSaveStatus('')
-  }
-
   const resetCurrentQuestion = () => {
     if (!question) return
     setQuestion(createQuestion(setup, question.type))
@@ -4621,47 +4535,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setMappingSearchValue('')
     setIsOptionalTagsOpen(false)
     setSaveStatus('')
-  }
-
-  const addQuestionToQuestionBank = () => {
-    if (!question || !canCreate) {
-      setActiveCreateTab('questionBank')
-      setHasSelectedCreateTab(true)
-      // setSaveStatus('Question bank opened in view-only mode.')
-      return
-    }
-
-    const questionBankQuestion = {
-      ...question,
-      id: `assessment-qb-${Date.now()}`,
-      status: 'Created',
-      source: 'Create Assessment',
-      assessmentName: setup.assessmentName || 'Untitled Assessment',
-      createdAt: new Date().toISOString(),
-      questionCategory: question.questionCategory || 'Direct',
-      cognitiveLevel: question.cognitiveLevel || 'Apply',
-      thinkingLevel: question.thinkingLevel || 'LoT',
-      difficultyLevel: question.difficultyLevel || 'L1',
-    }
-
-    try {
-      const existingRows = JSON.parse(window.localStorage.getItem(QUESTION_BANK_STORAGE_KEY) ?? '[]')
-      const nextRows = [questionBankQuestion, ...(Array.isArray(existingRows) ? existingRows : [])]
-      if (!writeLocalStorageJson(QUESTION_BANK_STORAGE_KEY, nextRows)) {
-        setSaveStatus('Unable to add question bank. Please remove large images and try again.')
-        return
-      }
-      window.dispatchEvent(new Event('question-bank-created-questions'))
-      setSaveStatus('Added to question bank.')
-      setActiveCreateTab('questionBank')
-      setHasSelectedCreateTab(true)
-      setSelectedCreateQuestionTypeLabel('')
-    } catch {
-      setSaveStatus('Unable to add question bank.')
-      setActiveCreateTab('questionBank')
-      setHasSelectedCreateTab(true)
-      setSelectedCreateQuestionTypeLabel('')
-    }
   }
 
   const addQuestionBankSelectionToAssessment = (questions = []) => {
@@ -8023,7 +7896,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           ['Italic', Italic, 'italic'],
                           ['Underline', Underline, 'underline'],
                           ['Strike', Strikethrough, 'strikeThrough'],
-                        ].map(([label, Icon, command]) => (
+                        ].map(([label, icon, command]) => (
                           <button
                             key={label}
                             type="button"
@@ -8031,7 +7904,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => runStudentInstructionCommand(command)}
                           >
-                            <Icon size={16} strokeWidth={2.2} />
+                            {createElement(icon, { size: 16, strokeWidth: 2.2 })}
                           </button>
                         ))}
                         <select
@@ -8070,7 +7943,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           ['Align center', AlignCenter, 'justifyCenter'],
                           ['Align right', AlignRight, 'justifyRight'],
                           ['Justify', AlignJustify, 'justifyFull'],
-                        ].map(([label, Icon, command]) => (
+                        ].map(([label, icon, command]) => (
                           <button
                             key={label}
                             type="button"
@@ -8078,7 +7951,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => runStudentInstructionCommand(command)}
                           >
-                            <Icon size={16} strokeWidth={2.2} />
+                            {createElement(icon, { size: 16, strokeWidth: 2.2 })}
                           </button>
                         ))}
                       </div>
@@ -8793,7 +8666,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                         ariaLabel={`Inside question ${childIndex + 1}`}
                                       />
                                     </label>
-                                    {renderDescriptiveCompetencyButton(childTarget, child, !Boolean(getRichTextPreview(child.questionText)))}
+                                    {renderDescriptiveCompetencyButton(childTarget, child, !getRichTextPreview(child.questionText))}
                                     <label className="question-bank-descriptive-marks">
                                       <input value={child.marks ?? '0'} onChange={(event) => updateDescriptiveInsideQuestion(section.id, child.id, { marks: event.target.value }, sectionIndex, childIndex)} inputMode="decimal" />
                                     </label>

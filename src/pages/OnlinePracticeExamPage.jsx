@@ -240,19 +240,9 @@ const getMarks = (question) => (
   ?? '-'
 )
 
-const formatMarksLabel = (value) => {
-  const marks = getMarks(value)
-  return marks === '-' ? '- Marks' : `${String(marks).padStart(2, '0')} Marks`
-}
-
 const hasVisibleMarks = (value) => {
   const text = String(value ?? '').trim()
   return text !== '' && text !== '-' && Number(text) !== 0
-}
-
-const getNumericMarks = (value) => {
-  const marks = Number(getMarks(value))
-  return Number.isFinite(marks) ? marks : 0
 }
 
 const parseMarksValue = (value) => {
@@ -275,14 +265,6 @@ const getQuestionMarksTotal = (question) => {
   }, 0)
 
   return (sections.length ? 0 : parseMarksValue(question?.marks)) + sectionMarks
-}
-
-const formatQuestionMarksBadge = (question) => {
-  const totalMarks = getQuestionMarksTotal(question)
-  if (totalMarks > 0) return `${totalMarks} Marks`
-
-  const marks = getMarks(question)
-  return marks === '-' ? '- Marks' : `${marks} Marks`
 }
 
 const renderQuestionImages = (images, className = '', onPreview) => (
@@ -405,7 +387,7 @@ const getPreviewOrderedQuestionNumbers = (setup = {}, questions = []) => {
   sectionOrder.forEach((sectionKey) => {
     questions
       .filter((question) => getPreviewSectionKey(question) === sectionKey)
-      .forEach((question, index) => {
+      .forEach((question) => {
         const globalIndex = questions.indexOf(question)
         numbers[question.id ?? `${sectionKey}-${globalIndex}`] = displayNumber
         displayNumber += 1
@@ -503,7 +485,10 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [imagePreview, setImagePreview] = useState(null)
   const [timeExtension, setTimeExtension] = useState(() => readStudentTimeExtension(assessment))
 
-  const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
+  const questionRows = useMemo(
+    () => (Array.isArray(assessment?.questionRows) ? assessment.questionRows : []),
+    [assessment],
+  )
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
   const descriptiveQuestions = useMemo(() => questionRows.filter((item) => isDescriptiveQuestionType(item?.type)), [questionRows])
   const mcqTotalMarks = useMemo(() => (
@@ -511,7 +496,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   ), [mcqQuestions])
   const currentQuestions = activeSection === 'mcq' ? mcqQuestions : descriptiveQuestions
   const currentQuestion = currentQuestions[activeQuestionIndex] ?? null
-  const setup = assessment?.setup ?? {}
+  const setup = useMemo(() => assessment?.setup ?? {}, [assessment])
   const examTypeValue = String(assessment?.examType || setup.examType || 'Hybrid').toLowerCase()
   const hasMcqSection = mcqQuestions.length > 0 && examTypeValue !== 'descriptive'
   const hasDescriptiveSection = descriptiveQuestions.length > 0 && examTypeValue !== 'mcq'
@@ -1253,7 +1238,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                 {activeSection === 'descriptive' ? (
                   descriptiveGroups.length ? (
                     <div className="online-practice-descriptive-readonly" aria-label="Read only descriptive questions">
-                      {descriptiveGroups.map((group, groupIndex) => (
+                      {descriptiveGroups.map((group) => (
                         <section
                           className={`online-practice-descriptive-section ${group.toneClass}`}
                           id={getDescriptiveSectionDomId(group.key)}

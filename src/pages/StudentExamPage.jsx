@@ -102,12 +102,6 @@ const normalizeReferenceImage = (image, index) => ({
   tag: image?.tag ?? getAlphabetTag(index),
 })
 
-const getItemTypeBadge = (section, item, activityType) => {
-  if (section === 'form') return 'Form'
-  if (section === 'scaffolding') return 'Scaffolding'
-  return item.kind === 'MCQ' || item.kind === 'True or False' ? item.kind : activityType
-}
-
 const getItemTypeBadgeConfig = (label) => {
   const normalized = String(label ?? '').toLowerCase()
 

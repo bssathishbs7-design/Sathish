@@ -73,9 +73,7 @@ const DEFAULT_THRESHOLD_CONFIG = [
   { label: 'Exceeds', startPercent: 0.75, endPercent: 1 },
 ]
 
-const isAutoThresholdLabel = (value) => DEFAULT_THRESHOLD_CONFIG.some((item) => item.label === String(value ?? '').trim())
-
-const buildEmptyAssignThresholdRows = (totalMarks = 10) => {
+const buildEmptyAssignThresholdRows = () => {
   return DEFAULT_THRESHOLD_CONFIG.map((item, index) => ({
     id: `threshold-${Date.now()}-${index + 1}`,
     label: item.label,
@@ -213,10 +211,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const defaultCertifiable = activity?.certifiable ?? false
   const activityTag = activity?.type ?? (isInterpretationWorkflow ? 'Interpretation' : 'Image')
   const activityStatus = activity?.status ?? 'Draft'
-  const activityYear = record?.year ?? 'Not available'
-  const activitySubject = record?.subject ?? 'Not available'
-  const activityCompetency = record?.competency ?? 'Not available'
-  const activityTopic = record?.topic ?? ''
   const uploadSectionHeading = isInterpretationWorkflow ? 'Reference Cases' : 'Reference Images'
   const uploadSectionDescription = isInterpretationWorkflow
     ? 'Upload 1 or 2 reference cases first. This step is required before you continue with question building.'
@@ -246,17 +240,15 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const [draggedQuestionId, setDraggedQuestionId] = useState(null)
   const [isAutoSaving, setIsAutoSaving] = useState(false)
   const [isActivityCreated, setIsActivityCreated] = useState(Boolean(savedDraft?.isSkillActivitySaved || activity?.status === 'Created'))
-  const [isReviewAssignPopupOpen, setIsReviewAssignPopupOpen] = useState(false)
+  const [isReviewAssignPopupOpen, setIsReviewAssignPopupOpen] = useState(() => Boolean(activityData?.openReviewAssign))
   const [assignThresholds, setAssignThresholds] = useState(() => buildEmptyAssignThresholdRows())
   const [assignYear, setAssignYear] = useState(assignDefaultYear)
-  const [assignSgt, setAssignSgt] = useState('')
+  const [assignSgt, setAssignSgt] = useState(() => ASSIGN_SGT_OPTIONS[assignDefaultYear]?.[0] ?? '')
   const [isAssignScheduleEnabled, setIsAssignScheduleEnabled] = useState(false)
   const [assignSchedule, setAssignSchedule] = useState({ date: '', time: '', meridiem: 'AM' })
   const [assignContent, setAssignContent] = useState({ form: false, question: true, scaffolding: false })
   const [isScaffoldingTooltipOpen, setIsScaffoldingTooltipOpen] = useState(false)
-  const [isMetaExpanded, setIsMetaExpanded] = useState(false)
   const [isGeneratedQuestionsOpen, setIsGeneratedQuestionsOpen] = useState(Boolean(savedDraft?.generatedQuestions?.length))
-  const [activeWorkflowStep, setActiveWorkflowStep] = useState(isInterpretationWorkflow ? 'manual' : 'context')
   const [isProgressWidgetOpen, setIsProgressWidgetOpen] = useState(false)
   const [scaffoldingSelection, setScaffoldingSelection] = useState({
     MCQ: 0,
@@ -276,23 +268,11 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const manualSectionRef = useRef(null)
   const generatedSectionRef = useRef(null)
   const footerSectionRef = useRef(null)
-  const reviewAssignOpenHandledRef = useRef(false)
 
   const certifiableLabel = isCertifiable ? 'Yes' : 'No'
   const totalGeneratedMarks = hasMarks
     ? [...createdSkillQuestions, ...generatedQuestions].reduce((total, question) => total + (Number(question.marks) || 0), 0)
     : 0
-
-  useEffect(() => {
-    if (!activityData?.openReviewAssign) {
-      reviewAssignOpenHandledRef.current = false
-      return
-    }
-    if (reviewAssignOpenHandledRef.current) return
-    reviewAssignOpenHandledRef.current = true
-    setAssignThresholds(buildEmptyAssignThresholdRows(totalGeneratedMarks))
-    setIsReviewAssignPopupOpen(true)
-  }, [activityData?.openReviewAssign, totalGeneratedMarks])
 
   useEffect(() => {
     imageUrlsRef.current = images.map((image) => image.previewUrl).filter(Boolean)
@@ -501,23 +481,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     ? { label: 'Saving', text: 'Saving the latest changes to this activity.' }
     : readinessSummary
   const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
-  useEffect(() => {
-    if (!assignYear) {
-      if (assignSgt) {
-        setAssignSgt('')
-      }
-      return
-    }
-    if (!assignSgtOptions.length) {
-      if (assignSgt) {
-        setAssignSgt('')
-      }
-      return
-    }
-    if (!assignSgt || !assignSgtOptions.includes(assignSgt)) {
-      setAssignSgt(assignSgtOptions[0])
-    }
-  }, [assignSgt, assignSgtOptions, assignYear])
   const imageAssignHelperText = ''
   const imageStudentAssignOptions = [
     { key: 'question', label: isInterpretationWorkflow ? 'Manual Question' : 'Question', available: true },
@@ -543,27 +506,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     && Boolean(assignYear)
     && Boolean(assignSgt)
     && (!isAssignScheduleEnabled || Boolean(assignSchedule.date && assignSchedule.time && assignSchedule.meridiem))
-
-  const getSectionExpandAction = useCallback((sectionId) => {
-    if (sectionId === 'reference') {
-      return () => setIsAssetsSectionOpen(true)
-    }
-    if (sectionId === 'manual') {
-      return () => setIsCreatedQuestionsOpen(true)
-    }
-    if (sectionId === 'generated') {
-      return () => setIsGeneratedQuestionsOpen(true)
-    }
-    return undefined
-  }, [])
-
-  const jumpToWorkflowSection = (stepId, sectionRef, beforeScroll) => {
-    setActiveWorkflowStep(stepId)
-    beforeScroll?.()
-    window.requestAnimationFrame(() => {
-      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
 
   const handleAddQuestion = () => {
     const nextQuestion = createGeneratedQuestion('Descriptive', createdSkillQuestions.length)
@@ -742,10 +684,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       }
     })
 
-    if (usesManualAnswerKeyGeneration) {
-      setAutoGeneratingQuestionIds([])
-      return undefined
-    }
+    if (usesManualAnswerKeyGeneration) return undefined
 
     createdSkillQuestions.forEach((question) => {
       const normalizedQuestion = question.questionText.trim()
@@ -811,6 +750,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       createdSkillAutoGenerationTimersRef.current.set(question.id, timerId)
     })
   }, [createdSkillQuestions, usesManualAnswerKeyGeneration])
+  const visibleAutoGeneratingQuestionIds = usesManualAnswerKeyGeneration ? [] : autoGeneratingQuestionIds
 
   const deleteCreatedSkillQuestion = (id) => {
     setCreatedSkillQuestions((current) => current.filter((question) => question.id !== id))
@@ -916,20 +856,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const deleteAssignThreshold = (id) => {
     setAssignThresholds((current) => current.filter((row) => row.id !== id))
   }
-
-  useEffect(() => {
-    setAssignThresholds((current) => current.map((row) => {
-      const matchingThreshold = DEFAULT_THRESHOLD_CONFIG.find((item) => item.label === String(row.label ?? '').trim())
-
-      if (!matchingThreshold) return row
-
-      return {
-        ...row,
-        from: formatThresholdValue(matchingThreshold.startPercent * 100),
-        to: formatThresholdValue(matchingThreshold.endPercent * 100),
-      }
-    }))
-  }, [totalGeneratedMarks])
 
   const handleProceedAssign = async () => {
     if (!canProceedAssign) {
@@ -1535,7 +1461,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                         <div className="image-activity-created-skill-field-head">
                                           <span>Answer &amp; Explanation</span>
                                           <div className="image-activity-created-skill-field-actions">
-                                            {autoGeneratingQuestionIds.includes(question.id) ? (
+                                            {visibleAutoGeneratingQuestionIds.includes(question.id) ? (
                                               <span className="image-activity-created-skill-field-status">
                                                 <span className="image-activity-created-skill-field-spinner" />
                                                 Generating
@@ -1545,7 +1471,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                                               <button
                                                 type="button"
                                                 className="ghost image-activity-answer-key-btn"
-                                                disabled={!question.questionText.trim() || autoGeneratingQuestionIds.includes(question.id)}
+                                                disabled={!question.questionText.trim() || visibleAutoGeneratingQuestionIds.includes(question.id)}
                                                 onClick={(event) => {
                                                   event.stopPropagation()
                                                   if (isPreviewOnly) return
@@ -2062,8 +1988,9 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
                       <select
                         value={assignYear}
                         onChange={(event) => {
-                          setAssignYear(event.target.value)
-                          setAssignSgt('')
+                          const nextYear = event.target.value
+                          setAssignYear(nextYear)
+                          setAssignSgt(ASSIGN_SGT_OPTIONS[nextYear]?.[0] ?? '')
                         }}
                       >
                         {ASSIGN_YEAR_OPTIONS.map((option) => (

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { sanitizeRichHtml } from '../utils/sanitizeHtml'
 import {
   Check,
   CheckCheck,
@@ -898,21 +899,6 @@ const getAvailableCompetencies = (question) => {
   return directory.competencies.filter((item) => question.topics.includes(item.topic))
 }
 
-const isQuestionReady = (question) => (
-  Boolean(getRichTextPreview(question.questionText))
-  && Boolean(getRichTextPreview(question.answerKey))
-  && question.topics.length > 0
-  && question.competencies.length > 0
-  && Boolean(question.questionCategory)
-  && Boolean(question.cognitiveLevel)
-  && Boolean(question.thinkingLevel)
-  && Boolean(question.difficultyLevel)
-)
-
-const getLevelLabel = (level) => (
-  level === 'parent' ? 'Parent' : level === 'child' ? 'Child' : 'Sub-Child'
-)
-
 const hasCurriculumMapping = (question) => (
   Boolean(question?.year)
   && Boolean(question?.subject)
@@ -1087,32 +1073,6 @@ const getQuestionCardStatus = (question) => {
 
 const GENERATION_DELAY_MS = 15000
 
-const isDescendantOf = (question, parentId, questionMap) => {
-  let currentParentId = question.parentId
-  while (currentParentId) {
-    if (currentParentId === parentId) return true
-    currentParentId = questionMap.get(currentParentId)?.parentId ?? null
-  }
-  return false
-}
-
-const insertAfterBranch = (questions, sourceId, newQuestion) => {
-  const questionMap = new Map(questions.map((item) => [item.id, item]))
-  const sourceIndex = questions.findIndex((item) => item.id === sourceId)
-  if (sourceIndex === -1) return [...questions, newQuestion]
-
-  let insertIndex = sourceIndex + 1
-  while (insertIndex < questions.length && isDescendantOf(questions[insertIndex], sourceId, questionMap)) {
-    insertIndex += 1
-  }
-
-  return [
-    ...questions.slice(0, insertIndex),
-    newQuestion,
-    ...questions.slice(insertIndex),
-  ]
-}
-
 const toggleSelection = (items, value) => (
   items.includes(value)
     ? items.filter((item) => item !== value)
@@ -1236,20 +1196,9 @@ const getSelectionSummary = (selected, emptyLabel, formatter = (value) => value)
   return remaining > 0 ? `${visible} +${remaining} more` : visible
 }
 
-const getDescriptiveMappingSummary = (item) => [
-  (item?.topics ?? []).length ? `Topics: ${(item.topics ?? []).join(', ')}` : '',
-  (item?.competencies ?? []).length ? `Competency: ${(item.competencies ?? []).map(getShortCompetencyLabel).join(', ')}` : '',
-].filter(Boolean).join('  ')
 const getDescriptiveCompetencyCode = (item) => (
   (item?.competencies ?? []).length ? getShortCompetencyLabel(item.competencies[0]) : ''
 )
-
-const getCurriculumStatusLabel = (question) => [
-  question.year ? getYearDisplayLabel(question.year) : 'Select year',
-  question.subject || 'Select subject',
-  question.topics.length ? question.topics.join(', ') : 'Select topics',
-  question.competencies.length ? question.competencies.map(getShortCompetencyLabel).join(', ') : 'Select competencies',
-].filter(Boolean).join(' / ')
 
 const getOptionModeConfig = (allowMultiple) => ({
   minCount: allowMultiple ? MULTIPLE_OPTION_MIN_COUNT : SINGLE_OPTION_MIN_COUNT,
@@ -1324,8 +1273,6 @@ function MappingSelectorPanel({
 
 export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'editable' }) {
   const normalizedMode = mode === 'editable' ? 'editable' : 'readonly'
-  const isEditable = normalizedMode === 'editable'
-  const isReadonly = normalizedMode === 'readonly'
   const [questions, setQuestions] = useState(() => readStoredQuestionBankQuestions())
   const [selectedQuestionId, setSelectedQuestionId] = useState(null)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
@@ -1342,7 +1289,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [isCurriculumEditing, setIsCurriculumEditing] = useState(false)
   const [curriculumDraft, setCurriculumDraft] = useState(null)
   const [isDefaultCurriculumOpen, setIsDefaultCurriculumOpen] = useState(false)
-  const [autoOpenCurriculumQuestionId, setAutoOpenCurriculumQuestionId] = useState(null)
+  const [, setAutoOpenCurriculumQuestionId] = useState(null)
   const [activeQuestionTab, setActiveQuestionTab] = useState('create')
   const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
@@ -1377,6 +1324,35 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [activeDescriptiveAnswerTarget, setActiveDescriptiveAnswerTarget] = useState({ type: 'root' })
   const [activeDescriptiveMappingTarget, setActiveDescriptiveMappingTarget] = useState(null)
   const [descriptiveCompetencyDraft, setDescriptiveCompetencyDraft] = useState(null)
+
+  function getDescriptiveTooltipPosition(anchorElement = null, hasOpenDropdown = false) {
+    const rect = anchorElement?.getBoundingClientRect?.()
+    const tooltipWidth = 360
+    const tooltipHeight = hasOpenDropdown ? 420 : 320
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : tooltipWidth
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : tooltipHeight
+    const usableTooltipHeight = Math.min(tooltipHeight, Math.max(260, viewportHeight - 24))
+    const left = rect ? Math.min(Math.max(12, rect.left), Math.max(12, viewportWidth - tooltipWidth - 12)) : 24
+    const opensAbove = rect ? rect.bottom + usableTooltipHeight + 12 > viewportHeight : false
+    const top = rect
+      ? (opensAbove
+        ? Math.max(12, rect.top - usableTooltipHeight - 8)
+        : Math.min(rect.bottom + 8, Math.max(12, viewportHeight - usableTooltipHeight - 12)))
+      : 24
+    const arrowLeft = rect ? Math.min(Math.max(18, rect.left + (rect.width / 2) - left), tooltipWidth - 18) : 24
+
+    return { top, left, arrowLeft, opensAbove, maxHeight: usableTooltipHeight }
+  }
+
+  function closeDescriptiveCompetencyTooltip() {
+    setActiveDescriptiveMappingTarget(null)
+    setDescriptiveCompetencyDraft(null)
+  }
+
+  function closeMappingPicker() {
+    setActiveMappingPicker(null)
+    setMappingSearchValue('')
+  }
 
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
   useEffect(() => {
@@ -1439,7 +1415,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     return { type: 'root' }
   }
   const pendingEditQuestion = questions.find((item) => item.id === pendingEditQuestionId) ?? null
-  const visibleQuestionCards = questions.filter((item) => item.status !== 'Editing')
   const draftQuestionCards = questions.filter((item) => item.status === 'Draft')
   const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status) && !isExcelUploadedQuestion(item))
   const sentApprovalQuestionCards = questions.filter((item) => item.status === 'Sent to Approval' && hasQuestionContent(item))
@@ -1470,11 +1445,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       uploadedById.set(question.id, question)
     })
     return Array.from(uploadedById.values()).filter((question) => ['Created', 'Generating'].includes(question.status))
-  }, [questions, uploadedQuestionCount])
+  }, [questions])
   const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
-  const totalCount = visibleQuestionCards.length
   const readyCount = questions.filter((item) => item.status === 'Created').length
-  const draftCount = questions.filter((item) => item.status === 'Draft').length
   const sentApprovalCount = sentApprovalQuestionCards.length
   const approvedCount = approvedQuestionCards.length
   const rejectedCount = rejectedQuestionCards.length
@@ -1515,7 +1488,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const availableSubjects = curriculumQuestion ? getSubjectsForYear(curriculumQuestion.year) : []
   const availableTopics = curriculumQuestion ? getAvailableTopics(curriculumQuestion) : []
   const availableCompetencies = curriculumQuestion ? getAvailableCompetencies(curriculumQuestion) : []
-  const selectedQuestionIndex = selectedQuestion ? questions.findIndex((item) => item.id === selectedQuestion.id) + 1 : 0
   const selectedProcessSteps = selectedQuestion ? getProcessSteps(selectedQuestion) : []
   const selectedCurrentProcessIndex = selectedProcessSteps.findIndex((step) => !step.done)
   const completedProcessStepCount = selectedProcessSteps.filter((step) => step.done).length
@@ -1610,7 +1582,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const isUploadWizardLocked = ['analyzing', 'generating', 'complete'].includes(uploadWizard.status)
   const approvalModalQuestionCount = pendingUploadApprovalQuestions.length || approvalSelectedIds.length
 
-  useEffect(() => {
+  const selectQuestionForEditing = (questionId, questionOverride = null) => {
+    const nextSelectedQuestion = questionOverride ?? questions.find((item) => item.id === questionId) ?? null
+    setSelectedQuestionId(nextSelectedQuestion?.id ?? null)
     setIsGeneratingQuestion(false)
     setGenerationCompleteId(null)
     setIsProgressWidgetOpen(false)
@@ -1620,8 +1594,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setOpenOptionDistractorPreviewId(null)
     setEditableDescriptiveFieldKeys([])
     closeMappingPicker()
-    const nextSelectedQuestion = questions.find((item) => item.id === selectedQuestionId)
-    if (selectedQuestionId && nextSelectedQuestion) {
+    if (nextSelectedQuestion) {
       setActiveDescriptiveAnswerTarget(getInitialDescriptiveAnswerTarget(nextSelectedQuestion))
       setCurriculumDraft({
         year: nextSelectedQuestion.year,
@@ -1638,7 +1611,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setIsCurriculumEditing(false)
     setCurriculumDraft(null)
     setIsDefaultCurriculumOpen(false)
-  }, [selectedQuestionId])
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1647,35 +1620,37 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    const timerId = window.setTimeout(() => {
+      try {
+        const handoff = JSON.parse(window.sessionStorage.getItem(QUESTION_BANK_EDIT_HANDOFF_KEY) ?? 'null')
+        if (!handoff?.question) return
 
-    try {
-      const handoff = JSON.parse(window.sessionStorage.getItem(QUESTION_BANK_EDIT_HANDOFF_KEY) ?? 'null')
-      if (!handoff?.question) return
+        window.sessionStorage.removeItem(QUESTION_BANK_EDIT_HANDOFF_KEY)
+        const mode = handoff.mode === 'duplicate' ? 'duplicate' : 'overwrite'
+        const editableQuestion = cloneQuestionForCreate(handoff.question, mode)
+        const typeMeta = getQuestionTypeMeta(editableQuestion.type)
 
-      window.sessionStorage.removeItem(QUESTION_BANK_EDIT_HANDOFF_KEY)
-      const mode = handoff.mode === 'duplicate' ? 'duplicate' : 'overwrite'
-      const editableQuestion = cloneQuestionForCreate(handoff.question, mode)
-      const typeMeta = getQuestionTypeMeta(editableQuestion.type)
-
-      setQuestions((current) => {
-        const hasQuestion = current.some((item) => item.id === editableQuestion.id)
-        return hasQuestion
-          ? current.map((item) => (item.id === editableQuestion.id ? { ...item, ...editableQuestion } : item))
-          : [...current, editableQuestion]
-      })
-      setSelectedQuestionId(editableQuestion.id)
-      setActiveDescriptiveAnswerTarget(getInitialDescriptiveAnswerTarget(editableQuestion))
-      setActiveQuestionTab('create')
-      setSelectedQuestionTypeLabel(typeMeta.shortLabel)
-      setIsQuestionTypePickerOpen(false)
-      setGenerationCompleteId(null)
-      onAlert?.({
-        tone: 'secondary',
-        message: mode === 'duplicate' ? 'Question duplicated into Create Question.' : 'Question loaded for overwrite.',
-      })
-    } catch {
-      window.sessionStorage.removeItem(QUESTION_BANK_EDIT_HANDOFF_KEY)
-    }
+        setQuestions((current) => {
+          const hasQuestion = current.some((item) => item.id === editableQuestion.id)
+          return hasQuestion
+            ? current.map((item) => (item.id === editableQuestion.id ? { ...item, ...editableQuestion } : item))
+            : [...current, editableQuestion]
+        })
+        setSelectedQuestionId(editableQuestion.id)
+        setActiveDescriptiveAnswerTarget(getInitialDescriptiveAnswerTarget(editableQuestion))
+        setActiveQuestionTab('create')
+        setSelectedQuestionTypeLabel(typeMeta.shortLabel)
+        setIsQuestionTypePickerOpen(false)
+        setGenerationCompleteId(null)
+        onAlert?.({
+          tone: 'secondary',
+          message: mode === 'duplicate' ? 'Question duplicated into Create Question.' : 'Question loaded for overwrite.',
+        })
+      } catch {
+        window.sessionStorage.removeItem(QUESTION_BANK_EDIT_HANDOFF_KEY)
+      }
+    }, 0)
+    return () => window.clearTimeout(timerId)
   }, [onAlert])
 
   useEffect(() => {
@@ -1936,7 +1911,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       title: `${typeMeta.shortLabel} ${questions.length + 1}`,
     })
     setQuestions((current) => [...current, question])
-    setSelectedQuestionId(question.id)
+    selectQuestionForEditing(question.id, question)
     setAutoOpenCurriculumQuestionId(question.id)
     setActiveQuestionTab('create')
     setSelectedQuestionTypeLabel(typeMeta.shortLabel)
@@ -2074,43 +2049,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         errors: [],
       })
     }
-  }
-
-  const importVerifiedUploadQuestions = () => {
-    const nextQuestions = uploadImportResult?.questions ?? []
-    if (!nextQuestions.length || typeof window === 'undefined') return
-
-    const existingUploadedQuestions = readUploadedQuestionBankQuestions()
-    const mergedUploadedQuestions = [...existingUploadedQuestions, ...nextQuestions]
-    window.localStorage.setItem(QUESTION_BANK_UPLOADED_KEY, JSON.stringify(mergedUploadedQuestions))
-    window.dispatchEvent(new Event('question-bank-uploaded-questions'))
-
-    setQuestions((current) => {
-      const existingIds = new Set(current.map((item) => item.id))
-      return [
-        ...current,
-        ...nextQuestions.filter((question) => !existingIds.has(question.id)),
-      ]
-    })
-    setUploadedQuestionCount(mergedUploadedQuestions.filter((question) => (
-      hasQuestionContent(question)
-      && (question?.source === 'Excel Upload' || Boolean(question?.uploadBatchId))
-    )).length)
-    setUploadImportResult({
-      status: 'imported',
-      fileName: uploadImportResult.fileName,
-      rowsCount: uploadImportResult.rowsCount,
-      questions: [],
-      errors: [],
-    })
-    setUploadWizard((current) => ({
-      ...current,
-      status: 'complete',
-      generatedCount: nextQuestions.length,
-      remainingSeconds: 0,
-    }))
-    setActiveQuestionTab('uploaded')
-    onAlert?.({ tone: 'success', message: `${nextQuestions.length} uploaded questions generated.` })
   }
 
   const saveGeneratedUploadQuestionsForLater = () => {
@@ -2293,28 +2231,28 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     const questionId = questionToEdit.id
     const typeMeta = getQuestionTypeMeta(questionToEdit.type)
     const isRejectedQuestion = questionToEdit.status === 'Approval Rejected'
+    const nextQuestion = {
+      ...questionToEdit,
+      status: 'Draft',
+      revisionStatus: isRejectedQuestion ? 'Created' : 'Edited',
+      editCount: isRejectedQuestion ? 0 : Number(questionToEdit.editCount ?? questionToEdit.revisionCount ?? 0) + 1,
+      approvalReviewRemarks: '',
+      approvalReviewedAt: '',
+      questionBankStatus: undefined,
+      questionBankSentAt: undefined,
+      isReported: false,
+      reported: false,
+      reportStatus: undefined,
+    }
 
     setQuestions((current) => {
-      const nextQuestion = {
-        ...questionToEdit,
-        status: 'Draft',
-        revisionStatus: isRejectedQuestion ? 'Created' : 'Edited',
-        editCount: isRejectedQuestion ? 0 : Number(questionToEdit.editCount ?? questionToEdit.revisionCount ?? 0) + 1,
-        approvalReviewRemarks: '',
-        approvalReviewedAt: '',
-        questionBankStatus: undefined,
-        questionBankSentAt: undefined,
-        isReported: false,
-        reported: false,
-        reportStatus: undefined,
-      }
       const hasQuestion = current.some((item) => item.id === questionId)
 
       return hasQuestion
         ? current.map((item) => (item.id === questionId ? { ...item, ...nextQuestion } : item))
         : [...current, nextQuestion]
     })
-    setSelectedQuestionId(questionId)
+    selectQuestionForEditing(questionId, nextQuestion)
     setActiveQuestionTab('create')
     setSelectedQuestionTypeLabel(typeMeta.shortLabel)
     setPendingEditQuestionId(null)
@@ -2339,25 +2277,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     deleteQuestionFromStorage(questionId)
     setQuestions((current) => current.filter((item) => item.id !== questionId))
     if (selectedQuestionId === questionId) {
-      setSelectedQuestionId(null)
+      selectQuestionForEditing(null)
     }
     onAlert?.({ tone: 'warning', message: 'Reported question deleted.' })
-  }
-
-  const handleAddHierarchyNode = (level) => {
-    if (!selectedQuestion || !isDescriptiveQuestionType(selectedQuestion.type)) return
-    if (level === 'child' && selectedQuestion.level === 'sub-child') return
-    if (level === 'sub-child' && selectedQuestion.level !== 'child') return
-
-    const question = createQuestion(selectedQuestion.type, {
-      parentId: selectedQuestion.id,
-      level,
-      title: `${getLevelLabel(level)} Question`,
-    })
-
-    setQuestions((current) => insertAfterBranch(current, selectedQuestion.id, question))
-    setSelectedQuestionId(question.id)
-    onAlert?.({ tone: 'secondary', message: `${getLevelLabel(level)} question added.` })
   }
 
   const handleDeleteQuestion = () => {
@@ -2367,7 +2289,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     deleteQuestionFromStorage(selectedQuestion.id)
     setUploadedQuestionCount(readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent).length)
     setQuestions(nextQuestions)
-    setSelectedQuestionId(nextQuestions[0]?.id ?? null)
+    selectQuestionForEditing(nextQuestions[0]?.id ?? null, nextQuestions[0] ?? null)
     onAlert?.({ tone: 'warning', message: 'Question removed.' })
   }
 
@@ -2381,7 +2303,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setQuestions(nextQuestions)
     setApprovalSelectedIds((current) => current.filter((id) => id !== questionId))
     if (selectedQuestionId === questionId) {
-      setSelectedQuestionId(nextQuestions[0]?.id ?? null)
+      selectQuestionForEditing(nextQuestions[0]?.id ?? null, nextQuestions[0] ?? null)
     }
     onAlert?.({ tone: 'warning', message: 'Question removed.' })
   }
@@ -2652,58 +2574,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       : `section:${target.sectionId}`
   }
 
-  const toggleDescriptiveMapping = (target) => {
-    const targetKey = getDescriptiveMappingKey(target)
-    setActiveDescriptiveMappingTarget((current) => (
-      getDescriptiveMappingKey(current) === targetKey ? null : target
-    ))
-  }
-
   const getDescriptiveCurriculumValue = (item) => ({
     year: item?.year || selectedQuestion?.year || '',
     subject: item?.subject || selectedQuestion?.subject || '',
     topics: item?.topics ?? [],
     competencies: item?.competencies ?? [],
   })
-
-  const getDescriptiveMappingOptions = (item) => {
-    if (!selectedQuestion) return { years: [], subjects: [], topics: [], competencies: [] }
-    const itemCurriculum = getDescriptiveCurriculumValue(item)
-    const subjects = itemCurriculum.year ? getSubjectsForYear(itemCurriculum.year) : YEAR_OPTIONS.flatMap(getSubjectsForYear)
-    const topics = getAvailableTopics({
-      ...selectedQuestion,
-      year: itemCurriculum.year,
-      subject: itemCurriculum.subject,
-      topics: itemCurriculum.topics,
-    })
-    const itemTopics = itemCurriculum.topics
-    const competencies = getAvailableCompetencies({
-      ...selectedQuestion,
-      year: itemCurriculum.year,
-      subject: itemCurriculum.subject,
-      topics: itemTopics.length ? itemTopics : selectedQuestion.topics,
-    })
-    return { years: YEAR_OPTIONS, subjects: Array.from(new Set(subjects)), topics, competencies }
-  }
-
-  const getDescriptiveTooltipPosition = (anchorElement = null, hasOpenDropdown = false) => {
-    const rect = anchorElement?.getBoundingClientRect?.()
-    const tooltipWidth = 360
-    const tooltipHeight = hasOpenDropdown ? 420 : 320
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : tooltipWidth
-    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : tooltipHeight
-    const usableTooltipHeight = Math.min(tooltipHeight, Math.max(260, viewportHeight - 24))
-    const left = rect ? Math.min(Math.max(12, rect.left), Math.max(12, viewportWidth - tooltipWidth - 12)) : 24
-    const opensAbove = rect ? rect.bottom + usableTooltipHeight + 12 > viewportHeight : false
-    const top = rect
-      ? (opensAbove
-        ? Math.max(12, rect.top - usableTooltipHeight - 8)
-        : Math.min(rect.bottom + 8, Math.max(12, viewportHeight - usableTooltipHeight - 12)))
-      : 24
-    const arrowLeft = rect ? Math.min(Math.max(18, rect.left + (rect.width / 2) - left), tooltipWidth - 18) : 24
-
-    return { top, left, arrowLeft, opensAbove, maxHeight: usableTooltipHeight }
-  }
 
   const updateDescriptiveMappingTarget = (target, patch) => {
     if (!target) return
@@ -2712,49 +2588,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       return
     }
     updateDescriptiveInsideQuestion(target.sectionId, target.childId, patch, target.sectionIndex, target.childIndex)
-  }
-
-  const toggleDescriptiveTopic = (target, item, topic) => {
-    const itemCurriculum = getDescriptiveCurriculumValue(item)
-    const nextTopics = toggleSelection(itemCurriculum.topics, topic)
-    const nextCompetencies = (item.competencies ?? []).filter((competency) => (
-      getAvailableCompetencies({
-        ...selectedQuestion,
-        year: itemCurriculum.year,
-        subject: itemCurriculum.subject,
-        topics: nextTopics,
-      }).some((entry) => entry.value === competency)
-    ))
-    updateDescriptiveMappingTarget(target, {
-      topics: nextTopics,
-      competencies: nextCompetencies,
-    })
-  }
-
-  const toggleDescriptiveCompetency = (target, item, competency) => {
-    updateDescriptiveMappingTarget(target, {
-      competencies: toggleSelection(item.competencies ?? [], competency),
-    })
-  }
-
-  const selectDescriptiveYear = (target, item, year) => {
-    const itemCurriculum = getDescriptiveCurriculumValue(item)
-    const nextSubjects = getSubjectsForYear(year)
-    const nextSubject = nextSubjects.includes(itemCurriculum.subject) ? itemCurriculum.subject : ''
-    updateDescriptiveMappingTarget(target, {
-      year,
-      subject: nextSubject,
-      topics: [],
-      competencies: [],
-    })
-  }
-
-  const selectDescriptiveSubject = (target, subject) => {
-    updateDescriptiveMappingTarget(target, {
-      subject,
-      topics: [],
-      competencies: [],
-    })
   }
 
   const getDescriptiveSampleTopicOptions = (topics, subject) => {
@@ -2849,11 +2682,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       competencySearch: '',
       openDropdown: '',
     })
-  }
-
-  const closeDescriptiveCompetencyTooltip = () => {
-    setActiveDescriptiveMappingTarget(null)
-    setDescriptiveCompetencyDraft(null)
   }
 
   const updateDescriptiveCompetencyDraft = (patch) => {
@@ -2973,27 +2801,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     })
   }
 
-  const removeApprovedQuestionFromQuestionBank = (questionId) => {
-    if (!questionId || typeof window === 'undefined') return
-
-    const existingQuestions = readPublishedQuestionBankQuestions()
-    const nextPublishedQuestions = existingQuestions.filter((question) => question.id !== questionId)
-
-    window.localStorage.setItem(QUESTION_BANK_PUBLISHED_KEY, JSON.stringify(nextPublishedQuestions))
-    window.dispatchEvent(new Event('question-bank-published-questions'))
-    setQuestions((current) => current.map((item) => (
-      item.id === questionId
-        ? {
-          ...item,
-          questionBankStatus: undefined,
-          questionBankSentAt: undefined,
-        }
-        : item
-    )))
-    setApprovedQuestionBankSelectedIds((current) => current.filter((id) => id !== questionId))
-    onAlert?.({ tone: 'warning', message: 'Question removed from Question Bank.' })
-  }
-
   const deleteApprovedQuestionEverywhere = (questionId) => {
     if (!questionId) return
 
@@ -3002,7 +2809,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setApprovedQuestionBankSelectedIds((current) => current.filter((id) => id !== questionId))
     setApprovalSelectedIds((current) => current.filter((id) => id !== questionId))
     if (selectedQuestionId === questionId) {
-      setSelectedQuestionId(null)
+      selectQuestionForEditing(null)
     }
     onAlert?.({ tone: 'warning', message: 'Approved question deleted from Question Bank and All Questions.' })
   }
@@ -3162,11 +2969,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     }))
     sentQuestions.filter(isExcelUploadedQuestion).forEach(replaceQuestionInStorage)
     setActiveQuestionTab('sent')
-    setSelectedQuestionId((currentId) => {
-      if (!selectedIds.has(currentId)) return currentId
+    if (selectedIds.has(selectedQuestionId)) {
       const nextEditable = questions.find((item) => !selectedIds.has(item.id) && !['Sent to Approval', 'Approved'].includes(item.status))
-      return nextEditable?.id ?? null
-    })
+      selectQuestionForEditing(nextEditable?.id ?? null, nextEditable ?? null)
+    }
     setIsApprovalModalOpen(false)
     setApprovalNote('')
     cancelApprovalSelection()
@@ -3210,7 +3016,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         nextQuestion,
       ])
       replaceQuestionInStorage(updatedQuestion)
-      setSelectedQuestionId(nextQuestion.id)
+      selectQuestionForEditing(nextQuestion.id, nextQuestion)
       setGenerationCompleteId(null)
       closeMappingPicker()
       clearCreatedReportForQuestion(questionId)
@@ -3237,7 +3043,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       )),
       nextQuestion,
     ])
-    setSelectedQuestionId(nextQuestion.id)
+    selectQuestionForEditing(nextQuestion.id, nextQuestion)
     closeMappingPicker()
 
     window.setTimeout(() => {
@@ -3326,7 +3132,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       )),
       nextQuestion,
     ])
-    setSelectedQuestionId(nextQuestion.id)
+    selectQuestionForEditing(nextQuestion.id, nextQuestion)
     setGenerationCompleteId(null)
     closeMappingPicker()
     onAlert?.({ tone: 'secondary', message: 'Question saved as draft.' })
@@ -3335,24 +3141,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const openMappingPicker = (type) => {
     setActiveMappingPicker(type)
     setMappingSearchValue('')
-  }
-
-  const closeMappingPicker = () => {
-    setActiveMappingPicker(null)
-    setMappingSearchValue('')
-  }
-
-  const startCurriculumEdit = () => {
-    if (!selectedQuestion) return
-    setCurriculumDraft({
-      year: selectedQuestion.year,
-      subject: selectedQuestion.subject,
-      topics: [...selectedQuestion.topics],
-      competencies: [...selectedQuestion.competencies],
-    })
-    setIsCurriculumEditing(true)
-    setIsDefaultCurriculumOpen(false)
-    closeMappingPicker()
   }
 
   const cancelCurriculumEdit = () => {
@@ -5257,8 +5045,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                 }
                                 if (status !== 'Generating' && !isLockedApprovalCard) {
                                   setOpenCreatedTagsId(null)
-                                  setActiveDescriptiveAnswerTarget(getInitialDescriptiveAnswerTarget(question))
-                                  setSelectedQuestionId(question.id)
+                                  selectQuestionForEditing(question.id, question)
                                   setActiveQuestionTab('create')
                                 }
                               }}
@@ -5276,8 +5063,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                 if (status !== 'Generating' && !isLockedApprovalCard && (event.key === 'Enter' || event.key === ' ')) {
                                   event.preventDefault()
                                   setOpenCreatedTagsId(null)
-                                  setActiveDescriptiveAnswerTarget(getInitialDescriptiveAnswerTarget(question))
-                                  setSelectedQuestionId(question.id)
+                                  selectQuestionForEditing(question.id, question)
                                   setActiveQuestionTab('create')
                                 }
                               }}
@@ -5378,7 +5164,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                   {getRichTextPreview(question.questionText) ? (
                                     <div
                                       className="question-bank-created-question-body"
-                                      dangerouslySetInnerHTML={{ __html: question.questionText }}
+                                      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(question.questionText) }}
                                     />
                                   ) : (
                                     <strong className="question-bank-created-question-body">

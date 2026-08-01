@@ -224,11 +224,6 @@ const getCorrectOptionIndexes = (question) => {
     .filter((index) => index >= 0)
 }
 
-const getCorrectOptionLabel = (question) => {
-  const labels = getCorrectOptionIndexes(question).map((index) => String.fromCharCode(65 + index))
-  return labels.length ? labels.join(', ') : '-'
-}
-
 const getCorrectOptionAnswerText = (question) => {
   const options = getQuestionOptions(question)
   const answers = getCorrectOptionIndexes(question).map((index) => {
@@ -658,7 +653,6 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [isEvaluationFilterOpen, setIsEvaluationFilterOpen] = useState(false)
   const [sortConfig, setSortConfig] = useState({ key: 'studentId', direction: 'asc' })
   const [currentPage, setCurrentPage] = useState(1)
-  const [studentDetailSearch, setStudentDetailSearch] = useState('')
   const [isStudentDrawerOpen, setIsStudentDrawerOpen] = useState(false)
   const [studentDrawerSearch, setStudentDrawerSearch] = useState('')
   const [expandedMcqQuestions, setExpandedMcqQuestions] = useState({})
@@ -901,13 +895,6 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       {sortConfig.key === key ? <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span> : null}
     </button>
   )
-  const showTableAction = (action, row) => {
-    onAlert?.({
-      tone: 'primary',
-      message: `${action} selected for ${row.name}.`,
-    })
-  }
-
   const viewOverallAnalytics = () => {
     window.sessionStorage.removeItem(ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY)
     onNavigate?.(APP_PAGES.ASSESSMENT_OVERALL_ANALYTICS)
@@ -1193,27 +1180,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     window.sessionStorage.removeItem(ASSESSMENT_EVALUATION_STUDENT_KEY)
     window.sessionStorage.removeItem(ASSESSMENT_STUDENT_RESULT_SOURCE_KEY)
     setSelectedStudent(null)
-    setStudentDetailSearch('')
     if (isStudentResultView && resultSource === 'my-assessment') {
       onNavigate?.(APP_PAGES.MY_ASSESSMENT)
       return
     }
     onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)
-  }
-
-  const handleStudentDetailSearch = (value) => {
-    setStudentDetailSearch(value)
-    const query = value.trim().toLowerCase()
-    if (!query) return
-    const matchedStudent = normalizedRows.find((row) => (
-      String(row.id).toLowerCase().includes(query)
-      || String(row.name).toLowerCase().includes(query)
-    ))
-    if (matchedStudent?.isAbsent) {
-      onAlert?.({ tone: 'warning', message: 'Absent student cannot be evaluated.' })
-      return
-    }
-    if (matchedStudent) openStudentEvaluation(matchedStudent)
   }
 
   const handleOverallStudentSearchSubmit = (event) => {
@@ -1530,18 +1501,6 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     )
   }
 
-  const renderAnswerKey = (item, label = 'Answer Key') => {
-    const answerText = getAnswerKeyText(item)
-    if (!answerText) return null
-
-    return (
-      <div className="assessment-answer-key">
-        <strong>{label}</strong>
-        <span>{answerText}</span>
-      </div>
-    )
-  }
-
   const toggleDescriptiveAnswerKey = (questionKey) => {
     setExpandedDescriptiveAnswerKeys((current) => ({
       ...current,
@@ -1601,22 +1560,6 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       </div>
     )
   }
-
-  const renderMcqAnswerMeta = (question, studentAnswerIndex) => (
-    <div className="assessment-question-meta is-mcq-answer">
-      <span>
-        <strong>Answer Key</strong>
-        {getCorrectOptionAnswerText(question)}
-      </span>
-      {Number.isInteger(studentAnswerIndex) ? (
-        <span>
-          <strong>Student Answer</strong>
-          {String.fromCharCode(65 + studentAnswerIndex)}
-        </span>
-      ) : null}
-      {renderAnswerKey(question, 'Explanation')}
-    </div>
-  )
 
   const renderMcqAnswerKeyOnly = (question) => (
     <div className="assessment-question-meta is-mcq-answer">
@@ -1685,7 +1628,6 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const stats = {}
     previewSectionGroups.forEach((section) => {
       section.questions.forEach((question, questionIndex) => {
-        const key = getQuestionKey(question, `${section.key}-${questionIndex}`)
         if (isDescriptiveQuestionType(question?.type)) {
           const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
           const baseKey = getQuestionKey(question, `descriptive-${questionIndex + 1}`)
@@ -1890,10 +1832,6 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const questionKey = getQuestionKey(question, `mcq-${index + 1}`)
     const result = questionEvaluationState[questionKey]?.status || 'pending'
     const maxMarks = getQuestionMarksTotal(question) || 1
-    const attempt = readStoredAttempt(assessment, selectedStudent)
-    const storedStudentAnswer = attempt?.answers?.[getOnlineMcqQuestionKey(question, index)]
-    const studentAnswerIndex = Number.isFinite(Number(storedStudentAnswer)) ? Number(storedStudentAnswer) : null
-    const shouldShowOnlineMcqDetails = !isOffline
     const isExpanded = Boolean(expandedMcqQuestions[questionKey])
     const resultMeta = isOverallAnalyticsView
       ? overallQuestionStats[questionKey]
@@ -2196,6 +2134,36 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       tone: studentResultOutcome.achieved ? 'result-achieved' : 'result-not-achieved',
     }] : []),
   ] : []
+  const studentResultSummaryItems = selectedStudent ? [
+    {
+      label: 'Score',
+      value: `${formatTwoDigit(studentScoringSummary.obtainedMarks)} / ${formatTwoDigit(studentScoringSummary.maxMarks)}`,
+      helper: 'Marks obtained',
+      icon: Award,
+      tone: 'marks',
+    },
+    {
+      label: 'Questions',
+      value: `${formatTwoDigit(studentScoringSummary.attempted)} / ${formatTwoDigit(studentScoringSummary.total)}`,
+      helper: 'Questions attempted',
+      icon: ClipboardList,
+      tone: 'questions',
+    },
+    ...(shouldShowMcqObtained ? [{
+      label: 'MCQ',
+      value: `${formatTwoDigit(mcqScoringSummary.obtainedMarks)} Marks`,
+      helper: `${formatTwoDigit(mcqScoringSummary.attempted)} of ${formatTwoDigit(mcqScoringSummary.total)} attempted`,
+      icon: Check,
+      tone: 'mcq',
+    }] : []),
+    ...(shouldShowDescriptiveObtained ? [{
+      label: 'Descriptive',
+      value: `${formatTwoDigit(descriptiveScoringSummary.obtainedMarks)} Marks`,
+      helper: `${formatTwoDigit(descriptiveScoringSummary.attempted)} of ${formatTwoDigit(descriptiveScoringSummary.total)} attempted`,
+      icon: FileText,
+      tone: 'descriptive',
+    }] : []),
+  ] : []
   const overallAnalyticsDetails = [
     { label: 'Students', badge: `${formatTwoDigit(presentRows.length)} Present / ${formatTwoDigit(absentCount)} Absent`, value: `${formatTwoDigit(completedScoreRows.length)} Evaluated`, icon: Users, tone: 'students' },
     { label: 'Questions', badge: `${formatTwoDigit(questionSummary.mcqCount)} MCQ / ${formatTwoDigit(questionSummary.descriptiveCount)} Desc.`, value: `${formatTwoDigit(questionSummary.totalCount)} Total`, icon: ClipboardList, tone: 'questions' },
@@ -2243,7 +2211,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         <div className="assessment-result-mastery-ring-wrap">
           <svg className="assessment-result-mastery-ring" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Progress Based Mastery segmented chart">
             <circle cx={center} cy={center} r={radius} className="is-track" />
-            {series.map((item, index) => {
+            {series.map((item) => {
               const safeValue = Math.max(0, Math.min(100, item.percentage))
               const segment = Math.max(0, (safeValue / 100) * circumference - gap)
               const currentOffset = offset
@@ -2559,6 +2527,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
 
     return (
       <section className="assessment-result-tag-analytics" aria-label="Question tags performance">
+        <div className="assessment-result-tag-analytics-head">
+          <div>
+            <span>Learning analytics</span>
+            <h3>Performance by learning dimension</h3>
+          </div>
+          <p>{formatTwoDigit(assessmentQuestions.length)} questions analysed</p>
+        </div>
         <div className="assessment-result-chart-grid">
           <article className="assessment-result-chart-card is-category is-mastery">
             <h4><Award size={14} strokeWidth={2.4} />{RESULT_TAG_ANALYTICS.questionCategory.heading}</h4>
@@ -2772,7 +2747,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
 
       {isStudentEvaluationView || isOverallAnalyticsView ? (
         selectedStudent || isOverallAnalyticsView ? (
-        <section className={`assessment-student-evaluation-card ${isReadOnlyQuestionView ? 'is-result-view' : ''}`} aria-label={isOverallAnalyticsView ? 'Overall assessment analytics' : isStudentResultView ? 'Selected student result' : 'Selected student evaluation'}>
+        <section className={`assessment-student-evaluation-card ${isReadOnlyQuestionView ? 'is-result-view' : ''} ${isStudentResultView ? 'is-student-result-page' : ''}`} aria-label={isOverallAnalyticsView ? 'Overall assessment analytics' : isStudentResultView ? 'Selected student result' : 'Selected student evaluation'}>
           <div className={`assessment-student-evaluation-head ${isOverallAnalyticsView ? 'is-overall-analytics-head' : ''} ${!isReadOnlyQuestionView ? 'is-student-evaluation-head' : ''}`}>
             {shouldHideOverallAnalyticsBack ? (
               <span aria-hidden="true" />
@@ -2960,27 +2935,74 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             </aside>
           ) : null}
 
-          <div className={`assessment-student-detail-grid ${isOverallAnalyticsView ? 'is-overall-analytics-grid' : ''}`}>
-            {detailItems.map((item) => (
-              <span key={item.label} className={item.tone ? `is-${item.tone}` : ''}>
-                {item.icon ? <i aria-hidden="true"><item.icon size={15} strokeWidth={2.3} /></i> : null}
-                <span>
-                  <em>
-                    {item.label}
-                    {item.badge ? <b>({item.badge})</b> : null}
-                  </em>
-                  <strong>{item.value}</strong>
-                  {item.subValue ? <small>{item.subValue}</small> : null}
+          {isStudentResultView ? (
+            <section className={`assessment-student-result-overview ${studentResultOutcome?.achieved ? 'is-achieved' : 'is-not-achieved'}`} aria-label="Student performance summary">
+              <div className="assessment-student-result-score">
+                <div className="assessment-student-result-score-copy">
+                  <span><Award size={14} strokeWidth={2.4} /> Performance summary</span>
+                  <h3>{studentResultOutcome?.resultLabel || 'Result pending'}</h3>
+                  <p>{studentResultOutcome?.thresholdLabel || `Required threshold: ${formatTwoDigit(attainmentThreshold)}%`}</p>
+                </div>
+                <div className="assessment-student-result-ring" role="img" aria-label={`Overall score ${formatTwoDigit(studentPercentage)} percent`}>
+                  <svg viewBox="0 0 120 120" aria-hidden="true">
+                    <circle className="is-track" cx="60" cy="60" r="50" pathLength="100" />
+                    <circle
+                      className="is-value"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      pathLength="100"
+                      style={{ strokeDasharray: `${Math.max(0, Math.min(100, studentPercentage))} 100` }}
+                    />
+                  </svg>
+                  <span><strong>{formatTwoDigit(studentPercentage)}%</strong><em>Overall</em></span>
+                </div>
+              </div>
+              <div className="assessment-student-result-stat-grid">
+                {studentResultSummaryItems.map((item) => (
+                  <article key={item.label} className={`is-${item.tone}`}>
+                    <i aria-hidden="true"><item.icon size={16} strokeWidth={2.3} /></i>
+                    <span>
+                      <em>{item.label}</em>
+                      <strong>{item.value}</strong>
+                      <small>{item.helper}</small>
+                    </span>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <div className={`assessment-student-detail-grid ${isOverallAnalyticsView ? 'is-overall-analytics-grid' : ''}`}>
+              {detailItems.map((item) => (
+                <span key={item.label} className={item.tone ? `is-${item.tone}` : ''}>
+                  {item.icon ? <i aria-hidden="true"><item.icon size={15} strokeWidth={2.3} /></i> : null}
+                  <span>
+                    <em>
+                      {item.label}
+                      {item.badge ? <b>({item.badge})</b> : null}
+                    </em>
+                    <strong>{item.value}</strong>
+                    {item.subValue ? <small>{item.subValue}</small> : null}
+                  </span>
                 </span>
-              </span>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {renderOverallAttainmentTabs()}
 
           {renderQuestionTagPerformance()}
 
           <section className="assessment-student-question-area" aria-label={isOverallAnalyticsView ? 'Overall question analytics workspace' : isStudentResultView ? 'Question result workspace' : 'Question evaluation workspace'}>
+            {isStudentResultView ? (
+              <div className="assessment-student-result-section-head">
+                <div>
+                  <span>Detailed review</span>
+                  <h3>Question-wise performance</h3>
+                </div>
+                <p>Review answers, marks, and threshold attainment for every question.</p>
+              </div>
+            ) : null}
             {previewSectionGroups.length ? (
               previewSectionGroups.map((section, sectionIndex) => {
                 const sectionLabel = ['I', 'II', 'III', 'IV', 'V', 'VI'][sectionIndex] || `${sectionIndex + 1}`

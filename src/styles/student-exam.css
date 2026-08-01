@@ -914,9 +914,6 @@
 }
 
 @media (max-width: 1100px) {
-  .student-exam-entry {
-    grid-template-columns: 1fr;
-  }
 
   .student-exam-topbar {
     grid-template-columns: 1fr;
@@ -932,9 +929,6 @@
 }
 
 @media (max-width: 760px) {
-  .student-exam-page {
-    padding: 14px;
-  }
 
   .student-exam-entry,
   .student-exam-stage-card,
@@ -953,9 +947,6 @@
     font-size: 1.3rem;
   }
 
-  .student-exam-stage-media {
-    grid-template-columns: 1fr;
-  }
 
   .student-exam-summary-grid {
     grid-template-columns: 1fr;
@@ -1458,20 +1449,11 @@
     grid-template-columns: 1fr;
   }
 
-  .student-exam-session-banner {
-    grid-template-columns: 1fr;
-  }
 
-  .student-exam-session-banner-status {
-    justify-items: start;
-  }
 
 }
 
 @media (max-width: 760px) {
-  .student-exam-page {
-    padding: 14px;
-  }
 
   .student-exam-entry,
   .student-exam-stage-card,

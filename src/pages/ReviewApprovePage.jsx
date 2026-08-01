@@ -566,16 +566,6 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
     })
   }
 
-  const handleSort = (key) => {
-    if (sortKey === key) {
-      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))
-      return
-    }
-
-    setSortKey(key)
-    setSortDirection(key === 'receivedAt' ? 'desc' : 'asc')
-  }
-
   const handleFilterSortChange = (value) => {
     if (value === 'received-desc') {
       setSortKey('receivedAt')

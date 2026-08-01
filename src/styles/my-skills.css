@@ -227,10 +227,6 @@
   background: linear-gradient(180deg, #ffffff 0%, #fbfcfb 100%);
 }
 
-.my-skills-progress-item-list {
-  display: grid;
-  gap: 10px;
-}
 
 .my-skills-progress-table {
   display: grid;
@@ -679,9 +675,6 @@
   }
 }
 
-.my-skills-shell {
-  gap: 16px;
-}
 
 .my-skills-kicker,
 .my-skills-page .ospe-kicker {
@@ -1206,25 +1199,9 @@
   box-shadow: none;
 }
 
-.my-skills-hero-stats,
-.my-skills-section-grid,
-.my-skills-progress-list,
-.my-skills-insight-grid {
-  display: grid;
-  gap: 12px;
-}
 
-.my-skills-hero-stats {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
 
-.my-skills-section-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 
-.my-skills-progress-grid {
-  grid-template-columns: 1.2fr 0.8fr;
-}
 
 .my-skills-stat-card,
 .my-skills-progress-card,
@@ -1236,54 +1213,12 @@
   border-radius: 20px;
 }
 
-.my-skills-stat-card {
-  grid-template-columns: auto 1fr;
-  align-items: center;
-}
 
-.my-skills-stat-card strong,
-.my-skills-progress-copy strong,
-.my-skills-insight-card strong {
-  display: block;
-  color: #173126;
-}
 
-.my-skills-stat-card strong {
-  font-size: 1rem;
-}
 
-.my-skills-stat-card span,
-.my-skills-progress-copy p,
-.my-skills-insight-card p {
-  color: #72867d;
-  font-size: 0.8rem;
-  line-height: 1.35;
-  margin: 0;
-}
 
-.my-skills-progress-meter {
-  height: 10px;
-  border-radius: 999px;
-  background: #edf4f0;
-  overflow: hidden;
-}
 
-.my-skills-progress-meter span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #1b9a6f, #69d7b0);
-}
 
-.my-skills-progress-stats {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  color: #6f847a;
-  font-size: 0.76rem;
-  font-weight: 700;
-}
 
 .theme-dark .my-skills-overview-main,
 .theme-dark .my-skills-live-card,
@@ -1490,9 +1425,6 @@
     grid-template-columns: 1fr;
   }
 
-  .my-skills-metrics-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 
   .my-skills-activity-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1516,10 +1448,6 @@
 }
 
 @media (max-width: 720px) {
-  .my-skills-page {
-    gap: 12px;
-    padding-top: 10px;
-  }
 
   .my-skills-overview-main,
   .my-skills-live-card,
@@ -1812,13 +1740,6 @@
   align-items: center;
 }
 
-.my-skills-activity-badges,
-.my-skills-activity-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 
 .my-skills-activity-title {
   font-size: clamp(0.98rem, 1vw, 1.1rem);

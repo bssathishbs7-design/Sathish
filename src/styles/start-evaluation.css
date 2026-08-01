@@ -184,11 +184,6 @@
   box-shadow: 0 12px 24px rgba(153, 89, 171, 0.14);
 }
 
-.start-eval-summary-action-approval {
-  border-color: rgba(15, 131, 100, 0.24);
-  background: linear-gradient(135deg, #f2fff9, #e5fbf1);
-  box-shadow: 0 10px 22px rgba(15, 104, 68, 0.12);
-}
 
 .start-eval-summary-tile.start-eval-summary-action-approval span,
 .start-eval-summary-tile.start-eval-summary-action-approval strong,
@@ -196,11 +191,6 @@
   color: #007a5c;
 }
 
-.start-eval-summary-action-approval:hover {
-  border-color: rgba(15, 131, 100, 0.34);
-  background: linear-gradient(135deg, #eafff4, #d9f8eb);
-  box-shadow: 0 14px 26px rgba(15, 104, 68, 0.16);
-}
 
 .start-eval-summary-tile span,
 .start-eval-question-box span,
@@ -344,13 +334,6 @@
   font-size: 0.84rem;
 }
 
-.start-eval-student-panel {
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  max-height: calc(100vh - 170px);
-  overflow: hidden;
-}
 
 .start-eval-panel-head {
   display: flex;
@@ -676,20 +659,7 @@
   box-shadow: 0 14px 26px rgba(18, 42, 30, 0.08);
 }
 
-.start-eval-picker-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #0f8364, #159271);
-  border-color: #0f8364;
-  color: #ffffff;
-}
 
-.start-eval-picker-btn:hover {
-  border-color: #0d7257;
-  background: linear-gradient(135deg, #0d7257, #138764);
-  color: #ffffff;
-}
 
 .start-eval-nav-btn:disabled {
   transform: none;
@@ -697,43 +667,10 @@
   box-shadow: none;
 }
 
-.start-eval-detail-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 12px;
-}
 
-.start-eval-detail-head-badges {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 
-.start-eval-detail-head h2 {
-  margin: 10px 0 4px;
-  color: #163229;
-  font-size: 1.12rem;
-}
 
-.start-eval-detail-head p {
-  margin: 0;
-  color: #71877d;
-  font-size: 0.84rem;
-}
 
-.start-eval-response-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 14px;
-  color: #658175;
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 
 .start-eval-section-tabs {
   display: flex;
@@ -927,13 +864,6 @@
   align-self: start;
 }
 
-.start-eval-question-index {
-  color: #678276;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 
 .start-eval-meta-badge {
   display: inline-flex;
@@ -1013,10 +943,6 @@
   color: #111111;
 }
 
-.start-eval-remarks-panel {
-  display: grid;
-  gap: 10px;
-}
 
 .start-eval-checklist-actions {
   display: grid;
@@ -1324,43 +1250,9 @@
   font-size: 0.8rem;
 }
 
-.start-eval-faculty-list {
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-}
 
-.start-eval-faculty-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid #e5ece8;
-  border-radius: 14px;
-  background: #ffffff;
-}
 
-.start-eval-batch-strip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 14px;
-}
 
-.start-eval-batch-strip span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid #e1e9e4;
-  border-radius: 999px;
-  background: #fbfcfb;
-  color: #5c776a;
-  font-size: 0.76rem;
-  font-weight: 700;
-}
 
 .theme-dark .start-eval-summary-card,
 .theme-dark .start-eval-student-panel,
@@ -1839,49 +1731,15 @@
   font-weight: 700;
 }
 
-.start-eval-submit-card {
-  position: sticky;
-  bottom: 14px;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 14px;
-  padding: 16px 18px;
-  border: 1px solid #dfe8e2;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 36px rgba(18, 42, 30, 0.08);
-}
 
 .start-eval-submit-card.is-ready {
   border-color: rgba(20, 120, 88, 0.18);
   background: linear-gradient(135deg, rgba(236, 250, 244, 0.98), rgba(255, 255, 255, 0.98));
 }
 
-.start-eval-submit-copy {
-  display: grid;
-  gap: 6px;
-}
 
-.start-eval-submit-copy strong {
-  color: #163229;
-  font-size: 0.96rem;
-}
 
-.start-eval-submit-copy p {
-  margin: 0;
-  color: #6d8378;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
 
-.start-eval-submit-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
 
 .start-eval-submit-pill.is-complete {
   border-color: rgba(20, 120, 88, 0.16);
@@ -1908,12 +1766,6 @@
   border-radius: 14px;
 }
 
-.start-eval-submit-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-}
 
 .start-eval-submit-secondary {
   min-width: 108px;
@@ -2227,23 +2079,6 @@
   font-weight: 700;
 }
 
-.start-eval-submit-action-btn,
-.start-eval-submit-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  min-height: 34px;
-  padding: 0;
-  border: 1px solid rgba(20, 120, 88, 0.18);
-  border-radius: 12px;
-  background: rgba(15, 131, 100, 0.08);
-  color: #0f6e57;
-  box-shadow: none;
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
-}
 
 .start-eval-submit-action-btn:hover,
 .start-eval-submit-icon-btn:hover,
@@ -2782,10 +2617,6 @@
     font-size: 0.68rem;
   }
 
-  .start-eval-student-panel {
-    max-height: none;
-    overflow: visible;
-  }
 
   .start-eval-evaluator-grid {
     grid-template-columns: 1fr;

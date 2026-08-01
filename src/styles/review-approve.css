@@ -6,31 +6,9 @@
   gap: 12px;
 }
 
-.review-approve-page-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
 
-.review-approve-page-head h2 {
-  margin: 0;
-  color: #102f3c;
-  font-size: 1.02rem;
-  font-weight: 900;
-  line-height: 1.1;
-}
 
-.review-approve-page-head p {
-  margin: 4px 0 0;
-  color: #607381;
-  font-size: 0.76rem;
-  font-weight: 650;
-}
 
-.review-approve-page .eval-stats {
-  gap: 8px;
-}
 
 .review-approve-page .eval-stat {
   min-height: 54px;
@@ -106,10 +84,6 @@
   color: #00796f;
 }
 
-.review-approve-toolbar {
-  padding: 9px 11px;
-  border-radius: 8px;
-}
 
 .review-approve-content {
   display: grid;
@@ -117,57 +91,12 @@
   min-height: 0;
 }
 
-.review-approve-compact-list {
-  display: grid;
-  min-width: 0;
-  max-height: min(580px, calc(100svh - 315px));
-  overflow: auto;
-  border: 1px solid #dcebe6;
-  border-radius: 8px;
-  background: #ffffff;
-}
 
-.review-approve-compact-head,
-.review-approve-compact-row {
-  display: grid;
-  grid-template-columns: minmax(260px, 1.8fr) minmax(112px, 0.62fr) minmax(128px, 0.7fr) minmax(128px, 0.72fr) minmax(84px, 0.42fr);
-  align-items: center;
-  gap: 10px;
-  min-width: 760px;
-}
 
-.review-approve-compact-head {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  min-height: 38px;
-  padding: 0 12px;
-  border-bottom: 1px solid #dcebe6;
-  background: #f6fbf9;
-  color: #48616d;
-  font-size: 0.68rem;
-  font-weight: 900;
-}
 
-.review-approve-compact-head > span,
-.review-approve-compact-head button {
-  justify-self: start;
-}
 
-.review-approve-compact-row {
-  min-height: 58px;
-  padding: 8px 12px;
-  border-bottom: 1px solid #edf3f1;
-  transition: background 0.15s ease;
-}
 
-.review-approve-compact-row:last-child {
-  border-bottom: 0;
-}
 
-.review-approve-compact-row:hover {
-  background: #fbfffd;
-}
 
 .review-approve-compact-title {
   display: grid;
@@ -195,30 +124,9 @@
   white-space: nowrap;
 }
 
-.review-approve-compact-meta {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
 
-.review-approve-compact-meta strong,
-.review-approve-compact-meta span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-.review-approve-compact-meta strong {
-  color: #294352;
-  font-size: 0.74rem;
-  font-weight: 800;
-}
 
-.review-approve-compact-meta span {
-  color: #718391;
-  font-size: 0.68rem;
-  font-weight: 650;
-}
 
 .review-approve-compact-row .review-approve-type-chip,
 .review-approve-compact-row .review-approve-status-pill {
@@ -269,24 +177,7 @@
   gap: 10px;
 }
 
-.review-approve-compact-icon-btn {
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid #cfe4ff;
-  border-radius: 6px;
-  background: #f4f8ff;
-  color: #2757b8;
-  cursor: pointer;
-}
 
-.review-approve-compact-icon-btn:hover {
-  border-color: #9cc4ff;
-  background: #edf5ff;
-}
 
 .review-approve-compact-card-badges {
   display: flex;
@@ -367,9 +258,6 @@
   justify-content: flex-end;
 }
 
-.review-approve-card-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
 
 .review-approve-card {
   display: grid;
@@ -1041,9 +929,6 @@
   line-height: 1.35;
 }
 
-.review-approve-table-wrap {
-  overflow: auto;
-}
 
 .review-approve-table .review-approve-status-pill {
   justify-self: start;
@@ -1385,12 +1270,6 @@
   color: #8ee4ca;
 }
 
-@media (max-width: 1120px) {
-  .review-approve-card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 980px) {
   .review-approve-toolbar .eval-toolbar-row {
     display: grid;
@@ -1530,23 +1409,8 @@
   overflow: hidden;
 }
 
-.review-approve-page-head {
-  display: grid;
-  gap: 3px;
-  padding: 0 2px;
-}
 
-.review-approve-page-head h2 {
-  font-size: 0.94rem;
-  color: #082431;
-}
 
-.review-approve-page-head p {
-  margin-top: 0;
-  color: #607380;
-  font-size: 0.7rem;
-  font-weight: 500;
-}
 
 .review-approve-page .eval-stats {
   gap: 8px;
@@ -1651,14 +1515,6 @@
   color: #00796f;
 }
 
-.review-approve-toolbar {
-  padding: 9px 10px;
-  border: 0;
-  border-bottom: 1px solid #edf2ef;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
 
 .review-approve-toolbar .eval-toolbar-row {
   display: grid;
@@ -1950,14 +1806,6 @@
   line-height: 1.2;
 }
 
-.review-approve-compact-icon-btn {
-  width: 27px;
-  height: 27px;
-  border-color: #bfdbfe;
-  border-radius: 8px;
-  background: #eff6ff;
-  color: #2563eb;
-}
 
 .review-approve-compact-card-footer {
   padding-top: 2px;
@@ -2127,9 +1975,6 @@
     min-width: max-content;
   }
 
-  .review-approve-toolbar {
-    padding: 8px;
-  }
 
   .review-approve-compact-card-grid {
     grid-template-columns: 1fr;

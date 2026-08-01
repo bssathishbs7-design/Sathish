@@ -64,18 +64,7 @@
   border-bottom: 1px solid #e6efe9;
 }
 
-.ospe-tabs-card,
-.ospe-empty-state,
-.ospe-addon-strip {
-  border: 1px solid #dfe9e2;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #ffffff, #fbfdfc);
-  box-shadow: 0 10px 24px rgba(15, 68, 20, 0.05);
-}
 
-.ospe-tabs-card {
-  padding: 12px;
-}
 
 .ospe-header-tabs {
   margin-top: 0;
@@ -183,34 +172,9 @@
   opacity: 0.75;
 }
 
-.ospe-summary-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
 
-.ospe-summary-card {
-  display: grid;
-  gap: 4px;
-  min-height: 54px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(248, 251, 250, 0.92);
-  border: 1px solid rgba(15, 104, 68, 0.1);
-}
 
-.ospe-summary-card span {
-  color: #6f8377;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 
-.ospe-summary-card strong {
-  color: #153128;
-  font-size: 1.05rem;
-}
 
 .ospe-section-head,
 .ospe-header-topbar,
@@ -267,9 +231,6 @@
   justify-content: flex-end;
 }
 
-.ospe-section-head--stacked {
-  align-items: stretch;
-}
 
 .ospe-section-actions {
   display: flex;
@@ -435,9 +396,6 @@
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
 
-.ospe-header-meta-card--wide {
-  grid-column: span 6;
-}
 
 .ospe-header-meta-card:hover {
   transform: translateY(-2px);
@@ -480,44 +438,9 @@
   line-height: 1.25;
 }
 
-.ospe-generated-strip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid rgba(15, 131, 100, 0.12);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  color: #0f6844;
-}
 
-.ospe-meta-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid #d9e4de;
-  background: #fff;
-  color: #315b50;
-  font-size: 0.8rem;
-  font-weight: 700;
-  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
-}
 
-.ospe-meta-toggle:hover {
-  transform: translateY(-1px);
-  border-color: rgba(15, 131, 100, 0.18);
-  background: #f6fcf9;
-}
 
-.ospe-meta-toggle:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(95, 232, 177, 0.18);
-}
 
 .ospe-settings-panel {
   display: grid;
@@ -632,13 +555,6 @@
   transform: translateX(24px);
 }
 
-.ospe-settings-utility {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-top: 2px;
-}
 
 .ospe-settings-panel .ospe-header-actions {
   display: none;
@@ -652,19 +568,6 @@
   transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.ospe-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 0 11px;
-  border-radius: 10px;
-  border: 1px solid #d9e4de;
-  background: #fff;
-  color: #526071;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
 
 .ospe-back-btn:hover,
 .ospe-page .ghost:hover,
@@ -1014,17 +917,6 @@
   gap: 6px;
 }
 
-.ospe-form-question-panel textarea {
-  min-height: 96px;
-  height: 96px;
-  resize: none;
-  overflow-x: hidden;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  text-align: justify;
-}
 
 .ospe-scaffold-prompt-panel {
   min-width: 0;
@@ -1080,11 +972,6 @@
   align-self: start;
 }
 
-.ospe-scaffold-domain-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-}
 
 .ospe-assessment-card {
   display: grid;
@@ -1214,14 +1101,7 @@
   align-self: end;
 }
 
-.ospe-domain-tags-field {
-  min-width: 0;
-}
 
-.ospe-domain-tags-field .ospe-domain-tags {
-  display: flex;
-  align-items: center;
-}
 
 .ospe-criticality-toggle {
   display: inline-flex;
@@ -1295,22 +1175,7 @@
     0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
-.ospe-domain-tags {
-  position: relative;
-}
 
-.ospe-domain-tags-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 12px;
-  font-size: 0.84rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
 
 .ospe-domain-tags-trigger.is-active {
   border-color: rgba(95, 232, 177, 0.5);
@@ -1318,166 +1183,30 @@
   color: #0f8364;
 }
 
-.ospe-domain-tags-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 4;
-  display: grid;
-  gap: 8px;
-  width: min(320px, 100%);
-  padding: 10px;
-  border: 1px solid #d9e4de;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 14px 26px rgba(18, 63, 47, 0.12);
-}
 
-.ospe-domain-tags-popover::before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 20px;
-  width: 12px;
-  height: 12px;
-  border-top: 1px solid #d9e4de;
-  border-left: 1px solid #d9e4de;
-  background: #ffffff;
-  transform: rotate(45deg);
-}
 
 .ospe-domain-tags-popover .forms-field > span {
   margin-bottom: 4px;
 }
 
-.ospe-form-value-field {
-  position: relative;
-}
 
-.ospe-form-value-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-}
 
-.ospe-add-value-tooltip {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 10px;
-  border: 1px solid #d9e4de;
-  border-radius: 12px;
-  background: #f8fcfa;
-}
 
-.ospe-add-value-tooltip input {
-  width: 100%;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid #d8e5dc;
-  border-radius: 10px;
-}
 
-.ospe-empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
-}
 
-.ospe-empty-state--generator {
-  align-items: flex-start;
-  gap: 14px;
-  padding: 14px 16px;
-}
 
-.ospe-empty-state--generator > div:first-child {
-  max-width: 420px;
-  padding-top: 2px;
-}
 
-.ospe-addon-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-}
 
-.ospe-addon-strip-copy {
-  display: grid;
-  gap: 4px;
-}
 
-.ospe-addon-strip-copy strong {
-  color: #17332a;
-}
 
-.ospe-addon-strip-copy small {
-  color: #62746c;
-}
 
-.ospe-addon-strip-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
 
-.ospe-empty-state > div {
-  display: grid;
-  gap: 4px;
-}
 
-.ospe-empty-state strong {
-  color: #17332a;
-}
 
-.ospe-empty-state small {
-  color: #62746c;
-}
 
-.ospe-scaffolding-trigger-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  min-height: 42px;
-  height: 42px;
-  padding: 0 17px;
-  border-radius: 14px;
-  border-color: rgba(96, 165, 250, 0.28);
-  background: linear-gradient(180deg, #ffffff, #f2f7ff);
-  box-shadow:
-    0 8px 20px rgba(15, 23, 42, 0.08),
-    0 0 0 1px rgba(96, 165, 250, 0.1);
-  color: #2559c5;
-  font-size: 0.93rem;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
 
-.ospe-scaffolding-trigger-button svg {
-  display: block;
-  flex: 0 0 auto;
-  transform: translateY(-0.5px);
-}
 
-.ospe-scaffolding-trigger-button span {
-  display: block;
-  line-height: 1;
-}
 
-.ospe-scaffolding-trigger-button:hover,
-.ospe-scaffolding-trigger-button:focus-visible,
-.ospe-scaffolding-trigger-button[aria-expanded='true'] {
-  border-color: rgba(59, 130, 246, 0.42);
-  background: linear-gradient(180deg, #ffffff, #edf5ff);
-  color: #1d4ed8;
-}
 
 .ospe-scaffolding-tooltip {
   position: relative;
@@ -3052,10 +2781,6 @@
     align-items: stretch;
   }
 
-  .ospe-settings-utility,
-  .ospe-header-badges {
-    align-items: stretch;
-  }
 
   .ospe-builder-card-topline > .ospe-builder-card-copy {
     padding-right: 0;
@@ -3076,9 +2801,6 @@
     grid-column: span 1;
   }
 
-  .ospe-summary-strip {
-    grid-template-columns: 1fr;
-  }
 
   .ospe-header-actions > *,
   .ospe-footer-actions > *,
@@ -3096,16 +2818,7 @@
     flex-direction: column;
   }
 
-  .ospe-addon-strip,
-  .ospe-addon-strip-actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
 
-  .ospe-addon-strip-actions > * {
-    width: 100%;
-    justify-content: center;
-  }
 
   .ospe-form-edit-layout,
   .ospe-form-response-row {

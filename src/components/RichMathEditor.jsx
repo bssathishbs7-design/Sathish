@@ -17,6 +17,7 @@ import {
   renderMathTextToHtml,
   stripHtml,
 } from '../utils/mathText'
+import { sanitizeRichHtml } from '../utils/sanitizeHtml'
 
 const FORMAT_BUTTONS = [
   { command: 'bold', label: 'Bold', icon: Bold },
@@ -125,13 +126,14 @@ export default function RichMathEditor({
 
   useEffect(() => {
     const editor = editorRef.current
-    if (!editor || editor.innerHTML === currentValue) return
-    editor.innerHTML = currentValue
+    const safeValue = sanitizeRichHtml(currentValue)
+    if (!editor || editor.innerHTML === safeValue) return
+    editor.innerHTML = safeValue
   }, [currentValue])
 
   const emitChange = () => {
     if (readOnly) return
-    onChange?.(editorRef.current?.innerHTML ?? '')
+    onChange?.(sanitizeRichHtml(editorRef.current?.innerHTML ?? ''))
   }
 
   const runCommand = (command, value = null) => {

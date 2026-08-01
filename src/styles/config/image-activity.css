@@ -3448,13 +3448,6 @@
   line-height: 1.65;
 }
 
-.image-activity-question-detail-pill {
-  color: #0f8364;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 
 .image-activity-question-detail-pill {
   color: #0f8364;
@@ -6339,9 +6332,6 @@
 }
 
 @media (max-width: 1240px) {
-  .image-activity-banner--enhanced {
-    grid-template-columns: 1fr;
-  }
 
   .image-activity-config-panel--enhanced {
     justify-self: stretch;

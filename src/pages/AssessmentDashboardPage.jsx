@@ -132,7 +132,7 @@ const readAssessmentControlState = (assessment) => {
   }
 }
 
-const getStudentAssessmentLockState = (assessment, studentId = CURRENT_STUDENT_ID, now = new Date()) => {
+const getStudentAssessmentLockState = (assessment, studentId = CURRENT_STUDENT_ID) => {
   const state = readAssessmentControlState(assessment)?.[studentId] || {}
   const isViolation = state.invigilatorLock?.active === true
   const isLocked = isViolation
@@ -523,8 +523,6 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     }
     const handleExamControlsChange = () => refreshPublishedAssessments()
 
-    refreshPublishedAssessments()
-    setScheduleNow(new Date())
     const intervalId = window.setInterval(() => {
       refreshPublishedAssessments()
       setScheduleNow(new Date())

@@ -402,11 +402,9 @@ export default function BlueprintPage() {
     && savedTopicGroups.every((group) => collapsedSavedTopics[group.topic])
 
   const saveCompletedCorrelationRows = () => {
-    const currentRows = new Map(filteredCompetencies.map((row) => [getCompetencyKey(row), row]))
     setSavedRows((current) => {
       const next = { ...current }
       completedRowKeys.forEach((key) => {
-        const row = currentRows.get(key)
         const values = ratingValues[key] ?? {}
         const rowType = values.type || (selectedType === 'All' ? 'N/A' : selectedType)
         const usesImpactFrequency = rowType === 'Clinical' && (showImpactFrequencyFields || rowImpactFrequencyEnabled[key])

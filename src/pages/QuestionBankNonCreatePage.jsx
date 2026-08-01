@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, Upload, X } from 'lucide-react'
+import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import { assignInstituteQuestionBankIds, getInstituteQuestionBankId } from '../utils/questionBankIdentity'
 import { APP_PAGES } from '../config/appPages'
@@ -21,6 +21,7 @@ const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const QUESTION_BANK_FAVORITE_STORAGE_KEYS = [QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY, QUESTION_BANK_STORAGE_KEY]
+const SHOW_LEGACY_GRID_DETAIL_META = false
 const REPORT_REASON_OPTIONS = [
   'Wrong answer',
   'Duplicate question',
@@ -131,7 +132,7 @@ const getQuestionBankDisplayId = (question, questionNumber = null) => {
     ? instituteQuestionBankId || `INS-A01-${displayNumber}`
     : `MED-A01-${displayNumber}`
 }
-const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionControls = null, questionNumber = null) => {
+const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionControls = null) => {
   const isMedsySaq = isMedsySaqQuestion(question)
   const categoryLabel = getQuestionCategoryLabel(question?.questionCategory, question)
   const hiddenTagCount = getOptionalTagGroups(question).reduce((total, group) => total + group.values.length, 0)
@@ -231,8 +232,6 @@ const getMedsySeedMeta = (row, index) => ({
 const createMedsyMcqSampleQuestions = () => getMedsySeedRows(0, MEDSY_QUESTION_BANK_SEED_COUNTS.mcq).map((row, index) => {
   const questionNumber = index + 1
   const meta = getMedsySeedMeta(row, index)
-  const competencyCode = row.code || `C${questionNumber}`
-
   return {
     id: `medsy-uploaded-sample-${questionNumber}`,
     type: 'MCQ',
@@ -374,14 +373,6 @@ const isEditedQuestion = (question) => Boolean(
 const isMedsyQuestion = (question) => (
   getQuestionAuthorName(question).trim().toLowerCase() === 'medsy'
   && !isEditedQuestion(question)
-)
-
-const isExcelUploadedQuestion = (question) => (
-  !isMedsyQuestion(question)
-  && (
-    question?.source === 'Excel Upload'
-    || Boolean(question?.uploadBatchId)
-  )
 )
 
 const isApprovedQuestion = (question) => (
@@ -567,19 +558,6 @@ const readAllQuestionBankQuestions = () => {
   })
 }
 
-const getListSummary = (values, fallback = '-') => {
-  const list = Array.isArray(values) ? values.filter(Boolean) : []
-  return list.length ? list.join(', ') : fallback
-}
-
-const getTableTagSummary = (question) => {
-  const tagSummary = getOptionalTagGroups(question)
-    .map((group) => `${group.label}: ${group.values.join(', ')}`)
-    .join(' | ')
-
-  return tagSummary || '-'
-}
-
 const getOptionalTagGroups = (question) => [
   { label: 'Thinking Level', values: [question?.thinkingLevel].filter(Boolean) },
   { label: 'Difficulty Level', values: [question?.difficultyLevel].filter(Boolean) },
@@ -633,18 +611,6 @@ const renderQuestionInlineTagPanel = (question, questionNumber = null) => {
       ))}
     </div>
   )
-}
-
-const getSentDate = (value) => {
-  if (!value) return 'Sent date not available'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return 'Sent date not available'
-
-  return new Intl.DateTimeFormat('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(date)
 }
 
 const getThinkingBadgeClassName = (value) => {
@@ -883,72 +849,6 @@ const getQuestionMarksTotal = (question) => {
   return parseMarksValue(question.marks)
 }
 
-const getQuestionSourceType = (question) => (
-  isMedsyQuestion(question) || isExcelUploadedQuestion(question) ? 'Uploaded' : 'Created'
-)
-
-const getAuthorBadgeClassName = (question) => (
-  isExcelUploadedQuestion(question)
-    ? 'is-excel-uploaded-author'
-    : getQuestionSourceType(question) === 'Uploaded'
-      ? 'is-uploaded-author'
-      : 'is-created-author'
-)
-
-const getAuthorBadgeInitial = (question) => (
-  isMedsyQuestion(question) ? 'M' : isExcelUploadedQuestion(question) ? '' : 'C'
-)
-
-const getAuthorBadgeTooltip = (question) => (
-  isEditedQuestion(question)
-    ? 'Edited question'
-    : isExcelUploadedQuestion(question)
-      ? 'Uploaded question'
-      : isMedsyQuestion(question)
-        ? 'Medsy'
-        : getQuestionAuthorName(question)
-)
-
-const getQuestionUploadedByName = (question) => (
-  question?.uploadedByName
-  ?? question?.uploadedBy
-  ?? question?.uploaded_by
-  ?? 'Not set'
-)
-
-const getUploadSourceTooltipData = (question) => ({
-  authorBy: getQuestionAuthorName(question) || 'Not set',
-  uploadedBy: getQuestionUploadedByName(question),
-})
-
-const renderSourceBadge = (question, className, tooltipHandlers = {}) => (
-  <span
-    className={`${className} assessment-page-source-badge ${getAuthorBadgeClassName(question)} ${isEditedQuestion(question) ? 'is-edited-author' : ''}`}
-    title={getAuthorBadgeTooltip(question)}
-    aria-label={getAuthorBadgeTooltip(question)}
-    tabIndex={isExcelUploadedQuestion(question) ? 0 : undefined}
-    onMouseEnter={(event) => tooltipHandlers.onOpen?.(event, question)}
-    onMouseLeave={tooltipHandlers.onClose}
-    onFocus={(event) => tooltipHandlers.onOpen?.(event, question)}
-    onBlur={tooltipHandlers.onClose}
-    onClick={(event) => {
-      if (!isExcelUploadedQuestion(question)) return
-      event.stopPropagation()
-      tooltipHandlers.onOpen?.(event, question)
-    }}
-  >
-    {isEditedQuestion(question) ? (
-      <Shuffle size={14} strokeWidth={2.4} />
-    ) : isExcelUploadedQuestion(question) ? (
-      <Upload size={14} strokeWidth={2.4} />
-    ) : isMedsyQuestion(question) ? (
-      <img className="assessment-page-medsy-mark" src={medsyIcon} alt="" aria-hidden="true" />
-    ) : (
-      getAuthorBadgeInitial(question)
-    )}
-  </span>
-)
-
 const formatMetricCount = (value) => (
   new Intl.NumberFormat('en-IN').format(Number(value) || 0)
 )
@@ -1040,51 +940,6 @@ const hasBooleanFilterMatch = (selectedValues, isMatch) => {
   return selectedValues.includes(isMatch ? 'Yes' : 'No')
 }
 
-const applyFilterSetToQuestion = (question, filterSet) => {
-  if (!hasFilterMatch(filterSet.authors ?? [], getQuestionAuthorName(question))) return false
-  if (!hasFilterMatch(filterSet.types ?? [], getQuestionTypeFilterLabel(question))) return false
-  if (!hasFilterMatch(filterSet.years ?? [], question.year)) return false
-  if (!hasFilterMatch(filterSet.subjects ?? [], question.subject)) return false
-  if (!hasFilterMatch(filterSet.topics ?? [], question.topics ?? [])) return false
-  if (!hasFilterMatch(filterSet.competencies ?? [], question.competencies ?? [])) return false
-  if (!hasFilterMatch(filterSet.categories ?? [], getQuestionCategoryLabel(question.questionCategory, question))) return false
-  if (!hasFilterMatch(filterSet.thinkingLevels ?? [], getThinkingLevelLabel(question.thinkingLevel))) return false
-  if (!hasFilterMatch(filterSet.difficultyLevels ?? [], question.difficultyLevel)) return false
-  if (!hasFilterMatch(filterSet.cognitiveLevels ?? [], question.cognitiveLevel)) return false
-  if (!hasFilterMatch(filterSet.cognitiveFunctions ?? [], question.cognitiveFunction)) return false
-  if (!hasFilterMatch(filterSet.skillFocuses ?? [], question.skillFocus)) return false
-  if (!hasFilterMatch(filterSet.organSystems ?? [], question.organSystem)) return false
-  if (!hasFilterMatch(filterSet.organSubSystems ?? [], question.organSubSystems ?? [])) return false
-  if (!hasFilterMatch(filterSet.diseaseTags ?? [], question.diseaseTags ?? [])) return false
-  if (!hasFilterMatch(filterSet.keyConcepts ?? [], question.keyConcepts ?? [])) return false
-  if (!hasBooleanFilterMatch(filterSet.sharedToStudents ?? [], isSharedToStudentsQuestion(question))) return false
-  if (!hasBooleanFilterMatch(filterSet.usedInAssessment ?? [], isUsedInAssessmentQuestion(question))) return false
-  return true
-}
-
-const nonCreateHighlights = [
-  {
-    title: 'Question review',
-    description: 'View and organize question bank items that are not part of the create workflow.',
-    icon: FileSearch,
-  },
-  {
-    title: 'Mapped collections',
-    description: 'Track existing questions by subject, topic, competency, difficulty, and status.',
-    icon: ClipboardList,
-  },
-  {
-    title: 'Readiness status',
-    description: 'Use this area for non-authoring question bank tasks, checks, and references.',
-    icon: ListChecks,
-  },
-]
-
-const isQuestionBankDashboardWelcomeDismissed = () => {
-  if (typeof window === 'undefined') return false
-  return window.localStorage.getItem(QUESTION_BANK_DASHBOARD_WELCOME_DISMISSED_KEY) === 'true'
-}
-
 const readAssessmentDrafts = () => {
   if (typeof window === 'undefined') return []
   try {
@@ -1143,7 +998,6 @@ export default function QuestionBankNonCreatePage({
 }) {
   const resolvedMode = mode === 'editable' ? 'editable' : 'readonly'
   const isEditable = resolvedMode === 'editable'
-  const isReadonly = resolvedMode === 'readonly'
   const filterHeaderRef = useRef(null)
   const moreFiltersRef = useRef(null)
   const selectionBarRef = useRef(null)
@@ -1160,7 +1014,7 @@ export default function QuestionBankNonCreatePage({
   const [isFilterHeaderCompact, setIsFilterHeaderCompact] = useState(false)
   const [isCompactFilterTrayOpen, setIsCompactFilterTrayOpen] = useState(false)
   const pageSize = PAGE_SIZE
-  const [currentPage, setCurrentPage] = useState(1)
+  const [pageState, setPageState] = useState({ key: '', page: 1 })
   const [activeTagsId, setActiveTagsId] = useState('')
   const [activeOptionDistractorId, setActiveOptionDistractorId] = useState('')
   const [expandedTableRows, setExpandedTableRows] = useState([])
@@ -1174,7 +1028,6 @@ export default function QuestionBankNonCreatePage({
   const [showMetricsLanding, setShowMetricsLanding] = useState(() => !embedded)
   const [showDashboardWelcomeToast, setShowDashboardWelcomeToast] = useState(() => !embedded)
   const [metricTooltip, setMetricTooltip] = useState(null)
-  const [sourceBadgeTooltip, setSourceBadgeTooltip] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
   const [createdReportedQuestionRecords, setCreatedReportedQuestionRecords] = useState(() => readCreatedReportedQuestionRecords())
   const [reportQuestion, setReportQuestion] = useState(null)
@@ -1189,28 +1042,24 @@ export default function QuestionBankNonCreatePage({
     () => new Set((addedQuestionIds ?? []).map((id) => String(id ?? '')).filter(Boolean)),
     [addedQuestionIds],
   )
+  const pageStateKey = `${activeMetric}:${JSON.stringify(filters)}`
+  const currentPage = pageState.key === pageStateKey ? pageState.page : 1
+  const setCurrentPage = (nextPage) => {
+    setPageState((current) => {
+      const currentPageValue = current.key === pageStateKey ? current.page : 1
+      return {
+        key: pageStateKey,
+        page: typeof nextPage === 'function' ? nextPage(currentPageValue) : nextPage,
+      }
+    })
+  }
+  const availableSelectedGridQuestionIds = selectedGridQuestionIds.filter(
+    (id) => !addedQuestionIdSet.has(String(id)),
+  )
   const isQuestionAddedToAssessment = (question) => (
     addedQuestionIdSet.has(String(question?.id ?? ''))
     || addedQuestionIdSet.has(String(question?.originalQuestionId ?? ''))
   )
-
-  useEffect(() => {
-    if (!isReadonly || embedded) return
-    setSelectedGridAction('')
-    setSelectedGridQuestionIds([])
-    setSelectionBarPosition(null)
-    setAssessmentChooserOpen(false)
-  }, [embedded, isReadonly])
-
-  useEffect(() => {
-    if (selectedGridQuestionIds.length) return
-    setAssessmentChooserOpen(false)
-  }, [selectedGridQuestionIds.length])
-
-  useEffect(() => {
-    if (!addedQuestionIdSet.size) return
-    setSelectedGridQuestionIds((current) => current.filter((id) => !addedQuestionIdSet.has(String(id))))
-  }, [addedQuestionIdSet])
 
   const metricFilteredQuestions = useMemo(() => {
     if (activeMetric === 'suggested') {
@@ -1608,16 +1457,6 @@ export default function QuestionBankNonCreatePage({
   ]
   const visibleQuestionMetrics = []
   const questionMetricByKey = Object.fromEntries(questionMetrics.map((metric) => [metric.key, metric]))
-  const questionTypeDonut = createDonutDistribution({
-    MCQ: landingValueCounts.types.MCQ ?? 0,
-    LAQs: landingValueCounts.types['Descriptive (LAQs)'] ?? 0,
-    SAQs: landingValueCounts.types['Descriptive (SAQs)'] ?? 0,
-    MEQs: landingValueCounts.types['Descriptive (MEQs)'] ?? 0,
-  }, ['MCQ', 'LAQs', 'SAQs', 'MEQs'], ['#2563eb', '#f59e0b', '#14b8a6', '#8b5cf6'])
-  const questionTypeLabelItems = ['MCQ', 'LAQs', 'SAQs', 'MEQs'].map((label) => ({
-    label,
-    color: questionTypeDonut.segments.find((segment) => segment.label === label)?.color ?? '#cbd5e1',
-  }))
   const createBarRows = (items, colors = [], options = {}) => {
     const allRows = items.map((item, index) => ({
       ...item,
@@ -1686,6 +1525,8 @@ export default function QuestionBankNonCreatePage({
     setShowMetricsLanding(false)
     setOpenFilterKey('')
     setShowAdvancedFilters(false)
+    setExpandedTableRows([])
+    setSelectedGridQuestionIds([])
   }
 
   const viewAllQuestions = () => {
@@ -1695,6 +1536,8 @@ export default function QuestionBankNonCreatePage({
     setOpenFilterKey('')
     setShowAdvancedFilters(false)
     setShowDashboardWelcomeToast(false)
+    setExpandedTableRows([])
+    setSelectedGridQuestionIds([])
   }
 
   const saveLandingFiltersAsMetricDefault = () => {
@@ -1708,11 +1551,8 @@ export default function QuestionBankNonCreatePage({
     setShowDashboardWelcomeToast(false)
     setCurrentPage(1)
     setOpenFilterKey('')
-  }
-
-  const clearLandingFilters = () => {
-    setLandingFilters(createEmptyFilters())
-    setOpenFilterKey('')
+    setExpandedTableRows([])
+    setSelectedGridQuestionIds([])
   }
 
   const setCurrentFiltersAsMetricDefault = () => {
@@ -1766,11 +1606,11 @@ export default function QuestionBankNonCreatePage({
     if (addedQuestionIdSet.has(String(questionId))) return
     setIsEmbeddedSelectionBarClosed(false)
     setIsEmbeddedSelectionBarVisible(true)
-    setSelectedGridQuestionIds((current) => (
-      current.includes(questionId)
-        ? current.filter((id) => id !== questionId)
-        : [...current, questionId]
-    ))
+    const nextSelection = availableSelectedGridQuestionIds.includes(questionId)
+      ? availableSelectedGridQuestionIds.filter((id) => id !== questionId)
+      : [...availableSelectedGridQuestionIds, questionId]
+    setSelectedGridQuestionIds(nextSelection)
+    if (!nextSelection.length) setAssessmentChooserOpen(false)
   }
 
   const toggleGridQuestionSelectionFromRow = (questionId) => {
@@ -1791,19 +1631,19 @@ export default function QuestionBankNonCreatePage({
 
   const getSelectedAssessmentQuestions = () => (
     publishedQuestions.filter((item) => (
-      selectedGridQuestionIds.includes(item.id) && !isQuestionAddedToAssessment(item)
+      availableSelectedGridQuestionIds.includes(item.id) && !isQuestionAddedToAssessment(item)
     ))
   )
 
   const addSelectedQuestionsToEmbeddedAssessment = () => {
-    if (!selectedGridQuestionIds.length) return
+    if (!availableSelectedGridQuestionIds.length) return
     const selectedQuestions = getSelectedAssessmentQuestions()
     onAddToAssessment?.(selectedQuestions)
     resetAssessmentSelection()
   }
 
   const openAssessmentChooser = () => {
-    if (!selectedGridQuestionIds.length) return
+    if (!availableSelectedGridQuestionIds.length) return
     setDraftAssessmentOptions(readAssessmentDrafts())
     setAssessmentChooserOpen((current) => !current)
   }
@@ -1856,12 +1696,13 @@ export default function QuestionBankNonCreatePage({
   }
 
   const addSelectedQuestionsToNewAssessment = () => {
-    const now = Date.now()
+    const uniqueId = window.crypto.randomUUID()
+    const createdAt = new Date().toISOString()
     persistSelectedQuestionsToAssessment({
       ...DEFAULT_ASSESSMENT_SETUP,
-      assessmentId: `assessment-${now}`,
-      assessmentName: `Assessment ${new Date(now).toLocaleDateString('en-IN')}`,
-      createdAt: new Date(now).toISOString(),
+      assessmentId: `assessment-${uniqueId}`,
+      assessmentName: 'New Assessment',
+      createdAt,
     })
   }
 
@@ -2134,87 +1975,6 @@ export default function QuestionBankNonCreatePage({
     )
   }
 
-  const renderQuestionRowActions = (question, questionId, questionNumber, isTableRowOpen) => {
-    const isFavorite = isFavoriteQuestion(question)
-
-    return (
-      <span className="assessment-page-grid-row-actions" onClick={(event) => event.stopPropagation()}>
-        {isEditable && isReportMetricActive ? (
-          <button
-            type="button"
-            className="assessment-page-grid-row-action"
-            onClick={() => {
-              if (isReportMetricActive) {
-                withdrawReportedQuestion(question.id)
-                return
-              }
-
-              openReportModal(question)
-            }}
-            title={isReportMetricActive ? 'Withdraw report' : 'Report question'}
-            aria-label={`${isReportMetricActive ? 'Withdraw report for' : 'Report'} question ${questionNumber}`}
-          >
-            <Flag size={14} strokeWidth={2.2} />
-            {isReportMetricActive ? <span>Withdraw</span> : null}
-          </button>
-        ) : null}
-        {isEditable && !isReportMetricActive ? (
-          <button
-            type="button"
-            className={`assessment-page-grid-row-action is-icon-only is-favorite ${isFavorite ? 'is-active' : ''}`}
-            onClick={() => toggleQuestionFavorite(questionId)}
-            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-            aria-label={`${isFavorite ? 'Remove' : 'Add'} question ${questionNumber} ${isFavorite ? 'from' : 'to'} favorites`}
-            aria-pressed={isFavorite}
-          >
-            <Star size={15} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="assessment-page-grid-collapse-indicator"
-          onClick={() => toggleGridRowExpansion(questionId, isTableRowOpen)}
-          aria-label={`${isTableRowOpen ? 'Collapse' : 'Expand'} question ${questionNumber}`}
-        >
-          {isTableRowOpen ? <ChevronUp size={16} strokeWidth={2.4} /> : <ChevronDown size={16} strokeWidth={2.4} />}
-        </button>
-      </span>
-    )
-  }
-
-  const openSourceBadgeTooltip = (event, question) => {
-    if (!isExcelUploadedQuestion(question)) return
-    const rect = event.currentTarget.getBoundingClientRect()
-    setSourceBadgeTooltip({
-      id: question.id ?? getQuestionPreview(question),
-      top: rect.bottom + 10,
-      left: rect.left + (rect.width / 2),
-      ...getUploadSourceTooltipData(question),
-    })
-  }
-
-  const closeSourceBadgeTooltip = () => {
-    setSourceBadgeTooltip(null)
-  }
-
-  const sourceBadgeTooltipHandlers = {
-    onOpen: openSourceBadgeTooltip,
-    onClose: closeSourceBadgeTooltip,
-  }
-
-  const renderQuestionTagBadges = (question) => (
-    <>
-      {renderSourceBadge(question, 'assessment-page-grid-author-label', sourceBadgeTooltipHandlers)}
-      {getQuestionMarksTotal(question) > 0 ? (
-        <span className="assessment-page-table-value-pill assessment-page-marks-badge">
-          {getQuestionMarksTotal(question)}M
-        </span>
-      ) : null}
-      {question.difficultyLevel ? <span className="assessment-page-table-value-pill assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
-      {question.thinkingLevel ? <span className={`assessment-page-table-value-pill ${getThinkingBadgeClassName(question.thinkingLevel)}`}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
-    </>
-  )
-
   const handleGridRowAction = (questionId, isTableRowOpen) => {
     if (selectedGridAction) {
       toggleGridQuestionSelection(questionId)
@@ -2468,15 +2228,6 @@ export default function QuestionBankNonCreatePage({
       </div>
     )
   }
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [activeMetric, filters, pageSize])
-
-  useEffect(() => {
-    setExpandedTableRows([])
-    setSelectedGridQuestionIds([])
-  }, [activeMetric])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -3034,8 +2785,8 @@ export default function QuestionBankNonCreatePage({
                     >
                       <ListChecks size={14} strokeWidth={2.3} />
                       Add to Students
-                      {selectedGridAction === 'assessment' && selectedGridQuestionIds.length ? (
-                        <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
+                      {selectedGridAction === 'assessment' && availableSelectedGridQuestionIds.length ? (
+                        <span className="assessment-page-grid-action-count">{availableSelectedGridQuestionIds.length}</span>
                       ) : null}
                     </button>
                     <button
@@ -3046,8 +2797,8 @@ export default function QuestionBankNonCreatePage({
                     >
                       <Share2 size={14} strokeWidth={2.3} />
                       Share to Students
-                      {selectedGridAction === 'learn' && selectedGridQuestionIds.length ? (
-                        <span className="assessment-page-grid-action-count">{selectedGridQuestionIds.length}</span>
+                      {selectedGridAction === 'learn' && availableSelectedGridQuestionIds.length ? (
+                        <span className="assessment-page-grid-action-count">{availableSelectedGridQuestionIds.length}</span>
                       ) : null}
                     </button>
                   </>
@@ -3302,7 +3053,7 @@ export default function QuestionBankNonCreatePage({
                   const areSummaryTagsOpen = activeTagsId === summaryTagsId
                   const isTagsOpen = activeTagsId === tableTagsId
                   const isTableRowOpen = expandedTableRows.includes(questionId)
-                  const isGridQuestionSelected = selectedGridQuestionIds.includes(questionId)
+                  const isGridQuestionSelected = availableSelectedGridQuestionIds.includes(questionId)
                   const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
                   const isDescriptive = isDescriptiveQuestion(question)
                   const isMcq = getQuestionTypeLabel(question) === 'MCQ'
@@ -3445,9 +3196,9 @@ export default function QuestionBankNonCreatePage({
                                   <span>{stripHtml(question.answerKey)}</span>
                                 </div>
                               ) : null}
-                              {false && (tagGroups.length || curriculum.path.length || curriculum.competencyCode) ? (
+                              {SHOW_LEGACY_GRID_DETAIL_META && (tagGroups.length || curriculum.path.length || curriculum.competencyCode) ? (
                                 <div className="assessment-page-grid-detail-footer-meta">
-                                  {false && tagGroups.length ? (
+                                  {SHOW_LEGACY_GRID_DETAIL_META && tagGroups.length ? (
                                     <div className="assessment-page-grid-question-meta assessment-page-grid-detail-extra-tags">
                                       <span className="assessment-page-question-tags-wrap">
                                         <button
@@ -3544,11 +3295,14 @@ export default function QuestionBankNonCreatePage({
             aria-live="polite"
           >
             <span>
-              <strong>{selectedGridQuestionIds.length}</strong>
+              <strong>{availableSelectedGridQuestionIds.length}</strong>
               Selected
             </span>
             <div className="assessment-page-selection-bar-actions">
-              <button type="button" className="is-clear" onClick={() => setSelectedGridQuestionIds([])}>
+              <button type="button" className="is-clear" onClick={() => {
+                setSelectedGridQuestionIds([])
+                setAssessmentChooserOpen(false)
+              }}>
                 Clear
               </button>
               {hasEmbeddedAssessmentSelection || selectedGridAction ? (
@@ -3557,7 +3311,7 @@ export default function QuestionBankNonCreatePage({
                     type="button"
                     className="is-primary"
                     onClick={hasEmbeddedAssessmentSelection ? addSelectedQuestionsToEmbeddedAssessment : openAssessmentChooser}
-                    disabled={!selectedGridQuestionIds.length}
+                    disabled={!availableSelectedGridQuestionIds.length}
                     aria-expanded={!hasEmbeddedAssessmentSelection && assessmentChooserOpen}
                   >
                     Add to Assessment
@@ -3597,7 +3351,7 @@ export default function QuestionBankNonCreatePage({
                   type="button"
                   className="is-primary is-share"
                   onClick={() => setSelectedGridAction('learn')}
-                  disabled={!selectedGridQuestionIds.length}
+                  disabled={!availableSelectedGridQuestionIds.length}
                 >
                   <Share2 size={14} strokeWidth={2.4} />
                   Share to Students
@@ -3753,28 +3507,6 @@ export default function QuestionBankNonCreatePage({
             <strong>No matching questions</strong>
             <p>Try changing the search text, source, or author filter.</p>
           </section>
-        ) : null}
-
-        {sourceBadgeTooltip && typeof document !== 'undefined' ? createPortal(
-          <div
-            className="assessment-page-upload-source-tooltip"
-            role="tooltip"
-            style={{
-              top: `${sourceBadgeTooltip.top}px`,
-              left: `${sourceBadgeTooltip.left}px`,
-            }}
-          >
-            <span className="assessment-page-upload-source-tooltip-arrow" aria-hidden="true" />
-            <span className="assessment-page-upload-source-tooltip-row">
-              <strong>Author By</strong>
-              <span>{sourceBadgeTooltip.authorBy}</span>
-            </span>
-            <span className="assessment-page-upload-source-tooltip-row">
-              <strong>Uploaded By</strong>
-              <span>{sourceBadgeTooltip.uploadedBy}</span>
-            </span>
-          </div>,
-          document.body,
         ) : null}
 
         {!publishedQuestions.length && !showMetricsLanding ? (

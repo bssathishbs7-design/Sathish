@@ -50,29 +50,6 @@ const assessmentMetrics = [
   },
 ]
 
-const selectOptions = {
-  colleges: [
-    'Sri Ramachandra Institute of Higher Education and Research',
-    'Saveetha Institute of Medical and Technical Sciences',
-    'SRM Medical College Hospital and Research Centre',
-    'Sri Manakula Vinayagar Medical College and Hospital',
-  ],
-  examCategories: [
-    'Internal Assessment',
-    'University Exam',
-    'Formative Assessment',
-    'Summative Assessment',
-    'Theory Exam',
-    'Practical Exam',
-    'Viva Voce',
-    'Mock Test',
-    'Entrance/Screening Test',
-  ],
-  courses: ['India MBBS (NMC Syllabus)'],
-  years: ['First Year', 'Second Year', 'Third Year', 'Fourth Year'],
-  academicYears: ['2024 - 2025', '2025 - 2026', '2026 - 2027', '2027 - 2028'],
-}
-
 const initialForm = {
   collegeName: '',
   logoName: '',
@@ -454,9 +431,6 @@ const buildQuestionPaperPdf = async (assessment) => {
   const addText = ({ text, x, y: textY, size = 12, font = 'F1' }) => {
     addCommand(`BT /${font} ${size} Tf ${x.toFixed(2)} ${textY.toFixed(2)} Td (${escapePdfText(text)}) Tj ET`)
   }
-  const addCenteredText = ({ text, y: textY, size = 12, font = 'F1' }) => {
-    addText({ text, x: (pageWidth - approximateTextWidth(text, size)) / 2, y: textY, size, font })
-  }
   const addCenteredTextInBox = ({ text, centerX, y: textY, size = 12, font = 'F1' }) => {
     addText({ text, x: centerX - (approximateTextWidth(text, size) / 2), y: textY, size, font })
   }
@@ -464,21 +438,12 @@ const buildQuestionPaperPdf = async (assessment) => {
     addText({ text, x: x - approximateTextWidth(text, size), y: textY, size, font })
   }
   const addLine = (x1, y1, x2, y2) => addCommand(`0 0 0 RG ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`)
-  const addRect = (x, rectY, width, height) => addCommand(`0 0 0 RG ${x.toFixed(2)} ${rectY.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re S`)
   const getImageDrawSize = (image, maxWidth, maxHeight) => {
     const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1)
     return {
       width: image.width * scale,
       height: image.height * scale,
     }
-  }
-  const addPdfImage = ({ image, x, maxWidth, maxHeight }) => {
-    const size = getImageDrawSize(image, maxWidth, maxHeight)
-    ensureSpace(size.height + 8)
-    const name = `Im${pdfImages.length + 1}`
-    pdfImages.push({ ...image, name })
-    addCommand(`q ${size.width.toFixed(2)} 0 0 ${size.height.toFixed(2)} ${x.toFixed(2)} ${(y - size.height).toFixed(2)} cm /${name} Do Q`)
-    y -= size.height + 8
   }
   const addQuestionImages = (item) => {
     const images = questionImageMap.get(item) || []
@@ -555,7 +520,6 @@ const buildQuestionPaperPdf = async (assessment) => {
     return questionHeight + imageHeight + 5 + sectionHeight + (sections.length * 3) + (!sections.length && getQuestionMarksTotal(item) ? 13 : 0) + 10
   }
 
-  const hasLogo = Boolean(logoImage)
   const logoBoxX = margin + 6
   const logoBoxY = pageHeight - 94
   const logoMaxSize = 56
@@ -1090,7 +1054,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
   useEffect(() => {
     if (activeAssessmentTab !== 'published') return undefined
 
-    setScheduleNow(new Date())
     const intervalId = window.setInterval(() => setScheduleNow(new Date()), 1000)
     return () => window.clearInterval(intervalId)
   }, [activeAssessmentTab])

@@ -143,9 +143,7 @@ const DEFAULT_THRESHOLD_CONFIG = [
   { label: 'Exceeds', startPercent: 0.75, endPercent: 1 },
 ]
 
-const isAutoThresholdLabel = (value) => DEFAULT_THRESHOLD_CONFIG.some((item) => item.label === String(value ?? '').trim())
-
-const buildEmptyAssignThresholdRows = (totalMarks = 10) => {
+const buildEmptyAssignThresholdRows = () => {
   return DEFAULT_THRESHOLD_CONFIG.map((item, index) => ({
     id: `threshold-${Date.now()}-${index + 1}`,
     label: item.label,
@@ -643,8 +641,8 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const activity = resolvedActivityData?.activity ?? resolvedActivityData ?? null
   const record = resolvedActivityData?.record ?? null
   const assignDefaultYear = ASSIGN_YEAR_OPTIONS.includes(record?.year) ? record.year : ASSIGN_YEAR_OPTIONS[0]
-  const generatedModes = resolvedActivityData?.generatedModes ?? ['Checklist']
-  const generatedModules = useMemo(() => buildGeneratedModules(generatedModes), [generatedModes])
+  const generatedModesKey = (resolvedActivityData?.generatedModes ?? ['Checklist']).join('|')
+  const generatedModules = useMemo(() => buildGeneratedModules(generatedModesKey.split('|')), [generatedModesKey])
 
   const [checklistItems, setChecklistItems] = useState(() => buildInitialChecklistItems())
   const [formItems, setFormItems] = useState(() => (generatedModules.form ? buildInitialFormItems() : []))
@@ -656,14 +654,14 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const [marksEnabled, setMarksEnabled] = useState(() => activity?.marks !== 'Nil')
   const [certifiableEnabled, setCertifiableEnabled] = useState(() => Boolean(activity?.certifiable ?? activity?.showCertifiable))
   const [isActivitySaved, setIsActivitySaved] = useState(false)
-  const [isReviewAssignPopupOpen, setIsReviewAssignPopupOpen] = useState(false)
+  const [isReviewAssignPopupOpen, setIsReviewAssignPopupOpen] = useState(() => Boolean(resolvedActivityData?.openReviewAssign))
   const [assignThresholds, setAssignThresholds] = useState(() => buildEmptyAssignThresholdRows())
   const [assignYear, setAssignYear] = useState(assignDefaultYear)
-  const [assignSgt, setAssignSgt] = useState('')
+  const [assignSgt, setAssignSgt] = useState(() => ASSIGN_SGT_OPTIONS[assignDefaultYear]?.[0] ?? '')
   const [isAssignScheduleEnabled, setIsAssignScheduleEnabled] = useState(false)
   const [assignSchedule, setAssignSchedule] = useState({ date: '', time: '', meridiem: 'AM' })
   const [assignContent, setAssignContent] = useState({ checklist: true, form: false, question: false, scaffolding: false })
-  const [hasCreatedChecklist, setHasCreatedChecklist] = useState(true)
+  const [, setHasCreatedChecklist] = useState(true)
   const [hasCreatedForm, setHasCreatedForm] = useState(() => generatedModules.form)
   const [hasCreatedScaffolding, setHasCreatedScaffolding] = useState(() => generatedModules.scaffolding)
   const [isFormTooltipOpen, setIsFormTooltipOpen] = useState(false)
@@ -672,7 +670,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const [isProgressWidgetOpen, setIsProgressWidgetOpen] = useState(false)
   const formCountInputRef = useRef(null)
   const firstScaffoldingOptionRef = useRef(null)
-  const reviewAssignOpenHandledRef = useRef(false)
   const [scaffoldingSelection, setScaffoldingSelection] = useState({
     MCQ: 0,
     Descriptive: 0,
@@ -706,17 +703,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
 
   useEffect(() => {
-    if (!resolvedActivityData?.openReviewAssign) {
-      reviewAssignOpenHandledRef.current = false
-      return
-    }
-    if (reviewAssignOpenHandledRef.current) return
-    reviewAssignOpenHandledRef.current = true
-    setAssignThresholds(buildEmptyAssignThresholdRows(overallTotalMarks))
-    setIsReviewAssignPopupOpen(true)
-  }, [overallTotalMarks, resolvedActivityData?.openReviewAssign])
-
-  useEffect(() => {
     if (!activeEditorId) return undefined
     const onPointerDown = (event) => {
       const activeCard = document.querySelector(`[data-editor-id="${activeEditorId}"]`)
@@ -728,26 +714,11 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [activeEditorId])
 
-  useEffect(() => {
-    if (activeTab === 'Form' && !formItems.length && !isFormTooltipOpen && !hasCreatedForm) setActiveTab(scaffoldItems.length ? 'Scaffolding' : 'Checklist')
-    if (activeTab === 'Scaffolding' && !scaffoldItems.length && !isScaffoldingTooltipOpen && !hasCreatedScaffolding) setActiveTab(formItems.length ? 'Form' : 'Checklist')
-  }, [activeTab, formItems.length, scaffoldItems.length, isFormTooltipOpen, isScaffoldingTooltipOpen, hasCreatedForm, hasCreatedScaffolding])
-
-  useEffect(() => {
-    setChecklistItems(buildInitialChecklistItems())
-    setFormItems(generatedModules.form ? buildInitialFormItems() : [])
-    setScaffoldItems(generatedModules.scaffolding ? buildInitialScaffoldItems() : [])
-    setHasCreatedChecklist(true)
-    setHasCreatedForm(generatedModules.form)
-    setHasCreatedScaffolding(generatedModules.scaffolding)
-    setActiveEditorId('')
-    setActiveTab('Checklist')
-    setMarksEnabled(activity?.marks !== 'Nil')
-    setCertifiableEnabled(Boolean(activity?.certifiable ?? activity?.showCertifiable))
-    setIsFormTooltipOpen(false)
-    setFormGenerationCount(7)
-    setIsScaffoldingTooltipOpen(false)
-  }, [activity, generatedModules])
+  const visibleActiveTab = activeTab === 'Form' && !formItems.length && !isFormTooltipOpen && !hasCreatedForm
+    ? scaffoldItems.length ? 'Scaffolding' : 'Checklist'
+    : activeTab === 'Scaffolding' && !scaffoldItems.length && !isScaffoldingTooltipOpen && !hasCreatedScaffolding
+      ? formItems.length ? 'Form' : 'Checklist'
+      : activeTab
 
   useEffect(() => {
     if (!isFormTooltipOpen) return undefined
@@ -765,27 +736,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [isScaffoldingTooltipOpen])
-  useEffect(() => {
-    if (!assignYear) {
-      if (assignSgt) {
-        setAssignSgt('')
-      }
-      return
-    }
-    if (!assignSgtOptions.length) {
-      if (assignSgt) {
-        setAssignSgt('')
-      }
-      return
-    }
-    if (!assignSgt || !assignSgtOptions.includes(assignSgt)) {
-      setAssignSgt(assignSgtOptions[0])
-    }
-  }, [assignSgt, assignSgtOptions, assignYear])
-  const ospeMissingAssignTypes = [
-    formCount === 0 ? 'Form' : null,
-    scaffoldingCount === 0 ? 'Scaffolding' : null,
-  ].filter(Boolean)
   const ospeAssignHelperText = ''
   const assignThresholdErrors = useMemo(() => assignThresholds.map((row, index) => {
     const from = Number(row.from)
@@ -867,20 +817,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const deleteAssignThreshold = (id) => {
     setAssignThresholds((current) => current.filter((row) => row.id !== id))
   }
-
-  useEffect(() => {
-    setAssignThresholds((current) => current.map((row) => {
-      const matchingThreshold = DEFAULT_THRESHOLD_CONFIG.find((item) => item.label === String(row.label ?? '').trim())
-
-      if (!matchingThreshold) return row
-
-      return {
-        ...row,
-        from: formatThresholdValue(matchingThreshold.startPercent * 100),
-        to: formatThresholdValue(matchingThreshold.endPercent * 100),
-      }
-    }))
-  }, [overallTotalMarks])
 
   const handleProceedAssign = () => {
     if (!canProceedAssign) {
@@ -1006,7 +942,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       ...item,
       responses: responses
         .filter((response) => response.key !== responseKey)
-        .map((response, index, list) => ({
+        .map((response, index) => ({
           ...response,
           label: `Q${index + 1}`,
         })),
@@ -1129,7 +1065,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                 {tabs.map((tab) => {
                   const count = tab === 'Checklist' ? checklistCount : tab === 'Form' ? formCount : scaffoldingCount
                   const isAvailable = tab === 'Checklist' ? true : count > 0
-                  const isCurrentTab = activeTab === tab
+                  const isCurrentTab = visibleActiveTab === tab
                   const TabIcon = tab === 'Checklist' ? ListChecks : tab === 'Form' ? FileText : BookCheck
                   return (
                     <button
@@ -1187,7 +1123,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
           </div>
         </section>
 
-        {activeTab === 'Form' && !formItems.length && isFormTooltipOpen ? (
+        {visibleActiveTab === 'Form' && !formItems.length && isFormTooltipOpen ? (
           <section className="ospe-header-generator ospe-header-generator--form">
             <div className="ospe-form-tooltip">
               <div className="ospe-scaffolding-tooltip-head">
@@ -1217,7 +1153,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
           </section>
         ) : null}
 
-        {activeTab === 'Scaffolding' && !scaffoldItems.length && isScaffoldingTooltipOpen ? (
+        {visibleActiveTab === 'Scaffolding' && !scaffoldItems.length && isScaffoldingTooltipOpen ? (
           <section className="ospe-header-generator ospe-header-generator--scaffolding">
             <div className="ospe-scaffolding-tooltip">
               <div className="ospe-scaffolding-tooltip-head">
@@ -1258,7 +1194,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
           </section>
         ) : null}
 
-        {activeTab === 'Checklist' ? (
+        {visibleActiveTab === 'Checklist' ? (
           <section className="ospe-stage-panel ospe-stage-panel--card">
             <div className="ospe-section-card ospe-section-card--embedded">
               <div className="ospe-section-head"><div><h3>Generated Checklist</h3><p>Use short, observable checklist steps for this station. Keep each item to one measurable action.</p></div><MetaPill tone={hasMarks ? 'success' : 'default'}>{hasMarks ? `Total Marks: ${checklistTotalMarks}` : 'Marks Disabled'}</MetaPill></div>
@@ -1270,7 +1206,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
           </section>
         ) : null}
 
-        {activeTab === 'Form' ? (
+        {visibleActiveTab === 'Form' ? (
           formItems.length ? (
             <section className="ospe-stage-panel ospe-stage-panel--card">
               <div className="ospe-section-card ospe-section-card--embedded">
@@ -1293,7 +1229,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
           ) : null
         ) : null}
 
-        {activeTab === 'Scaffolding' ? (
+        {visibleActiveTab === 'Scaffolding' ? (
           scaffoldItems.length ? (
             <section className="ospe-stage-panel ospe-stage-panel--card">
               <div className="ospe-section-card ospe-section-card--embedded">
@@ -1518,8 +1454,9 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
                         <select
                           value={assignYear}
                           onChange={(event) => {
-                            setAssignYear(event.target.value)
-                            setAssignSgt('')
+                            const nextYear = event.target.value
+                            setAssignYear(nextYear)
+                            setAssignSgt(ASSIGN_SGT_OPTIONS[nextYear]?.[0] ?? '')
                           }}
                         >
                           {ASSIGN_YEAR_OPTIONS.map((option) => (

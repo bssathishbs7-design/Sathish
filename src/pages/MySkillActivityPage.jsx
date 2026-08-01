@@ -83,7 +83,7 @@ function ActivityCard({ item, onStartActivity, onSelectAnalytics, isSelected = f
   const normalizedAction = String(item.action ?? '').trim().toLowerCase()
   const isViewAction = normalizedAction === 'view results'
   const scheduledAt = item.scheduledAt ? Date.parse(item.scheduledAt) : 0
-  const isScheduleLocked = item.nextAttemptStatus === 'scheduled' && scheduledAt && Date.now() < scheduledAt
+  const isScheduleLocked = item.nextAttemptStatus === 'scheduled' && scheduledAt && new Date().getTime() < scheduledAt
   const isReadyAction = (!isScheduleLocked && item.tone === 'primary') || isViewAction
   const buttonLabel = isScheduleLocked ? 'Yet to Start' : (isReadyAction ? item.action ?? 'Start Activity' : item.action ?? 'Yet to Start')
   const displayDate = item.scheduledDate || item.createdDate || 'Not set'
@@ -140,7 +140,7 @@ export default function MySkillActivityPage({
   const [activeMetric, setActiveMetric] = useState('Overall Activity')
   const [query, setQuery] = useState('')
   const [selectedAnalyticsKey, setSelectedAnalyticsKey] = useState('')
-  const [activeLiveIndex, setActiveLiveIndex] = useState(0)
+  const [requestedLiveIndex, setActiveLiveIndex] = useState(0)
   const analyticsSectionRef = useRef(null)
   const boardSectionRef = useRef(null)
 
@@ -249,10 +249,7 @@ export default function MySkillActivityPage({
     })
   }, [selectedAnalyticsKey])
 
-  useEffect(() => {
-    if (activeLiveIndex < liveActivities.length) return
-    setActiveLiveIndex(0)
-  }, [activeLiveIndex, liveActivities.length])
+  const activeLiveIndex = requestedLiveIndex < liveActivities.length ? requestedLiveIndex : 0
 
   useEffect(() => {
     if (liveActivities.length < 2) return undefined

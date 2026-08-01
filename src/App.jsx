@@ -417,7 +417,6 @@ function App() {
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)
   const [selectedOspeActivity, setSelectedOspeActivity] = useState(null)
-  const [selectedDashboardData, setSelectedDashboardData] = useState(null)
   const [savedImageActivities, setSavedImageActivities] = useState({})
   const [assignedSkillActivities, setAssignedSkillActivities] = useState(() => readStoredRows(ASSIGNED_SKILL_ACTIVITIES_STORAGE_KEY))
   const [evaluationRecords, setEvaluationRecords] = useState(() => readStoredRows(EVALUATION_RECORDS_STORAGE_KEY))
@@ -628,11 +627,6 @@ function App() {
     setProfileToast('Logging out...')
     navigateToPage(APP_PAGES.LOGIN)
     showAlert({ tone: 'warning', message: 'You have been signed out of the current session.' })
-  }
-
-  const openDashboardSummaryPage = (dashboardData) => {
-    setSelectedDashboardData(dashboardData ?? null)
-    navigateToPage(APP_PAGES.DASHBOARD_SUMMARY)
   }
 
   const handleAssignSkillActivity = (assignment) => {
@@ -1378,6 +1372,7 @@ function App() {
             />
           ) : activePage === APP_PAGES.APPROVAL_VIEW ? (
             <ApprovalViewPage
+              key={(selectedApprovalViewRecord ?? readStoredApprovalViewRecord())?.activityId ?? 'no-approval-record'}
               approvalRecord={selectedApprovalViewRecord ?? readStoredApprovalViewRecord()}
               completedEvaluationRows={completedEvaluationRows}
               onBack={() => navigateToPage(APP_PAGES.REVIEW_APPROVE)}
@@ -1498,7 +1493,6 @@ function App() {
             <StudentManagementPage onAlert={showAlert} />
           ) : activePage === APP_PAGES.DASHBOARD_SUMMARY ? (
             <DashboardSummaryPage
-              dashboardData={selectedDashboardData}
               onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}
               assignedActivities={assignedSkillActivities}
               evaluationRecords={evaluationRecords}

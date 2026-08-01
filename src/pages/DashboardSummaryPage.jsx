@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -63,6 +63,7 @@ const EMPTY_GRAPH_SERIES = {
 }
 
 const normalizeText = (value) => String(value ?? '').trim()
+const SHOW_LEGACY_ACTIVITY_PERFORMANCE_TABLE = false
 const normalizeLower = (value) => normalizeText(value).toLowerCase()
 const idsMatch = (left, right) => normalizeText(left) === normalizeText(right)
 const normalizePerformanceLabel = (value) => {
@@ -86,45 +87,6 @@ const getPerformanceToneClass = (value) => {
   if (normalized === 'pending') return 'is-warn'
 
   return 'is-soft'
-}
-const escapeCsvCell = (value) => {
-  const normalizedValue = String(value ?? '').replace(/\r?\n|\r/g, ' ').trim()
-  return `"${normalizedValue.replace(/"/g, '""')}"`
-}
-const sanitizeFileName = (value) => normalizeText(value)
-  .normalize('NFKD')
-  .replace(/[^\x20-\x7E]/g, ' ')
-  .replace(/[^a-z0-9]+/gi, '-')
-  .replace(/^-+|-+$/g, '')
-  .toLowerCase()
-  || 'dashboard-report'
-const downloadCsv = ({ fileName, headers, rows }) => {
-  const csvContent = [
-    headers.map(escapeCsvCell).join(','),
-    ...rows.map((row) => row.map(escapeCsvCell).join(',')),
-  ].join('\n')
-  const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-
-  link.href = url
-  link.download = `${sanitizeFileName(fileName)}.csv`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
-const formatDateTime = (value) => {
-  const timestamp = Date.parse(value ?? '')
-  if (!timestamp) return 'Not available'
-
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(timestamp))
 }
 const isApplicableDomain = (value) => {
   const normalized = normalizeLower(value)
@@ -343,25 +305,6 @@ const buildSampleCompletedEvaluationRows = () => {
     ))
 }
 
-const getLatestRowsByStudent = (rows = []) => {
-  const latestRows = new Map()
-
-  rows.forEach((row) => {
-    const key = String(row.studentId ?? row.registerId ?? row.studentName ?? '')
-    if (!key) return
-
-    const current = latestRows.get(key)
-    const rowAttempt = Number(row.attemptNumber) || 1
-    const currentAttempt = Number(current?.attemptNumber) || 0
-
-    if (!current || rowAttempt >= currentAttempt) {
-      latestRows.set(key, row)
-    }
-  })
-
-  return [...latestRows.values()]
-}
-
 const buildCompletedRowContext = (row, recordMap) => {
   const activityRecord = recordMap.get(row.activityId) ?? {}
 
@@ -399,39 +342,6 @@ const rowMatchesActivityRecord = (row, record) => {
     && idsMatch(row.sgt ?? row.activityRecord?.sgt, record.sgt)
   )
 }
-
-const getActivityPerformanceRows = (activityRecords = [], completedRows = [], limit = 6) => (
-  activityRecords.slice(0, limit).map((record) => {
-    const activityRows = completedRows.filter((row) => row.activityId === record.id)
-    const latestRows = getLatestRowsByStudent(activityRows)
-    const evaluatedStudents = latestRows.length
-    const totalStudents = Number(record.studentCount) || 0
-    const progressPercent = totalStudents > 0 ? calculatePercentage(evaluatedStudents, totalStudents) : 0
-    const averageScore = latestRows.length
-      ? latestRows.reduce((sum, row) => sum + (Number(row.totalPercentage) || 0), 0) / latestRows.length
-      : 0
-
-    return {
-      id: record.id,
-      activityName: record.activityName,
-      activityType: record.activityType,
-      year: record.year,
-      sgt: record.sgt,
-      totalStudents,
-      evaluatedStudents,
-      submitted: evaluatedStudents,
-      progressPercent,
-      averageScore,
-      status: evaluatedStudents ? 'Evaluated' : 'Pending',
-    }
-  })
-)
-
-const getRecentStudentPerformanceRows = (completedRows = [], limit = 6) => (
-  [...completedRows]
-    .sort((left, right) => (Date.parse(right.submittedAt ?? '') || 0) - (Date.parse(left.submittedAt ?? '') || 0))
-    .slice(0, limit)
-)
 
 const getActivitySource = (record, assignmentMap) => (
   record?.assignment
@@ -695,7 +605,6 @@ function PsychomotorBarChart({ data }) {
 }
 
 export default function DashboardSummaryPage({
-  dashboardData,
   assignedActivities = [],
   evaluationRecords = [],
   completedEvaluationRows = [],
@@ -762,24 +671,6 @@ export default function DashboardSummaryPage({
         .filter(Boolean),
     )]
   ), [evaluationSource, selectedActivityType, selectedSgt, selectedYear])
-
-  useEffect(() => {
-    if (selectedSgt && !sgtOptions.includes(selectedSgt)) {
-      setSelectedSgt('')
-    }
-  }, [selectedSgt, sgtOptions])
-
-  useEffect(() => {
-    if (selectedActivityType && !activityTypeOptions.includes(selectedActivityType)) {
-      setSelectedActivityType('')
-    }
-  }, [activityTypeOptions, selectedActivityType])
-
-  useEffect(() => {
-    if (selectedActivity && !activityOptions.includes(selectedActivity)) {
-      setSelectedActivity('')
-    }
-  }, [activityOptions, selectedActivity])
 
   const filteredActivityRecords = useMemo(() => (
     evaluationSource.filter((record) => (
@@ -888,22 +779,6 @@ export default function DashboardSummaryPage({
     },
   ]
 
-  const domainMetrics = useMemo(() => {
-    return [
-      {
-        itemCount: activityItems.filter((item) => item.domains.includes('cognitive')).length,
-        criticalCount: activityItems.filter((item) => item.domains.includes('cognitive') && item.isCritical).length,
-      },
-      {
-        itemCount: activityItems.filter((item) => item.domains.includes('affective')).length,
-        criticalCount: activityItems.filter((item) => item.domains.includes('affective') && item.isCritical).length,
-      },
-      {
-        itemCount: activityItems.filter((item) => item.domains.includes('psychomotor')).length,
-        criticalCount: activityItems.filter((item) => item.domains.includes('psychomotor') && item.isCritical).length,
-      },
-    ]
-  }, [activityItems])
   const topPsychomotorPerformers = useMemo(() => {
     const performerMap = new Map()
 
@@ -1183,7 +1058,12 @@ export default function DashboardSummaryPage({
                 value={selectedYear}
                 placeholder="All years"
                 options={yearOptions}
-                onChange={setSelectedYear}
+                onChange={(value) => {
+                  setSelectedYear(value)
+                  setSelectedSgt('')
+                  setSelectedActivityType('')
+                  setSelectedActivity('')
+                }}
               />
             ) : null}
 
@@ -1193,7 +1073,11 @@ export default function DashboardSummaryPage({
                 value={selectedSgt}
                 placeholder="All groups"
                 options={sgtOptions}
-                onChange={setSelectedSgt}
+                onChange={(value) => {
+                  setSelectedSgt(value)
+                  setSelectedActivityType('')
+                  setSelectedActivity('')
+                }}
               />
             ) : null}
 
@@ -1202,7 +1086,10 @@ export default function DashboardSummaryPage({
               value={selectedActivityType}
               placeholder="All types"
               options={activityTypeOptions}
-              onChange={setSelectedActivityType}
+              onChange={(value) => {
+                setSelectedActivityType(value)
+                setSelectedActivity('')
+              }}
             />
 
             <DashboardFilterDropdown
@@ -1543,7 +1430,7 @@ export default function DashboardSummaryPage({
           </section>
         ) : null}
 
-        {false ? (
+        {SHOW_LEGACY_ACTIVITY_PERFORMANCE_TABLE ? (
         <section className="dashboard-summary-table-grid">
           <article className="dashboard-summary-table-card">
             <div className="dashboard-summary-table-head">

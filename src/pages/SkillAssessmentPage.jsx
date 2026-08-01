@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Activity,
   ArrowUpDown,
@@ -265,8 +265,6 @@ const getEvaluationStatusMeta = (record) => {
   }
 }
 
-const getResolvedStatusValue = (record) => getEvaluationStatusMeta(record).label
-
 const parseDateValue = (value) => {
   if (!value) return 0
   const normalized = String(value).split(',')[0].trim()
@@ -452,7 +450,6 @@ function EvaluationTable({
   onScheduleAttempt,
   onClearAttemptSchedule,
   sortKey,
-  sortDirection,
   onSort,
   currentPage,
   pageCount,
@@ -609,7 +606,7 @@ export default function SkillAssessmentPage({
   const [selectedActivityType, setSelectedActivityType] = useState('')
   const [sortKey, setSortKey] = useState('createdDate')
   const [sortDirection, setSortDirection] = useState('desc')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [requestedPage, setCurrentPage] = useState(1)
 
   const rawSourceRecords = evaluationRecords.length ? evaluationRecords : buildFallbackRecords()
   const sourceRecords = useMemo(() => rawSourceRecords.map((record) => {
@@ -701,20 +698,11 @@ export default function SkillAssessmentPage({
 
   const pageSize = 8
   const pageCount = Math.max(1, Math.ceil(sortedRecords.length / pageSize))
+  const currentPage = Math.min(requestedPage, pageCount)
   const paginatedRecords = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize
     return sortedRecords.slice(startIndex, startIndex + pageSize)
   }, [currentPage, sortedRecords])
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, selectedYear, selectedSgt, selectedStatus, selectedAttempt, selectedActivityType, sortKey, sortDirection, viewMode])
-
-  useEffect(() => {
-    if (currentPage > pageCount) {
-      setCurrentPage(pageCount)
-    }
-  }, [currentPage, pageCount])
 
   const metrics = useMemo(() => ({
     total: filteredRecords.length,
@@ -733,6 +721,7 @@ export default function SkillAssessmentPage({
   ]
 
   const handleSort = (key) => {
+    setCurrentPage(1)
     if (sortKey === key) {
       setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))
       return
@@ -791,7 +780,10 @@ export default function SkillAssessmentPage({
               <Search size={15} strokeWidth={2} />
               <input
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value)
+                  setCurrentPage(1)
+                }}
                 placeholder="Search activity, year, SGT"
               />
             </label>
@@ -799,7 +791,7 @@ export default function SkillAssessmentPage({
               <label className="eval-filter-chip">
                 <div className="eval-filter-chip-field">
                   <div className="forms-select-wrap">
-                    <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+                    <select value={selectedYear} onChange={(event) => { setSelectedYear(event.target.value); setCurrentPage(1) }}>
                       <option value="">All years</option>
                       {yearOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                     </select>
@@ -810,7 +802,7 @@ export default function SkillAssessmentPage({
               <label className="eval-filter-chip">
                 <div className="eval-filter-chip-field">
                   <div className="forms-select-wrap">
-                    <select value={selectedSgt} onChange={(event) => setSelectedSgt(event.target.value)}>
+                    <select value={selectedSgt} onChange={(event) => { setSelectedSgt(event.target.value); setCurrentPage(1) }}>
                       <option value="">All SGTs</option>
                       {sgtOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                     </select>
@@ -821,7 +813,7 @@ export default function SkillAssessmentPage({
               <label className="eval-filter-chip is-compact">
                 <div className="eval-filter-chip-field">
                   <div className="forms-select-wrap">
-                    <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}>
+                    <select value={selectedStatus} onChange={(event) => { setSelectedStatus(event.target.value); setCurrentPage(1) }}>
                       <option value="">All statuses</option>
                       {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                     </select>
@@ -832,7 +824,7 @@ export default function SkillAssessmentPage({
               <label className="eval-filter-chip is-compact">
                 <div className="eval-filter-chip-field">
                   <div className="forms-select-wrap">
-                    <select value={selectedAttempt} onChange={(event) => setSelectedAttempt(event.target.value)}>
+                    <select value={selectedAttempt} onChange={(event) => { setSelectedAttempt(event.target.value); setCurrentPage(1) }}>
                       <option value="">All attempts</option>
                       {attemptOptions.map((option) => <option key={option} value={String(option)}>{`Attempt ${option}`}</option>)}
                     </select>
@@ -843,7 +835,7 @@ export default function SkillAssessmentPage({
               <label className="eval-filter-chip">
                 <div className="eval-filter-chip-field">
                   <div className="forms-select-wrap">
-                    <select value={selectedActivityType} onChange={(event) => setSelectedActivityType(event.target.value)}>
+                    <select value={selectedActivityType} onChange={(event) => { setSelectedActivityType(event.target.value); setCurrentPage(1) }}>
                       <option value="">All types</option>
                       {activityTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                     </select>
@@ -853,11 +845,11 @@ export default function SkillAssessmentPage({
             </div>
 
             <div className="eval-view-switch" role="tablist" aria-label="Evaluation layout">
-              <button type="button" className={`eval-view-btn ${viewMode === 'card' ? 'is-active' : ''}`} onClick={() => setViewMode('card')}>
+              <button type="button" className={`eval-view-btn ${viewMode === 'card' ? 'is-active' : ''}`} onClick={() => { setViewMode('card'); setCurrentPage(1) }}>
                 <LayoutGrid size={14} strokeWidth={2} />
                 Cards
               </button>
-              <button type="button" className={`eval-view-btn ${viewMode === 'table' ? 'is-active' : ''}`} onClick={() => setViewMode('table')}>
+              <button type="button" className={`eval-view-btn ${viewMode === 'table' ? 'is-active' : ''}`} onClick={() => { setViewMode('table'); setCurrentPage(1) }}>
                 <Rows3 size={14} strokeWidth={2} />
                 Table
               </button>
@@ -887,7 +879,6 @@ export default function SkillAssessmentPage({
                 onScheduleAttempt={onScheduleAttempt}
                 onClearAttemptSchedule={onClearAttemptSchedule}
                 sortKey={sortKey}
-                sortDirection={sortDirection}
                 onSort={handleSort}
                 currentPage={currentPage}
                 pageCount={pageCount}

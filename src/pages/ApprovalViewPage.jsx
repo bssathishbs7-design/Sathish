@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { sanitizeRichHtml } from '../utils/sanitizeHtml'
 import {
   ArrowUpDown,
   BadgeCheck,
@@ -129,16 +130,6 @@ const getThresholdTone = (value = '') => {
   return 'is-neutral'
 }
 
-const getHtmlText = (html = '') => String(html)
-  .replace(/<br\s*\/?>/gi, ' ')
-  .replace(/<\/(p|div|li|h[1-6])>/gi, ' ')
-  .replace(/<\/?[A-Za-z][^>]*>/g, '')
-  .replace(/&nbsp;/g, ' ')
-  .replace(/&lt;/g, '<')
-  .replace(/&gt;/g, '>')
-  .replace(/&amp;/g, '&')
-  .trim()
-
 const RichQuestionContent = ({ html, fallback = 'Not added' }) => {
   const content = String(html ?? '').trim()
 
@@ -147,7 +138,7 @@ const RichQuestionContent = ({ html, fallback = 'Not added' }) => {
   return (
     <div
       className="approval-view-question-richtext"
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
     />
 )
 }
@@ -179,15 +170,6 @@ const getQuestionMarksLabel = (question) => {
 const getVisibleTagValues = (values) => (Array.isArray(values) ? values : [])
   .map((value) => String(value ?? '').trim())
   .filter((value) => value && value !== 'N/A')
-
-const getQuestionTagGroups = (question) => ([
-  { label: 'Cognitive Function', values: question.cognitiveFunction ? [question.cognitiveFunction] : [] },
-  { label: 'Skill Focus', values: question.skillFocus ? [question.skillFocus] : [] },
-  { label: 'Organ System', values: question.organSystem ? [question.organSystem] : [] },
-  { label: 'Organ Sub-systems', values: getVisibleTagValues(question.organSubSystems) },
-  { label: 'Disease Tags', values: getVisibleTagValues(question.diseaseTags) },
-  { label: 'Key Concepts', values: getVisibleTagValues(question.keyConcepts) },
-]).filter((group) => group.values.length)
 
 const getQuestionAssessmentBadges = (question) => [
   question.questionCategory || 'Application',
@@ -384,19 +366,23 @@ const getSectionLabel = (section) => {
     : fallbackLabel ?? String(section ?? '')
 }
 
-const StatCard = ({ icon: Icon, label, value, tone = '' }) => (
-  <article className={`approval-view-stat ${tone}`}>
-    <span aria-hidden="true">
-      <Icon size={17} strokeWidth={2.2} />
-    </span>
-    <div>
-      <small>{label}</small>
-      <strong>{value ?? 0}</strong>
-    </div>
-  </article>
-)
+const StatCard = (props) => {
+  const { icon: Icon, label, value, tone = '' } = props
+  return (
+    <article className={`approval-view-stat ${tone}`}>
+      <span aria-hidden="true">
+        <Icon size={17} strokeWidth={2.2} />
+      </span>
+      <div>
+        <small>{label}</small>
+        <strong>{value ?? 0}</strong>
+      </div>
+    </article>
+  )
+}
 
-const InfoTooltipButton = ({ id, icon: Icon, label, title, items, activeTooltipId, onToggle }) => {
+const InfoTooltipButton = (props) => {
+  const { id, icon: Icon, label, title, items, activeTooltipId, onToggle } = props
   const isOpen = activeTooltipId === id
   const visibleItems = items.filter((item) => item.value)
 
@@ -592,18 +578,6 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
     return [...groups.entries()]
   }, [performanceItems])
 
-  useEffect(() => {
-    setStudentPage(1)
-  }, [studentSearch, studentSortDirection, studentSortKey, studentStatusFilter])
-
-  useEffect(() => {
-    setQuestionReviewState({})
-    setActiveQuestionRemarkId('')
-    setActiveQuestionTagsId('')
-    setSelectedQuestionReviewIds([])
-    setIsQuestionSubmitConfirmOpen(false)
-  }, [approvalRecord?.activityId])
-
   if (!approvalRecord) {
     return (
       <section className="vx-content approval-view-page">
@@ -674,6 +648,7 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
   }
 
   const handleStudentSort = (key) => {
+    setStudentPage(1)
     if (studentSortKey === key) {
       setStudentSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))
       return
@@ -1271,7 +1246,10 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
                 <Search size={14} strokeWidth={2} />
                 <input
                   value={studentSearch}
-                  onChange={(event) => setStudentSearch(event.target.value)}
+                  onChange={(event) => {
+                    setStudentSearch(event.target.value)
+                    setStudentPage(1)
+                  }}
                   placeholder="Search student, ID, result, or attempts"
                 />
               </label>
@@ -1290,7 +1268,10 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
                     key={option.id}
                     type="button"
                     className={`approval-view-filter ${studentStatusFilter === option.id ? 'is-active' : ''}`}
-                    onClick={() => setStudentStatusFilter(option.id)}
+                    onClick={() => {
+                      setStudentStatusFilter(option.id)
+                      setStudentPage(1)
+                    }}
                   >
                     <span>{option.label}</span>
                     <small>{option.count}</small>

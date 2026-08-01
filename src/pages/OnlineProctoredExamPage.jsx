@@ -21,7 +21,6 @@ const EXAM_CONTROLS_STATE_CHANGED_EVENT = 'vx-exam-controls-state-changed'
 const ONLINE_PROCTORED_ATTEMPT_STORAGE_KEY = 'vx-online-proctored-exam-attempts'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
 const CURRENT_STUDENT_ID = 'MC2568'
-const PROCTOR_WARNING_LABEL = 'Security Violation'
 const PROCTOR_PENALTY_SECONDS = 10
 const PROCTOR_LOCK_SECONDS = 30
 const PROCTOR_VIOLATION_COOLDOWN_MS = 650
@@ -34,17 +33,6 @@ const PREVIEW_SECTION_CONFIG = [
   { key: 'LAQs', defaultTitle: 'Long Answer Questions' },
 ]
 const PREVIEW_SECTION_KEY_SET = new Set(PREVIEW_SECTION_CONFIG.map((section) => section.key))
-
-const encodeAssessmentForUrl = (assessment) => {
-  try {
-    return window.btoa(window.encodeURIComponent(JSON.stringify(assessment)))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/g, '')
-  } catch {
-    return ''
-  }
-}
 
 const decodeAssessmentFromUrl = (value) => {
   if (!value) return null
@@ -141,31 +129,6 @@ const formatCompactTime = (value) => (
     ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : '-'
 )
-
-const appendStudentViolationLog = (assessment, studentId, remarks) => {
-  const assessmentId = getAssessmentId(assessment)
-  if (!assessmentId || !studentId) return
-
-  writeExamControlsState(assessment, studentId, (current) => {
-    const nextCount = Number(current.violationCount || 0) + 1
-    const nextLog = {
-      id: `${studentId}-${Date.now()}`,
-      time: formatCompactTime(new Date()),
-      action: PROCTOR_WARNING_LABEL,
-      remarks,
-      faculty: 'System',
-      ruleNumber: nextCount,
-    }
-
-    return {
-      ...current,
-      violationCount: nextCount,
-      overallStatus: 'In progress',
-      logs: [nextLog, ...(current.logs || [])],
-      lastViolationAt: new Date().toISOString(),
-    }
-  })
-}
 
 const appendStudentMonitoringLog = (assessment, studentId, remarks, action = 'Monitoring Event') => {
   const assessmentId = getAssessmentId(assessment)
@@ -392,19 +355,9 @@ const getMarks = (question) => (
   ?? '-'
 )
 
-const formatMarksLabel = (value) => {
-  const marks = getMarks(value)
-  return marks === '-' ? '- Marks' : `${String(marks).padStart(2, '0')} Marks`
-}
-
 const hasVisibleMarks = (value) => {
   const text = String(value ?? '').trim()
   return text !== '' && text !== '-' && Number(text) !== 0
-}
-
-const getNumericMarks = (value) => {
-  const marks = Number(getMarks(value))
-  return Number.isFinite(marks) ? marks : 0
 }
 
 const parseMarksValue = (value) => {
@@ -427,14 +380,6 @@ const getQuestionMarksTotal = (question) => {
   }, 0)
 
   return (sections.length ? 0 : parseMarksValue(question?.marks)) + sectionMarks
-}
-
-const formatQuestionMarksBadge = (question) => {
-  const totalMarks = getQuestionMarksTotal(question)
-  if (totalMarks > 0) return `${totalMarks} Marks`
-
-  const marks = getMarks(question)
-  return marks === '-' ? '- Marks' : `${marks} Marks`
 }
 
 const renderQuestionImages = (images, className = '', onPreview, isDisabled = false) => (
@@ -562,7 +507,7 @@ const getPreviewOrderedQuestionNumbers = (setup = {}, questions = []) => {
   sectionOrder.forEach((sectionKey) => {
     questions
       .filter((question) => getPreviewSectionKey(question) === sectionKey)
-      .forEach((question, index) => {
+      .forEach((question) => {
         const globalIndex = questions.indexOf(question)
         numbers[question.id ?? `${sectionKey}-${globalIndex}`] = displayNumber
         displayNumber += 1
@@ -602,11 +547,6 @@ const getDescriptiveSubQuestions = (question) => {
   return []
 }
 
-const getInstructionLines = (value) => stripHtml(value)
-  .split(/\n+|(?:\s*•\s*)/)
-  .map((line) => line.trim())
-  .filter(Boolean)
-
 const isInAppWebview = () => {
   const userAgent = window.navigator.userAgent || ''
   return /FBAN|FBAV|FB_IAB|Instagram|Line|MicroMessenger|WhatsApp|Telegram|Discord|LinkedInApp|Snapchat|TikTok|WeChat|Pinterest/i.test(userAgent)
@@ -628,11 +568,6 @@ const isTabletDevice = () => {
 }
 
 const isMobileOrTabletDevice = () => isMobileDevice() || isTabletDevice()
-
-const isPwaStandalone = () => (
-  (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches))
-  || window.navigator.standalone === true
-)
 
 const hasFullscreenSupport = () => (
   Boolean(window.document?.documentElement?.requestFullscreen) && window.document.fullscreenEnabled !== false
@@ -815,7 +750,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     showFullscreenLock: false,
   })
   const [isAutoExitAfterViolation, setIsAutoExitAfterViolation] = useState(false)
-  const violationCooldownRef = useRef(0)
   const isIntentionalFullscreenExitRef = useRef(false)
   const browserClosePromptRef = useRef(false)
   const fullscreenRestoreTimerRef = useRef(null)
@@ -823,7 +757,10 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const startPointerIntentRef = useRef(false)
   const invigilatorLockInProgressRef = useRef(false)
 
-  const questionRows = Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
+  const questionRows = useMemo(
+    () => (Array.isArray(assessment?.questionRows) ? assessment.questionRows : []),
+    [assessment],
+  )
   const mcqQuestions = useMemo(() => questionRows.filter((item) => item?.type === 'MCQ'), [questionRows])
   const descriptiveQuestions = useMemo(() => questionRows.filter((item) => isDescriptiveQuestionType(item?.type)), [questionRows])
   const mcqTotalMarks = useMemo(() => (
@@ -831,7 +768,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   ), [mcqQuestions])
   const currentQuestions = activeSection === 'mcq' ? mcqQuestions : descriptiveQuestions
   const currentQuestion = currentQuestions[activeQuestionIndex] ?? null
-  const setup = assessment?.setup ?? {}
+  const setup = useMemo(() => assessment?.setup ?? {}, [assessment])
   const examTypeValue = String(assessment?.examType || setup.examType || 'Hybrid').toLowerCase()
   const hasMcqSection = mcqQuestions.length > 0 && examTypeValue !== 'descriptive'
   const hasDescriptiveSection = descriptiveQuestions.length > 0 && examTypeValue !== 'mcq'
@@ -963,8 +900,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     && !shouldShowDescriptiveSubmit
   const headerLogo = setup.logoPreview || assessment?.logoPreview || ''
   const ThemeIcon = theme === 'dark' ? Sun : Moon
-  const studentInstructionLines = getInstructionLines(setup.studentInstructions)
-  const canShowStudentInstructions = setup.provideStudentInstructions === 'Yes' && studentInstructionLines.length > 0
   const totalDurationSeconds = useMemo(() => parseDurationToSeconds(assessment?.totalDuration), [assessment?.totalDuration])
   const extensionMinutes = Number(timeExtension?.extensionMinutes || 0)
   const sectionExtensions = timeExtension?.sectionExtensions || {}
@@ -1059,78 +994,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         marks: mcqTotalMarks,
         answered: `${attendedMcqCount} / ${mcqQuestions.length} answered`,
       }
-
-  const showProctorViolation = (reason, details) => {
-    let nextPhase = 'warning'
-    let nextMessage = `Warning ${proctorViolation.count + 1}: ${reason}.`
-    let nextRemaining = 0
-    let shouldAutoSubmit = false
-
-    setProctorViolation((current) => {
-      const nextCount = Number(current.count || 0) + 1
-      if (nextCount === 1) {
-        nextPhase = 'warning'
-        nextMessage = `Security warning (${nextCount}/4): ${reason}.`
-        appendStudentViolationLog(assessment, CURRENT_STUDENT_ID, `${reason}${details ? ` | ${details}` : ''}`)
-        return {
-          ...current,
-          count: nextCount,
-          phase: nextPhase,
-          message: nextMessage,
-          endsAt: 0,
-          showFullscreenLock: true,
-        }
-      }
-
-      if (nextCount === 2) {
-        nextPhase = 'penalty'
-        nextRemaining = PROCTOR_PENALTY_SECONDS
-        nextMessage = `Violation ${nextCount}/4: Penalty applied. Pause for ${nextRemaining} seconds.`
-        appendStudentViolationLog(assessment, CURRENT_STUDENT_ID, `Penalty ${nextRemaining}s applied: ${reason}${details ? ` | ${details}` : ''}`)
-        return {
-          ...current,
-          count: nextCount,
-          phase: nextPhase,
-          message: nextMessage,
-          endsAt: Date.now() + (nextRemaining * 1000),
-          showFullscreenLock: true,
-        }
-      }
-
-      if (nextCount === 3) {
-        nextPhase = 'lock'
-        nextRemaining = PROCTOR_LOCK_SECONDS
-        nextMessage = `Violation ${nextCount}/4: Locked for ${nextRemaining} seconds.`
-        appendStudentViolationLog(assessment, CURRENT_STUDENT_ID, `Lock ${nextRemaining}s applied: ${reason}${details ? ` | ${details}` : ''}`)
-        return {
-          ...current,
-          count: nextCount,
-          phase: nextPhase,
-          message: nextMessage,
-          endsAt: Date.now() + (nextRemaining * 1000),
-          showFullscreenLock: true,
-        }
-      }
-
-      nextPhase = 'auto-submitted'
-      nextMessage = `Auto-submitted due repeated security violations.`
-      shouldAutoSubmit = true
-      appendStudentViolationLog(assessment, CURRENT_STUDENT_ID, `Exam auto-submitted: ${reason}${details ? ` | ${details}` : ''}`)
-      return {
-        ...current,
-        count: nextCount,
-        phase: nextPhase,
-        message: nextMessage,
-        endsAt: Date.now() + 2000,
-        showFullscreenLock: true,
-      }
-    })
-
-    if (shouldAutoSubmit) {
-      setIsAutoExitAfterViolation(true)
-      finalizeAssessmentSubmission({ submissionStatus: 'Auto Submit' })
-    }
-  }
 
   const switchSection = (section) => {
     if (shouldBlockProctoringActions) return
@@ -1443,17 +1306,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     onExit?.(APP_PAGES.MY_ASSESSMENT)
   }
 
-  const registerViolation = (reason, details = '') => {
-    if (!hasStarted || isAssessmentSubmitted) return
-    const now = Date.now()
-    if (now - violationCooldownRef.current < PROCTOR_VIOLATION_COOLDOWN_MS) return
-    violationCooldownRef.current = now
-    if (!isMobileOrTabletDevice() && !document.fullscreenElement) {
-      setFullscreenError('Fullscreen mode is required to continue.')
-    }
-    showProctorViolation(reason, details)
-  }
-
   const recordMonitoringEvent = (reason, details = '') => {
     if (!hasStarted || isAssessmentSubmitted) return
     const eventKey = `${reason}:${details}`
@@ -1473,32 +1325,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
   const closeImagePreview = () => {
     setImagePreview(null)
-  }
-
-  const detectViolationShortcut = (event) => {
-    const key = event.key || ''
-    const lowerKey = key.toLowerCase()
-    const blockedFnKeys = new Set(['F1', 'F3', 'F4', 'F5', 'F6', 'F10', 'F11', 'F12'])
-    const hasCtrlMeta = event.ctrlKey || event.metaKey
-    const hasAltCtrlMeta = event.altKey || hasCtrlMeta
-
-    if (key === 'PrintScreen') return 'screenshot attempt'
-    if (blockedFnKeys.has(key)) return `${key} key pressed`
-
-    if (hasCtrlMeta && ['s', 'c', 'u', 'i', 'j', 'p', 'v', 'x', 'a', 'o', 'l', 'w', 'n', 't', 'r'].includes(lowerKey)) {
-      return `${String(key).toUpperCase()} shortcut blocked`
-    }
-    if (event.shiftKey && hasCtrlMeta && ['c', 'i', 'j', 'p', 'n', 'q', 's', 'k', 'd'].includes(lowerKey)) {
-      return `${String(key).toUpperCase()} shortcut blocked`
-    }
-    if (event.ctrlKey && event.shiftKey && ['I', 'J', 'C', 'K', 'P'].includes(key)) {
-      return `${String(key).toUpperCase()} shortcut blocked`
-    }
-    if ((event.altKey && ['Tab', 'F4'].includes(key)) || (event.metaKey && ['Tab'].includes(key))) return 'Window/application switching attempt'
-    if (hasAltCtrlMeta && ['Tab', 'Escape'].includes(key)) return 'Window/application switching attempt'
-    if (event.metaKey && ['r', 'l', 'Left', 'Right', 't', 'n'].includes(key)) return 'Browser/application navigation attempt'
-    if (event.ctrlKey && ['Tab', 'ArrowLeft', 'ArrowRight'].includes(key)) return 'Window/application switching attempt'
-    return ''
   }
 
   const moveImagePreview = (direction) => {
@@ -2620,7 +2446,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                 {activeSection === 'descriptive' ? (
                   descriptiveGroups.length ? (
                     <div className="online-practice-descriptive-readonly" aria-label="Read only descriptive questions">
-                      {descriptiveGroups.map((group, groupIndex) => (
+                      {descriptiveGroups.map((group) => (
                         <section
                           className={`online-practice-descriptive-section ${group.toneClass}`}
                           id={getDescriptiveSectionDomId(group.key)}
