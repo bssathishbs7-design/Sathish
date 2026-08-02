@@ -995,6 +995,7 @@ export default function QuestionBankNonCreatePage({
   embedded = false,
   onAddToAssessment,
   addedQuestionIds = [],
+  initialFilters = {},
 }) {
   const resolvedMode = mode === 'editable' ? 'editable' : 'readonly'
   const isEditable = resolvedMode === 'editable'
@@ -1006,7 +1007,10 @@ export default function QuestionBankNonCreatePage({
   const activeView = 'grid'
   const [filterSearchTerms, setFilterSearchTerms] = useState({})
   const [metricDefaultFilters, setMetricDefaultFilters] = useState(() => readMetricDefaultFilters())
-  const [filters, setFilters] = useState(() => readMetricDefaultFilters())
+  const [filters, setFilters] = useState(() => normalizeFilters({
+    ...readMetricDefaultFilters(),
+    ...initialFilters,
+  }))
   const [landingFilters, setLandingFilters] = useState(() => readMetricDefaultFilters())
   const [openFilterKey, setOpenFilterKey] = useState('')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
