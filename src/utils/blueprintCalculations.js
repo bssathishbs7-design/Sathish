@@ -97,3 +97,62 @@ export const summarizeQuestionTypeRows = (rows = []) => rows.reduce((summary, ro
   lotMarks: 0,
   lotQuestions: 0,
 })
+
+const QUESTION_TYPE_SCALE = 100
+
+const toScaledInteger = (value) => roundHalfUp(toFiniteNumber(value) * QUESTION_TYPE_SCALE)
+
+export const isQuestionTypeMarkStepValid = (marks, markPerQuestion) => {
+  const marksUnits = toScaledInteger(marks)
+  const markPerQuestionUnits = toScaledInteger(markPerQuestion)
+
+  return markPerQuestionUnits > 0
+    && marksUnits >= 0
+    && marksUnits % markPerQuestionUnits === 0
+}
+
+export const calculateQuestionTypeRow = ({
+  markPerQuestion = 0,
+  hotQuestions = 0,
+  lotQuestions = 0,
+} = {}) => {
+  const normalizedMarkPerQuestion = Math.max(0, toFiniteNumber(markPerQuestion))
+  const normalizedHotQuestions = Math.max(0, Math.trunc(toFiniteNumber(hotQuestions)))
+  const normalizedLotQuestions = Math.max(0, Math.trunc(toFiniteNumber(lotQuestions)))
+  const hotMarks = normalizedHotQuestions * normalizedMarkPerQuestion
+  const lotMarks = normalizedLotQuestions * normalizedMarkPerQuestion
+
+  return {
+    markPerQuestion: normalizedMarkPerQuestion,
+    hotQuestions: normalizedHotQuestions,
+    lotQuestions: normalizedLotQuestions,
+    totalQuestions: normalizedHotQuestions + normalizedLotQuestions,
+    hotMarks,
+    lotMarks,
+    totalMarks: hotMarks + lotMarks,
+  }
+}
+
+export const allocateQuestionTypeSplit = ({
+  totalQuestions = 0,
+  currentHotQuestions = 0,
+  currentLotQuestions = 0,
+  hotPercentage = 0,
+} = {}) => {
+  const normalizedTotalQuestions = Math.max(0, Math.trunc(toFiniteNumber(totalQuestions)))
+  const normalizedCurrentHot = Math.max(0, Math.trunc(toFiniteNumber(currentHotQuestions)))
+  const normalizedCurrentLot = Math.max(0, Math.trunc(toFiniteNumber(currentLotQuestions)))
+  const currentTotal = normalizedCurrentHot + normalizedCurrentLot
+  const hotRatio = currentTotal > 0
+    ? normalizedCurrentHot / currentTotal
+    : clampPercentage(hotPercentage) / 100
+  const hotQuestions = Math.min(
+    normalizedTotalQuestions,
+    Math.max(0, roundHalfUp(normalizedTotalQuestions * hotRatio)),
+  )
+
+  return {
+    hotQuestions,
+    lotQuestions: normalizedTotalQuestions - hotQuestions,
+  }
+}

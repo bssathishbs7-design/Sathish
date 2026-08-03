@@ -2,8 +2,11 @@ import { createElement, Fragment, useEffect, useMemo, useRef, useState } from 'r
 import { createPortal } from 'react-dom'
 import { sanitizeRichHtml } from '../utils/sanitizeHtml'
 import {
+  allocateQuestionTypeSplit,
   allocateWeightedMarks,
+  calculateQuestionTypeRow,
   calculateCognitionMarks,
+  isQuestionTypeMarkStepValid,
   roundHalfUp,
   summarizeQuestionTypeRows,
 } from '../utils/blueprintCalculations'
@@ -1583,6 +1586,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   })
   const [blueprintDistributionDraft, setBlueprintDistributionDraft] = useState(initialBlueprintPlanner?.blueprintDistributionDraft ?? {})
   const [blueprintQuestionTypeDraft, setBlueprintQuestionTypeDraft] = useState(initialBlueprintPlanner?.blueprintQuestionTypeDraft ?? {})
+  const [blueprintQuestionTypeInvalidCells, setBlueprintQuestionTypeInvalidCells] = useState({})
   const [blueprintLaqQuestionSplits, setBlueprintLaqQuestionSplits] = useState(initialBlueprintPlanner?.blueprintLaqQuestionSplits ?? [])
   const [isBlueprintLaqSplitOpen, setIsBlueprintLaqSplitOpen] = useState(true)
   const [blueprintTestSpecificationCountDraft, setBlueprintTestSpecificationCountDraft] = useState(initialBlueprintPlanner?.blueprintTestSpecificationCountDraft ?? {})
@@ -2817,7 +2821,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     || getBlueprintQuestionMatch(item, blueprintQuestionRequirements).isRelevant
   )
   const blueprintQuestionTypeHasInput = blueprintQuestionTypeRows.some((row) => row.perQuestionMarks || row.totalMarks)
-  const blueprintQuestionTypeHasInvalidRows = blueprintQuestionTypeRows.some((row) => row.hasRequiredValues && !row.hasValidQuestionTotal)
+  const blueprintQuestionTypeHasInvalidRows = Object.keys(blueprintQuestionTypeInvalidCells).length > 0
+    || blueprintQuestionTypeRows.some((row) => row.hasRequiredValues && !row.hasValidQuestionTotal)
     || (blueprintLaqHasRequiredValues && !blueprintLaqSplitIsValid)
   const blueprintCognitionTotalMarks = blueprintRoundedTotalMark || blueprintQuestionTypeTotal || blueprintTestSpecificationCognitionTotal
   const hasBlueprintCognitionPercentages = blueprintCognitionWeightage.lot !== '' && blueprintCognitionWeightage.hot !== ''
@@ -3129,7 +3134,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         blueprintTestSpecificationMarkDraft,
         blueprintRebalanceMetadata,
         validationStatus: blueprintTestSpecificationMatrixIsValid ? 'matched' : 'mismatched',
-        schemaVersion: 2,
+        schemaVersion: 3,
         savedAt: new Date().toISOString(),
       }))
       setIsBlueprintPlannerSaved(true)
@@ -3146,9 +3151,33 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const isQuestionCount = ['totalQuestions', 'hotQuestions', 'lotQuestions'].includes(field)
     const isValidValue = isQuestionCount ? /^\d*$/.test(value) : /^\d*(?:\.\d{0,2})?$/.test(value)
     if (!isValidValue) return
+
+    const cellKey = `${label}:${field}`
+    const renderedRow = blueprintQuestionTypeByLabel[label]
+    const markPerQuestion = Number(renderedRow?.perQuestionMarks) || 0
+    const isDependentMarksField = ['totalMarks', 'hotMarks', 'lotMarks'].includes(field)
+    const hasInvalidMarkStep = value !== ''
+      && isDependentMarksField
+      && !isQuestionTypeMarkStepValid(value, markPerQuestion)
+
+    if (hasInvalidMarkStep) {
+      setBlueprintQuestionTypeInvalidCells((current) => ({
+        ...current,
+        [cellKey]: value,
+      }))
+      return
+    }
+
+    setBlueprintQuestionTypeInvalidCells((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([key]) => !key.startsWith(`${label}:`)),
+      )
+      return Object.keys(next).length === Object.keys(current).length ? current : next
+    })
+
     setBlueprintQuestionTypeDraft((current) => {
       const currentRowDraft = current[label] || {}
-      const currentRow = blueprintQuestionTypeByLabel[label]
+      const currentRow = renderedRow
       const nextRowDraft = {
         ...currentRowDraft,
         [field]: value,
@@ -3156,57 +3185,147 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       const dependentFields = ['totalQuestions', 'hotMarks', 'hotQuestions', 'lotMarks', 'lotQuestions']
 
       if (value === '') {
-        dependentFields.forEach((dependentField) => {
-          delete nextRowDraft[dependentField]
-        })
+        if (field === 'hotMarks' || field === 'hotQuestions' || field === 'lotMarks' || field === 'lotQuestions') {
+          const hotQuestions = field === 'hotMarks' || field === 'hotQuestions'
+            ? 0
+            : Number(currentRow?.hotQuestions) || 0
+          const lotQuestions = field === 'lotMarks' || field === 'lotQuestions'
+            ? 0
+            : Number(currentRow?.lotQuestions) || 0
+          const calculatedRow = calculateQuestionTypeRow({
+            markPerQuestion: Number(currentRow?.perQuestionMarks) || 0,
+            hotQuestions,
+            lotQuestions,
+          })
+          Object.assign(nextRowDraft, {
+            totalMarks: formatBlueprintSplitNumber(calculatedRow.totalMarks),
+            totalQuestions: formatBlueprintSplitNumber(calculatedRow.totalQuestions),
+            hotMarks: formatBlueprintSplitNumber(calculatedRow.hotMarks),
+            hotQuestions: formatBlueprintSplitNumber(calculatedRow.hotQuestions),
+            lotMarks: formatBlueprintSplitNumber(calculatedRow.lotMarks),
+            lotQuestions: formatBlueprintSplitNumber(calculatedRow.lotQuestions),
+          })
+        } else {
+          dependentFields.forEach((dependentField) => {
+            delete nextRowDraft[dependentField]
+          })
+          if (field === 'totalMarks') delete nextRowDraft.totalMarks
+        }
         return {
           ...current,
           [label]: nextRowDraft,
         }
       }
 
-      if (field === 'perQuestionMarks' || field === 'totalMarks') {
+      if (field === 'perQuestionMarks') {
+        const nextMarkPerQuestion = Number(value) || 0
+        const currentTotalQuestions = Number(currentRow?.totalQuestions) || 0
+        if (label === 'LAQs') {
+          if (currentTotalQuestions > 0) {
+            nextRowDraft.totalMarks = formatBlueprintSplitNumber(currentTotalQuestions * nextMarkPerQuestion)
+            nextRowDraft.totalQuestions = formatBlueprintSplitNumber(currentTotalQuestions)
+          }
+          ;['hotMarks', 'hotQuestions', 'lotMarks', 'lotQuestions'].forEach((dependentField) => {
+            delete nextRowDraft[dependentField]
+          })
+        } else if (currentTotalQuestions > 0) {
+          const split = allocateQuestionTypeSplit({
+            totalQuestions: currentTotalQuestions,
+            currentHotQuestions: currentRow?.hotQuestions,
+            currentLotQuestions: currentRow?.lotQuestions,
+            hotPercentage: blueprintCognitionHotPercent,
+          })
+          const calculatedRow = calculateQuestionTypeRow({
+            markPerQuestion: nextMarkPerQuestion,
+            ...split,
+          })
+          Object.assign(nextRowDraft, {
+            totalMarks: formatBlueprintSplitNumber(calculatedRow.totalMarks),
+            totalQuestions: formatBlueprintSplitNumber(calculatedRow.totalQuestions),
+            hotMarks: formatBlueprintSplitNumber(calculatedRow.hotMarks),
+            hotQuestions: formatBlueprintSplitNumber(calculatedRow.hotQuestions),
+            lotMarks: formatBlueprintSplitNumber(calculatedRow.lotMarks),
+            lotQuestions: formatBlueprintSplitNumber(calculatedRow.lotQuestions),
+          })
+        }
+      } else if (field === 'totalMarks') {
+        const nextTotalQuestions = markPerQuestion > 0 ? Number(value) / markPerQuestion : 0
+        if (label === 'LAQs') {
+          nextRowDraft.totalQuestions = formatBlueprintSplitNumber(nextTotalQuestions)
+          ;['hotMarks', 'hotQuestions', 'lotMarks', 'lotQuestions'].forEach((dependentField) => {
+            delete nextRowDraft[dependentField]
+          })
+        } else {
+          const split = allocateQuestionTypeSplit({
+            totalQuestions: nextTotalQuestions,
+            currentHotQuestions: currentRow?.hotQuestions,
+            currentLotQuestions: currentRow?.lotQuestions,
+            hotPercentage: blueprintCognitionHotPercent,
+          })
+          const calculatedRow = calculateQuestionTypeRow({ markPerQuestion, ...split })
+          Object.assign(nextRowDraft, {
+            totalMarks: formatBlueprintSplitNumber(calculatedRow.totalMarks),
+            totalQuestions: formatBlueprintSplitNumber(calculatedRow.totalQuestions),
+            hotMarks: formatBlueprintSplitNumber(calculatedRow.hotMarks),
+            hotQuestions: formatBlueprintSplitNumber(calculatedRow.hotQuestions),
+            lotMarks: formatBlueprintSplitNumber(calculatedRow.lotMarks),
+            lotQuestions: formatBlueprintSplitNumber(calculatedRow.lotQuestions),
+          })
+        }
+      } else if (field === 'totalQuestions') {
+        if (label === 'LAQs') {
+          if (markPerQuestion > 0) {
+            nextRowDraft.totalMarks = formatBlueprintSplitNumber(Number(value) * markPerQuestion)
+          }
+          ;['hotMarks', 'hotQuestions', 'lotMarks', 'lotQuestions'].forEach((dependentField) => {
+            delete nextRowDraft[dependentField]
+          })
+        } else {
+          const split = allocateQuestionTypeSplit({
+            totalQuestions: Number(value),
+            currentHotQuestions: currentRow?.hotQuestions,
+            currentLotQuestions: currentRow?.lotQuestions,
+            hotPercentage: blueprintCognitionHotPercent,
+          })
+          const calculatedRow = calculateQuestionTypeRow({ markPerQuestion, ...split })
+          Object.assign(nextRowDraft, {
+            totalMarks: formatBlueprintSplitNumber(calculatedRow.totalMarks),
+            totalQuestions: formatBlueprintSplitNumber(calculatedRow.totalQuestions),
+            hotMarks: formatBlueprintSplitNumber(calculatedRow.hotMarks),
+            hotQuestions: formatBlueprintSplitNumber(calculatedRow.hotQuestions),
+            lotMarks: formatBlueprintSplitNumber(calculatedRow.lotMarks),
+            lotQuestions: formatBlueprintSplitNumber(calculatedRow.lotQuestions),
+          })
+        }
+      } else if (label === 'LAQs') {
         dependentFields.forEach((dependentField) => {
           delete nextRowDraft[dependentField]
         })
       } else {
-        const perQuestionMarks = Number(currentRow?.perQuestionMarks) || 0
-        const totalMarks = Number(currentRow?.totalMarks) || 0
-        const totalQuestions = Number(currentRow?.totalQuestions) || 0
         const numericValue = Number(value) || 0
-        const clamp = (number, minimum, maximum) => Math.min(Math.max(number, minimum), maximum)
-
-        if (field === 'totalQuestions') {
-          if (perQuestionMarks > 0) {
-            nextRowDraft.totalMarks = String(numericValue * perQuestionMarks)
-            dependentFields.forEach((dependentField) => {
-              delete nextRowDraft[dependentField]
-            })
-          }
-        } else if (field === 'hotMarks' || field === 'lotMarks') {
-          const editedMarks = clamp(numericValue, 0, totalMarks)
-          const requestedHotMarks = field === 'hotMarks' ? editedMarks : totalMarks - editedMarks
-          const hotQuestions = perQuestionMarks > 0
-            ? clamp(Math.round(requestedHotMarks / perQuestionMarks), 0, totalQuestions)
-            : 0
-          const hotMarks = hotQuestions * perQuestionMarks
-          const lotMarks = totalMarks - hotMarks
-
-          nextRowDraft.hotMarks = String(hotMarks)
-          nextRowDraft.lotMarks = String(lotMarks)
-          nextRowDraft.hotQuestions = String(hotQuestions)
-          nextRowDraft.lotQuestions = String(totalQuestions - hotQuestions)
-        } else if (field === 'hotQuestions' || field === 'lotQuestions') {
-          const editedQuestions = clamp(numericValue, 0, totalQuestions)
-          const hotQuestions = field === 'hotQuestions' ? editedQuestions : totalQuestions - editedQuestions
-          const lotQuestions = totalQuestions - hotQuestions
-          const hotMarks = hotQuestions * perQuestionMarks
-
-          nextRowDraft.hotQuestions = String(hotQuestions)
-          nextRowDraft.lotQuestions = String(lotQuestions)
-          nextRowDraft.hotMarks = String(hotMarks)
-          nextRowDraft.lotMarks = String(totalMarks - hotMarks)
-        }
+        const hotQuestions = field === 'hotQuestions'
+          ? numericValue
+          : field === 'hotMarks'
+            ? numericValue / markPerQuestion
+            : Number(currentRow?.hotQuestions) || 0
+        const lotQuestions = field === 'lotQuestions'
+          ? numericValue
+          : field === 'lotMarks'
+            ? numericValue / markPerQuestion
+            : Number(currentRow?.lotQuestions) || 0
+        const calculatedRow = calculateQuestionTypeRow({
+          markPerQuestion,
+          hotQuestions,
+          lotQuestions,
+        })
+        Object.assign(nextRowDraft, {
+          totalMarks: formatBlueprintSplitNumber(calculatedRow.totalMarks),
+          totalQuestions: formatBlueprintSplitNumber(calculatedRow.totalQuestions),
+          hotMarks: formatBlueprintSplitNumber(calculatedRow.hotMarks),
+          hotQuestions: formatBlueprintSplitNumber(calculatedRow.hotQuestions),
+          lotMarks: formatBlueprintSplitNumber(calculatedRow.lotMarks),
+          lotQuestions: formatBlueprintSplitNumber(calculatedRow.lotQuestions),
+        })
       }
 
       return {
@@ -3215,6 +3334,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       }
     })
   }
+  const getBlueprintQuestionTypeCellValue = (row, field, value) => {
+    const cellKey = `${row.label}:${field}`
+    return Object.prototype.hasOwnProperty.call(blueprintQuestionTypeInvalidCells, cellKey)
+      ? blueprintQuestionTypeInvalidCells[cellKey]
+      : value
+  }
+  const isBlueprintQuestionTypeCellInvalid = (row, field) => (
+    Object.prototype.hasOwnProperty.call(blueprintQuestionTypeInvalidCells, `${row.label}:${field}`)
+  )
   const updateBlueprintLaqSplitCount = (questionIndex, value) => {
     if (!/^\d*$/.test(value)) return
     const nextCount = value === '' ? 0 : Math.min(Math.max(Number(value), 0), 20)
@@ -3325,6 +3453,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setIsBlueprintProgressOpen(false)
     setBlueprintCognitionWeightage({ lot: '', hot: '' })
     setBlueprintQuestionTypeDraft({})
+    setBlueprintQuestionTypeInvalidCells({})
     setBlueprintLaqQuestionSplits([])
     setIsBlueprintLaqSplitOpen(true)
     setBlueprintTestSpecificationCountDraft({})
@@ -3378,6 +3507,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       setBlueprintDistributionDraft({})
       setBlueprintCognitionWeightage({ lot: '', hot: '' })
       setBlueprintQuestionTypeDraft({})
+      setBlueprintQuestionTypeInvalidCells({})
       setBlueprintLaqQuestionSplits([])
       setBlueprintTestSpecificationCountDraft({})
       setBlueprintTestSpecificationMarkDraft({})
@@ -6618,8 +6748,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 <td>
                                   <input
                                     className={`create-assessment-blueprint-spec-number ${row.hasRequiredValues && !row.hasValidQuestionTotal ? 'is-invalid' : ''}`}
-                                    type="text"
-                                    inputMode="numeric"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
                                     value={row.perQuestionMarks}
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'perQuestionMarks', event.target.value)}
                                     aria-label={`${row.label} per question marks`}
@@ -6627,10 +6758,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 </td>
                                 <td>
                                   <input
-                                    className={`create-assessment-blueprint-spec-number ${row.hasRequiredValues && !row.hasValidQuestionTotal ? 'is-invalid' : ''}`}
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={row.totalMarks}
+                                    className={`create-assessment-blueprint-spec-number ${(row.hasRequiredValues && !row.hasValidQuestionTotal) || isBlueprintQuestionTypeCellInvalid(row, 'totalMarks') ? 'is-invalid' : ''}`}
+                                    type="number"
+                                    min="0"
+                                    step={Number(row.perQuestionMarks) || 1}
+                                    value={getBlueprintQuestionTypeCellValue(row, 'totalMarks', row.totalMarks)}
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'totalMarks', event.target.value)}
                                     aria-label={`${row.label} total marks`}
                                   />
@@ -6638,8 +6770,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 <td>
                                   <input
                                     className={`create-assessment-blueprint-spec-number is-calculated ${row.isTotalQuestionsAuto ? 'is-auto' : 'is-edited'} ${row.hasRequiredValues && !row.hasValidQuestionTotal ? 'is-invalid' : ''}`}
-                                    type="text"
-                                    inputMode="numeric"
+                                    type="number"
+                                    min="0"
+                                    step="1"
                                     value={row.totalQuestionsValue}
                                     placeholder="-"
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'totalQuestions', event.target.value)}
@@ -6649,10 +6782,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 </td>
                                 <td>
                                   <input
-                                    className={`create-assessment-blueprint-spec-number is-calculated ${row.isHotMarksAuto ? 'is-auto' : 'is-edited'}`}
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={row.hotMarksValue}
+                                    className={`create-assessment-blueprint-spec-number is-calculated ${row.isHotMarksAuto ? 'is-auto' : 'is-edited'} ${isBlueprintQuestionTypeCellInvalid(row, 'hotMarks') ? 'is-invalid' : ''}`}
+                                    type="number"
+                                    min="0"
+                                    step={Number(row.perQuestionMarks) || 1}
+                                    value={getBlueprintQuestionTypeCellValue(row, 'hotMarks', row.hotMarksValue)}
                                     placeholder="-"
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotMarks', event.target.value)}
                                     readOnly={row.usesLaqSplit}
@@ -6663,8 +6797,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 <td>
                                   <input
                                     className={`create-assessment-blueprint-spec-number is-calculated ${row.isHotQuestionsAuto ? 'is-auto' : 'is-edited'}`}
-                                    type="text"
-                                    inputMode="numeric"
+                                    type="number"
+                                    min="0"
+                                    step="1"
                                     value={row.hotQuestionsValue}
                                     placeholder="-"
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotQuestions', event.target.value)}
@@ -6675,10 +6810,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 </td>
                                 <td>
                                   <input
-                                    className={`create-assessment-blueprint-spec-number is-calculated ${row.isLotMarksAuto ? 'is-auto' : 'is-edited'}`}
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={row.lotMarksValue}
+                                    className={`create-assessment-blueprint-spec-number is-calculated ${row.isLotMarksAuto ? 'is-auto' : 'is-edited'} ${isBlueprintQuestionTypeCellInvalid(row, 'lotMarks') ? 'is-invalid' : ''}`}
+                                    type="number"
+                                    min="0"
+                                    step={Number(row.perQuestionMarks) || 1}
+                                    value={getBlueprintQuestionTypeCellValue(row, 'lotMarks', row.lotMarksValue)}
                                     placeholder="-"
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotMarks', event.target.value)}
                                     readOnly={row.usesLaqSplit}
@@ -6689,8 +6825,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 <td>
                                   <input
                                     className={`create-assessment-blueprint-spec-number is-calculated ${row.isLotQuestionsAuto ? 'is-auto' : 'is-edited'}`}
-                                    type="text"
-                                    inputMode="numeric"
+                                    type="number"
+                                    min="0"
+                                    step="1"
                                     value={row.lotQuestionsValue}
                                     placeholder="-"
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotQuestions', event.target.value)}
@@ -6832,8 +6969,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               <td>
                                 <input
                                   className={`create-assessment-blueprint-spec-number ${row.hasRequiredValues && !row.hasValidQuestionTotal ? 'is-invalid' : ''}`}
-                                  type="text"
-                                  inputMode="numeric"
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
                                   value={row.perQuestionMarks}
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'perQuestionMarks', event.target.value)}
                                   aria-label={`${row.label} per question marks`}
@@ -6841,10 +6979,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               </td>
                               <td>
                                 <input
-                                  className={`create-assessment-blueprint-spec-number ${row.hasRequiredValues && !row.hasValidQuestionTotal ? 'is-invalid' : ''}`}
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={row.totalMarks}
+                                  className={`create-assessment-blueprint-spec-number ${(row.hasRequiredValues && !row.hasValidQuestionTotal) || isBlueprintQuestionTypeCellInvalid(row, 'totalMarks') ? 'is-invalid' : ''}`}
+                                  type="number"
+                                  min="0"
+                                  step={Number(row.perQuestionMarks) || 1}
+                                  value={getBlueprintQuestionTypeCellValue(row, 'totalMarks', row.totalMarks)}
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'totalMarks', event.target.value)}
                                   aria-label={`${row.label} total marks`}
                                 />
@@ -6852,8 +6991,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               <td>
                                 <input
                                   className={`create-assessment-blueprint-spec-number is-calculated ${row.isTotalQuestionsAuto ? 'is-auto' : 'is-edited'} ${row.hasRequiredValues && !row.hasValidQuestionTotal ? 'is-invalid' : ''}`}
-                                  type="text"
-                                  inputMode="numeric"
+                                  type="number"
+                                  min="0"
+                                  step="1"
                                   value={row.totalQuestionsValue}
                                   placeholder="-"
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'totalQuestions', event.target.value)}
@@ -6863,10 +7003,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               </td>
                               <td>
                                 <input
-                                  className={`create-assessment-blueprint-spec-number is-calculated ${row.isHotMarksAuto ? 'is-auto' : 'is-edited'}`}
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={row.hotMarksValue}
+                                  className={`create-assessment-blueprint-spec-number is-calculated ${row.isHotMarksAuto ? 'is-auto' : 'is-edited'} ${isBlueprintQuestionTypeCellInvalid(row, 'hotMarks') ? 'is-invalid' : ''}`}
+                                  type="number"
+                                  min="0"
+                                  step={Number(row.perQuestionMarks) || 1}
+                                  value={getBlueprintQuestionTypeCellValue(row, 'hotMarks', row.hotMarksValue)}
                                   placeholder="-"
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotMarks', event.target.value)}
                                   aria-label={`${row.label} HoT marks`}
@@ -6876,8 +7017,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               <td>
                                 <input
                                   className={`create-assessment-blueprint-spec-number is-calculated ${row.isHotQuestionsAuto ? 'is-auto' : 'is-edited'}`}
-                                  type="text"
-                                  inputMode="numeric"
+                                  type="number"
+                                  min="0"
+                                  step="1"
                                   value={row.hotQuestionsValue}
                                   placeholder="-"
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotQuestions', event.target.value)}
@@ -6887,10 +7029,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               </td>
                               <td>
                                 <input
-                                  className={`create-assessment-blueprint-spec-number is-calculated ${row.isLotMarksAuto ? 'is-auto' : 'is-edited'}`}
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={row.lotMarksValue}
+                                  className={`create-assessment-blueprint-spec-number is-calculated ${row.isLotMarksAuto ? 'is-auto' : 'is-edited'} ${isBlueprintQuestionTypeCellInvalid(row, 'lotMarks') ? 'is-invalid' : ''}`}
+                                  type="number"
+                                  min="0"
+                                  step={Number(row.perQuestionMarks) || 1}
+                                  value={getBlueprintQuestionTypeCellValue(row, 'lotMarks', row.lotMarksValue)}
                                   placeholder="-"
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotMarks', event.target.value)}
                                   aria-label={`${row.label} LoT marks`}
@@ -6900,8 +7043,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               <td>
                                 <input
                                   className={`create-assessment-blueprint-spec-number is-calculated ${row.isLotQuestionsAuto ? 'is-auto' : 'is-edited'}`}
-                                  type="text"
-                                  inputMode="numeric"
+                                  type="number"
+                                  min="0"
+                                  step="1"
                                   value={row.lotQuestionsValue}
                                   placeholder="-"
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotQuestions', event.target.value)}
@@ -6923,7 +7067,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             </td>
                             <td>{blueprintQuestionTypeQuestionTotal ? formatBlueprintSplitNumber(blueprintQuestionTypeQuestionTotal) : '-'}</td>
                             <td className={blueprintQuestionTypeHasInput && hasBlueprintCognitionMarks
-                              ? `is-footer-validation ${blueprintQuestionTypeHotMarksTotal === blueprintCognitionHotMarks ? 'is-valid' : 'is-invalid'}`
+                              ? `is-footer-validation ${blueprintQuestionTypeHotMarksTotal === blueprintCognitionHotMarks && !blueprintQuestionTypeHasInvalidRows ? 'is-valid' : 'is-invalid'}`
                               : ''}>
                               {blueprintQuestionTypeHasInput && hasBlueprintCognitionMarks
                                 ? `${formatBlueprintSplitNumber(blueprintQuestionTypeHotMarksTotal)} / ${formatBlueprintSplitNumber(blueprintCognitionHotMarks)}`
@@ -6931,7 +7075,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             </td>
                             <td>{blueprintQuestionTypeHotQuestionsTotal ? formatBlueprintSplitNumber(blueprintQuestionTypeHotQuestionsTotal) : '-'}</td>
                             <td className={blueprintQuestionTypeHasInput && hasBlueprintCognitionMarks
-                              ? `is-footer-validation ${blueprintQuestionTypeLotMarksTotal === blueprintCognitionLotMarks ? 'is-valid' : 'is-invalid'}`
+                              ? `is-footer-validation ${blueprintQuestionTypeLotMarksTotal === blueprintCognitionLotMarks && !blueprintQuestionTypeHasInvalidRows ? 'is-valid' : 'is-invalid'}`
                               : ''}>
                               {blueprintQuestionTypeHasInput && hasBlueprintCognitionMarks
                                 ? `${formatBlueprintSplitNumber(blueprintQuestionTypeLotMarksTotal)} / ${formatBlueprintSplitNumber(blueprintCognitionLotMarks)}`
@@ -7369,13 +7513,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 </td>
                                 <td>{formatBlueprintReferenceNumber(blueprintQuestionTypeQuestionTotal)}</td>
                                 <td>
-                                  <span className={`create-assessment-blueprint-reference-footer-validation ${blueprintQuestionTypeHotMarksTotal === blueprintCognitionHotMarks ? 'is-valid' : 'is-invalid'}`}>
+                                  <span className={`create-assessment-blueprint-reference-footer-validation ${blueprintQuestionTypeHotMarksTotal === blueprintCognitionHotMarks && !blueprintQuestionTypeHasInvalidRows ? 'is-valid' : 'is-invalid'}`}>
                                     {formatBlueprintReferenceNumber(blueprintQuestionTypeHotMarksTotal)}
                                   </span>
                                 </td>
                                 <td>{formatBlueprintReferenceNumber(blueprintQuestionTypeHotQuestionsTotal)}</td>
                                 <td>
-                                  <span className={`create-assessment-blueprint-reference-footer-validation ${blueprintQuestionTypeLotMarksTotal === blueprintCognitionLotMarks ? 'is-valid' : 'is-invalid'}`}>
+                                  <span className={`create-assessment-blueprint-reference-footer-validation ${blueprintQuestionTypeLotMarksTotal === blueprintCognitionLotMarks && !blueprintQuestionTypeHasInvalidRows ? 'is-valid' : 'is-invalid'}`}>
                                     {formatBlueprintReferenceNumber(blueprintQuestionTypeLotMarksTotal)}
                                   </span>
                                 </td>

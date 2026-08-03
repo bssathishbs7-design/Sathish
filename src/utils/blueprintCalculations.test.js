@@ -5,9 +5,47 @@ import {
   calculateCognitionMarks,
   clampPercentage,
   roundHalfUp,
+  allocateQuestionTypeSplit,
+  calculateQuestionTypeRow,
+  isQuestionTypeMarkStepValid,
   summarizeQuestionTypeRows,
   validateCognitionTotals,
 } from './blueprintCalculations.js'
+
+test('question type row cascades counts into marks and totals', () => {
+  assert.deepEqual(calculateQuestionTypeRow({
+    markPerQuestion: 5,
+    hotQuestions: 3,
+    lotQuestions: 2,
+  }), {
+    markPerQuestion: 5,
+    hotQuestions: 3,
+    lotQuestions: 2,
+    totalQuestions: 5,
+    hotMarks: 15,
+    lotMarks: 10,
+    totalMarks: 25,
+  })
+})
+
+test('question type mark validation accepts only exact mark denominations', () => {
+  assert.equal(isQuestionTypeMarkStepValid(20, 5), true)
+  assert.equal(isQuestionTypeMarkStepValid(12, 5), false)
+  assert.equal(isQuestionTypeMarkStepValid(7.5, 2.5), true)
+  assert.equal(isQuestionTypeMarkStepValid(5, 0), false)
+})
+
+test('question type total split preserves the existing ratio or uses cognition percentage', () => {
+  assert.deepEqual(allocateQuestionTypeSplit({
+    totalQuestions: 10,
+    currentHotQuestions: 3,
+    currentLotQuestions: 1,
+  }), { hotQuestions: 8, lotQuestions: 2 })
+  assert.deepEqual(allocateQuestionTypeSplit({
+    totalQuestions: 10,
+    hotPercentage: 75,
+  }), { hotQuestions: 8, lotQuestions: 2 })
+})
 
 test('rounds values below .5 down and values at or above .5 up', () => {
   assert.equal(roundHalfUp(17.2), 17)
