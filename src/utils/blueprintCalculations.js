@@ -98,61 +98,34 @@ export const summarizeQuestionTypeRows = (rows = []) => rows.reduce((summary, ro
   lotQuestions: 0,
 })
 
-const QUESTION_TYPE_SCALE = 100
-
-const toScaledInteger = (value) => roundHalfUp(toFiniteNumber(value) * QUESTION_TYPE_SCALE)
-
-export const isQuestionTypeMarkStepValid = (marks, markPerQuestion) => {
-  const marksUnits = toScaledInteger(marks)
-  const markPerQuestionUnits = toScaledInteger(markPerQuestion)
-
-  return markPerQuestionUnits > 0
-    && marksUnits >= 0
-    && marksUnits % markPerQuestionUnits === 0
-}
-
-export const calculateQuestionTypeRow = ({
-  markPerQuestion = 0,
-  hotQuestions = 0,
-  lotQuestions = 0,
-} = {}) => {
+export const calculateQuestionTotal = ({ totalMarks = 0, markPerQuestion = 0 } = {}) => {
+  const normalizedTotalMarks = Math.max(0, toFiniteNumber(totalMarks))
   const normalizedMarkPerQuestion = Math.max(0, toFiniteNumber(markPerQuestion))
-  const normalizedHotQuestions = Math.max(0, Math.trunc(toFiniteNumber(hotQuestions)))
-  const normalizedLotQuestions = Math.max(0, Math.trunc(toFiniteNumber(lotQuestions)))
-  const hotMarks = normalizedHotQuestions * normalizedMarkPerQuestion
-  const lotMarks = normalizedLotQuestions * normalizedMarkPerQuestion
+  const exactTotal = normalizedMarkPerQuestion > 0
+    ? normalizedTotalMarks / normalizedMarkPerQuestion
+    : 0
+  const isValid = normalizedTotalMarks > 0
+    && normalizedMarkPerQuestion > 0
+    && Number.isInteger(exactTotal)
 
   return {
-    markPerQuestion: normalizedMarkPerQuestion,
-    hotQuestions: normalizedHotQuestions,
-    lotQuestions: normalizedLotQuestions,
-    totalQuestions: normalizedHotQuestions + normalizedLotQuestions,
-    hotMarks,
-    lotMarks,
-    totalMarks: hotMarks + lotMarks,
+    isValid,
+    totalQuestions: isValid ? exactTotal : 0,
   }
 }
 
-export const allocateQuestionTypeSplit = ({
+export const calculateComplementaryQuestionSplit = ({
   totalQuestions = 0,
-  currentHotQuestions = 0,
-  currentLotQuestions = 0,
-  hotPercentage = 0,
+  editedLevel,
+  editedQuestions = 0,
 } = {}) => {
-  const normalizedTotalQuestions = Math.max(0, Math.trunc(toFiniteNumber(totalQuestions)))
-  const normalizedCurrentHot = Math.max(0, Math.trunc(toFiniteNumber(currentHotQuestions)))
-  const normalizedCurrentLot = Math.max(0, Math.trunc(toFiniteNumber(currentLotQuestions)))
-  const currentTotal = normalizedCurrentHot + normalizedCurrentLot
-  const hotRatio = currentTotal > 0
-    ? normalizedCurrentHot / currentTotal
-    : clampPercentage(hotPercentage) / 100
-  const hotQuestions = Math.min(
-    normalizedTotalQuestions,
-    Math.max(0, roundHalfUp(normalizedTotalQuestions * hotRatio)),
+  const normalizedTotal = Math.max(0, Math.trunc(toFiniteNumber(totalQuestions)))
+  const normalizedEdited = Math.min(
+    normalizedTotal,
+    Math.max(0, Math.trunc(toFiniteNumber(editedQuestions))),
   )
 
-  return {
-    hotQuestions,
-    lotQuestions: normalizedTotalQuestions - hotQuestions,
-  }
+  return editedLevel === 'lot'
+    ? { hotQuestions: normalizedTotal - normalizedEdited, lotQuestions: normalizedEdited }
+    : { hotQuestions: normalizedEdited, lotQuestions: normalizedTotal - normalizedEdited }
 }

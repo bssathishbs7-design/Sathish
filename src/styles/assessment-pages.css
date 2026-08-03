@@ -19137,7 +19137,8 @@
 }
 
 .create-assessment-blueprint-laq-split-head input,
-.create-assessment-blueprint-laq-split-item > input {
+.create-assessment-blueprint-laq-split-item > input,
+.create-assessment-blueprint-laq-part-marks > input {
   width: 62px;
   height: 28px;
   padding: 0 8px;
@@ -19153,7 +19154,8 @@
 }
 
 .create-assessment-blueprint-laq-split-head input:focus,
-.create-assessment-blueprint-laq-split-item > input:focus {
+.create-assessment-blueprint-laq-split-item > input:focus,
+.create-assessment-blueprint-laq-part-marks > input:focus {
   border-color: #60a5fa;
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.14);
 }
@@ -19578,22 +19580,20 @@
   color: #365d85;
 }
 
-.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-invalid {
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-invalid:not(.is-footer-validation) {
   background: #fff1f2;
   color: #dc2626;
   font-weight: 900;
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-footer-validation.is-valid {
-  background: #dcfce7;
   color: #047857;
-  box-shadow: inset 0 0 0 1px #4ade80;
+  font-weight: 900;
 }
 
 .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-footer-validation.is-invalid {
-  background: #ffe4e6;
   color: #be123c;
-  box-shadow: inset 0 0 0 1px #fb7185;
+  font-weight: 900;
 }
 
 .create-assessment-blueprint-reference-footer-validation {
@@ -19707,6 +19707,20 @@
   color: #be123c;
 }
 
+.create-assessment-blueprint-readonly-number {
+  display: inline-block;
+  width: 100%;
+  color: #17476c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.create-assessment-blueprint-readonly-number.is-invalid {
+  color: #e11d48;
+}
+
 .create-assessment-blueprint-spec-number.is-calculated {
   width: min(100%, 68px);
 }
@@ -19798,6 +19812,306 @@
   border: 0;
   border-radius: 0;
   box-sizing: border-box;
+}
+
+/* Modern Type of Questions data grid */
+.create-assessment-blueprint-spec-card.is-type-summary {
+  --question-grid-line: #e5edf5;
+  --question-grid-muted: #64748b;
+  --question-grid-heading: #173f62;
+  --question-grid-hover: #f8fbff;
+  --question-grid-section: #f1f6fc;
+  --question-grid-lot: #6d4ee8;
+  --question-grid-lot-soft: #f7f4ff;
+  --question-grid-hot: #d85616;
+  --question-grid-hot-soft: #fff7f0;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table-wrap-type {
+  overflow: hidden;
+  border-color: #dbe6f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-test-grid-title-row {
+  min-height: 44px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--question-grid-line);
+  background: #ffffff;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-test-grid-title-row h3 {
+  color: var(--question-grid-heading);
+  font-size: 0.82rem;
+  letter-spacing: -0.01em;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th {
+  height: 38px;
+  padding: 7px 10px;
+  border-bottom: 1px solid #dbe6f0;
+  background: #f7f9fc;
+  color: var(--question-grid-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(5),
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(6) {
+  background: var(--question-grid-hot-soft);
+  color: var(--question-grid-hot);
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(7),
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(8) {
+  background: var(--question-grid-lot-soft);
+  color: var(--question-grid-lot);
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table td {
+  height: 44px;
+  padding: 5px 10px;
+  border-bottom-color: var(--question-grid-line);
+  background: #ffffff;
+  color: #17324d;
+  font-size: 0.77rem;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-question-type-row td:first-child {
+  color: #122f49;
+  font-weight: 900;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-question-type-row.is-child td:first-child {
+  color: #526b7d;
+  font-weight: 750;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-question-type-row.is-saq-summary td {
+  height: 40px;
+  background: var(--question-grid-section);
+  color: #315d85;
+  font-weight: 900;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tbody tr:not(.is-total):not(.create-assessment-blueprint-laq-split-row):hover td {
+  background: var(--question-grid-hover);
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number {
+  width: min(100%, 78px);
+  height: 32px;
+  border-color: #bfd9d4;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number:hover {
+  border-color: #63bdb3;
+  background: #fbfffe;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number:focus {
+  border-color: #159b8e;
+  box-shadow: 0 0 0 3px rgba(21, 155, 142, 0.12);
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number.is-calculated {
+  width: min(100%, 78px);
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number.is-calculated.is-auto,
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number.is-calculated.is-edited {
+  border-color: #cbdcf2;
+  background: #f7faff;
+  color: #315d92;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-readonly-number {
+  color: #294c69;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td {
+  height: 44px;
+  border-top: 1px solid #cfdeec;
+  background: #f3f7fb;
+  color: #264e70;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-row > td {
+  padding: 0 12px 12px !important;
+  background: #f8fbff !important;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-editor {
+  gap: 12px;
+  margin: 10px 0 0;
+  padding: 14px;
+  border-color: #d7e3ef;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-section-head {
+  min-height: 28px;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-section-head > strong {
+  color: #214d75;
+  font-size: 0.8rem;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-question-card {
+  gap: 10px;
+  padding: 12px 0;
+  border-top-color: #e2eaf3;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-head {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto minmax(210px, 1fr);
+  min-height: 38px;
+  padding-bottom: 10px;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-status {
+  justify-self: end;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-list {
+  gap: 7px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-item {
+  grid-template-columns: minmax(90px, 0.55fr) minmax(160px, 0.8fr) minmax(240px, 1.35fr);
+  min-height: 50px;
+  padding: 7px 12px;
+  border: 1px solid #e0e8f1;
+  border-radius: 9px;
+  background: #f9fbfd;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-item:last-child {
+  border-bottom: 1px solid #e0e8f1;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-item:hover {
+  border-color: #cbdbe9;
+  background: #f5f9fd;
+}
+
+.create-assessment-blueprint-laq-question-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.create-assessment-blueprint-laq-question-title > span {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef4fa;
+  color: #526b7d;
+  font-size: 0.65rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.create-assessment-blueprint-laq-part-marks,
+.create-assessment-blueprint-laq-cognition-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #5b7082;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.create-assessment-blueprint-laq-part-marks > input {
+  flex: 0 0 auto;
+}
+
+.create-assessment-blueprint-laq-allocation-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  min-height: 32px;
+  padding: 5px 10px;
+  color: #607588;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.create-assessment-blueprint-laq-allocation-summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.create-assessment-blueprint-laq-allocation-summary strong {
+  color: #234f70;
+  font-weight: 900;
+}
+
+.create-assessment-blueprint-laq-allocation-summary.is-valid strong {
+  color: #047857;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-level-toggle {
+  width: 142px;
+  min-height: 32px;
+  border-color: #d5e0eb;
+  border-radius: 9px;
+  background: #f5f7fa;
+}
+
+.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-level-toggle button {
+  min-height: 26px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 900px) {
+  .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table-wrap-type {
+    overflow-x: auto;
+  }
+
+  .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-head {
+    grid-template-columns: 1fr auto;
+  }
+
+  .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-status {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-item {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .create-assessment-blueprint-laq-cognition-field {
+    grid-column: 1 / -1;
+  }
+
+  .create-assessment-blueprint-laq-allocation-summary {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 .create-assessment-blueprint-test-grid-title-row {
@@ -24225,12 +24539,603 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
   color: #059669;
 }
 
+/* Modern Blueprint Question Progress grid */
+.create-assessment-blueprint-progress-popover {
+  width: min(980px, calc(100vw - 390px));
+  border-color: #d7e4e8;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(24, 54, 68, 0.16);
+}
+
+.create-assessment-blueprint-progress-table-head {
+  min-height: 56px;
+  padding: 11px 16px 9px;
+  border-bottom: 0;
+  background: #ffffff;
+}
+
+.create-assessment-blueprint-progress-table-head h3 {
+  gap: 8px;
+  color: #193f59;
+  font-size: 0.82rem;
+  letter-spacing: -0.01em;
+}
+
+.create-assessment-blueprint-progress-table-head > span:not(.create-assessment-blueprint-progress-overall-bar) {
+  min-height: 28px;
+  padding: 5px 11px;
+  border: 1px solid #fde4bd;
+  background: #fff8eb;
+  color: #b45309;
+  font-size: 0.66rem;
+}
+
+.create-assessment-blueprint-progress-table-head > span.is-complete:not(.create-assessment-blueprint-progress-overall-bar) {
+  border-color: #bbefd5;
+  background: #effcf6;
+  color: #047857;
+}
+
+.create-assessment-blueprint-progress-table-head > .create-assessment-blueprint-progress-overall-bar {
+  height: 4px;
+  background: #e8f0f2;
+}
+
+.create-assessment-blueprint-progress-overall-bar i {
+  background: linear-gradient(90deg, #2dd4bf, #0f9f91);
+}
+
+.create-assessment-blueprint-progress-table-wrap {
+  border-top: 1px solid #e1eaee;
+  background: #ffffff;
+}
+
+.create-assessment-blueprint-progress-table-wrap table {
+  font-size: 0.67rem;
+}
+
+.create-assessment-blueprint-progress-table-wrap th,
+.create-assessment-blueprint-progress-table-wrap td {
+  height: 46px;
+  padding: 6px 8px;
+  border-right: 0;
+  border-bottom: 1px solid #e5edf1;
+}
+
+.create-assessment-blueprint-progress-table-wrap thead th {
+  height: 40px;
+  border-right: 1px solid #e1e9ee;
+  border-bottom: 1px solid #dce7ec;
+  background: #f7fafb;
+  color: #294d65;
+  font-size: 0.68rem;
+  letter-spacing: 0.01em;
+}
+
+.create-assessment-blueprint-progress-table-wrap thead tr:first-child th {
+  height: 44px;
+  background: #f4f8fa;
+}
+
+.create-assessment-blueprint-progress-table-wrap thead tr:first-child th:not(:first-child) {
+  color: #31536b;
+  font-size: 0.72rem;
+}
+
+.create-assessment-blueprint-progress-table-wrap thead small {
+  display: inline-flex;
+  min-height: 20px;
+  align-items: center;
+  margin-left: 5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #e9f0f4;
+  color: #62798a;
+  font-size: 0.55rem;
+  line-height: 1;
+}
+
+.create-assessment-blueprint-progress-table-wrap thead .is-lot {
+  background: #f8f5ff;
+  color: #7047d8;
+}
+
+.create-assessment-blueprint-progress-table-wrap thead .is-hot {
+  background: #fff6f2;
+  color: #d64d24;
+}
+
+.create-assessment-blueprint-progress-table-wrap tbody tr {
+  transition: background-color 140ms ease;
+}
+
+.create-assessment-blueprint-progress-table-wrap tbody tr:hover > * {
+  background-color: #f7fbfc;
+}
+
+.create-assessment-blueprint-progress-table-wrap tbody th {
+  background: #ffffff;
+}
+
+.create-assessment-blueprint-progress-table-wrap .create-assessment-blueprint-code-badge {
+  min-width: 74px;
+  min-height: 26px;
+  padding: 3px 8px;
+  border-color: #b9d7e6;
+  border-radius: 999px;
+  background: #f1f9fd;
+  color: #17445d;
+  font-size: 0.68rem;
+}
+
+.create-assessment-blueprint-progress-cell strong {
+  min-width: 54px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border-color: #d5e2e8;
+  border-radius: 8px;
+  background: #f8fbfc;
+  color: #567080;
+  font-size: 0.7rem;
+}
+
+.create-assessment-blueprint-progress-table-wrap td.is-partial .create-assessment-blueprint-progress-cell strong {
+  border-color: #f4c77d;
+  background: #fff9ed;
+  color: #b45309;
+}
+
+.create-assessment-blueprint-progress-table-wrap td.is-complete .create-assessment-blueprint-progress-cell strong {
+  border-color: #9ce4c0;
+  background: #effcf5;
+  color: #047857;
+}
+
+.create-assessment-blueprint-row-progress {
+  gap: 6px;
+}
+
+.create-assessment-blueprint-row-progress strong {
+  color: #294d65;
+  font-size: 0.68rem;
+}
+
+.create-assessment-blueprint-row-progress i {
+  width: 62px;
+  height: 5px;
+  background: #e4ebef;
+}
+
+.create-assessment-blueprint-row-status {
+  color: #ad6800;
+  font-size: 0.59rem;
+}
+
+.create-assessment-blueprint-row-status > span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fff8e8;
+  color: #ad6800;
+  font-size: 0.59rem;
+}
+
+.create-assessment-blueprint-row-status.is-partial > span {
+  background: #fff3df;
+  color: #c05600;
+}
+
+.create-assessment-blueprint-row-status.is-complete > span {
+  background: #eafaf2;
+  color: #047857;
+}
+
+.create-assessment-blueprint-progress-table-wrap tbody::-webkit-scrollbar {
+  width: 10px;
+}
+
+.create-assessment-blueprint-progress-table-wrap tbody::-webkit-scrollbar-track {
+  background: #f4f7f8;
+}
+
+.create-assessment-blueprint-progress-table-wrap tbody::-webkit-scrollbar-thumb {
+  border: 3px solid #f4f7f8;
+  background: #9fb2bd;
+}
+
+/* Compact, read-only progress presentation */
+.create-assessment-blueprint-progress-popover {
+  width: min(900px, calc(100vw - 390px));
+  max-height: none;
+  overflow: visible;
+  border-radius: 14px;
+}
+
+.create-assessment-blueprint-progress-table-head {
+  min-height: 48px;
+  padding: 8px 14px 7px;
+  border-radius: 14px 14px 0 0;
+}
+
+.create-assessment-blueprint-progress-table-head > span:not(.create-assessment-blueprint-progress-overall-bar) {
+  min-height: 24px;
+  padding: 4px 9px;
+}
+
+.create-assessment-blueprint-progress-table-wrap th,
+.create-assessment-blueprint-progress-table-wrap td {
+  height: 38px;
+  padding: 4px 7px;
+}
+
+.create-assessment-blueprint-progress-table-wrap thead th,
+.create-assessment-blueprint-progress-table-wrap thead tr:first-child th {
+  height: 34px;
+}
+
+.create-assessment-blueprint-progress-table-wrap thead th {
+  border-right-color: #e7edf1;
+}
+
+.create-assessment-blueprint-progress-table-wrap tbody tr:hover > * {
+  background-color: #f7fafc;
+}
+
+.create-assessment-blueprint-progress-table-wrap .create-assessment-blueprint-code-badge {
+  min-width: 64px;
+  min-height: 22px;
+  padding: 2px 6px;
+  font-size: 0.64rem;
+}
+
+.create-assessment-blueprint-progress-cell strong,
+.create-assessment-blueprint-progress-table-wrap td.is-partial .create-assessment-blueprint-progress-cell strong,
+.create-assessment-blueprint-progress-table-wrap td.is-complete .create-assessment-blueprint-progress-cell strong {
+  display: inline;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #506a7b;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.create-assessment-blueprint-progress-table-wrap td.is-partial .create-assessment-blueprint-progress-cell strong {
+  color: #c26709;
+}
+
+.create-assessment-blueprint-progress-table-wrap td.is-complete .create-assessment-blueprint-progress-cell strong {
+  color: #05815e;
+}
+
+.create-assessment-blueprint-row-progress {
+  gap: 4px;
+}
+
+.create-assessment-blueprint-row-progress i {
+  width: 48px;
+  height: 3px;
+}
+
+.create-assessment-blueprint-row-status > span,
+.create-assessment-blueprint-row-status.is-partial > span,
+.create-assessment-blueprint-row-status.is-complete > span {
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.58rem;
+}
+
+.create-assessment-blueprint-row-status > span {
+  color: #a86b12;
+}
+
+.create-assessment-blueprint-row-status.is-partial > span {
+  color: #c05600;
+}
+
+.create-assessment-blueprint-row-status.is-complete > span {
+  color: #05815e;
+}
+
+.create-assessment-blueprint-progress-table-wrap {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+}
+
+.create-assessment-blueprint-progress-table-wrap tbody {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+  scrollbar-gutter: auto;
+  scrollbar-width: auto;
+}
+
+.create-assessment-blueprint-progress-card-list {
+  display: grid;
+  gap: 6px;
+  max-height: min(56vh, 460px);
+  margin: 8px;
+  padding: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid #e0e9ed;
+  border-radius: 12px;
+  background: #f5f8fa;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #aabac3 transparent;
+}
+
+.create-assessment-blueprint-progress-card-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.create-assessment-blueprint-progress-card-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.create-assessment-blueprint-progress-card-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #aabac3;
+  background-clip: padding-box;
+}
+
+.create-assessment-blueprint-progress-competency-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) 78px;
+  align-items: stretch;
+  overflow: visible;
+  border: 1px solid #dfe8ed;
+  border-radius: 10px;
+  background: #ffffff;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.create-assessment-blueprint-progress-competency-card::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #cbd5df;
+}
+
+.create-assessment-blueprint-progress-competency-card.is-partial::before {
+  background: #f59e0b;
+}
+
+.create-assessment-blueprint-progress-competency-card.is-complete::before {
+  background: #10b981;
+}
+
+.create-assessment-blueprint-progress-competency-card:hover {
+  border-color: #c9d9e1;
+  background: #fcfefe;
+}
+
+.create-assessment-blueprint-progress-competency-card > header,
+.create-assessment-blueprint-progress-competency-card > footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px 8px;
+}
+
+.create-assessment-blueprint-progress-competency-card > header {
+  border-right: 1px solid #e6edf1;
+}
+
+.create-assessment-blueprint-progress-competency-card > footer {
+  border-left: 1px solid #e6edf1;
+  color: #6b7f8d;
+  font-size: 0.58rem;
+  font-weight: 850;
+}
+
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge {
+  position: relative;
+  display: inline-flex;
+  min-height: 21px;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border: 1px solid #b9d7e6;
+  border-radius: 999px;
+  background: #f1f9fd;
+  color: #17445d;
+  font-size: 0.65rem;
+  font-weight: 900;
+  cursor: help;
+}
+
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-info {
+  display: inline-grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+  color: #4674b8;
+  pointer-events: none;
+}
+
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge::before,
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge::after {
+  position: absolute;
+  z-index: 40;
+  top: 50%;
+  left: calc(100% + 7px);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+}
+
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge::before {
+  content: "";
+  border-top: 6px solid transparent;
+  border-right: 6px solid #14313f;
+  border-bottom: 6px solid transparent;
+  transform: translateY(-50%);
+}
+
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge::after {
+  content: attr(data-tooltip);
+  width: 230px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #14313f;
+  color: #ffffff;
+  font-size: 0.67rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  transform: translate(6px, -50%);
+}
+
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge:hover::before,
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge:focus-visible::before,
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge:hover::after,
+.create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge:focus-visible::after {
+  visibility: visible;
+  opacity: 1;
+}
+
+.create-assessment-blueprint-progress-allocation-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.create-assessment-blueprint-progress-allocation-group {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 5px 9px;
+  border-right: 1px solid #edf1f4;
+}
+
+.create-assessment-blueprint-progress-allocation-group:last-child {
+  border-right: 0;
+}
+
+.create-assessment-blueprint-progress-allocation-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #31536b;
+  font-size: 0.65rem;
+}
+
+.create-assessment-blueprint-progress-allocation-title strong {
+  font-weight: 900;
+}
+
+.create-assessment-blueprint-progress-allocation-title small {
+  color: #7a8c98;
+  font-size: 0.55rem;
+  font-weight: 800;
+}
+
+.create-assessment-blueprint-progress-allocation-values {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.create-assessment-blueprint-progress-allocation-value {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 48px;
+}
+
+.create-assessment-blueprint-progress-allocation-value small {
+  color: #708394;
+  font-size: 0.56rem;
+  font-weight: 850;
+}
+
+.create-assessment-blueprint-progress-allocation-value strong {
+  color: #506a7b;
+  font-size: 0.69rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.create-assessment-blueprint-progress-allocation-value.is-lot small {
+  color: #7047d8;
+}
+
+.create-assessment-blueprint-progress-allocation-value.is-hot small {
+  color: #d64d24;
+}
+
+.create-assessment-blueprint-progress-allocation-value.is-partial strong {
+  color: #c26709;
+}
+
+.create-assessment-blueprint-progress-allocation-value.is-complete strong {
+  color: #05815e;
+}
+
+.create-assessment-blueprint-progress-allocation-value.is-empty strong {
+  color: #a3b1ba;
+}
+
+.create-assessment-blueprint-progress-competency-card .create-assessment-blueprint-row-progress i {
+  width: 44px;
+}
+
+@media (max-width: 760px) {
+  .create-assessment-blueprint-progress-competency-card {
+    grid-template-columns: 1fr;
+  }
+
+  .create-assessment-blueprint-progress-competency-card > header,
+  .create-assessment-blueprint-progress-competency-card > footer {
+    flex-direction: row;
+    justify-content: space-between;
+    border: 0;
+  }
+
+  .create-assessment-blueprint-progress-allocation-groups {
+    border-block: 1px solid #e6edf1;
+  }
+}
+
 @media (max-width: 900px) {
   .create-assessment-blueprint-progress-popover {
     right: 0;
     bottom: calc(100% + 14px);
     width: calc(100vw - 36px);
-    max-height: min(72vh, 560px);
+    max-height: none;
+    overflow: visible;
   }
 
   .create-assessment-blueprint-progress-popover::after {
@@ -24256,7 +25161,8 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
   }
 
   .create-assessment-blueprint-progress-table-wrap tbody {
-    max-height: calc(min(72vh, 560px) - 120px);
+    max-height: none;
+    overflow: visible;
   }
 }
 
@@ -34997,20 +35903,20 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
 }
 
 .theme-dark .create-assessment-blueprint-progress-cell strong {
-  border-color: rgba(94, 116, 145, 0.68);
-  background: #111d31;
+  border-color: transparent;
+  background: transparent;
   color: #c3d4e8;
 }
 
 .theme-dark .create-assessment-blueprint-progress-table-wrap td.is-partial .create-assessment-blueprint-progress-cell strong {
-  border-color: rgba(245, 158, 11, 0.58);
-  background: #30261a;
+  border-color: transparent;
+  background: transparent;
   color: #fcd34d;
 }
 
 .theme-dark .create-assessment-blueprint-progress-table-wrap td.is-complete .create-assessment-blueprint-progress-cell strong {
-  border-color: rgba(74, 222, 128, 0.56);
-  background: #10261f;
+  border-color: transparent;
+  background: transparent;
   color: #86efac;
 }
 
@@ -35031,6 +35937,84 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
 }
 
 .theme-dark .create-assessment-blueprint-row-status.is-complete {
+  color: #86efac;
+}
+
+.theme-dark .create-assessment-blueprint-row-status > span {
+  background: transparent;
+  color: #fbbf24;
+}
+
+.theme-dark .create-assessment-blueprint-row-status.is-partial > span {
+  background: transparent;
+  color: #fcd34d;
+}
+
+.theme-dark .create-assessment-blueprint-row-status.is-complete > span {
+  background: transparent;
+  color: #86efac;
+}
+
+.theme-dark .create-assessment-blueprint-progress-card-list {
+  border-color: rgba(94, 116, 145, 0.38);
+  background: #0d1726;
+  scrollbar-color: #526579 transparent;
+}
+
+.theme-dark .create-assessment-blueprint-progress-card-list::-webkit-scrollbar-thumb {
+  background: #526579;
+  background-clip: padding-box;
+}
+
+.theme-dark .create-assessment-blueprint-progress-competency-card {
+  border-color: rgba(94, 116, 145, 0.38);
+  background: #111d2e;
+}
+
+.theme-dark .create-assessment-blueprint-progress-competency-card:hover {
+  border-color: rgba(94, 234, 212, 0.34);
+  background: #132235;
+}
+
+.theme-dark .create-assessment-blueprint-progress-competency-card > header,
+.theme-dark .create-assessment-blueprint-progress-competency-card > footer,
+.theme-dark .create-assessment-blueprint-progress-allocation-group {
+  border-color: rgba(94, 116, 145, 0.28);
+}
+
+.theme-dark .create-assessment-blueprint-progress-card-list .create-assessment-blueprint-code-badge {
+  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(30, 64, 175, 0.22);
+  color: #dbeafe;
+}
+
+.theme-dark .create-assessment-blueprint-progress-allocation-title {
+  color: #cfe1f2;
+}
+
+.theme-dark .create-assessment-blueprint-progress-allocation-title small,
+.theme-dark .create-assessment-blueprint-progress-allocation-value small,
+.theme-dark .create-assessment-blueprint-progress-competency-card > footer {
+  color: #8fa3b7;
+}
+
+.theme-dark .create-assessment-blueprint-progress-allocation-value strong {
+  color: #c3d4e8;
+}
+
+.theme-dark .create-assessment-blueprint-progress-allocation-value.is-lot small {
+  color: #c4b5fd;
+}
+
+.theme-dark .create-assessment-blueprint-progress-allocation-value.is-hot small {
+  color: #fdba74;
+}
+
+.theme-dark .create-assessment-blueprint-progress-allocation-value.is-partial strong {
+  color: #fcd34d;
+}
+
+.theme-dark .create-assessment-blueprint-progress-allocation-value.is-complete strong {
   color: #86efac;
 }
 
@@ -35571,21 +36555,17 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
   color: #bfdbfe;
 }
 
-.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-invalid {
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-invalid:not(.is-footer-validation) {
   background: rgba(159, 18, 57, 0.32);
   color: #fda4af;
 }
 
 .theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-footer-validation.is-valid {
-  background: rgba(22, 101, 52, 0.34);
   color: #bbf7d0;
-  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.62);
 }
 
 .theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table tr.is-total td.is-footer-validation.is-invalid {
-  background: rgba(127, 29, 29, 0.36);
   color: #fecdd3;
-  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.66);
 }
 
 .theme-dark .create-assessment-blueprint-reference-footer-validation.is-valid {
@@ -35675,14 +36655,16 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
 }
 
 .theme-dark .create-assessment-blueprint-laq-split-head input,
-.theme-dark .create-assessment-blueprint-laq-split-item > input {
+.theme-dark .create-assessment-blueprint-laq-split-item > input,
+.theme-dark .create-assessment-blueprint-laq-part-marks > input {
   border-color: rgba(96, 165, 250, 0.46);
   background: #0b1728;
   color: #e8f4ff;
 }
 
 .theme-dark .create-assessment-blueprint-laq-split-head input:focus,
-.theme-dark .create-assessment-blueprint-laq-split-item > input:focus {
+.theme-dark .create-assessment-blueprint-laq-split-item > input:focus,
+.theme-dark .create-assessment-blueprint-laq-part-marks > input:focus {
   border-color: #60a5fa;
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
 }
@@ -35715,6 +36697,35 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
 
 .theme-dark .create-assessment-blueprint-laq-split-item:hover {
   background: rgba(37, 99, 235, 0.14);
+}
+
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-item {
+  border-color: rgba(96, 165, 250, 0.22);
+  background: rgba(15, 29, 48, 0.72);
+}
+
+.theme-dark .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-laq-split-item:hover {
+  border-color: rgba(96, 165, 250, 0.38);
+  background: rgba(37, 99, 235, 0.13);
+}
+
+.theme-dark .create-assessment-blueprint-laq-question-title > span {
+  background: rgba(51, 65, 85, 0.68);
+  color: #cbd5e1;
+}
+
+.theme-dark .create-assessment-blueprint-laq-part-marks,
+.theme-dark .create-assessment-blueprint-laq-cognition-field,
+.theme-dark .create-assessment-blueprint-laq-allocation-summary {
+  color: #a9b8c9;
+}
+
+.theme-dark .create-assessment-blueprint-laq-allocation-summary strong {
+  color: #dbeafe;
+}
+
+.theme-dark .create-assessment-blueprint-laq-allocation-summary.is-valid strong {
+  color: #86efac;
 }
 
 .theme-dark .create-assessment-blueprint-laq-level-toggle {
@@ -35789,6 +36800,14 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
   border-color: rgba(251, 113, 133, 0.64);
   background: rgba(127, 29, 29, 0.28);
   color: #fecdd3;
+}
+
+.theme-dark .create-assessment-blueprint-readonly-number {
+  color: #dbeafe;
+}
+
+.theme-dark .create-assessment-blueprint-readonly-number.is-invalid {
+  color: #fda4af;
 }
 
 .theme-dark .create-assessment-blueprint-spec-number:hover,
