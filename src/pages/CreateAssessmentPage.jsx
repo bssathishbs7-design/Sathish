@@ -762,9 +762,13 @@ const readSavedCorelationRatingRows = () => {
   }
 }
 
-const readSavedBlueprintPlanner = () => {
+const getBlueprintPlannerStorageKey = (setup = {}) => (
+  `${BLUEPRINT_PLANNER_STORAGE_KEY}:${getAssessmentStorageSuffix(setup)}`
+)
+
+const readSavedBlueprintPlanner = (setup = {}) => {
   try {
-    const planner = JSON.parse(window.localStorage.getItem(BLUEPRINT_PLANNER_STORAGE_KEY) || 'null')
+    const planner = JSON.parse(window.localStorage.getItem(getBlueprintPlannerStorageKey(setup)) || 'null')
     return planner && typeof planner === 'object' && planner.validationStatus === 'matched'
       ? planner
       : null
@@ -773,13 +777,31 @@ const readSavedBlueprintPlanner = () => {
   }
 }
 
-const readBlueprintProgressPosition = () => {
+const getBlueprintProgressPositionStorageKey = (setup = {}) => (
+  `${BLUEPRINT_PROGRESS_POSITION_STORAGE_KEY}:${getAssessmentStorageSuffix(setup)}`
+)
+
+const readBlueprintProgressPosition = (setup = {}) => {
   if (typeof window === 'undefined') return null
   try {
-    const position = JSON.parse(window.localStorage.getItem(BLUEPRINT_PROGRESS_POSITION_STORAGE_KEY) || 'null')
-    return Number.isFinite(position?.x) && Number.isFinite(position?.y)
-      ? { x: position.x, y: position.y, side: position.side === 'left' ? 'left' : 'right' }
-      : null
+    const position = JSON.parse(window.localStorage.getItem(getBlueprintProgressPositionStorageKey(setup)) || 'null')
+    if (!Number.isFinite(position?.x) || !Number.isFinite(position?.y)) return null
+
+    const margin = 12
+    const ringSize = 72
+    const x = Math.min(
+      Math.max(margin, position.x),
+      Math.max(margin, window.innerWidth - ringSize - margin),
+    )
+    const y = Math.min(
+      Math.max(82, position.y),
+      Math.max(82, window.innerHeight - ringSize - margin),
+    )
+    return {
+      x,
+      y,
+      side: x + (ringSize / 2) < window.innerWidth / 2 ? 'left' : 'right',
+    }
   } catch {
     return null
   }
@@ -1536,8 +1558,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
   const [isActionQuestionTypePickerOpen, setIsActionQuestionTypePickerOpen] = useState(false)
   const [isActionDescriptiveTypePickerOpen, setIsActionDescriptiveTypePickerOpen] = useState(false)
-  const [initialBlueprintPlanner] = useState(readSavedBlueprintPlanner)
-  const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(Boolean(initialBlueprintPlanner))
+  const [initialBlueprintPlanner] = useState(() => readSavedBlueprintPlanner(setup))
+  const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(false)
   const [activeBlueprintTab, setActiveBlueprintTab] = useState(initialBlueprintPlanner ? 'questionSpecifications' : 'distribution')
   const [isBlueprintMatrixCreated, setIsBlueprintMatrixCreated] = useState(Boolean(initialBlueprintPlanner))
   const [isBlueprintQuestionSplitCreated, setIsBlueprintQuestionSplitCreated] = useState(Boolean(initialBlueprintPlanner))
@@ -1550,7 +1572,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [isBlueprintPlannerSaved, setIsBlueprintPlannerSaved] = useState(Boolean(initialBlueprintPlanner))
   const [isBlueprintProgressOpen, setIsBlueprintProgressOpen] = useState(false)
   const [blueprintProgressPopoverStyle, setBlueprintProgressPopoverStyle] = useState(null)
-  const [blueprintProgressPosition, setBlueprintProgressPosition] = useState(readBlueprintProgressPosition)
+  const [blueprintProgressPosition, setBlueprintProgressPosition] = useState(() => readBlueprintProgressPosition(setup))
   const [isBlueprintProgressDragging, setIsBlueprintProgressDragging] = useState(false)
   const [blueprintCompetencyViewMode, setBlueprintCompetencyViewMode] = useState('multi')
   const [blueprintDraft, setBlueprintDraft] = useState(initialBlueprintPlanner?.blueprintDraft ?? {
@@ -1789,14 +1811,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           : nextPosition
       ))
       try {
-        window.localStorage.setItem(BLUEPRINT_PROGRESS_POSITION_STORAGE_KEY, JSON.stringify(nextPosition))
+        window.localStorage.setItem(getBlueprintProgressPositionStorageKey(setup), JSON.stringify(nextPosition))
       } catch {
         // The position still updates for this session if storage is unavailable.
       }
     }
+    keepBlueprintProgressInViewport()
     window.addEventListener('resize', keepBlueprintProgressInViewport)
     return () => window.removeEventListener('resize', keepBlueprintProgressInViewport)
-  }, [blueprintProgressPosition])
+  }, [blueprintProgressPosition, setup])
 
   useEffect(() => {
     if (activeBlueprintTab !== 'questionSpecifications') return undefined
@@ -2779,7 +2802,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
     setBlueprintProgressPosition(droppedPosition)
     try {
-      window.localStorage.setItem(BLUEPRINT_PROGRESS_POSITION_STORAGE_KEY, JSON.stringify(droppedPosition))
+      window.localStorage.setItem(getBlueprintProgressPositionStorageKey(setup), JSON.stringify(droppedPosition))
     } catch {
       // Dragging remains available if browser storage is unavailable.
     }
@@ -3095,7 +3118,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
 
     try {
-      window.localStorage.setItem(BLUEPRINT_PLANNER_STORAGE_KEY, JSON.stringify({
+      window.localStorage.setItem(getBlueprintPlannerStorageKey(setup), JSON.stringify({
+        assessmentId: setup.assessmentId,
         blueprintDraft,
         blueprintDistributionDraft,
         blueprintCognitionWeightage,
@@ -3293,7 +3317,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const confirmBlueprintMatrixReset = () => {
     try {
-      window.localStorage.removeItem(BLUEPRINT_PLANNER_STORAGE_KEY)
+      window.localStorage.removeItem(getBlueprintPlannerStorageKey(setup))
     } catch {
       // The in-memory reset still succeeds if browser storage is unavailable.
     }
@@ -3325,7 +3349,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const confirmBlueprintDistributionEdit = () => {
     try {
-      window.localStorage.removeItem(BLUEPRINT_PLANNER_STORAGE_KEY)
+      window.localStorage.removeItem(getBlueprintPlannerStorageKey(setup))
     } catch {
       // Editing remains available when browser storage is unavailable.
     }
