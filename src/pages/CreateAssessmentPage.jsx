@@ -61,6 +61,7 @@ import {
 import {
   createBlueprintQuestionRequirements,
   getBlueprintQuestionMatch,
+  resolveBlueprintPreviewQuestionMarks,
   summarizeBlueprintQuestionProgress,
 } from '../utils/blueprintQuestionProgress'
 import { stripHtml } from '../utils/mathText'
@@ -4143,6 +4144,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const selectedAssessmentQuestionCount = savedQuestions.length
   const isSaveAssessmentDraftDisabled = selectedAssessmentQuestionCount === 0
   const canSaveAssessmentDraft = !isSaveAssessmentDraftDisabled
+  const isBlueprintPreviewMarksActive = isBlueprintEnabled && isBlueprintPlannerSaved
+  const blueprintPreviewMarksByQuestionId = useMemo(() => Object.fromEntries(
+    savedQuestions.map((item) => [
+      item.id,
+      resolveBlueprintPreviewQuestionMarks({
+        question: item,
+        questionTypeDraft: blueprintQuestionTypeDraft,
+        fallbackMarks: getQuestionMarksTotal(item),
+        isBlueprintEnabled,
+        isPlannerSaved: isBlueprintPlannerSaved,
+      }),
+    ]),
+  ), [blueprintQuestionTypeDraft, isBlueprintEnabled, isBlueprintPlannerSaved, savedQuestions])
   const assessmentSummary = useMemo(() => {
     const rowsByType = savedQuestions.reduce((rows, item) => {
       const typeLabel = getSummaryTypeLabel(item.type)
@@ -4150,7 +4164,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       rows[typeLabel] = {
         ...current,
         count: current.count + 1,
-        marks: current.marks + getQuestionMarksTotal(item),
+        marks: current.marks + (blueprintPreviewMarksByQuestionId[item.id] ?? getQuestionMarksTotal(item)),
       }
       return rows
     }, {})
@@ -4164,10 +4178,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
     return {
       totalQuestions: selectedAssessmentQuestionCount,
-      totalMarks: savedQuestions.reduce((total, item) => total + getQuestionMarksTotal(item), 0),
+      totalMarks: savedQuestions.reduce(
+        (total, item) => total + (blueprintPreviewMarksByQuestionId[item.id] ?? getQuestionMarksTotal(item)),
+        0,
+      ),
       rows: [...rows, ...extraRows],
     }
-  }, [savedQuestions, selectedAssessmentQuestionCount])
+  }, [blueprintPreviewMarksByQuestionId, savedQuestions, selectedAssessmentQuestionCount])
   const configurationQuestionSummary = useMemo(() => {
     const mcqQuestions = savedQuestions.filter((item) => item.type === 'MCQ')
     const descriptiveQuestions = savedQuestions.filter((item) => isDescriptiveQuestionType(item.type))
@@ -4602,10 +4619,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         ...section,
         title: previewSectionTitles[section.key] || section.title || section.defaultTitle,
         questions,
-        marks: questions.reduce((total, item) => total + getQuestionMarksTotal(item), 0),
+        marks: questions.reduce(
+          (total, item) => total + (blueprintPreviewMarksByQuestionId[item.id] ?? getQuestionMarksTotal(item)),
+          0,
+        ),
       }
     }).filter((section) => section.questions.length || section.isCustom)
-  }, [fullPreviewSectionConfig, previewQuestions, previewSectionOrder, previewSectionTitles])
+  }, [blueprintPreviewMarksByQuestionId, fullPreviewSectionConfig, previewQuestions, previewSectionOrder, previewSectionTitles])
   const previewSectionCount = previewSections.length
   const canSendAssessmentForApproval = useMemo(() => (
     Object.keys(validateSetupDraft(setupDraft)).length === 0 && savedQuestions.length > 0 && previewSections.length > 0
@@ -7597,7 +7617,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   const index = previewQuestions.findIndex((previewQuestion) => previewQuestion.id === item.id)
                   const displayNumber = previewQuestionDisplayNumbers[item.id] ?? index + 1
                   const isDescriptive = isDescriptiveQuestionType(item.type)
-                  const questionMarksTotal = getQuestionMarksTotal(item)
+                  const questionMarksTotal = blueprintPreviewMarksByQuestionId[item.id] ?? getQuestionMarksTotal(item)
                   const previewTypeLabel = isDescriptive ? getQuestionTypeMeta(item.type).shortLabel : 'MCQ'
                   const previewQuestionBankId = getPreviewQuestionBankId(item, displayNumber)
                   const previewSourceMeta = getPreviewQuestionSourceMeta(item, displayNumber)
@@ -7605,10 +7625,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   const isBlueprintRelevant = isQuestionRelevantToSavedBlueprint(item)
                   const optionalTagGroups = [
                     { label: 'Question ID', values: [previewQuestionBankId] },
-                    ...(!isBlueprintRelevant
-                      ? [{ label: 'Blueprint', values: ['Not relevant to this blueprint'] }]
-                      : []),
-                    ...(isMedsySaq
+                    ...(isMedsySaq && !isBlueprintPreviewMarksActive
                       ? [{ label: 'Suggestion Marks', values: [`${questionMarksTotal} Marks`] }]
                       : []),
                     ...getQuestionOptionalTagGroups(item).filter((group) => group.label !== 'Category'),
@@ -7678,7 +7695,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   return (
                     <article
                       key={item.id}
-                      className={`create-assessment-preview-card ${isPreviewCardOpen ? 'is-open' : ''}`}
+                      className={`create-assessment-preview-card ${isPreviewCardOpen ? 'is-open' : ''} ${!isBlueprintRelevant ? 'is-blueprint-unrelated' : ''}`}
                       draggable
                       onDragStart={() => setDraggedPreviewQuestionId(item.id)}
                       onDragOver={(event) => event.preventDefault()}
@@ -7718,7 +7735,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 </span>
                               ) : null}
                               <span className={`create-assessment-preview-chip is-type ${isDescriptive ? 'is-desc' : 'is-mcq'} ${previewTypeLabel === 'SAQs' ? 'is-saq' : ''}`}>{previewTypeLabel}</span>
-                              {!previewSourceMeta.isMedsy && questionMarksTotal ? <span className="create-assessment-preview-chip is-marks">{questionMarksTotal} marks</span> : null}
+                              {questionMarksTotal && (isBlueprintPreviewMarksActive || !previewSourceMeta.isMedsy) ? (
+                                <span
+                                  className="create-assessment-preview-chip is-marks"
+                                  title={isBlueprintPreviewMarksActive ? 'Mark per question from the saved Blueprint Planner' : undefined}
+                                >
+                                  {formatBlueprintSplitNumber(questionMarksTotal)} marks
+                                </span>
+                              ) : null}
                               {previewStructureLabel ? (
                                 <span className="create-assessment-preview-chip is-structure">
                                   <ListChecks size={11} strokeWidth={2.4} />
@@ -7741,6 +7765,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   >
                                     + {optionalTagGroups.reduce((total, group) => total + group.values.length, 0)} more tags
                                   </button>
+                                </span>
+                              ) : null}
+                              {!isBlueprintRelevant ? (
+                                <span
+                                  className="create-assessment-preview-chip is-blueprint-unrelated"
+                                  title="This question does not match the saved Blueprint competency, question type, or Level of Cognition requirement. It remains in Preview but is not included in Blueprint progress."
+                                >
+                                  Not Relevant to This Blueprint
                                 </span>
                               ) : null}
                             </span>
@@ -9411,19 +9443,25 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       <aside className="create-assessment-right-rail" aria-label="Assessment actions and summary">
         {activeCreateTab === 'preview' ? (
           <div className="create-assessment-summary-card" aria-label="Assessment question summary">
-            <div className="create-assessment-summary-total-row">
-              <span>Total Marks</span>
-              <strong className="is-marks">{formatSummaryNumber(assessmentSummary.totalMarks)}</strong>
+            <div className="create-assessment-summary-title">
+              <ListChecks size={14} strokeWidth={2.2} aria-hidden="true" />
+              <strong>Assessment Summary</strong>
             </div>
-            <div className="create-assessment-summary-total-row">
-              <span>No. of Question</span>
-              <strong className="is-questions">{formatSummaryNumber(assessmentSummary.totalQuestions)}</strong>
+            <div className="create-assessment-summary-stat-grid">
+              <div className="create-assessment-summary-stat is-marks">
+                <span>Total Marks</span>
+                <strong>{formatSummaryNumber(assessmentSummary.totalMarks)}</strong>
+              </div>
+              <div className="create-assessment-summary-stat is-questions">
+                <span>Total Questions</span>
+                <strong>{formatSummaryNumber(assessmentSummary.totalQuestions)}</strong>
+              </div>
             </div>
             {assessmentSummary.rows.length ? (
               <div className="create-assessment-summary-table">
                 <div className="create-assessment-summary-head">
-                  <span />
-                  <span>No. of Qus</span>
+                  <span>Type</span>
+                  <span>Questions</span>
                   <span>Marks</span>
                 </div>
                 {assessmentSummary.rows.map((row) => (

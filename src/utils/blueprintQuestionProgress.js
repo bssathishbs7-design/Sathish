@@ -19,6 +19,37 @@ export const normalizeBlueprintThinkingLevel = (value) => {
   return ''
 }
 
+const normalizeBlueprintQuestionCategory = (value) => {
+  const normalized = normalizeText(value).replace(/[^a-z]/g, '')
+  if (normalized === 'criticalthinking' || normalized === 'aetcom') return 'Aetcom'
+  if (normalized === 'application') return 'Application'
+  if (normalized === 'reasoning') return 'Reasoning'
+  return 'Direct'
+}
+
+export const getBlueprintQuestionMarkRowLabel = (question = {}) => {
+  const type = normalizeBlueprintQuestionType(question.type)
+  if (type === 'mcq') return 'MCQs'
+  if (type === 'laq') return 'LAQs'
+  if (type === 'saq') return `SAQs (${normalizeBlueprintQuestionCategory(question.questionCategory)})`
+  return ''
+}
+
+export const resolveBlueprintPreviewQuestionMarks = ({
+  question,
+  questionTypeDraft = {},
+  fallbackMarks = 0,
+  isBlueprintEnabled = false,
+  isPlannerSaved = false,
+} = {}) => {
+  const normalizedFallback = Math.max(0, Number(fallbackMarks) || 0)
+  if (!isBlueprintEnabled || !isPlannerSaved) return normalizedFallback
+
+  const rowLabel = getBlueprintQuestionMarkRowLabel(question)
+  const blueprintMarks = Number(questionTypeDraft[rowLabel]?.perQuestionMarks) || 0
+  return blueprintMarks > 0 ? blueprintMarks : normalizedFallback
+}
+
 export const getBlueprintQuestionCompetencyCodes = (question = {}) => {
   const values = [
     ...(Array.isArray(question.competencies) ? question.competencies : []),

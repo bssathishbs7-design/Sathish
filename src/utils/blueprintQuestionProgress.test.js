@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   createBlueprintQuestionRequirements,
+  getBlueprintQuestionMarkRowLabel,
   getBlueprintQuestionMatch,
+  resolveBlueprintPreviewQuestionMarks,
   summarizeBlueprintQuestionProgress,
 } from './blueprintQuestionProgress.js'
 
@@ -54,4 +56,42 @@ test('progress is capped by each blueprint question lane', () => {
       'an1.2:saqhot': 1,
     },
   })
+})
+
+test('maps MCQ, LAQ, and every SAQ category to its Blueprint mark row', () => {
+  assert.equal(getBlueprintQuestionMarkRowLabel({ type: 'MCQ' }), 'MCQs')
+  assert.equal(getBlueprintQuestionMarkRowLabel({ type: 'Desc Long Answer Questions (LAQs)' }), 'LAQs')
+  assert.equal(getBlueprintQuestionMarkRowLabel({ type: 'Desc Short Answer Questions (SAQs)', questionCategory: 'Direct' }), 'SAQs (Direct)')
+  assert.equal(getBlueprintQuestionMarkRowLabel({ type: 'Descriptive Question', questionCategory: 'Reasoning' }), 'SAQs (Reasoning)')
+  assert.equal(getBlueprintQuestionMarkRowLabel({ type: 'SAQs', questionCategory: 'AETCOM' }), 'SAQs (Aetcom)')
+  assert.equal(getBlueprintQuestionMarkRowLabel({ type: 'SAQs', questionCategory: 'Application' }), 'SAQs (Application)')
+})
+
+test('uses fixed Blueprint marks only while Blueprint and the saved planner are active', () => {
+  const question = { type: 'SAQs', questionCategory: 'Reasoning' }
+  const questionTypeDraft = { 'SAQs (Reasoning)': { perQuestionMarks: '5' } }
+
+  assert.equal(resolveBlueprintPreviewQuestionMarks({
+    question,
+    questionTypeDraft,
+    fallbackMarks: 2,
+    isBlueprintEnabled: true,
+    isPlannerSaved: true,
+  }), 5)
+
+  assert.equal(resolveBlueprintPreviewQuestionMarks({
+    question,
+    questionTypeDraft,
+    fallbackMarks: 2,
+    isBlueprintEnabled: false,
+    isPlannerSaved: true,
+  }), 2)
+
+  assert.equal(resolveBlueprintPreviewQuestionMarks({
+    question: { type: 'MEQs' },
+    questionTypeDraft,
+    fallbackMarks: 3,
+    isBlueprintEnabled: true,
+    isPlannerSaved: true,
+  }), 3)
 })
