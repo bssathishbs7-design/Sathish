@@ -454,8 +454,8 @@ const EXCEL_UPLOAD_TYPE_CONFIG = {
   MCQ: {
     label: 'MCQ',
     type: 'MCQ',
-    columns: ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'answer_explanation', 'marks', 'topic', 'competency', 'uploaded_by', 'author_by'],
-    sample: ['Which plane divides the body into superior and inferior parts?', 'Transverse plane', 'Sagittal plane', 'Coronal plane', 'Median plane', 'A', 'The transverse plane divides the body into superior and inferior parts.', '1', 'General Anatomy', 'AN1.1 Describe anatomical position and planes', 'Karthik Subramanian', 'Dr. Author Name'],
+    columns: ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option', 'answer_explanation', 'marks'],
+    sample: ['Which plane divides the body into superior and inferior parts?', 'Transverse plane', 'Sagittal plane', 'Coronal plane', 'Median plane', 'A', 'The transverse plane divides the body into superior and inferior parts.', '1'],
   },
   LAQs: {
     label: 'LAQs',
@@ -478,22 +478,13 @@ const EXCEL_UPLOAD_TYPE_CONFIG = {
 }
 
 const EXCEL_UPLOAD_REQUIRED_COLUMNS = {
-  MCQ: ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'topic', 'uploaded_by', 'author_by'],
+  MCQ: ['question_text'],
   LAQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
   SAQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
   MEQs: ['question_text', 'answer_key', 'marks', 'year', 'subject', 'topic', 'competency', 'question_category', 'cognitive_level', 'thinking_level', 'difficulty_level'],
 }
 
 const EXCEL_UPLOAD_ANALYZE_SECONDS = 20
-const UPLOAD_MBBS_YEAR_SUBJECTS = {
-  'First Year': ['Anatomy', 'Physiology', 'Biochemistry'],
-  'Second Year': ['Pathology', 'Pharmacology', 'Microbiology', 'Forensic Medicine'],
-  'Third Year': ['Community Medicine', 'ENT', 'Ophthalmology'],
-  'Fourth Year': ['Medicine', 'Surgery', 'Obstetrics and Gynaecology', 'Pediatrics', 'Orthopedics', 'Psychiatry', 'Dermatology', 'Anesthesiology', 'Radiology'],
-}
-const UPLOAD_MBBS_YEAR_OPTIONS = Object.keys(UPLOAD_MBBS_YEAR_SUBJECTS)
-const UPLOAD_QUESTION_TYPE_OPTIONS = [{ value: 'MCQ', label: 'MCQ' }]
-
 const normalizeUploadHeader = (value) => String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
 
 const escapeCsvValue = (value) => {
@@ -616,7 +607,12 @@ const validateExcelUploadRows = (csvText, uploadMeta = {}) => {
       return
     }
 
-    const missingValues = EXCEL_UPLOAD_REQUIRED_COLUMNS[typeKey].filter((column) => !getUploadCell(row, column))
+    const missingValues = EXCEL_UPLOAD_REQUIRED_COLUMNS[typeKey].filter((column) => {
+      const mappedValue = ['year', 'subject', 'topic', 'competency'].includes(column)
+        ? uploadMeta[column]
+        : ''
+      return !mappedValue && !getUploadCell(row, column)
+    })
     if (missingValues.length) {
       validationErrors.push(`Row ${row.__rowNumber}: required values missing for ${missingValues.join(', ')}.`)
       return
@@ -670,20 +666,12 @@ const getUploadErrorRows = (errors = []) => (
   })
 )
 
-const getGeneratedMcqCorrectOption = () => 'A'
-
-const getGeneratedMcqAnswerExplanation = (row, correctOption) => {
-  const optionKey = `option_${correctOption.toLowerCase()}`
-  const correctAnswer = getUploadCell(row, optionKey)
-  return correctAnswer
-    ? `Correct option: ${correctOption}. ${correctAnswer} is the best answer based on the question stem.`
-    : `Correct option: ${correctOption}.`
-}
-
 const buildExcelUploadQuestion = (row, typeKey, batchId, rowNumber, questionIndex, uploadMeta = {}) => {
   const config = EXCEL_UPLOAD_TYPE_CONFIG[typeKey]
   const uploadYear = uploadMeta.year || getUploadCell(row, 'year')
   const uploadSubject = uploadMeta.subject || getUploadCell(row, 'subject')
+  const uploadTopic = uploadMeta.topic || getUploadCell(row, 'topic')
+  const uploadCompetency = uploadMeta.competency || getUploadCell(row, 'competency')
   const question = createQuestion(config.type, {
     title: `${config.label} Upload ${questionIndex + 1}`,
   })
@@ -691,17 +679,13 @@ const buildExcelUploadQuestion = (row, typeKey, batchId, rowNumber, questionInde
     ...question,
     year: uploadYear,
     subject: uploadSubject,
-    topics: [getUploadCell(row, 'topic')].filter(Boolean),
-    competencies: [getUploadCell(row, 'competency')].filter(Boolean),
+    topics: [uploadTopic].filter(Boolean),
+    competencies: [uploadCompetency].filter(Boolean),
   })
   const optionalTags = getGeneratedOptionalTags(config.type)
   const marks = getUploadCell(row, 'marks') || (typeKey === 'MCQ' ? '1' : '')
-  const correctOption = typeKey === 'MCQ'
-    ? getUploadCell(row, 'correct_option').toUpperCase() || getGeneratedMcqCorrectOption(row)
-    : getUploadCell(row, 'correct_option').toUpperCase()
-  const answerExplanation = getUploadCell(row, 'answer_explanation') || (typeKey === 'MCQ'
-    ? getGeneratedMcqAnswerExplanation(row, correctOption)
-    : '')
+  const correctOption = getUploadCell(row, 'correct_option').toUpperCase()
+  const answerExplanation = getUploadCell(row, 'answer_explanation')
   const baseQuestion = {
     ...question,
     questionText: createHtmlBlock(getUploadCell(row, 'question_text')),
@@ -710,8 +694,8 @@ const buildExcelUploadQuestion = (row, typeKey, batchId, rowNumber, questionInde
       : getUploadCell(row, 'answer_key')),
     year: autoFilledCurriculum.year || uploadYear,
     subject: autoFilledCurriculum.subject || uploadSubject,
-    topics: autoFilledCurriculum.topics?.length ? autoFilledCurriculum.topics : [getUploadCell(row, 'topic')].filter(Boolean),
-    competencies: autoFilledCurriculum.competencies?.length ? autoFilledCurriculum.competencies : [getUploadCell(row, 'competency')].filter(Boolean),
+    topics: autoFilledCurriculum.topics?.length ? autoFilledCurriculum.topics : [uploadTopic].filter(Boolean),
+    competencies: autoFilledCurriculum.competencies?.length ? autoFilledCurriculum.competencies : [uploadCompetency].filter(Boolean),
     questionCategory: getUploadCell(row, 'question_category') || (typeKey === 'MCQ' ? 'Direct' : ''),
     cognitiveLevel: getUploadCell(row, 'cognitive_level') || (typeKey === 'MCQ' ? 'Recall' : ''),
     thinkingLevel: getUploadCell(row, 'thinking_level') || (typeKey === 'MCQ' ? 'LoT' : ''),
@@ -736,16 +720,19 @@ const buildExcelUploadQuestion = (row, typeKey, batchId, rowNumber, questionInde
 
   if (typeKey === 'MCQ') {
     const optionValues = ['option_a', 'option_b', 'option_c', 'option_d'].map((key) => getUploadCell(row, key))
-    const options = optionValues.map((value, optionIndex) => ({
-      id: `${baseQuestion.id}-option-${optionIndex + 1}`,
-      label: value,
-      distractorErrors: getGeneratedDistractorErrors(optionIndex),
-    }))
+    const hasCompleteOptionSet = optionValues.every(Boolean)
+    const options = hasCompleteOptionSet
+      ? optionValues.map((value, optionIndex) => ({
+        id: `${baseQuestion.id}-option-${optionIndex + 1}`,
+        label: value,
+        distractorErrors: getGeneratedDistractorErrors(optionIndex),
+      }))
+      : []
     const correctIndex = ['A', 'B', 'C', 'D'].indexOf(correctOption)
     return {
       ...baseQuestion,
       options,
-      correctOptionIds: correctIndex >= 0 ? [options[correctIndex].id] : [],
+      correctOptionIds: hasCompleteOptionSet && correctIndex >= 0 ? [options[correctIndex].id] : [],
     }
   }
 
@@ -1271,6 +1258,168 @@ function MappingSelectorPanel({
   )
 }
 
+function QuestionBankUploadDropdown({
+  label,
+  placeholder,
+  searchPlaceholder,
+  value,
+  options,
+  onChange,
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
+  const [menuPosition, setMenuPosition] = useState(null)
+  const dropdownRef = useRef(null)
+  const triggerRef = useRef(null)
+  const menuRef = useRef(null)
+  const normalizedOptions = options.map((option) => (
+    typeof option === 'string' ? { value: option, label: option } : option
+  ))
+  const selectedOption = normalizedOptions.find((option) => option.value === value)
+  const normalizedSearch = searchValue.trim().toLowerCase()
+  const visibleOptions = normalizedSearch
+    ? normalizedOptions.filter((option) => option.label.toLowerCase().includes(normalizedSearch))
+    : normalizedOptions
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const closeOnOutsideClick = (event) => {
+      if (
+        !dropdownRef.current?.contains(event.target)
+        && !menuRef.current?.contains(event.target)
+      ) {
+        setIsOpen(false)
+        setSearchValue('')
+      }
+    }
+    const closeOnViewportChange = () => {
+      setIsOpen(false)
+      setSearchValue('')
+    }
+    document.addEventListener('pointerdown', closeOnOutsideClick)
+    window.addEventListener('resize', closeOnViewportChange)
+    document.addEventListener('scroll', closeOnViewportChange, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick)
+      window.removeEventListener('resize', closeOnViewportChange)
+      document.removeEventListener('scroll', closeOnViewportChange, true)
+    }
+  }, [isOpen])
+
+  const closeDropdown = () => {
+    setIsOpen(false)
+    setSearchValue('')
+    setMenuPosition(null)
+  }
+
+  const toggleDropdown = () => {
+    if (isOpen) {
+      closeDropdown()
+      return
+    }
+
+    const triggerRect = triggerRef.current?.getBoundingClientRect()
+    if (!triggerRect) return
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const availableBelow = viewportHeight - triggerRect.bottom - 12
+    const availableAbove = triggerRect.top - 12
+    const openBelow = availableBelow >= Math.min(230, availableAbove)
+    const maxMenuHeight = Math.max(136, Math.min(260, openBelow ? availableBelow : availableAbove))
+    const menuWidth = Math.min(triggerRect.width, viewportWidth - 16)
+
+    setMenuPosition({
+      top: openBelow
+        ? triggerRect.bottom + 7
+        : Math.max(8, triggerRect.top - maxMenuHeight - 7),
+      left: Math.min(Math.max(8, triggerRect.left), viewportWidth - menuWidth - 8),
+      width: menuWidth,
+      optionsHeight: Math.max(70, maxMenuHeight - 67),
+    })
+    setIsOpen(true)
+  }
+
+  return (
+    <div
+      ref={dropdownRef}
+      className={`question-bank-upload-select ${isOpen && !disabled ? 'is-open' : ''} ${disabled ? 'is-disabled' : ''}`}
+    >
+      <span className="question-bank-upload-select-label">
+        {label} <b aria-hidden="true">*</b>
+      </span>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="question-bank-upload-select-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen && !disabled}
+        disabled={disabled}
+        onClick={toggleDropdown}
+      >
+        <span className={selectedOption ? '' : 'is-placeholder'}>{selectedOption?.label || placeholder}</span>
+        <ChevronDown size={18} strokeWidth={2.2} aria-hidden="true" />
+      </button>
+
+      {isOpen && !disabled && menuPosition && typeof document !== 'undefined' ? createPortal(
+        <div
+          ref={menuRef}
+          className="question-bank-upload-select-menu"
+          style={{
+            top: menuPosition.top,
+            left: menuPosition.left,
+            width: menuPosition.width,
+          }}
+        >
+          <label className="question-bank-upload-select-search">
+            <Search size={17} strokeWidth={2} aria-hidden="true" />
+            <input
+              autoFocus
+              value={searchValue}
+              placeholder={searchPlaceholder}
+              onChange={(event) => setSearchValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') closeDropdown()
+              }}
+            />
+          </label>
+          <div
+            className="question-bank-upload-select-options"
+            role="listbox"
+            aria-label={label}
+            style={{ maxHeight: menuPosition.optionsHeight }}
+          >
+            {visibleOptions.length ? visibleOptions.map((option) => {
+              const isSelected = option.value === value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  className={`question-bank-upload-select-option ${isSelected ? 'is-selected' : ''}`}
+                  onClick={() => {
+                    onChange(option.value)
+                    closeDropdown()
+                  }}
+                >
+                  <span className="question-bank-upload-select-check">
+                    {isSelected ? <Check size={13} strokeWidth={3} aria-hidden="true" /> : null}
+                  </span>
+                  <span title={option.label}>{option.label}</span>
+                </button>
+              )
+            }) : (
+              <span className="question-bank-upload-select-empty">No matching options</span>
+            )}
+          </div>
+        </div>,
+        document.body,
+      ) : null}
+    </div>
+  )
+}
+
 export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'editable' }) {
   const normalizedMode = mode === 'editable' ? 'editable' : 'readonly'
   const [questions, setQuestions] = useState(() => readStoredQuestionBankQuestions())
@@ -1310,16 +1459,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     isOpen: false,
     status: 'idle',
     fileName: '',
-    questionType: '',
+    questionType: 'MCQ',
     year: '',
     subject: '',
+    topic: '',
+    competency: '',
     generatedCount: 0,
     totalSeconds: 0,
     remainingSeconds: 0,
     startedAt: 0,
   })
-  const uploadYearSelectRef = useRef(null)
-  const uploadSubjectSelectRef = useRef(null)
   const [editableDescriptiveFieldKeys, setEditableDescriptiveFieldKeys] = useState([])
   const [activeDescriptiveAnswerTarget, setActiveDescriptiveAnswerTarget] = useState({ type: 'root' })
   const [activeDescriptiveMappingTarget, setActiveDescriptiveMappingTarget] = useState(null)
@@ -1577,8 +1726,15 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     ? Math.round((uploadWizard.generatedCount / uploadWizardQuestionCount) * 100)
     : 0
   const uploadWizardErrorRows = getUploadErrorRows(uploadImportResult?.errors ?? [])
-  const uploadWizardSubjectOptions = uploadWizard.year ? (UPLOAD_MBBS_YEAR_SUBJECTS[uploadWizard.year] ?? []) : []
-  const canBrowseUploadFile = Boolean(uploadWizard.questionType && uploadWizard.year && uploadWizard.subject)
+  const uploadWizardSubjectOptions = Object.keys(SUBJECT_DIRECTORY)
+  const uploadWizardTopicOptions = uploadWizard.subject
+    ? (SUBJECT_DIRECTORY[uploadWizard.subject]?.topics ?? [])
+    : []
+  const uploadWizardCompetencyOptions = uploadWizard.subject && uploadWizard.topic
+    ? (SUBJECT_DIRECTORY[uploadWizard.subject]?.competencies ?? []).filter((item) => item.topic === uploadWizard.topic)
+    : []
+  const selectedUploadCompetency = uploadWizardCompetencyOptions.find((item) => item.value === uploadWizard.competency)
+  const canBrowseUploadFile = Boolean(uploadWizard.subject && uploadWizard.topic && uploadWizard.competency)
   const isUploadWizardLocked = ['analyzing', 'generating', 'complete'].includes(uploadWizard.status)
   const approvalModalQuestionCount = pendingUploadApprovalQuestions.length || approvalSelectedIds.length
 
@@ -1797,6 +1953,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
           questionType: uploadImportResult.questionType,
           year: uploadImportResult.year,
           subject: uploadImportResult.subject,
+          topic: uploadImportResult.topic,
+          competency: uploadImportResult.competency,
         })
         setUploadImportResult({
           status: result.errors.length ? 'error' : 'ready',
@@ -1930,9 +2088,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       isOpen: true,
       status: 'idle',
       fileName: '',
-      questionType: '',
+      questionType: 'MCQ',
       year: '',
       subject: '',
+      topic: '',
+      competency: '',
       generatedCount: 0,
       totalSeconds: 0,
       remainingSeconds: 0,
@@ -1955,9 +2115,11 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       isOpen: false,
       status: 'idle',
       fileName: '',
-      questionType: '',
+      questionType: 'MCQ',
       year: '',
       subject: '',
+      topic: '',
+      competency: '',
       generatedCount: 0,
       totalSeconds: 0,
       remainingSeconds: 0,
@@ -1966,28 +2128,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     onAlert?.({ tone: 'warning', message: 'Upload question generation stopped.' })
   }
 
-  const openUploadWizardSelect = (selectRef) => {
-    if (typeof window === 'undefined') return
-    window.setTimeout(() => {
-      const selectElement = selectRef.current
-      if (!selectElement) return
-      selectElement.focus()
-      selectElement.showPicker?.()
-    }, 0)
-  }
-
   const updateUploadWizardField = (field, value) => {
     setUploadWizard((current) => ({
       ...current,
       [field]: value,
-      ...(field === 'year' ? { subject: '' } : {}),
+      ...(field === 'subject' ? { topic: '', competency: '', year: '' } : {}),
+      ...(field === 'topic' ? { competency: '', year: '' } : {}),
+      ...(field === 'competency' ? {
+        year: uploadWizardCompetencyOptions.find((item) => item.value === value)?.year || '',
+      } : {}),
     }))
-    if (field === 'questionType' && value) {
-      openUploadWizardSelect(uploadYearSelectRef)
-    }
-    if (field === 'year' && value) {
-      openUploadWizardSelect(uploadSubjectSelectRef)
-    }
   }
 
   const startUploadGeneration = () => {
@@ -2029,8 +2179,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         csvText,
         extension,
         questionType: uploadWizard.questionType,
-        year: uploadWizard.year,
+        year: selectedUploadCompetency?.year || uploadWizard.year,
         subject: uploadWizard.subject,
+        topic: uploadWizard.topic,
+        competency: uploadWizard.competency,
         questions: [],
         rowsCount: 0,
         errors: [],
@@ -2041,8 +2193,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         fileName: file.name,
         extension,
         questionType: uploadWizard.questionType,
-        year: uploadWizard.year,
+        year: selectedUploadCompetency?.year || uploadWizard.year,
         subject: uploadWizard.subject,
+        topic: uploadWizard.topic,
+        competency: uploadWizard.competency,
         readError: true,
         questions: [],
         rowsCount: 0,
@@ -5470,30 +5624,35 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             {uploadWizard.status === 'idle' ? (
               <>
                 <div className="question-bank-upload-wizard-fields">
-                  <label>
-                    <select value={uploadWizard.questionType} onChange={(event) => updateUploadWizardField('questionType', event.target.value)}>
-                      <option value="">Select question type</option>
-                      {UPLOAD_QUESTION_TYPE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <select ref={uploadYearSelectRef} value={uploadWizard.year} onChange={(event) => updateUploadWizardField('year', event.target.value)} disabled={!uploadWizard.questionType}>
-                      <option value="">Select Year</option>
-                      {UPLOAD_MBBS_YEAR_OPTIONS.map((year) => (
-                        <option key={year} value={year}>{year}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <select ref={uploadSubjectSelectRef} value={uploadWizard.subject} onChange={(event) => updateUploadWizardField('subject', event.target.value)} disabled={!uploadWizard.year}>
-                      <option value="">Select Subject</option>
-                      {uploadWizardSubjectOptions.map((subject) => (
-                        <option key={subject} value={subject}>{subject}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <QuestionBankUploadDropdown
+                    label="Subject"
+                    placeholder="Choose subject"
+                    searchPlaceholder="Search subject"
+                    value={uploadWizard.subject}
+                    options={uploadWizardSubjectOptions}
+                    onChange={(value) => updateUploadWizardField('subject', value)}
+                  />
+                  <QuestionBankUploadDropdown
+                    label="Topic"
+                    placeholder="Select topic"
+                    searchPlaceholder="Search topic"
+                    value={uploadWizard.topic}
+                    options={uploadWizardTopicOptions}
+                    onChange={(value) => updateUploadWizardField('topic', value)}
+                    disabled={!uploadWizard.subject}
+                  />
+                  <QuestionBankUploadDropdown
+                    label="Competency"
+                    placeholder="Select competency"
+                    searchPlaceholder="Search competency"
+                    value={uploadWizard.competency}
+                    options={uploadWizardCompetencyOptions.map((competency) => ({
+                      value: competency.value,
+                      label: `${competency.code} - ${competency.label}`,
+                    }))}
+                    onChange={(value) => updateUploadWizardField('competency', value)}
+                    disabled={!uploadWizard.topic}
+                  />
                 </div>
                 <label className={`question-bank-upload-wizard-drop ${!canBrowseUploadFile ? 'is-disabled' : ''}`}>
                   <input type="file" accept=".csv,.txt,.xls,.xlsx" onChange={handleUploadQuestionFile} disabled={!canBrowseUploadFile} />
@@ -5502,7 +5661,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                   </span>
                   <span className="question-bank-upload-wizard-drop-copy">
                     <strong>Choose Excel CSV file</strong>
-                    <span>{canBrowseUploadFile ? 'Use the sample templates and save from Excel as CSV.' : 'Select question type, year, and subject before browsing.'}</span>
+                    <span>{canBrowseUploadFile ? 'Use the sample templates and save from Excel as CSV.' : 'Select subject, topic, and competency before browsing.'}</span>
                   </span>
                   <span className="question-bank-upload-wizard-drop-action">Browse file</span>
                 </label>
@@ -5563,8 +5722,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                     <em>Estimated generation</em>
                   </span>
                   <span>
-                    <strong>{uploadWizard.questionType || 'Template'}</strong>
-                    <em>{uploadWizard.year} / {uploadWizard.subject}</em>
+                    <strong>{uploadWizard.subject || 'Curriculum mapping'}</strong>
+                    <em>{uploadWizard.topic} / {selectedUploadCompetency?.code || 'Competency'}</em>
                   </span>
                 </div>
               </div>
