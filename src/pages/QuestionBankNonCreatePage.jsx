@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, X } from 'lucide-react'
+import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, LogOut, Pencil, Plus, RotateCcw, Search, Share2, Shuffle, Star, Tags, X } from 'lucide-react'
 import { stripHtml } from '../utils/mathText'
 import { assignInstituteQuestionBankIds, getInstituteQuestionBankId } from '../utils/questionBankIdentity'
 import { APP_PAGES } from '../config/appPages'
@@ -86,34 +86,48 @@ const getQuestionCurriculumDisplay = (question) => {
 }
 const renderCompetencyCodeBadge = (curriculum) => {
   if (!curriculum.competencyCode) return null
+  const subject = curriculum.path[0]
+  const topic = curriculum.path[1]
+  const topicTooltipText = topic
+    ? `${curriculum.topicNumber > 0 ? `${curriculum.topicNumber}: ` : ''}${topic}`
+    : ''
+  const competencyDisplayText = [curriculum.competencyCode, curriculum.competencyName]
+    .filter(Boolean)
+    .join(' - ')
+  const hasTooltip = Boolean(subject || topicTooltipText || competencyDisplayText)
 
   return (
     <span className="assessment-page-competency-code-wrap">
       <button
         type="button"
         className="assessment-page-competency-code-badge"
-        aria-label={`View competency details for ${curriculum.competencyCode}`}
+        aria-label={`View subject, topic, and competency details for ${curriculum.competencyCode}`}
       >
         <span>{curriculum.competencyCode}</span>
-        {curriculum.competencyName ? <Info size={12} strokeWidth={2.4} aria-hidden="true" /> : null}
+        {hasTooltip ? <Info size={12} strokeWidth={2.4} aria-hidden="true" /> : null}
       </button>
-      {curriculum.competencyName ? (
-        <span className="assessment-page-competency-tooltip" role="tooltip">
-          {curriculum.competencyName}
+      {hasTooltip ? (
+        <span className="assessment-page-competency-tooltip is-curriculum-details" role="tooltip">
+          {subject ? (
+            <span className="assessment-page-competency-tooltip-row">
+              <strong>Subject</strong>
+              <span>{subject}</span>
+            </span>
+          ) : null}
+          {topicTooltipText ? (
+            <span className="assessment-page-competency-tooltip-row">
+              <strong>Topic</strong>
+              <span>{topicTooltipText}</span>
+            </span>
+          ) : null}
+          {competencyDisplayText ? (
+            <span className="assessment-page-competency-tooltip-row">
+              <strong>Competency</strong>
+              <span>{competencyDisplayText}</span>
+            </span>
+          ) : null}
         </span>
       ) : null}
-    </span>
-  )
-}
-const renderQuestionCurriculumPath = (curriculum) => {
-  const [subject, topic] = curriculum.path
-  if (!subject && !topic) return null
-
-  return (
-    <span className="is-path">
-      {subject ? <span>{subject}</span> : null}
-      {subject && topic ? <span className="assessment-page-question-path-separator">›</span> : null}
-      {topic ? <span className="assessment-page-question-topic-text">{curriculum.topicNumber > 0 ? `Topic ${curriculum.topicNumber}: ` : ''}{topic}</span> : null}
     </span>
   )
 }
@@ -157,7 +171,6 @@ const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionC
     <div className="assessment-page-question-compact-meta">
       <span className="assessment-page-question-meta-items">
         <span className={`assessment-page-question-source-badge ${sourceClassName}`}>{sourceLabel}</span>
-        {renderQuestionCurriculumPath(curriculum)}
         {renderCompetencyCodeBadge(curriculum)}
         <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
         {!isMedsySource && getQuestionMarksTotal(question) > 0
@@ -331,6 +344,8 @@ const readStoredQuestionList = (storageKey) => {
               ...sampleQuestion,
               isFavorite: isFavoriteQuestion(question),
               isInstituteQuestion: isInstituteQuestion(question),
+              sharedToStudents: isSharedToStudentsQuestion(question),
+              sharedToStudentsAt: question.sharedToStudentsAt,
             }
           })
           const missingSamples = sampleQuestions.filter((sample) => (
@@ -494,6 +509,36 @@ const updateQuestionInstituteInStorage = (questionId, isInstituteQuestionValue) 
       }
     } catch {
       // Ignore malformed local storage entries and keep the in-memory UI responsive.
+    }
+  })
+
+  window.dispatchEvent(new Event('question-bank-published-questions'))
+  window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+}
+
+const shareQuestionsWithStudentsInStorage = (questionIds = []) => {
+  if (typeof window === 'undefined' || !questionIds.length) return
+
+  const questionIdSet = new Set(questionIds.map((questionId) => String(questionId)))
+  QUESTION_BANK_FAVORITE_STORAGE_KEYS.forEach((storageKey) => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
+      if (!Array.isArray(parsed)) return
+
+      let didUpdate = false
+      const nextQuestions = parsed.map((question) => {
+        if (!questionIdSet.has(String(question?.id ?? ''))) return question
+        didUpdate = true
+        return {
+          ...question,
+          sharedToStudents: true,
+          sharedToStudentsAt: new Date().toISOString(),
+        }
+      })
+
+      if (didUpdate) window.localStorage.setItem(storageKey, JSON.stringify(nextQuestions))
+    } catch {
+      // Ignore malformed local storage entries and leave the remaining sources available.
     }
   })
 
@@ -940,6 +985,23 @@ const hasBooleanFilterMatch = (selectedValues, isMatch) => {
   return selectedValues.includes(isMatch ? 'Yes' : 'No')
 }
 
+const matchesShareAdvancedFilters = (question, activeFilters, excludedKey = '') => (
+  (excludedKey === 'authors' || hasFilterMatch(activeFilters.authors, getQuestionAuthorName(question)))
+  && (excludedKey === 'years' || hasFilterMatch(activeFilters.years, question.year))
+  && (excludedKey === 'categories' || hasFilterMatch(activeFilters.categories, getQuestionCategoryLabel(question.questionCategory, question)))
+  && (excludedKey === 'thinkingLevels' || hasFilterMatch(activeFilters.thinkingLevels, getThinkingLevelLabel(question.thinkingLevel)))
+  && (excludedKey === 'difficultyLevels' || hasFilterMatch(activeFilters.difficultyLevels, question.difficultyLevel))
+  && (excludedKey === 'cognitiveLevels' || hasFilterMatch(activeFilters.cognitiveLevels, question.cognitiveLevel))
+  && (excludedKey === 'cognitiveFunctions' || hasFilterMatch(activeFilters.cognitiveFunctions, question.cognitiveFunction))
+  && (excludedKey === 'skillFocuses' || hasFilterMatch(activeFilters.skillFocuses, question.skillFocus))
+  && (excludedKey === 'organSystems' || hasFilterMatch(activeFilters.organSystems, question.organSystem))
+  && (excludedKey === 'organSubSystems' || hasFilterMatch(activeFilters.organSubSystems, question.organSubSystems ?? []))
+  && (excludedKey === 'diseaseTags' || hasFilterMatch(activeFilters.diseaseTags, question.diseaseTags ?? []))
+  && (excludedKey === 'keyConcepts' || hasFilterMatch(activeFilters.keyConcepts, question.keyConcepts ?? []))
+  && (excludedKey === 'sharedToStudents' || hasBooleanFilterMatch(activeFilters.sharedToStudents, isSharedToStudentsQuestion(question)))
+  && (excludedKey === 'usedInAssessment' || hasBooleanFilterMatch(activeFilters.usedInAssessment, isUsedInAssessmentQuestion(question)))
+)
+
 const readAssessmentDrafts = () => {
   if (typeof window === 'undefined') return []
   try {
@@ -1003,6 +1065,7 @@ export default function QuestionBankNonCreatePage({
   const moreFiltersRef = useRef(null)
   const selectionBarRef = useRef(null)
   const selectionBarDragRef = useRef(null)
+  const sharePreviousFiltersRef = useRef(null)
   const [publishedQuestions, setPublishedQuestions] = useState(() => readAllQuestionBankQuestions())
   const activeView = 'grid'
   const [filterSearchTerms, setFilterSearchTerms] = useState({})
@@ -1024,6 +1087,7 @@ export default function QuestionBankNonCreatePage({
   const [expandedTableRows, setExpandedTableRows] = useState([])
   const [selectedGridAction, setSelectedGridAction] = useState('')
   const [selectedGridQuestionIds, setSelectedGridQuestionIds] = useState([])
+  const [shareFilters, setShareFilters] = useState({ subject: '', topic: '', competency: '', types: [] })
   const [selectionBarPosition, setSelectionBarPosition] = useState(null)
   const [isEmbeddedSelectionBarClosed, setIsEmbeddedSelectionBarClosed] = useState(false)
   const [isEmbeddedSelectionBarVisible, setIsEmbeddedSelectionBarVisible] = useState(false)
@@ -1102,6 +1166,99 @@ export default function QuestionBankNonCreatePage({
     diseaseTags: getUniqueValues(metricFilteredQuestions, (question) => question.diseaseTags ?? []),
     keyConcepts: getUniqueValues(metricFilteredQuestions, (question) => question.keyConcepts ?? []),
   }), [metricFilteredQuestions])
+  const isShareToStudentsMode = selectedGridAction === 'learn'
+  const shareSubjectOptions = useMemo(
+    () => getUniqueValues(publishedQuestions, (question) => question.subject),
+    [publishedQuestions],
+  )
+  const shareTopicOptions = useMemo(() => {
+    if (!shareFilters.subject) return []
+    return getUniqueValues(
+      publishedQuestions.filter((question) => hasFilterMatch([shareFilters.subject], question.subject)),
+      (question) => question.topics ?? [],
+    )
+  }, [publishedQuestions, shareFilters.subject])
+  const shareCompetencyOptions = useMemo(() => {
+    if (!shareFilters.subject || !shareFilters.topic) return []
+    return getUniqueValues(
+      publishedQuestions.filter((question) => (
+        hasFilterMatch([shareFilters.subject], question.subject)
+        && hasFilterMatch([shareFilters.topic], question.topics ?? [])
+      )),
+      (question) => question.competencies ?? [],
+    )
+  }, [publishedQuestions, shareFilters.subject, shareFilters.topic])
+  const shareTypeOptions = useMemo(() => {
+    if (!shareFilters.subject || !shareFilters.topic || !shareFilters.competency) return []
+    const availableTypes = new Set(
+      publishedQuestions
+        .filter((question) => (
+          hasFilterMatch([shareFilters.subject], question.subject)
+          && hasFilterMatch([shareFilters.topic], question.topics ?? [])
+          && hasFilterMatch([shareFilters.competency], question.competencies ?? [])
+        ))
+        .map((question) => getQuestionTypeLabel(question)),
+    )
+    return ['MCQ', 'SAQs'].filter((type) => availableTypes.has(type))
+  }, [publishedQuestions, shareFilters.competency, shareFilters.subject, shareFilters.topic])
+  const hasCompleteShareFilters = Boolean(
+    shareFilters.subject
+    && shareFilters.topic
+    && shareFilters.competency
+    && shareFilters.types.length,
+  )
+  const hasShareFilterSelections = Boolean(
+    shareFilters.subject
+    || shareFilters.topic
+    || shareFilters.competency
+    || shareFilters.types.length
+    || hasSelectedFilters(filters),
+  )
+  const shareAdvancedFilterOptions = useMemo(() => {
+    const optionGetters = {
+      authors: getQuestionAuthorName,
+      years: (question) => question.year,
+      categories: (question) => getQuestionCategoryLabel(question.questionCategory, question),
+      thinkingLevels: (question) => getThinkingLevelLabel(question.thinkingLevel),
+      difficultyLevels: (question) => question.difficultyLevel,
+      cognitiveLevels: (question) => question.cognitiveLevel,
+      cognitiveFunctions: (question) => question.cognitiveFunction,
+      skillFocuses: (question) => question.skillFocus,
+      organSystems: (question) => question.organSystem,
+      organSubSystems: (question) => question.organSubSystems ?? [],
+      diseaseTags: (question) => question.diseaseTags ?? [],
+      keyConcepts: (question) => question.keyConcepts ?? [],
+    }
+    const baseQuestions = hasCompleteShareFilters
+      ? publishedQuestions.filter((question) => (
+        hasFilterMatch([shareFilters.subject], question.subject)
+        && hasFilterMatch([shareFilters.topic], question.topics ?? [])
+        && hasFilterMatch([shareFilters.competency], question.competencies ?? [])
+        && hasFilterMatch(shareFilters.types, getQuestionTypeLabel(question))
+      ))
+      : []
+    const nextOptions = Object.fromEntries(Object.entries(optionGetters).map(([filterKey, getter]) => [
+      filterKey,
+      getUniqueValues(
+        baseQuestions.filter((question) => matchesShareAdvancedFilters(question, filters, filterKey)),
+        getter,
+      ),
+    ]))
+    const booleanOptions = (filterKey, predicate) => {
+      const matchingQuestions = baseQuestions.filter((question) => (
+        matchesShareAdvancedFilters(question, filters, filterKey)
+      ))
+      return ['Yes', 'No'].filter((option) => matchingQuestions.some((question) => (
+        predicate(question) === (option === 'Yes')
+      )))
+    }
+
+    return {
+      ...nextOptions,
+      sharedToStudents: booleanOptions('sharedToStudents', isSharedToStudentsQuestion),
+      usedInAssessment: booleanOptions('usedInAssessment', isUsedInAssessmentQuestion),
+    }
+  }, [filters, hasCompleteShareFilters, publishedQuestions, shareFilters])
 
   const filterOptionCounts = useMemo(() => ({
     authors: getValueCounts(metricFilteredQuestions, getQuestionAuthorName),
@@ -1201,6 +1358,17 @@ export default function QuestionBankNonCreatePage({
   }
 
   const filteredQuestions = useMemo(() => {
+    if (isShareToStudentsMode) {
+      if (!hasCompleteShareFilters) return []
+      return publishedQuestions.filter((question) => (
+        hasFilterMatch([shareFilters.subject], question.subject)
+        && hasFilterMatch([shareFilters.topic], question.topics ?? [])
+        && hasFilterMatch([shareFilters.competency], question.competencies ?? [])
+        && hasFilterMatch(shareFilters.types, getQuestionTypeLabel(question))
+        && matchesShareAdvancedFilters(question, filters)
+      ))
+    }
+
     return metricFilteredQuestions.filter((question) => {
       if (!hasFilterMatch(filters.authors, getQuestionAuthorName(question))) return false
       if (!hasFilterMatch(filters.types, getQuestionTypeFilterLabel(question))) return false
@@ -1222,7 +1390,7 @@ export default function QuestionBankNonCreatePage({
       if (!hasBooleanFilterMatch(filters.usedInAssessment, isUsedInAssessmentQuestion(question))) return false
       return true
     })
-  }, [filters, metricFilteredQuestions])
+  }, [filters, hasCompleteShareFilters, isShareToStudentsMode, metricFilteredQuestions, publishedQuestions, shareFilters])
 
   const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize))
   const safeCurrentPage = Math.min(currentPage, totalPages)
@@ -1232,9 +1400,7 @@ export default function QuestionBankNonCreatePage({
   const hasAllVisibleRowsExpanded = Boolean(pagedQuestionIds.length)
     && pagedQuestionIds.every((questionId) => expandedTableRows.includes(questionId))
   const baseFilterDefinitions = [
-    ['authors', 'Author', filterOptions.authors],
     ['types', 'Type', filterOptions.types],
-    ['years', 'Year', filterOptions.years],
     ['subjects', 'Subject', filterOptions.subjects],
     ['topics', 'Topic', filterOptions.topics],
     ['competencies', 'Competency', filterOptions.competencies],
@@ -1247,8 +1413,11 @@ export default function QuestionBankNonCreatePage({
   ].filter(([, , options]) => options.length)
   const moreFilterGroups = [
     {
-      label: 'Curriculum',
-      filters: [],
+      label: 'Question Details',
+      filters: [
+        ['authors', 'Author', filterOptions.authors],
+        ['years', 'Year', filterOptions.years],
+      ],
     },
     {
       label: 'Assessment',
@@ -1277,7 +1446,10 @@ export default function QuestionBankNonCreatePage({
     filters: group.filters.filter(([, , options]) => options.length),
   })).filter((group) => group.filters.length)
   const advancedFilterDefinitions = moreFilterGroups.flatMap((group) => group.filters)
-  const searchableFilterKeys = ['subjects', 'topics', 'competencies', 'organSystems', 'organSubSystems', 'diseaseTags', 'keyConcepts']
+  const activeAdvancedFilterCount = advancedFilterDefinitions.reduce((count, [filterKey]) => (
+    count + (filters[filterKey]?.length ? 1 : 0)
+  ), 0)
+  const searchableFilterKeys = ['authors', 'subjects', 'topics', 'competencies', 'organSystems', 'organSubSystems', 'diseaseTags', 'keyConcepts']
   const createDistribution = (counts, preferredOrder = []) => {
     const entries = Object.entries(counts)
       .filter(([, count]) => count > 0)
@@ -1625,12 +1797,50 @@ export default function QuestionBankNonCreatePage({
   }
 
   const resetAssessmentSelection = () => {
+    if (selectedGridAction === 'learn' && sharePreviousFiltersRef.current) {
+      setFilters(sharePreviousFiltersRef.current)
+      sharePreviousFiltersRef.current = null
+    }
     setSelectedGridQuestionIds([])
     setSelectedGridAction('')
+    setShareFilters({ subject: '', topic: '', competency: '', types: [] })
     setSelectionBarPosition(null)
     setIsEmbeddedSelectionBarClosed(false)
     setIsEmbeddedSelectionBarVisible(false)
     setAssessmentChooserOpen(false)
+  }
+
+  const startShareToStudentsFlow = () => {
+    if (selectedGridAction !== 'learn') sharePreviousFiltersRef.current = filters
+    setSelectedGridAction('learn')
+    setSelectedGridQuestionIds([])
+    setShareFilters({ subject: '', topic: '', competency: '', types: [] })
+    setFilters(createEmptyFilters())
+    setActiveMetric('total')
+    setShowMetricsLanding(false)
+    setShowDashboardWelcomeToast(false)
+    setCurrentPage(1)
+    setExpandedTableRows([])
+    setOpenFilterKey('')
+    setShowAdvancedFilters(false)
+  }
+
+  const resetShareToStudentsFilters = () => {
+    setShareFilters({ subject: '', topic: '', competency: '', types: [] })
+    setFilters(createEmptyFilters())
+    setSelectedGridQuestionIds([])
+    setCurrentPage(1)
+    setExpandedTableRows([])
+    setExpandedCardRows([])
+    setOpenFilterKey('')
+    setShowAdvancedFilters(false)
+  }
+
+  const shareSelectedQuestionsWithStudents = () => {
+    if (!availableSelectedGridQuestionIds.length) return
+    shareQuestionsWithStudentsInStorage(availableSelectedGridQuestionIds)
+    setPublishedQuestions(readAllQuestionBankQuestions())
+    resetAssessmentSelection()
   }
 
   const getSelectedAssessmentQuestions = () => (
@@ -1911,7 +2121,7 @@ export default function QuestionBankNonCreatePage({
 
     return (
       <span className="assessment-page-question-meta-actions" onClick={(event) => event.stopPropagation()}>
-        {isEditable && isReportMetricActive ? (
+        {isEditable && !isShareToStudentsMode && isReportMetricActive ? (
           <button
             type="button"
             className="assessment-page-question-meta-action"
@@ -1922,7 +2132,7 @@ export default function QuestionBankNonCreatePage({
             Withdraw
           </button>
         ) : null}
-        {isEditable && !isReportMetricActive ? (
+        {isEditable && !isShareToStudentsMode && !isReportMetricActive ? (
           <>
             <button
               type="button"
@@ -2001,8 +2211,13 @@ export default function QuestionBankNonCreatePage({
   }
 
   const clearGridActionState = () => {
+    if (selectedGridAction === 'learn' && sharePreviousFiltersRef.current) {
+      setFilters(sharePreviousFiltersRef.current)
+      sharePreviousFiltersRef.current = null
+    }
     setSelectedGridAction('')
     setSelectedGridQuestionIds([])
+    setShareFilters({ subject: '', topic: '', competency: '', types: [] })
     setSelectionBarPosition(null)
     setIsEmbeddedSelectionBarClosed(false)
     setIsEmbeddedSelectionBarVisible(false)
@@ -2182,6 +2397,188 @@ export default function QuestionBankNonCreatePage({
     )
   }
 
+  const renderShareFilterDropdown = (filterKey, label, options, disabled = false) => {
+    const menuKey = `share-${filterKey}`
+    const selectedValue = shareFilters[filterKey] ?? ''
+    const isOpen = openFilterKey === menuKey
+    const searchTerm = filterSearchTerms[menuKey] ?? ''
+    const visibleOptions = options.filter((option) => (
+      option.toLowerCase().includes(searchTerm.trim().toLowerCase())
+    ))
+    const emptyOptionLabel = {
+      subject: 'No available subjects',
+      topic: 'No available topics',
+      competency: 'No available competencies',
+    }[filterKey]
+    const getShareMenuPosition = () => {
+      if (typeof document === 'undefined') return undefined
+      const trigger = document.querySelector(
+        `.question-bank-share-filter[data-filter-key="${menuKey}"] > button`,
+      )
+      if (!trigger) return undefined
+
+      const rect = trigger.getBoundingClientRect()
+      const menuWidth = Math.min(Math.max(rect.width, 260), window.innerWidth - 36)
+      const left = Math.min(Math.max(18, rect.left), window.innerWidth - menuWidth - 18)
+      return {
+        position: 'fixed',
+        top: `${rect.bottom + 7}px`,
+        left: `${left}px`,
+        width: `${menuWidth}px`,
+      }
+    }
+    const selectShareFilter = (nextValue) => {
+      setShareFilters((current) => {
+        if (filterKey === 'subject') {
+          return { subject: nextValue, topic: '', competency: '', types: [] }
+        }
+        if (filterKey === 'topic') {
+          return { ...current, topic: nextValue, competency: '', types: [] }
+        }
+        return { ...current, competency: nextValue, types: [] }
+      })
+      setFilters(createEmptyFilters())
+      setSelectedGridQuestionIds([])
+      setCurrentPage(1)
+      setOpenFilterKey('')
+      setShowAdvancedFilters(false)
+    }
+
+    const filterMenu = isOpen ? (
+      <div
+        className="assessment-page-filter-menu question-bank-share-filter-menu is-portaled-filter-menu"
+        role="menu"
+        data-filter-key={menuKey}
+        style={getShareMenuPosition()}
+      >
+        <label className="assessment-page-filter-menu-search">
+          <Search size={14} strokeWidth={2.2} />
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setFilterSearchTerms((current) => ({
+              ...current,
+              [menuKey]: event.target.value,
+            }))}
+            placeholder={`Search ${label.toLowerCase()}...`}
+          />
+        </label>
+        <div>
+          {visibleOptions.map((option) => (
+            <label key={option} className="assessment-page-filter-option">
+              <input
+                type="radio"
+                name={menuKey}
+                checked={selectedValue === option}
+                onChange={() => selectShareFilter(option)}
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+          {!visibleOptions.length ? (
+            <span className="assessment-page-filter-menu-empty">{emptyOptionLabel}</span>
+          ) : null}
+        </div>
+      </div>
+    ) : null
+
+    return (
+      <div key={menuKey} className="assessment-page-filter-dropdown question-bank-share-filter" data-filter-key={menuKey}>
+        <button
+          type="button"
+          className={selectedValue ? 'has-selection' : ''}
+          onClick={() => setOpenFilterKey(isOpen ? '' : menuKey)}
+          disabled={disabled}
+          aria-expanded={isOpen}
+          title={selectedValue || label}
+        >
+          <span>{label}</span>
+          {selectedValue ? <strong>1</strong> : null}
+          <ChevronDown size={14} strokeWidth={2.3} />
+        </button>
+        {filterMenu && typeof document !== 'undefined' ? createPortal(filterMenu, document.body) : null}
+      </div>
+    )
+  }
+
+  const renderShareTypeDropdown = () => {
+    const menuKey = 'share-types'
+    const selectedValues = shareFilters.types
+    const isOpen = openFilterKey === menuKey
+    const disabled = !shareFilters.competency
+    const getShareMenuPosition = () => {
+      if (typeof document === 'undefined') return undefined
+      const trigger = document.querySelector(
+        `.question-bank-share-filter[data-filter-key="${menuKey}"] > button`,
+      )
+      if (!trigger) return undefined
+
+      const rect = trigger.getBoundingClientRect()
+      const menuWidth = Math.min(Math.max(rect.width, 220), window.innerWidth - 36)
+      const left = Math.min(Math.max(18, rect.left), window.innerWidth - menuWidth - 18)
+      return {
+        position: 'fixed',
+        top: `${rect.bottom + 7}px`,
+        left: `${left}px`,
+        width: `${menuWidth}px`,
+      }
+    }
+    const toggleType = (type) => {
+      setShareFilters((current) => ({
+        ...current,
+        types: current.types.includes(type)
+          ? current.types.filter((value) => value !== type)
+          : [...current.types, type],
+      }))
+      setFilters(createEmptyFilters())
+      setSelectedGridQuestionIds([])
+      setCurrentPage(1)
+      setShowAdvancedFilters(false)
+    }
+    const filterMenu = isOpen ? (
+      <div
+        className="assessment-page-filter-menu question-bank-share-filter-menu is-portaled-filter-menu"
+        role="menu"
+        data-filter-key={menuKey}
+        style={getShareMenuPosition()}
+      >
+        <div>
+          {shareTypeOptions.map((type) => (
+            <label key={type} className="assessment-page-filter-option">
+              <input
+                type="checkbox"
+                checked={selectedValues.includes(type)}
+                onChange={() => toggleType(type)}
+              />
+              <span>{type}</span>
+            </label>
+          ))}
+          {!shareTypeOptions.length ? (
+            <span className="assessment-page-filter-menu-empty">No available question types</span>
+          ) : null}
+        </div>
+      </div>
+    ) : null
+
+    return (
+      <div className="assessment-page-filter-dropdown question-bank-share-filter" data-filter-key={menuKey}>
+        <button
+          type="button"
+          className={selectedValues.length ? 'has-selection' : ''}
+          onClick={() => setOpenFilterKey(isOpen ? '' : menuKey)}
+          disabled={disabled}
+          aria-expanded={isOpen}
+          title={selectedValues.length ? selectedValues.join(', ') : 'Type'}
+        >
+          <span>Type</span>
+          {selectedValues.length ? <strong>{selectedValues.length}</strong> : null}
+          <ChevronDown size={14} strokeWidth={2.3} />
+        </button>
+        {filterMenu && typeof document !== 'undefined' ? createPortal(filterMenu, document.body) : null}
+      </div>
+    )
+  }
+
   const renderBooleanFilterDropdown = ([filterKey, label, options]) => {
     const selectedValue = filters[filterKey]?.[0] ?? ''
     const isOpen = openFilterKey === filterKey
@@ -2230,6 +2627,131 @@ export default function QuestionBankNonCreatePage({
           </div>
         ) : null}
       </div>
+    )
+  }
+
+  const renderShareMoreFilters = () => {
+    if (!advancedFilterDefinitions.length) return null
+
+    const renderShareAdvancedDropdown = ([filterKey, label]) => {
+      const selectedValue = filters[filterKey]?.[0] ?? ''
+      const options = shareAdvancedFilterOptions[filterKey] ?? []
+      const isOpen = openFilterKey === filterKey
+      const searchTerm = filterSearchTerms[`share-more-${filterKey}`] ?? ''
+      const visibleOptions = searchableFilterKeys.includes(filterKey)
+        ? options.filter((option) => option.toLowerCase().includes(searchTerm.trim().toLowerCase()))
+        : options
+      const updateSelection = (nextValue) => {
+        const filterOrder = advancedFilterDefinitions.map(([key]) => key)
+        const changedIndex = filterOrder.indexOf(filterKey)
+        setFilters((current) => {
+          const nextFilters = { ...current, [filterKey]: nextValue ? [nextValue] : [] }
+          filterOrder.slice(changedIndex + 1).forEach((dependentKey) => {
+            nextFilters[dependentKey] = []
+          })
+          return nextFilters
+        })
+        setSelectedGridQuestionIds([])
+        setCurrentPage(1)
+        setOpenFilterKey('')
+      }
+
+      return (
+        <div key={filterKey} className="assessment-page-filter-dropdown" data-filter-key={filterKey}>
+          <button
+            type="button"
+            className={selectedValue ? 'has-selection' : ''}
+            onClick={() => setOpenFilterKey(isOpen ? '' : filterKey)}
+            disabled={!options.length}
+            aria-expanded={isOpen}
+            title={selectedValue || label}
+          >
+            <span>{label}</span>
+            {selectedValue ? <strong>1</strong> : null}
+            <ChevronDown size={14} strokeWidth={2.3} />
+          </button>
+          {isOpen ? (
+            <div className="assessment-page-filter-menu" role="menu" data-filter-key={filterKey}>
+              <div>
+                <strong>{label}</strong>
+                {selectedValue ? (
+                  <button type="button" onClick={() => updateSelection('')}>Clear</button>
+                ) : null}
+              </div>
+              {searchableFilterKeys.includes(filterKey) ? (
+                <label className="assessment-page-filter-menu-search">
+                  <Search size={14} strokeWidth={2.2} />
+                  <input
+                    type="search"
+                    value={searchTerm}
+                    onChange={(event) => setFilterSearchTerms((current) => ({
+                      ...current,
+                      [`share-more-${filterKey}`]: event.target.value,
+                    }))}
+                    placeholder={`Search ${label.toLowerCase()}...`}
+                  />
+                </label>
+              ) : null}
+              <div>
+                {visibleOptions.map((option) => (
+                  <label key={option} className="assessment-page-filter-option">
+                    <input
+                      type="radio"
+                      name={`share-more-${filterKey}`}
+                      checked={selectedValue === option}
+                      onChange={() => updateSelection(option)}
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+                {!visibleOptions.length ? (
+                  <span className="assessment-page-filter-menu-empty">No matching options</span>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )
+    }
+
+    return (
+      <span className="assessment-page-more-filters-wrap" ref={moreFiltersRef}>
+        <button
+          type="button"
+          className={`assessment-page-more-filters-btn ${showAdvancedFilters ? 'is-open' : ''}`}
+          onClick={() => {
+            updateMoreFiltersPosition()
+            setShowAdvancedFilters((current) => !current)
+          }}
+          disabled={!hasCompleteShareFilters}
+          aria-expanded={showAdvancedFilters}
+        >
+          <Plus size={15} strokeWidth={2.3} />
+          More
+          {activeAdvancedFilterCount ? (
+            <span className="assessment-page-more-filter-count">{activeAdvancedFilterCount}</span>
+          ) : null}
+        </button>
+        {showAdvancedFilters && typeof document !== 'undefined' ? createPortal(
+          <span className="assessment-page-filter-advanced-row" style={moreFiltersPanelStyle} role="tooltip">
+            <span className="assessment-page-more-filter-head">
+              <strong>More filters</strong>
+              {advancedFilterDefinitions.some(([filterKey]) => filters[filterKey]?.length) ? (
+                <button type="button" onClick={clearMoreFilters}>Clear</button>
+              ) : null}
+            </span>
+            {moreFilterGroups.map((group) => (
+              <span key={group.label} className="assessment-page-more-filter-group">
+                <strong>{group.label}</strong>
+                <span>{group.filters.map((filter) => (
+                  renderShareAdvancedDropdown(filter)
+                ))}</span>
+              </span>
+            ))}
+          </span>,
+          document.body,
+        ) : null}
+      </span>
     )
   }
 
@@ -2341,7 +2863,7 @@ export default function QuestionBankNonCreatePage({
   }, [])
 
   return (
-    <section className={`vx-content assessment-page question-bank-non-create-page ${embedded ? 'is-embedded' : 'is-full-page'} is-${resolvedMode}-mode is-${activeView}-view`}>
+    <section className={`vx-content assessment-page question-bank-non-create-page ${embedded ? 'is-embedded' : 'is-full-page'} is-${resolvedMode}-mode is-${activeView}-view ${isShareToStudentsMode ? 'is-share-to-students-mode' : ''}`}>
       <div className={`assessment-page-shell question-bank-overview-shell ${selectedGridAction ? 'has-selection-bar' : ''}`}>
         {showMetricsLanding ? (
           <section className="question-bank-metrics-landing" aria-label="Question bank metrics overview">
@@ -2668,6 +3190,25 @@ export default function QuestionBankNonCreatePage({
                         <Plus size={15} strokeWidth={2.3} />
                         Create New Questions
                       </button>
+                      {isShareToStudentsMode ? (
+                        <button
+                          type="button"
+                          className="question-bank-action-share-students question-bank-share-cancel-btn is-exit"
+                          onClick={clearGridActionState}
+                        >
+                          <LogOut size={15} strokeWidth={2.3} />
+                          Exit Share to Students
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="question-bank-action-share-students"
+                          onClick={startShareToStudentsFlow}
+                        >
+                          <Share2 size={15} strokeWidth={2.3} />
+                          Share to Students
+                        </button>
+                      )}
                     </>
                   ) : null}
                 </span>
@@ -2716,8 +3257,27 @@ export default function QuestionBankNonCreatePage({
           >
             <div className="assessment-page-filter-strip" aria-label="Question filters">
               <span className="assessment-page-filter-controls">
-                {baseFilterDefinitions.map(renderFilterDropdown)}
-                {advancedFilterDefinitions.length ? (
+                {isShareToStudentsMode ? (
+                  <>
+                    {renderShareFilterDropdown('subject', 'Subject', shareSubjectOptions)}
+                    {renderShareFilterDropdown('topic', 'Topic', shareTopicOptions, !shareFilters.subject)}
+                    {renderShareFilterDropdown('competency', 'Competency', shareCompetencyOptions, !shareFilters.topic)}
+                    {renderShareTypeDropdown()}
+                    {renderShareMoreFilters()}
+                    <button
+                      type="button"
+                      className="assessment-page-more-filters-btn question-bank-share-reset-filter-btn"
+                      onClick={resetShareToStudentsFilters}
+                      disabled={!hasShareFilterSelections}
+                    >
+                      <RotateCcw size={14} strokeWidth={2.3} />
+                      Reset Filter
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {baseFilterDefinitions.map(renderFilterDropdown)}
+                    {advancedFilterDefinitions.length ? (
                   <span className="assessment-page-more-filters-wrap" ref={moreFiltersRef}>
                     <button
                       type="button"
@@ -2730,6 +3290,9 @@ export default function QuestionBankNonCreatePage({
                     >
                       <Plus size={15} strokeWidth={2.3} />
                       More
+                      {activeAdvancedFilterCount ? (
+                        <span className="assessment-page-more-filter-count">{activeAdvancedFilterCount}</span>
+                      ) : null}
                     </button>
                     {!embedded ? (
                       <button
@@ -2775,7 +3338,9 @@ export default function QuestionBankNonCreatePage({
                       document.body,
                     ) : null}
                   </span>
-                ) : null}
+                    ) : null}
+                  </>
+                )}
               </span>
               {embedded ? (
                 <span className="assessment-page-grid-action-controls" role="group" aria-label="Question bank actions">
@@ -2886,7 +3451,7 @@ export default function QuestionBankNonCreatePage({
                       {renderQuestionCompactMeta(question, curriculum, {}, null, questionNumber)}
                     </div>
                     <div className="assessment-page-question-actions">
-                      {isEditable && !isReportMetricActive ? (
+                      {isEditable && !isShareToStudentsMode && !isReportMetricActive ? (
                         <button
                           type="button"
                           className="assessment-page-card-action"
@@ -2897,7 +3462,7 @@ export default function QuestionBankNonCreatePage({
                           <Pencil size={14} strokeWidth={2.2} />
                         </button>
                       ) : null}
-                      {isEditable ? (
+                      {isEditable && !isShareToStudentsMode ? (
                         <button
                           type="button"
                           className="assessment-page-card-action is-report"
@@ -2916,7 +3481,7 @@ export default function QuestionBankNonCreatePage({
                           <span>Report</span>
                         </button>
                       ) : null}
-                      {isEditable && !isReportMetricActive ? (
+                      {isEditable && !isShareToStudentsMode && !isReportMetricActive ? (
                         <button
                           type="button"
                           className={`assessment-page-card-action is-favorite ${isFavorite ? 'is-active' : ''}`}
@@ -2928,7 +3493,7 @@ export default function QuestionBankNonCreatePage({
                           <Star size={15} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
                         </button>
                       ) : null}
-                      {isEditable && !isReportMetricActive && canTagAsInstitute ? (
+                      {isEditable && !isShareToStudentsMode && !isReportMetricActive && canTagAsInstitute ? (
                         <button
                           type="button"
                           className={`assessment-page-card-action is-institute ${isInstitute ? 'is-active' : ''}`}
@@ -3281,7 +3846,7 @@ export default function QuestionBankNonCreatePage({
           </section>
         ) : null}
 
-        {(isEditable && selectedGridAction) || (hasEmbeddedAssessmentSelection && isEmbeddedSelectionBarVisible && !isEmbeddedSelectionBarClosed) ? (
+        {(isEditable && selectedGridAction && (!isShareToStudentsMode || availableSelectedGridQuestionIds.length)) || (hasEmbeddedAssessmentSelection && isEmbeddedSelectionBarVisible && !isEmbeddedSelectionBarClosed) ? (
           <section
             ref={selectionBarRef}
             className={`assessment-page-selection-bar ${hasEmbeddedAssessmentSelection ? 'is-assessment-picker' : ''} ${selectionBarPosition ? 'is-positioned' : ''}`}
@@ -3314,13 +3879,15 @@ export default function QuestionBankNonCreatePage({
                   <button
                     type="button"
                     className="is-primary"
-                    onClick={hasEmbeddedAssessmentSelection ? addSelectedQuestionsToEmbeddedAssessment : openAssessmentChooser}
+                    onClick={isShareToStudentsMode
+                      ? shareSelectedQuestionsWithStudents
+                      : (hasEmbeddedAssessmentSelection ? addSelectedQuestionsToEmbeddedAssessment : openAssessmentChooser)}
                     disabled={!availableSelectedGridQuestionIds.length}
                     aria-expanded={!hasEmbeddedAssessmentSelection && assessmentChooserOpen}
                   >
-                    Add to Assessment
+                    {isShareToStudentsMode ? 'Share Selected Questions' : 'Add to Assessment'}
                   </button>
-                  {!hasEmbeddedAssessmentSelection && assessmentChooserOpen ? (
+                  {!isShareToStudentsMode && !hasEmbeddedAssessmentSelection && assessmentChooserOpen ? (
                     <span
                       className="assessment-page-add-assessment-popover"
                       role="tooltip"
@@ -3350,21 +3917,14 @@ export default function QuestionBankNonCreatePage({
                     ) : null}
                 </>
               ) : null}
-              {!hasEmbeddedAssessmentSelection ? (
-                <button
-                  type="button"
-                  className="is-primary is-share"
-                  onClick={() => setSelectedGridAction('learn')}
-                  disabled={!availableSelectedGridQuestionIds.length}
-                >
-                  <Share2 size={14} strokeWidth={2.4} />
-                  Share to Students
-                </button>
-              ) : null}
               <button
                 type="button"
                 className="is-icon-only"
-                onClick={hasEmbeddedAssessmentSelection ? () => setIsEmbeddedSelectionBarClosed(true) : clearGridActionState}
+                onClick={hasEmbeddedAssessmentSelection
+                  ? () => setIsEmbeddedSelectionBarClosed(true)
+                  : (isShareToStudentsMode
+                    ? () => setSelectedGridQuestionIds([])
+                    : clearGridActionState)}
                 aria-label="Close selection card"
                 title="Close"
               >
@@ -3508,8 +4068,10 @@ export default function QuestionBankNonCreatePage({
         {publishedQuestions.length && !pagedQuestions.length && !showMetricsLanding ? (
           <section className="assessment-page-empty">
             <Info size={18} strokeWidth={2.2} />
-            <strong>No matching questions</strong>
-            <p>Try changing the search text, source, or author filter.</p>
+            <strong>{isShareToStudentsMode && !hasCompleteShareFilters ? 'Choose questions to share' : 'No matching questions'}</strong>
+            <p>{isShareToStudentsMode && !hasCompleteShareFilters
+              ? 'Select a subject, topic, competency, and question type to view matching questions.'
+              : 'Try changing the selected filters.'}</p>
           </section>
         ) : null}
 

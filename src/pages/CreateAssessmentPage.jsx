@@ -7640,6 +7640,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   const previewSubject = item.subject ?? ''
                   const previewTopic = getFirstValue(item.topics)
                   const previewTopicNumber = getPreviewTopicNumber(item)
+                  const previewTopicTooltipText = previewTopic
+                    ? `${previewTopicNumber ? `${previewTopicNumber}: ` : ''}${previewTopic}`
+                    : ''
                   const previewCompetencyCode = getDescriptiveCompetencyCode(item)
                   const previewCompetencyName = getPreviewCompetencyName(item)
                   const previewStructureCounts = getPreviewStructureCounts(item)
@@ -7713,22 +7716,36 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             <strong title={getPreviewQuestionText(item)}>{displayNumber}. {getPreviewQuestionText(item)}</strong>
                             <span className="create-assessment-preview-meta-row">
                               <span className={`create-assessment-preview-chip is-source ${previewSourceMeta.className}`}>{previewSourceMeta.label}</span>
-                              {previewSubject ? <span className="create-assessment-preview-path-subject">{previewSubject}</span> : null}
-                              {previewSubject && previewTopic ? <span className="create-assessment-preview-path-separator">›</span> : null}
-                              {previewTopic ? <span className="create-assessment-preview-path-topic">{previewTopicNumber ? `Topic ${previewTopicNumber}: ` : ''}{previewTopic}</span> : null}
                               {previewCompetencyCode ? (
                                 <span className="assessment-page-competency-code-wrap">
                                   <button
                                     type="button"
                                     className="assessment-page-competency-code-badge create-assessment-preview-chip is-competency"
-                                    aria-label={`View competency details for ${previewCompetencyCode}`}
+                                    aria-label={`View subject, topic, and competency details for ${previewCompetencyCode}`}
                                   >
                                     <span>{previewCompetencyCode}</span>
                                     <Info size={12} strokeWidth={2.4} aria-hidden="true" />
                                   </button>
-                                  {previewCompetencyName ? (
-                                    <span className="assessment-page-competency-tooltip" role="tooltip">
-                                      {previewCompetencyName}
+                                  {previewSubject || previewTopicTooltipText || previewCompetencyName ? (
+                                    <span className="assessment-page-competency-tooltip is-curriculum-details" role="tooltip">
+                                      {previewSubject ? (
+                                        <span className="assessment-page-competency-tooltip-row">
+                                          <strong>Subject</strong>
+                                          <span>{previewSubject}</span>
+                                        </span>
+                                      ) : null}
+                                      {previewTopicTooltipText ? (
+                                        <span className="assessment-page-competency-tooltip-row">
+                                          <strong>Topic</strong>
+                                          <span>{previewTopicTooltipText}</span>
+                                        </span>
+                                      ) : null}
+                                      {previewCompetencyCode || previewCompetencyName ? (
+                                        <span className="assessment-page-competency-tooltip-row">
+                                          <strong>Competency</strong>
+                                          <span>{[previewCompetencyCode, previewCompetencyName].filter(Boolean).join(' - ')}</span>
+                                        </span>
+                                      ) : null}
                                     </span>
                                   ) : null}
                                 </span>
