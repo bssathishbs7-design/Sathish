@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Grid2X2, ListChecks, Pencil, Plus, SlidersHorizontal } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Grid2X2, ListChecks, Pencil, SlidersHorizontal } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PageNavigationHeader from '../components/PageNavigationHeader'
@@ -60,6 +60,7 @@ export default function BlueprintPage() {
   const [editingRationaleKey, setEditingRationaleKey] = useState('')
   const [savedRows, setSavedRows] = useState(() => readStoredObject(CORELATION_RATING_SAVED_ROWS_KEY))
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false)
+  const [pendingCollapseGroupKey, setPendingCollapseGroupKey] = useState('')
   const [activeCorrelationTab, setActiveCorrelationTab] = useState('saved')
   const [editingCorrelationKeys, setEditingCorrelationKeys] = useState({})
   const [editingSavedGroupKey, setEditingSavedGroupKey] = useState('')
@@ -79,6 +80,20 @@ export default function BlueprintPage() {
   useEffect(() => {
     writeStoredObject(CORELATION_RATING_RATIONALE_KEY, rationaleValues)
   }, [rationaleValues])
+
+  useEffect(() => {
+    if (!editingSavedGroupKey || typeof document === 'undefined') {
+      return undefined
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .querySelector('.corelation-rating-topic-detail-wrap[data-inline-editing="true"] .corelation-rating-type-select')
+        ?.focus()
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [editingSavedGroupKey])
 
   const subjectOptions = useMemo(
     () => {
@@ -140,8 +155,9 @@ export default function BlueprintPage() {
   )
   const isSetupComplete = Boolean(selectedSubject && selectedTopic)
   const showImpactFrequencyFields = selectedType === 'Clinical' && ratingMethod === 'impact-frequency'
+  const getTypeLabel = (type) => type === 'Non-Clinical' ? 'Para - Clinical' : type
   const selectedTypeSummary = selectedType
-    ? `${selectedType}${showImpactFrequencyFields ? ' / I-F' : selectedType === 'Clinical' ? ' / Direct' : ''}`
+    ? `${getTypeLabel(selectedType)}${showImpactFrequencyFields ? ' / I-F' : selectedType === 'Clinical' ? ' / Direct' : ''}`
     : 'Choose Type'
 
   const getTopicNumberLabel = (topic) => {
@@ -246,6 +262,10 @@ export default function BlueprintPage() {
           : current[key]?.rating,
       },
     }))
+  }
+
+  const updateTopicRowTypes = (rows, type) => {
+    rows.forEach((row) => updateRowType(row.key, type))
   }
 
   const updateRowImpactFrequencyEnabled = (key, checked) => {
@@ -447,7 +467,6 @@ export default function BlueprintPage() {
   }, [savedTopicPage])
   const subjectCountLabel = subjectOptions.length.toString().padStart(2, '0')
   const topicCountLabel = (selectedSubject ? availableTopics.length : allTopicOptions.length).toString().padStart(2, '0')
-  const correlationRatingLabel = `${savedMetricCount.toString().padStart(2, '0')} / ${corelationRatingRows.length.toString().padStart(2, '0')}`
   const isEditingCorrelation = Object.keys(editingCorrelationKeys).length > 0
   const areAllSavedTopicsCollapsed = savedTopicGroups.length > 0
     && savedTopicGroups.every((group) => collapsedSavedTopics[group.key] !== false)
@@ -555,27 +574,34 @@ export default function BlueprintPage() {
     setEditingRationaleKey('')
   }
 
-  const closeCorrelationEditor = () => {
-    setActiveCorrelationTab('saved')
-    setEditingCorrelationKeys({})
-    setEditingSavedGroupKey('')
-    setRatingValues({})
-    setRowImpactFrequencyEnabled({})
-    setIsSubjectMenuOpen(false)
-    setIsTopicMenuOpen(false)
-    setIsTypeMenuOpen(false)
+  const handleSavedTopicToggle = (group) => {
+    const isExpanded = collapsedSavedTopics[group.key] === false
+
+    if (isExpanded) {
+      if (editingSavedGroupKey === group.key) {
+        setPendingCollapseGroupKey(group.key)
+        return
+      }
+      toggleSavedTopic(group.key)
+      return
+    }
+
+    const hasSavedRatings = group.rows.some((row) => row.isRated)
+    if (hasSavedRatings) {
+      toggleSavedTopic(group.key)
+      return
+    }
+
+    editSavedCorrelationTopic(group.rows, group.key)
   }
 
-  const openCorrelationCreator = () => {
-    setSelectedSubject('')
-    setSelectedTopic('')
-    setSelectedType('All')
-    setRatingMethod('direct')
-    setRatingValues({})
-    setRowImpactFrequencyEnabled({})
-    setEditingCorrelationKeys({})
-    setEditingSavedGroupKey('')
-    setActiveCorrelationTab('entry')
+  const confirmInlineCollapse = () => {
+    const groupKey = pendingCollapseGroupKey
+    cancelInlineCorrelationEdit()
+    setPendingCollapseGroupKey('')
+    if (groupKey) {
+      setCollapsedSavedTopics((current) => ({ ...current, [groupKey]: true }))
+    }
   }
 
   return (
@@ -583,15 +609,9 @@ export default function BlueprintPage() {
       <div className="assessment-page-shell assessment-evaluation-page-shell">
         <div className="corelation-rating-page-head">
           <PageNavigationHeader items={['My Pages', 'Correlation Rating']} />
-          <div className="corelation-rating-tabs" aria-label="Correlation rating actions">
-            <button
-              type="button"
-              className={activeCorrelationTab === 'entry' ? 'is-view-rating' : 'is-active'}
-              onClick={activeCorrelationTab === 'entry' ? closeCorrelationEditor : openCorrelationCreator}
-            >
-              {activeCorrelationTab === 'entry' ? 'Back to All Ratings' : 'Create Correlation'}
-              {activeCorrelationTab === 'saved' ? <span>{correlationRatingLabel}</span> : null}
-            </button>
+          <div className="corelation-rating-metric" aria-label={`${savedMetricCount} of ${corelationRatingRows.length} correlations completed`}>
+            <strong>Create Correlation</strong>
+            <span>{savedMetricCount} / {corelationRatingRows.length}</span>
           </div>
         </div>
 
@@ -744,7 +764,7 @@ export default function BlueprintPage() {
                         onClick={() => handleDefaultTypeSelect(type)}
                       >
                         <span aria-hidden="true" />
-                        {type}
+                        {getTypeLabel(type)}
                       </button>
                     ))}
                   </div>
@@ -923,7 +943,7 @@ export default function BlueprintPage() {
                     >
                       <option value="">All</option>
                       <option value="Clinical">Clinical</option>
-                      <option value="Non-Clinical">Non-Clinical</option>
+                      <option value="Non-Clinical">Para - Clinical</option>
                     </select>
                   </label>
                   <div className="corelation-rating-saved-collapse-switch" role="group" aria-label="Saved topic display controls">
@@ -958,6 +978,7 @@ export default function BlueprintPage() {
                         <th>Topic</th>
                         <th>Competencies</th>
                         <th>Rated</th>
+                        <th>Type</th>
                         <th>Status</th>
                         <th>Action</th>
                       </tr>
@@ -966,7 +987,25 @@ export default function BlueprintPage() {
                       {pagedSavedTopicGroups.map((group) => {
                         const isCollapsed = collapsedSavedTopics[group.key] !== false
                         const ratedCount = group.rows.filter((row) => row.isRated).length
+                        const groupTypes = [...new Set(
+                          group.rows
+                            .map((row) => row.savedValues?.type)
+                            .filter((type) => type === 'Clinical' || type === 'Non-Clinical'),
+                        )]
                         const isInlineEditing = editingSavedGroupKey === group.key
+                        const currentGroupTypes = group.rows.map((row) => {
+                          const values = isInlineEditing
+                            ? ratingValues[row.key] ?? row.savedValues ?? {}
+                            : row.savedValues ?? {}
+                          return values.type || 'N/A'
+                        })
+                        const groupTypeState = currentGroupTypes.length > 0
+                          && currentGroupTypes.every((type) => type === 'Clinical')
+                          ? 'Clinical'
+                          : currentGroupTypes.length > 0
+                            && currentGroupTypes.every((type) => type === 'Non-Clinical')
+                            ? 'Non-Clinical'
+                            : 'Mixed'
                         const ratingStateClass = ratedCount === 0
                           ? ' is-not-started'
                           : ratedCount === group.rows.length
@@ -985,7 +1024,7 @@ export default function BlueprintPage() {
                                   type="button"
                                   className="corelation-rating-topic-summary-toggle"
                                   aria-expanded={!isCollapsed}
-                                  onClick={() => toggleSavedTopic(group.key)}
+                                  onClick={() => handleSavedTopicToggle(group)}
                                 >
                                   <ChevronDown size={16} strokeWidth={2.5} aria-hidden="true" />
                                   <span>{group.topic}</span>
@@ -993,6 +1032,20 @@ export default function BlueprintPage() {
                               </td>
                               <td><strong className="corelation-rating-topic-summary-count">{group.rows.length}</strong></td>
                               <td><strong className="corelation-rating-topic-summary-rated">{ratedCount} / {group.rows.length}</strong></td>
+                              <td>
+                                {groupTypes.length ? (
+                                  <span className="corelation-rating-topic-summary-types">
+                                    {groupTypes.map((type) => (
+                                      <em
+                                        key={type}
+                                        className={`corelation-rating-topic-summary-type${type === 'Non-Clinical' ? ' is-non-clinical' : ' is-clinical'}`}
+                                      >
+                                        {getTypeLabel(type)}
+                                      </em>
+                                    ))}
+                                  </span>
+                                ) : <span className="corelation-rating-topic-summary-empty">-</span>}
+                              </td>
                               <td>
                                 {ratedCount > 0 ? (
                                   <em className={`corelation-rating-topic-status${ratingStateClass}`}>
@@ -1013,27 +1066,23 @@ export default function BlueprintPage() {
                                       Update Correlation
                                     </button>
                                   </span>
-                                ) : (
+                                ) : ratedCount > 0 ? (
                                   <button
                                     type="button"
-                                    className={`corelation-rating-saved-topic-edit${ratedCount === 0 ? ' is-create' : ''}`}
-                                    title={`${ratedCount === 0 ? 'Create correlation for' : 'Edit'} ${group.topic}`}
-                                    aria-label={`${ratedCount === 0 ? 'Create correlation for' : 'Edit'} ${group.topic}`}
+                                    className="corelation-rating-saved-topic-edit"
+                                    title={`Edit ${group.topic}`}
+                                    aria-label={`Edit ${group.topic}`}
                                     onClick={() => editSavedCorrelationTopic(group.rows, group.key)}
                                   >
-                                    {ratedCount === 0 ? (
-                                      <><Plus size={13} strokeWidth={2.5} aria-hidden="true" />Create Correlation</>
-                                    ) : (
-                                      <Pencil size={14} strokeWidth={2.5} aria-hidden="true" />
-                                    )}
+                                    <Pencil size={14} strokeWidth={2.5} aria-hidden="true" />
                                   </button>
-                                )}
+                                ) : null}
                               </td>
                             </tr>
                             {!isCollapsed && (
                               <tr className="corelation-rating-topic-detail-row">
-                                <td colSpan={5}>
-                                  <div className="corelation-rating-topic-detail-wrap">
+                                <td colSpan={6}>
+                                  <div className="corelation-rating-topic-detail-wrap" data-inline-editing={isInlineEditing ? 'true' : 'false'}>
                                     <table className={`corelation-rating-saved-table${isRationaleEnabled ? '' : ' is-rationale-off'}`}>
                                       <thead>
                                         <tr>
@@ -1059,7 +1108,34 @@ export default function BlueprintPage() {
                                             </div>
                                           </th>
                                           {isRationaleEnabled && <th>Rationale</th>}
-                                          <th>Type</th>
+                                          <th>
+                                            <div className="corelation-rating-bulk-type-head">
+                                              <span>Type</span>
+                                              {isInlineEditing && (
+                                                <div
+                                                  className={`corelation-rating-bulk-type-switch${groupTypeState === 'Mixed' ? ' is-mixed' : ''}`}
+                                                  aria-label={`Set all competency types for ${group.topic}`}
+                                                >
+                                                  <button
+                                                    type="button"
+                                                    className={groupTypeState === 'Clinical' ? 'is-clinical is-active' : 'is-clinical'}
+                                                    aria-pressed={groupTypeState === 'Clinical'}
+                                                    onClick={() => updateTopicRowTypes(group.rows, 'Clinical')}
+                                                  >
+                                                    Clinical
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className={groupTypeState === 'Non-Clinical' ? 'is-non-clinical is-active' : 'is-non-clinical'}
+                                                    aria-pressed={groupTypeState === 'Non-Clinical'}
+                                                    onClick={() => updateTopicRowTypes(group.rows, 'Non-Clinical')}
+                                                  >
+                                                    Para - Clinical
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </th>
                                           <th>Impact</th>
                                           <th>Frequency</th>
                                           <th>Rating</th>
@@ -1186,7 +1262,7 @@ export default function BlueprintPage() {
                                         >
                                           <option value="N/A">N/A</option>
                                           <option value="Clinical">Clinical</option>
-                                          <option value="Non-Clinical">Non-Clinical</option>
+                                          <option value="Non-Clinical">Para - Clinical</option>
                                         </select>
                                         {rowType === 'Clinical' && (
                                           <label className="corelation-rating-row-impact-toggle" title="Use Impact and Frequency rating">
@@ -1201,7 +1277,7 @@ export default function BlueprintPage() {
                                       </div>
                                     ) : (
                                       <span className={`corelation-rating-type-badge ${!row.isRated ? 'is-unrated' : values.type === 'Non-Clinical' ? 'is-non-clinical' : 'is-clinical'}`}>
-                                        {values.type || '-'}
+                                        {getTypeLabel(values.type) || '-'}
                                       </span>
                                     )}
                                   </td>
@@ -1324,7 +1400,7 @@ export default function BlueprintPage() {
                     </div>
                   </th>
                   {isRationaleEnabled && <th className="is-rationale">Rationale</th>}
-                  <th className="is-type" title="Clinical uses Impact and Frequency. Non-Clinical uses direct Rating.">Type</th>
+                  <th className="is-type" title="Clinical uses Impact and Frequency. Para - Clinical uses direct Rating.">Type</th>
                   {displayImpactFrequencyColumns && (
                     <>
                       <th className="is-impact" title="1 low, 2 medium, 3 high">Impact</th>
@@ -1452,7 +1528,7 @@ export default function BlueprintPage() {
                               <td className="is-type">
                                 {isRowSaved ? (
                                   <span className={`corelation-rating-type-badge ${isNonClinical ? 'is-non-clinical' : 'is-clinical'}`}>
-                                    {rowType}
+                                    {getTypeLabel(rowType)}
                                   </span>
                                 ) : (
                                   <div className="corelation-rating-row-type-control">
@@ -1464,7 +1540,7 @@ export default function BlueprintPage() {
                                     >
                                       <option value="N/A">N/A</option>
                                       <option value="Clinical">Clinical</option>
-                                      <option value="Non-Clinical">Non-Clinical</option>
+                                      <option value="Non-Clinical">Para - Clinical</option>
                                     </select>
                                     {!isRowTypePending && !isNonClinical && !showImpactFrequencyFields && (
                                       <label className="corelation-rating-row-impact-toggle" title="Use Impact and Frequency rating">
@@ -1591,6 +1667,23 @@ export default function BlueprintPage() {
                   No
                 </button>
                 <button type="button" className="is-primary" onClick={saveCompletedCorrelationRows}>
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        ), document.body)}
+
+        {pendingCollapseGroupKey && typeof document !== 'undefined' && createPortal((
+          <div className="assessment-evaluation-confirm-overlay" role="presentation">
+            <div className="assessment-evaluation-confirm-modal corelation-rating-save-modal" role="dialog" aria-modal="true" aria-labelledby="corelation-collapse-title">
+              <h2 id="corelation-collapse-title">Discard unsaved changes?</h2>
+              <p>Collapsing this topic will remove the unsaved correlation selections.</p>
+              <div className="assessment-evaluation-confirm-actions">
+                <button type="button" className="is-secondary" onClick={() => setPendingCollapseGroupKey('')}>
+                  No
+                </button>
+                <button type="button" className="is-primary" onClick={confirmInlineCollapse}>
                   Yes
                 </button>
               </div>
