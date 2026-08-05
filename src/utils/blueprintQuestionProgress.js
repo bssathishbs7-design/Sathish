@@ -109,7 +109,7 @@ export const getBlueprintQuestionMatch = (question, requirements = {}) => {
   }
 }
 
-export const summarizeBlueprintQuestionProgress = (questions = [], requirements = {}) => {
+const allocateBlueprintQuestions = (questions = [], requirements = {}) => {
   const columnTarget = Object.values(requirements.columnQuestionCounts ?? {})
     .reduce((total, value) => total + (Number(value) || 0), 0)
   const target = requirements.targetQuestionCount === null || requirements.targetQuestionCount === undefined
@@ -117,20 +117,31 @@ export const summarizeBlueprintQuestionProgress = (questions = [], requirements 
     : Number(requirements.targetQuestionCount)
   const usedByColumn = {}
   const usedByCell = {}
+  const relevance = []
   let matched = 0
 
   questions.forEach((question) => {
     const match = getBlueprintQuestionMatch(question, requirements)
-    if (!match.isRelevant) return
+    if (!match.isRelevant) {
+      relevance.push(false)
+      return
+    }
     const current = usedByColumn[match.columnKey] || 0
     const limit = Number(requirements.columnQuestionCounts?.[match.columnKey]) || 0
-    if (current >= limit) return
+    if (current >= limit || matched >= target) {
+      relevance.push(false)
+      return
+    }
     const cellLimit = Number(requirements.cellQuestionCounts?.[match.cellKey]) || 0
     const currentCell = usedByCell[match.cellKey] || 0
-    if (Object.keys(requirements.cellQuestionCounts ?? {}).length && (cellLimit <= 0 || currentCell >= cellLimit)) return
+    if (Object.keys(requirements.cellQuestionCounts ?? {}).length && (cellLimit <= 0 || currentCell >= cellLimit)) {
+      relevance.push(false)
+      return
+    }
     usedByColumn[match.columnKey] = current + 1
     usedByCell[match.cellKey] = currentCell + 1
-    if (matched < target) matched += 1
+    matched += 1
+    relevance.push(true)
   })
 
   return {
@@ -139,5 +150,15 @@ export const summarizeBlueprintQuestionProgress = (questions = [], requirements 
     complete: target > 0 && matched === target,
     usedByColumn,
     usedByCell,
+    relevance,
   }
+}
+
+export const getBlueprintQuestionRelevanceList = (questions = [], requirements = {}) => (
+  allocateBlueprintQuestions(questions, requirements).relevance
+)
+
+export const summarizeBlueprintQuestionProgress = (questions = [], requirements = {}) => {
+  const { relevance: _relevance, ...summary } = allocateBlueprintQuestions(questions, requirements)
+  return summary
 }

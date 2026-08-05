@@ -4,6 +4,7 @@ import {
   createBlueprintQuestionRequirements,
   getBlueprintQuestionMarkRowLabel,
   getBlueprintQuestionMatch,
+  getBlueprintQuestionRelevanceList,
   resolveBlueprintPreviewQuestionMarks,
   summarizeBlueprintQuestionProgress,
 } from './blueprintQuestionProgress.js'
@@ -56,6 +57,32 @@ test('progress is capped by each blueprint question lane', () => {
       'an1.2:saqhot': 1,
     },
   })
+})
+
+test('marks surplus MCQ, LAQ, and SAQ questions outside their saved Blueprint cells as unrelated', () => {
+  const capacityRequirements = createBlueprintQuestionRequirements({
+    competencyCodes: ['AN1.1'],
+    columnQuestionCounts: { mcqLot: 1, laqHot: 1, saqLot: 1 },
+    cellQuestionCounts: {
+      'AN1.1:mcqLot': 1,
+      'AN1.1:laqHot': 1,
+      'AN1.1:saqLot': 1,
+    },
+    targetQuestionCount: 3,
+  })
+  const questions = [
+    { type: 'MCQ', thinkingLevel: 'LoT', competencies: ['AN1.1'] },
+    { type: 'MCQ', thinkingLevel: 'LoT', competencies: ['AN1.1'] },
+    { type: 'Desc Long Answer Questions (LAQs)', thinkingLevel: 'HoT', competencyCode: 'AN1.1' },
+    { type: 'Desc Long Answer Questions (LAQs)', thinkingLevel: 'HoT', competencyCode: 'AN1.1' },
+    { type: 'Desc Short Answer Questions (SAQs)', thinkingLevel: 'LoT', competency: 'AN1.1' },
+    { type: 'Desc Short Answer Questions (SAQs)', thinkingLevel: 'LoT', competency: 'AN1.1' },
+  ]
+
+  assert.deepEqual(
+    getBlueprintQuestionRelevanceList(questions, capacityRequirements),
+    [true, false, true, false, true, false],
+  )
 })
 
 test('maps MCQ, LAQ, and every SAQ category to its Blueprint mark row', () => {

@@ -62,6 +62,7 @@ import {
 } from '../utils/blueprintAllocation'
 import {
   createBlueprintQuestionRequirements,
+  getBlueprintQuestionRelevanceList,
   getBlueprintQuestionMatch,
   resolveBlueprintPreviewQuestionMarks,
   summarizeBlueprintQuestionProgress,
@@ -1541,6 +1542,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const assessmentSectionOrderStorageKey = getAssessmentSectionOrderStorageKey(setup)
   const assessmentCustomSectionsStorageKey = getAssessmentCustomSectionsStorageKey(setup)
   const [savedQuestions, setSavedQuestions] = useState(() => readSavedAssessmentQuestions(setup))
+  const [blueprintQuestionBankSelection, setBlueprintQuestionBankSelection] = useState([])
   const savedQuestionsRef = useRef(savedQuestions)
   const getCurrentAssessmentQuestions = () => (
     savedQuestionsRef.current.length ? savedQuestionsRef.current : savedQuestions
@@ -2682,7 +2684,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     ))),
     targetQuestionCount: blueprintQuestionTypeQuestionTotal,
   })
+  const blueprintQuestionProgressQuestions = activeCreateTab === 'questionBank'
+    ? [...savedQuestions, ...blueprintQuestionBankSelection]
+    : savedQuestions
   const blueprintQuestionProgress = summarizeBlueprintQuestionProgress(
+    blueprintQuestionProgressQuestions,
+    blueprintQuestionRequirements,
+  )
+  const blueprintQuestionRelevance = getBlueprintQuestionRelevanceList(
     savedQuestions,
     blueprintQuestionRequirements,
   )
@@ -2827,10 +2836,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       suppressBlueprintProgressClickRef.current = false
     }, 0)
   }
-  const isQuestionRelevantToSavedBlueprint = (item) => (
+  const isQuestionRelevantToSavedBlueprint = (item, index) => (
     !isBlueprintEnabled
     || !isBlueprintPlannerSaved
-    || getBlueprintQuestionMatch(item, blueprintQuestionRequirements).isRelevant
+    || blueprintQuestionRelevance[index]
+    || (index < 0 && getBlueprintQuestionMatch(item, blueprintQuestionRequirements).isRelevant)
   )
   const blueprintQuestionTypeHasInput = blueprintQuestionTypeRows.some((row) => row.perQuestionMarks || row.totalMarks)
   const blueprintQuestionTypeHasInvalidRows = blueprintQuestionTypeRows.some((row) => row.hasRequiredValues && !row.hasValidQuestionTotal)
@@ -7472,6 +7482,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
               embedded
               onNavigate={onNavigate}
               onAddToAssessment={addQuestionBankSelectionToAssessment}
+              onSelectionChange={setBlueprintQuestionBankSelection}
               addedQuestionIds={addedQuestionBankIds}
               initialFilters={isBlueprintEnabled && isBlueprintPlannerSaved ? {
                 subjects: [blueprintDraft.subject],
@@ -7621,7 +7632,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   const previewQuestionBankId = getPreviewQuestionBankId(item, displayNumber)
                   const previewSourceMeta = getPreviewQuestionSourceMeta(item, displayNumber)
                   const isMedsySaq = previewSourceMeta.isMedsy && previewTypeLabel === 'SAQs'
-                  const isBlueprintRelevant = isQuestionRelevantToSavedBlueprint(item)
+                  const isBlueprintRelevant = isQuestionRelevantToSavedBlueprint(item, index)
                   const optionalTagGroups = [
                     { label: 'Question ID', values: [previewQuestionBankId] },
                     ...(isMedsySaq && !isBlueprintPreviewMarksActive

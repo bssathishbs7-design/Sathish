@@ -1039,6 +1039,7 @@ export default function QuestionBankNonCreatePage({
   mode = 'readonly',
   embedded = false,
   onAddToAssessment,
+  onSelectionChange,
   addedQuestionIds = [],
   initialFilters = {},
 }) {
@@ -1109,6 +1110,24 @@ export default function QuestionBankNonCreatePage({
     addedQuestionIdSet.has(String(question?.id ?? ''))
     || addedQuestionIdSet.has(String(question?.originalQuestionId ?? ''))
   )
+  const embeddedSelectedQuestions = useMemo(() => {
+    if (!embedded) return []
+    const selectedIdSet = new Set(selectedGridQuestionIds.map((id) => String(id)))
+    return publishedQuestions.filter((question) => (
+      selectedIdSet.has(String(question?.id ?? ''))
+      && !addedQuestionIdSet.has(String(question?.id ?? ''))
+      && !addedQuestionIdSet.has(String(question?.originalQuestionId ?? ''))
+    ))
+  }, [addedQuestionIdSet, embedded, publishedQuestions, selectedGridQuestionIds])
+
+  useEffect(() => {
+    if (!embedded || typeof onSelectionChange !== 'function') return
+    onSelectionChange(embeddedSelectedQuestions)
+  }, [embedded, embeddedSelectedQuestions, onSelectionChange])
+
+  useEffect(() => () => {
+    if (typeof onSelectionChange === 'function') onSelectionChange([])
+  }, [onSelectionChange])
 
   const metricFilteredQuestions = useMemo(() => {
     if (activeMetric === 'suggested') {

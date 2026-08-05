@@ -1637,6 +1637,12 @@
   color: #c2410c;
 }
 
+.corelation-rating-topic-summary-type.is-mixed {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .corelation-rating-topic-detail-wrap .corelation-rating-type-badge {
   width: 116px;
   min-width: 116px;
@@ -1655,13 +1661,23 @@
 }
 
 .corelation-rating-topic-summary-row .corelation-rating-saved-topic-edit:not(.is-create) {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border-color: #bfe4dd;
-  background: #f5fbfa;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  padding: 3px;
+  border: 0;
+  background: transparent;
   color: #08766e;
   opacity: 1;
+  box-shadow: none;
+}
+
+.corelation-rating-topic-summary-row .corelation-rating-saved-topic-edit:not(.is-create):hover,
+.corelation-rating-topic-summary-row .corelation-rating-saved-topic-edit:not(.is-create):focus-visible {
+  border: 0;
+  background: transparent;
+  color: #005f58;
+  box-shadow: none;
 }
 
 .corelation-rating-topic-detail-row > td {
@@ -2576,6 +2592,45 @@
   border-radius: 10px;
   background: #ffffff;
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+}
+
+.corelation-rating-rationale-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #dbe9ed;
+}
+
+.corelation-rating-rationale-context > div {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.corelation-rating-rationale-context > div.is-competency {
+  grid-column: 1 / -1;
+}
+
+.corelation-rating-rationale-context span {
+  flex: 0 0 auto;
+  color: #007c73;
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.corelation-rating-rationale-context strong {
+  min-width: 0;
+  color: #183b50;
+  font-size: 0.74rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.corelation-rating-rationale-context .is-competency strong {
+  font-weight: 400;
 }
 
 .corelation-rating-rationale-popover p {
@@ -3509,6 +3564,12 @@
   color: #fdba74;
 }
 
+.theme-dark .corelation-rating-topic-summary-type.is-mixed {
+  border-color: rgba(148, 163, 184, 0.38);
+  background: rgba(71, 85, 105, 0.28);
+  color: #cbd5e1;
+}
+
 .theme-dark .corelation-rating-topic-detail-wrap .corelation-rating-type-badge {
   border-color: rgba(167, 139, 250, 0.48);
   background: rgba(109, 40, 217, 0.2);
@@ -3522,9 +3583,10 @@
 }
 
 .theme-dark .corelation-rating-topic-summary-row .corelation-rating-saved-topic-edit:not(.is-create) {
-  border-color: rgba(45, 212, 191, 0.3);
-  background: rgba(20, 184, 166, 0.12);
+  border: 0;
+  background: transparent;
   color: #99f6e4;
+  box-shadow: none;
 }
 
 .theme-dark .corelation-rating-topic-detail-row > td {
@@ -3712,6 +3774,18 @@
 .theme-dark .corelation-rating-rationale-preview > span,
 .theme-dark .corelation-rating-rationale-popover p {
   color: #c3d4e8;
+}
+
+.theme-dark .corelation-rating-rationale-context {
+  border-bottom-color: rgba(148, 163, 184, 0.24);
+}
+
+.theme-dark .corelation-rating-rationale-context span {
+  color: #5eead4;
+}
+
+.theme-dark .corelation-rating-rationale-context strong {
+  color: #dbeafe;
 }
 
 .theme-dark .corelation-rating-rationale-preview > span button {

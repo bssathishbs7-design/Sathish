@@ -574,12 +574,30 @@ export default function BlueprintPage() {
     setEditingRationaleKey('')
   }
 
+  const hasUnsavedTopicChanges = (group) => group.rows.some((row) => {
+    const savedValues = row.savedValues ?? {}
+    const currentValues = ratingValues[row.key] ?? savedValues
+    const valueChanged = ['type', 'impact', 'frequency', 'rating'].some((field) => (
+      String(currentValues[field] ?? '') !== String(savedValues[field] ?? '')
+    ))
+    const savedUsesImpactFrequency = savedValues.type === 'Clinical'
+      && Boolean(savedValues.impact && savedValues.frequency)
+    const currentUsesImpactFrequency = Boolean(rowImpactFrequencyEnabled[row.key])
+
+    return valueChanged || savedUsesImpactFrequency !== currentUsesImpactFrequency
+  })
+
   const handleSavedTopicToggle = (group) => {
     const isExpanded = collapsedSavedTopics[group.key] === false
 
     if (isExpanded) {
       if (editingSavedGroupKey === group.key) {
-        setPendingCollapseGroupKey(group.key)
+        if (hasUnsavedTopicChanges(group)) {
+          setPendingCollapseGroupKey(group.key)
+        } else {
+          cancelInlineCorrelationEdit()
+          setCollapsedSavedTopics((current) => ({ ...current, [group.key]: true }))
+        }
         return
       }
       toggleSavedTopic(group.key)
@@ -992,6 +1010,12 @@ export default function BlueprintPage() {
                             .map((row) => row.savedValues?.type)
                             .filter((type) => type === 'Clinical' || type === 'Non-Clinical'),
                         )]
+                        const clinicalTypeCount = group.rows.filter((row) => row.savedValues?.type === 'Clinical').length
+                        const paraClinicalTypeCount = group.rows.filter((row) => row.savedValues?.type === 'Non-Clinical').length
+                        const groupTypeLabel = groupTypes.length > 1 ? 'Mixed' : getTypeLabel(groupTypes[0])
+                        const groupTypeTitle = groupTypes.length > 1
+                          ? `Clinical: ${clinicalTypeCount} · Para - Clinical: ${paraClinicalTypeCount}`
+                          : groupTypeLabel
                         const isInlineEditing = editingSavedGroupKey === group.key
                         const currentGroupTypes = group.rows.map((row) => {
                           const values = isInlineEditing
@@ -1018,13 +1042,15 @@ export default function BlueprintPage() {
                             : 'In Progress'
                         return (
                           <Fragment key={group.key}>
-                            <tr className={`corelation-rating-topic-summary-row${isCollapsed ? '' : ' is-expanded'}${ratingStateClass}${isInlineEditing ? ' is-editing' : ''}`}>
+                            <tr
+                              className={`corelation-rating-topic-summary-row${isCollapsed ? '' : ' is-expanded'}${ratingStateClass}${isInlineEditing ? ' is-editing' : ''}`}
+                              onClick={() => handleSavedTopicToggle(group)}
+                            >
                               <td>
                                 <button
                                   type="button"
                                   className="corelation-rating-topic-summary-toggle"
                                   aria-expanded={!isCollapsed}
-                                  onClick={() => handleSavedTopicToggle(group)}
                                 >
                                   <ChevronDown size={16} strokeWidth={2.5} aria-hidden="true" />
                                   <span>{group.topic}</span>
@@ -1035,14 +1061,12 @@ export default function BlueprintPage() {
                               <td>
                                 {groupTypes.length ? (
                                   <span className="corelation-rating-topic-summary-types">
-                                    {groupTypes.map((type) => (
-                                      <em
-                                        key={type}
-                                        className={`corelation-rating-topic-summary-type${type === 'Non-Clinical' ? ' is-non-clinical' : ' is-clinical'}`}
-                                      >
-                                        {getTypeLabel(type)}
-                                      </em>
-                                    ))}
+                                    <em
+                                      className={`corelation-rating-topic-summary-type${groupTypes.length > 1 ? ' is-mixed' : groupTypes[0] === 'Non-Clinical' ? ' is-non-clinical' : ' is-clinical'}`}
+                                      title={groupTypeTitle}
+                                    >
+                                      {groupTypeLabel}
+                                    </em>
                                   </span>
                                 ) : <span className="corelation-rating-topic-summary-empty">-</span>}
                               </td>
@@ -1056,12 +1080,24 @@ export default function BlueprintPage() {
                               <td>
                                 {isInlineEditing ? (
                                   <span className="corelation-rating-inline-actions">
-                                    <button type="button" className="is-cancel" onClick={cancelInlineCorrelationEdit}>Cancel</button>
+                                    <button
+                                      type="button"
+                                      className="is-cancel"
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        cancelInlineCorrelationEdit()
+                                      }}
+                                    >
+                                      Cancel
+                                    </button>
                                     <button
                                       type="button"
                                       className="is-update"
                                       disabled={!canSaveCorrelation}
-                                      onClick={() => setIsSaveConfirmOpen(true)}
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        setIsSaveConfirmOpen(true)
+                                      }}
                                     >
                                       Update Correlation
                                     </button>
@@ -1072,7 +1108,10 @@ export default function BlueprintPage() {
                                     className="corelation-rating-saved-topic-edit"
                                     title={`Edit ${group.topic}`}
                                     aria-label={`Edit ${group.topic}`}
-                                    onClick={() => editSavedCorrelationTopic(group.rows, group.key)}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      editSavedCorrelationTopic(group.rows, group.key)
+                                    }}
                                   >
                                     <Pencil size={14} strokeWidth={2.5} aria-hidden="true" />
                                   </button>
@@ -1192,6 +1231,20 @@ export default function BlueprintPage() {
                                               aria-label={`Rationale for ${row.code}`}
                                               onClick={(event) => event.stopPropagation()}
                                             >
+                                              <div className="corelation-rating-rationale-context">
+                                                <div>
+                                                  <span>Topic</span>
+                                                  <strong>{row.topic}</strong>
+                                                </div>
+                                                <div>
+                                                  <span>Code</span>
+                                                  <strong>{row.code}</strong>
+                                                </div>
+                                                <div className="is-competency">
+                                                  <span>Competency</span>
+                                                  <strong>{row.name}</strong>
+                                                </div>
+                                              </div>
                                               {isEditingRationale ? (
                                                 <div className="corelation-rating-rationale-edit">
                                                   <textarea
@@ -1466,6 +1519,20 @@ export default function BlueprintPage() {
                                           aria-label={`Rationale for ${row.code}`}
                                           onClick={(event) => event.stopPropagation()}
                                         >
+                                        <div className="corelation-rating-rationale-context">
+                                          <div>
+                                            <span>Topic</span>
+                                            <strong>{row.topic}</strong>
+                                          </div>
+                                          <div>
+                                            <span>Code</span>
+                                            <strong>{row.code}</strong>
+                                          </div>
+                                          <div className="is-competency">
+                                            <span>Competency</span>
+                                            <strong>{row.name}</strong>
+                                          </div>
+                                        </div>
                                         {isEditingRationale ? (
                                           <div className="corelation-rating-rationale-edit">
                                             <textarea
