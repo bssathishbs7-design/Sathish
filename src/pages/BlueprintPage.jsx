@@ -628,7 +628,7 @@ export default function BlueprintPage() {
         <div className="corelation-rating-page-head">
           <PageNavigationHeader items={['My Pages', 'Correlation Rating']} />
           <div className="corelation-rating-metric" aria-label={`${savedMetricCount} of ${corelationRatingRows.length} correlations completed`}>
-            <strong>Create Correlation</strong>
+            <strong>Correlation Rating</strong>
             <span>{savedMetricCount} / {corelationRatingRows.length}</span>
           </div>
         </div>

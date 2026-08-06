@@ -1453,7 +1453,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [pendingUploadApprovalQuestions, setPendingUploadApprovalQuestions] = useState([])
   const [pendingEditQuestionId, setPendingEditQuestionId] = useState(null)
   const [reportedQuestionRecords, setReportedQuestionRecords] = useState(() => readReportedQuestionRecords())
-  const [uploadedQuestionCount, setUploadedQuestionCount] = useState(() => readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent).length)
+  const [, setUploadedQuestionCount] = useState(() => readExcelUploadedQuestionBankQuestions().filter(hasQuestionContent).length)
   const [uploadImportResult, setUploadImportResult] = useState(null)
   const [uploadWizard, setUploadWizard] = useState({
     isOpen: false,
@@ -1596,15 +1596,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     return Array.from(uploadedById.values()).filter((question) => ['Created', 'Generating'].includes(question.status))
   }, [questions])
   const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
-  const readyCount = questions.filter((item) => item.status === 'Created').length
-  const sentApprovalCount = sentApprovalQuestionCards.length
-  const approvedCount = approvedQuestionCards.length
-  const rejectedCount = rejectedQuestionCards.length
-  const generatingCount = questions.filter((item) => item.status === 'Generating').length
-  const generationProcessTotal = readyCount + generatingCount
-  const generationProcessPercent = generationProcessTotal
-    ? Math.round((readyCount / generationProcessTotal) * 100)
-    : 0
   const activeApprovableCards = activeQuestionTab === 'uploaded' ? uploadedQuestionCards : createdQuestionCards
   const approvableQuestionIds = activeApprovableCards
     .filter((item) => item.status === 'Created')
@@ -1643,50 +1634,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const selectedProcessPercent = selectedProcessSteps.length
     ? Math.round((completedProcessStepCount / selectedProcessSteps.length) * 100)
     : 0
-  const questionBankMetrics = [
-    {
-      label: 'Sent to Approval',
-      value: sentApprovalCount,
-      detail: 'Waiting for review',
-      icon: Send,
-      tone: 'draft',
-      targetTab: 'sent',
-    },
-    {
-      label: 'Approved Question',
-      value: approvedCount,
-      detail: 'Ready to publish',
-      icon: CheckCheck,
-      tone: 'approved',
-      targetTab: 'approved',
-    },
-    {
-      label: 'Approval Rejected',
-      value: rejectedCount,
-      detail: 'Needs correction',
-      icon: X,
-      tone: 'rejected',
-      targetTab: 'rejected',
-    },
-    {
-      label: 'Generation Process',
-      value: `${generationProcessPercent}%`,
-      detail: `${readyCount}/${generationProcessTotal} generated`,
-      icon: generatingCount ? LoaderCircle : Sparkles,
-      tone: 'process',
-      progress: generationProcessPercent,
-      isLoading: generatingCount > 0,
-      targetTab: 'created',
-    },
-    {
-      label: 'Upload Question',
-      value: uploadedQuestionCount,
-      detail: 'Added to question bank',
-      icon: Upload,
-      tone: 'upload',
-      targetTab: 'uploaded',
-    },
-  ]
   const canCreateSelectedQuestion = canCreateQuestion(selectedQuestion)
   const canSaveSelectedDraft = selectedQuestion?.status !== 'Sent to Approval' && hasDraftContent(selectedQuestion)
   const shouldShowSelectedCurriculumPanel = selectedQuestion
@@ -3827,41 +3774,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
           <section className="question-bank-create-page-head" aria-label="Question bank page navigation">
             <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Create New']} />
           </section>
-
-          <div className="question-bank-metrics-grid" aria-label="Question bank metrics">
-            {questionBankMetrics.map((metric) => {
-              const Icon = metric.icon
-              const MetricElement = metric.targetTab ? 'button' : 'article'
-              return (
-                <MetricElement
-                  key={metric.label}
-                  type={metric.targetTab ? 'button' : undefined}
-                  className={`question-bank-metric-card is-${metric.tone} ${metric.targetTab ? 'is-actionable' : ''}`}
-                  onClick={metric.targetTab ? () => setActiveQuestionTab(metric.targetTab) : undefined}
-                >
-                  <span className="question-bank-metric-icon">
-                    <Icon
-                      size={17}
-                      strokeWidth={2.3}
-                      className={metric.isLoading ? 'question-bank-spin-icon' : undefined}
-                    />
-                  </span>
-                  <span className="question-bank-metric-copy">
-                    <strong>{metric.value}</strong>
-                    <small>{metric.label}</small>
-                    <em className={metric.isLoading ? 'is-loading' : undefined}>
-                      {metric.isLoading ? 'Generating...' : metric.detail}
-                    </em>
-                    {typeof metric.progress === 'number' ? (
-                      <span className={`question-bank-metric-progress ${metric.isLoading ? 'is-loading' : ''}`}>
-                        <span style={{ width: `${metric.progress}%` }} />
-                      </span>
-                    ) : null}
-                  </span>
-                </MetricElement>
-              )
-            })}
-          </div>
 
           <section className="question-bank-tab-card">
             <div className="question-bank-tabs" role="tablist" aria-label="Question bank sections">

@@ -1574,6 +1574,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [isBlueprintDisableConfirmOpen, setIsBlueprintDisableConfirmOpen] = useState(false)
   const [isBlueprintEnableConfirmOpen, setIsBlueprintEnableConfirmOpen] = useState(false)
   const [isBlueprintPlannerSaved, setIsBlueprintPlannerSaved] = useState(Boolean(initialBlueprintPlanner))
+  const [isBlueprintPlannerEditing, setIsBlueprintPlannerEditing] = useState(false)
   const [isBlueprintProgressOpen, setIsBlueprintProgressOpen] = useState(false)
   const [blueprintProgressPopoverStyle, setBlueprintProgressPopoverStyle] = useState(null)
   const [blueprintProgressPosition, setBlueprintProgressPosition] = useState(() => readBlueprintProgressPosition(setup))
@@ -3143,6 +3144,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       return
     }
 
+    const isUpdatingBlueprintPlanner = isBlueprintPlannerSaved
+
     try {
       window.localStorage.setItem(getBlueprintPlannerStorageKey(setup), JSON.stringify({
         assessmentId: setup.assessmentId,
@@ -3159,10 +3162,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         savedAt: new Date().toISOString(),
       }))
       setIsBlueprintPlannerSaved(true)
+      setIsBlueprintPlannerEditing(false)
       setIsBlueprintSaveConfirmOpen(false)
       setActiveCreateTab('questionBank')
       setHasSelectedCreateTab(true)
-      setSaveStatus('Blueprint planner saved. Select or create questions to complete the blueprint.')
+      setSaveStatus(isUpdatingBlueprintPlanner
+        ? 'Blueprint planner updated. Question filters and progress have been recalculated.'
+        : 'Blueprint planner saved. Select or create questions to complete the blueprint.')
     } catch {
       setIsBlueprintSaveConfirmOpen(false)
       setSaveStatus('Unable to save the blueprint planner. Browser storage may be full.')
@@ -3326,6 +3332,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       // The in-memory reset still succeeds if browser storage is unavailable.
     }
     setIsBlueprintPlannerSaved(false)
+    setIsBlueprintPlannerEditing(false)
     setIsBlueprintProgressOpen(false)
     setBlueprintCognitionWeightage({ lot: '', hot: '' })
     setBlueprintQuestionTypeDraft({})
@@ -3352,12 +3359,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setActiveBlueprintTab('questionSpecifications')
   }
   const confirmBlueprintDistributionEdit = () => {
-    try {
-      window.localStorage.removeItem(getBlueprintPlannerStorageKey(setup))
-    } catch {
-      // Editing remains available when browser storage is unavailable.
-    }
-    setIsBlueprintPlannerSaved(false)
+    setIsBlueprintPlannerEditing(true)
     setIsBlueprintProgressOpen(false)
     setIsBlueprintEditConfirmOpen(false)
     setIsBlueprintMatrixCreated(false)
@@ -3366,6 +3368,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const confirmBlueprintDisable = () => {
     setIsBlueprintDisableConfirmOpen(false)
     setIsBlueprintEnabled(false)
+    setIsBlueprintPlannerEditing(false)
     setIsBlueprintProgressOpen(false)
     setActiveCreateTab(savedQuestionsRef.current.length ? 'preview' : 'questionBank')
     setSelectedCreateQuestionTypeLabel('')
@@ -3394,9 +3397,35 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       setBlueprintCompetencyViewMode('multi')
     }
     setIsBlueprintEnabled(true)
+    setIsBlueprintPlannerEditing(Boolean(isBlueprintPlannerSaved))
     setActiveBlueprintTab(isBlueprintPlannerSaved ? 'questionSpecifications' : 'distribution')
     setActiveCreateTab('blueprint')
     setHasSelectedCreateTab(true)
+  }
+
+  const openBlueprintPlanner = () => {
+    if (!isBlueprintEnabled) {
+      setIsBlueprintDisableConfirmOpen(false)
+      setIsBlueprintEnableConfirmOpen(true)
+      return
+    }
+
+    setIsBlueprintPlannerEditing(Boolean(isBlueprintPlannerSaved))
+    setActiveBlueprintTab(isBlueprintPlannerSaved ? 'questionSpecifications' : 'distribution')
+    setActiveCreateTab('blueprint')
+    setHasSelectedCreateTab(true)
+    setIsBlueprintProgressOpen(false)
+  }
+
+  const requestBlueprintToggle = () => {
+    if (isBlueprintEnabled) {
+      setIsBlueprintEnableConfirmOpen(false)
+      setIsBlueprintDisableConfirmOpen(true)
+      return
+    }
+
+    setIsBlueprintDisableConfirmOpen(false)
+    setIsBlueprintEnableConfirmOpen(true)
   }
 
   const activeMappingItems = useMemo(() => {
@@ -6254,16 +6283,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             <span className="create-assessment-blueprint-reset-icon" aria-hidden="true">
               <Save size={20} strokeWidth={2.3} />
             </span>
-            <h2 id="create-assessment-blueprint-save-title">Save Blueprint Planner?</h2>
+            <h2 id="create-assessment-blueprint-save-title">
+              {isBlueprintPlannerSaved ? 'Update Blueprint Planner?' : 'Save Blueprint Planner?'}
+            </h2>
             <p id="create-assessment-blueprint-save-description">
-              The matrix will guide question selection and creation. Matching questions will update blueprint progress automatically.
+              {isBlueprintPlannerSaved
+                ? 'The updated matrix will recalculate Blueprint filters, question relevance, and progress using the current assessment questions.'
+                : 'The matrix will guide question selection and creation. Matching questions will update blueprint progress automatically.'}
             </p>
             <div className="create-assessment-blueprint-reset-actions">
               <button type="button" className="is-cancel" autoFocus onClick={() => setIsBlueprintSaveConfirmOpen(false)}>
                 No
               </button>
               <button type="button" className="is-confirm" onClick={confirmSaveBlueprintPlanner}>
-                Yes, Save
+                {isBlueprintPlannerSaved ? 'Yes, Update' : 'Yes, Save'}
               </button>
             </div>
           </section>
@@ -7167,7 +7200,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                         event.target.value,
                                       )}
                                       aria-label={`${row.code} ${column.group} ${column.label} question count`}
-                                      disabled={!isActive || isBlueprintPlannerSaved}
+                                      disabled={!isActive || (isBlueprintPlannerSaved && !isBlueprintPlannerEditing)}
                                     />
                                     {hasCountValue ? (
                                       <small>{formatBlueprintSplitNumber(countData.calculatedMarks)} Marks</small>
@@ -7450,7 +7483,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         disabled={!blueprintTestSpecificationMatrixIsValid}
                       >
                         <Save size={14} strokeWidth={2.3} />
-                        <span>Save Blueprint Planner</span>
+                        <span>{isBlueprintPlannerSaved ? 'Update Blueprint Planner' : 'Save Blueprint Planner'}</span>
                       </button>
                     </div>
                   ) : null}
@@ -9528,23 +9561,29 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         <button
           type="button"
           className={`create-assessment-action-btn create-assessment-blueprint-btn ${isBlueprintEnabled ? 'is-enabled' : 'is-disabled'}`}
-          onClick={() => {
-            if (isBlueprintEnabled) {
-              setIsBlueprintEnableConfirmOpen(false)
-              setIsBlueprintDisableConfirmOpen(true)
+          onClick={(event) => {
+            if (event.target.closest('[data-blueprint-toggle]')) {
+              requestBlueprintToggle()
               return
             }
-            setIsBlueprintDisableConfirmOpen(false)
-            setIsBlueprintEnableConfirmOpen(true)
+            openBlueprintPlanner()
           }}
           aria-pressed={isBlueprintEnabled}
+          aria-label={`${isBlueprintEnabled ? 'Open' : 'Enable'} Blueprint Planner`}
         >
           <SlidersHorizontal size={16} strokeWidth={2.2} />
           <span>Blueprint</span>
           <em className={`create-assessment-blueprint-badge ${isBlueprintEnabled ? 'is-enabled' : 'is-disabled'}`}>
             {isBlueprintEnabled ? 'Enabled' : 'Disabled'}
           </em>
-          <span className="create-assessment-blueprint-switch" aria-hidden="true">
+          <span
+            className="create-assessment-blueprint-switch"
+            data-blueprint-toggle
+            role="switch"
+            aria-checked={isBlueprintEnabled}
+            aria-label={`${isBlueprintEnabled ? 'Disable' : 'Enable'} Blueprint`}
+            title={`${isBlueprintEnabled ? 'Disable' : 'Enable'} Blueprint`}
+          >
             <i />
           </span>
         </button>
