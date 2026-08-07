@@ -1,6 +1,7 @@
 import { AlertCircle, ArrowLeft, Award, ChartColumnBig, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Clock3, Download, FileText, Filter, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Sun, Trash2, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
+import AssessmentOverallAnalyticsDashboard from '../components/AssessmentOverallAnalyticsDashboard'
 import '../styles/assessment-pages.css'
 
 const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
@@ -1156,7 +1157,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     onNavigate?.(APP_PAGES.ASSESSMENT_STUDENT_EVALUATION)
   }
 
-  const openStudentResult = (row) => {
+  const openStudentResult = (row, source = '') => {
     if (row.isAbsent) {
       onAlert?.({ tone: 'warning', message: 'Absent student result is not available.' })
       return
@@ -1165,6 +1166,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       onAlert?.({ tone: 'warning', message: 'Result is available after evaluation is completed.' })
       return
     }
+    if (source) window.sessionStorage.setItem(ASSESSMENT_STUDENT_RESULT_SOURCE_KEY, source)
     const nextStudent = {
       ...row,
       evaluationStatus: 'Completed',
@@ -1182,6 +1184,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     setSelectedStudent(null)
     if (isStudentResultView && resultSource === 'my-assessment') {
       onNavigate?.(APP_PAGES.MY_ASSESSMENT)
+      return
+    }
+    if (isStudentResultView && resultSource === 'overall-analytics') {
+      onNavigate?.(APP_PAGES.ASSESSMENT_OVERALL_ANALYTICS)
       return
     }
     onNavigate?.(APP_PAGES.ASSESSMENT_EVALUATION)
@@ -2171,7 +2177,6 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     { label: 'Average Percentage', value: `${formatTwoDigit(overallPercentage)}%`, icon: Percent, tone: 'percentage' },
   ]
   const detailItems = isOverallAnalyticsView ? overallAnalyticsDetails : selectedStudentDetails
-
   const renderSemiDonut = (value, label, color = '#2ecda3', className = '', tooltipItem = null) => {
     const percentage = Math.max(0, Math.min(100, Number(value) || 0))
     return (
@@ -2700,8 +2705,66 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     saveQuestionEvaluationState((current) => ({ ...autoResults, ...current }))
   }, [assessment, selectedStudent, isOffline, assessmentQuestions, questionEvaluationState, isStudentResultView])
 
+  if (isOverallAnalyticsView) {
+    const overallDashboardQuestions = assessmentQuestions.map((question, index) => {
+      const isDescriptive = isDescriptiveQuestionType(question?.type)
+      const competencyValues = getTagValues(question?.competencies?.length ? question.competencies : question?.competency)
+      const thinkingValues = getTagValues(question?.thinkingLevel)
+      const statKeys = getQuestionStatKeys(question, index)
+      const stats = statKeys.map((key) => overallQuestionStats[key]).filter(Boolean)
+      const averageMarks = stats.reduce((total, stat) => total + (stat.averageMarks || 0), 0)
+      const maximumMarks = stats.reduce((total, stat) => total + (stat.maxMarks || 0), 0)
+      const evaluatedCount = stats.reduce((highest, stat) => Math.max(highest, stat.evaluatedCount || 0), 0)
+      const loaCount = stats.length
+        ? Math.round(stats.reduce((total, stat) => total + (stat.loaCount || 0), 0) / stats.length)
+        : 0
+
+      return {
+        id: getQuestionKey(question, `overall-question-${index + 1}`),
+        title: getQuestionText(question),
+        typeKey: isDescriptive ? 'descriptive' : 'mcq',
+        typeLabel: isDescriptive ? getSummaryTypeLabel(question?.type) : 'MCQ',
+        competency: competencyValues.join(', '),
+        thinking: thinkingValues.join(', '),
+        marks: getQuestionMarksTotal(question) || 0,
+        classAverageMarks: averageMarks,
+        classAveragePercentage: maximumMarks ? Math.round((averageMarks / maximumMarks) * 100) : 0,
+        loaCount,
+        evaluatedCount,
+        loaPercentage: evaluatedCount ? Math.round((loaCount / evaluatedCount) * 100) : 0,
+      }
+    })
+
+    return (
+      <AssessmentOverallAnalyticsDashboard
+        assessmentName={assessmentName}
+        academicYear={academicYear}
+        examMode={examMode}
+        examType={examType}
+        examCategory={examCategory}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
+        onExit={exitToEvaluationTab}
+        onBack={backToStudentList}
+        onDownload={downloadEvaluationExcel}
+        rows={normalizedRows}
+        questionSummary={questionSummary}
+        overallPercentage={overallPercentage}
+        attainmentThreshold={attainmentThreshold}
+        bloomThresholds={thresholdConfig.bloomsThresholds}
+        tagAnalytics={resultTagAnalytics}
+        attainmentTabs={overallAttainmentTabs}
+        attainmentTab={overallAnalyticsTab}
+        onAttainmentTabChange={setOverallAnalyticsTab}
+        attainmentRows={overallAttainmentRows}
+        questions={overallDashboardQuestions}
+        onOpenStudent={(row) => openStudentResult(row, 'overall-analytics')}
+      />
+    )
+  }
+
   return (
-    <section className="assessment-evaluation-workspace">
+    <section className={`assessment-evaluation-workspace ${isStudentResultView ? 'is-analytics-result-workspace' : ''}`}>
       <header className="assessment-evaluation-top-header">
         <div className="assessment-evaluation-brand-block">
           <span className="assessment-evaluation-logo" aria-hidden="true">

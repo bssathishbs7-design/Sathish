@@ -50028,12 +50028,39 @@ body > .assessment-page-filter-menu {
 }
 
 /* Assessment student result: dedicated summary and review hierarchy. */
+.assessment-evaluation-workspace.is-analytics-result-workspace {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  background:
+    linear-gradient(rgba(17, 24, 39, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 24, 39, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at 12% -10%, rgba(100, 230, 181, 0.22), transparent 34%),
+    radial-gradient(circle at 100% 0%, rgba(88, 112, 246, 0.12), transparent 32%),
+    linear-gradient(180deg, #fbfcff 0%, #eef2f6 100%);
+  background-size: 28px 28px, 28px 28px, auto, auto, auto;
+}
+
+.assessment-evaluation-workspace.is-analytics-result-workspace .assessment-evaluation-top-header {
+  min-height: 72px;
+  padding: 11px 22px;
+  border-bottom-color: rgba(18, 31, 27, 0.1);
+  box-shadow: none;
+}
+
 .assessment-student-evaluation-card.is-student-result-page {
+  box-sizing: border-box;
   display: grid;
   gap: 14px;
+  width: min(1480px, calc(100% - 36px));
+  max-width: calc(100% - 36px);
+  margin: 16px auto 36px;
   padding: 0 14px 16px;
-  border-color: #c9e4de;
-  background: #f5f9f8;
+  overflow: hidden;
+  border-color: rgba(18, 31, 27, 0.1);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.065);
 }
 
 .assessment-student-evaluation-card.is-student-result-page .assessment-student-evaluation-head {
@@ -50048,7 +50075,7 @@ body > .assessment-page-filter-menu {
   gap: 14px;
   padding: 14px;
   border: 1px solid #d5e7e3;
-  border-radius: 10px;
+  border-radius: 18px;
   background: #ffffff;
 }
 
@@ -50060,7 +50087,7 @@ body > .assessment-page-filter-menu {
   min-width: 0;
   padding: 14px 16px;
   border: 1px solid #cce9e1;
-  border-radius: 9px;
+  border-radius: 16px;
   background: #f3fbf8;
 }
 
@@ -50175,7 +50202,7 @@ body > .assessment-page-filter-menu {
   min-height: 72px;
   padding: 10px 12px;
   border: 1px solid #dce9e6;
-  border-radius: 9px;
+  border-radius: 16px;
   background: #fbfdfd;
   transition: border-color 0.16s ease, background 0.16s ease;
 }
@@ -50245,7 +50272,7 @@ body > .assessment-page-filter-menu {
   gap: 14px;
   padding: 14px;
   border: 1px solid #d5e7e3;
-  border-radius: 10px;
+  border-radius: 18px;
   background: #ffffff;
 }
 
@@ -50281,14 +50308,14 @@ body > .assessment-page-filter-menu {
 .assessment-student-evaluation-card.is-student-result-page .assessment-result-chart-card {
   min-height: 250px;
   border-color: #dce9e6;
-  border-radius: 9px;
+  border-radius: 16px;
   background: #fcfefe;
 }
 
 .assessment-student-evaluation-card.is-student-result-page .assessment-student-question-area {
   overflow: hidden;
   border: 1px solid #d5e7e3;
-  border-radius: 10px;
+  border-radius: 18px;
   background: #ffffff;
 }
 
@@ -50329,6 +50356,15 @@ body > .assessment-page-filter-menu {
 .theme-dark .assessment-student-evaluation-card.is-student-result-page {
   border-color: #28445a;
   background: #0b1726;
+}
+
+.theme-dark .assessment-evaluation-workspace.is-analytics-result-workspace {
+  background:
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at 12% -10%, rgba(20, 184, 166, 0.13), transparent 34%),
+    #071421;
+  background-size: 28px 28px, 28px 28px, auto, auto;
 }
 
 .theme-dark .assessment-student-evaluation-card.is-student-result-page .assessment-student-evaluation-head,
@@ -50874,4 +50910,5 @@ body > .assessment-page-filter-menu {
     grid-template-columns: 1fr;
   }
 }
+
 }
