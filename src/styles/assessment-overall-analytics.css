@@ -27,14 +27,15 @@
 .aoa-page input { cursor: text; }
 .aoa-page button:disabled, .aoa-page select:disabled { cursor: not-allowed; }
 
-.aoa-topbar { min-height: 72px; padding: 11px 22px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--aoa-line); background: var(--aoa-card); }
-.aoa-title, .aoa-top-actions, .aoa-title > span { display: flex; align-items: center; }
-.aoa-title { min-width: 0; gap: 11px; }.aoa-title > span { min-width: 0; align-items: flex-start; flex-direction: column; }
+.aoa-topbar { position: sticky; top: 0; z-index: 80; box-sizing: border-box; height: 76px; min-height: 76px; padding: 10px clamp(16px, 2vw, 28px); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; border-bottom: 1px solid var(--aoa-line); background: color-mix(in srgb, var(--aoa-card) 96%, var(--aoa-bg)); box-shadow: 0 8px 20px rgba(15, 104, 68, .05); backdrop-filter: blur(16px); }
+.aoa-title, .aoa-top-actions { display: flex; align-items: center; }
+.aoa-title { min-width: 0; gap: 12px; }
+.aoa-title-copy { min-width: 0; display: grid; align-content: center; gap: 3px; }
 .aoa-title > button, .aoa-top-actions button { min-height: 38px; border: 1px solid var(--aoa-line); border-radius: 10px; background: var(--aoa-card); color: var(--aoa-ink); cursor: pointer; }
 .aoa-title > button:active, .aoa-top-actions button:active { transform: translateY(1px) scale(.96); transition: none; }
 .aoa-title > button { width: 38px; display: grid; place-items: center; }
-.aoa-title h1 { max-width: 760px; margin: 2px 0 0; overflow: hidden; font-size: 21px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
-.aoa-title p { margin: 1px 0 0; color: var(--aoa-muted); font-size: 11px; }
+.aoa-title h1 { max-width: 760px; margin: 0; overflow: hidden; font-size: 21px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.aoa-title p { margin: 0; overflow: hidden; color: var(--aoa-muted); font-size: 11px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
 .aoa-top-actions { gap: 8px; }.aoa-top-actions button { padding: 0 13px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 12px; font-weight: 750; }
 .aoa-top-actions .is-icon { width: 38px; padding: 0; }.aoa-top-actions .is-exit { border-color: #f2c3cc; background: #fff7f8; color: #be2945; }
 
@@ -98,42 +99,25 @@
 .aoa-mastery-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }.aoa-mastery-legend button { min-width: 0; min-height: 46px; padding: 7px 9px; display: grid; gap: 5px; border: 1px solid var(--aoa-line); border-radius: 12px; background: color-mix(in srgb, var(--aoa-soft) 70%, var(--aoa-card)); color: var(--aoa-ink); font: inherit; cursor: pointer; transition: border-color var(--motion-snappy), background var(--motion-snappy), transform var(--motion-snappy); }.aoa-mastery-legend button:hover, .aoa-mastery-legend button:focus-visible, .aoa-mastery-legend button.is-active { border-color: color-mix(in srgb, var(--segment-color) 50%, var(--aoa-line)); background: color-mix(in srgb, var(--segment-color) 8%, var(--aoa-card)); outline: none; }.aoa-mastery-legend button:active { transform: translateY(1px) scale(.97); transition: none; }.aoa-mastery-legend button > span { min-width: 0; display: flex; align-items: center; gap: 7px; }.aoa-mastery-legend button > span i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--segment-color); }.aoa-mastery-legend em { overflow: hidden; color: var(--aoa-ink); font-size: 10px; font-style: normal; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }.aoa-mastery-legend button > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px; }.aoa-mastery-legend button > div i { height: 5px; overflow: hidden; border-radius: 999px; background: var(--aoa-chart-track); }.aoa-mastery-legend button > div i b { height: 100%; display: block; border-radius: inherit; background: var(--segment-color); }.aoa-mastery-legend strong { color: var(--segment-color); font-family: var(--f-code, ui-monospace, monospace); font-size: 11px; font-variant-numeric: tabular-nums; }
 @keyframes aoaMasteryReveal { from { opacity: .2; stroke-dasharray: 0 100; } }
 
-.aoa-thinking-gauge { min-height: 0; padding: 14px 16px 16px; display: grid; flex: 1; grid-template-columns: 1fr; grid-template-rows: minmax(226px, 1fr) auto; align-content: stretch; gap: 10px; }
-.aoa-gauge-visual { --gauge-color: #35c8a4; position: relative; min-height: 226px; display: grid; place-items: center; outline: none; }
-.aoa-gauge-visual svg { width: min(100%, 280px); overflow: visible; }
-.aoa-gauge-track, .aoa-gauge-progress { fill: none; stroke-width: 24; stroke-linecap: round; }
-.aoa-gauge-track { stroke: var(--aoa-chart-track); }
-.aoa-gauge-progress { stroke: var(--gauge-color); transition: stroke .24s ease, stroke-dasharray .45s ease; animation: aoaGaugeSweep .8s cubic-bezier(.2,.8,.2,1) both; }
-.aoa-gauge-needle { stroke: var(--gauge-color); stroke-width: 5; stroke-linecap: round; transform: rotate(var(--gauge-angle)); transform-origin: 130px 130px; transition: stroke .24s ease, transform .5s cubic-bezier(.2,.8,.2,1); animation: aoaGaugeNeedle .8s cubic-bezier(.2,.8,.2,1) both; }
-.aoa-gauge-hub { fill: var(--aoa-card); stroke: var(--gauge-color); stroke-width: 4; transition: fill .2s ease, stroke .24s ease; transform-origin: center; }
-.aoa-gauge-reading { position: absolute; left: 50%; bottom: 4px; display: flex; align-items: center; flex-direction: column; text-align: center; transform: translateX(-50%); }
-.aoa-gauge-reading strong { color: var(--gauge-color); font-size: 28px; line-height: 1; letter-spacing: -.05em; transition: color .24s ease; }.aoa-gauge-reading span { width: 190px; margin-top: 4px; overflow: hidden; color: var(--aoa-ink); font-size: 11px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }.aoa-gauge-reading small { margin-top: 2px; color: var(--aoa-muted); font-size: 9px; font-weight: 700; }
-.aoa-gauge-breakdown { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.aoa-gauge-breakdown > button { --gauge-item-color: #35c8a4; width: 100%; min-width: 0; min-height: 58px; padding: 8px 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 3px 8px; border: 1px solid color-mix(in srgb, var(--gauge-item-color) 24%, var(--aoa-line)); border-radius: 12px; background: color-mix(in srgb, var(--gauge-item-color) 7%, var(--aoa-card)); font: inherit; text-align: left; cursor: pointer; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
-.aoa-gauge-breakdown > button:hover, .aoa-gauge-breakdown > button:focus-visible, .aoa-gauge-breakdown > button.is-active { border-color: color-mix(in srgb, var(--gauge-item-color) 55%, var(--aoa-line)); background: color-mix(in srgb, var(--gauge-item-color) 12%, var(--aoa-card)); outline: none; transform: translateY(-1px); }
-.aoa-gauge-breakdown span { display: flex; align-items: center; gap: 8px; }.aoa-gauge-breakdown i { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--gauge-item-color); }.aoa-gauge-breakdown b { color: var(--aoa-ink); font-size: 12px; }.aoa-gauge-breakdown strong { color: var(--gauge-item-color); font-size: 18px; }.aoa-gauge-breakdown small { grid-column: 1 / -1; color: var(--aoa-muted); font-size: 10px; font-weight: 700; }
-
-@keyframes aoaGaugeSweep { from { stroke-dashoffset: var(--gauge-offset); } to { stroke-dashoffset: 0; } }
-@keyframes aoaGaugeNeedle { from { transform: rotate(-90deg); } to { transform: rotate(var(--gauge-angle)); } }
-
-/* Thinking level: a focused operational-capacity gauge. */
-.aoa-thinking-gauge { padding: 10px 18px 16px; grid-template-rows: 218px auto; align-content: start; gap: 8px; }
-.aoa-gauge-visual { --gauge-color: #7048e8; min-height: 218px; display: flex; align-items: center; justify-content: flex-start; flex-direction: column; padding-top: 8px; }
-.aoa-gauge-visual svg { width: min(100%, 238px); height: 154px; flex: 0 0 auto; }
-.aoa-gauge-track, .aoa-gauge-progress { stroke-width: 20; }
+.aoa-thinking-gauge { min-height: 0; padding: 16px 20px 18px; display: grid; flex: 1; grid-template-rows: minmax(310px, 1fr) auto; align-content: stretch; gap: 14px; }
+.aoa-gauge-visual { --gauge-color: #35c8a4; min-height: 310px; display: grid; grid-template-rows: 220px auto; align-content: center; justify-items: center; outline: none; }
+.aoa-gauge-visual svg { width: min(100%, 356px); height: 220px; overflow: visible; }
+.aoa-gauge-track, .aoa-gauge-progress { fill: none; stroke-width: 22; stroke-linecap: round; }
 .aoa-gauge-track { stroke: color-mix(in srgb, var(--aoa-line) 72%, var(--aoa-soft)); }
-.aoa-gauge-progress { stroke: var(--gauge-color); }
-.aoa-gauge-needle { stroke-width: 4; }
-.aoa-gauge-reading { position: static; margin-top: -39px; transform: none; }
-.aoa-gauge-reading strong { font-size: 31px; }
-.aoa-gauge-reading span { margin-top: 5px; font-size: 11px; }
-.aoa-gauge-reading small { margin-top: 4px; font-size: 10px; }
-.aoa-gauge-breakdown { gap: 0; border-top: 1px solid var(--aoa-line); }
-.aoa-gauge-breakdown > button { min-height: 54px; padding: 8px 10px; border: 0; border-radius: 0; background: transparent; }
-.aoa-gauge-breakdown > button + button { border-left: 1px solid var(--aoa-line); }
-.aoa-gauge-breakdown > button:hover, .aoa-gauge-breakdown > button:focus-visible, .aoa-gauge-breakdown > button.is-active { border-color: var(--aoa-line); background: color-mix(in srgb, var(--gauge-item-color) 8%, var(--aoa-card)); transform: none; }
-.aoa-gauge-breakdown b { font-size: 11px; }
-.aoa-gauge-breakdown strong { font-family: var(--f-code, ui-monospace, monospace); font-size: 18px; font-variant-numeric: tabular-nums; }
+.aoa-gauge-progress { stroke: var(--gauge-color); animation: aoaGaugeRange var(--motion-standard) both; }
+.aoa-gauge-needle { stroke: var(--gauge-color); stroke-width: 4; stroke-linecap: round; transform-origin: 130px 130px; animation: aoaGaugeNeedleRange var(--motion-standard) both; }
+.aoa-gauge-hub { fill: var(--aoa-card); stroke: var(--gauge-color); stroke-width: 4; }
+.aoa-gauge-ticks line { stroke: color-mix(in srgb, var(--aoa-line) 82%, var(--aoa-card)); stroke-linecap: round; stroke-width: 2; }.aoa-gauge-end-label, .aoa-gauge-mid-label { fill: var(--aoa-muted); font-family: var(--f-caps, Inter, sans-serif); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-anchor: middle; }.aoa-gauge-mid-label { letter-spacing: .04em; }
+.aoa-gauge-reading { min-height: 90px; display: flex; align-items: center; flex-direction: column; justify-content: start; padding-top: 0; text-align: center; }.aoa-gauge-reading em { color: var(--aoa-muted); font-family: var(--f-caps, Inter, sans-serif); font-size: 9px; font-style: normal; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.aoa-gauge-reading strong { margin-top: 4px; color: var(--gauge-color); font-family: var(--f-code, ui-monospace, monospace); font-size: 40px; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.05em; }
+.aoa-gauge-breakdown { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.aoa-gauge-breakdown > button { --gauge-item-color: #35c8a4; min-width: 0; min-height: 76px; padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; border: 1px solid color-mix(in srgb, var(--gauge-item-color) 25%, var(--aoa-line)); border-radius: 16px; background: var(--aoa-card); color: var(--aoa-ink); font: inherit; text-align: left; cursor: pointer; transition: border-color var(--dur-hover) var(--ease-standard), background var(--dur-hover) var(--ease-standard), transform var(--dur-press) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard); }
+.aoa-gauge-breakdown > button:hover, .aoa-gauge-breakdown > button:focus-visible, .aoa-gauge-breakdown > button.is-active { border-color: color-mix(in srgb, var(--gauge-item-color) 58%, var(--aoa-line)); background: color-mix(in srgb, var(--gauge-item-color) 10%, var(--aoa-card)); box-shadow: 0 8px 18px color-mix(in srgb, var(--gauge-item-color) 12%, transparent); outline: none; }
+.aoa-gauge-breakdown > button:active { transform: translateY(1px) scale(.97); transition: none; }
+.aoa-gauge-breakdown span { min-width: 0; display: flex; align-items: center; gap: 8px; }.aoa-gauge-breakdown i { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--gauge-item-color); }.aoa-gauge-breakdown b { overflow: hidden; color: var(--aoa-ink); font-size: 12px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }.aoa-gauge-breakdown strong { color: var(--gauge-item-color); font-family: var(--f-code, ui-monospace, monospace); font-size: 22px; font-variant-numeric: tabular-nums; }.aoa-gauge-breakdown small { grid-column: 1 / -1; color: var(--aoa-muted); font-size: 11px; font-weight: 750; }
+
+@keyframes aoaGaugeRange { from { stroke-dasharray: 0 var(--gauge-arc); } to { stroke-dasharray: var(--gauge-offset) var(--gauge-arc); } }
+@keyframes aoaGaugeNeedleRange { from { transform: rotate(-180deg); } to { transform: rotate(var(--gauge-angle)); } }
 
 .aoa-radar-wrap { min-height: 0; padding: 12px 14px 16px; display: grid; flex: 1; place-items: center; }
 .aoa-radar-chart { width: min(100%, 350px); height: 300px; overflow: visible; }
@@ -239,7 +223,7 @@
 .aoa-metric-copy small { font-size: 12px; }.aoa-metric-copy strong { font-size: 30px; }.aoa-metric-copy em { font-size: 10px; }
 .aoa-panel-heading strong { font-size: 15px; }.aoa-panel-heading small { font-size: 11px; }.aoa-insight-badge { font-size: 11px; }
 .aoa-studio-heading > div > span { font-size: 10px; }.aoa-studio-heading h2 { font-size: 23px; }
-.aoa-gauge-reading small, .aoa-gauge-breakdown small { font-size: 10px; }
+.aoa-gauge-breakdown small { font-size: 10px; }
 .aoa-radar-label { font-size: 14px; }.aoa-radar-value { font-size: 11px; }
 .aoa-skill-axis { font-size: 10px; }.aoa-skill-columns > div > strong { font-size: 10px; }.aoa-skill-columns > div > small { font-size: 9px; }
 .aoa-tabs button { font-size: 11px; }
@@ -258,7 +242,7 @@
 }
 
 @media (max-width: 760px) {
-  .aoa-topbar { align-items: flex-start; }
+  .aoa-topbar { height: auto; min-height: 68px; padding: 10px 12px; align-items: center; gap: 10px; }
   .aoa-top-actions .is-exit { width: 38px; padding: 0; font-size: 0; }
   .aoa-title p { max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .aoa-shell { width: calc(100vw - 24px); max-width: calc(100vw - 24px); margin: 0 auto; padding: 10px 0 28px; }

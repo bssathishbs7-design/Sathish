@@ -93,44 +93,73 @@ function MasteryGaugeGraph({ items }) {
 
 function ThinkingGaugeGraph({ items }) {
   const [selectedLabel, setSelectedLabel] = useState(null)
-  const [hoverLabel, setHoverLabel] = useState(null)
+  const [previewLabel, setPreviewLabel] = useState(null)
   if (!items.length) return <EmptyGraph />
-  const total = items.reduce((sum, item) => sum + item.value, 0)
   const hotItem = items.find((item) => /hot|higher/i.test(item.label)) || items[0]
-  const activeLabel = hoverLabel || selectedLabel
-  const activeItem = items.find((item) => item.label === activeLabel) || hotItem
+  const activeItem = items.find((item) => item.label === previewLabel)
+    || items.find((item) => item.label === selectedLabel)
+    || hotItem
   const gaugePercentage = Math.max(0, Math.min(100, activeItem?.percentage || 0))
-  const gaugeColor = '#7048e8'
-  const angle = -90 + (gaugePercentage * 1.8)
+  const isHot = /hot|higher/i.test(activeItem?.label || '')
+  const gaugeColor = isHot ? '#35c8a4' : '#dfb34c'
+  const angle = -180 + (gaugePercentage * 1.8)
   const arcLength = 314.16
   const progressLength = (gaugePercentage / 100) * arcLength
+  const gaugeTicks = [0, 25, 50, 75, 100].map((value) => {
+    const angleRadians = Math.PI - ((value / 100) * Math.PI)
+    const outerRadius = 112
+    const innerRadius = value === 50 ? 96 : 101
+    return {
+      value,
+      x1: 130 + Math.cos(angleRadians) * outerRadius,
+      y1: 130 - Math.sin(angleRadians) * outerRadius,
+      x2: 130 + Math.cos(angleRadians) * innerRadius,
+      y2: 130 - Math.sin(angleRadians) * innerRadius,
+    }
+  })
 
   return (
     <div className="aoa-thinking-gauge">
-      <div className="aoa-gauge-visual" style={{ '--gauge-color': gaugeColor, '--gauge-angle': `${angle}deg`, '--gauge-offset': progressLength }}>
+      <div
+        className={`aoa-gauge-visual ${isHot ? 'is-hot' : 'is-lot'}`}
+        style={{
+          '--gauge-color': gaugeColor,
+          '--gauge-angle': `${angle}deg`,
+          '--gauge-offset': progressLength,
+          '--gauge-arc': arcLength,
+        }}
+      >
         <svg viewBox="0 0 260 160" role="img" aria-label={`${activeItem?.label || 'Thinking level'} ${gaugePercentage}%`}>
           <path className="aoa-gauge-track" d="M 30 130 A 100 100 0 0 1 230 130" />
           <path key={`arc-${activeItem?.label}`} className="aoa-gauge-progress" d="M 30 130 A 100 100 0 0 1 230 130" strokeDasharray={`${progressLength} ${arcLength}`} />
-          <line key={`needle-${activeItem?.label}`} className="aoa-gauge-needle" x1="130" y1="130" x2="198" y2="130" />
+          <g className="aoa-gauge-ticks" aria-hidden="true">
+            {gaugeTicks.map((tick) => <line key={tick.value} x1={tick.x1} y1={tick.y1} x2={tick.x2} y2={tick.y2} />)}
+          </g>
+          <line key={`needle-${activeItem?.label}`} className="aoa-gauge-needle" x1="130" y1="130" x2="188" y2="130" />
           <circle className="aoa-gauge-hub" cx="130" cy="130" r="8" />
+          <text className="aoa-gauge-end-label" x="25" y="153">LoT</text>
+          <text className="aoa-gauge-mid-label" x="130" y="13">Balanced</text>
+          <text className="aoa-gauge-end-label" x="235" y="153">HoT</text>
         </svg>
-        <div className="aoa-gauge-reading"><strong>{gaugePercentage}%</strong><span>{activeItem?.label || 'Thinking level'}</span><small>{total} total questions</small></div>
+        <div className="aoa-gauge-reading"><em>Current thinking focus</em><strong>{gaugePercentage}%</strong></div>
       </div>
-      <div className="aoa-gauge-breakdown">
+      <div className="aoa-gauge-breakdown" aria-label="Thinking level summary">
         {items.map((item, index) => (
           <button
             type="button"
             key={item.label}
-            aria-pressed={selectedLabel === item.label}
             className={activeItem?.label === item.label ? 'is-active' : ''}
             style={{ '--gauge-item-color': item.color || (/hot|higher/i.test(item.label) ? '#35c8a4' : index % 2 ? '#efc93d' : '#35c8a4') }}
-            onClick={() => setSelectedLabel((current) => current === item.label ? null : item.label)}
-            onMouseEnter={() => setHoverLabel(item.label)}
-            onMouseLeave={() => setHoverLabel(null)}
-            onFocus={() => setHoverLabel(item.label)}
-            onBlur={() => setHoverLabel(null)}
+            aria-pressed={selectedLabel === item.label}
+            onClick={() => setSelectedLabel(item.label)}
+            onMouseEnter={() => setPreviewLabel(item.label)}
+            onMouseLeave={() => setPreviewLabel(null)}
+            onFocus={() => setPreviewLabel(item.label)}
+            onBlur={() => setPreviewLabel(null)}
           >
-            <span><i /><b>{item.label}</b></span><strong>{item.percentage}%</strong><small>{item.value} questions</small>
+            <span><i /><b>{item.label}</b></span>
+            <strong>{item.percentage}%</strong>
+            <small>{item.value} question{item.value === 1 ? '' : 's'}</small>
           </button>
         ))}
       </div>
@@ -372,8 +401,17 @@ export default function AssessmentOverallAnalyticsDashboard({
   return (
     <section className="aoa-page">
       <header className="aoa-topbar">
-        <div className="aoa-title">{typeof onBack === 'function' ? <button type="button" onClick={onBack} aria-label="Back to evaluation" title="Back to evaluation"><ArrowLeft size={18} /></button> : null}<span><h1>{assessmentName}</h1><p>{examCategory} / {examType} / {examMode} / {academicYear}</p></span></div>
-        <div className="aoa-top-actions"><button type="button" className="is-icon" onClick={onToggleTheme} aria-label="Toggle theme">{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button><button type="button" className="is-exit" onClick={onExit}><LogOut size={16} />Exit</button></div>
+        <div className="aoa-title">
+          {typeof onBack === 'function' ? <button type="button" onClick={onBack} aria-label="Back to evaluation" title="Back to evaluation"><ArrowLeft size={18} /></button> : null}
+          <div className="aoa-title-copy">
+            <h1>{assessmentName}</h1>
+            <p>{examCategory} / {examType} / {examMode} / {academicYear}</p>
+          </div>
+        </div>
+        <div className="aoa-top-actions">
+          <button type="button" className="is-icon" onClick={onToggleTheme} aria-label="Toggle theme">{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button>
+          <button type="button" className="is-exit" onClick={onExit}><LogOut size={16} />Exit</button>
+        </div>
       </header>
 
       <main className="aoa-shell">
