@@ -100,7 +100,7 @@ function ThinkingGaugeGraph({ items }) {
   const activeLabel = hoverLabel || selectedLabel
   const activeItem = items.find((item) => item.label === activeLabel) || hotItem
   const gaugePercentage = Math.max(0, Math.min(100, activeItem?.percentage || 0))
-  const gaugeColor = activeItem?.color || (/hot|higher/i.test(activeItem?.label || '') ? '#35c8a4' : '#efc93d')
+  const gaugeColor = '#7048e8'
   const angle = -90 + (gaugePercentage * 1.8)
   const arcLength = 314.16
   const progressLength = (gaugePercentage / 100) * arcLength

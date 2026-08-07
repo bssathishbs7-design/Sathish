@@ -116,6 +116,25 @@
 @keyframes aoaGaugeSweep { from { stroke-dashoffset: var(--gauge-offset); } to { stroke-dashoffset: 0; } }
 @keyframes aoaGaugeNeedle { from { transform: rotate(-90deg); } to { transform: rotate(var(--gauge-angle)); } }
 
+/* Thinking level: a focused operational-capacity gauge. */
+.aoa-thinking-gauge { padding: 10px 18px 16px; grid-template-rows: 218px auto; align-content: start; gap: 8px; }
+.aoa-gauge-visual { --gauge-color: #7048e8; min-height: 218px; display: flex; align-items: center; justify-content: flex-start; flex-direction: column; padding-top: 8px; }
+.aoa-gauge-visual svg { width: min(100%, 238px); height: 154px; flex: 0 0 auto; }
+.aoa-gauge-track, .aoa-gauge-progress { stroke-width: 20; }
+.aoa-gauge-track { stroke: color-mix(in srgb, var(--aoa-line) 72%, var(--aoa-soft)); }
+.aoa-gauge-progress { stroke: var(--gauge-color); }
+.aoa-gauge-needle { stroke-width: 4; }
+.aoa-gauge-reading { position: static; margin-top: -39px; transform: none; }
+.aoa-gauge-reading strong { font-size: 31px; }
+.aoa-gauge-reading span { margin-top: 5px; font-size: 11px; }
+.aoa-gauge-reading small { margin-top: 4px; font-size: 10px; }
+.aoa-gauge-breakdown { gap: 0; border-top: 1px solid var(--aoa-line); }
+.aoa-gauge-breakdown > button { min-height: 54px; padding: 8px 10px; border: 0; border-radius: 0; background: transparent; }
+.aoa-gauge-breakdown > button + button { border-left: 1px solid var(--aoa-line); }
+.aoa-gauge-breakdown > button:hover, .aoa-gauge-breakdown > button:focus-visible, .aoa-gauge-breakdown > button.is-active { border-color: var(--aoa-line); background: color-mix(in srgb, var(--gauge-item-color) 8%, var(--aoa-card)); transform: none; }
+.aoa-gauge-breakdown b { font-size: 11px; }
+.aoa-gauge-breakdown strong { font-family: var(--f-code, ui-monospace, monospace); font-size: 18px; font-variant-numeric: tabular-nums; }
+
 .aoa-radar-wrap { min-height: 0; padding: 12px 14px 16px; display: grid; flex: 1; place-items: center; }
 .aoa-radar-chart { width: min(100%, 350px); height: 300px; overflow: visible; }
 .aoa-radar-grid { fill: none; stroke: rgba(100, 116, 139, .22); stroke-width: 1.2; }
