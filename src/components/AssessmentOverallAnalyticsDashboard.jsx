@@ -55,7 +55,7 @@ function EmptyGraph({ label = 'No tagged questions available' }) {
 
 function MasteryGaugeGraph({ items }) {
   const [hoverLabel, setHoverLabel] = useState(null)
-  if (!items.length) return <EmptyGraph />
+  if (!items.length || !items.some((item) => Number(item.value) > 0)) return <EmptyGraph />
   const total = items.reduce((sum, item) => sum + item.value, 0)
   const largestItem = items.reduce((largest, item) => item.percentage > (largest?.percentage || -1) ? item : largest, null)
   const segments = items.map((item, index) => {
@@ -94,7 +94,7 @@ function MasteryGaugeGraph({ items }) {
 function ThinkingGaugeGraph({ items }) {
   const [selectedLabel, setSelectedLabel] = useState(null)
   const [previewLabel, setPreviewLabel] = useState(null)
-  if (!items.length) return <EmptyGraph />
+  if (!items.length || !items.some((item) => Number(item.value) > 0)) return <EmptyGraph />
   const hotItem = items.find((item) => /hot|higher/i.test(item.label)) || items[0]
   const activeItem = items.find((item) => item.label === previewLabel)
     || items.find((item) => item.label === selectedLabel)
@@ -170,7 +170,7 @@ function ThinkingGaugeGraph({ items }) {
 function RadarGraph({ items, thresholds = {} }) {
   const [activePoint, setActivePoint] = useState(null)
   const [view, setView] = useState('cohort')
-  if (!items.length) return <EmptyGraph />
+  if (!items.length || !items.some((item) => Number(item.value) > 0)) return <EmptyGraph />
   const size = 420
   const center = size / 2
   const radius = 138
@@ -233,7 +233,7 @@ function RadarGraph({ items, thresholds = {} }) {
 }
 
 function BubbleGraph({ items }) {
-  if (!items.length) return <EmptyGraph />
+  if (!items.length || !items.some((item) => Number(item.value) > 0)) return <EmptyGraph />
   const palette = ['#168d6b', '#4b7bec', '#7a58c8', '#d98b35', '#3d99ab']
   const sortedItems = [...items].sort((left, right) => right.percentage - left.percentage)
   return (
@@ -272,7 +272,7 @@ function SkillFocusGraph({ items }) {
     .sort((left, right) => right.percentage - left.percentage)
   const defaultItems = items.filter((item) => !relevantItems.includes(item))
   const visibleItems = [...relevantItems, ...defaultItems].slice(0, 5)
-  if (!visibleItems.length) return <EmptyGraph />
+  if (!visibleItems.length || !visibleItems.some((item) => Number(item.value) > 0)) return <EmptyGraph />
   const average = Math.round(visibleItems.reduce((sum, item) => sum + item.percentage, 0) / visibleItems.length)
   const chartWidth = 900
   const chartHeight = 320

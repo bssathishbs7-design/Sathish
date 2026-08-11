@@ -505,11 +505,11 @@ const RESULT_TAG_ANALYTICS = {
     title: 'Cognitive Function',
     field: 'cognitiveFunction',
     labels: [
-      { label: 'Attention & Cue Detection', aliases: ['attention', 'cue detection'] },
+      { label: 'Attention & Cue Detection', aliases: ['attention', 'cue detection', 'identification'] },
       { label: 'Working Memory', aliases: ['working memory'] },
-      { label: 'Pattern Recognition', aliases: ['pattern recognition'] },
-      { label: 'Prioritization/Executive Function', aliases: ['prioritization', 'prioritisation', 'executive function'] },
-      { label: 'Judgement & Decision Making', aliases: ['judgement', 'judgment', 'decision making'] },
+      { label: 'Pattern Recognition', aliases: ['pattern recognition', 'concept explanation'] },
+      { label: 'Prioritization/Executive Function', aliases: ['prioritization', 'prioritisation', 'executive function', 'structured explanation'] },
+      { label: 'Judgement & Decision Making', aliases: ['judgement', 'judgment', 'decision making', 'clinical reasoning'] },
       { label: 'Metacognition (Reflection)', aliases: ['metacognition', 'reflection'] },
     ],
   },
@@ -518,17 +518,17 @@ const RESULT_TAG_ANALYTICS = {
     heading: 'Skill Focus Categories',
     field: 'skillFocus',
     labels: [
-      { label: 'Diagnosis', aliases: ['diagnosis'] },
+      { label: 'Diagnosis', aliases: ['diagnosis', 'identification'] },
       { label: 'Investigation', aliases: ['investigation'] },
       { label: 'Treatment', aliases: ['treatment'] },
       { label: 'Management', aliases: ['management'] },
       { label: 'Prognosis', aliases: ['prognosis'] },
       { label: 'Prevention', aliases: ['prevention'] },
-      { label: 'Knowledge', aliases: ['knowledge'] },
+      { label: 'Knowledge', aliases: ['knowledge', 'concept explanation', 'structured explanation'] },
       { label: 'Data Interpretation', aliases: ['data interpretation'] },
       { label: 'Risk Assessment', aliases: ['risk assessment'] },
       { label: 'Ethics', aliases: ['ethics'] },
-      { label: 'Communication', aliases: ['communication'] },
+      { label: 'Communication', aliases: ['communication', 'professional communication'] },
       { label: 'Patient Safety', aliases: ['patient safety'] },
       { label: 'Regulations or Protocols', aliases: ['regulations', 'protocols'] },
     ],
@@ -546,10 +546,62 @@ const isMatchingTagValue = (value, tag) => {
   return candidates.some((candidate) => normalizedValue === candidate || normalizedValue.includes(candidate) || candidate.includes(normalizedValue))
 }
 
+const getAnalyticsTagValues = (question = {}, config = {}) => {
+  const directValues = getTagValues(question?.[config.field])
+  if (directValues.length) return directValues
+
+  const category = normalizeTagLabel(question?.questionCategory)
+  const type = normalizeTagLabel(question?.type)
+
+  if (config.field === 'questionCategory') {
+    if (category.includes('direct')) return ['Direct Comprehension']
+    if (category.includes('reason')) return ['Reasoning Skills']
+    if (category.includes('critical')) return ['Critical Thinking']
+    if (category.includes('application') || category.includes('apply')) return ['Application']
+    return type.includes('mcq') ? ['Direct Comprehension'] : ['Reasoning Skills']
+  }
+
+  if (config.field === 'thinkingLevel') {
+    if (getTagValues(question?.thinking).length) return getTagValues(question.thinking)
+    if (getTagValues(question?.cognitionLevel).length) return getTagValues(question.cognitionLevel)
+    return category.includes('direct') ? ['LoT - Lower Order Thinking'] : ['HoT - Higher Order Thinking']
+  }
+
+  if (config.field === 'cognitiveLevel') {
+    const bloomValues = getTagValues(question?.bloomLevel || question?.bloomsLevel || question?.bloomsTaxonomy || question?.taxonomyLevel)
+    if (bloomValues.length) return bloomValues
+    if (category.includes('direct')) return ['Understand']
+    if (category.includes('reason')) return ['Analyse']
+    if (category.includes('critical')) return ['Evaluate']
+    if (category.includes('application') || category.includes('apply')) return ['Apply']
+    return type.includes('mcq') ? ['Remember'] : ['Understand']
+  }
+
+  if (config.field === 'cognitiveFunction') {
+    if (category.includes('direct')) return ['Pattern Recognition']
+    if (category.includes('reason')) return ['Judgement & Decision Making']
+    if (category.includes('critical')) return ['Prioritization/Executive Function']
+    if (category.includes('application') || category.includes('apply')) return ['Attention & Cue Detection']
+    return type.includes('mcq') ? ['Pattern Recognition'] : ['Working Memory']
+  }
+
+  if (config.field === 'skillFocus') {
+    const fallbackValues = getTagValues(question?.clinicalSkill || question?.professionalSkill || question?.skillCategory)
+    if (fallbackValues.length) return fallbackValues
+    if (category.includes('direct')) return ['Knowledge']
+    if (category.includes('reason')) return ['Diagnosis']
+    if (category.includes('critical')) return ['Risk Assessment']
+    if (category.includes('application') || category.includes('apply')) return ['Management']
+    return type.includes('mcq') ? ['Diagnosis'] : ['Knowledge']
+  }
+
+  return []
+}
+
 const buildTagAnalyticsSeries = (questions = [], config) => {
   const counts = config.labels.map((tag) => {
     const count = questions.reduce((total, question) => {
-      const values = getTagValues(question?.[config.field])
+      const values = getAnalyticsTagValues(question, config)
       return total + (values.some((value) => isMatchingTagValue(value, tag)) ? 1 : 0)
     }, 0)
     return { label: tag.label, value: count }
@@ -2049,66 +2101,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     return { questionKey, maxMarks, ...meta }
   }
 
-  const buildStudentResultPerformanceSeries = (config) => (
-    config.labels.map((tag, tagIndex) => {
-      const summary = assessmentQuestions.reduce((total, question, questionIndex) => {
-        const values = getTagValues(question?.[config.field])
-        if (!values.some((value) => isMatchingTagValue(value, tag))) return total
-        const meta = getStudentQuestionResultMeta(question, questionIndex)
-        return {
-          value: total.value + 1,
-          obtainedMarks: total.obtainedMarks + meta.obtainedMarks,
-          maxMarks: total.maxMarks + meta.maxMarks,
-        }
-      }, { value: 0, obtainedMarks: 0, maxMarks: 0 })
-
-      return {
-        label: tag.label,
-        value: summary.value,
-        obtainedMarks: summary.obtainedMarks,
-        maxMarks: summary.maxMarks,
-        color: RESULT_CHART_COLORS[tagIndex % RESULT_CHART_COLORS.length],
-        percentage: summary.maxMarks ? Math.round((summary.obtainedMarks / summary.maxMarks) * 100) : 0,
-      }
-    })
-  )
-
-  const buildStudentResultContributionSeries = (config) => {
-    const totalMaxMarks = assessmentQuestions.reduce((total, question, questionIndex) => {
-      const meta = getStudentQuestionResultMeta(question, questionIndex)
-      return total + meta.maxMarks
-    }, 0)
-
-    return config.labels.map((tag, tagIndex) => {
-      const summary = assessmentQuestions.reduce((total, question, questionIndex) => {
-        const values = getTagValues(question?.[config.field])
-        if (!values.some((value) => isMatchingTagValue(value, tag))) return total
-        const meta = getStudentQuestionResultMeta(question, questionIndex)
-        return {
-          value: total.value + 1,
-          obtainedMarks: total.obtainedMarks + meta.obtainedMarks,
-          maxMarks: total.maxMarks + meta.maxMarks,
-        }
-      }, { value: 0, obtainedMarks: 0, maxMarks: 0 })
-
-      return {
-        label: tag.label,
-        value: summary.value,
-        obtainedMarks: summary.obtainedMarks,
-        maxMarks: summary.maxMarks,
-        color: RESULT_CHART_COLORS[tagIndex % RESULT_CHART_COLORS.length],
-        percentage: totalMaxMarks ? Math.round((summary.obtainedMarks / totalMaxMarks) * 100) : 0,
-      }
-    })
-  }
-
-  const studentResultTagAnalytics = isStudentResultView ? {
-    questionCategory: buildStudentResultContributionSeries(RESULT_TAG_ANALYTICS.questionCategory),
-    thinkingLevel: buildStudentResultPerformanceSeries(RESULT_TAG_ANALYTICS.thinkingLevel),
-    cognitiveLevel: buildStudentResultPerformanceSeries(RESULT_TAG_ANALYTICS.cognitiveLevel),
-    cognitiveFunction: buildStudentResultPerformanceSeries(RESULT_TAG_ANALYTICS.cognitiveFunction),
-    skillFocus: buildStudentResultPerformanceSeries(RESULT_TAG_ANALYTICS.skillFocus),
-  } : resultTagAnalytics
+  const studentResultTagAnalytics = resultTagAnalytics
 
   const renderQuestionResultBadges = (meta) => {
     if (isOverallAnalyticsView) {
