@@ -30,6 +30,177 @@ const DEFAULT_EVALUATION_STUDENTS = [
   { id: 'MV1255', name: 'Student 3', attendance: 'P' },
   { id: 'MC2568', name: 'Karthik Subramanian', attendance: 'P' },
 ]
+const MOCK_EVALUATION_QUESTIONS = [
+  {
+    id: 'mock-eval-mcq-1',
+    type: 'MCQ',
+    questionText: 'Which artery is most commonly involved in inferior wall myocardial infarction?',
+    marks: 1,
+    options: [
+      { id: 'a', label: 'Left anterior descending artery' },
+      { id: 'b', label: 'Right coronary artery' },
+      { id: 'c', label: 'Left circumflex artery' },
+      { id: 'd', label: 'Pulmonary artery' },
+    ],
+    correctOptionIds: ['b'],
+    questionCategory: 'Application',
+    thinkingLevel: 'HoT - Higher Order Thinking',
+    cognitiveLevel: 'Apply',
+    cognitiveFunction: 'Judgement & Decision Making',
+    skillFocus: 'Diagnosis',
+    competencies: ['Cardiology'],
+  },
+  {
+    id: 'mock-eval-mcq-2',
+    type: 'MCQ',
+    questionText: 'A patient with bronchial asthma should avoid which beta blocker?',
+    marks: 1,
+    options: [
+      { id: 'a', label: 'Propranolol' },
+      { id: 'b', label: 'Atenolol' },
+      { id: 'c', label: 'Bisoprolol' },
+      { id: 'd', label: 'Nebivolol' },
+    ],
+    correctOptionIds: ['a'],
+    questionCategory: 'Direct Comprehension',
+    thinkingLevel: 'LoT - Lower Order Thinking',
+    cognitiveLevel: 'Remember',
+    cognitiveFunction: 'Attention & Cue Detection',
+    skillFocus: 'Patient Safety',
+    competencies: ['Pharmacology'],
+  },
+  {
+    id: 'mock-eval-mcq-3',
+    type: 'MCQ',
+    questionText: 'Which investigation best confirms iron deficiency anemia?',
+    marks: 1,
+    options: [
+      { id: 'a', label: 'Serum calcium' },
+      { id: 'b', label: 'Serum ferritin' },
+      { id: 'c', label: 'Serum amylase' },
+      { id: 'd', label: 'Serum creatinine' },
+    ],
+    correctOptionIds: ['b'],
+    questionCategory: 'Reasoning Skills',
+    thinkingLevel: 'HoT - Higher Order Thinking',
+    cognitiveLevel: 'Analyse',
+    cognitiveFunction: 'Pattern Recognition',
+    skillFocus: 'Investigation',
+    competencies: ['Hematology'],
+  },
+  {
+    id: 'mock-eval-desc-1',
+    type: 'Descriptive Question',
+    previewSectionKey: 'SAQs',
+    questionText: 'Describe the immediate management of acute severe asthma in the emergency department.',
+    answerKey: 'Assess airway, breathing, circulation, give oxygen, nebulised bronchodilator, systemic steroid, monitoring, and escalation when needed.',
+    marks: 8,
+    questionCategory: 'Critical Thinking',
+    thinkingLevel: 'HoT - Higher Order Thinking',
+    cognitiveLevel: 'Evaluate',
+    cognitiveFunction: 'Prioritization/Executive Function',
+    skillFocus: 'Management',
+    competencies: ['Emergency Medicine'],
+  },
+  {
+    id: 'mock-eval-desc-2',
+    type: 'Descriptive Question',
+    previewSectionKey: 'SAQs',
+    questionText: 'Write short notes on complications of uncontrolled diabetes mellitus.',
+    answerKey: 'Microvascular and macrovascular complications including retinopathy, nephropathy, neuropathy, coronary disease, stroke, peripheral vascular disease, infections, and foot ulcers.',
+    marks: 8,
+    questionCategory: 'Direct Comprehension',
+    thinkingLevel: 'LoT - Lower Order Thinking',
+    cognitiveLevel: 'Understand',
+    cognitiveFunction: 'Working Memory',
+    skillFocus: 'Knowledge',
+    competencies: ['Endocrinology'],
+  },
+]
+const MOCK_EVALUATION_STUDENTS = [
+  {
+    id: 'MV1253',
+    name: 'Aarav Menon',
+    attendance: 'P',
+    evaluationStatus: 'Completed',
+    mockEvaluationState: {
+      'mock-eval-mcq-1': { status: 'correct', marks: 1 },
+      'mock-eval-mcq-2': { status: 'wrong', marks: 0 },
+      'mock-eval-mcq-3': { status: 'correct', marks: 1 },
+      'mock-eval-desc-1': { status: 'evaluated', marks: 7 },
+      'mock-eval-desc-2': { status: 'evaluated', marks: 6 },
+    },
+  },
+  {
+    id: 'MV1254',
+    name: 'Meera Krishnan',
+    attendance: 'P',
+    evaluationStatus: 'Completed',
+    mockEvaluationState: {
+      'mock-eval-mcq-1': { status: 'correct', marks: 1 },
+      'mock-eval-mcq-2': { status: 'correct', marks: 1 },
+      'mock-eval-mcq-3': { status: 'wrong', marks: 0 },
+      'mock-eval-desc-1': { status: 'evaluated', marks: 5 },
+      'mock-eval-desc-2': { status: 'evaluated', marks: 4 },
+    },
+  },
+  {
+    id: 'MV1255',
+    name: 'Rohit Sharma',
+    attendance: 'P',
+    evaluationStatus: 'Yet to Start',
+    mockEvaluationState: {},
+  },
+  {
+    id: 'MV1256',
+    name: 'Sara Joseph',
+    attendance: 'A',
+    evaluationStatus: 'Absent',
+    mockEvaluationState: {},
+  },
+  {
+    id: 'MC2568',
+    name: 'Karthik Subramanian',
+    attendance: 'P',
+    evaluationStatus: 'Completed',
+    mockEvaluationState: {
+      'mock-eval-mcq-1': { status: 'correct', marks: 1 },
+      'mock-eval-mcq-2': { status: 'correct', marks: 1 },
+      'mock-eval-mcq-3': { status: 'correct', marks: 1 },
+      'mock-eval-desc-1': { status: 'evaluated', marks: 8 },
+      'mock-eval-desc-2': { status: 'evaluated', marks: 7 },
+    },
+  },
+]
+const MOCK_EVALUATION_ASSESSMENT = {
+  id: 'mock-assessment-evaluation-hybrid',
+  assessmentName: 'Mock hybrid evaluation exam',
+  academicYear: '2025 - 2026',
+  examMode: 'Online',
+  supervisionType: 'Proctored Exams',
+  examCategory: 'Internal Assessment',
+  examType: 'Hybrid',
+  assignTo: 'Final Year',
+  totalMarks: 19,
+  questions: MOCK_EVALUATION_QUESTIONS,
+  questionRows: MOCK_EVALUATION_QUESTIONS,
+  students: MOCK_EVALUATION_STUDENTS,
+  attainmentLevels: [
+    { level: '0', minPercentage: '0', maxPercentage: '39' },
+    { level: '1', minPercentage: '40', maxPercentage: '49' },
+    { level: '2', minPercentage: '50', maxPercentage: '69' },
+    { level: '3', minPercentage: '70', maxPercentage: '100' },
+  ],
+  setup: {
+    collegeName: 'Medsy Medical College',
+    academicYear: '2025 - 2026',
+    assessmentName: 'Mock hybrid evaluation exam',
+    examCategory: 'Internal Assessment',
+    examType: 'Hybrid',
+    year: 'Final Year',
+    questions: MOCK_EVALUATION_QUESTIONS,
+  },
+}
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
   { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
@@ -38,12 +209,46 @@ const PREVIEW_SECTION_CONFIG = [
 ]
 const PREVIEW_SECTION_KEY_SET = new Set(PREVIEW_SECTION_CONFIG.map((section) => section.key))
 
+const normalizeSelectedAssessmentForMockFlow = (assessment) => {
+  if (!assessment || typeof assessment !== 'object') return MOCK_EVALUATION_ASSESSMENT
+
+  const hasQuestions = [
+    assessment.questions,
+    assessment.selectedQuestions,
+    assessment.questionRows,
+    assessment.setup?.questions,
+    assessment.setup?.selectedQuestions,
+    assessment.setup?.questionRows,
+  ].some((items) => Array.isArray(items) && items.length)
+  const hasStudents = [
+    assessment.students,
+    assessment.assignedStudents,
+    assessment.studentRows,
+    assessment.setup?.students,
+    assessment.setup?.assignedStudents,
+  ].some((items) => Array.isArray(items) && items.length)
+
+  return {
+    ...assessment,
+    questions: hasQuestions ? assessment.questions : MOCK_EVALUATION_QUESTIONS,
+    questionRows: hasQuestions ? assessment.questionRows : MOCK_EVALUATION_QUESTIONS,
+    students: hasStudents ? assessment.students : MOCK_EVALUATION_STUDENTS,
+    setup: {
+      ...MOCK_EVALUATION_ASSESSMENT.setup,
+      ...(assessment.setup || {}),
+      questions: hasQuestions ? (assessment.setup?.questions || assessment.questions || assessment.questionRows) : MOCK_EVALUATION_QUESTIONS,
+      questionRows: hasQuestions ? (assessment.setup?.questionRows || assessment.questionRows || assessment.questions) : MOCK_EVALUATION_QUESTIONS,
+      students: hasStudents ? (assessment.setup?.students || assessment.students || assessment.studentRows) : MOCK_EVALUATION_STUDENTS,
+    },
+  }
+}
+
 const readSelectedAssessment = () => {
   try {
     const storedAssessment = window.sessionStorage.getItem(ASSESSMENT_EVALUATION_SELECTED_KEY)
-    return storedAssessment ? JSON.parse(storedAssessment) : null
+    return storedAssessment ? normalizeSelectedAssessmentForMockFlow(JSON.parse(storedAssessment)) : MOCK_EVALUATION_ASSESSMENT
   } catch {
-    return null
+    return MOCK_EVALUATION_ASSESSMENT
   }
 }
 
@@ -440,8 +645,10 @@ const readAssessmentQuestions = (assessment) => {
   const attachedQuestions = [
     assessment?.questions,
     assessment?.selectedQuestions,
+    assessment?.questionRows,
     assessment?.setup?.questions,
     assessment?.setup?.selectedQuestions,
+    assessment?.setup?.questionRows,
   ].find((items) => Array.isArray(items))
 
   if (attachedQuestions) return attachedQuestions
@@ -625,11 +832,16 @@ const readEvaluationStudents = (assessment, studentSessions = {}, submissionStat
     const submission = submissionStatuses?.[assessmentId]?.[id] || null
     const isPresent = hasValidDateValue(session?.loginTime) || Boolean(submission?.status)
     const savedAttendance = manualAttendance[id]
+    const attachedAttendance = student.attendance || student.attendanceStatus
 
     return {
       id,
       name: student.name || student.studentName || `Student ${index + 1}`,
-      attendance: isOffline ? (savedAttendance || (hasAttachedStudents ? (student.attendance || student.attendanceStatus) : '') || 'P') : (isPresent ? 'P' : 'A'),
+      attendance: isOffline
+        ? (savedAttendance || (hasAttachedStudents ? attachedAttendance : '') || 'P')
+        : (isPresent || (hasAttachedStudents && attachedAttendance === 'P') ? 'P' : 'A'),
+      evaluationStatus: student.evaluationStatus || student.status || '',
+      mockEvaluationState: student.mockEvaluationState || {},
     }
   })
 }
@@ -675,7 +887,9 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [thresholdDraft, setThresholdDraft] = useState(() => buildAssessmentThresholdConfig(readSelectedAssessment()))
   const [thinkingThresholdTab, setThinkingThresholdTab] = useState('hotLot')
   const [questionEvaluationState, setQuestionEvaluationState] = useState(() => (
-    readStorageObject(getStudentQuestionEvaluationStorageKey(readSelectedAssessment(), readSelectedStudent()))
+    Object.keys(readStorageObject(getStudentQuestionEvaluationStorageKey(readSelectedAssessment(), readSelectedStudent()))).length
+      ? readStorageObject(getStudentQuestionEvaluationStorageKey(readSelectedAssessment(), readSelectedStudent()))
+      : readSelectedStudent()?.mockEvaluationState || {}
   ))
 
   const assessmentName = getAssessmentValue(assessment, 'assessmentName', 'Start Student Evaluation')
@@ -756,9 +970,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const normalizedRows = useMemo(() => evaluationRows.map((row) => {
     const isAbsent = String(row.attendance).toUpperCase() === 'A'
     const savedEvaluation = studentEvaluationStatuses[row.id] || {}
-    const savedStatus = savedEvaluation.status
+    const savedStatus = savedEvaluation.status || row.evaluationStatus
     const evalStatus = isAbsent ? 'Absent' : (savedStatus === 'Completed' ? 'Completed' : 'Yet to Start')
-    const savedQuestionState = readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, row))
+    const storedQuestionState = readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, row))
+    const savedQuestionState = Object.keys(storedQuestionState).length ? storedQuestionState : row.mockEvaluationState
     const rowMcqSummary = getScoringSummary(mcqScoringItems, savedQuestionState)
     const rowDescriptiveSummary = getScoringSummary(descriptiveScoringItems, savedQuestionState)
     const rowSummary = {
@@ -2702,7 +2917,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }, [totalPages])
 
   useEffect(() => {
-    setQuestionEvaluationState(readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, selectedStudent)))
+    const storedQuestionState = readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, selectedStudent))
+    setQuestionEvaluationState(Object.keys(storedQuestionState).length ? storedQuestionState : selectedStudent?.mockEvaluationState || {})
   }, [assessment, selectedStudent])
 
   useEffect(() => {

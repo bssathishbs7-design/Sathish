@@ -123,6 +123,218 @@ const PUBLISHED_FILTER_GROUPS = [
   },
 ]
 
+const MOCK_PUBLISHED_ASSESSMENTS = [
+  {
+    id: 'mock-published-online-mcq',
+    assessmentName: 'Anatomy weekly MCQ',
+    examCategory: 'Internal Assessment',
+    assignTo: 'First Year',
+    examMode: 'Online',
+    supervisionType: 'Standard Exam',
+    examType: 'MCQ',
+    startDate: '2026-08-12',
+    startTime: '10:00 AM',
+    endDate: '2026-08-12',
+    totalDuration: '00:45',
+    totalMarks: 40,
+    questionRows: Array.from({ length: 40 }, (_, index) => ({ id: `anatomy-mcq-${index + 1}`, type: 'MCQ', marks: 1 })),
+    publishedAt: '2026-08-10T09:20:00.000Z',
+    publishedLog: [
+      { facultyId: 'MC2568', facultyName: 'Karthik Subramanian', remarks: 'Published online MCQ assessment', timestamp: '2026-08-10T09:20:00.000Z' },
+    ],
+  },
+  {
+    id: 'mock-published-proctored-hybrid',
+    assessmentName: 'Final proctored medicine exam',
+    examCategory: 'Final Examination',
+    assignTo: 'Final Year',
+    examMode: 'Online',
+    supervisionType: 'Proctored Exams',
+    examType: 'Hybrid',
+    startDate: '2026-08-15',
+    startTime: '09:00 AM',
+    endDate: '2026-08-15',
+    totalDuration: '03:00',
+    totalMarks: 200,
+    questionRows: [
+      ...Array.from({ length: 80 }, (_, index) => ({ id: `medicine-mcq-${index + 1}`, type: 'MCQ', marks: 1 })),
+      ...Array.from({ length: 5 }, (_, index) => ({ id: `medicine-desc-${index + 1}`, type: 'Descriptive Question', marks: 24 })),
+    ],
+    publishedAt: '2026-08-09T11:10:00.000Z',
+    publishedLog: [
+      { facultyId: 'MC2568', facultyName: 'Karthik Subramanian', remarks: 'Published proctored hybrid assessment', timestamp: '2026-08-09T11:10:00.000Z' },
+    ],
+  },
+  {
+    id: 'mock-published-offline-descriptive',
+    assessmentName: 'Clinical skills offline test',
+    examCategory: 'Practical Assessment',
+    assignTo: 'Third Year',
+    examMode: 'Offline',
+    supervisionType: 'Offline Exam',
+    examType: 'Descriptive',
+    startDate: '2026-08-20',
+    startTime: '09:30 AM',
+    endDate: '2026-08-20',
+    totalDuration: '02:00',
+    totalMarks: 80,
+    questionRows: Array.from({ length: 8 }, (_, index) => ({ id: `clinical-desc-${index + 1}`, type: 'Descriptive Question', marks: 10 })),
+    publishedAt: '2026-08-08T08:45:00.000Z',
+    publishedLog: [
+      { facultyId: 'MC2568', facultyName: 'Karthik Subramanian', remarks: 'Published offline descriptive paper', timestamp: '2026-08-08T08:45:00.000Z' },
+    ],
+  },
+  {
+    id: 'mock-published-practice-mcq',
+    assessmentName: 'Pharmacology practice quiz',
+    examCategory: 'Practice Assessment',
+    assignTo: 'Second Year',
+    examMode: 'Online',
+    supervisionType: 'Practice Exam',
+    examType: 'MCQ',
+    startDate: '2026-08-11',
+    startTime: '12:00 AM',
+    endDate: '2027-08-11',
+    totalDuration: '00:30',
+    totalMarks: 25,
+    questionRows: Array.from({ length: 25 }, (_, index) => ({ id: `pharma-practice-${index + 1}`, type: 'MCQ', marks: 1 })),
+    publishedAt: '2026-08-07T10:00:00.000Z',
+    publishedLog: [
+      { facultyId: 'MC2568', facultyName: 'Karthik Subramanian', remarks: 'Published practice MCQ quiz', timestamp: '2026-08-07T10:00:00.000Z' },
+    ],
+  },
+  {
+    id: 'mock-evaluation-online-descriptive',
+    assessmentName: 'Pathology descriptive assessment',
+    examCategory: 'Internal Assessment',
+    assignTo: 'Second Year',
+    examMode: 'Online',
+    supervisionType: 'Standard Exam',
+    examType: 'Descriptive',
+    startDate: '2026-08-01',
+    startTime: '09:00 AM',
+    endDate: '2026-08-01',
+    totalDuration: '02:00',
+    totalMarks: 60,
+    evaluationStatus: 'Pending Evaluation',
+    questionRows: Array.from({ length: 6 }, (_, index) => ({ id: `pathology-desc-${index + 1}`, type: 'Descriptive Question', marks: 10 })),
+    publishedAt: '2026-07-29T09:00:00.000Z',
+  },
+  {
+    id: 'mock-evaluation-proctored-hybrid',
+    assessmentName: 'Surgery hybrid midterm',
+    examCategory: 'Midterm Examination',
+    assignTo: 'Final Year',
+    examMode: 'Online',
+    supervisionType: 'Proctored Exams',
+    examType: 'Hybrid',
+    startDate: '2026-08-02',
+    startTime: '10:00 AM',
+    endDate: '2026-08-02',
+    totalDuration: '02:30',
+    totalMarks: 120,
+    evaluationStatus: 'In Progress',
+    questionRows: [
+      ...Array.from({ length: 60 }, (_, index) => ({ id: `surgery-mcq-${index + 1}`, type: 'MCQ', marks: 1 })),
+      ...Array.from({ length: 3 }, (_, index) => ({ id: `surgery-desc-${index + 1}`, type: 'Descriptive Question', marks: 20 })),
+    ],
+    publishedAt: '2026-07-30T10:30:00.000Z',
+  },
+  {
+    id: 'mock-evaluation-offline-mcq',
+    assessmentName: 'Offline physiology test',
+    examCategory: 'Unit Test',
+    assignTo: 'First Year',
+    examMode: 'Offline',
+    supervisionType: 'Offline Exam',
+    examType: 'MCQ',
+    startDate: '2026-08-03',
+    startTime: '11:00 AM',
+    endDate: '2026-08-03',
+    totalDuration: '01:00',
+    totalMarks: 50,
+    evaluationStatus: 'Pending Evaluation',
+    questionRows: Array.from({ length: 50 }, (_, index) => ({ id: `physiology-mcq-${index + 1}`, type: 'MCQ', marks: 1 })),
+    publishedAt: '2026-07-31T11:15:00.000Z',
+  },
+  {
+    id: 'mock-result-online-mcq',
+    assessmentName: 'Biochemistry unit test',
+    examCategory: 'Unit Test',
+    assignTo: 'First Year',
+    examMode: 'Online',
+    supervisionType: 'Standard Exam',
+    examType: 'MCQ',
+    startDate: '2026-07-25',
+    startTime: '10:00 AM',
+    endDate: '2026-07-25',
+    totalDuration: '01:00',
+    totalMarks: 50,
+    evaluationStatus: 'Published',
+    resultStatus: 'Published',
+    questionRows: Array.from({ length: 50 }, (_, index) => ({ id: `biochem-mcq-${index + 1}`, type: 'MCQ', marks: 1 })),
+    publishedAt: '2026-07-26T12:00:00.000Z',
+  },
+  {
+    id: 'mock-result-proctored-hybrid',
+    assessmentName: 'General medicine final',
+    examCategory: 'Final Examination',
+    assignTo: 'Final Year',
+    examMode: 'Online',
+    supervisionType: 'Proctored Exams',
+    examType: 'Hybrid',
+    startDate: '2026-07-20',
+    startTime: '09:00 AM',
+    endDate: '2026-07-20',
+    totalDuration: '03:00',
+    totalMarks: 200,
+    evaluationStatus: 'Published',
+    resultStatus: 'Published',
+    questionRows: [
+      ...Array.from({ length: 80 }, (_, index) => ({ id: `general-medicine-mcq-${index + 1}`, type: 'MCQ', marks: 1 })),
+      ...Array.from({ length: 5 }, (_, index) => ({ id: `general-medicine-desc-${index + 1}`, type: 'Descriptive Question', marks: 24 })),
+    ],
+    publishedAt: '2026-07-22T15:00:00.000Z',
+  },
+  {
+    id: 'mock-result-practice-mcq',
+    assessmentName: 'Practice cardiology quiz',
+    examCategory: 'Practice Assessment',
+    assignTo: 'Final Year',
+    examMode: 'Online',
+    supervisionType: 'Practice Exam',
+    examType: 'MCQ',
+    startDate: '2026-07-18',
+    startTime: '12:00 AM',
+    endDate: '2026-07-31',
+    totalDuration: '00:25',
+    totalMarks: 25,
+    evaluationStatus: 'Published',
+    resultStatus: 'Published',
+    questionRows: Array.from({ length: 25 }, (_, index) => ({ id: `cardiology-practice-${index + 1}`, type: 'MCQ', marks: 1 })),
+    publishedAt: '2026-08-01T09:15:00.000Z',
+  },
+]
+
+const getMockPublishedAssessments = () => MOCK_PUBLISHED_ASSESSMENTS.map((assessment) => ({
+  ...assessment,
+  setup: {
+    collegeName: 'Medsy Medical College',
+    academicYear: '2025 - 2026',
+    assessmentName: assessment.assessmentName,
+    examCategory: assessment.examCategory,
+    year: assessment.assignTo,
+  },
+}))
+
+const mergeMockPublishedAssessments = (rows = []) => {
+  const existingRows = Array.isArray(rows) ? rows : []
+  const existingIds = new Set(existingRows.map((assessment) => assessment?.id).filter(Boolean))
+  const missingMockRows = getMockPublishedAssessments().filter((assessment) => !existingIds.has(assessment.id))
+
+  return [...missingMockRows, ...existingRows]
+}
+
 const formatSupervisionTypeLabel = (value) => (
   value === 'Proctored Exams' ? 'Proctored Exam' : value
 )
@@ -165,9 +377,9 @@ const readAssessmentDrafts = () => {
 const readPublishedAssessments = () => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
-    return Array.isArray(parsed) ? parsed : []
+    return mergeMockPublishedAssessments(parsed)
   } catch {
-    return []
+    return getMockPublishedAssessments()
   }
 }
 
@@ -902,7 +1114,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
     if (requestedTab === 'evaluation') return 'evaluation'
     if (requestedTab === 'results') return 'results'
     if (requestedTab === 'published') return 'published'
-    return drafts.length ? 'draft' : rows.length ? 'published' : 'draft'
+    return rows.length ? 'published' : drafts.length ? 'draft' : 'published'
   })
   const { published: activePublishedAssessments, evaluation: evaluationAssessments, results: resultAssessments } = splitPublishedAssessmentRows(publishedAssessments, scheduleNow)
   const metrics = assessmentMetrics.map((metric) => (
@@ -1527,6 +1739,15 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <span className="assessment-create-published-actions">
                             <button
                               type="button"
+                              className="assessment-create-published-icon-btn is-edit"
+                              onClick={() => openPublishedActionModal('result-edit', assessment)}
+                              title="Edit published result"
+                              aria-label={`Edit published result for ${assessment.assessmentName || 'assessment'}`}
+                            >
+                              <Pencil size={13} strokeWidth={2.2} />
+                            </button>
+                            <button
+                              type="button"
                               className="assessment-create-published-info"
                               onClick={() => {
                                 setSelectedPublishedLogAssessment(assessment)
@@ -1620,15 +1841,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
                             <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
                           </div>
                           <span className="assessment-create-published-actions">
-                            <button
-                              type="button"
-                              className="assessment-create-published-icon-btn is-edit"
-                              onClick={() => openPublishedActionModal('result-edit', assessment)}
-                              title="Edit published result"
-                              aria-label={`Edit published result for ${assessment.assessmentName || 'assessment'}`}
-                            >
-                              <Pencil size={13} strokeWidth={2.2} />
-                            </button>
                             <button
                               type="button"
                               className="assessment-create-published-info"
