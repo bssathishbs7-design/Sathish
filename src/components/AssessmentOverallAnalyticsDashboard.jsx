@@ -323,6 +323,18 @@ function SkillFocusGraph({ items }) {
   )
 }
 
+export function AssessmentAnalyticsGraphGrid({ tagAnalytics, bloomThresholds = {}, className = '' }) {
+  return (
+    <div className={`aoa-graph-grid ${className}`.trim()}>
+      <article className="aoa-panel is-mastery"><PanelHeading icon={Award} title="Progress Based Mastery" subtitle="Question distribution by mastery category" /><MasteryGaugeGraph items={tagAnalytics.questionCategory} /></article>
+      <article className="aoa-panel is-bloom"><PanelHeading icon={GraduationCap} title="Cognitive Levels - Bloom's Taxonomy" subtitle="Coverage across Bloom's cognitive levels" /><RadarGraph items={tagAnalytics.cognitiveLevel} thresholds={bloomThresholds} /></article>
+      <article className="aoa-panel is-thinking"><PanelHeading icon={TrendingUp} title="Thinking Level" subtitle="Higher and lower order thinking balance" /><ThinkingGaugeGraph items={tagAnalytics.thinkingLevel} /></article>
+      <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title="Cognitive Function" subtitle="Mental processes represented by the questions" /><BubbleGraph items={tagAnalytics.cognitiveFunction} /></article>
+      <article className="aoa-panel is-skill"><PanelHeading icon={Target} title="Skill Focus Categories" subtitle="Clinical and professional skill coverage" /><SkillFocusGraph items={tagAnalytics.skillFocus} /></article>
+    </div>
+  )
+}
+
 export default function AssessmentOverallAnalyticsDashboard({
   assessmentName, academicYear, examMode, examType, examCategory, theme, onToggleTheme, onExit,
   onBack, onDownload, rows, overallPercentage, attainmentThreshold, bloomThresholds,
@@ -472,13 +484,7 @@ export default function AssessmentOverallAnalyticsDashboard({
             <PanelHeading icon={Target} title="Attainment explorer" subtitle={`Target threshold ${attainmentThreshold}%`} action={<div className="aoa-tabs" role="tablist">{attainmentTabs.map((tab) => <button type="button" role="tab" key={tab.key} className={attainmentTab === tab.key ? 'is-active' : ''} onClick={() => onAttainmentTabChange(tab.key)}>{tab.label}</button>)}</div>} />
             <div className="aoa-attainment-list">{attainmentRows.length ? attainmentRows.slice(0, 10).map((row) => { const percentage = row.maxMarks ? Math.round((row.averageMarks / row.maxMarks) * 100) : 0; const attained = percentage >= attainmentThreshold; return <article key={`${attainmentTab}-${row.name}`} className={attained ? 'is-attained' : 'is-not-attained'}><span><strong title={row.name}>{row.name}</strong><small>Level {row.level}</small></span><div><i><b style={{ width: `${clamp(percentage)}%` }} /></i><em>{percentage}%</em></div><b>{attained ? 'Attained' : 'Not Attained'}</b></article> }) : <div className="aoa-empty-inline">No attainment data available.</div>}</div>
           </section>
-          <div className="aoa-graph-grid">
-            <article className="aoa-panel is-mastery"><PanelHeading icon={Award} title="Progress Based Mastery" subtitle="Question distribution by mastery category" /><MasteryGaugeGraph items={tagAnalytics.questionCategory} /></article>
-            <article className="aoa-panel is-bloom"><PanelHeading icon={GraduationCap} title="Cognitive Levels - Bloom's Taxonomy" subtitle="Coverage across Bloom's cognitive levels" /><RadarGraph items={tagAnalytics.cognitiveLevel} thresholds={bloomThresholds} /></article>
-            <article className="aoa-panel is-thinking"><PanelHeading icon={TrendingUp} title="Thinking Level" subtitle="Higher and lower order thinking balance" /><ThinkingGaugeGraph items={tagAnalytics.thinkingLevel} /></article>
-            <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title="Cognitive Function" subtitle="Mental processes represented by the questions" /><BubbleGraph items={tagAnalytics.cognitiveFunction} /></article>
-            <article className="aoa-panel is-skill"><PanelHeading icon={Target} title="Skill Focus Categories" subtitle="Clinical and professional skill coverage" /><SkillFocusGraph items={tagAnalytics.skillFocus} /></article>
-          </div>
+          <AssessmentAnalyticsGraphGrid tagAnalytics={tagAnalytics} bloomThresholds={bloomThresholds} />
         </section>
 
         <section className="aoa-panel aoa-question-panel">

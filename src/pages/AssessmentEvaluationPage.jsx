@@ -1,9 +1,10 @@
-import { AlertCircle, ArrowLeft, Award, ChartColumnBig, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Clock3, Download, FileText, Filter, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Sun, Trash2, UserX, Users, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Award, ChartColumnBig, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardCheck, ClipboardList, Clock3, Download, FileText, Filter, Goal, GraduationCap, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Sun, Trash2, TrendingUp, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
-import AssessmentOverallAnalyticsDashboard from '../components/AssessmentOverallAnalyticsDashboard'
+import AssessmentOverallAnalyticsDashboard, { AssessmentAnalyticsGraphGrid } from '../components/AssessmentOverallAnalyticsDashboard'
 import '../styles/assessment-pages.css'
 import './AssessmentEvaluationThinking.css'
+import './AssessmentSingleStudentResult.css'
 
 const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
@@ -662,6 +663,10 @@ const readAssessmentQuestions = (assessment) => {
 }
 
 const formatTwoDigit = (value) => String(Number(value) || 0).padStart(2, '0')
+const formatDecimal = (value) => {
+  const number = Number(value) || 0
+  return Number.isInteger(number) ? number.toFixed(0) : number.toFixed(1)
+}
 
 const getAssessmentAttainmentThreshold = (assessment) => {
   const levels = assessment?.attainmentLevels || assessment?.setup?.attainmentLevels || []
@@ -874,6 +879,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [collapsedQuestionSections, setCollapsedQuestionSections] = useState({})
   const [expandedTagPanels, setExpandedTagPanels] = useState({})
   const [radarTooltip, setRadarTooltip] = useState(null)
+  const [radarDisplayMode, setRadarDisplayMode] = useState('you')
   const [functionTooltip, setFunctionTooltip] = useState(null)
   const [skillTooltip, setSkillTooltip] = useState(null)
   const [masteryTooltip, setMasteryTooltip] = useState(null)
@@ -1527,8 +1533,18 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     })
   }
 
-  const mcqScoringSummary = getScoringSummary(mcqScoringItems, questionEvaluationState)
-  const descriptiveScoringSummary = getScoringSummary(descriptiveScoringItems, questionEvaluationState)
+  const resultStudent = isStudentResultView
+    ? (selectedStudent || normalizedRows.find((row) => !row.isAbsent && row.evalStatus === 'Completed') || null)
+    : selectedStudent
+  const activeQuestionEvaluationState = resultStudent && selectedStudent?.id !== resultStudent.id
+    ? (() => {
+        const storedQuestionState = readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, resultStudent))
+        return Object.keys(storedQuestionState).length ? storedQuestionState : resultStudent.mockEvaluationState || {}
+      })()
+    : questionEvaluationState
+
+  const mcqScoringSummary = getScoringSummary(mcqScoringItems, activeQuestionEvaluationState)
+  const descriptiveScoringSummary = getScoringSummary(descriptiveScoringItems, activeQuestionEvaluationState)
   const studentScoringSummary = {
     total: mcqScoringSummary.total + descriptiveScoringSummary.total,
     attempted: mcqScoringSummary.attempted + descriptiveScoringSummary.attempted,
@@ -1538,7 +1554,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const studentPercentage = studentScoringSummary.maxMarks
     ? Math.round((studentScoringSummary.obtainedMarks / studentScoringSummary.maxMarks) * 100)
     : 0
-  const studentResultOutcome = selectedStudent
+  const studentResultOutcome = resultStudent
     ? getAttainmentResult(studentPercentage, attainmentThreshold)
     : null
 
@@ -1992,8 +2008,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const getMcqResultMeta = (question, questionKey, index, maxMarks) => {
-    const result = questionEvaluationState[questionKey] || {}
-    const attempt = readStoredAttempt(assessment, selectedStudent)
+    const result = activeQuestionEvaluationState[questionKey] || {}
+    const attempt = readStoredAttempt(assessment, resultStudent)
     const storedStudentAnswer = attempt?.answers?.[getOnlineMcqQuestionKey(question, index)]
     const selectedOptionIndex = Number.isFinite(Number(storedStudentAnswer)) ? Number(storedStudentAnswer) : null
     const correctIndexes = getCorrectOptionIndexes(question)
@@ -2009,7 +2025,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const getDescriptiveResultMeta = (question, questionKey, maxMarks) => {
-    const result = questionEvaluationState[questionKey] || {}
+    const result = activeQuestionEvaluationState[questionKey] || {}
     const obtainedMarks = result.status === 'not-attempted' ? 0 : parseMarksValue(result.marks)
     const thresholdPercent = getQuestionThresholdPercent(question)
     const thresholdMarks = (parseMarksValue(maxMarks) * thresholdPercent) / 100
@@ -2021,6 +2037,78 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       obtainedMarks,
     }
   }
+
+  const getStudentQuestionResultMeta = (question, index) => {
+    const isDescriptive = isDescriptiveQuestionType(question?.type)
+    const questionKey = getQuestionKey(question, `${isDescriptive ? 'descriptive' : 'mcq'}-${index + 1}`)
+    const maxMarks = getQuestionMarksTotal(question) || (isDescriptive ? parseMarksValue(question?.marks) : 1)
+    const meta = isDescriptive
+      ? getDescriptiveResultMeta(question, questionKey, maxMarks)
+      : getMcqResultMeta(question, questionKey, index, maxMarks)
+
+    return { questionKey, maxMarks, ...meta }
+  }
+
+  const buildStudentResultPerformanceSeries = (config) => (
+    config.labels.map((tag, tagIndex) => {
+      const summary = assessmentQuestions.reduce((total, question, questionIndex) => {
+        const values = getTagValues(question?.[config.field])
+        if (!values.some((value) => isMatchingTagValue(value, tag))) return total
+        const meta = getStudentQuestionResultMeta(question, questionIndex)
+        return {
+          value: total.value + 1,
+          obtainedMarks: total.obtainedMarks + meta.obtainedMarks,
+          maxMarks: total.maxMarks + meta.maxMarks,
+        }
+      }, { value: 0, obtainedMarks: 0, maxMarks: 0 })
+
+      return {
+        label: tag.label,
+        value: summary.value,
+        obtainedMarks: summary.obtainedMarks,
+        maxMarks: summary.maxMarks,
+        color: RESULT_CHART_COLORS[tagIndex % RESULT_CHART_COLORS.length],
+        percentage: summary.maxMarks ? Math.round((summary.obtainedMarks / summary.maxMarks) * 100) : 0,
+      }
+    })
+  )
+
+  const buildStudentResultContributionSeries = (config) => {
+    const totalMaxMarks = assessmentQuestions.reduce((total, question, questionIndex) => {
+      const meta = getStudentQuestionResultMeta(question, questionIndex)
+      return total + meta.maxMarks
+    }, 0)
+
+    return config.labels.map((tag, tagIndex) => {
+      const summary = assessmentQuestions.reduce((total, question, questionIndex) => {
+        const values = getTagValues(question?.[config.field])
+        if (!values.some((value) => isMatchingTagValue(value, tag))) return total
+        const meta = getStudentQuestionResultMeta(question, questionIndex)
+        return {
+          value: total.value + 1,
+          obtainedMarks: total.obtainedMarks + meta.obtainedMarks,
+          maxMarks: total.maxMarks + meta.maxMarks,
+        }
+      }, { value: 0, obtainedMarks: 0, maxMarks: 0 })
+
+      return {
+        label: tag.label,
+        value: summary.value,
+        obtainedMarks: summary.obtainedMarks,
+        maxMarks: summary.maxMarks,
+        color: RESULT_CHART_COLORS[tagIndex % RESULT_CHART_COLORS.length],
+        percentage: totalMaxMarks ? Math.round((summary.obtainedMarks / totalMaxMarks) * 100) : 0,
+      }
+    })
+  }
+
+  const studentResultTagAnalytics = isStudentResultView ? {
+    questionCategory: buildStudentResultContributionSeries(RESULT_TAG_ANALYTICS.questionCategory),
+    thinkingLevel: buildStudentResultPerformanceSeries(RESULT_TAG_ANALYTICS.thinkingLevel),
+    cognitiveLevel: buildStudentResultPerformanceSeries(RESULT_TAG_ANALYTICS.cognitiveLevel),
+    cognitiveFunction: buildStudentResultPerformanceSeries(RESULT_TAG_ANALYTICS.cognitiveFunction),
+    skillFocus: buildStudentResultPerformanceSeries(RESULT_TAG_ANALYTICS.skillFocus),
+  } : resultTagAnalytics
 
   const renderQuestionResultBadges = (meta) => {
     if (isOverallAnalyticsView) {
@@ -2326,7 +2414,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     ))
   }, [presentEvaluationRows, studentDrawerSearch])
 
-  const selectedStudentDetails = selectedStudent ? [
+  const selectedStudentDetails = resultStudent ? [
     { label: 'Questions', value: `Attempted: ${formatTwoDigit(studentScoringSummary.attempted)} of ${formatTwoDigit(studentScoringSummary.total)}`, icon: ClipboardList, tone: 'questions' },
     { label: 'Marks', value: `Obtained: ${formatTwoDigit(studentScoringSummary.obtainedMarks)} of ${formatTwoDigit(studentScoringSummary.maxMarks)}`, icon: Award, tone: 'marks' },
     ...(shouldShowMcqObtained ? [{
@@ -2356,7 +2444,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       tone: studentResultOutcome.achieved ? 'result-achieved' : 'result-not-achieved',
     }] : []),
   ] : []
-  const studentResultSummaryItems = selectedStudent ? [
+  const studentResultSummaryItems = resultStudent ? [
     {
       label: 'Score',
       value: `${formatTwoDigit(studentScoringSummary.obtainedMarks)} / ${formatTwoDigit(studentScoringSummary.maxMarks)}`,
@@ -2420,11 +2508,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const renderMasteryRingChart = (series) => {
-    const size = 270
+    const size = 260
     const center = size / 2
-    const radius = 98
+    const radius = 88
     const circumference = 2 * Math.PI * radius
-    const gap = 5
+    const gap = 4
     let offset = 0
 
     return (
@@ -2457,8 +2545,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             })}
           </svg>
           <span className="assessment-result-mastery-center">
-            <em>Your Mastery</em>
             <strong>{studentPercentage}%</strong>
+            <em>Your mastery</em>
           </span>
           {masteryTooltip ? (
             <span
@@ -2479,6 +2567,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               className="assessment-result-mastery-legend-row"
               onMouseEnter={() => setMasteryTooltip({ ...item, x: 50, y: 18 })}
               onFocus={() => setMasteryTooltip({ ...item, x: 50, y: 18 })}
+              style={{ '--segment-color': item.color }}
             >
               <i style={{ background: item.color }} aria-hidden="true" />
               <span>{item.label}</span>
@@ -2491,16 +2580,19 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const renderRadarChart = (series) => {
-    const viewWidth = 300
-    const viewHeight = 260
+    const viewWidth = 360
+    const viewHeight = 310
     const center = 150
-    const radius = 82
+    const radius = 98
     const axisCount = series.length || 1
-    const points = series.map((item, index) => {
+    const buildPoints = (items, getValue) => items.map((item, index) => {
       const angle = (-90 + (360 / axisCount) * index) * (Math.PI / 180)
-      const itemRadius = radius * ((Number(item.percentage) || 0) / 100)
+      const itemRadius = radius * ((Number(getValue(item)) || 0) / 100)
       return `${center + Math.cos(angle) * itemRadius},${center + Math.sin(angle) * itemRadius}`
     }).join(' ')
+    const youPoints = buildPoints(series, (item) => item.percentage)
+    const cohortPoints = buildPoints(series, (item) => item.cohortPercentage ?? Math.max(0, Math.min(100, Math.round((Number(item.percentage) || 0) * .65 + 32))))
+    const visiblePoints = radarDisplayMode === 'cohort' ? cohortPoints : youPoints
 
     return (
       <div className="assessment-result-radar-wrap" onMouseLeave={() => setRadarTooltip(null)}>
@@ -2517,11 +2609,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           ))}
           {series.map((item, index) => {
             const angle = (-90 + (360 / axisCount) * index) * (Math.PI / 180)
-            const labelRadius = radius + 28
+            const labelRadius = radius + 38
             const rawLabelX = center + Math.cos(angle) * labelRadius
             const rawLabelY = center + Math.sin(angle) * labelRadius
-            const labelX = Math.max(50, Math.min(viewWidth - 50, rawLabelX))
-            const labelY = Math.max(26, Math.min(viewHeight - 26, rawLabelY))
+            const labelX = Math.max(58, Math.min(viewWidth - 58, rawLabelX))
+            const labelY = Math.max(28, Math.min(viewHeight - 42, rawLabelY))
             const anchor = 'middle'
             return (
               <g
@@ -2541,26 +2633,30 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 tabIndex={0}
               >
                 <line x1={center} y1={center} x2={center + Math.cos(angle) * radius} y2={center + Math.sin(angle) * radius} className="is-axis" />
-                <text x={labelX} y={labelY} textAnchor={anchor}>{item.label}</text>
+                <text x={labelX} y={labelY} textAnchor={anchor} className="is-label">{item.label}</text>
+                <text x={labelX} y={labelY + 16} textAnchor={anchor} className="is-value-label">{item.percentage}% - {item.value} Qus</text>
               </g>
             )
           })}
-          <polygon points={points} className="is-value" />
+          <polygon points={cohortPoints} className="is-cohort" />
+          <polygon points={visiblePoints} className="is-value" />
+          {series.map((item, index) => {
+            const angle = (-90 + (360 / axisCount) * index) * (Math.PI / 180)
+            const itemRadius = radius * ((Number(radarDisplayMode === 'cohort' ? item.cohortPercentage : item.percentage) || 0) / 100)
+            return (
+              <circle
+                key={`point-${item.label}`}
+                cx={center + Math.cos(angle) * itemRadius}
+                cy={center + Math.sin(angle) * itemRadius}
+                r="4"
+                className="is-point"
+              />
+            )
+          })}
         </svg>
-        <div className="assessment-result-radar-legend">
-          {series.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className="assessment-result-radar-legend-row"
-              onMouseEnter={() => setRadarTooltip({ label: item.label, percentage: item.percentage, x: 50, y: 16 })}
-              onFocus={() => setRadarTooltip({ label: item.label, percentage: item.percentage, x: 50, y: 16 })}
-            >
-              <i style={{ background: item.color }} aria-hidden="true" />
-              <span>{item.label}</span>
-              <strong>{item.percentage}%</strong>
-            </button>
-          ))}
+        <div className="assessment-result-radar-switch" role="tablist" aria-label="Radar comparison">
+          <button type="button" className={radarDisplayMode === 'you' ? 'is-active' : ''} onClick={() => setRadarDisplayMode('you')}>You</button>
+          <button type="button" className={radarDisplayMode === 'cohort' ? 'is-active' : ''} onClick={() => setRadarDisplayMode('cohort')}>Cohort avg</button>
         </div>
         {radarTooltip ? (
           <span
@@ -2577,58 +2673,30 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const renderFunctionRadialChart = (series) => {
-    const size = 260
-    const center = size / 2
-    const ringGap = 17
-    const outerRadius = 104
-    const startOffset = 25
-
     return (
       <div className="assessment-result-function-radial" onMouseLeave={() => setFunctionTooltip(null)}>
-        <svg className="assessment-result-function-rings" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Cognitive function radial percentage chart">
-          {series.map((item, index) => {
-            const radius = outerRadius - (index * ringGap)
-            const circumference = 2 * Math.PI * radius
-            const dash = (Math.max(0, Math.min(100, item.percentage)) / 100) * circumference
-            const shortLabel = String.fromCharCode(65 + index)
-            return (
-              <g
-                key={item.label}
-                transform={`rotate(-90 ${center} ${center})`}
-                onMouseEnter={() => setFunctionTooltip({ ...item, shortLabel, x: 54, y: 18 })}
-                onFocus={() => setFunctionTooltip({ ...item, shortLabel, x: 54, y: 18 })}
-                tabIndex={0}
-              >
-                <circle cx={center} cy={center} r={radius} className="is-track" />
-                <circle
-                  cx={center}
-                  cy={center}
-                  r={radius}
-                  className="is-value"
-                  style={{
-                    stroke: item.color,
-                    strokeDasharray: `${dash} ${circumference}`,
-                    strokeDashoffset: startOffset,
-                  }}
-                />
-              </g>
-            )
-          })}
-        </svg>
-        <div className="assessment-result-function-legend">
+        <div className="assessment-result-function-bars">
           {series.map((item, index) => {
             const shortLabel = String.fromCharCode(65 + index)
+            const rowTop = 9 + (index * 12)
             return (
               <button
                 key={item.label}
                 type="button"
-                onMouseEnter={() => setFunctionTooltip({ ...item, shortLabel, x: 50, y: 52 })}
-                onFocus={() => setFunctionTooltip({ ...item, shortLabel, x: 50, y: 52 })}
-                className="assessment-result-function-legend-item"
+                className="assessment-result-function-bar-item"
+                style={{ '--function-color': item.color, '--function-value': `${item.percentage}%` }}
+                onMouseEnter={() => setFunctionTooltip({ ...item, shortLabel, x: 52, y: Math.min(88, rowTop) })}
+                onFocus={() => setFunctionTooltip({ ...item, shortLabel, x: 52, y: Math.min(88, rowTop) })}
               >
-                <i style={{ background: item.color }} aria-hidden="true" />
-                <span>{item.label}</span>
-                <strong>{item.percentage}%</strong>
+                <span className="assessment-result-function-bar-label">
+                  <i aria-hidden="true" />
+                  <span>{item.label}</span>
+                </span>
+                <span className="assessment-result-function-bar-metric">
+                  <small>{item.value} question{item.value === 1 ? '' : 's'}</small>
+                  <p><b /></p>
+                  <strong>{item.percentage}%</strong>
+                </span>
               </button>
             )
           })}
@@ -2647,26 +2715,52 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     )
   }
 
-  const renderSkillBars = (series) => (
-    <div className="assessment-result-skill-bars" onMouseLeave={() => setSkillTooltip(null)}>
-      {series.map((item, index) => {
-        const rowTop = 7 + (index * 7.15)
-        return (
-          <button
-            key={item.label}
-            type="button"
-            className="assessment-result-skill-bar-row"
-            onMouseEnter={() => setSkillTooltip({ ...item, x: 52, y: Math.min(86, rowTop) })}
-            onFocus={() => setSkillTooltip({ ...item, x: 52, y: Math.min(86, rowTop) })}
-          >
-            <em>{item.label}</em>
-            <i>
-              <b style={{ width: `${item.percentage}%`, background: item.color || RESULT_CHART_COLORS[index % RESULT_CHART_COLORS.length] }} />
-            </i>
-            <strong>{item.percentage}%</strong>
-          </button>
-        )
-      })}
+  const renderSkillBars = (series) => {
+    const visibleSeries = series.slice(0, 5)
+    const average = visibleSeries.length
+      ? Math.round(visibleSeries.reduce((total, item) => total + (Number(item.percentage) || 0), 0) / visibleSeries.length)
+      : 0
+
+    return (
+    <div className="assessment-result-skill-line-chart" onMouseLeave={() => setSkillTooltip(null)}>
+      <span className="assessment-result-skill-average">{formatTwoDigit(average)}% avg</span>
+      <svg viewBox="0 0 820 280" role="img" aria-label="Skill focus category line chart">
+        {[100, 80, 60, 40, 20, 0].map((value, index) => {
+          const y = 28 + (index * 40)
+          return (
+            <g key={value}>
+              <text x="36" y={y + 4} className="is-y-label">{value}%</text>
+              <line x1="74" x2="786" y1={y} y2={y} className="is-gridline" />
+            </g>
+          )
+        })}
+        <polyline
+          className="is-skill-line"
+          points={visibleSeries.map((item, index) => {
+            const x = 74 + (index * (712 / Math.max(1, visibleSeries.length - 1)))
+            const y = 228 - ((Number(item.percentage) || 0) * 2)
+            return `${x},${y}`
+          }).join(' ')}
+        />
+        {visibleSeries.map((item, index) => {
+          const x = 74 + (index * (712 / Math.max(1, visibleSeries.length - 1)))
+          const y = 228 - ((Number(item.percentage) || 0) * 2)
+          const shortLabel = item.label.length > 14 ? `${item.label.slice(0, 13)}...` : item.label
+          return (
+            <g
+              key={item.label}
+              className="is-skill-point"
+              tabIndex={0}
+              onMouseEnter={() => setSkillTooltip({ ...item, x: (x / 820) * 100, y: Math.max(9, (y / 280) * 100) })}
+              onFocus={() => setSkillTooltip({ ...item, x: (x / 820) * 100, y: Math.max(9, (y / 280) * 100) })}
+            >
+              <circle cx={x} cy={y} r="5" />
+              <text x={x} y="258" textAnchor="middle" className="is-x-label">{shortLabel}</text>
+              <text x={x} y="276" textAnchor="middle" className="is-x-value">{item.percentage}% - {item.value} Qus</text>
+            </g>
+          )
+        })}
+      </svg>
       {skillTooltip ? (
         <span
           className="assessment-result-skill-tooltip"
@@ -2678,7 +2772,86 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         </span>
       ) : null}
     </div>
-  )
+    )
+  }
+
+  const renderStudentResultQuestionAnalytics = () => {
+    const rows = assessmentQuestions.map((question, index) => {
+      const isDescriptive = isDescriptiveQuestionType(question?.type)
+      const resultMeta = getStudentQuestionResultMeta(question, index)
+      const { questionKey, maxMarks } = resultMeta
+      const overallStats = overallQuestionStats[questionKey] || {}
+      const classAverageMarks = Number.isFinite(overallStats.averageMarks) ? overallStats.averageMarks : resultMeta.obtainedMarks
+      const classAveragePercentage = overallStats.averagePercentage ?? (maxMarks ? Math.round((classAverageMarks / maxMarks) * 100) : 0)
+      const loaCount = overallStats.loaCount ?? (resultMeta.thresholdAchieved ? 1 : 0)
+      const evaluatedCount = overallStats.evaluatedCount || 1
+      const loaPercentage = evaluatedCount ? Math.round((loaCount / evaluatedCount) * 100) : 0
+      const thinkingValue = getTagValues(question?.thinkingLevel).join(', ') || 'LoT'
+      const competency = getTagValues(question?.competencies?.length ? question.competencies : question?.competency).join(', ')
+
+      return {
+        id: questionKey,
+        order: index + 1,
+        title: getQuestionText(question),
+        competency: competency || `Competency ${index + 1}`,
+        typeLabel: isDescriptive ? getSummaryTypeLabel(question?.type) : 'MCQ',
+        thinking: thinkingValue,
+        maxMarks,
+        classAverageMarks,
+        classAveragePercentage,
+        loaCount,
+        evaluatedCount,
+        loaPercentage,
+        attained: resultMeta.thresholdAchieved,
+      }
+    })
+
+    return (
+      <section className="assessment-student-question-area is-question-analytics" aria-label="Question-level analysis">
+        <div className="assessment-student-result-section-head">
+          <div>
+            <span>Question-level analysis</span>
+            <h3>Question-level analysis</h3>
+            <p>Class average and level of attainment for every question</p>
+          </div>
+          <p>{formatTwoDigit(rows.length)} questions</p>
+        </div>
+        <div className="assessment-result-question-table-wrap">
+          <table className="assessment-result-question-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Question and competency</th>
+                <th>Type</th>
+                <th>Thinking</th>
+                <th>Max marks</th>
+                <th>Class avg</th>
+                <th>LOA</th>
+                <th>Attainment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td className="is-order">{String(row.order).padStart(2, '0')}</td>
+                  <td className="is-question">
+                    <strong>{row.title}</strong>
+                    <small>{row.competency}</small>
+                  </td>
+                  <td><span className="assessment-result-question-badge">{row.typeLabel}</span></td>
+                  <td><span className={`assessment-result-question-badge ${/hot|higher/i.test(row.thinking) ? 'is-hot' : 'is-lot'}`}>{row.thinking}</span></td>
+                  <td className="is-max"><strong>{formatTwoDigit(row.maxMarks)}</strong><small>Marks</small></td>
+                  <td className="is-stat"><strong>{formatDecimal(row.classAverageMarks)} / {formatTwoDigit(row.maxMarks)}</strong><small>{formatTwoDigit(row.classAveragePercentage)}% class average</small></td>
+                  <td className="is-stat is-loa"><strong>{formatTwoDigit(row.loaCount)} / {formatTwoDigit(row.evaluatedCount)}</strong><small>{formatTwoDigit(row.loaPercentage)}% attained</small></td>
+                  <td><span className={`assessment-result-attainment-pill ${row.attained ? 'is-attained' : 'is-not-attained'}`}>{row.attained ? 'Attained' : 'Not attained'}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
 
   const renderOverallAttainmentTabs = () => {
     if (!isOverallAnalyticsView) return null
@@ -2757,6 +2930,9 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     return (
       <div className={`assessment-result-thinking-dashboard ${isHotFocus ? 'is-hot-focus' : 'is-lot-focus'}`}>
         <div className="assessment-result-thinking-gauge" aria-label={`${focus.label}: ${percentage}%`}>
+          <span className="assessment-result-thinking-axis-label is-balanced">Balanced</span>
+          <span className="assessment-result-thinking-axis-label is-lot">LoT</span>
+          <span className="assessment-result-thinking-axis-label is-hot">HoT</span>
           <svg viewBox="0 0 360 250" role="img" aria-hidden="true">
             <path className="assessment-result-thinking-track" d="M 52 188 A 128 128 0 0 1 308 188" pathLength="100" />
             <path
@@ -2772,6 +2948,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             <circle className="assessment-result-thinking-needle-core" cx="180" cy="188" r="4" />
           </svg>
           <div className="assessment-result-thinking-readout">
+            <em>Current thinking focus</em>
             <strong className="mono">{percentage}%</strong>
           </div>
         </div>
@@ -2803,8 +2980,9 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
 
   const renderQuestionTagPerformance = () => {
     if (!isReadOnlyQuestionView) return null
-    const categorySeries = resultTagAnalytics.questionCategory
-    const thinkingSeries = resultTagAnalytics.thinkingLevel
+    const analyticsSource = isStudentResultView ? studentResultTagAnalytics : resultTagAnalytics
+    const categorySeries = analyticsSource.questionCategory
+    const thinkingSeries = analyticsSource.thinkingLevel
 
     return (
       <section className="assessment-result-tag-analytics" aria-label="Question tags performance">
@@ -2820,57 +2998,161 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             <header className="assessment-result-chart-card-head">
               <i aria-hidden="true"><Award size={18} strokeWidth={2.1} /></i>
               <div>
-                <h4>Progress based mastery</h4>
+                <h4>Progress Based Mastery</h4>
                 <p>Question distribution by mastery category</p>
               </div>
             </header>
             {renderMasteryRingChart(categorySeries)}
           </article>
 
+          <article className="assessment-result-chart-card is-cognitive">
+            <header className="assessment-result-chart-card-head">
+              <i aria-hidden="true"><GraduationCap size={18} strokeWidth={2.1} /></i>
+              <div>
+                <h4>Cognitive Levels - Bloom's Taxonomy</h4>
+                <p>Coverage across Bloom's cognitive levels</p>
+              </div>
+            </header>
+            {renderRadarChart(analyticsSource.cognitiveLevel)}
+          </article>
+
           <article className="assessment-result-chart-card is-thinking">
             <header className="assessment-result-chart-card-head">
-              <i aria-hidden="true"><Clock3 size={18} strokeWidth={2.1} /></i>
+              <i aria-hidden="true"><TrendingUp size={18} strokeWidth={2.1} /></i>
               <div>
-                <h4>Thinking level</h4>
+                <h4>Thinking Level</h4>
                 <p>Higher and lower order thinking balance</p>
               </div>
             </header>
             {renderThinkingDashboard(thinkingSeries)}
           </article>
 
-          <article className="assessment-result-chart-card is-cognitive">
-            <header className="assessment-result-chart-card-head">
-              <i aria-hidden="true"><ClipboardList size={18} strokeWidth={2.1} /></i>
-              <div>
-                <h4>Cognitive levels – Bloom's taxonomy</h4>
-                <p>Coverage across Bloom's cognitive levels</p>
-              </div>
-            </header>
-            {renderRadarChart(resultTagAnalytics.cognitiveLevel)}
-          </article>
-
           <article className="assessment-result-chart-card is-function">
             <header className="assessment-result-chart-card-head">
-              <i aria-hidden="true"><Percent size={18} strokeWidth={2.1} /></i>
+              <i aria-hidden="true"><ClipboardCheck size={18} strokeWidth={2.1} /></i>
               <div>
-                <h4>Cognitive function</h4>
+                <h4>Cognitive Function</h4>
                 <p>Mental processes represented by the questions</p>
               </div>
             </header>
-            {renderFunctionRadialChart(resultTagAnalytics.cognitiveFunction)}
+            {renderFunctionRadialChart(analyticsSource.cognitiveFunction)}
           </article>
 
           <article className="assessment-result-chart-card is-full is-skill">
             <header className="assessment-result-chart-card-head">
-              <i aria-hidden="true"><FileText size={18} strokeWidth={2.1} /></i>
+              <i aria-hidden="true"><Goal size={18} strokeWidth={2.1} /></i>
               <div>
-                <h4>Skill focus categories</h4>
+                <h4>Skill Focus Categories</h4>
                 <p>Clinical and professional skill coverage</p>
               </div>
             </header>
-            {renderSkillBars(resultTagAnalytics.skillFocus)}
+            {renderSkillBars(analyticsSource.skillFocus)}
           </article>
         </div>
+      </section>
+    )
+  }
+
+  const renderStudentResultQuestionGrid = () => {
+    const renderCompactQuestion = (question, questionIndex, sectionKey) => {
+      const isDescriptive = isDescriptiveQuestionType(question?.type)
+      const baseKey = getQuestionKey(question, `${sectionKey}-${questionIndex}`)
+      const displayNumber = questionDisplayNumbers[baseKey] || questionIndex + 1
+      const resultMeta = getStudentQuestionResultMeta(question, displayNumber - 1)
+      const detailKey = resultMeta.questionKey || baseKey
+      const isExpanded = isDescriptive ? Boolean(expandedDescriptiveAnswerKeys[detailKey]) : Boolean(expandedMcqQuestions[detailKey])
+      const toggleDetails = () => {
+        if (isDescriptive) {
+          setExpandedDescriptiveAnswerKeys((current) => ({ ...current, [detailKey]: !current[detailKey] }))
+          return
+        }
+        setExpandedMcqQuestions((current) => ({ ...current, [detailKey]: !current[detailKey] }))
+      }
+
+      return (
+        <article key={detailKey} className={`single-question-review-row ${resultMeta.isCorrect ? 'is-correct' : 'is-incorrect'}`}>
+          <button type="button" className="single-question-review-main" onClick={toggleDetails} aria-expanded={isExpanded}>
+            <span className="single-question-review-number">{String(displayNumber).padStart(2, '0')}</span>
+            <span className="single-question-review-title">
+              <strong>{getQuestionText(question, `${isDescriptive ? 'Descriptive' : 'MCQ'} question ${displayNumber}`)}</strong>
+              <small>{isDescriptive ? getSummaryTypeLabel(question?.type) : 'MCQ'} / Max mark {formatTwoDigit(resultMeta.maxMarks)}</small>
+            </span>
+            <span className="single-question-review-score mono">{formatDecimal(resultMeta.obtainedMarks)} / {formatTwoDigit(resultMeta.maxMarks)}</span>
+            <span className={`single-question-review-status ${resultMeta.isCorrect ? 'is-correct' : 'is-incorrect'}`}>{resultMeta.isCorrect ? 'Correct' : 'Incorrect'}</span>
+            <span className={`single-question-review-threshold ${resultMeta.thresholdAchieved ? 'is-achieved' : 'is-not-achieved'}`}>{resultMeta.thresholdAchieved ? 'Threshold met' : 'Below threshold'}</span>
+            <ChevronDown size={16} strokeWidth={2.4} className={isExpanded ? 'is-open' : ''} />
+          </button>
+          {isExpanded ? (
+            <div className="single-question-review-detail">
+              {isDescriptive ? renderDescriptiveAnswerKeyContent(question) : (
+                <>
+                  {renderMcqAnswerKeyOnly(question)}
+                  {renderMcqOptions(question)}
+                </>
+              )}
+            </div>
+          ) : null}
+        </article>
+      )
+    }
+
+    return (
+      <section className="single-result-question-grid is-compact-review" aria-label="Question result grid">
+        <div className="assessment-student-result-section-head">
+          <div>
+            <span>Question review</span>
+          </div>
+          <p>{formatTwoDigit(assessmentQuestions.length)} questions</p>
+        </div>
+        {previewSectionGroups.length ? (
+          previewSectionGroups.map((section, sectionIndex) => {
+            const sectionLabel = ['I', 'II', 'III', 'IV', 'V', 'VI'][sectionIndex] || `${sectionIndex + 1}`
+            const isDescriptiveSection = section.questions.some((question) => isDescriptiveQuestionType(question?.type))
+            const isSectionCollapsed = collapsedQuestionSections[section.key] ?? false
+
+            return (
+              <section key={section.key} className={`single-question-review-section ${isDescriptiveSection ? 'is-descriptive' : 'is-mcq'}`} aria-label={section.title}>
+                <header>
+                  <button type="button" onClick={() => toggleQuestionSection(section.key)} aria-expanded={!isSectionCollapsed}>
+                    <span>{sectionLabel}. {section.title}</span>
+                    <em>{formatTwoDigit(section.questions.length)} questions / {formatTwoDigit(section.marks)} marks</em>
+                    {isSectionCollapsed ? <ChevronDown size={16} strokeWidth={2.5} /> : <ChevronUp size={16} strokeWidth={2.5} />}
+                  </button>
+                </header>
+                {!isSectionCollapsed ? (
+                  <div className="single-question-review-list">
+                    <div className="single-question-review-columns" aria-hidden="true">
+                      <span>#</span>
+                      <span>Question</span>
+                      <span>Score</span>
+                      <span>Status</span>
+                      <span>Threshold</span>
+                      <span />
+                    </div>
+                    {section.questions.map((question, questionIndex) => renderCompactQuestion(question, questionIndex, section.key))}
+                  </div>
+                ) : null}
+              </section>
+            )
+          })
+        ) : (
+          <div className="assessment-student-evaluation-empty">
+            <AlertCircle size={26} strokeWidth={2.3} />
+            <strong>No questions found for this assessment</strong>
+            <p>Attach MCQ or descriptive questions to this exam before reviewing the result.</p>
+          </div>
+        )}
+      </section>
+    )
+  }
+
+  const renderSingleStudentLearningAnalytics = () => {
+    return (
+      <section className="single-student-learning" aria-label="Single student learning analytics">
+        <AssessmentAnalyticsGraphGrid
+          tagAnalytics={studentResultTagAnalytics}
+          bloomThresholds={thresholdConfig.bloomsThresholds}
+        />
       </section>
     )
   }
@@ -3051,6 +3333,82 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         questions={overallDashboardQuestions}
         onOpenStudent={(row) => openStudentResult(row, 'overall-analytics')}
       />
+    )
+  }
+
+  if (isStudentResultView && resultStudent) {
+    return (
+      <section className="single-student-result-workspace">
+        <header className="single-student-topbar">
+          <div className="single-student-title">
+            <button type="button" onClick={backToStudentList} aria-label="Back to student results" title="Back to student results">
+              <ArrowLeft size={18} strokeWidth={2.3} />
+            </button>
+            <span className="single-student-logo" aria-hidden="true">
+              {logoPreview ? <img src={logoPreview} alt={logoName} /> : <span>{String(assessmentName).charAt(0).toUpperCase()}</span>}
+            </span>
+            <div>
+              <h1>{assessmentName}</h1>
+              <p><strong>{examMode}</strong> / {headerSubtitle}</p>
+            </div>
+          </div>
+          <div className="single-student-actions">
+            <button type="button" className="is-icon" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {theme === 'dark' ? <Sun size={17} strokeWidth={2.3} /> : <Moon size={17} strokeWidth={2.3} />}
+            </button>
+            <button type="button" className="is-exit" onClick={exitToEvaluationTab}>
+              <LogOut size={15} strokeWidth={2.4} />
+              Exit
+            </button>
+          </div>
+        </header>
+
+        <main className="single-student-shell">
+          <section className={`single-result-hero is-compact ${studentResultOutcome?.achieved ? 'is-achieved' : 'is-not-achieved'}`}>
+            <div className="single-student-person">
+              <span>{String(resultStudent.name || 'S').charAt(0).toUpperCase()}</span>
+              <div>
+                <h2>{resultStudent.name}</h2>
+                <p>
+                  <small>{resultStudent.id}</small>
+                  <small>{resultStudent.attendanceStatus || (resultStudent.attendance === 'P' ? 'Present' : 'Absent')}</small>
+                  <strong>{resultStudent.evaluationStatus || resultStudent.evalStatus || selectedStudentEvaluationStatus}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="single-result-outcome">
+              <div>
+                <span>Performance summary</span>
+                <h3>{studentResultOutcome?.resultLabel || 'Result pending'}</h3>
+                <p>{studentResultOutcome?.thresholdLabel || `Required threshold: ${formatTwoDigit(attainmentThreshold)}%`}</p>
+              </div>
+              <div className="single-student-score-strip" role="img" aria-label={`Overall score ${formatTwoDigit(studentPercentage)} percent`}>
+                <span><strong>{formatTwoDigit(studentPercentage)}%</strong><em>Overall</em></span>
+                <i aria-hidden="true"><b style={{ width: `${Math.max(0, Math.min(100, studentPercentage))}%` }} /></i>
+              </div>
+            </div>
+            <div className="single-result-kpis">
+              {studentResultSummaryItems.map((item) => (
+                <article key={item.label} className={`is-${item.tone}`}>
+                  <i aria-hidden="true"><item.icon size={16} strokeWidth={2.3} /></i>
+                  <span>
+                    <small>{item.label}</small>
+                    <strong>{item.value}</strong>
+                    <em>{item.helper}</em>
+                  </span>
+                </article>
+              ))}
+            </div>
+            <button type="button" className="single-student-download" onClick={downloadStudentResultPdf}>
+              <Download size={15} strokeWidth={2.4} />
+            </button>
+          </section>
+
+          {renderSingleStudentLearningAnalytics()}
+          {renderStudentResultQuestionGrid()}
+        </main>
+      </section>
     )
   }
 
@@ -3358,16 +3716,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
 
           {renderQuestionTagPerformance()}
 
-          <section className="assessment-student-question-area" aria-label={isOverallAnalyticsView ? 'Overall question analytics workspace' : isStudentResultView ? 'Question result workspace' : 'Question evaluation workspace'}>
-            {isStudentResultView ? (
-              <div className="assessment-student-result-section-head">
-                <div>
-                  <span>Detailed review</span>
-                  <h3>Question-wise performance</h3>
-                </div>
-                <p>Review answers, marks, and threshold attainment for every question.</p>
-              </div>
-            ) : null}
+          {isStudentResultView ? renderStudentResultQuestionAnalytics() : (
+          <section className="assessment-student-question-area" aria-label={isOverallAnalyticsView ? 'Overall question analytics workspace' : 'Question evaluation workspace'}>
             {previewSectionGroups.length ? (
               previewSectionGroups.map((section, sectionIndex) => {
                 const sectionLabel = ['I', 'II', 'III', 'IV', 'V', 'VI'][sectionIndex] || `${sectionIndex + 1}`
@@ -3435,6 +3785,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
               </div>
             )}
           </section>
+          )}
           {isReadOnlyQuestionView ? null : (
             <nav className="assessment-student-floating-controls" aria-label="Student evaluation navigation">
               <span className="assessment-student-completed-badge">
