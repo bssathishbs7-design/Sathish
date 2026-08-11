@@ -234,35 +234,33 @@ function RadarGraph({ items, thresholds = {} }) {
 
 function BubbleGraph({ items }) {
   if (!items.length) return <EmptyGraph />
-  const palette = ['#8172cf', '#55b997', '#dc8995', '#d5a649', '#6698bf']
+  const palette = ['#168d6b', '#4b7bec', '#7a58c8', '#d98b35', '#3d99ab']
   const sortedItems = [...items].sort((left, right) => right.percentage - left.percentage)
   return (
-    <div className="aoa-bubble-chart" aria-label="Cognitive Function distribution">
-      <div className="aoa-bubble-stage">
-        <div className="aoa-bubble-cluster">
-          {sortedItems.map((item, index) => {
-            const color = item.color || palette[index % palette.length]
-            const size = Math.max(62, Math.min(150, 58 + (clamp(item.percentage) * 1.75)))
-            return (
-              <article
-                key={item.label}
-                className={`aoa-function-bubble is-${['primary', 'secondary', 'tertiary', 'quaternary', 'extra'][index] || 'extra'}${item.value ? '' : ' is-zero'}`}
-                style={{ '--bubble-color': color, '--bubble-size': `${size}px` }}
-                aria-label={`${item.label}: ${item.percentage}% (${item.value} questions)`}
-              >
-                <strong>{item.percentage}%</strong>
-                <small>{item.value} Qus</small>
-              </article>
-            )
-          })}
-        </div>
-      </div>
-      <div className="aoa-bubble-legend" aria-label="Cognitive Function summary">
-        {sortedItems.map((item, index) => {
-          const color = item.color || palette[index % palette.length]
-          return <span key={item.label} style={{ '--bubble-color': color }}><i /><em>{item.label}</em><b>{item.percentage}% · {item.value} Qus</b></span>
-        })}
-      </div>
+    <div className="aoa-function-bars" aria-label="Cognitive Function distribution">
+      {sortedItems.map((item, index) => {
+        const color = item.color || palette[index % palette.length]
+        const percentage = clamp(item.percentage)
+        const questionLabel = `${item.value} question${item.value === 1 ? '' : 's'}`
+        return (
+          <article
+            key={item.label}
+            style={{ '--function-color': color, '--function-value': `${percentage}%` }}
+            tabIndex="0"
+            aria-label={`${item.label}: ${percentage}% (${questionLabel})`}
+          >
+            <div className="aoa-function-bar-label">
+              <i aria-hidden="true" />
+              <span>{item.label}</span>
+            </div>
+            <div className="aoa-function-bar-metric">
+              <small>{questionLabel}</small>
+              <p aria-hidden="true"><b /></p>
+              <strong>{percentage}%</strong>
+            </div>
+          </article>
+        )
+      })}
     </div>
   )
 }
@@ -476,8 +474,8 @@ export default function AssessmentOverallAnalyticsDashboard({
           </section>
           <div className="aoa-graph-grid">
             <article className="aoa-panel is-mastery"><PanelHeading icon={Award} title="Progress Based Mastery" subtitle="Question distribution by mastery category" /><MasteryGaugeGraph items={tagAnalytics.questionCategory} /></article>
-            <article className="aoa-panel is-thinking"><PanelHeading icon={TrendingUp} title="Thinking Level" subtitle="Higher and lower order thinking balance" /><ThinkingGaugeGraph items={tagAnalytics.thinkingLevel} /></article>
             <article className="aoa-panel is-bloom"><PanelHeading icon={GraduationCap} title="Cognitive Levels - Bloom's Taxonomy" subtitle="Coverage across Bloom's cognitive levels" /><RadarGraph items={tagAnalytics.cognitiveLevel} thresholds={bloomThresholds} /></article>
+            <article className="aoa-panel is-thinking"><PanelHeading icon={TrendingUp} title="Thinking Level" subtitle="Higher and lower order thinking balance" /><ThinkingGaugeGraph items={tagAnalytics.thinkingLevel} /></article>
             <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title="Cognitive Function" subtitle="Mental processes represented by the questions" /><BubbleGraph items={tagAnalytics.cognitiveFunction} /></article>
             <article className="aoa-panel is-skill"><PanelHeading icon={Target} title="Skill Focus Categories" subtitle="Clinical and professional skill coverage" /><SkillFocusGraph items={tagAnalytics.skillFocus} /></article>
           </div>

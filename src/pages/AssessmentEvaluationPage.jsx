@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
 import AssessmentOverallAnalyticsDashboard from '../components/AssessmentOverallAnalyticsDashboard'
 import '../styles/assessment-pages.css'
+import './AssessmentEvaluationThinking.css'
 
 const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
@@ -664,7 +665,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [functionTooltip, setFunctionTooltip] = useState(null)
   const [skillTooltip, setSkillTooltip] = useState(null)
   const [masteryTooltip, setMasteryTooltip] = useState(null)
-  const [thinkingTooltip, setThinkingTooltip] = useState(null)
+  const [activeThinkingLabel, setActiveThinkingLabel] = useState('')
   const [overallAnalyticsTab, setOverallAnalyticsTab] = useState('subject')
   const [confirmAction, setConfirmAction] = useState(null)
   const [isThresholdConfirmOpen, setIsThresholdConfirmOpen] = useState(false)
@@ -2525,6 +2526,66 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     )
   }
 
+  const renderThinkingDashboard = (series) => {
+    const thinkingItems = Array.isArray(series) ? series : []
+    const defaultFocus = thinkingItems.reduce((leading, item) => (
+      Number(item.percentage) > Number(leading?.percentage) ? item : leading
+    ), thinkingItems[0] || { label: 'HoT - Higher Order Thinking', percentage: 0, value: 0 })
+    const focus = thinkingItems.find((item) => item.label === activeThinkingLabel) || defaultFocus
+    const percentage = Math.max(0, Math.min(100, Number(focus?.percentage) || 0))
+    const isHotFocus = /hot|higher/i.test(focus?.label || '')
+    // The needle starts at LoT (left), passes through the balanced midpoint,
+    // and ends at HoT (right). Rotating around the SVG centre keeps it aligned
+    // at every percentage without overlapping the readout.
+    const needleAngle = -90 + (percentage * 1.8)
+
+    return (
+      <div className={`assessment-result-thinking-dashboard ${isHotFocus ? 'is-hot-focus' : 'is-lot-focus'}`}>
+        <div className="assessment-result-thinking-gauge" aria-label={`${focus.label}: ${percentage}%`}>
+          <svg viewBox="0 0 360 250" role="img" aria-hidden="true">
+            <path className="assessment-result-thinking-track" d="M 52 188 A 128 128 0 0 1 308 188" pathLength="100" />
+            <path
+              className="assessment-result-thinking-value"
+              d="M 52 188 A 128 128 0 0 1 308 188"
+              pathLength="100"
+              style={{ '--thinking-progress': percentage }}
+            />
+            <g className="assessment-result-thinking-needle-group" transform={`rotate(${needleAngle} 180 188)`}>
+              <line className="assessment-result-thinking-needle" x1="180" y1="188" x2="180" y2="104" />
+            </g>
+            <circle className="assessment-result-thinking-needle-hub" cx="180" cy="188" r="11" />
+            <circle className="assessment-result-thinking-needle-core" cx="180" cy="188" r="4" />
+          </svg>
+          <div className="assessment-result-thinking-readout">
+            <strong className="mono">{percentage}%</strong>
+          </div>
+        </div>
+        <div className="assessment-result-thinking-kpis" aria-label="Thinking level breakdown">
+          {thinkingItems.map((item) => {
+            const isHot = /hot|higher/i.test(item.label)
+            const selected = item.label === focus.label
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className={`${isHot ? 'is-hot' : 'is-lot'} ${selected ? 'is-focus' : ''}`}
+                onClick={() => setActiveThinkingLabel(item.label)}
+                aria-pressed={selected}
+              >
+                <span className="assessment-result-thinking-kpi-head">
+                  <i aria-hidden="true" />
+                  <strong>{item.label}</strong>
+                  <b className="mono">{item.percentage}%</b>
+                </span>
+                <em>{item.value} question{Number(item.value) === 1 ? '' : 's'}</em>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   const renderQuestionTagPerformance = () => {
     if (!isReadOnlyQuestionView) return null
     const categorySeries = resultTagAnalytics.questionCategory
@@ -2541,43 +2602,57 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         </div>
         <div className="assessment-result-chart-grid">
           <article className="assessment-result-chart-card is-category is-mastery">
-            <h4><Award size={14} strokeWidth={2.4} />{RESULT_TAG_ANALYTICS.questionCategory.heading}</h4>
+            <header className="assessment-result-chart-card-head">
+              <i aria-hidden="true"><Award size={18} strokeWidth={2.1} /></i>
+              <div>
+                <h4>Progress based mastery</h4>
+                <p>Question distribution by mastery category</p>
+              </div>
+            </header>
             {renderMasteryRingChart(categorySeries)}
           </article>
 
+          <article className="assessment-result-chart-card is-thinking">
+            <header className="assessment-result-chart-card-head">
+              <i aria-hidden="true"><Clock3 size={18} strokeWidth={2.1} /></i>
+              <div>
+                <h4>Thinking level</h4>
+                <p>Higher and lower order thinking balance</p>
+              </div>
+            </header>
+            {renderThinkingDashboard(thinkingSeries)}
+          </article>
+
           <article className="assessment-result-chart-card is-cognitive">
-            <h4><ClipboardList size={14} strokeWidth={2.4} />{RESULT_TAG_ANALYTICS.cognitiveLevel.heading}</h4>
+            <header className="assessment-result-chart-card-head">
+              <i aria-hidden="true"><ClipboardList size={18} strokeWidth={2.1} /></i>
+              <div>
+                <h4>Cognitive levels – Bloom's taxonomy</h4>
+                <p>Coverage across Bloom's cognitive levels</p>
+              </div>
+            </header>
             {renderRadarChart(resultTagAnalytics.cognitiveLevel)}
           </article>
 
-          <article className="assessment-result-chart-card is-thinking">
-            <h4><Clock3 size={14} strokeWidth={2.4} />{RESULT_TAG_ANALYTICS.thinkingLevel.title}</h4>
-            <div className="assessment-result-thinking-grid" onMouseLeave={() => setThinkingTooltip(null)}>
-              {thinkingSeries.map((item, index) => (
-                <div key={item.label} className="assessment-result-thinking-card">
-                  {renderSemiDonut(item.percentage, item.label, item.color, '', { ...item, x: 50, y: index === 0 ? 24 : 63 })}
-                </div>
-              ))}
-              {thinkingTooltip ? (
-                <span
-                  className="assessment-result-thinking-tooltip"
-                  style={{ left: `${thinkingTooltip.x}%`, top: `${thinkingTooltip.y}%` }}
-                  role="tooltip"
-                >
-                  <strong>{thinkingTooltip.label}</strong>
-                  <em>{thinkingTooltip.percentage}% ({thinkingTooltip.value} question{thinkingTooltip.value === 1 ? '' : 's'})</em>
-                </span>
-              ) : null}
-            </div>
-          </article>
-
           <article className="assessment-result-chart-card is-function">
-            <h4><Percent size={14} strokeWidth={2.4} />{RESULT_TAG_ANALYTICS.cognitiveFunction.title}</h4>
+            <header className="assessment-result-chart-card-head">
+              <i aria-hidden="true"><Percent size={18} strokeWidth={2.1} /></i>
+              <div>
+                <h4>Cognitive function</h4>
+                <p>Mental processes represented by the questions</p>
+              </div>
+            </header>
             {renderFunctionRadialChart(resultTagAnalytics.cognitiveFunction)}
           </article>
 
           <article className="assessment-result-chart-card is-full is-skill">
-            <h4><FileText size={14} strokeWidth={2.4} />{RESULT_TAG_ANALYTICS.skillFocus.heading}</h4>
+            <header className="assessment-result-chart-card-head">
+              <i aria-hidden="true"><FileText size={18} strokeWidth={2.1} /></i>
+              <div>
+                <h4>Skill focus categories</h4>
+                <p>Clinical and professional skill coverage</p>
+              </div>
+            </header>
             {renderSkillBars(resultTagAnalytics.skillFocus)}
           </article>
         </div>
@@ -2767,6 +2842,17 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     <section className={`assessment-evaluation-workspace ${isStudentResultView ? 'is-analytics-result-workspace' : ''}`}>
       <header className="assessment-evaluation-top-header">
         <div className="assessment-evaluation-brand-block">
+          {isStudentResultView ? (
+            <button
+              type="button"
+              className="assessment-evaluation-result-back"
+              onClick={backToStudentList}
+              aria-label="Back to student results"
+              title="Back to student results"
+            >
+              <ArrowLeft size={18} strokeWidth={2.3} />
+            </button>
+          ) : null}
           <span className="assessment-evaluation-logo" aria-hidden="true">
             {logoPreview ? (
               <img src={logoPreview} alt={logoName} />
@@ -2812,7 +2898,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         selectedStudent || isOverallAnalyticsView ? (
         <section className={`assessment-student-evaluation-card ${isReadOnlyQuestionView ? 'is-result-view' : ''} ${isStudentResultView ? 'is-student-result-page' : ''}`} aria-label={isOverallAnalyticsView ? 'Overall assessment analytics' : isStudentResultView ? 'Selected student result' : 'Selected student evaluation'}>
           <div className={`assessment-student-evaluation-head ${isOverallAnalyticsView ? 'is-overall-analytics-head' : ''} ${!isReadOnlyQuestionView ? 'is-student-evaluation-head' : ''}`}>
-            {shouldHideOverallAnalyticsBack ? (
+            {isStudentResultView ? null : shouldHideOverallAnalyticsBack ? (
               <span aria-hidden="true" />
             ) : (
               <button type="button" className="assessment-student-back-icon" onClick={backToStudentList} title="Back to Student List" aria-label="Back to Student List">
