@@ -10727,8 +10727,8 @@
 }
 
 .assessment-page.is-my-assessment .my-assessment-published-grid {
-  grid-template-columns: repeat(auto-fill, minmax(320px, 345px));
-  justify-content: start;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  justify-content: stretch;
   align-items: start;
 }
 
@@ -10793,7 +10793,7 @@
 
 .assessment-page.is-my-assessment .assessment-create-published-card {
   width: 100%;
-  max-width: 345px;
+  max-width: none;
   gap: 10px;
   padding: 16px;
 }

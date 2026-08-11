@@ -29,16 +29,23 @@
   position: sticky;
   top: 0;
   z-index: 80;
-  min-height: 72px;
-  padding: 10px clamp(16px, 2vw, 28px);
+  min-height: 74px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ssr-line);
+  background: color-mix(in srgb, var(--ssr-card) 94%, var(--ssr-soft));
+  box-shadow: 0 8px 20px rgba(15, 104, 68, .05);
+  backdrop-filter: blur(16px);
+}
+
+.single-student-topbar-inner {
+  width: min(1340px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  min-height: 56px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--ssr-line);
-  background: rgba(255, 255, 255, .9);
-  box-shadow: 0 8px 20px rgba(15, 104, 68, .05);
-  backdrop-filter: blur(16px);
 }
 
 .single-student-title,
@@ -51,12 +58,12 @@
 
 .single-student-title {
   min-width: 0;
-  gap: 12px;
+  gap: 10px;
 }
 
 .single-student-title button,
 .single-student-actions button {
-  min-height: 40px;
+  min-height: 38px;
   border: 1px solid #a8ddd5;
   border-radius: 12px;
   background: #effbf8;
@@ -69,7 +76,7 @@
 
 .single-student-title button,
 .single-student-actions .is-icon {
-  width: 40px;
+  width: 38px;
   padding: 0;
   display: grid;
   place-items: center;
@@ -84,8 +91,8 @@
 }
 
 .single-student-logo {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -104,11 +111,11 @@
 }
 
 .single-student-title h1 {
-  max-width: 760px;
+  max-width: min(760px, 58vw);
   margin: 0;
   overflow: hidden;
   color: var(--ssr-ink);
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: 0;
@@ -117,10 +124,10 @@
 }
 
 .single-student-title p {
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   overflow: hidden;
   color: var(--ssr-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -1787,7 +1794,7 @@
 }
 
 @media (max-width: 767.98px) {
-  .single-student-topbar,
+  .single-student-topbar-inner,
   .single-student-section-head,
   .single-student-result-workspace .assessment-student-result-section-head {
     align-items: stretch;

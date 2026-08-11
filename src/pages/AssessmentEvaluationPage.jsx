@@ -3333,26 +3333,28 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     return (
       <section className="single-student-result-workspace">
         <header className="single-student-topbar">
-          <div className="single-student-title">
-            <button type="button" onClick={backToStudentList} aria-label="Back to student results" title="Back to student results">
-              <ArrowLeft size={18} strokeWidth={2.3} />
-            </button>
-            <span className="single-student-logo" aria-hidden="true">
-              {logoPreview ? <img src={logoPreview} alt={logoName} /> : <span>{String(assessmentName).charAt(0).toUpperCase()}</span>}
-            </span>
-            <div>
-              <h1>{assessmentName}</h1>
-              <p><strong>{examMode}</strong> / {headerSubtitle}</p>
+          <div className="single-student-topbar-inner">
+            <div className="single-student-title">
+              <button type="button" onClick={backToStudentList} aria-label="Back to student results" title="Back to student results">
+                <ArrowLeft size={18} strokeWidth={2.3} />
+              </button>
+              <span className="single-student-logo" aria-hidden="true">
+                {logoPreview ? <img src={logoPreview} alt={logoName} /> : <span>{String(assessmentName).charAt(0).toUpperCase()}</span>}
+              </span>
+              <div>
+                <h1>{assessmentName}</h1>
+                <p><strong>{examMode}</strong> / {headerSubtitle}</p>
+              </div>
             </div>
-          </div>
-          <div className="single-student-actions">
-            <button type="button" className="is-icon" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-              {theme === 'dark' ? <Sun size={17} strokeWidth={2.3} /> : <Moon size={17} strokeWidth={2.3} />}
-            </button>
-            <button type="button" className="is-exit" onClick={exitToEvaluationTab}>
-              <LogOut size={15} strokeWidth={2.4} />
-              Exit
-            </button>
+            <div className="single-student-actions">
+              <button type="button" className="is-icon" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+                {theme === 'dark' ? <Sun size={17} strokeWidth={2.3} /> : <Moon size={17} strokeWidth={2.3} />}
+              </button>
+              <button type="button" className="is-exit" onClick={exitToEvaluationTab}>
+                <LogOut size={15} strokeWidth={2.4} />
+                Exit
+              </button>
+            </div>
           </div>
         </header>
 
