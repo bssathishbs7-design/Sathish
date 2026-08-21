@@ -19,7 +19,13 @@
 
 .assessment-page.learn-practice-page .learn-practice-card-grid {
   align-items: start;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (min-width: 1280px) {
+  .vx-shell.is-collapsed .assessment-page.learn-practice-page .learn-practice-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .assessment-page.learn-practice-page .learn-practice-card {

@@ -10727,7 +10727,7 @@
 }
 
 .assessment-page.is-my-assessment .my-assessment-published-grid {
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   justify-content: stretch;
   align-items: start;
 }
@@ -10796,6 +10796,18 @@
   max-width: none;
   gap: 10px;
   padding: 16px;
+}
+
+@media (min-width: 1280px) {
+  .vx-shell.is-collapsed .assessment-page.is-my-assessment .my-assessment-published-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1279px) {
+  .assessment-page.is-my-assessment .my-assessment-published-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .assessment-page.is-my-assessment .my-assessment-card-top-status {
