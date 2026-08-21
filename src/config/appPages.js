@@ -8,6 +8,7 @@ import {
   FileText,
   LayoutTemplate,
   MessageSquareText,
+  NotebookPen,
   SlidersHorizontal,
   TrendingUp,
 } from 'lucide-react'
@@ -25,6 +26,7 @@ export const APP_PAGES = {
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
   EXAM_CONTROLS: 'Exam Controls',
   MY_ASSESSMENT: 'My Assessment',
+  LEARN_PRACTICE: 'Learn & Practice',
   ONLINE_PRACTICE_EXAM: 'Online Practice Exam',
   ONLINE_PROCTORED_EXAM: 'Online Proctored Exam',
   QUESTION_BANK: 'Question Bank',
@@ -127,6 +129,10 @@ export const SIDEBAR_MENU = [
       {
         label: APP_PAGES.MY_ASSESSMENT,
         icon: ClipboardCheck,
+      },
+      {
+        label: APP_PAGES.LEARN_PRACTICE,
+        icon: NotebookPen,
       },
       {
         label: APP_PAGES.QUERY_REQUEST,

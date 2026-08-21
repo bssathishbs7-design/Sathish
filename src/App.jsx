@@ -26,12 +26,13 @@ import ActivityResultPage from './pages/ActivityResultPage'
 import StudentExamPage from './pages/StudentExamPage'
 import OnlinePracticeExamPage from './pages/OnlinePracticeExamPage'
 import OnlineProctoredExamPage from './pages/OnlineProctoredExamPage'
+import LearnPracticePage from './pages/LearnPracticePage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import StudentManagementPage from './pages/StudentManagementPage'
 import ImageActivityPage from './pages/ImageActivityPage'
 import InterpretationActivityPage from './pages/InterpretationActivityPage'
 import OspeActivityPage from './pages/OspeActivityPage'
-import { APP_PAGES } from './config/appPages'
+import { APP_PAGES, QUESTION_BANK_PAGES } from './config/appPages'
 
 const PAGE_PATHS = {
   [APP_PAGES.DASHBOARD]: '/',
@@ -46,6 +47,7 @@ const PAGE_PATHS = {
   [APP_PAGES.ASSESSMENT_DASHBOARD]: '/assessment/dashboard',
   [APP_PAGES.EXAM_CONTROLS]: '/assessment/exam-controls',
   [APP_PAGES.MY_ASSESSMENT]: '/my-assessment',
+  [APP_PAGES.LEARN_PRACTICE]: '/learn-practice',
   [APP_PAGES.ONLINE_PRACTICE_EXAM]: '/my-assessment/online-practice-exam',
   [APP_PAGES.ONLINE_PROCTORED_EXAM]: '/my-assessment/online-proctored-exam',
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
@@ -518,6 +520,12 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem('vx-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    if (QUESTION_BANK_PAGES.includes(activePage)) {
+      setSidebarCollapsed(true)
+    }
+  }, [activePage])
 
   useEffect(() => {
     if (!selectedEvaluationRecord) return
@@ -1346,6 +1354,8 @@ function App() {
             <ExamControlsPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.MY_ASSESSMENT ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} mode="my-assessment" />
+          ) : activePage === APP_PAGES.LEARN_PRACTICE ? (
+            <LearnPracticePage onNavigate={navigateToPage} />
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
             <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (

@@ -23,9 +23,69 @@ import {
   X,
   XCircle,
 } from 'lucide-react'
+import { assignInstituteQuestionBankIds } from '../utils/questionBankIdentity'
 import '../styles/approval-view.css'
 
 const QUESTION_BANK_REVIEW_RESULTS_KEY = 'vx-question-bank-review-results'
+const QUESTION_BANK_STORAGE_KEY = 'vx-question-bank-questions'
+const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
+
+const readLocalQuestionList = (storageKey) => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const writeApprovedQuestionsToQuestionBank = (questions = [], approvalRecord = {}) => {
+  if (typeof window === 'undefined' || !questions.length) return []
+
+  const reviewedAt = new Date().toISOString()
+  const approvedQuestions = questions
+    .filter((question) => question?.reviewStatus === 'Approved')
+    .map((question, index) => ({
+      ...question,
+      id: question.id ?? `${approvalRecord.activityId ?? 'approval'}-approved-question-${index + 1}`,
+      status: 'Approved',
+      approvalReviewStatus: 'Approved',
+      questionBankStatus: 'Add to Question Bank',
+      approvalActivityId: approvalRecord.activityId,
+      approvedAt: reviewedAt,
+      reviewedAt,
+      source: 'Institute',
+      sourceType: 'Institute',
+      authorName: question.authorName ?? approvalRecord.senderName ?? 'Institute',
+      isInstituteQuestion: true,
+      isInstitute: undefined,
+    }))
+
+  if (!approvedQuestions.length) return []
+
+  const storedQuestions = readLocalQuestionList(QUESTION_BANK_STORAGE_KEY)
+  const publishedQuestions = readLocalQuestionList(QUESTION_BANK_PUBLISHED_KEY)
+  const assignedQuestions = assignInstituteQuestionBankIds(
+    approvedQuestions,
+    [...publishedQuestions, ...storedQuestions],
+  )
+  const assignedById = new Map(assignedQuestions.map((question) => [question.id, question]))
+  const nextApprovedQuestions = approvedQuestions.map((question) => assignedById.get(question.id) ?? question)
+  const approvedIds = new Set(nextApprovedQuestions.map((question) => question.id))
+  const mergeById = (existingQuestions) => [
+    ...nextApprovedQuestions,
+    ...existingQuestions.filter((question) => !approvedIds.has(question.id)),
+  ]
+
+  window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(mergeById(storedQuestions)))
+  window.localStorage.setItem(QUESTION_BANK_PUBLISHED_KEY, JSON.stringify(mergeById(publishedQuestions)))
+  window.dispatchEvent(new Event('question-bank-questions'))
+  window.dispatchEvent(new Event('question-bank-published-questions'))
+
+  return nextApprovedQuestions
+}
 
 const formatDateTime = (value) => {
   if (!value) return 'Not received'
@@ -786,8 +846,14 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
       status: question.reviewStatus,
       remarks: question.reviewRemarks,
       activityId: approvalRecord.activityId,
+      questionBankStatus: question.reviewStatus === 'Approved' ? 'Add to Question Bank' : undefined,
       reviewedAt: new Date().toISOString(),
     }))
+    const syncedApprovedQuestions = writeApprovedQuestionsToQuestionBank(reviewedQuestions, approvalRecord)
+    const syncedApprovedById = new Map(syncedApprovedQuestions.map((question) => [question.id, question]))
+    const nextReviewedQuestions = reviewedQuestions.map((question) => (
+      syncedApprovedById.get(question.id) ?? question
+    ))
 
     if (typeof window !== 'undefined') {
       try {
@@ -811,7 +877,7 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
       status: nextStatus,
       approvalStatus: nextStatus,
       reviewStatus: nextStatus,
-      questionRows: reviewedQuestions,
+      questionRows: nextReviewedQuestions,
       reviewedAt: new Date().toISOString(),
     })
     setIsQuestionSubmitConfirmOpen(false)

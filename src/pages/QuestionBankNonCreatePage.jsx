@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, X } from 'lucide-react'
-import { stripHtml } from '../utils/mathText'
-import { assignInstituteQuestionBankIds, getInstituteQuestionBankId } from '../utils/questionBankIdentity'
+import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, Trash2, TriangleAlert, X } from 'lucide-react'
+import { isQuestionGenerationErrorText, stripHtml } from '../utils/mathText'
+import { assignInstituteQuestionBankIds } from '../utils/questionBankIdentity'
 import { APP_PAGES } from '../config/appPages'
 import medsyIcon from '../assets/medsy-icon.svg'
 import { corelationRatingRows } from './corelationRatingData'
@@ -20,6 +20,7 @@ const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
 const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
 const CREATE_ASSESSMENT_QUESTIONS_KEY = 'vx-create-assessment-questions'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
+const LEARN_PRACTICE_SHARED_CARDS_KEY = 'vx-learn-practice-shared-cards'
 const QUESTION_BANK_FAVORITE_STORAGE_KEYS = [QUESTION_BANK_PUBLISHED_KEY, QUESTION_BANK_UPLOADED_KEY, QUESTION_BANK_STORAGE_KEY]
 const SHOW_LEGACY_GRID_DETAIL_META = false
 const REPORT_REASON_OPTIONS = [
@@ -60,8 +61,44 @@ const DESCRIPTIVE_FILTER_TYPE_LABELS = new Map([
   ['MEQs', 'Descriptive (MEQs)'],
 ])
 const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+const SHARE_STUDENTS_SUMMARY_PAGE_SIZE = 4
+const SHARE_ASSIGN_YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year', 'Final Year']
+const SHARE_ASSIGN_SGT_OPTIONS = {
+  'First Year': ['SGT A', 'SGT B', 'SGT C'],
+  'Second Year': ['SGT A', 'SGT B', 'SGT C'],
+  'Third Year': ['SGT A', 'SGT B', 'SGT C'],
+  'Final Year': ['SGT A', 'SGT B', 'SGT C'],
+}
+const QUESTION_BANK_YEAR_LABELS = {
+  first: 'First year',
+  second: 'Second year',
+  third: 'Third year',
+  fourth: 'Fourth year',
+}
+const normalizeQuestionYearLabel = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase().replace(/[-_]+/g, ' ')
+  if (!normalized) return ''
+  if (/\b(1|1st|first)\b/.test(normalized)) return QUESTION_BANK_YEAR_LABELS.first
+  if (/\b(2|2nd|second)\b/.test(normalized)) return QUESTION_BANK_YEAR_LABELS.second
+  if (/\b(3|3rd|third)\b/.test(normalized)) return QUESTION_BANK_YEAR_LABELS.third
+  if (/\b(4|4th|fourth|final)\b/.test(normalized)) return QUESTION_BANK_YEAR_LABELS.fourth
+  return value
+}
+const getCurrentDateTimeInputValues = () => {
+  const now = new Date()
+  const timezoneOffsetMs = now.getTimezoneOffset() * 60000
+  const localDate = new Date(now.getTime() - timezoneOffsetMs).toISOString()
+  return {
+    date: localDate.slice(0, 10),
+    time: localDate.slice(11, 16),
+  }
+}
 
 const getQuestionPreview = (question) => stripHtml(question?.questionText) || question?.title || 'Untitled question'
+const hasDisplayableQuestionContent = (question) => {
+  const preview = getQuestionPreview(question)
+  return Boolean(preview) && preview !== 'Untitled question' && !isQuestionGenerationErrorText(preview)
+}
 const getCompetencyCode = (value) => String(value ?? '').trim().split(/\s+/)[0] || value
 const getCompetencyName = (value) => String(value ?? '').trim().replace(/^\S+\s+/, '')
 const getQuestionTypeCompactLabel = (questionOrType) => getQuestionTypeLabel(questionOrType).replace(/Qs$/, 'Q')
@@ -131,29 +168,127 @@ const renderCompetencyCodeBadge = (curriculum) => {
     </span>
   )
 }
+
+const getDisplayDescriptiveSections = (question) => {
+  const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+  if (sections.length) return sections
+
+  const rawType = String(question?.type ?? question?.questionType ?? question?.typeLabel ?? '').trim().toLowerCase()
+  const isMedsySaq = isMedsyQuestion(question) && (rawType.includes('saq') || rawType.includes('short answer'))
+  const questionText = stripHtml(question?.questionText)
+  if (!isMedsySaq || !questionText) return []
+
+  return [{
+    id: `${question?.id ?? 'medsy-saq'}-section`,
+    questionText,
+    marks: question?.marks,
+    subject: question?.subject,
+    topics: question?.topics ?? [],
+    competencies: question?.competencies ?? [],
+    questionCategory: question?.questionCategory,
+    cognitiveLevel: question?.cognitiveLevel,
+    cognitiveFunction: question?.cognitiveFunction,
+    skillFocus: question?.skillFocus,
+    organSystem: question?.organSystem,
+    organSubSystems: question?.organSubSystems ?? [],
+    diseaseTags: question?.diseaseTags ?? [],
+    keyConcepts: question?.keyConcepts ?? [],
+    thinkingLevel: question?.thinkingLevel,
+    difficultyLevel: question?.difficultyLevel,
+    answerKey: question?.answerKey,
+    examinerNotes: question?.examinerNotes,
+    fatalFlaw: question?.fatalFlaw,
+  }]
+}
+
+const getDescriptiveLeafSections = (question) => {
+  const sections = getDisplayDescriptiveSections(question)
+  return sections.flatMap((section) => {
+    const children = Array.isArray(section?.children) ? section.children : []
+    return children.length ? children : [section]
+  }).filter((section) => stripHtml(section?.questionText).trim() || (section?.competencies ?? []).length)
+}
+
+const getQuestionPrimaryKpiSource = (question) => (
+  getDescriptiveLeafSections(question)[0] ?? question ?? {}
+)
+
+const getQuestionPrimaryCurriculum = (question, curriculum) => {
+  if (curriculum?.competencyCode) return curriculum
+
+  const primarySource = getQuestionPrimaryKpiSource(question)
+  const competency = (primarySource.competencies ?? question?.competencies ?? [])[0] ?? ''
+  const topic = (primarySource.topics ?? question?.topics ?? [])[0] ?? ''
+  const subject = primarySource.subject || question?.subject || ''
+  const subjectTopics = corelationRatingRows
+    .filter((row) => row.subject === subject)
+    .map((row) => row.topic)
+    .filter(Boolean)
+  const topicNumber = topic ? [...new Set(subjectTopics)].findIndex((item) => item === topic) + 1 : 0
+
+  return {
+    path: [subject, topic].filter(Boolean),
+    competencyCode: getCompetencyCode(competency),
+    competencyName: getCompetencyName(competency),
+    topicNumber,
+  }
+}
+
+const getQuestionKpiValue = (question, fieldName) => {
+  const primarySource = getQuestionPrimaryKpiSource(question)
+  return question?.[fieldName] || primarySource?.[fieldName] || ''
+}
+
 const isMedsySaqQuestion = (question) => (
   isMedsyQuestion(question) && getQuestionTypeLabel(question) === 'SAQs'
 )
+
+const isLaqQuestion = (question) => {
+  const rawType = String(question?.type ?? question?.questionType ?? question?.typeLabel ?? '').trim().toLowerCase()
+  const label = String(getQuestionTypeLabel(question) ?? '').trim().toLowerCase()
+  const compactLabel = String(getQuestionTypeCompactLabel(question) ?? '').trim().toLowerCase()
+
+  return label.includes('laq')
+    || compactLabel.includes('laq')
+    || rawType.includes('laq')
+    || rawType.includes('long answer')
+}
+
+const usesDescriptiveMatrixPreview = (question) => {
+  if (!isDescriptiveQuestion(question) || !getDisplayDescriptiveSections(question).length) return false
+  if (isLaqQuestion(question)) return true
+  return getQuestionTypeLabel(question) === 'SAQs' && question?.clinicalVignetteEnabled !== false
+}
+
+const usesSaqModeOneDetailPreview = (question) => (
+  isDescriptiveQuestion(question)
+  && getQuestionTypeLabel(question) === 'SAQs'
+  && !isLaqQuestion(question)
+  && !usesDescriptiveMatrixPreview(question)
+)
+
 const getQuestionBankDisplayId = (question, questionNumber = null) => {
   const isMedsySource = isMedsyQuestion(question)
   const isInstituteSource = !isMedsySource && isInstituteQuestion(question)
-  const instituteQuestionBankId = getInstituteQuestionBankId(question)
-  const displayNumber = String(
+  const rawDisplayNumber = String(
     questionNumber ?? question.displayNumber ?? question.questionNumber ?? question.order ?? 1,
-  ).replace(/\D/g, '').padStart(5, '0').slice(-5)
+  ).replace(/\D/g, '')
 
   return isInstituteSource
-    ? instituteQuestionBankId || `INS-A01-${displayNumber}`
-    : `MED-A01-${displayNumber}`
+    ? `INSC-B01-${rawDisplayNumber.padStart(3, '0').slice(-3)}`
+    : `MED-A01-${rawDisplayNumber.padStart(5, '0').slice(-5)}`
 }
-const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionControls = null) => {
-  const isMedsySaq = isMedsySaqQuestion(question)
-  const categoryLabel = getQuestionCategoryLabel(question?.questionCategory, question)
-  const hiddenTagCount = getOptionalTagGroups(question).reduce((total, group) => total + group.values.length, 0)
-    + 1
-    + (isMedsySaq ? 1 : 0)
+const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionControls = null, questionNumber = null, isLearnPracticeShared = false) => {
+  const primaryCurriculum = getQuestionPrimaryCurriculum(question, curriculum)
+  const isMatrixPreview = usesDescriptiveMatrixPreview(question)
+  const categoryLabel = getQuestionCategoryLabel(getQuestionKpiValue(question, 'questionCategory'), question)
+  const thinkingLabel = getQuestionKpiValue(question, 'thinkingLevel')
+  const difficultyLabel = getQuestionKpiValue(question, 'difficultyLevel')
+  const hiddenTagCount = getHiddenOptionalTagCount(question)
+  const showHiddenTagsButton = hiddenTagCount > 0 && !isMatrixPreview
   const { tagsId = '', isTagsOpen = false, onToggleTags } = tagToggle
   const isMedsySource = isMedsyQuestion(question)
+  const showMarksBadge = getQuestionMarksTotal(question) > 0 && (!isMedsySource || isDescriptiveQuestion(question))
   const isInstituteTagged = isInstituteQuestion(question)
   const isInstituteSource = !isMedsySource && isInstituteTagged
   const sourceLabel = isMedsySource && isInstituteTagged
@@ -161,6 +296,7 @@ const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionC
     : isInstituteSource
       ? 'Institute'
       : 'Medsy'
+  const sourceDisplayId = isInstituteSource || isMedsySource ? getQuestionBankDisplayId(question, questionNumber) : ''
   const sourceClassName = isMedsySource && isInstituteTagged
     ? 'is-medsy-institute'
     : isInstituteSource
@@ -171,16 +307,26 @@ const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionC
     <div className="assessment-page-question-compact-meta">
       <span className="assessment-page-question-meta-items">
         <span className={`assessment-page-question-source-badge ${sourceClassName}`}>{sourceLabel}</span>
-        {renderCompetencyCodeBadge(curriculum)}
+        {sourceDisplayId ? (
+          <span className="assessment-page-question-id-badge">{sourceDisplayId}</span>
+        ) : null}
+        {renderCompetencyCodeBadge(primaryCurriculum)}
         <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
-        {!isMedsySource && getQuestionMarksTotal(question) > 0
+        {!isMedsySource && question?.status === 'Created' ? <span className="assessment-page-question-status-badge">Created</span> : null}
+        {showMarksBadge
           ? <span className="is-marks">{getQuestionMarksTotal(question)} marks</span>
           : null}
         {renderQuestionStructureBadge(question)}
-        {categoryLabel ? <span className="assessment-page-question-category-badge">{categoryLabel}</span> : null}
-        {question.thinkingLevel ? <span className={getThinkingBadgeClassName(question.thinkingLevel)}>{getThinkingLevelLabel(question.thinkingLevel)}</span> : null}
-        {question.difficultyLevel ? <span className="assessment-page-difficulty-badge">{question.difficultyLevel}</span> : null}
-        {hiddenTagCount ? (
+        {isLearnPracticeShared ? (
+          <span className="assessment-page-question-shared-badge" title="Shared to students">
+            <Share2 size={12} strokeWidth={2.4} />
+            Shared
+          </span>
+        ) : null}
+        {!isMatrixPreview && categoryLabel ? <span className="assessment-page-question-category-badge">{categoryLabel}</span> : null}
+        {!isMatrixPreview && thinkingLabel ? <span className={getThinkingBadgeClassName(thinkingLabel)}>{getThinkingLevelLabel(thinkingLabel)}</span> : null}
+        {!isMatrixPreview && difficultyLabel ? <span className="assessment-page-difficulty-badge">{difficultyLabel}</span> : null}
+        {showHiddenTagsButton ? (
           <button
             type="button"
             className={`is-extra-tags ${isTagsOpen ? 'is-open' : ''}`}
@@ -212,35 +358,214 @@ const getQuestionCategoryLabel = (value, questionOrType) => {
 }
 
 const MEDSY_QUESTION_BANK_SEED_COUNTS = {
-  mcq: 50,
-  categorySaq: 10,
+  mcq: 80,
+  saqModeOne: 50,
+  saqModeTwo: 50,
+  laq: 40,
 }
 
 const MEDSY_OPTION_DISTRACTORS = ['Terminology Confusion', 'False Association', 'Misclassification']
-const MEDSY_CATEGORY_SAQ_TYPES = ['Direct', 'Reasoning', 'Aetcom', 'Application']
+const MEDSY_QUESTION_CATEGORIES = ['Direct', 'Reasoning', 'Application', 'Aetcom', 'Critical Thinking']
+const MEDSY_COGNITIVE_LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate']
+const MEDSY_COGNITIVE_FUNCTIONS = ['Concept recall', 'Concept explanation', 'Clinical Reasoning', 'Judgement & Decision Making', 'Communication']
+const MEDSY_SKILL_FOCUS = ['Identification', 'Written response', 'Problem solving', 'Communication', 'Clinical correlation']
+const MEDSY_ORGAN_SYSTEMS = ['General', 'Nervous', 'Cardiovascular', 'Respiratory', 'Gastrointestinal', 'Musculoskeletal']
+const MEDSY_ORGAN_SUB_SYSTEMS = ['General', 'Brain', 'Heart', 'Lung', 'Abdomen', 'Upper limb']
+const MEDSY_DISEASE_TAGS = ['Not disease-specific', 'Trauma', 'Infection', 'Ischaemia', 'Inflammation', 'Congenital anomaly']
+const MEDSY_KEY_CONCEPTS = ['Core concept', 'Clinical correlation', 'Management principle', 'Applied anatomy', 'Diagnostic reasoning']
+const MEDSY_SAMPLE_TYPE_SEQUENCE = ['mcq', 'saqModeOne', 'saqModeTwo', 'laq']
 
 const getMedsySeedRows = (offset = 0, count = 50) => (
   Array.from({ length: count }, (_, index) => corelationRatingRows[(offset + index) % corelationRatingRows.length])
 )
 
 const getMedsyCompetencyValue = (row) => `${row.code} ${row.name}`.trim()
+const getMedsyCycledValue = (values, index) => values[index % values.length]
+const getMedsySeedTimestamp = (minutesOffset) => (
+  new Date(Date.UTC(2026, 4, 22, 4, 0, 0) + (minutesOffset * 60 * 1000)).toISOString()
+)
+
+const getAllMedsyCompetencyRows = () => {
+  const seenCodes = new Set()
+  return corelationRatingRows.filter((row) => {
+    const code = String(row?.code ?? '').trim().toUpperCase()
+    if (!code || seenCodes.has(code)) return false
+    seenCodes.add(code)
+    return true
+  })
+}
 
 const getMedsySeedMeta = (row, index) => ({
   year: row.year || '1st Year',
   subject: row.subject || 'Human Anatomy',
   topics: row.topic ? [row.topic] : [],
   competencies: [getMedsyCompetencyValue(row)].filter(Boolean),
-  questionCategory: index % 3 === 0 ? 'Application' : index % 3 === 1 ? 'Reasoning' : 'Direct',
-  cognitiveLevel: index % 3 === 0 ? 'Apply' : index % 3 === 1 ? 'Analyze' : 'Understand',
-  cognitiveFunction: index % 3 === 0 ? 'Clinical Reasoning' : index % 3 === 1 ? 'Concept Explanation' : 'Pattern Recognition',
-  skillFocus: index % 3 === 0 ? 'Diagnosis' : index % 3 === 1 ? 'Structured explanation' : 'Identification',
-  organSystem: 'Not Applicable',
-  organSubSystems: ['Not Applicable'],
-  diseaseTags: index % 4 === 0 ? ['Clinical correlation'] : ['Not Applicable'],
-  keyConcepts: ['Core concept'],
-  thinkingLevel: index % 3 === 0 ? 'HoT' : 'LoT',
-  difficultyLevel: index % 5 === 0 ? 'L2' : 'L1',
+  questionCategory: getMedsyCycledValue(MEDSY_QUESTION_CATEGORIES, index),
+  cognitiveLevel: getMedsyCycledValue(MEDSY_COGNITIVE_LEVELS, index),
+  cognitiveFunction: getMedsyCycledValue(MEDSY_COGNITIVE_FUNCTIONS, index),
+  skillFocus: getMedsyCycledValue(MEDSY_SKILL_FOCUS, index),
+  organSystem: getMedsyCycledValue(MEDSY_ORGAN_SYSTEMS, index),
+  organSubSystems: [getMedsyCycledValue(MEDSY_ORGAN_SUB_SYSTEMS, index)],
+  diseaseTags: [getMedsyCycledValue(MEDSY_DISEASE_TAGS, index)],
+  keyConcepts: [getMedsyCycledValue(MEDSY_KEY_CONCEPTS, index)],
+  thinkingLevel: index % 2 === 0 ? 'LoT' : 'HoT',
+  difficultyLevel: `L${(index % 5) + 1}`,
 })
+
+const getMedsyModeLabel = (typeKey) => ({
+  mcq: 'MCQ',
+  saqModeOne: 'SAQs Mode 1',
+  saqModeTwo: 'SAQs Mode 2',
+  laq: 'LAQs',
+}[typeKey] ?? 'MCQ')
+const getMedsySaqModeOneQuestionText = (competencyLabel) => {
+  const text = String(competencyLabel ?? '').trim()
+  if (!text) return 'Describe the key features of the selected competency.'
+  return /^(describe|explain|identify|discuss|enumerate|list|define|compare|differentiate|demonstrate|classify|outline|apply|analyze|analyse|evaluate)\b/i.test(text)
+    ? text
+    : `Describe the key features of ${text}.`
+}
+
+const createMedsySampleQuestion = (row, rowIndex, typeKey, typeIndex) => {
+  const questionNumber = (rowIndex * 5) + typeIndex + 1
+  const globalIndex = rowIndex + typeIndex
+  const meta = {
+    ...getMedsySeedMeta(row, globalIndex),
+    questionCategory: getMedsyCycledValue(MEDSY_QUESTION_CATEGORIES, rowIndex + typeIndex),
+    cognitiveLevel: getMedsyCycledValue(MEDSY_COGNITIVE_LEVELS, rowIndex + typeIndex),
+    cognitiveFunction: getMedsyCycledValue(MEDSY_COGNITIVE_FUNCTIONS, rowIndex + (typeIndex * 2)),
+    skillFocus: getMedsyCycledValue(MEDSY_SKILL_FOCUS, rowIndex + typeIndex),
+    thinkingLevel: typeKey === 'mcq' || typeIndex % 2 === 0 ? 'LoT' : 'HoT',
+    difficultyLevel: `L${((rowIndex + typeIndex) % 5) + 1}`,
+  }
+  const topicLabel = row.topic || row.subject || 'the selected topic'
+  const competencyLabel = row.name || topicLabel
+  const id = `medsy-uploaded-sample-${questionNumber}`
+  const baseQuestion = {
+    id,
+    displayNumber: questionNumber,
+    questionNumber,
+    authorName: 'Medsy',
+    ...meta,
+    options: [],
+    correctOptionIds: [],
+    questionBankSentAt: getMedsySeedTimestamp(questionNumber),
+    medsySampleMode: getMedsyModeLabel(typeKey),
+  }
+
+  if (typeKey === 'mcq') {
+    return {
+      ...baseQuestion,
+      type: 'MCQ',
+      questionText: `Which statement is most appropriate regarding ${topicLabel}?`,
+      marks: '1',
+      options: [
+        { id: `${id}-a`, label: competencyLabel, distractorErrors: [] },
+        { id: `${id}-b`, label: `A partially related statement about ${topicLabel}`, distractorErrors: [MEDSY_OPTION_DISTRACTORS[0]] },
+        { id: `${id}-c`, label: `An unrelated applied statement for ${row.subject || 'the subject'}`, distractorErrors: [MEDSY_OPTION_DISTRACTORS[1]] },
+        { id: `${id}-d`, label: 'A broad statement without the required competency focus', distractorErrors: [MEDSY_OPTION_DISTRACTORS[2]] },
+      ],
+      correctOptionIds: [`${id}-a`],
+      answerKey: `Correct answer: ${competencyLabel}. This best matches the required competency for ${topicLabel}.`,
+      examinerNotes: 'Award marks for selecting the key concept and rejecting unrelated distractors.',
+    }
+  }
+
+  if (typeKey === 'saqModeOne') {
+    const questionText = getMedsySaqModeOneQuestionText(competencyLabel)
+    return {
+      ...baseQuestion,
+      type: 'Desc Short Answer Questions (SAQs)',
+      questionText,
+      marks: '8',
+      clinicalVignetteEnabled: false,
+      answerKey: `Model Answer: ${questionText} Include key facts, relevant context, and a concise conclusion.`,
+      examinerNotes: 'Award marks for accurate terminology, relevant supporting points, and a concise conclusion.',
+      fatalFlaw: 'Do not award full marks if the answer misses the central competency or gives unrelated content.',
+    }
+  }
+
+  if (typeKey === 'saqModeTwo') {
+    const secondMeta = getMedsySeedMeta(row, globalIndex + 1)
+    const stem = `A learner is reviewing ${topicLabel} and needs to connect the concept with applied reasoning.`
+    return {
+      ...baseQuestion,
+      type: 'Desc Short Answer Questions (SAQs)',
+      questionText: stem,
+      marks: '10',
+      clinicalVignetteEnabled: true,
+      descriptiveSections: [
+        {
+          id: `${id}-a`,
+          questionText: `Explain the core concept of ${competencyLabel}.`,
+          marks: '5',
+          ...meta,
+          answerKey: 'Model Answer: State the relevant concept, define the important terms, and link it to the competency.',
+          examinerNotes: 'Award marks for the required key concept, correct terminology, and structured explanation.',
+          fatalFlaw: 'Do not award full marks if the answer does not address the competency.',
+        },
+        {
+          id: `${id}-b`,
+          questionText: `Apply ${competencyLabel} to a practical or clinical context.`,
+          marks: '5',
+          ...secondMeta,
+          questionCategory: getMedsyCycledValue(MEDSY_QUESTION_CATEGORIES, rowIndex + 2),
+          thinkingLevel: 'HoT',
+          answerKey: 'Model Answer: Connect the concept to the scenario, justify the response, and include a concise conclusion.',
+          examinerNotes: 'Award marks for relevant application, accurate reasoning, and clear written response.',
+          fatalFlaw: 'Do not award full marks if the response is generic or unrelated to the scenario.',
+        },
+      ],
+      answerKey: 'Model Answer: Address both short-answer parts with accurate terminology and concise reasoning.',
+      examinerNotes: 'Award marks across both parts based on concept accuracy and applied reasoning.',
+      fatalFlaw: 'Do not award full marks if either part is omitted.',
+    }
+  }
+
+  const stem = `A patient presents with a clinical problem requiring integration of ${topicLabel} and applied decision making.`
+  return {
+    ...baseQuestion,
+    type: 'Desc Long Answer Questions (LAQs)',
+    questionText: stem,
+    marks: '10',
+    clinicalVignetteEnabled: true,
+    descriptiveSections: [
+      {
+        id: `${id}-a`,
+        questionText: `Explain the key reasoning steps for ${competencyLabel}.`,
+        marks: '5',
+        ...meta,
+        answerKey: 'Model Answer: Key points with accurate terminology and a concise explanation.',
+        examinerNotes: 'Award marks for the required key points, accurate terminology, and clear clinical reasoning.',
+        fatalFlaw: 'Do not award full marks if the response misses the core concept or gives an unrelated explanation.',
+      },
+      {
+        id: `${id}-b`,
+        questionText: `Discuss communication priorities and management considerations related to ${competencyLabel}.`,
+        marks: '5',
+        ...getMedsySeedMeta(row, globalIndex + 2),
+        questionCategory: getMedsyCycledValue(MEDSY_QUESTION_CATEGORIES, rowIndex + 3),
+        thinkingLevel: 'HoT',
+        answerKey: 'Model Answer: Key points with accurate terminology and a concise explanation.',
+        examinerNotes: 'Award marks for structured communication, relevant priorities, and clear applied reasoning.',
+        fatalFlaw: 'Do not award full marks if the answer ignores the clinical context or core competency.',
+      },
+    ],
+    answerKey: 'Model Answer: Key points with accurate terminology and a concise explanation.',
+    examinerNotes: 'Award marks for reasoning, communication, terminology, and safe applied judgement.',
+    fatalFlaw: 'Do not award full marks if the response ignores the clinical scenario or core competency.',
+  }
+}
+
+const createMedsyCompetencySampleQuestions = () => (
+  getAllMedsyCompetencyRows().flatMap((row, rowIndex) => {
+    const typeKeys = [
+      ...MEDSY_SAMPLE_TYPE_SEQUENCE,
+      MEDSY_SAMPLE_TYPE_SEQUENCE[rowIndex % MEDSY_SAMPLE_TYPE_SEQUENCE.length],
+    ]
+    return typeKeys.map((typeKey, typeIndex) => createMedsySampleQuestion(row, rowIndex, typeKey, typeIndex))
+  })
+)
 
 const createMedsyMcqSampleQuestions = () => getMedsySeedRows(0, MEDSY_QUESTION_BANK_SEED_COUNTS.mcq).map((row, index) => {
   const questionNumber = index + 1
@@ -260,22 +585,23 @@ const createMedsyMcqSampleQuestions = () => getMedsySeedRows(0, MEDSY_QUESTION_B
     ],
     correctOptionIds: [`medsy-${questionNumber}-a`],
     answerKey: `Correct answer: ${row.name}. This is the most appropriate statement for ${row.topic || 'the selected topic'}.`,
-    questionBankSentAt: new Date(`2026-05-22T09:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
+    examinerNotes: 'Award marks for the required key points, accurate terminology, and clear clinical reasoning.',
+    questionBankSentAt: getMedsySeedTimestamp(index),
   }
 })
 
-const createMedsyCategorySaqSampleQuestions = () => (
-  getMedsySeedRows(150, MEDSY_QUESTION_BANK_SEED_COUNTS.categorySaq).map((row, index) => {
+const createMedsySaqModeOneSampleQuestions = () => (
+  getMedsySeedRows(150, MEDSY_QUESTION_BANK_SEED_COUNTS.saqModeOne).map((row, index) => {
     const questionNumber = 150 + index + 1
-    const questionCategory = MEDSY_CATEGORY_SAQ_TYPES[index % MEDSY_CATEGORY_SAQ_TYPES.length]
+    const questionCategory = getMedsyCycledValue(MEDSY_QUESTION_CATEGORIES, index)
     const meta = {
       ...getMedsySeedMeta(row, 150 + index),
       questionCategory,
-      cognitiveLevel: questionCategory === 'Reasoning' ? 'Analyze' : questionCategory === 'Application' ? 'Apply' : 'Understand',
-      cognitiveFunction: questionCategory === 'Aetcom' ? 'Communication' : questionCategory === 'Application' ? 'Clinical Reasoning' : 'Concept Explanation',
-      skillFocus: questionCategory === 'Aetcom' ? 'Professional communication' : questionCategory === 'Reasoning' ? 'Structured explanation' : 'Identification',
+      cognitiveLevel: getMedsyCycledValue(MEDSY_COGNITIVE_LEVELS, index + 1),
+      cognitiveFunction: getMedsyCycledValue(MEDSY_COGNITIVE_FUNCTIONS, index + 2),
+      skillFocus: getMedsyCycledValue(MEDSY_SKILL_FOCUS, index + 1),
       thinkingLevel: questionCategory === 'Direct' ? 'LoT' : 'HoT',
-      difficultyLevel: questionCategory === 'Application' ? 'L2' : 'L1',
+      difficultyLevel: `L${(index % 5) + 1}`,
     }
 
     const categoryStem = {
@@ -283,6 +609,7 @@ const createMedsyCategorySaqSampleQuestions = () => (
       Reasoning: `Explain the reasoning behind ${row.name} in relation to ${row.topic || 'the selected topic'}.`,
       Aetcom: `Discuss the communication or ethical consideration related to ${row.name}.`,
       Application: `Apply ${row.name} to a relevant practical or clinical context.`,
+      'Critical Thinking': `Critically appraise the significance of ${row.name} in ${row.topic || 'the selected topic'}.`,
     }[questionCategory]
 
     return {
@@ -296,20 +623,135 @@ const createMedsyCategorySaqSampleQuestions = () => (
       correctOptionIds: [],
       descriptiveSections: [],
       answerKey: `Model Answer: ${categoryStem} Include key facts, relevant context, and a concise conclusion.`,
-      questionBankSentAt: new Date(`2026-05-22T12:${String(index).padStart(2, '0')}:00+05:30`).toISOString(),
+      examinerNotes: 'Award marks for accurate terminology, relevant supporting points, and a concise conclusion.',
+      fatalFlaw: 'Do not award full marks if the answer misses the central competency or gives unrelated content.',
+      questionBankSentAt: getMedsySeedTimestamp(120 + index),
     }
   })
 )
 
-const createMedsySampleQuestions = () => [
-  ...createMedsyMcqSampleQuestions(),
-  ...createMedsyCategorySaqSampleQuestions(),
-]
+const createMedsySaqModeTwoSampleQuestions = () => (
+  getMedsySeedRows(260, MEDSY_QUESTION_BANK_SEED_COUNTS.saqModeTwo).map((row, index) => {
+    const questionNumber = 260 + index + 1
+    const meta = {
+      ...getMedsySeedMeta(row, 260 + index),
+      questionCategory: getMedsyCycledValue(MEDSY_QUESTION_CATEGORIES, index + 1),
+      cognitiveLevel: getMedsyCycledValue(MEDSY_COGNITIVE_LEVELS, index + 2),
+      cognitiveFunction: getMedsyCycledValue(MEDSY_COGNITIVE_FUNCTIONS, index + 3),
+      skillFocus: getMedsyCycledValue(MEDSY_SKILL_FOCUS, index + 2),
+      thinkingLevel: index % 3 === 0 ? 'LoT' : 'HoT',
+      difficultyLevel: `L${((index + 1) % 5) + 1}`,
+    }
+    const secondRow = corelationRatingRows[(260 + index + 1) % corelationRatingRows.length] || row
+    const secondMeta = getMedsySeedMeta(secondRow, 261 + index)
+    const stem = `A learner is reviewing ${row.topic || row.subject || 'a core medical topic'} and needs to connect the concept with applied reasoning.`
+
+    return {
+      id: `medsy-uploaded-sample-${questionNumber}`,
+      type: 'Desc Short Answer Questions (SAQs)',
+      authorName: 'Medsy',
+      questionText: stem,
+      marks: '10',
+      clinicalVignetteEnabled: true,
+      ...meta,
+      options: [],
+      correctOptionIds: [],
+      descriptiveSections: [
+        {
+          id: `medsy-saq-mode2-${questionNumber}-a`,
+          questionText: `Explain the core concept of ${row.name || row.topic || 'this topic'}.`,
+          marks: '5',
+          ...meta,
+          answerKey: 'Model Answer: State the relevant concept, define the important terms, and link it to the competency.',
+          examinerNotes: 'Award marks for the required key concept, correct terminology, and structured explanation.',
+          fatalFlaw: 'Do not award full marks if the answer does not address the competency.',
+        },
+        {
+          id: `medsy-saq-mode2-${questionNumber}-b`,
+          questionText: `Apply ${secondRow.name || secondRow.topic || 'the related concept'} to a practical or clinical context.`,
+          marks: '5',
+          ...secondMeta,
+          questionCategory: getMedsyCycledValue(MEDSY_QUESTION_CATEGORIES, index + 2),
+          thinkingLevel: index % 2 === 0 ? 'HoT' : 'LoT',
+          answerKey: 'Model Answer: Connect the concept to the scenario, justify the response, and include a concise conclusion.',
+          examinerNotes: 'Award marks for relevant application, accurate reasoning, and clear written response.',
+          fatalFlaw: 'Do not award full marks if the response is generic or unrelated to the scenario.',
+        },
+      ],
+      answerKey: 'Model Answer: Address both short-answer parts with accurate terminology and concise reasoning.',
+      examinerNotes: 'Award marks across both parts based on concept accuracy and applied reasoning.',
+      fatalFlaw: 'Do not award full marks if either part is omitted.',
+      questionBankSentAt: getMedsySeedTimestamp(220 + index),
+    }
+  })
+)
+
+const createMedsyLaqSampleQuestions = () => (
+  getMedsySeedRows(360, MEDSY_QUESTION_BANK_SEED_COUNTS.laq).map((row, index) => {
+    const questionNumber = 360 + index + 1
+    const meta = {
+      ...getMedsySeedMeta(row, 360 + index),
+      questionCategory: getMedsyCycledValue(MEDSY_QUESTION_CATEGORIES, index + 2),
+      cognitiveLevel: getMedsyCycledValue(MEDSY_COGNITIVE_LEVELS, index + 3),
+      cognitiveFunction: getMedsyCycledValue(MEDSY_COGNITIVE_FUNCTIONS, index + 1),
+      skillFocus: getMedsyCycledValue(MEDSY_SKILL_FOCUS, index + 3),
+      thinkingLevel: 'HoT',
+      difficultyLevel: `L${((index + 2) % 5) + 1}`,
+    }
+    const secondRow = corelationRatingRows[(360 + index + 2) % corelationRatingRows.length] || row
+    const secondMeta = getMedsySeedMeta(secondRow, 362 + index)
+    const stem = `A patient presents with a clinical problem requiring integration of ${row.topic || row.subject || 'core concepts'} and applied decision making.`
+
+    return {
+      id: `medsy-uploaded-sample-${questionNumber}`,
+      type: 'Desc Long Answer Questions (LAQs)',
+      authorName: 'Medsy',
+      questionText: stem,
+      marks: '10',
+      ...meta,
+      options: [],
+      correctOptionIds: [],
+      descriptiveSections: [
+        {
+          id: `medsy-laq-${questionNumber}-a`,
+          questionText: `Explain the key clinical reasoning steps for ${row.name || 'this presentation'}.`,
+          marks: '5',
+          ...meta,
+          answerKey: 'Model Answer: Key points with accurate terminology and a concise explanation.',
+          examinerNotes: 'Award marks for the required key points, accurate terminology, and clear clinical reasoning.',
+          fatalFlaw: 'Do not award full marks if the response misses the core concept or gives an unrelated explanation.',
+        },
+        {
+          id: `medsy-laq-${questionNumber}-b`,
+          questionText: `Discuss the communication priorities and management considerations related to ${secondRow.name || 'this clinical case'}.`,
+          marks: '5',
+          ...secondMeta,
+          questionCategory: getMedsyCycledValue(MEDSY_QUESTION_CATEGORIES, index + 3),
+          thinkingLevel: 'LoT',
+          answerKey: 'Model Answer: Key points with accurate terminology and a concise explanation.',
+          examinerNotes: 'Award marks for structured communication, relevant priorities, and clear clinical reasoning.',
+          fatalFlaw: 'Do not award full marks if the answer ignores the clinical context or gives unsafe advice.',
+        },
+      ],
+      answerKey: 'Model Answer: Key points with accurate terminology and a concise explanation.',
+      examinerNotes: 'Award marks for reasoning, communication, terminology, and safe applied judgement.',
+      fatalFlaw: 'Do not award full marks if the response ignores the clinical scenario or core competency.',
+      questionBankSentAt: getMedsySeedTimestamp(300 + index),
+    }
+  })
+)
+
+let medsySampleQuestionsCache = null
+const createMedsySampleQuestions = () => {
+  if (!medsySampleQuestionsCache) medsySampleQuestionsCache = createMedsyCompetencySampleQuestions()
+  return medsySampleQuestionsCache
+}
 
 const cleanQuestionBankItems = (items) => items
   .filter((question, index) => (
     !(index === 6 && getQuestionPreview(question).trim().toLowerCase() === 'data')
   ))
+  .filter(hasDisplayableQuestionContent)
   .map((question) => ({
     ...question,
     answerKey: typeof question.answerKey === 'string'
@@ -326,34 +768,29 @@ const readStoredQuestionList = (storageKey) => {
     if (storageKey === QUESTION_BANK_UPLOADED_KEY) {
       const sampleQuestions = createMedsySampleQuestions()
       const existingRaw = window.localStorage.getItem(storageKey)
+      const existingUploaded = existingRaw ? JSON.parse(existingRaw) : []
 
-      if (!existingRaw) {
-        window.localStorage.setItem(storageKey, JSON.stringify(sampleQuestions))
-      } else {
-        const existingUploaded = JSON.parse(existingRaw)
-        if (Array.isArray(existingUploaded)) {
-          const sampleById = new Map(sampleQuestions.map((question) => [question.id, question]))
-          const refreshedUploaded = existingUploaded.filter((question) => (
-            !String(question?.id ?? '').startsWith('medsy-uploaded-sample-')
-            || sampleById.has(question.id)
-          )).map((question) => {
-            const sampleQuestion = sampleById.get(question.id)
-            if (!sampleQuestion) return question
+      if (!Array.isArray(existingUploaded)) return cleanQuestionBankItems(sampleQuestions).filter(isAllQuestionBankQuestion)
 
-            return {
-              ...sampleQuestion,
-              isFavorite: isFavoriteQuestion(question),
-              isInstituteQuestion: isInstituteQuestion(question),
-              sharedToStudents: isSharedToStudentsQuestion(question),
-              sharedToStudentsAt: question.sharedToStudentsAt,
-            }
-          })
-          const missingSamples = sampleQuestions.filter((sample) => (
-            !refreshedUploaded.some((question) => question.id === sample.id)
-          ))
-          window.localStorage.setItem(storageKey, JSON.stringify([...refreshedUploaded, ...missingSamples]))
+      const existingById = new Map(existingUploaded.map((question) => [question?.id, question]))
+      const hydratedSamples = sampleQuestions.map((sampleQuestion) => {
+        const storedQuestion = existingById.get(sampleQuestion.id)
+        if (!storedQuestion) return sampleQuestion
+
+        return {
+          ...sampleQuestion,
+          isFavorite: isFavoriteQuestion(storedQuestion),
+          isInstituteQuestion: isInstituteQuestion(storedQuestion),
+          sharedToStudents: isSharedToStudentsQuestion(storedQuestion),
+          sharedToStudentsAt: storedQuestion.sharedToStudentsAt,
+          sharedAssignment: storedQuestion.sharedAssignment,
         }
-      }
+      })
+      const nonSampleUploaded = existingUploaded.filter((question) => (
+        !String(question?.id ?? '').startsWith('medsy-uploaded-sample-')
+      ))
+
+      return cleanQuestionBankItems([...nonSampleUploaded, ...hydratedSamples]).filter(isAllQuestionBankQuestion)
     }
 
     const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
@@ -516,10 +953,32 @@ const updateQuestionInstituteInStorage = (questionId, isInstituteQuestionValue) 
   window.dispatchEvent(new Event('question-bank-uploaded-questions'))
 }
 
-const shareQuestionsWithStudentsInStorage = (questionIds = []) => {
+const removeQuestionFromStorage = (questionId) => {
+  if (typeof window === 'undefined' || !questionId) return
+
+  QUESTION_BANK_FAVORITE_STORAGE_KEYS.forEach((storageKey) => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
+      if (!Array.isArray(parsed)) return
+
+      const nextQuestions = parsed.filter((question) => question?.id !== questionId)
+      if (nextQuestions.length !== parsed.length) {
+        window.localStorage.setItem(storageKey, JSON.stringify(nextQuestions))
+      }
+    } catch {
+      // Ignore malformed local storage entries and keep the visible list responsive.
+    }
+  })
+
+  window.dispatchEvent(new Event('question-bank-published-questions'))
+  window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+}
+
+const shareQuestionsWithStudentsInStorage = (questionIds = [], assignment = {}) => {
   if (typeof window === 'undefined' || !questionIds.length) return
 
   const questionIdSet = new Set(questionIds.map((questionId) => String(questionId)))
+  const sharedAt = new Date().toISOString()
   QUESTION_BANK_FAVORITE_STORAGE_KEYS.forEach((storageKey) => {
     try {
       const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
@@ -532,7 +991,22 @@ const shareQuestionsWithStudentsInStorage = (questionIds = []) => {
         return {
           ...question,
           sharedToStudents: true,
-          sharedToStudentsAt: new Date().toISOString(),
+          sharedToStudentsAt: sharedAt,
+          sharedAssignment: {
+            ...assignment,
+            sharedAt,
+          },
+          shareAssignmentHistory: [
+            ...(
+              Array.isArray(question?.shareAssignmentHistory)
+                ? question.shareAssignmentHistory
+                : []
+            ),
+            {
+              ...assignment,
+              sharedAt,
+            },
+          ],
         }
       })
 
@@ -544,6 +1018,102 @@ const shareQuestionsWithStudentsInStorage = (questionIds = []) => {
 
   window.dispatchEvent(new Event('question-bank-published-questions'))
   window.dispatchEvent(new Event('question-bank-uploaded-questions'))
+}
+
+const getLearnPracticeQuestionTypeKey = (question) => {
+  const typeLabel = getQuestionTypeLabel(question)
+  if (typeLabel === 'MCQ') return 'mcq'
+  if (typeLabel === 'SAQs') return 'saqs'
+  if (typeLabel === 'LAQs') return 'laqs'
+  return 'other'
+}
+
+const readLearnPracticeSharedCards = () => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LEARN_PRACTICE_SHARED_CARDS_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const getLearnPracticeSharedQuestionIds = () => new Set(
+  readLearnPracticeSharedCards()
+    .flatMap((card) => Array.isArray(card?.questions) ? card.questions : [])
+    .map((question) => String(question?.id ?? '').trim())
+    .filter(Boolean),
+)
+
+const persistLearnPracticeSharedCards = (questions = [], assignment = {}) => {
+  if (typeof window === 'undefined' || !questions.length) return
+
+  const sharedAt = new Date().toISOString()
+  const cardMap = new Map(readLearnPracticeSharedCards()
+    .filter((card) => card?.competencyCode)
+    .map((card) => [card.competencyCode, {
+      ...card,
+      questions: Array.isArray(card.questions) ? card.questions : [],
+    }]))
+
+  questions.forEach((question) => {
+    const competencyCode = getQuestionShareCompetencyCode(question)
+    const competencyName = getQuestionShareCompetencyName(question)
+    const primaryTopic = (Array.isArray(question?.topics) ? question.topics : []).find(Boolean) ?? ''
+    const questionId = String(question?.id ?? question?.originalQuestionId ?? '').trim()
+    if (!questionId) return
+
+    const existingCard = cardMap.get(competencyCode) ?? {
+      id: `learn-practice-${competencyCode.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`,
+      competencyCode,
+      competencyName,
+      questions: [],
+      createdAt: sharedAt,
+    }
+
+    const nextQuestions = existingCard.questions.some((item) => String(item?.id ?? '') === questionId)
+      ? existingCard.questions
+      : [
+          ...existingCard.questions,
+          {
+            id: questionId,
+            title: getQuestionPreview(question),
+            type: getQuestionTypeLabel(question),
+            typeKey: getLearnPracticeQuestionTypeKey(question),
+            source: isMedsyQuestion(question) ? 'Medsy' : 'Institute',
+            marks: question?.marks ?? '',
+            subject: question?.subject ?? '',
+            topic: primaryTopic,
+            competencyCode,
+            competencyName,
+          },
+        ]
+    const typeCounts = nextQuestions.reduce((counts, item) => ({
+      ...counts,
+      [item.typeKey]: (counts[item.typeKey] ?? 0) + 1,
+    }), { mcq: 0, saqs: 0, laqs: 0 })
+
+    cardMap.set(competencyCode, {
+      ...existingCard,
+      subject: existingCard.subject || question?.subject || '',
+      topic: existingCard.topic || primaryTopic,
+      competencyName: existingCard.competencyName || competencyName,
+      questions: nextQuestions,
+      noOfQuestions: nextQuestions.length,
+      mcq: typeCounts.mcq,
+      saqs: typeCounts.saqs,
+      laqs: typeCounts.laqs,
+      assignment,
+      lastSharedAt: sharedAt,
+    })
+  })
+
+  const nextCards = Array.from(cardMap.values())
+    .sort((first, second) => String(first.competencyCode).localeCompare(String(second.competencyCode)))
+
+  window.localStorage.setItem(LEARN_PRACTICE_SHARED_CARDS_KEY, JSON.stringify(nextCards))
+  window.dispatchEvent(new Event('learn-practice-shared-cards'))
 }
 
 const readApprovedCreatedQuestions = () => {
@@ -603,22 +1173,37 @@ const readAllQuestionBankQuestions = () => {
   })
 }
 
-const getOptionalTagGroups = (question) => [
-  { label: 'Thinking Level', values: [question?.thinkingLevel].filter(Boolean) },
-  { label: 'Difficulty Level', values: [question?.difficultyLevel].filter(Boolean) },
-  { label: 'Cognitive Level', values: [question?.cognitiveLevel].filter(Boolean) },
-  { label: 'Cognitive Function', values: [question?.cognitiveFunction].filter(Boolean) },
-  { label: 'Skill Focus', values: [question?.skillFocus].filter(Boolean) },
-  { label: 'Organ System', values: [question?.organSystem].filter(Boolean) },
-  { label: 'Organ Sub-System', values: question?.organSubSystems ?? [] },
-  { label: 'Disease Tags', values: question?.diseaseTags ?? [] },
-  { label: 'Key Concept', values: question?.keyConcepts ?? [] },
-].map((group) => ({
-  ...group,
-  values: group.values.filter((value) => value && value !== 'Not Applicable'),
-})).filter((group) => group.values.length)
+const getOptionalTagGroups = (question) => {
+  const primarySource = getQuestionPrimaryKpiSource(question)
+
+  return [
+    { label: 'Thinking Level', values: [getQuestionKpiValue(question, 'thinkingLevel')].filter(Boolean) },
+    { label: 'Difficulty Level', values: [getQuestionKpiValue(question, 'difficultyLevel')].filter(Boolean) },
+    { label: 'Cognitive Level', values: [getQuestionKpiValue(question, 'cognitiveLevel')].filter(Boolean) },
+    { label: 'Cognitive Function', values: [getQuestionKpiValue(question, 'cognitiveFunction')].filter(Boolean) },
+    { label: 'Skill Focus', values: [getQuestionKpiValue(question, 'skillFocus')].filter(Boolean) },
+    { label: 'Organ System', values: [question?.organSystem || primarySource?.organSystem].filter(Boolean) },
+    { label: 'Organ Sub-System', values: question?.organSubSystems ?? primarySource?.organSubSystems ?? [] },
+    { label: 'Disease Tags', values: question?.diseaseTags ?? primarySource?.diseaseTags ?? [] },
+    { label: 'Key Concept', values: question?.keyConcepts ?? primarySource?.keyConcepts ?? [] },
+  ]
+    .map((group) => ({
+      ...group,
+      values: group.values.filter((value) => value && value !== 'Not Applicable'),
+    }))
+    .filter((group) => group.values.length)
+}
+
+const getHiddenOptionalTagCount = (question) => {
+  const visibleOptionalTagLabels = new Set(['Thinking Level', 'Difficulty Level'])
+  return getOptionalTagGroups(question)
+    .filter((group) => !visibleOptionalTagLabels.has(group.label))
+    .reduce((total, group) => total + group.values.length, 0)
+}
 
 const getCompactTagLabel = (label) => ({
+  Competency: 'Competency',
+  'Question Category': 'Category',
   'Thinking Level': 'Thinking',
   'Difficulty Level': 'Level',
   'Cognitive Level': 'Cognitive',
@@ -634,7 +1219,7 @@ const getQuestionInlineTagGroups = (question, questionNumber = null) => [
   { label: 'Question ID', values: [getQuestionBankDisplayId(question, questionNumber)] },
   ...(isMedsySaqQuestion(question)
     ? [
-      { label: 'Suggestion Marks', values: [`${getQuestionMarksTotal(question)} Marks`] },
+      { label: 'Suggested', values: [`${getQuestionMarksTotal(question)} Marks`] },
     ]
     : []),
   ...getOptionalTagGroups(question),
@@ -654,6 +1239,55 @@ const renderQuestionInlineTagPanel = (question, questionNumber = null) => {
           </span>
         ))
       ))}
+    </div>
+  )
+}
+
+const getCleanTagValues = (values) => (
+  (Array.isArray(values) ? values : [values])
+    .filter((value) => value && value !== 'Not Applicable')
+)
+
+const getLaqPartTagGroups = (question, part = {}) => [
+  { label: 'Competency', values: getCleanTagValues(part.competencies ?? question?.competencies ?? []) },
+  { label: 'Thinking Level', values: getCleanTagValues(part.thinkingLevel ?? question?.thinkingLevel) },
+  { label: 'Difficulty Level', values: getCleanTagValues(part.difficultyLevel ?? question?.difficultyLevel) },
+  { label: 'Question Category', values: getCleanTagValues(part.questionCategory ?? question?.questionCategory) },
+  { label: 'Cognitive Level', values: getCleanTagValues(part.cognitiveLevel ?? question?.cognitiveLevel) },
+  { label: 'Cognitive Function', values: getCleanTagValues(part.cognitiveFunction ?? question?.cognitiveFunction) },
+  { label: 'Skill Focus', values: getCleanTagValues(part.skillFocus ?? question?.skillFocus) },
+  { label: 'Key Concept', values: getCleanTagValues(part.keyConcepts ?? question?.keyConcepts ?? []) },
+].filter((group) => group.values.length)
+
+const getLaqPartTagClassName = (label, value) => {
+  const normalizedValue = String(value ?? '').trim().toLowerCase()
+  if (label === 'Thinking Level' && normalizedValue === 'hot') return 'is-hot'
+  if (label === 'Thinking Level' && normalizedValue === 'lot') return 'is-lot'
+  if (label === 'Difficulty Level') return 'is-level'
+  if (label === 'Question Category') return 'is-category'
+  return 'is-default'
+}
+
+const renderInlineTagChips = (tagGroups, className = '', moreTagCount = 0) => {
+  if (!tagGroups.length && !moreTagCount) return null
+
+  return (
+    <div className={`assessment-page-descriptive-inline-tags ${className}`.trim()}>
+      {tagGroups.flatMap((group) => (
+        group.values.map((value) => (
+          <span
+            key={`${group.label}-${value}`}
+            className={`assessment-page-descriptive-tag-chip ${getLaqPartTagClassName(group.label, value)}`}
+          >
+            {getThinkingLevelLabel(value)}
+          </span>
+        ))
+      ))}
+      {moreTagCount ? (
+        <span className="assessment-page-descriptive-more-tags">
+          + {moreTagCount} more tags
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -722,6 +1356,77 @@ const getQuestionTypeFilterLabel = (questionOrType) => {
   return DESCRIPTIVE_FILTER_TYPE_LABELS.get(compactLabel) ?? compactLabel
 }
 
+const getQuestionShareCompetencyCode = (question) => {
+  const rawValue = String((question?.competencies ?? [])[0] ?? getQuestionCurriculumDisplay(question).competencyCode ?? '').trim()
+  const codeMatch = rawValue.match(/\b([A-Z]{1,4}\s*\d+(?:\.\d+)?)\b/i)
+  return (codeMatch?.[1] ?? rawValue ?? '').trim() || 'Unmapped'
+}
+
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const getQuestionShareCompetencyName = (question) => {
+  const rawValue = String((question?.competencies ?? [])[0] ?? '').trim()
+  const competencyCode = getQuestionShareCompetencyCode(question)
+  if (!rawValue || rawValue === competencyCode) return `Competency ${competencyCode}`
+
+  const codePattern = escapeRegExp(competencyCode).replace(/\\ /g, '\\s*')
+  const competencyName = rawValue
+    .replace(new RegExp(`^\\s*${codePattern}\\s*[-:–—]?\\s*`, 'i'), '')
+    .trim()
+
+  return competencyName || `Competency ${competencyCode}`
+}
+
+const createShareToStudentsSummary = (questions) => {
+  const rowMap = new Map()
+  const totals = {
+    competencyCode: 'Total Question',
+    noOfQuestions: 0,
+    mcq: 0,
+    saqs: 0,
+    laqs: 0,
+  }
+
+  questions.forEach((question) => {
+    const competencyCode = getQuestionShareCompetencyCode(question)
+    const existing = rowMap.get(competencyCode) ?? {
+      competencyCode,
+      competencyName: getQuestionShareCompetencyName(question),
+      noOfQuestions: 0,
+      mcq: 0,
+      saqs: 0,
+      laqs: 0,
+    }
+    if (!existing.competencyName || existing.competencyName === `Competency ${competencyCode}`) {
+      existing.competencyName = getQuestionShareCompetencyName(question)
+    }
+    const typeLabel = getQuestionTypeLabel(question)
+
+    existing.noOfQuestions += 1
+    totals.noOfQuestions += 1
+
+    if (typeLabel === 'MCQ') {
+      existing.mcq += 1
+      totals.mcq += 1
+    } else if (typeLabel === 'SAQs') {
+      existing.saqs += 1
+      totals.saqs += 1
+    } else if (typeLabel === 'LAQs') {
+      existing.laqs += 1
+      totals.laqs += 1
+    }
+
+    rowMap.set(competencyCode, existing)
+  })
+
+  return {
+    rows: Array.from(rowMap.values()).sort((first, second) => first.competencyCode.localeCompare(second.competencyCode)),
+    totals,
+  }
+}
+
+const formatShareSummaryCompetencyTooltip = (row) => row.competencyName || `Competency ${row.competencyCode}`
+
 const isDescriptiveQuestion = (question) => (
   getQuestionTypeBadgeClassName(question) === 'is-descriptive'
 )
@@ -731,7 +1436,7 @@ const getDescriptiveStructureCounts = (question) => {
     return { partCount: 0, subPartCount: 0 }
   }
 
-  const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+  const sections = getDisplayDescriptiveSections(question)
   if (!sections.length) {
     return { partCount: 0, subPartCount: 0 }
   }
@@ -746,16 +1451,54 @@ const getDescriptiveStructureCounts = (question) => {
 }
 
 const renderQuestionStructureBadge = (question) => {
+  if (usesSaqModeOneDetailPreview(question)) return null
   const { partCount, subPartCount } = getDescriptiveStructureCounts(question)
   if (!partCount && !subPartCount) return null
+  const leafCount = getDescriptiveLeafSections(question).length || subPartCount || partCount
 
   return (
     <span className="assessment-page-question-structure-badge" title="Question structure">
       <ListChecks size={11} strokeWidth={2.4} />
-      {partCount} {partCount === 1 ? 'part' : 'parts'} &middot; {subPartCount} {subPartCount === 1 ? 'sub-part' : 'sub-parts'}
+      {leafCount} {leafCount === 1 ? 'sub-question' : 'sub-questions'}
     </span>
   )
 }
+
+const getFirstValue = (value) => (Array.isArray(value) ? value[0] : value)
+
+const getDescriptivePartTopicNumber = (question, part = {}) => {
+  const subject = part.subject || question?.subject || ''
+  const topic = getFirstValue(part.topics) || getFirstValue(question?.topics) || ''
+  const subjectTopics = corelationRatingRows
+    .filter((row) => row.subject === subject)
+    .map((row) => row.topic)
+    .filter(Boolean)
+  return topic ? [...new Set(subjectTopics)].findIndex((item) => item === topic) + 1 : 0
+}
+
+const getDescriptivePartOptionalTagGroups = (question, part = {}) => [
+  { label: 'Cognitive Level', values: getCleanTagValues(part.cognitiveLevel ?? question?.cognitiveLevel) },
+  { label: 'Cognitive Function', values: getCleanTagValues(part.cognitiveFunction ?? question?.cognitiveFunction) },
+  { label: 'Skill Focus', values: getCleanTagValues(part.skillFocus ?? question?.skillFocus) },
+  { label: 'Organ System', values: getCleanTagValues(part.organSystem ?? question?.organSystem) },
+  { label: 'Organ Sub-System', values: getCleanTagValues(part.organSubSystems ?? question?.organSubSystems ?? []) },
+  { label: 'Disease Tags', values: getCleanTagValues(part.diseaseTags ?? question?.diseaseTags ?? []) },
+  { label: 'Key Concept', values: getCleanTagValues(part.keyConcepts ?? question?.keyConcepts ?? []).slice(0, 1) },
+].filter((group) => group.values.length)
+
+const getDescriptiveExaminerNotesText = (question, section, child) => (
+  stripHtml(child?.examinerNotes)
+  || stripHtml(section?.examinerNotes)
+  || stripHtml(question?.examinerNotes)
+  || 'Award marks for the required key points, accurate terminology, and clear clinical reasoning.'
+)
+
+const getDescriptiveFatalFlawText = (question, section, child) => (
+  stripHtml(child?.fatalFlaw)
+  || stripHtml(section?.fatalFlaw)
+  || stripHtml(question?.fatalFlaw)
+  || 'Do not award full marks if the response misses the core concept or gives an unrelated explanation.'
+)
 
 const getDescriptiveAnswerText = (question, section, child) => {
   const explicitAnswer = stripHtml(child?.answerKey)
@@ -804,12 +1547,200 @@ const getDescriptiveAnswerItems = (question, sections) => {
   })
 }
 
-const renderQuestionParts = (question, sections, keyPrefix = 'question') => {
-  const sectionList = Array.isArray(sections) ? sections : []
-  if (!sectionList.length) return null
+const renderDescriptivePartCompetencyBadge = (question, part = {}) => {
+  const competency = getFirstValue(part.competencies) || getFirstValue(question?.competencies) || ''
+  const code = getCompetencyCode(competency)
+  if (!code) return null
+
+  const name = getCompetencyName(competency)
+  const subject = part.subject || question?.subject || ''
+  const topic = getFirstValue(part.topics) || getFirstValue(question?.topics) || ''
+  const topicNumber = getDescriptivePartTopicNumber(question, part)
+  const topicText = topic ? `${topicNumber > 0 ? `${topicNumber}: ` : ''}${topic}` : ''
+  const competencyText = [code, name].filter(Boolean).join(' - ')
+  const hasTooltip = Boolean(subject || topicText || competencyText)
 
   return (
-    <div className="assessment-page-question-parts-panel">
+    <span className="assessment-page-competency-code-wrap assessment-page-descriptive-part-code-wrap">
+      <button
+        type="button"
+        className="question-bank-created-descriptive-code"
+        aria-label={`View subject, topic, and competency details for ${code}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <span>{code}</span>
+        {hasTooltip ? <Info size={11} strokeWidth={2.4} aria-hidden="true" /> : null}
+      </button>
+      {hasTooltip ? (
+        <span className="assessment-page-competency-tooltip is-curriculum-details" role="tooltip">
+          {subject ? (
+            <span className="assessment-page-competency-tooltip-row">
+              <strong>Subject</strong>
+              <span>{subject}</span>
+            </span>
+          ) : null}
+          {topicText ? (
+            <span className="assessment-page-competency-tooltip-row">
+              <strong>Topic</strong>
+              <span>{topicText}</span>
+            </span>
+          ) : null}
+          {competencyText ? (
+            <span className="assessment-page-competency-tooltip-row">
+              <strong>Competency</strong>
+              <span>{competencyText}</span>
+            </span>
+          ) : null}
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
+const renderQuestionParts = (question, sections, keyPrefix = 'question', tagToggle = {}) => {
+  const sectionList = Array.isArray(sections) ? sections : []
+  if (!sectionList.length) return null
+  const isMatrixPreview = usesDescriptiveMatrixPreview(question)
+
+  if (isMatrixPreview) {
+    const rootAnswer = getDescriptiveAnswerText(question, {}, {})
+    const parts = sectionList.flatMap((section, sectionIndex) => {
+      const children = Array.isArray(section.children) ? section.children : []
+      const sectionText = stripHtml(section.questionText)
+      const makePart = (source, fallbackText, sourceIndex) => ({
+        key: source?.id ?? `${keyPrefix}-part-${sectionIndex}-${sourceIndex}`,
+        source,
+        section,
+        text: stripHtml(source?.questionText) || fallbackText || getQuestionPreview(question),
+        marks: parseMarksValue(source?.marks || section?.marks || question?.marks),
+        answer: getDescriptiveAnswerText(question, section, source) || rootAnswer || 'Key points with accurate terminology and a concise explanation.',
+        examinerNotes: getDescriptiveExaminerNotesText(question, section, source),
+        fatalFlaw: getDescriptiveFatalFlawText(question, section, source),
+      })
+
+      return children.length
+        ? children.map((child, childIndex) => makePart(child, sectionText, childIndex))
+        : [makePart(section, sectionText, 0)]
+    })
+
+    return (
+      <div className="assessment-page-question-parts-panel assessment-page-descriptive-matrix-panel">
+        <div className="assessment-page-clinical-case-block">
+          <strong>Clinical Case Scenario:</strong>
+          <span>{getQuestionPreview(question)}</span>
+        </div>
+        <strong className="assessment-page-question-parts-heading">Sub-Questions & Matrix Mapping</strong>
+        <div className="assessment-page-descriptive-matrix-list">
+          {parts.map((part, partIndex) => {
+            const partSource = part.source ?? {}
+            const partTagsPanelId = `${keyPrefix}-${part.key}-tags`
+            const isPartTagsOpen = tagToggle.openTagsId === partTagsPanelId
+            const optionalTagGroups = getDescriptivePartOptionalTagGroups(question, partSource)
+            const optionalTagCount = optionalTagGroups.reduce((total, group) => total + group.values.length, 0)
+            const thinking = partSource.thinkingLevel || question.thinkingLevel
+            const difficulty = partSource.difficultyLevel || question.difficultyLevel
+            const category = getQuestionCategoryLabel(partSource.questionCategory || question.questionCategory, question)
+
+            return (
+              <article
+                key={part.key}
+                className={`assessment-page-descriptive-part-card ${isPartTagsOpen ? 'has-inline-tags' : ''}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="assessment-page-descriptive-part-head">
+                  <strong className="assessment-page-descriptive-part-label">{String.fromCharCode(97 + partIndex)}.</strong>
+                  <p className="assessment-page-descriptive-part-text">{part.text}</p>
+                </div>
+                <div className="assessment-page-descriptive-part-badges">
+                  {renderDescriptivePartCompetencyBadge(question, partSource)}
+                  {thinking ? (
+                    <span className={`assessment-page-descriptive-tag-chip ${getLaqPartTagClassName('Thinking Level', thinking)}`}>
+                      {getThinkingLevelLabel(thinking)}
+                    </span>
+                  ) : null}
+                  {difficulty ? (
+                    <span className="assessment-page-descriptive-tag-chip is-level">
+                      {difficulty}
+                    </span>
+                  ) : null}
+                  {category ? (
+                    <span className="assessment-page-descriptive-tag-chip is-category">
+                      {category}
+                    </span>
+                  ) : null}
+                  {part.marks > 0 ? (
+                    <span className="assessment-page-descriptive-part-marks">
+                      {part.marks} Marks
+                    </span>
+                  ) : null}
+                  {optionalTagCount ? (
+                    <button
+                      type="button"
+                      className="assessment-page-descriptive-more-tags"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        tagToggle.onToggleTags?.(partTagsPanelId)
+                      }}
+                      aria-expanded={isPartTagsOpen}
+                      aria-controls={partTagsPanelId}
+                    >
+                      + {optionalTagCount} more tags
+                    </button>
+                  ) : null}
+                </div>
+                {isPartTagsOpen && optionalTagGroups.length ? (
+                  <div id={partTagsPanelId} className="assessment-page-inline-tags-panel assessment-page-descriptive-part-tags-panel">
+                    {optionalTagGroups.flatMap((group) => (
+                      group.values.map((value) => (
+                        <span key={`${part.key}-${group.label}-${value}`} className="assessment-page-inline-tag-chip">
+                          <strong>{getCompactTagLabel(group.label)}</strong>
+                          <span>{value}</span>
+                        </span>
+                      ))
+                    ))}
+                  </div>
+                ) : null}
+                {isPartTagsOpen ? (
+                  <>
+                    {part.answer ? (
+                      <div className="assessment-page-descriptive-part-answer">
+                        <strong>Model Answer</strong>
+                        <p>{part.answer}</p>
+                      </div>
+                    ) : null}
+                    {part.examinerNotes ? (
+                      <div className="assessment-page-descriptive-part-answer is-examiner-notes">
+                        <strong>Examiner&apos;s marking notes</strong>
+                        <p>{part.examinerNotes}</p>
+                      </div>
+                    ) : null}
+                    {part.fatalFlaw ? (
+                      <div className="assessment-page-descriptive-part-answer is-fatal-flaw">
+                        <strong>
+                          <TriangleAlert size={12} strokeWidth={2.2} aria-hidden="true" />
+                          Fatal flaw
+                        </strong>
+                        <p>{part.fatalFlaw}</p>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+              </article>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  const isSaqModeOnePreview = usesSaqModeOneDetailPreview(question)
+  const descriptiveMoreTagCount = (isLaqQuestion(question) || isSaqModeOnePreview) ? getHiddenOptionalTagCount(question) : 0
+  const detailAnswer = isSaqModeOnePreview ? getDescriptiveAnswerText(question, sectionList[0] ?? {}, {}) : ''
+  const detailExaminerNotes = isSaqModeOnePreview ? getDescriptiveExaminerNotesText(question, sectionList[0] ?? {}, {}) : ''
+  const detailFatalFlaw = isSaqModeOnePreview ? getDescriptiveFatalFlawText(question, sectionList[0] ?? {}, {}) : ''
+
+  return (
+    <div className={`assessment-page-question-parts-panel ${isSaqModeOnePreview ? 'assessment-page-saq-mode-one-panel' : ''}`.trim()}>
       <strong className="assessment-page-question-parts-heading">Question Parts</strong>
       <div className="assessment-page-question-parts-body">
         <div className="assessment-page-question-parts-main">
@@ -818,32 +1749,67 @@ const renderQuestionParts = (question, sections, keyPrefix = 'question') => {
         {sectionList.map((section, sectionIndex) => {
           const children = Array.isArray(section.children) ? section.children : []
           const sectionMarks = Number(section.marks ?? 0)
+          const sectionInlineTags = (isLaqQuestion(question) || isSaqModeOnePreview) && !children.length
+            ? renderInlineTagChips(getLaqPartTagGroups(question, section), '', descriptiveMoreTagCount)
+            : null
 
           return (
             <div key={section.id ?? `${keyPrefix}-section-${sectionIndex}`} className="assessment-page-descriptive-item">
               <div className="assessment-page-descriptive-line">
                 <strong>{sectionIndex + 1}.</strong>
                 <span>{stripHtml(section.questionText) || 'Question not added'}</span>
-                {!isMedsyQuestion(question) && !children.length && sectionMarks > 0
+                {(!isMedsyQuestion(question) || isSaqModeOnePreview) && !children.length && sectionMarks > 0
                   ? <em>{sectionMarks} marks</em>
                   : null}
               </div>
+              {sectionInlineTags}
               {children.map((child, childIndex) => {
                 const childMarks = Number(child.marks ?? 0)
+                const childInlineTags = isLaqQuestion(question) || isSaqModeOnePreview
+                  ? renderInlineTagChips(getLaqPartTagGroups(question, child), 'is-child', childIndex === 0 ? descriptiveMoreTagCount : 0)
+                  : null
 
                 return (
-                  <div key={child.id ?? `${keyPrefix}-section-${sectionIndex}-child-${childIndex}`} className="assessment-page-descriptive-line is-child">
-                    <strong>{String.fromCharCode(97 + childIndex)}.</strong>
-                    <span>{stripHtml(child.questionText) || 'Question not added'}</span>
-                    {!isMedsyQuestion(question) && childMarks > 0
-                      ? <em>{childMarks} marks</em>
-                      : null}
-                  </div>
+                  <Fragment key={child.id ?? `${keyPrefix}-section-${sectionIndex}-child-${childIndex}`}>
+                    <div className="assessment-page-descriptive-line is-child">
+                      <strong>{String.fromCharCode(97 + childIndex)}.</strong>
+                      <span>{stripHtml(child.questionText) || 'Question not added'}</span>
+                      {(!isMedsyQuestion(question) || isSaqModeOnePreview) && childMarks > 0
+                        ? <em>{childMarks} marks</em>
+                        : null}
+                    </div>
+                    {childInlineTags}
+                  </Fragment>
                 )
               })}
             </div>
           )
         })}
+        {isSaqModeOnePreview ? (
+          <>
+            {detailAnswer ? (
+              <div className="assessment-page-descriptive-part-answer">
+                <strong>Model Answer</strong>
+                <p>{detailAnswer}</p>
+              </div>
+            ) : null}
+            {detailExaminerNotes ? (
+              <div className="assessment-page-descriptive-part-answer is-examiner-notes">
+                <strong>Examiner&apos;s marking notes</strong>
+                <p>{detailExaminerNotes}</p>
+              </div>
+            ) : null}
+            {detailFatalFlaw ? (
+              <div className="assessment-page-descriptive-part-answer is-fatal-flaw">
+                <strong>
+                  <TriangleAlert size={12} strokeWidth={2.2} aria-hidden="true" />
+                  Fatal flaw
+                </strong>
+                <p>{detailFatalFlaw}</p>
+              </div>
+            ) : null}
+          </>
+        ) : null}
       </div>
     </div>
   )
@@ -860,6 +1826,46 @@ const renderMainQuestionPanel = (question) => (
   </div>
 )
 
+const renderSaqModeOneQuestionPanel = (question) => {
+  const answerText = getDescriptiveAnswerText(question, {}, {})
+  const examinerNotes = getDescriptiveExaminerNotesText(question, {}, {})
+  const fatalFlaw = getDescriptiveFatalFlawText(question, {}, {})
+
+  return (
+    <div className="assessment-page-main-question-block">
+      <div className="assessment-page-question-parts-panel assessment-page-main-question-panel assessment-page-saq-mode-one-panel">
+        <strong className="assessment-page-question-parts-heading">Question Part</strong>
+        <div className="assessment-page-question-parts-body">
+          <div className="assessment-page-descriptive-line is-saq-mode-one-root">
+            <span>{getQuestionPreview(question)}</span>
+          </div>
+          {answerText ? (
+            <div className="assessment-page-descriptive-part-answer">
+              <strong>Model Answer</strong>
+              <p>{answerText}</p>
+            </div>
+          ) : null}
+          {examinerNotes ? (
+            <div className="assessment-page-descriptive-part-answer is-examiner-notes">
+              <strong>Examiner&apos;s marking notes</strong>
+              <p>{examinerNotes}</p>
+            </div>
+          ) : null}
+          {fatalFlaw ? (
+            <div className="assessment-page-descriptive-part-answer is-fatal-flaw">
+              <strong>
+                <TriangleAlert size={12} strokeWidth={2.2} aria-hidden="true" />
+                Fatal flaw
+              </strong>
+              <p>{fatalFlaw}</p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const renderTableMainQuestionPanel = (question) => (
   <div className="assessment-page-main-question-block">
     <div className="assessment-page-question-parts-panel assessment-page-main-question-panel">
@@ -870,6 +1876,44 @@ const renderTableMainQuestionPanel = (question) => (
     </div>
   </div>
 )
+
+const getMcqAnswerKeyRationaleText = (question) => {
+  const correctOptionTexts = (question?.options ?? [])
+    .filter((option) => (question?.correctOptionIds ?? []).includes(option.id))
+    .map((option) => stripHtml(option.label ?? option.content))
+    .filter(Boolean)
+  const answerText = stripHtml(question?.answerKey)
+    .replace(/^Correct answer:\s*/i, '')
+    .trim()
+  return [
+    correctOptionTexts.length ? `Correct answer: ${correctOptionTexts.join(', ')}` : '',
+    answerText,
+  ].filter(Boolean).join('. ')
+}
+
+const renderMcqAnswerBlocks = (question, wrapperClassName = '') => {
+  const rationaleText = getMcqAnswerKeyRationaleText(question)
+  const examinerNotes = stripHtml(question?.examinerNotes)
+    || 'Award marks for the required key points, accurate terminology, and clear clinical reasoning.'
+  if (!rationaleText && !examinerNotes) return null
+
+  return (
+    <>
+      {rationaleText ? (
+        <div className={`${wrapperClassName} assessment-page-mcq-model-answer assessment-page-answer-card is-answer-key-rationale`.trim()}>
+          <strong className="assessment-page-model-answer-heading is-answer-key-rationale">Answer key &amp; rationale</strong>
+          <span>{rationaleText}</span>
+        </div>
+      ) : null}
+      {examinerNotes ? (
+        <div className={`${wrapperClassName} assessment-page-mcq-model-answer assessment-page-answer-card is-examiner-notes`.trim()}>
+          <strong className="assessment-page-model-answer-heading is-examiner-notes">Examiner&apos;s marking notes</strong>
+          <span>{examinerNotes}</span>
+        </div>
+      ) : null}
+    </>
+  )
+}
 
 const parseMarksValue = (value) => {
   const parsed = Number(value)
@@ -1087,6 +2131,18 @@ export default function QuestionBankNonCreatePage({
   const [editQuestion, setEditQuestion] = useState(null)
   const [editQuestionMode, setEditQuestionMode] = useState('overwrite')
   const [assessmentChooserOpen, setAssessmentChooserOpen] = useState(false)
+  const [shareStudentsSummaryOpen, setShareStudentsSummaryOpen] = useState(false)
+  const [shareStudentsSummaryPage, setShareStudentsSummaryPage] = useState(1)
+  const [shareActivePanel, setShareActivePanel] = useState('summary')
+  const [shareAssignYear, setShareAssignYear] = useState('')
+  const [shareAssignSgt, setShareAssignSgt] = useState('')
+  const [shareScheduleEnabled, setShareScheduleEnabled] = useState(false)
+  const [shareStartDate, setShareStartDate] = useState('')
+  const [shareStartTime, setShareStartTime] = useState('')
+  const [shareEndDate, setShareEndDate] = useState('')
+  const [shareEndTime, setShareEndTime] = useState('')
+  const [shareAssignError, setShareAssignError] = useState('')
+  const [learnPracticeSharedQuestionIds, setLearnPracticeSharedQuestionIds] = useState(() => getLearnPracticeSharedQuestionIds())
   const [draftAssessmentOptions, setDraftAssessmentOptions] = useState(() => readAssessmentDrafts())
   const addedQuestionIdSet = useMemo(
     () => new Set((addedQuestionIds ?? []).map((id) => String(id ?? '')).filter(Boolean)),
@@ -1117,13 +2173,67 @@ export default function QuestionBankNonCreatePage({
       selectedIdSet.has(String(question?.id ?? ''))
       && !addedQuestionIdSet.has(String(question?.id ?? ''))
       && !addedQuestionIdSet.has(String(question?.originalQuestionId ?? ''))
+      && hasDisplayableQuestionContent(question)
     ))
   }, [addedQuestionIdSet, embedded, publishedQuestions, selectedGridQuestionIds])
+
+  const displayableQuestions = useMemo(
+    () => publishedQuestions.filter(hasDisplayableQuestionContent),
+    [publishedQuestions],
+  )
+  const selectedShareQuestions = useMemo(() => {
+    const selectedIdSet = new Set(availableSelectedGridQuestionIds.map((id) => String(id)))
+    return displayableQuestions.filter((question) => selectedIdSet.has(String(question?.id ?? '')))
+  }, [availableSelectedGridQuestionIds, displayableQuestions])
+  const shareStudentsSummary = useMemo(
+    () => createShareToStudentsSummary(selectedShareQuestions),
+    [selectedShareQuestions],
+  )
+  const shareStudentsSummaryPageCount = Math.max(1, Math.ceil(shareStudentsSummary.rows.length / SHARE_STUDENTS_SUMMARY_PAGE_SIZE))
+  const visibleShareStudentsSummaryRows = shareStudentsSummary.rows.slice(
+    (Math.min(shareStudentsSummaryPage, shareStudentsSummaryPageCount) - 1) * SHARE_STUDENTS_SUMMARY_PAGE_SIZE,
+    Math.min(shareStudentsSummaryPage, shareStudentsSummaryPageCount) * SHARE_STUDENTS_SUMMARY_PAGE_SIZE,
+  )
+  const shareAssignSgtOptions = shareAssignYear ? (SHARE_ASSIGN_SGT_OPTIONS[shareAssignYear] ?? []) : []
+  const shareScheduleStartDateTime = shareStartDate && shareStartTime ? new Date(`${shareStartDate}T${shareStartTime}`) : null
+  const shareScheduleEndDateTime = shareEndDate && shareEndTime ? new Date(`${shareEndDate}T${shareEndTime}`) : null
+  const hasValidShareSchedule = !shareScheduleEnabled || (
+    shareScheduleStartDateTime
+    && shareScheduleEndDateTime
+    && shareScheduleEndDateTime > shareScheduleStartDateTime
+  )
+  const canShareSelectedQuestions = Boolean(
+    availableSelectedGridQuestionIds.length
+    && shareAssignYear
+    && hasValidShareSchedule,
+  )
 
   useEffect(() => {
     if (!embedded || typeof onSelectionChange !== 'function') return
     onSelectionChange(embeddedSelectedQuestions)
   }, [embedded, embeddedSelectedQuestions, onSelectionChange])
+
+  useEffect(() => {
+    setShareStudentsSummaryPage(1)
+  }, [availableSelectedGridQuestionIds.length, shareStudentsSummaryOpen])
+
+  useEffect(() => {
+    if (shareStudentsSummaryPage > shareStudentsSummaryPageCount) {
+      setShareStudentsSummaryPage(shareStudentsSummaryPageCount)
+    }
+  }, [shareStudentsSummaryPage, shareStudentsSummaryPageCount])
+
+  useEffect(() => {
+    const syncLearnPracticeSharedQuestions = () => setLearnPracticeSharedQuestionIds(getLearnPracticeSharedQuestionIds())
+
+    window.addEventListener('storage', syncLearnPracticeSharedQuestions)
+    window.addEventListener('learn-practice-shared-cards', syncLearnPracticeSharedQuestions)
+
+    return () => {
+      window.removeEventListener('storage', syncLearnPracticeSharedQuestions)
+      window.removeEventListener('learn-practice-shared-cards', syncLearnPracticeSharedQuestions)
+    }
+  }, [])
 
   useEffect(() => () => {
     if (typeof onSelectionChange === 'function') onSelectionChange([])
@@ -1138,20 +2248,21 @@ export default function QuestionBankNonCreatePage({
         .filter((record) => !isResolvedReportRecord(record))
         .map((record) => record.question)
         .filter(Boolean)
+        .filter(hasDisplayableQuestionContent)
     }
 
-    return publishedQuestions.filter((question) => {
+    return displayableQuestions.filter((question) => {
       if (activeMetric === 'medsy') return isMedsyQuestion(question)
       if (activeMetric === 'created') return isInstituteQuestion(question)
       if (activeMetric === 'favorites') return isFavoriteQuestion(question)
-      if (activeMetric === 'shared') return isSharedToStudentsQuestion(question)
+      if (activeMetric === 'shared') return embedded && learnPracticeSharedQuestionIds.has(String(question?.id ?? ''))
       return true
     })
-  }, [activeMetric, publishedQuestions, reportedQuestionRecords, createdReportedQuestionRecords])
+  }, [activeMetric, displayableQuestions, embedded, learnPracticeSharedQuestionIds, reportedQuestionRecords, createdReportedQuestionRecords])
   const filterOptions = useMemo(() => ({
     authors: getUniqueValues(metricFilteredQuestions, getQuestionAuthorName),
     types: getUniqueValues(metricFilteredQuestions, (question) => getQuestionTypeFilterLabel(question)),
-    years: getUniqueValues(metricFilteredQuestions, (question) => question.year),
+    years: getUniqueValues(metricFilteredQuestions, (question) => normalizeQuestionYearLabel(question.year)),
     subjects: getUniqueValues(metricFilteredQuestions, (question) => question.subject),
     topics: getUniqueValues(metricFilteredQuestions, (question) => question.topics ?? []),
     competencies: getUniqueValues(metricFilteredQuestions, (question) => question.competencies ?? []),
@@ -1171,7 +2282,7 @@ export default function QuestionBankNonCreatePage({
   const filterOptionCounts = useMemo(() => ({
     authors: getValueCounts(metricFilteredQuestions, getQuestionAuthorName),
     types: getValueCounts(metricFilteredQuestions, (question) => getQuestionTypeFilterLabel(question)),
-    years: getValueCounts(metricFilteredQuestions, (question) => question.year),
+    years: getValueCounts(metricFilteredQuestions, (question) => normalizeQuestionYearLabel(question.year)),
     subjects: getValueCounts(metricFilteredQuestions, (question) => question.subject),
     topics: getValueCounts(metricFilteredQuestions, (question) => question.topics ?? []),
     competencies: getValueCounts(metricFilteredQuestions, (question) => question.competencies ?? []),
@@ -1188,13 +2299,13 @@ export default function QuestionBankNonCreatePage({
   }), [metricFilteredQuestions])
 
   const landingFilterOptions = useMemo(() => ({
-    years: getUniqueValues(publishedQuestions, (question) => question.year),
-    subjects: getUniqueValues(publishedQuestions, (question) => question.subject),
-    topics: getUniqueValues(publishedQuestions, (question) => question.topics ?? []),
-    competencies: getUniqueValues(publishedQuestions, (question) => question.competencies ?? []),
-  }), [publishedQuestions])
+    years: getUniqueValues(displayableQuestions, (question) => normalizeQuestionYearLabel(question.year)),
+    subjects: getUniqueValues(displayableQuestions, (question) => question.subject),
+    topics: getUniqueValues(displayableQuestions, (question) => question.topics ?? []),
+    competencies: getUniqueValues(displayableQuestions, (question) => question.competencies ?? []),
+  }), [displayableQuestions])
 
-  const landingQuestions = publishedQuestions
+  const landingQuestions = displayableQuestions
 
   const landingValueCounts = useMemo(() => ({
     types: getValueCounts(landingQuestions, (question) => getQuestionTypeFilterLabel(question)),
@@ -1269,7 +2380,7 @@ export default function QuestionBankNonCreatePage({
     return metricFilteredQuestions.filter((question) => {
       if (!hasFilterMatch(filters.authors, getQuestionAuthorName(question))) return false
       if (!hasFilterMatch(filters.types, getQuestionTypeFilterLabel(question))) return false
-      if (!hasFilterMatch(filters.years, question.year)) return false
+      if (!hasFilterMatch(filters.years, normalizeQuestionYearLabel(question.year))) return false
       if (!hasFilterMatch(filters.subjects, question.subject)) return false
       if (!hasFilterMatch(filters.topics, question.topics ?? [])) return false
       if (!hasFilterMatch(filters.competencies, question.competencies ?? [])) return false
@@ -1433,16 +2544,7 @@ export default function QuestionBankNonCreatePage({
       icon: ClipboardList,
       tone: 'total',
       filters: {},
-      distribution: createDistribution(landingValueCounts.types, ['MCQ', 'Descriptive (SAQs)', 'Descriptive (LAQs)', 'Descriptive (MEQs)']),
-    },
-    {
-      key: 'medsy',
-      label: 'Medsy Question',
-      value: landingQuestions.filter(isMedsyQuestion).length,
-      icon: FileSearch,
-      tone: 'medsy',
-      activeMetricKey: 'medsy',
-      distribution: createDistribution(getValueCounts(landingQuestions.filter(isMedsyQuestion), (question) => getQuestionTypeFilterLabel(question))),
+      distribution: createDistribution(landingValueCounts.types, ['MCQ', 'Descriptive (SAQs)', 'Descriptive (LAQs)']),
     },
     {
       key: 'created',
@@ -1452,6 +2554,15 @@ export default function QuestionBankNonCreatePage({
       tone: 'created',
       activeMetricKey: 'created',
       distribution: createDistribution(getValueCounts(landingQuestions.filter(isInstituteQuestion), (question) => getQuestionTypeFilterLabel(question))),
+    },
+    {
+      key: 'medsy',
+      label: 'Medsy Question',
+      value: landingQuestions.filter(isMedsyQuestion).length,
+      icon: FileSearch,
+      tone: 'medsy',
+      activeMetricKey: 'medsy',
+      distribution: createDistribution(getValueCounts(landingQuestions.filter(isMedsyQuestion), (question) => getQuestionTypeFilterLabel(question))),
     },
     {
       key: 'mcq',
@@ -1466,26 +2577,22 @@ export default function QuestionBankNonCreatePage({
       key: 'descriptive',
       label: 'Descriptive',
       value: (landingValueCounts.types['Descriptive (LAQs)'] ?? 0)
-        + (landingValueCounts.types['Descriptive (SAQs)'] ?? 0)
-        + (landingValueCounts.types['Descriptive (MEQs)'] ?? 0),
+        + (landingValueCounts.types['Descriptive (SAQs)'] ?? 0),
       icon: BookOpenCheck,
       tone: 'type',
-      filters: { types: ['Descriptive (LAQs)', 'Descriptive (SAQs)', 'Descriptive (MEQs)'] },
+      filters: { types: ['Descriptive (LAQs)', 'Descriptive (SAQs)'] },
       splits: [
         { label: 'LAQs', count: landingValueCounts.types['Descriptive (LAQs)'] ?? 0 },
         { label: 'SAQs', count: landingValueCounts.types['Descriptive (SAQs)'] ?? 0 },
-        { label: 'MEQs', count: landingValueCounts.types['Descriptive (MEQs)'] ?? 0 },
       ],
       donut: createDonutDistribution({
         LAQs: landingValueCounts.types['Descriptive (LAQs)'] ?? 0,
         SAQs: landingValueCounts.types['Descriptive (SAQs)'] ?? 0,
-        MEQs: landingValueCounts.types['Descriptive (MEQs)'] ?? 0,
-      }, ['LAQs', 'SAQs', 'MEQs'], ['#f59e0b', '#14b8a6', '#ef4444']),
+      }, ['LAQs', 'SAQs'], ['#f59e0b', '#14b8a6']),
       distribution: createDistribution({
         LAQs: landingValueCounts.types['Descriptive (LAQs)'] ?? 0,
         SAQs: landingValueCounts.types['Descriptive (SAQs)'] ?? 0,
-        MEQs: landingValueCounts.types['Descriptive (MEQs)'] ?? 0,
-      }, ['LAQs', 'SAQs', 'MEQs']),
+      }, ['LAQs', 'SAQs']),
     },
     {
       key: 'categories',
@@ -1549,8 +2656,7 @@ export default function QuestionBankNonCreatePage({
     { label: 'MCQ', count: landingValueCounts.types.MCQ ?? 0 },
     { label: 'LAQs', count: landingValueCounts.types['Descriptive (LAQs)'] ?? 0 },
     { label: 'SAQs', count: landingValueCounts.types['Descriptive (SAQs)'] ?? 0 },
-    { label: 'MEQs', count: landingValueCounts.types['Descriptive (MEQs)'] ?? 0 },
-  ], ['#0f766e', '#7f91a8', '#f1bd68', '#86a995'], { includeZero: true })
+  ], ['#0f766e', '#7f91a8', '#f1bd68'], { includeZero: true })
   const categoryRows = createBarRows(
     ['Application', 'Direct', 'Reasoning', 'Critical Thinking', 'Aetcom'].map((label) => ({
       label,
@@ -1569,11 +2675,11 @@ export default function QuestionBankNonCreatePage({
   )
   const thinkingRows = createBarRows(createSplitCounts(landingValueCounts.thinkingLevels, ['HoT', 'LoT']), ['#0f766e', '#4f7396'])
   const questionListSummaryMetrics = [
-    { key: 'total', label: 'Total Question', value: publishedQuestions.length, icon: ClipboardList, tone: 'total' },
-    { key: 'medsy', label: 'Medsy Question', value: publishedQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy', activeMetricKey: 'medsy' },
-    { key: 'created', label: 'Institute Questions', value: publishedQuestions.filter(isInstituteQuestion).length, icon: ListChecks, tone: 'created', activeMetricKey: 'created' },
-    { key: 'favorites', label: 'Favorites', value: publishedQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites', activeMetricKey: 'favorites' },
-    { key: 'shared', label: 'Share to Students', value: publishedQuestions.filter(isSharedToStudentsQuestion).length, icon: Share2, tone: 'shared', activeMetricKey: 'shared' },
+    { key: 'total', label: 'Total Question', value: displayableQuestions.length, icon: ClipboardList, tone: 'total' },
+    { key: 'medsy', label: 'Medsy Question', value: displayableQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy', activeMetricKey: 'medsy' },
+    { key: 'created', label: 'Institute Questions', value: displayableQuestions.filter(isInstituteQuestion).length, icon: ListChecks, tone: 'created', activeMetricKey: 'created' },
+    { key: 'favorites', label: 'Favorites', value: displayableQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites', activeMetricKey: 'favorites' },
+    { key: 'shared', label: 'Share to Students', value: embedded ? displayableQuestions.filter((question) => learnPracticeSharedQuestionIds.has(String(question?.id ?? ''))).length : 0, icon: Share2, tone: 'shared', activeMetricKey: 'shared', isStatic: !embedded },
     { key: 'suggested', label: 'Report Question', value: [
       ...reportedQuestionRecords,
       ...createdReportedQuestionRecords,
@@ -1583,7 +2689,7 @@ export default function QuestionBankNonCreatePage({
   const isReportMetricActive = activeMetric === 'suggested'
   const hasEmbeddedAssessmentSelection = embedded && typeof onAddToAssessment === 'function' && !isReportMetricActive
   const visibleQuestionListSummaryMetrics = embedded
-    ? questionListSummaryMetrics.filter((metric) => !['shared', 'suggested'].includes(metric.key))
+    ? questionListSummaryMetrics.filter((metric) => metric.key !== 'suggested')
     : questionListSummaryMetrics
   const footerResultSummary = hasSelectedFilters(filters)
     ? `${formatMetricCount(filteredQuestions.length)} filtered of ${formatMetricCount(metricFilteredQuestions.length)} ${activeMetricLabel.toLowerCase()}`
@@ -1700,17 +2806,53 @@ export default function QuestionBankNonCreatePage({
     setIsEmbeddedSelectionBarClosed(false)
     setIsEmbeddedSelectionBarVisible(false)
     setAssessmentChooserOpen(false)
+    setShareStudentsSummaryOpen(false)
+    setShareStudentsSummaryPage(1)
+    setShareActivePanel('summary')
+    setShareAssignError('')
+  }
+
+  const openShareStudentsSummary = () => {
+    if (!availableSelectedGridQuestionIds.length) return
+    setAssessmentChooserOpen(false)
+    setShareStudentsSummaryPage(1)
+    setShareActivePanel('summary')
+    setShareAssignError('')
+    setShareStudentsSummaryOpen(true)
   }
 
   const shareSelectedQuestionsWithStudents = () => {
     if (!availableSelectedGridQuestionIds.length) return
-    shareQuestionsWithStudentsInStorage(availableSelectedGridQuestionIds)
+    if (!shareAssignYear) {
+      setShareActivePanel('assigning')
+      setShareAssignError('Select Year before sharing.')
+      return
+    }
+    if (!hasValidShareSchedule) {
+      setShareActivePanel('assigning')
+      setShareAssignError('Select a valid start and end schedule.')
+      return
+    }
+    const assignment = {
+      year: shareAssignYear,
+      sgt: shareAssignSgt,
+      assignedTo: shareAssignSgt ? `${shareAssignYear} • ${shareAssignSgt}` : shareAssignYear,
+      scheduleEnabled: shareScheduleEnabled,
+      startDate: shareScheduleEnabled ? shareStartDate : '',
+      startTime: shareScheduleEnabled ? shareStartTime : '',
+      endDate: shareScheduleEnabled ? shareEndDate : '',
+      endTime: shareScheduleEnabled ? shareEndTime : '',
+      startsAt: shareScheduleEnabled ? shareScheduleStartDateTime?.toISOString() : '',
+      endsAt: shareScheduleEnabled ? shareScheduleEndDateTime?.toISOString() : '',
+    }
+    shareQuestionsWithStudentsInStorage(availableSelectedGridQuestionIds, assignment)
+    persistLearnPracticeSharedCards(selectedShareQuestions, assignment)
     setPublishedQuestions(readAllQuestionBankQuestions())
     resetAssessmentSelection()
   }
 
   const getSelectedAssessmentQuestions = () => (
-    publishedQuestions.filter((item) => (
+    displayableQuestions.filter((item) => (
       availableSelectedGridQuestionIds.includes(item.id) && !isQuestionAddedToAssessment(item)
     ))
   )
@@ -1810,6 +2952,17 @@ export default function QuestionBankNonCreatePage({
         : item
     )))
     updateQuestionInstituteInStorage(questionId, nextInstituteState)
+  }
+
+  const deleteQuestionFromList = (questionId) => {
+    if (!questionId) return
+
+    removeQuestionFromStorage(questionId)
+    setPublishedQuestions((current) => current.filter((item) => item.id !== questionId))
+    setSelectedGridQuestionIds((current) => current.filter((id) => id !== questionId))
+    setExpandedTableRows((current) => current.filter((id) => id !== questionId))
+    setExpandedCardRows((current) => current.filter((id) => id !== questionId))
+    setActiveTagsId((current) => (String(current).includes(questionId) ? '' : current))
   }
 
   const resetReportModal = () => {
@@ -1987,22 +3140,11 @@ export default function QuestionBankNonCreatePage({
 
     return (
       <span className="assessment-page-question-meta-actions" onClick={(event) => event.stopPropagation()}>
-        {isEditable && isReportMetricActive ? (
-          <button
-            type="button"
-            className="assessment-page-question-meta-action"
-            onClick={() => withdrawReportedQuestion(question.id)}
-            aria-label={`Withdraw report for question ${questionNumber}`}
-          >
-            <Flag size={12} strokeWidth={2.2} />
-            Withdraw
-          </button>
-        ) : null}
         {isEditable && !isReportMetricActive ? (
           <>
             <button
               type="button"
-              className="assessment-page-question-meta-action is-edit"
+              className="assessment-page-question-meta-action assessment-page-row-meta-action is-edit"
               onClick={() => openEditModeModal(question)}
               aria-label={`Edit question ${questionNumber}`}
               data-tooltip="Edit"
@@ -2011,7 +3153,7 @@ export default function QuestionBankNonCreatePage({
             </button>
             <button
               type="button"
-              className="assessment-page-question-meta-action is-report"
+              className="assessment-page-question-meta-action assessment-page-row-meta-action is-report"
               onClick={() => openReportModal(question)}
               aria-label={`Report question ${questionNumber}`}
               data-tooltip="Report"
@@ -2020,31 +3162,42 @@ export default function QuestionBankNonCreatePage({
             </button>
             <button
               type="button"
-              className={`assessment-page-question-meta-action is-icon-only is-favorite ${isFavorite ? 'is-active' : ''}`}
+              className={`assessment-page-question-meta-action assessment-page-row-meta-action is-favorite ${isFavorite ? 'is-active' : ''}`}
               onClick={() => toggleQuestionFavorite(questionId)}
               aria-label={`${isFavorite ? 'Remove' : 'Add'} question ${questionNumber} ${isFavorite ? 'from' : 'to'} favorites`}
               aria-pressed={isFavorite}
-              data-tooltip={isFavorite ? 'Remove favorite' : 'Add favorite'}
+              data-tooltip={isFavorite ? 'Unfavorite' : 'Favorite'}
             >
-              <Star size={13} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
+              <Star size={12} strokeWidth={2.2} fill={isFavorite ? 'currentColor' : 'none'} />
             </button>
             {canTagAsInstitute ? (
               <button
                 type="button"
-                className={`assessment-page-question-meta-action is-icon-only is-institute ${isInstitute ? 'is-active' : ''}`}
+                className={`assessment-page-question-meta-action assessment-page-row-meta-action is-institute ${isInstitute ? 'is-active' : ''}`}
                 onClick={() => toggleQuestionInstitute(questionId)}
                 aria-label={`${isInstitute ? 'Remove' : 'Add'} question ${questionNumber} ${isInstitute ? 'from' : 'to'} institute questions`}
                 aria-pressed={isInstitute}
-                data-tooltip={isInstitute ? 'Remove from Institute' : 'Add to Institute'}
+                data-tooltip={isInstitute ? 'Remove Institute' : 'Add Institute'}
               >
-                <Tags size={13} strokeWidth={2.2} fill={isInstitute ? 'currentColor' : 'none'} />
+                <Tags size={12} strokeWidth={2.2} fill={isInstitute ? 'currentColor' : 'none'} />
               </button>
             ) : null}
           </>
         ) : null}
+        {isEditable && isReportMetricActive ? (
+          <button
+            type="button"
+            className="assessment-page-question-meta-action assessment-page-row-meta-action is-delete"
+            onClick={() => withdrawReportedQuestion(question.id)}
+            aria-label={`Withdraw report for question ${questionNumber}`}
+            data-tooltip="Withdraw"
+          >
+            <Trash2 size={12} strokeWidth={2.2} />
+          </button>
+        ) : null}
         <button
           type="button"
-          className="assessment-page-question-meta-action is-icon-only is-collapse"
+          className="assessment-page-question-meta-action assessment-page-row-meta-action is-icon-only is-collapse"
           onClick={() => toggleGridRowExpansion(questionId, isTableRowOpen)}
           aria-label={`${isTableRowOpen ? 'Collapse' : 'Expand'} question ${questionNumber}`}
           data-tooltip={isTableRowOpen ? 'Collapse' : 'Expand'}
@@ -2439,7 +3592,7 @@ export default function QuestionBankNonCreatePage({
                   <Filter size={15} strokeWidth={2.3} />
                   Set Default
                 </button>
-                <button type="button" onClick={viewAllQuestions} disabled={!publishedQuestions.length}>
+                <button type="button" onClick={viewAllQuestions}>
                   View all
                   <ChevronRight size={15} strokeWidth={2.4} />
                 </button>
@@ -2448,9 +3601,9 @@ export default function QuestionBankNonCreatePage({
 
             <section className="question-bank-metrics-kpi-strip" aria-label="Question bank metric totals">
               {[
-                { key: 'total', label: 'Total Questions', helper: 'All questions in the bank', value: questionMetricByKey.total?.value, icon: ClipboardList },
-                { key: 'medsy', label: 'Medsy Questions', helper: 'Questions from Medsy.ai', value: questionMetricByKey.medsy?.value, logo: true },
+                { key: 'total', label: 'Total Questions', helper: 'Visible institute questions', value: questionMetricByKey.total?.value, icon: ClipboardList },
                 { key: 'created', label: 'Institute Questions', helper: 'Questions from institute', value: questionMetricByKey.created?.value, icon: BookOpenCheck },
+                { key: 'medsy', label: 'Medsy Questions', helper: 'Questions from Medsy.ai', value: questionMetricByKey.medsy?.value, logo: true },
                 { key: 'filtered', label: 'Active Filters', helper: 'Filters applied', value: Object.values(landingFilters).reduce((total, values) => total + values.length, 0), icon: Filter },
               ].map((item) => {
                 const Icon = item.icon
@@ -2750,7 +3903,8 @@ export default function QuestionBankNonCreatePage({
             <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">
               {visibleQuestionListSummaryMetrics.map((metric) => {
                 const Icon = metric.icon
-                const isActive = activeMetric === (metric.activeMetricKey ?? metric.key)
+                const isStatic = Boolean(metric.isStatic)
+                const isActive = !isStatic && activeMetric === (metric.activeMetricKey ?? metric.key)
 
                 return (
                   <button
@@ -2758,10 +3912,10 @@ export default function QuestionBankNonCreatePage({
                     type="button"
                     className={`is-${metric.tone} ${isActive ? 'is-active' : ''}`}
                     onClick={() => {
-                      if (!metric.value) return
+                      if (!metric.value || isStatic) return
                       openQuestionList(metric)
                     }}
-                    disabled={!metric.value}
+                    disabled={!metric.value || isStatic}
                     aria-pressed={isActive}
                   >
                     <span className="assessment-page-metric-icon" aria-hidden="true">
@@ -2772,7 +3926,9 @@ export default function QuestionBankNonCreatePage({
                       )}
                     </span>
                     <span className="assessment-page-metric-copy">
-                      <strong title={formatMetricCount(metric.value)}>{formatMetricCount(metric.value)}</strong>
+                      {metric.hideValue ? null : (
+                        <strong title={formatMetricCount(metric.value)}>{formatMetricCount(metric.value)}</strong>
+                      )}
                       <span>{metric.label}</span>
                     </span>
                   </button>
@@ -2782,7 +3938,7 @@ export default function QuestionBankNonCreatePage({
           </>
         )}
 
-        {publishedQuestions.length && !showMetricsLanding ? (
+        {displayableQuestions.length && !showMetricsLanding ? (
           <section
             ref={filterHeaderRef}
             className={`assessment-page-bank-controls ${activeView === 'grid' ? 'is-grid-attached' : ''} ${isFilterHeaderCompact ? 'is-compact' : ''} ${isCompactFilterTrayOpen ? 'is-filter-tray-open' : ''}`}
@@ -2944,9 +4100,11 @@ export default function QuestionBankNonCreatePage({
               const questionId = question.id ?? `${question.type}-${index}`
               const isTagsOpen = activeTagsId === questionId
               const isCardOpen = expandedCardRows.includes(questionId)
-              const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
+              const descriptiveSections = getDisplayDescriptiveSections(question)
               const isDescriptive = isDescriptiveQuestion(question)
               const isMcq = getQuestionTypeLabel(question) === 'MCQ'
+              const isDescriptiveMatrixPreview = usesDescriptiveMatrixPreview(question)
+              const isSaqModeOneDetailPreview = usesSaqModeOneDetailPreview(question)
               const descriptiveAnswerItems = isDescriptive ? getDescriptiveAnswerItems(question, descriptiveSections) : []
               const isFavorite = isFavoriteQuestion(question)
               const isInstitute = isInstituteQuestion(question)
@@ -2962,13 +4120,13 @@ export default function QuestionBankNonCreatePage({
                         <strong>Q{questionNumber}.</strong>
                         <span title={getQuestionPreview(question)}>{getQuestionPreview(question)}</span>
                       </div>
-                      {renderQuestionCompactMeta(question, curriculum, {}, null, questionNumber)}
+                      {renderQuestionCompactMeta(question, curriculum, {}, null, questionNumber, learnPracticeSharedQuestionIds.has(String(questionId)))}
                     </div>
                     <div className="assessment-page-question-actions">
                       {isEditable && !isReportMetricActive ? (
                         <button
                           type="button"
-                          className="assessment-page-card-action"
+                          className="assessment-page-card-action assessment-page-card-row-action"
                           onClick={() => openEditModeModal(question)}
                           title="Edit question"
                           aria-label={`Edit question ${questionNumber}`}
@@ -2979,7 +4137,7 @@ export default function QuestionBankNonCreatePage({
                       {isEditable ? (
                         <button
                           type="button"
-                          className="assessment-page-card-action is-report"
+                          className="assessment-page-card-action assessment-page-card-row-action is-report"
                           onClick={() => {
                             if (isReportMetricActive) {
                               withdrawReportedQuestion(question.id)
@@ -2992,13 +4150,12 @@ export default function QuestionBankNonCreatePage({
                           aria-label={`${isReportMetricActive ? 'Withdraw report for' : 'Report'} question ${questionNumber}`}
                         >
                           <Flag size={14} strokeWidth={2.2} />
-                          <span>Report</span>
                         </button>
                       ) : null}
                       {isEditable && !isReportMetricActive ? (
                         <button
                           type="button"
-                          className={`assessment-page-card-action is-favorite ${isFavorite ? 'is-active' : ''}`}
+                          className={`assessment-page-card-action assessment-page-card-row-action is-favorite ${isFavorite ? 'is-active' : ''}`}
                           onClick={() => toggleQuestionFavorite(questionId)}
                           title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                           aria-label={`${isFavorite ? 'Remove' : 'Add'} question ${questionNumber} ${isFavorite ? 'from' : 'to'} favorites`}
@@ -3010,7 +4167,7 @@ export default function QuestionBankNonCreatePage({
                       {isEditable && !isReportMetricActive && canTagAsInstitute ? (
                         <button
                           type="button"
-                          className={`assessment-page-card-action is-institute ${isInstitute ? 'is-active' : ''}`}
+                          className={`assessment-page-card-action assessment-page-card-row-action is-institute ${isInstitute ? 'is-active' : ''}`}
                           onClick={() => toggleQuestionInstitute(questionId)}
                           title={isInstitute ? 'Remove from Institute' : 'Add to Institute'}
                           aria-label={`${isInstitute ? 'Remove' : 'Add'} question ${questionNumber} ${isInstitute ? 'from' : 'to'} institute questions`}
@@ -3021,7 +4178,7 @@ export default function QuestionBankNonCreatePage({
                       ) : null}
                       <button
                         type="button"
-                        className="assessment-page-card-collapse-btn"
+                        className="assessment-page-card-collapse-btn assessment-page-card-row-action"
                         onClick={() => {
                           setExpandedCardRows((current) => (
                             current.includes(questionId)
@@ -3038,7 +4195,7 @@ export default function QuestionBankNonCreatePage({
                   </div>
                   {isCardOpen ? (
                     <>
-                      {tagGroups.length ? (
+                      {!isDescriptiveMatrixPreview && tagGroups.length ? (
                         <span className="assessment-page-question-tags-wrap">
                           <button
                             type="button"
@@ -3077,13 +4234,19 @@ export default function QuestionBankNonCreatePage({
                           ))}
                         </div>
                       ) : null}
-                      {isDescriptive && descriptiveSections.length ? (
-                        renderQuestionParts(question, descriptiveSections, questionId)
+                      {isDescriptive && isSaqModeOneDetailPreview ? (
+                        renderSaqModeOneQuestionPanel(question)
                       ) : null}
-                      {isDescriptive && !descriptiveSections.length && stripHtml(question.answerKey) ? (
+                      {isDescriptive && !isSaqModeOneDetailPreview && descriptiveSections.length ? (
+                        renderQuestionParts(question, descriptiveSections, questionId, {
+                          openTagsId: activeTagsId,
+                          onToggleTags: (nextTagsId) => setActiveTagsId((current) => (current === nextTagsId ? '' : nextTagsId)),
+                        })
+                      ) : null}
+                      {isDescriptive && !isSaqModeOneDetailPreview && !descriptiveSections.length && stripHtml(question.answerKey) ? (
                         renderMainQuestionPanel(question)
                       ) : null}
-                      {isDescriptive && descriptiveAnswerItems.length ? (
+                      {isDescriptive && !isDescriptiveMatrixPreview && !isSaqModeOneDetailPreview && descriptiveAnswerItems.length ? (
                         <div className="assessment-page-question-answer assessment-page-descriptive-answer-list assessment-page-answer-card">
                           <strong className="assessment-page-model-answer-heading">Model Answer</strong>
                           <span>
@@ -3096,12 +4259,7 @@ export default function QuestionBankNonCreatePage({
                           </span>
                         </div>
                       ) : null}
-                      {!isDescriptive && stripHtml(question.answerKey) ? (
-                        <div className="assessment-page-question-answer assessment-page-mcq-model-answer assessment-page-answer-card">
-                          <strong className="assessment-page-model-answer-heading">Model Answer</strong>
-                          <span>{stripHtml(question.answerKey)}</span>
-                        </div>
-                      ) : null}
+                      {!isDescriptive ? renderMcqAnswerBlocks(question, 'assessment-page-question-answer') : null}
                     </>
                   ) : null}
                 </article>
@@ -3137,9 +4295,11 @@ export default function QuestionBankNonCreatePage({
                   const isTagsOpen = activeTagsId === tableTagsId
                   const isTableRowOpen = expandedTableRows.includes(questionId)
                   const isGridQuestionSelected = availableSelectedGridQuestionIds.includes(questionId)
-                  const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
+                  const descriptiveSections = getDisplayDescriptiveSections(question)
                   const isDescriptive = isDescriptiveQuestion(question)
                   const isMcq = getQuestionTypeLabel(question) === 'MCQ'
+                  const isDescriptiveMatrixPreview = usesDescriptiveMatrixPreview(question)
+                  const isSaqModeOneDetailPreview = usesSaqModeOneDetailPreview(question)
                   const isFavorite = isFavoriteQuestion(question)
                   const isInstituteTaggedQuestion = isMedsyQuestion(question) && isInstituteQuestion(question)
                   const isAlreadyAddedToAssessment = hasEmbeddedAssessmentSelection && isQuestionAddedToAssessment(question)
@@ -3185,7 +4345,7 @@ export default function QuestionBankNonCreatePage({
                                   tagsId: summaryTagsId,
                                   isTagsOpen: areSummaryTagsOpen,
                                   onToggleTags: (nextTagsId) => setActiveTagsId((current) => (current === nextTagsId ? '' : nextTagsId)),
-                                }, renderQuestionMetaActions(question, questionId, questionNumber, false), questionNumber)}
+                                }, renderQuestionMetaActions(question, questionId, questionNumber, false), questionNumber, learnPracticeSharedQuestionIds.has(String(questionId)))}
                               </span>
                             </span>
                             {areSummaryTagsOpen ? renderQuestionInlineTagPanel(question, questionNumber) : null}
@@ -3232,7 +4392,7 @@ export default function QuestionBankNonCreatePage({
                                     tagsId: tableTagsId,
                                     isTagsOpen,
                                     onToggleTags: (nextTagsId) => setActiveTagsId((current) => (current === nextTagsId ? '' : nextTagsId)),
-                                  }, renderQuestionMetaActions(question, questionId, questionNumber, true), questionNumber)}
+                                  }, renderQuestionMetaActions(question, questionId, questionNumber, true), questionNumber, learnPracticeSharedQuestionIds.has(String(questionId)))}
                                 </div>
                               </div>
                               {isTagsOpen ? renderQuestionInlineTagPanel(question, questionNumber) : null}
@@ -3252,15 +4412,21 @@ export default function QuestionBankNonCreatePage({
                                   </div>
                                 </div>
                               ) : null}
-                              {isDescriptive && descriptiveSections.length ? (
+                              {isDescriptive && isSaqModeOneDetailPreview ? (
+                                renderSaqModeOneQuestionPanel(question)
+                              ) : null}
+                              {isDescriptive && !isSaqModeOneDetailPreview && descriptiveSections.length ? (
                                 <div className="assessment-page-table-inline-section">
-                                  {renderQuestionParts(question, descriptiveSections, `${questionId}-table`)}
+                                  {renderQuestionParts(question, descriptiveSections, `${questionId}-table`, {
+                                    openTagsId: activeTagsId,
+                                    onToggleTags: (nextTagsId) => setActiveTagsId((current) => (current === nextTagsId ? '' : nextTagsId)),
+                                  })}
                                 </div>
                               ) : null}
-                              {isDescriptive && !descriptiveSections.length && stripHtml(question.answerKey) ? (
+                              {isDescriptive && !isSaqModeOneDetailPreview && !descriptiveSections.length && stripHtml(question.answerKey) ? (
                                 renderTableMainQuestionPanel(question)
                               ) : null}
-                              {isDescriptive && descriptiveAnswerItems.length ? (
+                              {isDescriptive && !isDescriptiveMatrixPreview && !isSaqModeOneDetailPreview && descriptiveAnswerItems.length ? (
                                 <div className="assessment-page-table-inline-section assessment-page-descriptive-answer-list assessment-page-answer-card">
                                   <strong className="assessment-page-model-answer-heading">Model Answer</strong>
                                   <span>
@@ -3273,12 +4439,7 @@ export default function QuestionBankNonCreatePage({
                                   </span>
                                 </div>
                               ) : null}
-                              {!isDescriptive && stripHtml(question.answerKey) ? (
-                                <div className="assessment-page-table-inline-section assessment-page-table-answer assessment-page-mcq-model-answer assessment-page-answer-card">
-                                  <strong className="assessment-page-model-answer-heading">Model Answer</strong>
-                                  <span>{stripHtml(question.answerKey)}</span>
-                                </div>
-                              ) : null}
+                              {!isDescriptive ? renderMcqAnswerBlocks(question, 'assessment-page-table-inline-section assessment-page-table-answer') : null}
                               {SHOW_LEGACY_GRID_DETAIL_META && (tagGroups.length || curriculum.path.length || curriculum.competencyCode) ? (
                                 <div className="assessment-page-grid-detail-footer-meta">
                                   {SHOW_LEGACY_GRID_DETAIL_META && tagGroups.length ? (
@@ -3331,7 +4492,7 @@ export default function QuestionBankNonCreatePage({
                 </tbody>
               </table>
             </div>
-            {publishedQuestions.length && pagedQuestions.length ? (
+            {displayableQuestions.length && pagedQuestions.length ? (
               <section className="assessment-page-bank-pagination assessment-page-grid-pagination" aria-label="All question bank pagination">
                 <span className="assessment-page-grid-pagination-summary">
                   <span>Page {safeCurrentPage} of {totalPages}</span>
@@ -3394,7 +4555,7 @@ export default function QuestionBankNonCreatePage({
                     type="button"
                     className="is-primary"
                     onClick={isShareToStudentsMode
-                      ? shareSelectedQuestionsWithStudents
+                      ? openShareStudentsSummary
                       : (hasEmbeddedAssessmentSelection ? addSelectedQuestionsToEmbeddedAssessment : openAssessmentChooser)}
                     disabled={!availableSelectedGridQuestionIds.length}
                     aria-expanded={!hasEmbeddedAssessmentSelection && assessmentChooserOpen}
@@ -3435,7 +4596,7 @@ export default function QuestionBankNonCreatePage({
                 <button
                   type="button"
                   className="is-share"
-                  onClick={shareSelectedQuestionsWithStudents}
+                  onClick={openShareStudentsSummary}
                   disabled={!availableSelectedGridQuestionIds.length}
                 >
                   <Share2 size={14} strokeWidth={2.3} />
@@ -3457,6 +4618,217 @@ export default function QuestionBankNonCreatePage({
               </button>
             </div>
           </section>
+        ) : null}
+
+        {isEditable && shareStudentsSummaryOpen && typeof document !== 'undefined' ? createPortal(
+          <div className="assessment-page-share-modal" role="dialog" aria-modal="true" aria-labelledby="assessment-share-title">
+            <div className="assessment-page-share-backdrop" onClick={() => setShareStudentsSummaryOpen(false)} aria-hidden="true" />
+            <div className="assessment-page-share-card">
+              <header className="assessment-page-share-head">
+                <div>
+                  <h2 id="assessment-share-title">Confirm share to students</h2>
+                  <p>Review the selected question summary and confirm before sharing.</p>
+                </div>
+                <button type="button" onClick={() => setShareStudentsSummaryOpen(false)} aria-label="Close share to students dialog">
+                  <X size={17} strokeWidth={2.4} />
+                </button>
+              </header>
+              <div className="assessment-page-share-body">
+                <section className={`assessment-page-share-summary-pane ${shareActivePanel === 'summary' ? 'is-open' : 'is-closed'}`} aria-label="Question summary">
+                  <button
+                    type="button"
+                    className="assessment-page-share-section-head"
+                    onClick={() => setShareActivePanel('summary')}
+                    aria-expanded={shareActivePanel === 'summary'}
+                  >
+                    <strong>Question summary</strong>
+                    <span>{shareStudentsSummary.totals.noOfQuestions} selected</span>
+                    <ChevronDown size={15} strokeWidth={2.4} />
+                  </button>
+                  {shareActivePanel === 'summary' ? (
+                    <>
+                      <div className="assessment-page-share-table-wrap">
+                    <table className="assessment-page-share-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Competency Code</th>
+                          <th scope="col">No. of Question</th>
+                          <th scope="col">MCQ</th>
+                          <th scope="col">SAQs</th>
+                          <th scope="col">LAQs</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleShareStudentsSummaryRows.map((row) => (
+                          <tr key={row.competencyCode}>
+                            <th scope="row">
+                              <span className="assessment-page-share-code-cell">
+                                <span
+                                  className="assessment-page-share-code-badge"
+                                  tabIndex={0}
+                                  role="button"
+                                  aria-label={`${row.competencyCode} ${formatShareSummaryCompetencyTooltip(row)}`}
+                                  data-tooltip={formatShareSummaryCompetencyTooltip(row)}
+                                >
+                                  <span>{row.competencyCode}</span>
+                                  <Info size={12} strokeWidth={2.4} />
+                                </span>
+                              </span>
+                            </th>
+                            <td>{row.noOfQuestions}</td>
+                            <td>{row.mcq || '-'}</td>
+                            <td>{row.saqs || '-'}</td>
+                            <td>{row.laqs || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="is-total">
+                          <th scope="row">
+                            {shareStudentsSummary.totals.competencyCode}
+                          </th>
+                          <td>{shareStudentsSummary.totals.noOfQuestions}</td>
+                          <td>{shareStudentsSummary.totals.mcq || '-'}</td>
+                          <td>{shareStudentsSummary.totals.saqs || '-'}</td>
+                          <td>{shareStudentsSummary.totals.laqs || '-'}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                      </div>
+                      <div className="assessment-page-share-pagination" aria-label="Share summary pagination">
+                    <button
+                      type="button"
+                      onClick={() => setShareStudentsSummaryPage((current) => Math.max(1, current - 1))}
+                      disabled={shareStudentsSummaryPage <= 1}
+                      aria-label="Previous share summary page"
+                    >
+                      <ChevronLeft size={15} strokeWidth={2.4} />
+                      <span>Previous</span>
+                    </button>
+                    <span>
+                      Page {Math.min(shareStudentsSummaryPage, shareStudentsSummaryPageCount)} of {shareStudentsSummaryPageCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShareStudentsSummaryPage((current) => Math.min(shareStudentsSummaryPageCount, current + 1))}
+                      disabled={shareStudentsSummaryPage >= shareStudentsSummaryPageCount}
+                      aria-label="Next share summary page"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={15} strokeWidth={2.4} />
+                    </button>
+                      </div>
+                    </>
+                  ) : null}
+                </section>
+                <section className={`assessment-page-share-assignment-pane ${shareActivePanel === 'assigning' ? 'is-open' : 'is-closed'}`} aria-label="Assigning to">
+                  <button
+                    type="button"
+                    className="assessment-page-share-section-head"
+                    onClick={() => setShareActivePanel('assigning')}
+                    aria-expanded={shareActivePanel === 'assigning'}
+                  >
+                    <strong>Assigning to</strong>
+                    <span className="is-required">Required</span>
+                    <ChevronDown size={15} strokeWidth={2.4} />
+                  </button>
+                  {shareActivePanel === 'assigning' ? (
+                    <>
+                      <div className="assessment-page-share-target-box">
+                    <label className="assessment-page-share-field is-active-field">
+                      <span>Select Year <em aria-hidden="true">*</em></span>
+                      <select
+                        value={shareAssignYear}
+                        onChange={(event) => {
+                          const nextYear = event.target.value
+                          setShareAssignYear(nextYear)
+                          setShareAssignSgt('')
+                          setShareAssignError('')
+                        }}
+                      >
+                        <option value="">Select year</option>
+                        {SHARE_ASSIGN_YEAR_OPTIONS.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="assessment-page-share-field is-disabled-field">
+                      <span>SGT</span>
+                      <select
+                        value={shareAssignSgt}
+                        onChange={(event) => {
+                          setShareAssignSgt(event.target.value)
+                          setShareAssignError('')
+                        }}
+                        disabled
+                      >
+                        <option value="">SGT disabled for this share</option>
+                        {shareAssignSgtOptions.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </label>
+                      </div>
+                      <label className="assessment-page-share-schedule-toggle">
+                    <input
+                      type="checkbox"
+                      checked={shareScheduleEnabled}
+                      onChange={(event) => {
+                        const isChecked = event.target.checked
+                        setShareScheduleEnabled(isChecked)
+                        if (isChecked && (!shareStartDate || !shareStartTime)) {
+                          const currentDateTime = getCurrentDateTimeInputValues()
+                          setShareStartDate((current) => current || currentDateTime.date)
+                          setShareStartTime((current) => current || currentDateTime.time)
+                        }
+                        setShareAssignError('')
+                      }}
+                    />
+                    <span>If you want schedule this share</span>
+                      </label>
+                      {shareScheduleEnabled ? (
+                    <div className="assessment-page-share-schedule-grid">
+                      <label className="assessment-page-share-field">
+                        <span>Start date</span>
+                        <input type="date" value={shareStartDate} onChange={(event) => setShareStartDate(event.target.value)} />
+                      </label>
+                      <label className="assessment-page-share-field">
+                        <span>Start time</span>
+                        <input type="time" value={shareStartTime} onChange={(event) => setShareStartTime(event.target.value)} />
+                      </label>
+                      <label className="assessment-page-share-field">
+                        <span>End date</span>
+                        <input type="date" value={shareEndDate} onChange={(event) => setShareEndDate(event.target.value)} />
+                      </label>
+                      <label className="assessment-page-share-field">
+                        <span>End time</span>
+                        <input type="time" value={shareEndTime} onChange={(event) => setShareEndTime(event.target.value)} />
+                      </label>
+                    </div>
+                      ) : null}
+                      {shareAssignError ? (
+                    <p className="assessment-page-share-error">{shareAssignError}</p>
+                      ) : null}
+                    </>
+                  ) : null}
+                </section>
+              </div>
+              <div className="assessment-page-share-actions">
+                <button type="button" className="is-secondary" onClick={() => setShareStudentsSummaryOpen(false)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={shareSelectedQuestionsWithStudents}
+                  disabled={!canShareSelectedQuestions}
+                >
+                  <Share2 size={14} strokeWidth={2.3} />
+                  Share to Students
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
         ) : null}
 
         {isEditable && reportQuestion && typeof document !== 'undefined' ? createPortal(
@@ -3590,7 +4962,7 @@ export default function QuestionBankNonCreatePage({
           document.body,
         ) : null}
 
-        {publishedQuestions.length && !pagedQuestions.length && !showMetricsLanding ? (
+        {displayableQuestions.length && !pagedQuestions.length && !showMetricsLanding ? (
           <section className="assessment-page-empty">
             <Info size={18} strokeWidth={2.2} />
             <strong>No matching questions</strong>
@@ -3598,7 +4970,7 @@ export default function QuestionBankNonCreatePage({
           </section>
         ) : null}
 
-        {!publishedQuestions.length && !showMetricsLanding ? (
+        {!displayableQuestions.length && !showMetricsLanding ? (
           <section className="assessment-page-empty">
             <Info size={18} strokeWidth={2.2} />
             <strong>No sent questions yet</strong>

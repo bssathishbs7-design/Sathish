@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  ArrowLeft,
+  CornerUpLeft,
   Contact,
   Eye,
   FilePenLine,
@@ -18,18 +20,22 @@ import {
   BriefcaseBusiness,
   ListChecks,
   LoaderCircle,
+  Save,
   Send,
   Plus,
   Search,
   Sigma,
   Sparkles,
+  Stethoscope,
   Trash2,
+  TriangleAlert,
   Upload,
   X,
 } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import RichMathEditor from '../components/RichMathEditor'
-import { stripHtml } from '../utils/mathText'
+import GenerationProcessorCard from '../components/GenerationProcessorCard'
+import { isQuestionGenerationErrorText, stripHtml } from '../utils/mathText'
 import { assignInstituteQuestionBankIds } from '../utils/questionBankIdentity'
 import {
   DESCRIPTIVE_QUESTION_TYPES,
@@ -52,7 +58,7 @@ import '../styles/question-bank.css'
 
 const COGNITIVE_LEVEL_OPTIONS = ['Apply', 'Remember', 'Understand', 'Analyze', 'Evaluate']
 const THINKING_LEVEL_OPTIONS = ['HoT', 'LoT']
-const DIFFICULTY_LEVEL_OPTIONS = ['L1', 'L2', 'L3']
+const DIFFICULTY_LEVEL_OPTIONS = ['L1', 'L2', 'L3', 'L4', 'L5']
 const YEAR_OPTIONS = questionBankYearOptions
 const SUBJECT_DIRECTORY = questionBankSubjectDirectory
 const COGNITIVE_FUNCTION_OPTIONS = [
@@ -131,6 +137,7 @@ const KEY_CONCEPT_OPTIONS = [
   'Pathophysiology',
   'Prevention strategy',
 ]
+const CREATE_DESCRIPTIVE_QUESTION_TYPES = DESCRIPTIVE_QUESTION_TYPES.filter((item) => item.shortLabel !== 'MEQs')
 const DISTRACTOR_ERROR_GROUPS = [
   {
     heading: 'Simple Errors',
@@ -271,7 +278,7 @@ const readStoredQuestionBankQuestions = () => {
           question?.status === 'Approved'
           || Boolean(question?.questionBankSentAt)
           || question?.questionBankStatus === 'Sent to Question Bank'
-        ))
+        )).map(normalizeQuestionForAuthoring)
         : []
       window.localStorage.setItem(QUESTION_BANK_STORAGE_KEY, JSON.stringify(preservedQuestions))
       window.localStorage.setItem(QUESTION_BANK_CREATED_DATA_CLEANUP_KEY, 'true')
@@ -279,7 +286,7 @@ const readStoredQuestionBankQuestions = () => {
     }
 
     const parsed = JSON.parse(window.localStorage.getItem(QUESTION_BANK_STORAGE_KEY) ?? '[]')
-    return Array.isArray(parsed) ? parsed : []
+    return Array.isArray(parsed) ? parsed.map(normalizeQuestionForAuthoring) : []
   } catch {
     return []
   }
@@ -336,6 +343,8 @@ const getThinkingLevelLabel = (value) => {
   if (normalized === 'lot') return 'LoT'
   return value
 }
+
+const getCreatedQuestionDisplayId = (index) => `INSC-B01-${String(index + 1).padStart(3, '0')}`
 
 const readReportedQuestionRecords = () => {
   if (typeof window === 'undefined') return []
@@ -437,9 +446,49 @@ const getQuestionTypeMeta = (type) => (
   ?? (type === 'Descriptive Question' ? { type, shortLabel: 'SAQs', menuLabel: 'Descriptive SAQs', icon: FilePenLine } : QUESTION_TYPE_CARDS[0])
 )
 
+const getDescriptiveOutputType = (question, builderMode) => (
+  getQuestionTypeMeta(question?.type).shortLabel === 'LAQs' && builderMode === 'SAQs'
+    ? 'Desc Short Answer Questions (SAQs)'
+    : question?.type
+)
+
+const isSaqDescriptiveOutput = (question) => (
+  getQuestionTypeMeta(question?.type).shortLabel === 'SAQs'
+  || question?.descriptiveBuilderMode === 'SAQs'
+  || typeof question?.clinicalVignetteEnabled === 'boolean'
+)
+
+const isSaqSingleQuestionOutput = (question) => (
+  isSaqDescriptiveOutput(question) && question?.clinicalVignetteEnabled !== true
+)
+
 const getRichTextPreview = (value) => stripHtml(value)
 
 const getQuestionPreview = (question) => getRichTextPreview(question.questionText) || question.title || 'Untitled question'
+
+const asArray = (value) => (Array.isArray(value) ? value : [])
+
+const normalizeQuestionForAuthoring = (question = {}) => ({
+  ...question,
+  type: question.type ?? 'MCQ',
+  questionText: question.questionText ?? '',
+  answerKey: question.answerKey ?? '',
+  year: question.year ?? '',
+  subject: question.subject ?? '',
+  topics: asArray(question.topics),
+  competencies: asArray(question.competencies),
+  images: asArray(question.images),
+  options: asArray(question.options),
+  correctOptionIds: asArray(question.correctOptionIds),
+  fillBlankAnswers: asArray(question.fillBlankAnswers).length ? asArray(question.fillBlankAnswers) : [''],
+  descriptiveSections: asArray(question.descriptiveSections),
+  organSubSystems: asArray(question.organSubSystems).length ? asArray(question.organSubSystems) : [DEFAULT_OPTIONAL_TAG],
+  diseaseTags: asArray(question.diseaseTags).length ? asArray(question.diseaseTags) : [DEFAULT_OPTIONAL_TAG],
+  keyConcepts: asArray(question.keyConcepts).length ? asArray(question.keyConcepts) : [DEFAULT_OPTIONAL_TAG],
+  allowMultiple: Boolean(question.allowMultiple),
+  marks: question.marks ?? '0',
+  status: question.status ?? 'Editing',
+})
 
 const getQuestionAuthorName = (question) => (
   question?.authorName
@@ -806,7 +855,7 @@ const getGeneratedOptionalTags = (type) => {
 const getGeneratedQuestionDraft = (question) => {
   const type = question.type ?? 'MCQ'
   const subject = question.subject || 'Human Anatomy'
-  const topic = question.topics[0] ?? 'the selected topic'
+  const topic = asArray(question.topics)[0] ?? 'the selected topic'
   const optionalTags = getGeneratedOptionalTags(type)
 
   if (type === 'True or False') {
@@ -870,6 +919,10 @@ const getGeneratedDistractorErrors = (optionIndex) => {
 
 const getSubjectsForYear = (year) => Object.keys(CURRICULUM_DIRECTORY[year] ?? SUBJECT_DIRECTORY)
 
+const getYearForSubject = (subject) => (
+  YEAR_OPTIONS.find((year) => getSubjectsForYear(year).includes(subject)) || YEAR_OPTIONS[0]
+)
+
 const getSubjectDirectory = (question) => {
   const yearDirectory = CURRICULUM_DIRECTORY[question.year] ?? SUBJECT_DIRECTORY
   return yearDirectory[question.subject] ?? yearDirectory[getSubjectsForYear(question.year)[0]] ?? SUBJECT_DIRECTORY['Human Anatomy']
@@ -882,24 +935,28 @@ const getAvailableTopics = (question) => (
 const getAvailableCompetencies = (question) => {
   if (!question.year || !question.subject) return []
   const directory = getSubjectDirectory(question)
-  if (!question.topics.length) return directory.competencies
-  return directory.competencies.filter((item) => question.topics.includes(item.topic))
+  const topics = asArray(question.topics)
+  if (!topics.length) return directory.competencies
+  return directory.competencies.filter((item) => topics.includes(item.topic))
 }
 
 const hasCurriculumMapping = (question) => (
   Boolean(question?.year)
   && Boolean(question?.subject)
-  && question.topics.length > 0
-  && question.competencies.length > 0
+  && asArray(question?.topics).length > 0
+  && asArray(question?.competencies).length > 0
 )
 
-const hasQuestionContent = (question) => Boolean(getRichTextPreview(question?.questionText))
+const hasQuestionContent = (question) => {
+  const preview = getRichTextPreview(question?.questionText)
+  return Boolean(preview) && !isQuestionGenerationErrorText(preview)
+}
 
 const hasMcqOptions = (question) => (
   question?.type !== 'MCQ'
   || (
-    question.options.filter((option) => Boolean(getRichTextPreview(option.label))).length >= (question.allowMultiple ? MULTIPLE_OPTION_MIN_COUNT : SINGLE_OPTION_MIN_COUNT)
-    && question.correctOptionIds.length > 0
+    asArray(question?.options).filter((option) => Boolean(getRichTextPreview(option.label))).length >= (question?.allowMultiple ? MULTIPLE_OPTION_MIN_COUNT : SINGLE_OPTION_MIN_COUNT)
+    && asArray(question?.correctOptionIds).length > 0
   )
 )
 
@@ -956,18 +1013,45 @@ const getQuestionMarksLabel = (question) => {
 }
 
 const getAutoGeneratedDescriptiveMarks = () => '2'
+const AUTO_GENERATED_DESCRIPTIVE_ANSWER_TEXT = 'Key points with accurate terminology and a concise explanation.'
 
 const getAutoGeneratedDescriptiveAnswer = (questionText, marks = getAutoGeneratedDescriptiveMarks()) => {
-  const preview = getRichTextPreview(questionText)
-  return createHtmlBlock(`Expected answer for ${marks} marks: Address the key points required for "${preview || 'this question'}" with accurate terminology and a concise explanation.`)
+  return createHtmlBlock(AUTO_GENERATED_DESCRIPTIVE_ANSWER_TEXT)
 }
 
 const isAutoGeneratedDescriptiveAnswer = (value) => (
   getRichTextPreview(value).startsWith('Expected answer for ')
+  || getRichTextPreview(value) === AUTO_GENERATED_DESCRIPTIVE_ANSWER_TEXT
 )
+
+const getModelAnswerPreview = (value) => {
+  const preview = getRichTextPreview(value)
+  if (!preview) return ''
+  return isAutoGeneratedDescriptiveAnswer(value) ? AUTO_GENERATED_DESCRIPTIVE_ANSWER_TEXT : preview
+}
+
+const getExaminerNotesPreview = (item, fallbackItem) => {
+  const savedNotes = getRichTextPreview(item?.examinerNotes) || getRichTextPreview(fallbackItem?.examinerNotes)
+  if (savedNotes) return savedNotes
+  return 'Award marks for the required key points, accurate terminology, and clear clinical reasoning.'
+}
+
+const getFatalFlawPreview = (item, fallbackItem) => {
+  const savedFlaw = getRichTextPreview(item?.fatalFlaw) || getRichTextPreview(fallbackItem?.fatalFlaw)
+  if (savedFlaw) return savedFlaw
+  return 'Do not award full marks if the response misses the core concept or gives an unrelated explanation.'
+}
 
 const hasAssessmentTags = (question) => (
   (isDescriptiveQuestionType(question?.type) ? getDescriptiveQuestionMarksTotal(question) > 0 : Boolean(question?.marks))
+  && Boolean(question?.questionCategory)
+  && Boolean(question?.cognitiveLevel)
+  && Boolean(question?.thinkingLevel)
+  && Boolean(question?.difficultyLevel)
+)
+
+const hasSaqSingleQuestionAssessmentTags = (question) => (
+  hasVisibleMarks(question?.marks)
   && Boolean(question?.questionCategory)
   && Boolean(question?.cognitiveLevel)
   && Boolean(question?.thinkingLevel)
@@ -983,11 +1067,11 @@ const hasDraftContent = (question) => {
 
   return Boolean(getRichTextPreview(question.questionText))
     || Boolean(getRichTextPreview(question.answerKey))
-    || question.images.length > 0
+    || asArray(question.images).length > 0
     || Boolean(question.year)
     || Boolean(question.subject)
-    || question.topics.length > 0
-    || question.competencies.length > 0
+    || asArray(question.topics).length > 0
+    || asArray(question.competencies).length > 0
     || Boolean(question.questionCategory)
     || Boolean(question.cognitiveLevel)
     || Boolean(question.thinkingLevel)
@@ -998,10 +1082,10 @@ const hasDraftContent = (question) => {
     || !isDefaultOptionalTagOnly(question.organSubSystems)
     || !isDefaultOptionalTagOnly(question.diseaseTags)
     || !isDefaultOptionalTagOnly(question.keyConcepts)
-    || question.options.some((option) => Boolean(getRichTextPreview(option.label)))
-    || question.options.some((option) => (option.distractorErrors ?? []).length > 0)
-    || question.correctOptionIds.length > 0
-    || question.fillBlankAnswers.some((answer) => Boolean(getRichTextPreview(answer)))
+    || asArray(question.options).some((option) => Boolean(getRichTextPreview(option.label)))
+    || asArray(question.options).some((option) => (option.distractorErrors ?? []).length > 0)
+    || asArray(question.correctOptionIds).length > 0
+    || asArray(question.fillBlankAnswers).some((answer) => Boolean(getRichTextPreview(answer)))
     || Boolean(getRichTextPreview(question.descriptiveGuide))
     || (isDescriptiveQuestionType(question.type) ? getDescriptiveQuestionMarksTotal(question) > 0 : hasVisibleMarks(question.marks))
     || question.isCritical
@@ -1019,9 +1103,9 @@ const getAutoFilledCurriculum = (question) => {
   const year = question.year || YEAR_OPTIONS[0]
   const subject = question.subject || getSubjectsForYear(year)[0] || 'Human Anatomy'
   const topicOptions = getAvailableTopics({ ...question, year, subject })
-  const topics = question.topics.length ? question.topics : topicOptions.slice(0, 1)
+  const topics = asArray(question.topics).length ? question.topics : topicOptions.slice(0, 1)
   const competencyOptions = getAvailableCompetencies({ ...question, year, subject, topics })
-  const competencies = question.competencies.length
+  const competencies = asArray(question.competencies).length
     ? question.competencies
     : competencyOptions.slice(0, 1).map((item) => item.value)
 
@@ -1039,14 +1123,29 @@ const canCreateQuestion = (question) => {
   return hasQuestionContent(question)
 }
 
-const getProcessSteps = (question) => ([
-  { label: 'Question Creation (required)', done: hasQuestionContent(question) },
-  { label: 'Curriculum Mapping (AI can fill)', done: hasCurriculumMapping(question) },
-  { label: 'Options (AI can fill)', done: hasMcqOptions(question) },
-  { label: 'Answer Key (AI can fill)', done: Boolean(getRichTextPreview(question.answerKey)) },
-  { label: 'Assessment Tags (AI can fill)', done: hasAssessmentTags(question) },
-  { label: question.status === 'Draft' ? 'Draft Saved' : question.status === 'Sent to Approval' ? 'Sent to Approval' : 'Created', done: ['Draft', 'Created', 'Sent to Approval'].includes(question.status) },
-])
+const getLaqLeafSections = (question) => (
+  (question?.descriptiveSections ?? []).filter((section) => !(section.children ?? []).length)
+)
+
+const hasLaqSubQuestions = (question) => (
+  getLaqLeafSections(question).some((section) => Boolean(getRichTextPreview(section.questionText)))
+)
+
+const hasLaqMarkDistribution = (question) => {
+  const sections = getLaqLeafSections(question)
+  return sections.length > 0 && sections.every((section) => hasVisibleMarks(section.marks))
+}
+
+const hasLaqAssessmentTags = (question) => {
+  const sections = getLaqLeafSections(question)
+  return sections.length > 0 && sections.every((section) => (
+    Boolean(section.questionCategory)
+    && Boolean(section.cognitiveLevel)
+    && Boolean(section.thinkingLevel)
+    && Boolean(section.difficultyLevel)
+    && Boolean(section.competencies?.length)
+  ))
+}
 
 const getQuestionCardStatus = (question) => {
   if (question.status === 'Generating') return 'Generating'
@@ -1163,6 +1262,48 @@ const getQuestionOptionalTagGroups = (question) => [
   { label: 'Key Concept', values: question.keyConcepts ?? [] },
 ].filter((group) => group.values.length)
 
+const getCreatedSubQuestionOptionalTagGroups = (item, fallback = {}) => [
+  { label: 'Cognitive', values: [item?.cognitiveLevel || fallback?.cognitiveLevel].filter(Boolean) },
+  { label: 'Function', values: [item?.cognitiveFunction || fallback?.cognitiveFunction].filter(Boolean) },
+  { label: 'Skill Focus', values: [item?.skillFocus || fallback?.skillFocus].filter(Boolean) },
+  { label: 'Organ', values: [item?.organSystem || fallback?.organSystem].filter(Boolean) },
+  { label: 'Sub-System', values: item?.organSubSystems ?? fallback?.organSubSystems ?? [] },
+  { label: 'Disease', values: item?.diseaseTags ?? fallback?.diseaseTags ?? [] },
+  { label: 'Concept', values: item?.keyConcepts ?? fallback?.keyConcepts ?? [] },
+].map((group) => ({
+  ...group,
+  values: group.values
+    .filter((value) => value && value !== 'Not Applicable')
+    .slice(0, group.label === 'Concept' ? 1 : group.values.length),
+})).filter((group) => group.values.length)
+
+const getDescriptiveLeafSections = (question) => {
+  const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+  return sections.flatMap((section) => {
+    const children = Array.isArray(section?.children) ? section.children : []
+    return children.length ? children : [section]
+  }).filter((section) => (
+    Boolean(getRichTextPreview(section?.questionText))
+    || asArray(section?.competencies).length > 0
+  ))
+}
+
+const getCreatedQuestionPrimaryKpiSource = (question) => (
+  getDescriptiveLeafSections(question)[0] ?? question ?? {}
+)
+
+const getCreatedQuestionKpiValue = (question, fieldName) => {
+  const primarySource = getCreatedQuestionPrimaryKpiSource(question)
+  return question?.[fieldName] || primarySource?.[fieldName] || ''
+}
+
+const getCreatedQuestionPrimaryCompetencyDisplay = (question) => (
+  getDescriptiveCompetencyDisplay(
+    getCreatedQuestionPrimaryKpiSource(question),
+    question,
+  )
+)
+
 const getOptionValue = (item) => (typeof item === 'string' ? item : item.value)
 const getOptionLabel = (item) => (typeof item === 'string' ? item : item.value)
 const getYearDisplayLabel = (year) => ({
@@ -1187,6 +1328,28 @@ const getDescriptiveCompetencyCode = (item) => (
   (item?.competencies ?? []).length ? getShortCompetencyLabel(item.competencies[0]) : ''
 )
 
+const getDescriptiveCompetencyDisplay = (item, fallbackQuestion) => {
+  const competencyValue = item?.competencies?.[0] ?? ''
+  if (!competencyValue) return null
+
+  const subject = item?.subject || fallbackQuestion?.subject || 'Not selected'
+  const topics = (item?.topics?.length ? item.topics : fallbackQuestion?.topics) ?? []
+  const competencyRecord = getAvailableCompetencies({
+    ...(fallbackQuestion ?? {}),
+    year: item?.year || fallbackQuestion?.year || getYearForSubject(subject),
+    subject,
+    topics,
+  }).find((competency) => competency.value === competencyValue)
+  const topic = competencyRecord?.topic || topics[0] || 'Not selected'
+
+  return {
+    code: getShortCompetencyLabel(competencyValue),
+    subject,
+    topic,
+    competency: competencyRecord?.label || competencyValue,
+  }
+}
+
 const getOptionModeConfig = (allowMultiple) => ({
   minCount: allowMultiple ? MULTIPLE_OPTION_MIN_COUNT : SINGLE_OPTION_MIN_COUNT,
   maxCount: allowMultiple ? MULTIPLE_OPTION_MAX_COUNT : SINGLE_OPTION_MAX_COUNT,
@@ -1201,6 +1364,7 @@ function MappingSelectorPanel({
   selected,
   onToggle,
   emptyLabel,
+  className = '',
 }) {
   const query = searchValue.trim().toLowerCase()
   const selectedSet = new Set(selected)
@@ -1213,7 +1377,7 @@ function MappingSelectorPanel({
   ].slice(0, 80)
 
   return (
-    <div className="question-bank-mapping-panel">
+    <div className={`question-bank-mapping-panel ${className}`}>
       <div className="question-bank-mapping-panel-head">
         <div>
           <span className="question-bank-eyebrow">{title}</span>
@@ -1427,10 +1591,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
+  const [generationProcessorTick, setGenerationProcessorTick] = useState(Date.now())
+  const [generationProcessorStartedAt, setGenerationProcessorStartedAt] = useState({})
+  const [generationProcessorCompletedIds, setGenerationProcessorCompletedIds] = useState([])
   const [generationCompleteId, setGenerationCompleteId] = useState(null)
-  const [isProgressWidgetOpen, setIsProgressWidgetOpen] = useState(false)
   const [isOptionalTagsOpen, setIsOptionalTagsOpen] = useState(false)
   const [openCreatedTagsId, setOpenCreatedTagsId] = useState(null)
+  const [openCreatedQuestionIds, setOpenCreatedQuestionIds] = useState([])
+  const [openCreatedSubQuestionIds, setOpenCreatedSubQuestionIds] = useState({})
   const [openDistractorOptionId, setOpenDistractorOptionId] = useState(null)
   const [openDistractorMenuOptionId, setOpenDistractorMenuOptionId] = useState(null)
   const [openOptionDistractorPreviewId, setOpenOptionDistractorPreviewId] = useState(null)
@@ -1440,10 +1608,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [isDefaultCurriculumOpen, setIsDefaultCurriculumOpen] = useState(false)
   const [, setAutoOpenCurriculumQuestionId] = useState(null)
   const [activeQuestionTab, setActiveQuestionTab] = useState('create')
-  const [isQuestionTypePickerOpen, setIsQuestionTypePickerOpen] = useState(false)
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
   const [isUploadTemplateMenuOpen, setIsUploadTemplateMenuOpen] = useState(false)
-  const [selectedQuestionTypeLabel, setSelectedQuestionTypeLabel] = useState('')
   const [isApprovalSelectMode, setIsApprovalSelectMode] = useState(false)
   const [approvalSelectedIds, setApprovalSelectedIds] = useState([])
   const [approvedQuestionBankSelectedIds, setApprovedQuestionBankSelectedIds] = useState([])
@@ -1473,6 +1639,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const [activeDescriptiveAnswerTarget, setActiveDescriptiveAnswerTarget] = useState({ type: 'root' })
   const [activeDescriptiveMappingTarget, setActiveDescriptiveMappingTarget] = useState(null)
   const [descriptiveCompetencyDraft, setDescriptiveCompetencyDraft] = useState(null)
+  const [activeLaqCompetencySectionId, setActiveLaqCompetencySectionId] = useState(null)
+  const [activeLaqSelectKey, setActiveLaqSelectKey] = useState(null)
+  const [laqCompetencySearchValue, setLaqCompetencySearchValue] = useState('')
+  const [descriptiveBuilderMode, setDescriptiveBuilderMode] = useState('LAQs')
+  const generationProcessorCleanupTimersRef = useRef(new Map())
+  const [pendingDescriptiveBuilderMode, setPendingDescriptiveBuilderMode] = useState(null)
 
   function getDescriptiveTooltipPosition(anchorElement = null, hasOpenDropdown = false) {
     const rect = anchorElement?.getBoundingClientRect?.()
@@ -1503,7 +1675,139 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setMappingSearchValue('')
   }
 
+  function renderLaqCompactSelect({ selectKey, value, placeholder, options, onChange, variant = 'simple' }) {
+    const normalizedOptions = options.map((option) => (
+      typeof option === 'string' ? { value: option, label: option } : option
+    ))
+    const selectedOption = normalizedOptions.find((option) => option.value === value)
+    const isOpen = activeLaqSelectKey === selectKey
+
+    return (
+      <div
+        className={`question-bank-laq-select-field question-bank-laq-select-field-custom is-${variant} ${isOpen ? 'is-open' : ''}`}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setActiveLaqSelectKey(null)
+          }
+        }}
+      >
+        <button
+          type="button"
+          className={`question-bank-laq-select-trigger ${selectedOption ? '' : 'is-placeholder'}`}
+          onClick={() => {
+            setActiveLaqCompetencySectionId(null)
+            setActiveLaqSelectKey((current) => (current === selectKey ? null : selectKey))
+          }}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+        >
+          <span>{selectedOption?.label ?? placeholder}</span>
+          <ChevronDown size={14} strokeWidth={2.3} />
+        </button>
+        {isOpen ? (
+          <div className="question-bank-laq-dropdown question-bank-laq-select-menu" role="listbox">
+            <div className="question-bank-laq-dropdown-list">
+              {normalizedOptions.map((option) => {
+                const isSelected = option.value === value
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`question-bank-laq-dropdown-option ${isSelected ? 'is-active' : ''}`}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      onChange(option.value)
+                      setActiveLaqSelectKey(null)
+                    }}
+                    role="option"
+                    aria-selected={isSelected}
+                  >
+                    {variant === 'mapping' ? (
+                      <span className="question-bank-laq-dropdown-check" aria-hidden="true">
+                        {isSelected ? <Check size={12} strokeWidth={2.7} /> : null}
+                      </span>
+                    ) : null}
+                    <strong>{option.label}</strong>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  function requestDescriptiveBuilderModeChange(nextMode) {
+    if (nextMode === descriptiveBuilderMode) return
+    setPendingDescriptiveBuilderMode(nextMode)
+  }
+
+  function cancelDescriptiveBuilderModeChange() {
+    setPendingDescriptiveBuilderMode(null)
+  }
+
+  function confirmDescriptiveBuilderModeChange() {
+    if (!pendingDescriptiveBuilderMode) return
+    if (selectedQuestion && !['Sent to Approval', 'Approved'].includes(selectedQuestion.status)) {
+      setQuestions((current) => current.map((item) => {
+        if (item.id !== selectedQuestion.id) return item
+
+        const nextQuestion = {
+          ...item,
+          questionText: '',
+          title: `${pendingDescriptiveBuilderMode} ${questions.length}`,
+          answerKey: '',
+          marks: pendingDescriptiveBuilderMode === 'LAQs' ? '0' : '',
+          subject: '',
+          topics: [],
+          competencies: [],
+          images: [],
+          descriptiveSections: pendingDescriptiveBuilderMode === 'LAQs' ? [createDescriptiveSubQuestion({ ...item, subject: '', topics: [], competencies: [] })] : [],
+          questionCategory: '',
+          cognitiveLevel: '',
+          thinkingLevel: '',
+          difficultyLevel: '',
+          cognitiveFunction: '',
+          skillFocus: '',
+          organSystem: '',
+          organSubSystems: [],
+          diseaseTags: [],
+          keyConcepts: [],
+          revisionStatus: item.status === 'Created' ? 'Edited' : item.revisionStatus,
+          editCount: item.status === 'Created' ? Math.max(Number(item.editCount ?? item.revisionCount ?? 1) || 1, 1) : item.editCount,
+        }
+
+        return nextQuestion
+      }))
+      setCurriculumDraft(null)
+      setIsCurriculumEditing(false)
+      setActiveDescriptiveAnswerTarget({ type: 'root' })
+      setActiveDescriptiveMappingTarget(null)
+      setDescriptiveCompetencyDraft(null)
+      setActiveLaqCompetencySectionId(null)
+      setLaqCompetencySearchValue('')
+      closeMappingPicker()
+    }
+    setDescriptiveBuilderMode(pendingDescriptiveBuilderMode)
+    setPendingDescriptiveBuilderMode(null)
+  }
+
   const selectedQuestion = questions.find((item) => item.id === selectedQuestionId) ?? null
+
+  useEffect(() => {
+    if (!pendingDescriptiveBuilderMode) return undefined
+
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') {
+        cancelDescriptiveBuilderModeChange()
+      }
+    }
+
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [pendingDescriptiveBuilderMode])
+
   useEffect(() => {
     if (!descriptiveCompetencyDraft) return undefined
 
@@ -1538,6 +1842,45 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     }
   }, [descriptiveCompetencyDraft])
 
+  useEffect(() => {
+    if (!activeMappingPicker) return undefined
+
+    const closeOnOutsideAction = (event) => {
+      if (event.key && event.key !== 'Escape') return
+      const target = event.target
+      if (!event.key && target?.closest?.('.question-bank-laq-map-field, .question-bank-laq-competency-field, .question-bank-inline-map-field, .question-bank-inline-map-dropdown, .question-bank-laq-dropdown, .question-bank-mapping-panel, .question-bank-mapping-trigger')) {
+        return
+      }
+      closeMappingPicker()
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsideAction)
+    document.addEventListener('keydown', closeOnOutsideAction)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideAction)
+      document.removeEventListener('keydown', closeOnOutsideAction)
+    }
+  }, [activeMappingPicker])
+
+  useEffect(() => {
+    if (!activeLaqCompetencySectionId) return undefined
+
+    const closeOnOutsideAction = (event) => {
+      if (event.key && event.key !== 'Escape') return
+      const target = event.target
+      if (!event.key && target?.closest?.('.question-bank-laq-competency-field')) return
+      setActiveLaqCompetencySectionId(null)
+      setLaqCompetencySearchValue('')
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsideAction)
+    document.addEventListener('keydown', closeOnOutsideAction)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideAction)
+      document.removeEventListener('keydown', closeOnOutsideAction)
+    }
+  }, [activeLaqCompetencySectionId])
+
   const getInitialDescriptiveAnswerTarget = (question) => {
     if (!isDescriptiveQuestionType(question?.type)) return { type: 'root' }
     const sections = question.descriptiveSections ?? []
@@ -1563,9 +1906,75 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     if (firstSection) return { type: 'section', sectionId: firstSection.id }
     return { type: 'root' }
   }
+
+  useEffect(() => {
+    if (!selectedQuestion) return
+    if (getQuestionTypeMeta(selectedQuestion.type).shortLabel !== 'LAQs') return
+    if ((selectedQuestion.descriptiveSections ?? []).length) return
+
+    const nextSection = createDescriptiveSubQuestion(selectedQuestion)
+    setQuestions((current) => current.map((item) => (
+      item.id === selectedQuestion.id && !(item.descriptiveSections ?? []).length
+        ? { ...item, marks: '0', answerKey: '', descriptiveSections: [nextSection] }
+        : item
+    )))
+    setActiveDescriptiveAnswerTarget({ type: 'section', sectionId: nextSection.id })
+  }, [selectedQuestion?.id, selectedQuestion?.type, selectedQuestion?.descriptiveSections?.length])
+
   const pendingEditQuestion = questions.find((item) => item.id === pendingEditQuestionId) ?? null
   const draftQuestionCards = questions.filter((item) => item.status === 'Draft')
   const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status) && !isExcelUploadedQuestion(item))
+  const questionBankGenerationProcessorRows = createdQuestionCards
+    .map((item, index) => {
+      const isGenerating = item.status === 'Generating'
+      const startedAt = generationProcessorStartedAt[item.id] ?? generationProcessorTick
+      const elapsed = Math.max(0, generationProcessorTick - startedAt)
+      const percent = isGenerating
+        ? Math.min(96, Math.max(8, Math.round((elapsed / GENERATION_DELAY_MS) * 100)))
+        : 100
+
+      return {
+        id: item.id,
+        typeLabel: getQuestionTypeMeta(item.type).shortLabel,
+        idLabel: getCreatedQuestionDisplayId(index),
+        status: isGenerating ? 'Generating' : 'Completed',
+        percent,
+        onClick: item.status !== 'Generating'
+          ? () => {
+            setSelectedQuestionId(item.id)
+            setActiveQuestionTab('created')
+            setOpenCreatedQuestionIds((current) => (current.includes(item.id) ? current : [...current, item.id]))
+            window.setTimeout(() => {
+              document.querySelector(`[data-created-question-id="${item.id}"]`)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              })
+            }, 80)
+          }
+          : undefined,
+      }
+    })
+    .filter((item) => (
+      questions.find((question) => question.id === item.id)?.status === 'Generating'
+      || generationProcessorCompletedIds.includes(item.id)
+    ))
+  const hasQuestionBankGenerationProcessorRunning = createdQuestionCards.some((item) => item.status === 'Generating')
+
+  useEffect(() => {
+    if (!hasQuestionBankGenerationProcessorRunning) return undefined
+
+    const intervalId = window.setInterval(() => {
+      setGenerationProcessorTick(Date.now())
+    }, 500)
+
+    return () => window.clearInterval(intervalId)
+  }, [hasQuestionBankGenerationProcessorRunning])
+
+  useEffect(() => () => {
+    generationProcessorCleanupTimersRef.current.forEach((timerId) => window.clearTimeout(timerId))
+    generationProcessorCleanupTimersRef.current.clear()
+  }, [])
+
   const sentApprovalQuestionCards = questions.filter((item) => item.status === 'Sent to Approval' && hasQuestionContent(item))
   const approvedQuestionCards = questions
     .filter((item) => item.status === 'Approved' && hasQuestionContent(item))
@@ -1595,7 +2004,10 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     })
     return Array.from(uploadedById.values()).filter((question) => ['Created', 'Generating'].includes(question.status))
   }, [questions])
-  const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => !item.questionBankSentAt)
+  const approvedQuestionBankPendingCards = approvedQuestionCards.filter((item) => (
+    !item.questionBankSentAt
+    && item.questionBankStatus !== 'Add to Question Bank'
+  ))
   const activeApprovableCards = activeQuestionTab === 'uploaded' ? uploadedQuestionCards : createdQuestionCards
   const approvableQuestionIds = activeApprovableCards
     .filter((item) => item.status === 'Created')
@@ -1625,16 +2037,32 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                 : []
 
   const curriculumQuestion = isCurriculumEditing && curriculumDraft ? curriculumDraft : selectedQuestion
-  const availableSubjects = curriculumQuestion ? getSubjectsForYear(curriculumQuestion.year) : []
-  const availableTopics = curriculumQuestion ? getAvailableTopics(curriculumQuestion) : []
-  const availableCompetencies = curriculumQuestion ? getAvailableCompetencies(curriculumQuestion) : []
-  const selectedProcessSteps = selectedQuestion ? getProcessSteps(selectedQuestion) : []
-  const selectedCurrentProcessIndex = selectedProcessSteps.findIndex((step) => !step.done)
-  const completedProcessStepCount = selectedProcessSteps.filter((step) => step.done).length
-  const selectedProcessPercent = selectedProcessSteps.length
-    ? Math.round((completedProcessStepCount / selectedProcessSteps.length) * 100)
-    : 0
-  const canCreateSelectedQuestion = canCreateQuestion(selectedQuestion)
+  const normalizedCurriculumQuestion = curriculumQuestion
+    ? { ...curriculumQuestion, year: curriculumQuestion.year || getYearForSubject(curriculumQuestion.subject) }
+    : null
+  const availableSubjects = normalizedCurriculumQuestion ? getSubjectsForYear(normalizedCurriculumQuestion.year) : []
+  const availableTopics = normalizedCurriculumQuestion ? getAvailableTopics(normalizedCurriculumQuestion) : []
+  const availableCompetencies = normalizedCurriculumQuestion ? getAvailableCompetencies(normalizedCurriculumQuestion) : []
+  const selectedQuestionTypeLabel = selectedQuestion
+    ? getQuestionTypeMeta(selectedQuestion.type).shortLabel
+    : ''
+  const isSelectedLaqQuestion = ['LAQs', 'SAQs'].includes(selectedQuestionTypeLabel)
+  const isSelectedSaqBuilderMode = isSelectedLaqQuestion && descriptiveBuilderMode === 'SAQs'
+  const isSelectedLaqBuilderMode = isSelectedLaqQuestion && descriptiveBuilderMode === 'LAQs'
+  const shouldShowSelectedSubQuestionFlow = isSelectedLaqBuilderMode
+    || (isSelectedSaqBuilderMode && selectedQuestion?.clinicalVignetteEnabled === true)
+  const isSelectedSaqSingleQuestionFlow = isSelectedLaqQuestion
+    && descriptiveBuilderMode === 'SAQs'
+    && selectedQuestion?.clinicalVignetteEnabled !== true
+  const canCreateSelectedQuestion = isSelectedSaqSingleQuestionFlow
+    ? (
+      hasQuestionContent(selectedQuestion)
+      && Boolean(selectedQuestion?.subject)
+      && Boolean(selectedQuestion?.topics?.length)
+      && asArray(selectedQuestion?.competencies).length === 1
+      && hasSaqSingleQuestionAssessmentTags(selectedQuestion)
+    )
+    : canCreateQuestion(selectedQuestion)
   const canSaveSelectedDraft = selectedQuestion?.status !== 'Sent to Approval' && hasDraftContent(selectedQuestion)
   const shouldShowSelectedCurriculumPanel = selectedQuestion
     && (!isDescriptiveQuestionType(selectedQuestion.type) || !(selectedQuestion.descriptiveSections ?? []).length)
@@ -1642,9 +2070,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     ? selectedQuestion.questionBankEditMode === 'duplicate'
       ? false
       : ['Created', 'Draft', 'Approval Rejected'].includes(selectedQuestion.status) || selectedQuestion.questionBankEditMode === 'overwrite'
-    : false
-  const shouldShowSelectedDelete = selectedQuestion
-    ? selectedQuestion.status !== 'Editing' && !['Sent to Approval', 'Approved'].includes(selectedQuestion.status)
     : false
   const activeMappingItems = activeMappingPicker === 'years'
     ? YEAR_OPTIONS
@@ -1686,11 +2111,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const approvalModalQuestionCount = pendingUploadApprovalQuestions.length || approvalSelectedIds.length
 
   const selectQuestionForEditing = (questionId, questionOverride = null) => {
-    const nextSelectedQuestion = questionOverride ?? questions.find((item) => item.id === questionId) ?? null
+    const storedQuestion = questionOverride ? null : questions.find((item) => item.id === questionId)
+    const nextSelectedQuestion = questionOverride
+      ? normalizeQuestionForAuthoring(questionOverride)
+      : storedQuestion
+        ? normalizeQuestionForAuthoring(storedQuestion)
+        : null
+    const nextTypeShortLabel = getQuestionTypeMeta(nextSelectedQuestion?.type).shortLabel
     setSelectedQuestionId(nextSelectedQuestion?.id ?? null)
     setIsGeneratingQuestion(false)
     setGenerationCompleteId(null)
-    setIsProgressWidgetOpen(false)
     setIsOptionalTagsOpen(false)
     setOpenDistractorOptionId(null)
     setOpenDistractorMenuOptionId(null)
@@ -1698,12 +2128,17 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setEditableDescriptiveFieldKeys([])
     closeMappingPicker()
     if (nextSelectedQuestion) {
+      if (nextTypeShortLabel === 'SAQs' || nextSelectedQuestion.descriptiveBuilderMode === 'SAQs' || typeof nextSelectedQuestion.clinicalVignetteEnabled === 'boolean') {
+        setDescriptiveBuilderMode('SAQs')
+      } else if (nextTypeShortLabel === 'LAQs') {
+        setDescriptiveBuilderMode('LAQs')
+      }
       setActiveDescriptiveAnswerTarget(getInitialDescriptiveAnswerTarget(nextSelectedQuestion))
       setCurriculumDraft({
         year: nextSelectedQuestion.year,
         subject: nextSelectedQuestion.subject,
-        topics: [...nextSelectedQuestion.topics],
-        competencies: [...nextSelectedQuestion.competencies],
+        topics: [...asArray(nextSelectedQuestion.topics)],
+        competencies: [...asArray(nextSelectedQuestion.competencies)],
       })
       setIsCurriculumEditing(true)
       setIsDefaultCurriculumOpen(true)
@@ -1742,8 +2177,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         setSelectedQuestionId(editableQuestion.id)
         setActiveDescriptiveAnswerTarget(getInitialDescriptiveAnswerTarget(editableQuestion))
         setActiveQuestionTab('create')
-        setSelectedQuestionTypeLabel(typeMeta.shortLabel)
-        setIsQuestionTypePickerOpen(false)
         setGenerationCompleteId(null)
         onAlert?.({
           tone: 'secondary',
@@ -1847,8 +2280,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
           status: result.status === 'Approved' ? 'Approved' : 'Approval Rejected',
           approvalReviewRemarks: result.remarks ?? '',
           approvalReviewedAt: result.reviewedAt ?? '',
-          questionBankStatus: undefined,
-          questionBankSentAt: undefined,
+          questionBankStatus: result.status === 'Approved'
+            ? result.questionBankStatus ?? question.questionBankStatus ?? 'Add to Question Bank'
+            : undefined,
+          questionBankSentAt: result.status === 'Approved'
+            ? result.questionBankSentAt ?? question.questionBankSentAt
+            : undefined,
         }
       }))
 
@@ -2012,15 +2449,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const handleCreateQuestion = (type) => {
     const typeMeta = getQuestionTypeMeta(type)
     if (typeMeta.isUpcoming) return
-    const question = createQuestion(type, {
+    const question = normalizeQuestionForAuthoring(createQuestion(type, {
       title: `${typeMeta.shortLabel} ${questions.length + 1}`,
-    })
+    }))
+    if (typeMeta.shortLabel === 'LAQs') {
+      question.descriptiveSections = [createDescriptiveSubQuestion(question)]
+    }
     setQuestions((current) => [...current, question])
     selectQuestionForEditing(question.id, question)
     setAutoOpenCurriculumQuestionId(question.id)
     setActiveQuestionTab('create')
-    setSelectedQuestionTypeLabel(typeMeta.shortLabel)
-    setIsQuestionTypePickerOpen(false)
     setIsDescriptiveTypePickerOpen(false)
   }
 
@@ -2355,9 +2793,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     })
     selectQuestionForEditing(questionId, nextQuestion)
     setActiveQuestionTab('create')
-    setSelectedQuestionTypeLabel(typeMeta.shortLabel)
     setPendingEditQuestionId(null)
-    setIsQuestionTypePickerOpen(false)
     setIsApprovalSelectMode(false)
     setApprovalSelectedIds((current) => current.filter((id) => id !== questionId))
     onAlert?.({ tone: 'secondary', message: `${typeMeta.shortLabel} loaded for editing.` })
@@ -2957,6 +3393,22 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     ))
   }
 
+  const toggleCreatedQuestionDetails = (questionId) => {
+    setOpenCreatedTagsId(null)
+    setOpenCreatedQuestionIds((current) => (
+      current.includes(questionId)
+        ? current.filter((id) => id !== questionId)
+        : [...current, questionId]
+    ))
+  }
+
+  const toggleCreatedSubQuestionDetails = (subQuestionId) => {
+    setOpenCreatedSubQuestionIds((current) => ({
+      ...current,
+      [subQuestionId]: !current[subQuestionId],
+    }))
+  }
+
   const selectAllApprovalQuestions = () => {
     setApprovalSelectedIds(approvableQuestionIds)
   }
@@ -3084,10 +3536,16 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     if (!selectedQuestion || isGeneratingQuestion || !canCreateSelectedQuestion) return
 
     const questionId = selectedQuestion.id
+    const outputQuestionType = getDescriptiveOutputType(selectedQuestion, descriptiveBuilderMode)
+    const isOutputSaqSingleQuestion = getQuestionTypeMeta(outputQuestionType).shortLabel === 'SAQs'
+      && selectedQuestion.clinicalVignetteEnabled !== true
 
     if (isUpdatingSelectedQuestion) {
       const updatedQuestion = {
         ...selectedQuestion,
+        type: outputQuestionType,
+        descriptiveBuilderMode,
+        descriptiveSections: isOutputSaqSingleQuestion ? [] : selectedQuestion.descriptiveSections,
         title: getQuestionPreview(selectedQuestion).slice(0, 60) || selectedQuestion.title,
         status: 'Created',
         revisionStatus: selectedQuestion.revisionStatus === 'Edited' ? 'Edited' : 'Created',
@@ -3137,6 +3595,19 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     }
     const generatedDraft = getGeneratedQuestionDraft(selectedQuestion)
 
+    const startedAt = Date.now()
+    setIsGeneratingQuestion(true)
+    setGenerationProcessorTick(startedAt)
+    setGenerationProcessorStartedAt((current) => ({
+      ...current,
+      [questionId]: startedAt,
+    }))
+    setGenerationProcessorCompletedIds((current) => current.filter((id) => id !== questionId))
+    const existingProcessorTimer = generationProcessorCleanupTimersRef.current.get(questionId)
+    if (existingProcessorTimer) {
+      window.clearTimeout(existingProcessorTimer)
+      generationProcessorCleanupTimersRef.current.delete(questionId)
+    }
     setGenerationCompleteId(null)
     setQuestions((current) => [
       ...current.map((item) => (
@@ -3170,7 +3641,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             { ...createOption(createHtmlBlock('A partially correct distractor')), distractorErrors: getGeneratedDistractorErrors(2) },
             { ...createOption(createHtmlBlock('A non-specific explanation')), distractorErrors: getGeneratedDistractorErrors(3) },
           ]
-          : item.options.map((option, optionIndex) => ({
+          : asArray(item.options).map((option, optionIndex) => ({
             ...option,
             distractorErrors: (option.distractorErrors ?? []).length
               ? option.distractorErrors
@@ -3179,9 +3650,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
         return {
           ...item,
+          type: outputQuestionType,
+          descriptiveBuilderMode,
           ...autoFilledCurriculum,
           ...generatedDescriptiveAnswer,
           ...generatedDescriptiveMarks,
+          descriptiveSections: isOutputSaqSingleQuestion
+            ? []
+            : (generatedDescriptiveAnswer.descriptiveSections ?? generatedDescriptiveMarks.descriptiveSections ?? item.descriptiveSections),
           questionText: needsQuestion ? generatedDraft.questionText : item.questionText,
           ...(!isDescriptiveItem ? { answerKey: needsAnswerKey ? generatedDraft.answerKey : item.answerKey } : {}),
           questionCategory: item.questionCategory || generatedDraft.questionCategory || 'Application',
@@ -3209,7 +3685,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
           questionBankEditMode: undefined,
         }
       }))
+      setIsGeneratingQuestion(false)
       setGenerationCompleteId(questionId)
+      setGenerationProcessorCompletedIds((current) => (current.includes(questionId) ? current : [...current, questionId]))
+      const cleanupTimerId = window.setTimeout(() => {
+        setGenerationProcessorCompletedIds((current) => current.filter((id) => id !== questionId))
+        generationProcessorCleanupTimersRef.current.delete(questionId)
+      }, 120000)
+      generationProcessorCleanupTimersRef.current.set(questionId, cleanupTimerId)
       onAlert?.({ tone: 'success', message: 'Question created.' })
     }, GENERATION_DELAY_MS)
   }
@@ -3217,6 +3700,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const handleSaveDraft = () => {
     if (!selectedQuestion || !canSaveSelectedDraft) return
     const questionId = selectedQuestion.id
+    const outputQuestionType = getDescriptiveOutputType(selectedQuestion, descriptiveBuilderMode)
     const nextQuestion = createQuestion(selectedQuestion.type, {
       title: `${getQuestionTypeMeta(selectedQuestion.type).shortLabel} ${questions.length + 1}`,
     })
@@ -3226,6 +3710,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         item.id === questionId
           ? {
             ...item,
+            type: outputQuestionType,
+            descriptiveBuilderMode,
+            descriptiveSections: isSaqSingleQuestionOutput({ ...item, type: outputQuestionType, descriptiveBuilderMode }) ? [] : item.descriptiveSections,
             title: getQuestionPreview(item).slice(0, 60) || item.title,
             status: 'Draft',
           }
@@ -3240,6 +3727,18 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   }
 
   const openMappingPicker = (type) => {
+    if (isSelectedLaqQuestion && selectedQuestion && !curriculumDraft) {
+      setCurriculumDraft({
+        year: selectedQuestion.year || getYearForSubject(selectedQuestion.subject),
+        subject: selectedQuestion.subject,
+        topics: [...(selectedQuestion.topics ?? [])],
+        competencies: [...(selectedQuestion.competencies ?? [])],
+      })
+    }
+    if (isSelectedLaqQuestion) {
+      setIsCurriculumEditing(true)
+      setIsDefaultCurriculumOpen(true)
+    }
     setActiveMappingPicker(type)
     setMappingSearchValue('')
   }
@@ -3304,6 +3803,94 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     setMappingSearchValue('')
   }
 
+  const handleSelectLaqSubject = (value) => {
+    if (!selectedQuestion) return
+    const year = selectedQuestion.year || curriculumDraft?.year || getYearForSubject(value)
+    const nextDraft = {
+      year,
+      subject: value,
+      topics: [],
+      competencies: [],
+    }
+    setCurriculumDraft(nextDraft)
+    setIsCurriculumEditing(true)
+    setIsDefaultCurriculumOpen(true)
+    updateSelectedQuestion(nextDraft)
+    setActiveMappingPicker('topics')
+    setMappingSearchValue('')
+  }
+
+  const handleToggleLaqTopic = (value) => {
+    if (!selectedQuestion) return
+    const baseDraft = curriculumDraft ?? selectedQuestion
+    const year = baseDraft.year || getYearForSubject(baseDraft.subject)
+    const nextTopics = descriptiveBuilderMode === 'SAQs'
+      ? [value]
+      : toggleSelection(baseDraft.topics ?? [], value)
+    const nextCompetencies = (baseDraft.competencies ?? []).filter((entry) => (
+      getAvailableCompetencies({ ...baseDraft, year, topics: nextTopics }).some((competency) => competency.value === entry)
+    ))
+    const nextDraft = {
+      year,
+      subject: baseDraft.subject,
+      topics: nextTopics,
+      competencies: nextCompetencies,
+    }
+    setCurriculumDraft(nextDraft)
+    setIsCurriculumEditing(true)
+    setIsDefaultCurriculumOpen(true)
+    updateSelectedQuestion(nextDraft)
+    if (descriptiveBuilderMode === 'SAQs') {
+      closeMappingPicker()
+    }
+  }
+
+  const handleToggleLaqCompetency = (value) => {
+    if (!selectedQuestion) return
+    const baseDraft = curriculumDraft ?? selectedQuestion
+    const isSaqSingleCompetencyMode = descriptiveBuilderMode === 'SAQs' && selectedQuestion.clinicalVignetteEnabled !== true
+    const nextDraft = {
+      year: baseDraft.year || getYearForSubject(baseDraft.subject),
+      subject: baseDraft.subject,
+      topics: baseDraft.topics ?? [],
+      competencies: isSaqSingleCompetencyMode ? [value] : toggleSelection(baseDraft.competencies ?? [], value),
+    }
+    setCurriculumDraft(nextDraft)
+    setIsCurriculumEditing(true)
+    setIsDefaultCurriculumOpen(true)
+    updateSelectedQuestion(nextDraft)
+    if (isSaqSingleCompetencyMode) {
+      closeMappingPicker()
+    }
+  }
+
+  const toggleSaqClinicalVignette = () => {
+    if (!selectedQuestion) return
+    updateSelectedQuestion((current) => {
+      const nextEnabled = !current.clinicalVignetteEnabled
+      const nextBase = {
+        ...current,
+        questionText: '',
+        answerKey: '',
+        marks: nextEnabled ? '0' : '',
+        competencies: nextEnabled ? current.competencies : (current.competencies ?? []).slice(0, 1),
+        clinicalVignetteEnabled: nextEnabled,
+      }
+
+      return {
+        questionText: '',
+        title: nextEnabled ? 'SAQ clinical vignette' : 'SAQ question',
+        answerKey: '',
+        marks: nextEnabled ? '0' : '',
+        images: [],
+        competencies: nextEnabled ? current.competencies : (current.competencies ?? []).slice(0, 1),
+        clinicalVignetteEnabled: nextEnabled,
+        descriptiveSections: nextEnabled ? [createDescriptiveSubQuestion(nextBase)] : [],
+      }
+    })
+    setActiveDescriptiveAnswerTarget({ type: 'root' })
+  }
+
   const handleSelectYear = (value) => {
     updateCurriculumDraft((item) => {
       const nextSubjects = getSubjectsForYear(value)
@@ -3336,13 +3923,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const handleOptionModeChange = (allowMultiple) => {
     updateSelectedQuestion((item) => {
       const { minCount, maxCount } = getOptionModeConfig(allowMultiple)
-      const requiredOptionCount = Math.max(minCount, Math.min(item.options.length, maxCount))
-      const nextOptions = item.options.slice(0, maxCount)
+      const currentOptions = asArray(item.options)
+      const requiredOptionCount = Math.max(minCount, Math.min(currentOptions.length, maxCount))
+      const nextOptions = currentOptions.slice(0, maxCount)
       while (nextOptions.length < requiredOptionCount) {
         nextOptions.push(createOption(''))
       }
       const optionIds = new Set(nextOptions.map((option) => option.id))
-      const nextCorrectOptionIds = item.correctOptionIds.filter((id) => optionIds.has(id))
+      const nextCorrectOptionIds = asArray(item.correctOptionIds).filter((id) => optionIds.has(id))
 
       return {
         ...item,
@@ -3356,11 +3944,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const handleAddOption = () => {
     updateSelectedQuestion((item) => {
       const { maxCount } = getOptionModeConfig(item.allowMultiple)
-      if (item.options.length >= maxCount) return item
+      const currentOptions = asArray(item.options)
+      if (currentOptions.length >= maxCount) return item
 
       return {
         ...item,
-        options: [...item.options, createOption('')],
+        options: [...currentOptions, createOption('')],
       }
     })
   }
@@ -3368,7 +3957,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const selectOptionDistractorError = (optionId, error) => {
     updateSelectedQuestion((item) => ({
       ...item,
-      options: item.options.map((option) => {
+      options: asArray(item.options).map((option) => {
         if (option.id !== optionId) return option
         return {
           ...option,
@@ -3382,7 +3971,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const clearOptionDistractorError = (optionId) => {
     updateSelectedQuestion((item) => ({
       ...item,
-      options: item.options.map((option) => (
+      options: asArray(item.options).map((option) => (
         option.id === optionId
           ? { ...option, distractorErrors: [] }
           : option
@@ -3675,189 +4264,401 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
     ), document.body)
   }
 
-  const questionTypePicker = (
-    <div className={`question-bank-type-select-panel ${isQuestionTypePickerOpen ? 'is-open' : ''}`}>
-      <button
-        type="button"
-        className="question-bank-type-select-trigger"
-        onClick={() => {
-          if (isQuestionTypePickerOpen) setIsDescriptiveTypePickerOpen(false)
-          setIsQuestionTypePickerOpen((current) => !current)
-        }}
-        aria-expanded={isQuestionTypePickerOpen}
-      >
-        <span className="question-bank-type-picker-icon">
-          <ListChecks size={15} strokeWidth={2} />
-        </span>
-        <strong>{selectedQuestion ? getQuestionTypeMeta(selectedQuestion.type).shortLabel : selectedQuestionTypeLabel || 'Select Question Type'}</strong>
-        <ChevronDown size={16} strokeWidth={2.4} />
-      </button>
-
-      {isQuestionTypePickerOpen ? (
-        <div className="question-bank-type-picker">
-          {QUESTION_TYPE_CARDS.slice(0, 1).map((item) => {
-            const Icon = item.icon
-            return (
-              <button
-                key={item.type}
-                type="button"
-                className={`question-bank-type-picker-item ${item.isUpcoming ? 'is-upcoming' : ''}`}
-                onClick={() => handleCreateQuestion(item.type)}
-                disabled={item.isUpcoming}
-              >
-                <span className="question-bank-type-picker-icon">
-                  <Icon size={15} strokeWidth={2} />
-                </span>
-                <span>{item.menuLabel ?? item.shortLabel}</span>
-                {item.isUpcoming ? <small>Upcoming</small> : null}
-              </button>
-            )
-          })}
-          <div className={`question-bank-type-picker-group ${isDescriptiveTypePickerOpen ? 'is-open' : ''}`}>
+  const createQuestionTypeCards = (
+    <section className="question-bank-create-choice-panel" aria-label="Select question type">
+      <h2>Select your question type</h2>
+      <div className="question-bank-type-picker is-inline">
+        {QUESTION_TYPE_CARDS.slice(0, 1).map((item) => {
+          const Icon = item.icon
+          return (
             <button
+              key={item.type}
               type="button"
-              className="question-bank-type-picker-item question-bank-type-picker-menu-trigger"
-              onClick={() => setIsDescriptiveTypePickerOpen((current) => !current)}
-              aria-expanded={isDescriptiveTypePickerOpen}
+              className={`question-bank-type-picker-item ${item.isUpcoming ? 'is-upcoming' : ''}`}
+              onClick={() => handleCreateQuestion(item.type)}
+              disabled={item.isUpcoming}
             >
               <span className="question-bank-type-picker-icon">
-                <FilePenLine size={15} strokeWidth={2} />
+                <Icon size={15} strokeWidth={2} />
               </span>
-              <span>Descriptive</span>
-              <ChevronDown size={15} strokeWidth={2.4} />
+              <span>{item.menuLabel ?? item.shortLabel}</span>
+              {item.isUpcoming ? <small>Upcoming</small> : null}
             </button>
-            {isDescriptiveTypePickerOpen ? (
-              <div className="question-bank-type-picker-menu">
-                {DESCRIPTIVE_QUESTION_TYPES.map((item) => (
-                  <button
-                    key={item.type}
-                    type="button"
-                    className="question-bank-type-picker-menu-item"
-                    onClick={() => handleCreateQuestion(item.type)}
-                  >
-                    <span className="question-bank-type-picker-icon">
-                      <FilePenLine size={15} strokeWidth={2} />
-                    </span>
-                    <span>{item.menuLabel}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
+          )
+        })}
+        <div className={`question-bank-type-picker-group ${isDescriptiveTypePickerOpen ? 'is-open' : ''}`}>
+          <button
+            type="button"
+            className="question-bank-type-picker-item question-bank-type-picker-menu-trigger"
+            onClick={() => setIsDescriptiveTypePickerOpen((current) => !current)}
+            aria-expanded={isDescriptiveTypePickerOpen}
+          >
+            <span className="question-bank-type-picker-icon">
+              <FilePenLine size={15} strokeWidth={2} />
+            </span>
+            <span>Descriptive</span>
+            <ChevronDown size={15} strokeWidth={2.4} />
+          </button>
+          {isDescriptiveTypePickerOpen ? (
+            <div className="question-bank-type-picker-menu">
+              {CREATE_DESCRIPTIVE_QUESTION_TYPES.map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  className="question-bank-type-picker-menu-item"
+                  onClick={() => handleCreateQuestion(item.type)}
+                >
+                  <span className="question-bank-type-picker-icon">
+                    <FilePenLine size={15} strokeWidth={2} />
+                  </span>
+                  <span>{item.menuLabel}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        {QUESTION_TYPE_CARDS.slice(1).map((item) => {
+          const Icon = item.icon
+          return (
+            <button
+              key={item.type}
+              type="button"
+              className={`question-bank-type-picker-item ${item.isUpcoming ? 'is-upcoming' : ''}`}
+              onClick={() => handleCreateQuestion(item.type)}
+              disabled={item.isUpcoming}
+            >
+              <span className="question-bank-type-picker-icon">
+                <Icon size={15} strokeWidth={2} />
+              </span>
+              <span>{item.menuLabel ?? item.shortLabel}</span>
+              {item.isUpcoming ? <small>Upcoming</small> : null}
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+
+  const approvalQuestionTabs = [
+    { id: 'sent', label: 'Pending', count: sentApprovalQuestionCards.length },
+    { id: 'approved', label: 'Approved', count: approvedQuestionCards.length },
+    { id: 'report', label: 'Reported', count: reportQuestionCards.length },
+    { id: 'rejected', label: 'Disapproved', count: rejectedQuestionCards.length },
+  ]
+  const approvalStatusTabIds = approvalQuestionTabs.map((item) => item.id)
+  const isApprovalStatusTab = approvalStatusTabIds.includes(activeQuestionTab)
+  const approvalStatusCount = approvalQuestionTabs.reduce((total, item) => total + item.count, 0)
+  const approvalStatusTabs = isApprovalStatusTab ? (
+    <div className="question-bank-approval-status-tabs" role="tablist" aria-label="Approval status filters">
+      {approvalQuestionTabs.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className={activeQuestionTab === item.id ? 'is-active' : ''}
+          onClick={() => setActiveQuestionTab(item.id)}
+          role="tab"
+          aria-selected={activeQuestionTab === item.id}
+        >
+          <span>{item.label}</span>
+          <small>{item.count}</small>
+        </button>
+      ))}
+    </div>
+  ) : null
+
+  const questionBankTabs = (
+    <aside className="question-bank-side-tabs" role="tablist" aria-label="Question bank sections">
+      <button
+        type="button"
+        className={activeQuestionTab === 'create' ? 'is-active' : ''}
+        onClick={() => {
+          setActiveQuestionTab('create')
+          if (selectedQuestion) {
+            selectQuestionForEditing(null)
+          }
+        }}
+        role="tab"
+        aria-selected={activeQuestionTab === 'create'}
+      >
+        <span>
+          {selectedQuestion ? (
+            <CornerUpLeft size={14} strokeWidth={2.4} aria-hidden="true" />
+          ) : (
+            <FilePenLine size={14} strokeWidth={2.3} aria-hidden="true" />
+          )}
+          {selectedQuestion ? 'Back to Select Question' : 'Create New Question'}
+        </span>
+      </button>
+      <button
+        type="button"
+        className={activeQuestionTab === 'uploaded' ? 'is-active' : ''}
+        onClick={() => setActiveQuestionTab('uploaded')}
+        role="tab"
+        aria-selected={activeQuestionTab === 'uploaded'}
+      >
+        <span>
+          <Upload size={14} strokeWidth={2.3} aria-hidden="true" />
+          Upload Question
+        </span>
+        <small>{uploadedQuestionCards.length}</small>
+      </button>
+      <button
+        type="button"
+        className={activeQuestionTab === 'created' ? 'is-active' : ''}
+        onClick={() => {
+          if (hasQuestionBankGenerationProcessorRunning) return
+          setActiveQuestionTab('created')
+        }}
+        disabled={hasQuestionBankGenerationProcessorRunning}
+        title={hasQuestionBankGenerationProcessorRunning ? 'Generated Questions will be available after generation completes.' : undefined}
+        role="tab"
+        aria-selected={activeQuestionTab === 'created'}
+        aria-disabled={hasQuestionBankGenerationProcessorRunning}
+      >
+        <span>
+          <Sparkles size={14} strokeWidth={2.3} aria-hidden="true" />
+          Generated Questions
+        </span>
+        <small>{createdQuestionCards.length}</small>
+      </button>
+      <button
+        type="button"
+        className={activeQuestionTab === 'draft' ? 'is-active' : ''}
+        onClick={() => setActiveQuestionTab('draft')}
+        role="tab"
+        aria-selected={activeQuestionTab === 'draft'}
+      >
+        <span>
+          <FilePenLine size={14} strokeWidth={2.3} aria-hidden="true" />
+          My Draft
+        </span>
+        <small>{draftQuestionCards.length}</small>
+      </button>
+      <button
+        type="button"
+        className={isApprovalStatusTab ? 'is-active' : ''}
+        onClick={() => setActiveQuestionTab('sent')}
+        role="tab"
+        aria-selected={isApprovalStatusTab}
+      >
+        <span>
+          <ListChecks size={14} strokeWidth={2.3} aria-hidden="true" />
+          Status Filter
+        </span>
+        <small>{approvalStatusCount}</small>
+      </button>
+    </aside>
+  )
+
+  const renderLaqMappingDropdown = (type) => {
+    if (activeMappingPicker !== type || !curriculumDraft) return null
+    const isInlineMapping = !isSelectedLaqQuestion
+    const isSaqBuilderMode = descriptiveBuilderMode === 'SAQs'
+    const isSaqSingleCompetencyMode = isSaqBuilderMode && selectedQuestion?.clinicalVignetteEnabled !== true
+
+    const items = type === 'subjects'
+      ? availableSubjects
+      : type === 'topics'
+        ? availableTopics
+        : availableCompetencies
+    const selected = type === 'subjects'
+      ? [curriculumDraft.subject].filter(Boolean)
+      : type === 'topics'
+        ? curriculumDraft.topics
+        : isSaqSingleCompetencyMode
+          ? (curriculumDraft.competencies ?? []).slice(0, 1)
+          : curriculumDraft.competencies
+    const query = mappingSearchValue.trim().toLowerCase()
+    const selectedSet = new Set(selected)
+    const visibleItems = items
+      .filter((item) => getOptionLabel(item).toLowerCase().includes(query))
+      .slice(0, 80)
+    const isMulti = !isInlineMapping && ((type === 'competencies' && !isSaqSingleCompetencyMode) || (type === 'topics' && !isSaqBuilderMode))
+    const title = type === 'subjects' ? 'subject' : type === 'topics' ? 'topics' : 'competency'
+    const emptyLabel = type === 'subjects'
+      ? 'Try another subject keyword.'
+      : type === 'topics'
+        ? 'Try another topic keyword.'
+        : 'Select topics first or try another competency keyword.'
+
+    const handleSelectAll = () => {
+      if (type === 'topics') {
+        if (isSaqBuilderMode) return
+        if (isSelectedLaqQuestion && selectedQuestion) {
+          const baseDraft = curriculumDraft ?? selectedQuestion
+          const year = baseDraft.year || getYearForSubject(baseDraft.subject)
+          const nextTopics = visibleItems.map(getOptionValue)
+          const nextCompetencies = (baseDraft.competencies ?? []).filter((entry) => (
+            getAvailableCompetencies({ ...baseDraft, year, topics: nextTopics }).some((competency) => competency.value === entry)
+          ))
+          const nextDraft = { year, subject: baseDraft.subject, topics: nextTopics, competencies: nextCompetencies }
+          setCurriculumDraft(nextDraft)
+          updateSelectedQuestion(nextDraft)
+          return
+        }
+        updateCurriculumDraft((item) => {
+          const nextTopics = visibleItems.map(getOptionValue)
+          const nextCompetencies = item.competencies.filter((entry) => (
+            getAvailableCompetencies({ ...item, topics: nextTopics }).some((competency) => competency.value === entry)
+          ))
+          return { ...item, topics: nextTopics, competencies: nextCompetencies }
+        })
+      } else if (type === 'competencies') {
+        if (isSaqSingleCompetencyMode) return
+        const baseDraft = curriculumDraft ?? selectedQuestion
+        const nextDraft = {
+          year: baseDraft.year || getYearForSubject(baseDraft.subject),
+          subject: baseDraft.subject,
+          topics: baseDraft.topics ?? [],
+          competencies: visibleItems.map(getOptionValue),
+        }
+        setCurriculumDraft(nextDraft)
+        updateSelectedQuestion(nextDraft)
+      }
+    }
+
+    const handleClear = () => {
+      if (type === 'topics') {
+        if (isSelectedLaqQuestion && selectedQuestion) {
+          const baseDraft = curriculumDraft ?? selectedQuestion
+          const nextDraft = {
+            year: baseDraft.year || getYearForSubject(baseDraft.subject),
+            subject: baseDraft.subject,
+            topics: [],
+            competencies: [],
+          }
+          setCurriculumDraft(nextDraft)
+          updateSelectedQuestion(nextDraft)
+          return
+        }
+        updateCurriculumDraft((item) => ({ ...item, topics: [], competencies: [] }))
+      } else if (type === 'competencies') {
+        const baseDraft = curriculumDraft ?? selectedQuestion
+        const nextDraft = {
+          year: baseDraft.year || getYearForSubject(baseDraft.subject),
+          subject: baseDraft.subject,
+          topics: baseDraft.topics ?? [],
+          competencies: [],
+        }
+        setCurriculumDraft(nextDraft)
+        updateSelectedQuestion(nextDraft)
+      }
+    }
+
+    return (
+      <div className={`${isInlineMapping ? 'question-bank-inline-map-dropdown' : 'question-bank-laq-dropdown'} is-${type}`} role="listbox" aria-label={`Select ${title}`}>
+        <label className={isInlineMapping ? 'question-bank-inline-map-search' : 'question-bank-laq-dropdown-search'}>
+          <Search size={15} strokeWidth={2.1} />
+          <input
+            value={mappingSearchValue}
+            onChange={(event) => setMappingSearchValue(event.target.value)}
+            placeholder={`Search ${title}`}
+            autoFocus
+          />
+        </label>
+
+        {isMulti ? (
+          <div className={isInlineMapping ? 'question-bank-inline-map-actions' : 'question-bank-laq-dropdown-actions'}>
+            <button type="button" onClick={handleSelectAll}>
+              <Check size={13} strokeWidth={2.4} />
+              Select All
+            </button>
+            <button type="button" onClick={handleClear} disabled={!selected.length}>
+              <X size={13} strokeWidth={2.4} />
+              Clear
+            </button>
           </div>
-          {QUESTION_TYPE_CARDS.slice(1).map((item) => {
-            const Icon = item.icon
+        ) : null}
+
+        <div className={isInlineMapping ? 'question-bank-inline-map-list' : 'question-bank-laq-dropdown-list'}>
+          {visibleItems.length ? visibleItems.map((item) => {
+            const value = getOptionValue(item)
+            const isActive = selectedSet.has(value)
             return (
               <button
-                key={item.type}
+                key={value}
                 type="button"
-                className={`question-bank-type-picker-item ${item.isUpcoming ? 'is-upcoming' : ''}`}
-                onClick={() => handleCreateQuestion(item.type)}
-                disabled={item.isUpcoming}
+                className={`${isInlineMapping ? 'question-bank-inline-map-option' : 'question-bank-laq-dropdown-option'} ${isActive ? 'is-active' : ''}`}
+                onClick={() => {
+                  if (!isSelectedLaqQuestion) {
+                    if (type === 'subjects') {
+                      const nextDraft = {
+                        ...curriculumDraft,
+                        year: getYearForSubject(value),
+                        subject: value,
+                        topics: [],
+                        competencies: [],
+                      }
+                      setCurriculumDraft(nextDraft)
+                      updateSelectedQuestion(nextDraft)
+                      setActiveMappingPicker('topics')
+                      setMappingSearchValue('')
+                      return
+                    }
+                    if (type === 'topics') {
+                      const nextTopics = [value]
+                      const nextCompetencies = (curriculumDraft.competencies ?? []).filter((entry) => (
+                        getAvailableCompetencies({ ...curriculumDraft, topics: nextTopics }).some((competency) => competency.value === entry)
+                      ))
+                      const nextDraft = { ...curriculumDraft, topics: nextTopics, competencies: nextCompetencies }
+                      setCurriculumDraft(nextDraft)
+                      updateSelectedQuestion(nextDraft)
+                      closeMappingPicker()
+                      return
+                    }
+                    const nextDraft = {
+                      ...curriculumDraft,
+                      competencies: [value],
+                    }
+                    setCurriculumDraft(nextDraft)
+                    updateSelectedQuestion(nextDraft)
+                    closeMappingPicker()
+                    return
+                  }
+                  if (type === 'subjects') {
+                    handleSelectLaqSubject(value)
+                    return
+                  }
+                  if (type === 'topics') {
+                    handleToggleLaqTopic(value)
+                    return
+                  }
+                  handleToggleLaqCompetency(value)
+                }}
+                role="option"
+                aria-selected={isActive}
               >
-                <span className="question-bank-type-picker-icon">
-                  <Icon size={15} strokeWidth={2} />
+                <span className={isInlineMapping ? 'question-bank-inline-map-check' : 'question-bank-laq-dropdown-check'} aria-hidden="true">
+                  {isActive ? <Check size={12} strokeWidth={2.7} /> : null}
                 </span>
-                <span>{item.menuLabel ?? item.shortLabel}</span>
-                {item.isUpcoming ? <small>Upcoming</small> : null}
+                <strong>{getOptionLabel(item)}</strong>
               </button>
             )
-          })}
+          }) : (
+            <div className={isInlineMapping ? 'question-bank-inline-map-empty' : 'question-bank-laq-dropdown-empty'}>
+              <strong>No matches</strong>
+              <p>{emptyLabel}</p>
+            </div>
+          )}
         </div>
-      ) : null}
-    </div>
-  )
+      </div>
+    )
+  }
 
   return (
     <section className={`question-bank-page is-${normalizedMode}`}>
       <div className="question-bank-layout">
         <main className="question-bank-main">
           <section className="question-bank-create-page-head" aria-label="Question bank page navigation">
-            <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Create New']} />
+            <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Create New Questions']} />
           </section>
+          <aside className="question-bank-create-right-rail" aria-label="Question bank create actions">
+            {questionBankTabs}
+            <GenerationProcessorCard rows={questionBankGenerationProcessorRows} />
+          </aside>
 
-          <section className="question-bank-tab-card">
-            <div className="question-bank-tabs" role="tablist" aria-label="Question bank sections">
-              <button
-                type="button"
-                className={activeQuestionTab === 'create' ? 'is-active' : ''}
-                onClick={() => setActiveQuestionTab('create')}
-                role="tab"
-                aria-selected={activeQuestionTab === 'create'}
-              >
-                Create Ques
-              </button>
-              <button
-                type="button"
-                className={activeQuestionTab === 'created' ? 'is-active' : ''}
-                onClick={() => setActiveQuestionTab('created')}
-                role="tab"
-                aria-selected={activeQuestionTab === 'created'}
-              >
-                My Questions
-                <span>{createdQuestionCards.length}</span>
-              </button>
-              <button
-                type="button"
-                className={activeQuestionTab === 'uploaded' ? 'is-active' : ''}
-                onClick={() => setActiveQuestionTab('uploaded')}
-                role="tab"
-                aria-selected={activeQuestionTab === 'uploaded'}
-              >
-                Upload Ques
-                <span>{uploadedQuestionCards.length}</span>
-              </button>
-              <button
-                type="button"
-                className={activeQuestionTab === 'draft' ? 'is-active' : ''}
-                onClick={() => setActiveQuestionTab('draft')}
-                role="tab"
-                aria-selected={activeQuestionTab === 'draft'}
-              >
-               My Draft
-                <span>{draftQuestionCards.length}</span>
-              </button>
-              <button
-                type="button"
-                className={activeQuestionTab === 'sent' ? 'is-active' : ''}
-                onClick={() => setActiveQuestionTab('sent')}
-                role="tab"
-                aria-selected={activeQuestionTab === 'sent'}
-              >
-                Pending
-                <span>{sentApprovalQuestionCards.length}</span>
-              </button>
-              <button
-                type="button"
-                className={activeQuestionTab === 'approved' ? 'is-active' : ''}
-                onClick={() => setActiveQuestionTab('approved')}
-                role="tab"
-                aria-selected={activeQuestionTab === 'approved'}
-              >
-                Approved
-                <span>{approvedQuestionCards.length}</span>
-              </button>
-              <button
-                type="button"
-                className={activeQuestionTab === 'rejected' ? 'is-active' : ''}
-                onClick={() => setActiveQuestionTab('rejected')}
-                role="tab"
-                aria-selected={activeQuestionTab === 'rejected'}
-              >
-                Rejected
-                <span>{rejectedQuestionCards.length}</span>
-              </button>
-              <button
-                type="button"
-                className={activeQuestionTab === 'report' ? 'is-active' : ''}
-                onClick={() => setActiveQuestionTab('report')}
-                role="tab"
-                aria-selected={activeQuestionTab === 'report'}
-              >
-                Reported
-                <span>{reportQuestionCards.length}</span>
-              </button>
-            </div>
-
+          <section className="question-bank-tab-shell">
+            <section className={`question-bank-tab-card ${activeQuestionTab === 'uploaded' ? 'is-uploaded-tab' : ''}`}>
             {activeQuestionTab === 'uploaded' ? (
             <section className="question-bank-upload-import-panel" aria-label="Upload questions from Excel template">
               <div className="question-bank-upload-import-head">
@@ -3926,14 +4727,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
             {activeQuestionTab === 'create' && !selectedQuestion ? (
             <div className={`question-bank-create-strip ${!selectedQuestion ? 'has-empty-state' : ''}`}>
-              {questionTypePicker}
-              {!selectedQuestion ? (
-                <div className="question-bank-empty-state question-bank-create-empty-state">
-                  <FilePenLine size={24} strokeWidth={2} />
-                  <strong>Create your first question</strong>
-                  <p>Choose MCQ or Descriptive from Select Question Type.</p>
-                </div>
-              ) : null}
+              {createQuestionTypeCards}
             </div>
           ) : null}
 
@@ -3941,106 +4735,80 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             <div className="question-bank-workspace">
               <div className="question-bank-editor">
                 {activeQuestionTab === 'create' && selectedQuestion ? (
-                <section className={`question-bank-author-card ${selectedQuestion.isCritical ? 'is-critical' : ''}`}>
-                  <div className="question-bank-author-type-strip">
-                    {questionTypePicker}
-                    {shouldShowSelectedDelete ? (
-                      <button type="button" className="question-bank-icon-btn" onClick={handleDeleteQuestion} aria-label="Delete question">
-                        <Trash2 size={15} strokeWidth={2} />
-                      </button>
-                    ) : null}
-                  </div>
-
+                <section className={`question-bank-author-card ${selectedQuestion.isCritical ? 'is-critical' : ''} ${isSelectedLaqQuestion ? 'is-laq-flow' : ''} ${selectedQuestion.type === 'MCQ' ? 'is-mcq-flow' : ''}`}>
+                  {!isSelectedLaqQuestion && selectedQuestion.type === 'MCQ' ? (
+                    <div className="question-bank-mcq-topbar">
+                      <div className="question-bank-laq-tab-head">
+                        <span className="question-bank-laq-title-wrap">
+                          <button
+                            type="button"
+                            className="question-bank-laq-back-btn"
+                            onClick={() => selectQuestionForEditing(null)}
+                            aria-label="Back to select question"
+                            title="Back to select question"
+                          >
+                            <ArrowLeft size={15} strokeWidth={2.4} />
+                          </button>
+                          <h2>Multiple Choice Question (MCQ)</h2>
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="question-bank-author-grid">
                     <div className="question-bank-author-main">
                       {shouldShowSelectedCurriculumPanel ? (
-                      <section className="question-bank-curriculum-panel">
+                      <section className={`question-bank-curriculum-panel ${isSelectedLaqQuestion ? 'is-laq-flow' : ''}`}>
                         {isCurriculumEditing ? (
-                          <div className="question-bank-curriculum-edit-card">
-                            <div className="question-bank-curriculum-grid">
-                              <div className="question-bank-field">
-                                <button
-                                  type="button"
-                                  className="question-bank-mapping-trigger"
-                                  onClick={() => openMappingPicker('years')}
-                                >
-                                  <strong>Year</strong>
-                                  <span>{curriculumDraft?.year || 'Select year'}</span>
-                                </button>
-                              </div>
+                          <div className={`question-bank-curriculum-edit-card ${isSelectedLaqQuestion ? 'is-laq-flow' : ''}`}>
+                            {!isSelectedLaqQuestion ? (
+                              <div className="question-bank-curriculum-grid is-inline-map">
+                                <div className="question-bank-field question-bank-inline-map-field">
+                                  <button
+                                    type="button"
+                                    className="question-bank-inline-map-trigger question-bank-mapping-trigger"
+                                    onClick={() => openMappingPicker('subjects')}
+                                  >
+                                    <span className="question-bank-inline-map-label">Subject <em>*</em> :</span>
+                                    <span className="question-bank-inline-map-value">{curriculumDraft?.subject || 'Select Subject'}</span>
+                                    <ChevronDown size={15} strokeWidth={2.4} />
+                                  </button>
+                                  {renderLaqMappingDropdown('subjects')}
+                                </div>
 
-                              <div className="question-bank-field">
-                                <button
-                                  type="button"
-                                  className="question-bank-mapping-trigger"
-                                  onClick={() => openMappingPicker('subjects')}
-                                >
-                                  <strong>Subject</strong>
-                                  <span>{curriculumDraft?.subject || 'Select subject'}</span>
-                                </button>
-                              </div>
+                                <div className="question-bank-field question-bank-inline-map-field">
+                                  <button
+                                    type="button"
+                                    className="question-bank-inline-map-trigger question-bank-mapping-trigger"
+                                    onClick={() => openMappingPicker('topics')}
+                                  >
+                                    <span className="question-bank-inline-map-label">Topics <em>*</em> :</span>
+                                    <span className="question-bank-inline-map-value">{getSelectionSummary(curriculumDraft?.topics ?? [], 'Select Topics')}</span>
+                                    <ChevronDown size={15} strokeWidth={2.4} />
+                                  </button>
+                                  {renderLaqMappingDropdown('topics')}
+                                </div>
 
-                              <div className="question-bank-field">
-                                <button
-                                  type="button"
-                                  className="question-bank-mapping-trigger"
-                                  onClick={() => openMappingPicker('topics')}
-                                >
-                                  <strong>Topics - {curriculumDraft?.topics.length ?? 0} selected</strong>
-                                  <span>{getSelectionSummary(curriculumDraft?.topics ?? [], 'Search and select topics')}</span>
-                                </button>
+                                <div className="question-bank-field question-bank-inline-map-field">
+                                  <button
+                                    type="button"
+                                    className="question-bank-inline-map-trigger question-bank-mapping-trigger"
+                                    onClick={() => openMappingPicker('competencies')}
+                                  >
+                                    <span className="question-bank-inline-map-label">Competency <em>*</em> :</span>
+                                    <span className="question-bank-inline-map-value">
+                                      {getSelectionSummary(
+                                        curriculumDraft?.competencies ?? [],
+                                        'Select Competency',
+                                        getShortCompetencyLabel,
+                                      )}
+                                    </span>
+                                    <ChevronDown size={15} strokeWidth={2.4} />
+                                  </button>
+                                  {renderLaqMappingDropdown('competencies')}
+                                </div>
                               </div>
-
-                              <div className="question-bank-field">
-                                <button
-                                  type="button"
-                                  className="question-bank-mapping-trigger"
-                                  onClick={() => openMappingPicker('competencies')}
-                                >
-                                  <strong>Competency - {curriculumDraft?.competencies.length ?? 0} selected</strong>
-                                  <span>
-                                    {getSelectionSummary(
-                                      curriculumDraft?.competencies ?? [],
-                                      'Search and select competencies',
-                                      getShortCompetencyLabel,
-                                    )}
-                                  </span>
-                                </button>
-                              </div>
-                            </div>
-                            {activeMappingPicker ? (
-                              <MappingSelectorPanel
-                                title={activeMappingPicker === 'years'
-                                  ? 'Year'
-                                  : activeMappingPicker === 'subjects'
-                                  ? 'Subject'
-                                  : activeMappingPicker === 'topics'
-                                    ? 'Topics'
-                                    : 'Competency'}
-                                searchValue={mappingSearchValue}
-                                onSearchChange={setMappingSearchValue}
-                                items={activeMappingItems}
-                                selected={activeMappingSelected}
-                                onToggle={activeMappingPicker === 'years'
-                                  ? handleSelectYear
-                                  : activeMappingPicker === 'subjects'
-                                  ? handleSelectSubject
-                                  : activeMappingPicker === 'topics'
-                                    ? handleToggleTopic
-                                    : (value) => updateCurriculumDraft((item) => ({
-                                    ...item,
-                                    competencies: toggleSelection(item.competencies, value),
-                                  }))}
-                                emptyLabel={activeMappingPicker === 'years'
-                                  ? 'Try another year keyword.'
-                                  : activeMappingPicker === 'subjects'
-                                  ? 'Try another subject keyword.'
-                                  : activeMappingPicker === 'topics'
-                                  ? 'Try another topic keyword.'
-                                  : 'Select topics first or try another competency keyword.'}
-                              />
                             ) : null}
-                            {!isDefaultCurriculumOpen ? (
+                            {!isDefaultCurriculumOpen && isSelectedLaqQuestion ? (
                               <div className="question-bank-curriculum-actions">
                                 <button type="button" className="question-bank-secondary-btn" onClick={cancelCurriculumEdit}>
                                   Cancel
@@ -4055,13 +4823,215 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                       </section>
                       ) : null}
 
+                      {!isSelectedLaqQuestion ? (
+                      <div className="question-bank-assessment-panel question-bank-assessment-inline">
+                        {selectedQuestion.type === 'MCQ' ? (
+                          <div className="question-bank-section-head">
+                            <div>
+                              <strong>Assessment Tags</strong>
+                            </div>
+                          </div>
+                        ) : null}
+                        {!isOptionalTagsOpen ? (
+                          <div className={shouldShowSelectedSubQuestionFlow ? 'question-bank-laq-assessment-row' : 'question-bank-assessment-default-fields'}>
+                            <label className="question-bank-field">
+                              {!shouldShowSelectedSubQuestionFlow ? (
+                              <span>Question Category</span>
+                              ) : null}
+                              <select
+                                className={!selectedQuestion.questionCategory ? 'is-placeholder' : ''}
+                                value={getQuestionCategorySelectValue(selectedQuestion.type, selectedQuestion.questionCategory)}
+                                onChange={(event) => updateSelectedQuestion({ questionCategory: event.target.value })}
+                              >
+                                <option value="" disabled>Select Category</option>
+                                {getQuestionCategorySelectOptions(selectedQuestion.type).map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="question-bank-field">
+                              {!shouldShowSelectedSubQuestionFlow ? (
+                              <span>Cognitive Level</span>
+                              ) : null}
+                              <select
+                                className={!selectedQuestion.cognitiveLevel ? 'is-placeholder' : ''}
+                                value={selectedQuestion.cognitiveLevel}
+                                onChange={(event) => updateSelectedQuestion({ cognitiveLevel: event.target.value })}
+                              >
+                                <option value="" disabled>Select Cognitive Level</option>
+                                {COGNITIVE_LEVEL_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="question-bank-field">
+                              {!shouldShowSelectedSubQuestionFlow ? (
+                              <span>Thinking Level</span>
+                              ) : null}
+                              <select
+                                className={!selectedQuestion.thinkingLevel ? 'is-placeholder' : ''}
+                                value={selectedQuestion.thinkingLevel}
+                                onChange={(event) => updateSelectedQuestion({ thinkingLevel: event.target.value })}
+                              >
+                                <option value="" disabled>Select Thinking Level</option>
+                                {THINKING_LEVEL_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="question-bank-field">
+                              {!shouldShowSelectedSubQuestionFlow ? (
+                              <span>Difficulty Level</span>
+                              ) : null}
+                              <select
+                                className={!selectedQuestion.difficultyLevel ? 'is-placeholder' : ''}
+                                value={selectedQuestion.difficultyLevel}
+                                onChange={(event) => updateSelectedQuestion({ difficultyLevel: event.target.value })}
+                              >
+                                <option value="">Select Difficulty Level</option>
+                                {DIFFICULTY_LEVEL_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        ) : null}
+
+                        {!isOptionalTagsOpen && !shouldShowSelectedSubQuestionFlow && selectedQuestion.type !== 'MCQ' ? (
+                          <button
+                            type="button"
+                            className="question-bank-optional-tags-badge"
+                            onClick={() => setIsOptionalTagsOpen(true)}
+                            aria-expanded={isOptionalTagsOpen}
+                          >
+                            <Info size={13} strokeWidth={2.2} />
+                            <span>Add More (Optional)</span>
+                            <ChevronDown size={14} strokeWidth={2.4} />
+                          </button>
+                        ) : null}
+
+                        {isOptionalTagsOpen ? (
+                          <div className="question-bank-optional-tags-panel">
+                            <label className="question-bank-field">
+                              <span>Cognitive Function</span>
+                              <select
+                                className={!selectedQuestion.cognitiveFunction ? 'is-placeholder' : ''}
+                                value={selectedQuestion.cognitiveFunction}
+                                onChange={(event) => updateSelectedQuestion({ cognitiveFunction: event.target.value })}
+                              >
+                                <option value="">Select Cognitive Function</option>
+                                {COGNITIVE_FUNCTION_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="question-bank-field">
+                              <span>Skill Focus</span>
+                              <select
+                                className={!selectedQuestion.skillFocus ? 'is-placeholder' : ''}
+                                value={selectedQuestion.skillFocus}
+                                onChange={(event) => updateSelectedQuestion({ skillFocus: event.target.value })}
+                              >
+                                <option value="">Select Skill Focus</option>
+                                {SKILL_FOCUS_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="question-bank-field">
+                              <span>Organ System</span>
+                              <select
+                                className={!selectedQuestion.organSystem ? 'is-placeholder' : ''}
+                                value={selectedQuestion.organSystem}
+                                onChange={(event) => updateSelectedQuestion({ organSystem: event.target.value })}
+                              >
+                                <option value="">Select Organ System</option>
+                                {ORGAN_SYSTEM_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <OptionalTagTextInput
+                              label="Organ Sub System"
+                              values={selectedQuestion.organSubSystems}
+                              onChange={(values) => updateSelectedQuestion({ organSubSystems: values })}
+                            />
+
+                            <OptionalTagTextInput
+                              label="Disease Tags"
+                              values={selectedQuestion.diseaseTags}
+                              onChange={(values) => updateSelectedQuestion({ diseaseTags: values })}
+                            />
+
+                            <OptionalTagTextInput
+                              label="Key Concept"
+                              values={selectedQuestion.keyConcepts}
+                              onChange={(values) => updateSelectedQuestion({ keyConcepts: values })}
+                            />
+                          </div>
+                        ) : null}
+                        {selectedQuestion.type === 'MCQ' ? (
+                          <span className="question-bank-assessment-actions question-bank-mcq-question-actions">
+                            <button
+                              type="button"
+                              className="question-bank-secondary-btn"
+                              onClick={handleSaveDraft}
+                              disabled={!canSaveSelectedDraft}
+                            >
+                              Save as Draft
+                            </button>
+                            <button
+                              type="button"
+                              className={`question-bank-primary-btn ${isGeneratingQuestion ? 'is-loading' : ''}`}
+                              onClick={handlePrimaryQuestionAction}
+                              disabled={isGeneratingQuestion || !canCreateSelectedQuestion}
+                              data-tooltip={canCreateSelectedQuestion && !isGeneratingQuestion ? 'The AI engine will automatically generate data for empty fields.' : undefined}
+                            >
+                              {isGeneratingQuestion ? (
+                                <>
+                                  <LoaderCircle size={14} strokeWidth={2.2} className="question-bank-spin-icon" />
+                                  Generating...
+                                </>
+                              ) : generationCompleteId === selectedQuestion.id ? (
+                                <>
+                                  <CheckCircle2 size={14} strokeWidth={2.2} />
+                                  {isUpdatingSelectedQuestion ? 'Updated' : 'Created'}
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles size={14} strokeWidth={2.2} />
+                                  {isUpdatingSelectedQuestion ? 'Update' : 'Generate'}
+                                </>
+                              )}
+                            </button>
+                          </span>
+                        ) : null}
+                      </div>
+                      ) : null}
+
                       {(() => {
                         const isDescriptiveSelected = isDescriptiveQuestionType(selectedQuestion.type)
+                        const selectedOptions = asArray(selectedQuestion.options)
+                        const selectedCorrectOptionIds = asArray(selectedQuestion.correctOptionIds)
+                        const selectedFillBlankAnswers = asArray(selectedQuestion.fillBlankAnswers)
                         const descriptiveSections = selectedQuestion.descriptiveSections ?? []
                         const hasRootQuestionText = Boolean(getRichTextPreview(selectedQuestion.questionText))
                         const rootFieldKey = `${selectedQuestion.id}:root`
-                        const shouldLockRootQuestion = isDescriptiveSelected && descriptiveSections.length > 0 && !isDescriptiveFieldEditable(rootFieldKey)
+                        const isLaqBuilderMode = isSelectedLaqQuestion && descriptiveBuilderMode === 'LAQs'
+                        const isSaqBuilderMode = isSelectedLaqQuestion && descriptiveBuilderMode === 'SAQs'
+                        const isSaqClinicalVignetteEnabled = isSaqBuilderMode && selectedQuestion.clinicalVignetteEnabled === true
+                        const shouldShowCaseStemBlock = isLaqBuilderMode || isSaqClinicalVignetteEnabled
+                        const shouldShowSubQuestionFlow = isLaqBuilderMode || isSaqClinicalVignetteEnabled
+                        const isSaqSingleQuestionFlow = isSaqBuilderMode && !isSaqClinicalVignetteEnabled
+                        const shouldLockRootQuestion = !isLaqBuilderMode && isDescriptiveSelected && descriptiveSections.length > 0 && !isDescriptiveFieldEditable(rootFieldKey)
                         const descriptiveMarksTotal = isDescriptiveSelected ? getDescriptiveQuestionMarksTotal(selectedQuestion) : 0
+                        const laqCurriculum = curriculumDraft ?? selectedQuestion
                         const activeDescriptiveAnswerValue = getActiveDescriptiveAnswerValue()
                         const visibleDescriptiveAnswerValue = isAutoGeneratedDescriptiveAnswer(activeDescriptiveAnswerValue)
                           ? ''
@@ -4077,99 +5047,258 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         )
 
                         return (
-                      <section className="question-bank-soft-panel question-bank-answer-panel">
-                        <div className="question-bank-section-head">
-                          <div>
-                            <strong className="question-bank-step-title">STEP 1 : Question Creation</strong>
+                      <section className={`question-bank-soft-panel question-bank-answer-panel ${isSelectedLaqQuestion ? 'is-laq-flow' : ''}`}>
+                        {isSelectedLaqQuestion ? (
+                          <div className="question-bank-laq-topbar">
+                            <div className="question-bank-laq-tab-head">
+                              <span className="question-bank-laq-title-wrap">
+                                <button
+                                  type="button"
+                                  className="question-bank-laq-back-btn"
+                                  onClick={() => selectQuestionForEditing(null)}
+                                  aria-label="Back to select question"
+                                  title="Back to select question"
+                                >
+                                  <ArrowLeft size={15} strokeWidth={2.4} />
+                                </button>
+                                <h2>{descriptiveBuilderMode === 'SAQs' ? 'Short Answer Question (SAQs)' : 'Long Answer Question (LAQs)'}</h2>
+                              </span>
+                              <div className="question-bank-laq-mode-toggle" role="group" aria-label="Descriptive question type">
+                                {['LAQs', 'SAQs'].map((modeOption) => (
+                                  <button
+                                    key={modeOption}
+                                    type="button"
+                                    className={descriptiveBuilderMode === modeOption ? 'is-active' : ''}
+                                    onClick={() => requestDescriptiveBuilderModeChange(modeOption)}
+                                    aria-pressed={descriptiveBuilderMode === modeOption}
+                                  >
+                                    {modeOption}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="question-bank-laq-control-row">
+                              <div className="question-bank-laq-case-mapping">
+                                <div className="question-bank-laq-map-field">
+                                  <button
+                                    type="button"
+                                    className="question-bank-laq-map-trigger"
+                                    onClick={() => openMappingPicker('subjects')}
+                                    aria-expanded={activeMappingPicker === 'subjects'}
+                                  >
+                                    <span>
+                                      <small>Subject <b className="question-bank-required-star">*</b></small>
+                                      {laqCurriculum?.subject || 'Select Subject'}
+                                    </span>
+                                    <ChevronDown size={14} strokeWidth={2.3} />
+                                  </button>
+                                  {renderLaqMappingDropdown('subjects')}
+                                </div>
+                                <div className="question-bank-laq-map-field">
+                                  <button
+                                    type="button"
+                                    className="question-bank-laq-map-trigger"
+                                    onClick={() => openMappingPicker('topics')}
+                                    aria-expanded={activeMappingPicker === 'topics'}
+                                    disabled={!laqCurriculum?.subject}
+                                  >
+                                    <span>
+                                      <small>Topics <b className="question-bank-required-star">*</b></small>
+                                      {getSelectionSummary(laqCurriculum?.topics ?? [], 'Select Topics')}
+                                    </span>
+                                    <ChevronDown size={14} strokeWidth={2.3} />
+                                  </button>
+                                  {renderLaqMappingDropdown('topics')}
+                                </div>
+                                {isSaqBuilderMode ? (
+                                  <div className="question-bank-laq-map-field question-bank-saq-competency-field">
+                                    <button
+                                      type="button"
+                                      className="question-bank-laq-map-trigger"
+                                      onClick={() => openMappingPicker('competencies')}
+                                      aria-expanded={activeMappingPicker === 'competencies'}
+                                      disabled={!(laqCurriculum?.topics ?? []).length}
+                                    >
+                                      <span>
+                                        <small>Competency <b className="question-bank-required-star">*</b></small>
+                                        {getSelectionSummary(
+                                          isSaqClinicalVignetteEnabled
+                                            ? (laqCurriculum?.competencies ?? [])
+                                            : (laqCurriculum?.competencies ?? []).slice(0, 1),
+                                          'Select Competency',
+                                          getShortCompetencyLabel,
+                                        )}
+                                      </span>
+                                      <ChevronDown size={14} strokeWidth={2.3} />
+                                    </button>
+                                    {renderLaqMappingDropdown('competencies')}
+                                  </div>
+                                ) : null}
+                                {isSaqBuilderMode ? (
+                                  <div className="question-bank-saq-vignette-toggle-card">
+                                    <div className="question-bank-saq-vignette-toggle-row">
+                                      <span>Clinical Vignette</span>
+                                      <div className="question-bank-saq-vignette-toggle" role="group" aria-label="Clinical vignette">
+                                        {[
+                                          { label: 'Yes', value: true },
+                                          { label: 'No', value: false },
+                                        ].map((option) => (
+                                          <button
+                                            key={option.label}
+                                            type="button"
+                                            className={isSaqClinicalVignetteEnabled === option.value ? 'is-active' : ''}
+                                            onClick={() => {
+                                              if (isSaqClinicalVignetteEnabled !== option.value) {
+                                                toggleSaqClinicalVignette()
+                                              }
+                                            }}
+                                            aria-pressed={isSaqClinicalVignetteEnabled === option.value}
+                                          >
+                                            {option.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <p className="question-bank-saq-vignette-mode-note">
+                                      {isSaqClinicalVignetteEnabled ? (
+                                        <>
+                                          <strong>Mode 2 (SAQ with Sub-Questions):</strong> Short structured question divided into 2 parts. Clinical vignette is optional. You map a separate <strong>NMC Competency Code</strong> to each sub-question row (e.g. 2M + 3M = 5M).
+                                        </>
+                                      ) : (
+                                        <>
+                                          <strong>Mode 1 (SAQ without Sub-Questions):</strong> A single direct short note question. Clinical vignette is optional. You map <strong>1 single NMC Competency Code</strong> to the entire marks.
+                                        </>
+                                      )}
+                                    </p>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
                           </div>
-                          <div className="question-bank-question-head-controls">
-                            {!(selectedQuestion.images?.length ?? 0) ? (
-                              <label className="question-bank-question-image-add" aria-label="Add image">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  multiple
-                                  onChange={handleQuestionImagesUpload}
-                                />
-                                <ImagePlus size={14} strokeWidth={2.1} />
-                                Add Image
-                              </label>
-                            ) : null}
+                        ) : null}
+                        {!isSaqBuilderMode || shouldShowCaseStemBlock ? (
+                        <div className={shouldShowCaseStemBlock ? 'question-bank-laq-case-stem-block' : undefined}>
+                          <div className="question-bank-section-head">
+                            <div>
+                              <span className="question-bank-step-title-row">
+                                {shouldShowCaseStemBlock ? (
+                                  <Stethoscope className="question-bank-laq-case-stem-icon" size={14} strokeWidth={2.3} />
+                                ) : null}
+                                <strong className="question-bank-step-title">
+                                  {shouldShowCaseStemBlock ? 'Clinical Vignette / Case Stem' : 'Question'}
+                                </strong>
+                                {!shouldShowCaseStemBlock ? (
+                                  <span className="question-bank-required-star" aria-hidden="true">*</span>
+                                ) : null}
+                              </span>
+                            </div>
+                            <div className="question-bank-question-head-controls">
+                              {shouldShowCaseStemBlock && !(selectedQuestion.images?.length ?? 0) ? (
+                                <label className="question-bank-question-image-add question-bank-laq-reference-image-add" aria-label="Add reference image">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleQuestionImagesUpload}
+                                  />
+                                  <ImagePlus size={14} strokeWidth={2.1} />
+                                  Add Image
+                                </label>
+                              ) : null}
 
-                            <label className="question-bank-question-head-field question-bank-question-head-criticality">
-                              <span>Criticality</span>
+                              {!shouldShowCaseStemBlock && !isSaqBuilderMode && !(selectedQuestion.images?.length ?? 0) ? (
+                                <label className="question-bank-question-image-add" aria-label="Add image">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleQuestionImagesUpload}
+                                  />
+                                  <ImagePlus size={14} strokeWidth={2.1} />
+                                  Add Image
+                                </label>
+                              ) : null}
+
+                              {!isSelectedLaqQuestion && selectedQuestion.type !== 'MCQ' ? (
+                                <label className="question-bank-question-head-field question-bank-question-head-criticality">
+                                  <span>Criticality</span>
+                                  <button
+                                    type="button"
+                                    className={`question-bank-criticality-toggle ${selectedQuestion.isCritical ? 'is-active' : ''}`}
+                                    onClick={() => updateSelectedQuestion((item) => ({ ...item, isCritical: !item.isCritical }))}
+                                    aria-pressed={selectedQuestion.isCritical}
+                                  >
+                                    <span className="question-bank-criticality-switch" />
+                                    <strong>{selectedQuestion.isCritical ? 'ON' : 'OFF'}</strong>
+                                  </button>
+                                </label>
+                              ) : null}
+
+                              {!isLaqBuilderMode && !isSaqClinicalVignetteEnabled ? (
+                                <label className="question-bank-question-head-field question-bank-question-head-marks">
+                                  <span>Marks</span>
+                                  <input
+                                    value={isDescriptiveSelected ? String(descriptiveMarksTotal) : selectedQuestion.marks}
+                                    onChange={(event) => updateSelectedQuestion({ marks: event.target.value })}
+                                    disabled={isDescriptiveSelected ? shouldShowSubQuestionFlow && descriptiveSections.length > 0 : shouldLockRootQuestion}
+                                  />
+                                </label>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <label className="question-bank-field rich">
+                            <RichMathEditor
+                              value={selectedQuestion.questionText}
+                              onChange={(nextValue) => updateSelectedQuestion((current) => {
+                                const nextPreview = getRichTextPreview(nextValue)
+                                const shouldAutoMark = isDescriptiveQuestionType(current.type)
+                                  && !(current.descriptiveSections ?? []).length
+                                  && Boolean(nextPreview)
+                                  && !hasVisibleMarks(current.marks)
+                                const nextMarks = shouldAutoMark ? getAutoGeneratedDescriptiveMarks() : current.marks
+                                const isMainAnswerEnabled = isDescriptiveQuestionType(current.type)
+                                  && !(current.descriptiveSections ?? []).length
+                                const shouldAutoAnswer = isDescriptiveQuestionType(current.type)
+                                  && isMainAnswerEnabled
+                                  && !(current.descriptiveSections ?? []).length
+                                  && Boolean(nextPreview)
+                                  && !getRichTextPreview(current.answerKey)
+
+                                return {
+                                  questionText: nextValue,
+                                  title: nextPreview.slice(0, 60) || current.title,
+                                  ...(shouldAutoMark ? { marks: nextMarks } : {}),
+                                  ...(shouldAutoAnswer ? { answerKey: getAutoGeneratedDescriptiveAnswer(nextValue, nextMarks) } : {}),
+                                }
+                              })}
+                              onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'root' })}
+                              placeholder={shouldShowCaseStemBlock ? 'A 45-year-old male presents to the ED with severe retrosternal pain radiating to the left arm...' : 'Enter your question here'}
+                              minRows={3}
+                              ariaLabel="Question text"
+                              allowPastedImages={false}
+                              readOnly={shouldLockRootQuestion && !shouldShowCaseStemBlock}
+                              onPasteImageRejected={() => onAlert?.({ tone: 'warning', message: 'Images are not supported in question text.' })}
+                            />
+                            {shouldLockRootQuestion && !isLaqBuilderMode && !shouldShowCaseStemBlock ? (
                               <button
                                 type="button"
-                                className={`question-bank-criticality-toggle ${selectedQuestion.isCritical ? 'is-active' : ''}`}
-                                onClick={() => updateSelectedQuestion((item) => ({ ...item, isCritical: !item.isCritical }))}
-                                aria-pressed={selectedQuestion.isCritical}
+                                className="question-bank-field-edit-btn"
+                                onClick={() => {
+                                  enableDescriptiveFieldEdit(rootFieldKey)
+                                  setActiveDescriptiveAnswerTarget({ type: 'root' })
+                                }}
+                                aria-label="Edit main question"
+                                title="Edit main question"
                               >
-                                <span className="question-bank-criticality-switch" />
-                                <strong>{selectedQuestion.isCritical ? 'ON' : 'OFF'}</strong>
+                                <FilePenLine size={14} strokeWidth={2.2} />
                               </button>
-                            </label>
-
-                            <label className="question-bank-question-head-field question-bank-question-head-marks">
-                              <span>Marks</span>
-                              <input
-                                value={isDescriptiveSelected ? String(descriptiveMarksTotal) : selectedQuestion.marks}
-                                onChange={(event) => updateSelectedQuestion({ marks: event.target.value })}
-                                disabled={isDescriptiveSelected ? descriptiveSections.length > 0 : shouldLockRootQuestion}
-                              />
-                            </label>
-                          </div>
+                            ) : null}
+                          </label>
                         </div>
+                        ) : null}
 
-                        <label className="question-bank-field rich">
-                          <RichMathEditor
-                            value={selectedQuestion.questionText}
-                            onChange={(nextValue) => updateSelectedQuestion((current) => {
-                              const nextPreview = getRichTextPreview(nextValue)
-                              const shouldAutoMark = isDescriptiveQuestionType(current.type)
-                                && !(current.descriptiveSections ?? []).length
-                                && Boolean(nextPreview)
-                                && !hasVisibleMarks(current.marks)
-                              const nextMarks = shouldAutoMark ? getAutoGeneratedDescriptiveMarks() : current.marks
-                              const isMainAnswerEnabled = isDescriptiveQuestionType(current.type)
-                                && !(current.descriptiveSections ?? []).length
-                              const shouldAutoAnswer = isDescriptiveQuestionType(current.type)
-                                && isMainAnswerEnabled
-                                && !(current.descriptiveSections ?? []).length
-                                && Boolean(nextPreview)
-                                && !getRichTextPreview(current.answerKey)
-
-                              return {
-                                questionText: nextValue,
-                                title: nextPreview.slice(0, 60) || current.title,
-                                ...(shouldAutoMark ? { marks: nextMarks } : {}),
-                                ...(shouldAutoAnswer ? { answerKey: getAutoGeneratedDescriptiveAnswer(nextValue, nextMarks) } : {}),
-                              }
-                            })}
-                            onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'root' })}
-                            placeholder="Enter your question here"
-                            minRows={3}
-                            ariaLabel="Question text"
-                            allowPastedImages={false}
-                            readOnly={shouldLockRootQuestion}
-                            onPasteImageRejected={() => onAlert?.({ tone: 'warning', message: 'Images are not supported in question text.' })}
-                          />
-                          {shouldLockRootQuestion ? (
-                            <button
-                              type="button"
-                              className="question-bank-field-edit-btn"
-                              onClick={() => {
-                                enableDescriptiveFieldEdit(rootFieldKey)
-                                setActiveDescriptiveAnswerTarget({ type: 'root' })
-                              }}
-                              aria-label="Edit main question"
-                              title="Edit main question"
-                            >
-                              <FilePenLine size={14} strokeWidth={2.2} />
-                            </button>
-                          ) : null}
-                        </label>
-
-                        {(selectedQuestion.images?.length ?? 0) ? (
+                        {(!isSaqBuilderMode || shouldShowCaseStemBlock) && (selectedQuestion.images?.length ?? 0) ? (
                         <div className="question-bank-question-images">
                           {(selectedQuestion.images ?? []).map((image, index) => (
                             <article key={image.id} className="question-bank-question-image-card">
@@ -4218,7 +5347,21 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
                       {isDescriptiveSelected ? (
                         <div className="question-bank-descriptive-builder">
-                          {descriptiveSections.length ? (
+                          {shouldShowSubQuestionFlow ? (
+                            <div className="question-bank-descriptive-builder-foot is-laq-case-stem-actions">
+                              <strong className="question-bank-laq-subheading">
+                                <FolderTree size={14} strokeWidth={2.3} aria-hidden="true" />
+                                {isSaqBuilderMode ? 'SAQ Questions & Mark Distribution' : 'Sub-Questions & Mark Distribution'}
+                              </strong>
+                              <div className="question-bank-question-head-controls">
+                                <span className="question-bank-laq-weightage-summary">
+                                  Total Weightage : <strong>{String(Number(descriptiveMarksTotal) || 0).padStart(2, '0')} Marks</strong>
+                                </span>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {shouldShowSubQuestionFlow && descriptiveSections.length ? (
                             <div className="question-bank-descriptive-sub-list">
                               {descriptiveSections.map((section, sectionIndex) => {
                                 const sectionLabel = `${ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.`
@@ -4235,6 +5378,185 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                 const shouldHighlightSectionMarks = shouldShowSectionControls && hasSectionText && hasSectionMapping && !hasVisibleMarks(section.marks)
                                 const lastInsideQuestion = sectionChildren[sectionChildren.length - 1]
                                 const canAddInsideQuestion = hasSectionText && (!lastInsideQuestion || isDescriptiveLeafRowComplete(lastInsideQuestion))
+                                if (shouldShowSubQuestionFlow) {
+                                  const selectedCompetency = section.competencies?.[0] ?? ''
+                                  const laqSectionCompetencies = getAvailableCompetencies({
+                                    ...selectedQuestion,
+                                    year: selectedQuestion.year || getYearForSubject(selectedQuestion.subject),
+                                    subject: selectedQuestion.subject,
+                                    topics: selectedQuestion.topics,
+                                  })
+                                  const isLaqCompetencyOpen = activeLaqCompetencySectionId === section.id
+                                  const laqCompetencyQuery = laqCompetencySearchValue.trim().toLowerCase()
+                                  const visibleLaqCompetencies = laqSectionCompetencies
+                                    .filter((competency) => (
+                                      competency.value.toLowerCase().includes(laqCompetencyQuery)
+                                      || (competency.label ?? '').toLowerCase().includes(laqCompetencyQuery)
+                                    ))
+                                    .slice(0, 80)
+                                  return (
+                                    <div key={section.id} className="question-bank-laq-sub-question-card">
+                                        <div className="question-bank-laq-sub-question-meta">
+                                          <span className="question-bank-laq-sub-question-letter">{String.fromCharCode(97 + sectionIndex)}.</span>
+                                        <div className={`question-bank-laq-competency-field ${shouldHighlightSectionMapping ? 'question-bank-next-action' : ''}`}>
+                                          <button
+                                            type="button"
+                                            className={`question-bank-laq-map-trigger ${!selectedCompetency ? 'is-placeholder' : ''}`}
+                                            onClick={() => {
+                                              setActiveLaqSelectKey(null)
+                                              setActiveDescriptiveAnswerTarget({ type: 'section', sectionId: section.id })
+                                              setActiveLaqCompetencySectionId((current) => (current === section.id ? null : section.id))
+                                              setLaqCompetencySearchValue('')
+                                            }}
+                                            aria-expanded={isLaqCompetencyOpen}
+                                          >
+                                            <span>
+                                              <small>Competency <b className="question-bank-required-star">*</b></small>
+                                              {selectedCompetency ? getShortCompetencyLabel(selectedCompetency) : 'Select competency'}
+                                            </span>
+                                            <ChevronDown size={14} strokeWidth={2.3} />
+                                          </button>
+                                          {isLaqCompetencyOpen ? (
+                                            <div className="question-bank-laq-dropdown is-competencies" role="listbox" aria-label={`Select competency for sub-question ${sectionIndex + 1}`}>
+                                              <label className="question-bank-laq-dropdown-search">
+                                                <Search size={15} strokeWidth={2.1} />
+                                                <input
+                                                  value={laqCompetencySearchValue}
+                                                  onChange={(event) => setLaqCompetencySearchValue(event.target.value)}
+                                                  placeholder="Search competency"
+                                                  autoFocus
+                                                />
+                                              </label>
+                                              <div className="question-bank-laq-dropdown-list">
+                                                {visibleLaqCompetencies.length ? visibleLaqCompetencies.map((competency) => {
+                                                  const isActive = selectedCompetency === competency.value
+                                                  return (
+                                                    <button
+                                                      key={competency.value}
+                                                      type="button"
+                                                      className={`question-bank-laq-dropdown-option ${isActive ? 'is-active' : ''}`}
+                                                      onClick={() => {
+                                                        updateDescriptiveSubQuestion(section.id, {
+                                                          year: selectedQuestion.year || getYearForSubject(selectedQuestion.subject),
+                                                          subject: selectedQuestion.subject,
+                                                          topics: [...selectedQuestion.topics],
+                                                          competencies: [competency.value],
+                                                        })
+                                                        setActiveLaqCompetencySectionId(null)
+                                                        setLaqCompetencySearchValue('')
+                                                      }}
+                                                      role="option"
+                                                      aria-selected={isActive}
+                                                    >
+                                                      <span className="question-bank-laq-dropdown-check" aria-hidden="true">
+                                                        {isActive ? <Check size={12} strokeWidth={2.7} /> : null}
+                                                      </span>
+                                                      <strong>{getShortCompetencyLabel(competency.value)}</strong>
+                                                      <span className="question-bank-laq-dropdown-option-label">{competency.label ?? competency.value}</span>
+                                                    </button>
+                                                  )
+                                                }) : (
+                                                  <div className="question-bank-laq-dropdown-empty">
+                                                    <strong>No matches</strong>
+                                                    <p>Select topics first or try another competency keyword.</p>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                        {renderLaqCompactSelect({
+                                          selectKey: `${section.id}-category`,
+                                          value: section.questionCategory ?? '',
+                                          placeholder: 'Select Category',
+                                          options: getQuestionCategorySelectOptions(selectedQuestion.type),
+                                          onChange: (nextValue) => updateDescriptiveSubQuestion(section.id, { questionCategory: nextValue }),
+                                        })}
+                                        {renderLaqCompactSelect({
+                                          selectKey: `${section.id}-cognitive`,
+                                          value: section.cognitiveLevel ?? '',
+                                          placeholder: 'Cognitive Level',
+                                          options: COGNITIVE_LEVEL_OPTIONS,
+                                          onChange: (nextValue) => updateDescriptiveSubQuestion(section.id, { cognitiveLevel: nextValue }),
+                                        })}
+                                        {renderLaqCompactSelect({
+                                          selectKey: `${section.id}-difficulty`,
+                                          value: section.difficultyLevel ?? '',
+                                          placeholder: 'Difficulty Level',
+                                          options: DIFFICULTY_LEVEL_OPTIONS,
+                                          onChange: (nextValue) => updateDescriptiveSubQuestion(section.id, { difficultyLevel: nextValue }),
+                                        })}
+                                        {sectionIndex > 0 ? (
+                                          <button
+                                            type="button"
+                                            className="question-bank-icon-btn question-bank-laq-delete-btn"
+                                            onPointerDown={(event) => {
+                                              event.preventDefault()
+                                              event.stopPropagation()
+                                              deleteDescriptiveSubQuestion(section.id)
+                                            }}
+                                            onClick={(event) => event.stopPropagation()}
+                                            aria-label={`Delete sub-question ${sectionIndex + 1}`}
+                                            title="Delete"
+                                          >
+                                            <Trash2 size={14} strokeWidth={2.2} />
+                                          </button>
+                                        ) : <span className="question-bank-laq-delete-spacer" aria-hidden="true" />}
+                                        </div>
+                                      {shouldShowSectionControls ? renderDescriptiveCurriculumControls(sectionTarget) : null}
+
+                                      <div className="question-bank-laq-sub-question-main">
+                                        <label className={`question-bank-laq-question-text ${shouldHighlightSectionText ? 'question-bank-next-action' : ''}`}>
+                                          <RichMathEditor
+                                            value={section.questionText}
+                                            onChange={(nextValue) => updateDescriptiveSubQuestion(section.id, (currentSection) => {
+                                              const shouldAutoMark = Boolean(getRichTextPreview(nextValue)) && !hasVisibleMarks(currentSection.marks)
+                                              const nextMarks = shouldAutoMark ? getAutoGeneratedDescriptiveMarks() : currentSection.marks
+
+                                              return {
+                                                questionText: nextValue,
+                                                ...(shouldAutoMark ? { marks: nextMarks } : {}),
+                                                ...(Boolean(getRichTextPreview(nextValue)) && !getRichTextPreview(currentSection.answerKey)
+                                                  ? { answerKey: getAutoGeneratedDescriptiveAnswer(nextValue, nextMarks) }
+                                                  : {}),
+                                              }
+                                            })}
+                                            onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'section', sectionId: section.id })}
+                                            placeholder="Enter sub-question"
+                                            minRows={2}
+                                            ariaLabel={`Sub-question ${sectionIndex + 1}`}
+                                          />
+                                        </label>
+                                        <div className="question-bank-laq-side-stack">
+                                          <label className={`question-bank-laq-marks-field ${shouldHighlightSectionMarks ? 'question-bank-next-action' : ''}`}>
+                                            <input
+                                              value={section.marks === '0' ? '' : (section.marks ?? '')}
+                                              placeholder="Marks"
+                                              onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'section', sectionId: section.id })}
+                                              onChange={(event) => updateDescriptiveSubQuestion(section.id, { marks: event.target.value })}
+                                              inputMode="decimal"
+                                              aria-label={`Marks for sub-question ${sectionIndex + 1}`}
+                                            />
+                                          </label>
+                                          <div className="question-bank-laq-thinking-toggle" role="group" aria-label={`Thinking level for sub-question ${sectionIndex + 1}`}>
+                                            <span className="question-bank-laq-thinking-required" aria-hidden="true">*</span>
+                                            {THINKING_LEVEL_OPTIONS.map((option) => (
+                                              <button
+                                                key={option}
+                                                type="button"
+                                                className={(section.thinkingLevel ?? '') === option ? 'is-active' : ''}
+                                                onClick={() => updateDescriptiveSubQuestion(section.id, { thinkingLevel: option })}
+                                                aria-pressed={(section.thinkingLevel ?? '') === option}
+                                              >
+                                                {option}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                }
                                 return (
                                   <div key={section.id} className="question-bank-descriptive-sub-card">
                                     <div className="question-bank-descriptive-row">
@@ -4401,29 +5723,197 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                           ) : (
                             null
                           )}
-                          <div className="question-bank-descriptive-builder-foot">
-                            <button
-                              type="button"
-                              className={`question-bank-secondary-btn ${hasRootQuestionText && !descriptiveSections.length ? 'question-bank-next-action' : ''}`}
-                              onClick={addDescriptiveSubQuestion}
-                              disabled={!canAddSubQuestion}
-                            >
-                              <Plus size={14} strokeWidth={2.2} />
-                              Add Sub Question
-                            </button>
+                          {isSaqSingleQuestionFlow ? (
+                            <>
+                              <div className="question-bank-laq-sub-question-card question-bank-saq-single-question-card">
+                                <div className="question-bank-laq-sub-question-meta">
+                                  {renderLaqCompactSelect({
+                                    selectKey: 'saq-single-category',
+                                    value: getQuestionCategorySelectValue(selectedQuestion.type, selectedQuestion.questionCategory),
+                                    placeholder: 'Select Category',
+                                    options: getQuestionCategorySelectOptions(selectedQuestion.type),
+                                    onChange: (nextValue) => updateSelectedQuestion({ questionCategory: nextValue }),
+                                  })}
+                                  {renderLaqCompactSelect({
+                                    selectKey: 'saq-single-cognitive',
+                                    value: selectedQuestion.cognitiveLevel,
+                                    placeholder: 'Cognitive Level',
+                                    options: COGNITIVE_LEVEL_OPTIONS,
+                                    onChange: (nextValue) => updateSelectedQuestion({ cognitiveLevel: nextValue }),
+                                  })}
+                                  {renderLaqCompactSelect({
+                                    selectKey: 'saq-single-difficulty',
+                                    value: selectedQuestion.difficultyLevel,
+                                    placeholder: 'Difficulty Level',
+                                    options: DIFFICULTY_LEVEL_OPTIONS,
+                                    onChange: (nextValue) => updateSelectedQuestion({ difficultyLevel: nextValue }),
+                                  })}
+                                  <label className="question-bank-laq-marks-field">
+                                    <input
+                                      value={hasVisibleMarks(selectedQuestion.marks) ? selectedQuestion.marks : ''}
+                                      onChange={(event) => updateSelectedQuestion({ marks: event.target.value })}
+                                      placeholder="Marks"
+                                      aria-label="SAQ marks"
+                                    />
+                                  </label>
+                                  <div className="question-bank-laq-thinking-toggle" role="group" aria-label="Thinking level for SAQ">
+                                    <span className="question-bank-laq-thinking-required" aria-hidden="true">*</span>
+                                    {THINKING_LEVEL_OPTIONS.map((option) => (
+                                      <button
+                                        key={option}
+                                        type="button"
+                                        className={selectedQuestion.thinkingLevel === option ? 'is-active' : ''}
+                                        onClick={() => updateSelectedQuestion({ thinkingLevel: option })}
+                                        aria-pressed={selectedQuestion.thinkingLevel === option}
+                                      >
+                                        {option}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="question-bank-saq-single-question-main">
+                                  <label className="question-bank-laq-question-text">
+                                    <RichMathEditor
+                                      value={selectedQuestion.questionText}
+                                      onChange={(nextValue) => updateSelectedQuestion((current) => {
+                                        const nextPreview = getRichTextPreview(nextValue)
+                                        const shouldAutoMark = Boolean(nextPreview) && !hasVisibleMarks(current.marks)
+                                        const nextMarks = shouldAutoMark ? getAutoGeneratedDescriptiveMarks() : current.marks
+                                        const shouldAutoAnswer = Boolean(nextPreview) && !getRichTextPreview(current.answerKey)
+
+                                        return {
+                                          questionText: nextValue,
+                                          title: nextPreview.slice(0, 60) || current.title,
+                                          ...(shouldAutoMark ? { marks: nextMarks } : {}),
+                                          ...(shouldAutoAnswer ? { answerKey: getAutoGeneratedDescriptiveAnswer(nextValue, nextMarks) } : {}),
+                                        }
+                                      })}
+                                      onFocus={() => setActiveDescriptiveAnswerTarget({ type: 'root' })}
+                                      placeholder="Enter sub-question"
+                                      minRows={2}
+                                      ariaLabel="SAQ question"
+                                      allowPastedImages={false}
+                                      onPasteImageRejected={() => onAlert?.({ tone: 'warning', message: 'Images are not supported in question text.' })}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="question-bank-descriptive-builder-foot is-saq-single-actions">
+                                <span />
+                                <span className="question-bank-assessment-actions question-bank-laq-form-actions">
+                                  <button
+                                    type="button"
+                                    className="question-bank-secondary-btn"
+                                    onClick={handleSaveDraft}
+                                    disabled={!canSaveSelectedDraft}
+                                  >
+                                    <Save size={14} strokeWidth={2.2} aria-hidden="true" />
+                                    Save as Draft
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`question-bank-primary-btn ${isGeneratingQuestion ? 'is-loading' : ''}`}
+                                    onClick={handlePrimaryQuestionAction}
+                                    disabled={isGeneratingQuestion || !canCreateSelectedQuestion}
+                                    data-tooltip={canCreateSelectedQuestion && !isGeneratingQuestion ? 'The AI engine will automatically generate data for empty fields.' : undefined}
+                                  >
+                                    {isGeneratingQuestion ? (
+                                      <>
+                                        <LoaderCircle size={14} strokeWidth={2.2} className="question-bank-spin-icon" />
+                                        Generating...
+                                      </>
+                                    ) : generationCompleteId === selectedQuestion.id ? (
+                                      <>
+                                        <CheckCircle2 size={14} strokeWidth={2.2} />
+                                        {isUpdatingSelectedQuestion ? 'Updated' : 'Created'}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Sparkles size={14} strokeWidth={2.2} />
+                                        {isUpdatingSelectedQuestion ? 'Update' : 'Generate Question'}
+                                      </>
+                                    )}
+                                  </button>
+                                </span>
+                              </div>
+                            </>
+                          ) : null}
+                          {shouldShowSubQuestionFlow || !isSelectedLaqQuestion ? (
+                          <div className={`question-bank-descriptive-builder-foot ${shouldShowSubQuestionFlow ? 'is-laq-case-stem-actions' : ''}`}>
+                            {shouldShowSubQuestionFlow ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="question-bank-secondary-btn question-bank-laq-add-sub-btn"
+                                  onClick={addDescriptiveSubQuestion}
+                                  disabled={!canAddSubQuestion}
+                                >
+                                  <Plus size={14} strokeWidth={2.2} />
+                                  Add Sub question
+                                </button>
+                                <span className="question-bank-assessment-actions question-bank-laq-form-actions">
+                                  <button
+                                    type="button"
+                                    className="question-bank-secondary-btn"
+                                    onClick={handleSaveDraft}
+                                    disabled={!canSaveSelectedDraft}
+                                  >
+                                    <Save size={14} strokeWidth={2.2} aria-hidden="true" />
+                                    Save as Draft
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`question-bank-primary-btn ${isGeneratingQuestion ? 'is-loading' : ''}`}
+                                    onClick={handlePrimaryQuestionAction}
+                                    disabled={isGeneratingQuestion || !canCreateSelectedQuestion}
+                                    data-tooltip={canCreateSelectedQuestion && !isGeneratingQuestion ? 'The AI engine will automatically generate data for empty fields.' : undefined}
+                                  >
+                                    {isGeneratingQuestion ? (
+                                      <>
+                                        <LoaderCircle size={14} strokeWidth={2.2} className="question-bank-spin-icon" />
+                                        Generating...
+                                      </>
+                                    ) : generationCompleteId === selectedQuestion.id ? (
+                                      <>
+                                        <CheckCircle2 size={14} strokeWidth={2.2} />
+                                        {isUpdatingSelectedQuestion ? 'Updated' : 'Created'}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Sparkles size={14} strokeWidth={2.2} />
+                                        {isUpdatingSelectedQuestion ? 'Update' : 'Generate Question'}
+                                      </>
+                                    )}
+                                  </button>
+                                </span>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className={`question-bank-secondary-btn ${hasRootQuestionText && !descriptiveSections.length ? 'question-bank-next-action' : ''}`}
+                                onClick={addDescriptiveSubQuestion}
+                                disabled={!canAddSubQuestion}
+                              >
+                                <Plus size={14} strokeWidth={2.2} />
+                                Add Sub Question
+                              </button>
+                            )}
                           </div>
-                          <div className="question-bank-answer-block question-bank-descriptive-answer-block">
-                            <label className="question-bank-field">
-                              <span className="question-bank-inline-field-badge">Answer &amp; Explanation</span>
-                              <RichMathEditor
-                                value={visibleDescriptiveAnswerValue}
-                                onChange={updateActiveDescriptiveAnswer}
-                                placeholder="Add answer and explanation"
-                                minRows={3}
-                                ariaLabel="Descriptive answer and explanation"
-                              />
-                            </label>
-                          </div>
+                          ) : null}
+                          {!shouldShowSubQuestionFlow && !isSaqBuilderMode ? (
+                            <div className="question-bank-answer-block question-bank-descriptive-answer-block">
+                              <label className="question-bank-field">
+                                <span className="question-bank-inline-field-badge">Answer &amp; Explanation</span>
+                                <RichMathEditor
+                                  value={visibleDescriptiveAnswerValue}
+                                  onChange={updateActiveDescriptiveAnswer}
+                                  placeholder="Add answer and explanation"
+                                  minRows={3}
+                                  ariaLabel="Descriptive answer and explanation"
+                                />
+                              </label>
+                            </div>
+                          ) : null}
                         </div>
                       ) : null}
 
@@ -4458,12 +5948,12 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                             </div>
                           </div>
                           <div className="question-bank-choice-list">
-                            {selectedQuestion.options.map((option, index) => {
+                            {selectedOptions.map((option, index) => {
                               const { minCount } = getOptionModeConfig(selectedQuestion.allowMultiple)
                               const isMandatoryOption = index < minCount
-                              const isSelectedOption = selectedQuestion.correctOptionIds.includes(option.id)
+                              const isSelectedOption = selectedCorrectOptionIds.includes(option.id)
                               const hasOptionText = Boolean(getRichTextPreview(option.label))
-                              const hasAnyCorrectOption = selectedQuestion.correctOptionIds.length > 0
+                              const hasAnyCorrectOption = selectedCorrectOptionIds.length > 0
                               const isIncorrectOption = hasAnyCorrectOption && hasOptionText && !isSelectedOption
                               const optionStateClass = isSelectedOption
                                 ? 'is-correct'
@@ -4481,9 +5971,9 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                   onClick={() => updateSelectedQuestion((item) => ({
                                       ...item,
                                       correctOptionIds: item.allowMultiple
-                                        ? item.correctOptionIds.includes(option.id)
-                                          ? item.correctOptionIds.filter((currentId) => currentId !== option.id)
-                                          : [...item.correctOptionIds, option.id]
+                                        ? asArray(item.correctOptionIds).includes(option.id)
+                                          ? asArray(item.correctOptionIds).filter((currentId) => currentId !== option.id)
+                                          : [...asArray(item.correctOptionIds), option.id]
                                         : [option.id],
                                     }))}
                                   aria-label={`${isSelectedOption ? 'Unselect' : 'Select'} option ${String.fromCharCode(65 + index)} as correct`}
@@ -4499,7 +5989,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                   value={option.label}
                                   onChange={(nextValue) => updateSelectedQuestion((item) => ({
                                     ...item,
-                                    options: item.options.map((currentOption) => (
+                                    options: asArray(item.options).map((currentOption) => (
                                       currentOption.id === option.id
                                         ? { ...currentOption, label: nextValue }
                                         : currentOption
@@ -4587,8 +6077,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                       className={`question-bank-icon-btn ${hasOptionText ? '' : 'is-empty-remove'}`}
                                       onClick={() => updateSelectedQuestion((item) => ({
                                         ...item,
-                                        options: item.options.filter((currentOption) => currentOption.id !== option.id),
-                                        correctOptionIds: item.correctOptionIds.filter((currentId) => currentId !== option.id),
+                                        options: asArray(item.options).filter((currentOption) => currentOption.id !== option.id),
+                                        correctOptionIds: asArray(item.correctOptionIds).filter((currentId) => currentId !== option.id),
                                       }))}
                                       aria-label="Delete option"
                                     >
@@ -4602,7 +6092,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                           <div className="question-bank-options-foot">
                             {(() => {
                               const { maxCount } = getOptionModeConfig(selectedQuestion.allowMultiple)
-                              const isAtMaxOptions = selectedQuestion.options.length >= maxCount
+                              const isAtMaxOptions = selectedOptions.length >= maxCount
                               return (
                                 <button
                                   type="button"
@@ -4621,7 +6111,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         </div>
                       ) : null}
 
-                      {!isDescriptiveSelected ? (
+                      {!isDescriptiveSelected && selectedQuestion.type !== 'MCQ' ? (
                         <div className="question-bank-answer-block">
                           <label className="question-bank-field">
                             <span className="question-bank-inline-field-badge">Answer &amp; Explanation</span>
@@ -4672,13 +6162,13 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                             </div>
                           </div>
                           <div className="question-bank-choice-list">
-                            {selectedQuestion.fillBlankAnswers.map((answer, index) => (
+                            {selectedFillBlankAnswers.map((answer, index) => (
                               <RichMathEditor
                                 key={`${selectedQuestion.id}-blank-${index}`}
                                 value={answer}
                                 onChange={(nextValue) => updateSelectedQuestion((item) => ({
                                   ...item,
-                                  fillBlankAnswers: item.fillBlankAnswers.map((currentAnswer, answerIndex) => (
+                                  fillBlankAnswers: asArray(item.fillBlankAnswers).map((currentAnswer, answerIndex) => (
                                     answerIndex === index ? nextValue : currentAnswer
                                   )),
                                 }))}
@@ -4694,7 +6184,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                             className="question-bank-secondary-btn"
                             onClick={() => updateSelectedQuestion((item) => ({
                               ...item,
-                              fillBlankAnswers: [...item.fillBlankAnswers, ''],
+                              fillBlankAnswers: [...asArray(item.fillBlankAnswers), ''],
                             }))}
                           >
                             <Plus size={14} strokeWidth={2} />
@@ -4705,213 +6195,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
                     </div>
 
-                    <aside className="question-bank-side-panel">
-                      <div className="question-bank-ai-instruction-card">
-                        <strong>
-                          <Sparkles size={13} strokeWidth={2.2} />
-                          Question Generation Process
-                        </strong>
-                        <ul>
-                          <li>Enter the question text and select Create.</li>
-                          <li>The AI engine will automatically generate data for optional fields.</li>
-                          <li>Review the question to manually apply images, criticality levels, and marks, as these are not auto-generated.</li>
-                        </ul>
-                      </div>
-
-                      <div className="question-bank-assessment-panel question-bank-assessment-inline">
-                        <div className="question-bank-section-head">
-                          <div>
-                            <button
-                              type="button"
-                              className="question-bank-assessment-title-btn"
-                              onClick={() => setIsOptionalTagsOpen(false)}
-                              aria-expanded={!isOptionalTagsOpen}
-                            >
-                              <span>Assessment Tags</span>
-                              {isOptionalTagsOpen ? (
-                                <ChevronDown size={15} strokeWidth={2.4} />
-                              ) : (
-                                <ChevronUp size={15} strokeWidth={2.4} />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        {!isOptionalTagsOpen ? (
-                          <>
-                            <label className="question-bank-field">
-                              <span>Question Category</span>
-                              <select
-                                className={!selectedQuestion.questionCategory ? 'is-placeholder' : ''}
-                                value={getQuestionCategorySelectValue(selectedQuestion.type, selectedQuestion.questionCategory)}
-                                onChange={(event) => updateSelectedQuestion({ questionCategory: event.target.value })}
-                              >
-                                <option value="" disabled>Select Category</option>
-                                {getQuestionCategorySelectOptions(selectedQuestion.type).map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <label className="question-bank-field">
-                              <span>Cognitive Level</span>
-                              <select
-                                className={!selectedQuestion.cognitiveLevel ? 'is-placeholder' : ''}
-                                value={selectedQuestion.cognitiveLevel}
-                                onChange={(event) => updateSelectedQuestion({ cognitiveLevel: event.target.value })}
-                              >
-                                <option value="" disabled>Select Cognitive Level</option>
-                                {COGNITIVE_LEVEL_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <label className="question-bank-field">
-                              <span>Thinking Level</span>
-                              <select
-                                className={!selectedQuestion.thinkingLevel ? 'is-placeholder' : ''}
-                                value={selectedQuestion.thinkingLevel}
-                                onChange={(event) => updateSelectedQuestion({ thinkingLevel: event.target.value })}
-                              >
-                                <option value="" disabled>Select Thinking Level</option>
-                                {THINKING_LEVEL_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <label className="question-bank-field">
-                              <span>Difficulty Level</span>
-                              <select
-                                className={!selectedQuestion.difficultyLevel ? 'is-placeholder' : ''}
-                                value={selectedQuestion.difficultyLevel}
-                                onChange={(event) => updateSelectedQuestion({ difficultyLevel: event.target.value })}
-                              >
-                                <option value="">Select Difficulty Level</option>
-                                {DIFFICULTY_LEVEL_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-                          </>
-                        ) : null}
-
-                        {!isOptionalTagsOpen ? (
-                          <button
-                            type="button"
-                            className="question-bank-optional-tags-badge"
-                            onClick={() => setIsOptionalTagsOpen(true)}
-                            aria-expanded={isOptionalTagsOpen}
-                          >
-                            <Info size={13} strokeWidth={2.2} />
-                            <span>Add More (Optional)</span>
-                            <ChevronDown size={14} strokeWidth={2.4} />
-                          </button>
-                        ) : null}
-
-                        {isOptionalTagsOpen ? (
-                          <div className="question-bank-optional-tags-panel">
-                            <label className="question-bank-field">
-                              <span>Cognitive Function</span>
-                              <select
-                                className={!selectedQuestion.cognitiveFunction ? 'is-placeholder' : ''}
-                                value={selectedQuestion.cognitiveFunction}
-                                onChange={(event) => updateSelectedQuestion({ cognitiveFunction: event.target.value })}
-                              >
-                                <option value="">Select Cognitive Function</option>
-                                {COGNITIVE_FUNCTION_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <label className="question-bank-field">
-                              <span>Skill Focus</span>
-                              <select
-                                className={!selectedQuestion.skillFocus ? 'is-placeholder' : ''}
-                                value={selectedQuestion.skillFocus}
-                                onChange={(event) => updateSelectedQuestion({ skillFocus: event.target.value })}
-                              >
-                                <option value="">Select Skill Focus</option>
-                                {SKILL_FOCUS_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <label className="question-bank-field">
-                              <span>Organ System</span>
-                              <select
-                                className={!selectedQuestion.organSystem ? 'is-placeholder' : ''}
-                                value={selectedQuestion.organSystem}
-                                onChange={(event) => updateSelectedQuestion({ organSystem: event.target.value })}
-                              >
-                                <option value="">Select Organ System</option>
-                                {ORGAN_SYSTEM_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <OptionalTagTextInput
-                              label="Organ Sub System"
-                              values={selectedQuestion.organSubSystems}
-                              onChange={(values) => updateSelectedQuestion({ organSubSystems: values })}
-                            />
-
-                            <OptionalTagTextInput
-                              label="Disease Tags"
-                              values={selectedQuestion.diseaseTags}
-                              onChange={(values) => updateSelectedQuestion({ diseaseTags: values })}
-                            />
-
-                            <OptionalTagTextInput
-                              label="Key Concept"
-                              values={selectedQuestion.keyConcepts}
-                              onChange={(values) => updateSelectedQuestion({ keyConcepts: values })}
-                            />
-                          </div>
-                        ) : null}
-
-                        <div className="question-bank-assessment-actions">
-                          <button
-                            type="button"
-                            className="question-bank-secondary-btn"
-                            onClick={handleSaveDraft}
-                            disabled={!canSaveSelectedDraft}
-                          >
-                            Save as Draft
-                          </button>
-                          <button
-                            type="button"
-                            className={`question-bank-primary-btn ${isGeneratingQuestion ? 'is-loading' : ''}`}
-                            onClick={handlePrimaryQuestionAction}
-                            disabled={isGeneratingQuestion || !canCreateSelectedQuestion}
-                            data-tooltip={canCreateSelectedQuestion && !isGeneratingQuestion ? 'The AI engine will automatically generate data for empty fields.' : undefined}
-                          >
-                            {isGeneratingQuestion ? (
-                              <>
-                                <LoaderCircle size={14} strokeWidth={2.2} className="question-bank-spin-icon" />
-                                Generating...
-                              </>
-                            ) : generationCompleteId === selectedQuestion.id ? (
-                              <>
-                                <CheckCircle2 size={14} strokeWidth={2.2} />
-                                {isUpdatingSelectedQuestion ? 'Updated' : 'Created'}
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles size={14} strokeWidth={2.2} />
-                                {isUpdatingSelectedQuestion ? 'Update' : 'Create'}
-                              </>
-                            )}
-                          </button>
-                        </div>
-
-                      </div>
-                    </aside>
-
                   </div>
                 </section>
 
@@ -4919,6 +6202,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
                 {['created', 'uploaded', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && activeQuestionCards.length ? (
                   <section className="question-bank-created-panel">
+                    {approvalStatusTabs}
                     <div className="question-bank-section-head">
                       <div>
                         {activeQuestionTab === 'approved' ? (
@@ -4943,8 +6227,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                             </span>
                           </span>
                         ) : (
-                          <span className="question-bank-eyebrow">
-                            {activeQuestionTab === 'draft'
+                          activeQuestionTab === 'created' ? (
+                            <span className="question-bank-created-tab-title">
+                              <Sparkles size={16} strokeWidth={2.2} />
+                              Generate Question
+                            </span>
+                          ) : (
+                            <span className="question-bank-eyebrow">
+                              {activeQuestionTab === 'draft'
                               ? 'Draft Questions'
                               : activeQuestionTab === 'uploaded'
                                 ? 'Upload Questions'
@@ -4955,7 +6245,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                   : activeQuestionTab === 'rejected'
                                     ? 'Approval Rejected'
                                 : 'Created Questions'}
-                          </span>
+                            </span>
+                          )
                         )}
                       </div>
                       {['created', 'uploaded', 'approved'].includes(activeQuestionTab) ? (
@@ -5026,17 +6317,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                               </button>
                             </>
                           ) : (
-                            <button
-                              type="button"
-                              className="question-bank-secondary-btn question-bank-send-approval-btn"
-                              onClick={startApprovalSelection}
-                              disabled={!hasApprovableQuestions}
-                              aria-label="Send created questions to approval"
-                              title={hasApprovableQuestions ? 'Send to approval' : 'No created questions available'}
-                            >
-                              <CheckCheck size={15} strokeWidth={2.2} />
-                              Send to Approval
-                            </button>
+                            null
                           )}
                         </div>
                       ) : null}
@@ -5050,15 +6331,21 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                         const isLockedApprovalCard = ['Sent to Approval', 'Approved'].includes(status)
                         const canStartCardEdit = activeQuestionTab === 'report' || ['Approved', 'Approval Rejected'].includes(status)
                         const isApprovedQuestionBankSelection = activeQuestionTab === 'approved'
-                        const isQuestionBankSent = Boolean(question.questionBankSentAt)
+                        const isQuestionBankAdded = question.questionBankStatus === 'Add to Question Bank'
+                        const isQuestionBankSent = Boolean(question.questionBankSentAt) || isQuestionBankAdded
                         const isQuestionBankSelected = approvedQuestionBankSelectedIds.includes(question.id)
                         const reportReasonText = (question.reportReasons ?? []).filter(Boolean).join(', ')
                         const reportActionText = question.reportAuthorAction ?? ''
                         const isDescriptiveCard = isDescriptiveQuestionType(question.type)
                         const descriptiveSections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
+                        const isCreatedSaqDescriptiveOutput = isSaqDescriptiveOutput(question)
+                        const isCreatedSaqSingleQuestionOutput = isSaqSingleQuestionOutput(question)
                         const shouldShowStatusBadge = !(status === 'Approved' && isQuestionBankSent)
                         const shouldShowQuestionDetails = ['Created', 'Sent to Approval', 'Approved', 'Approval Rejected'].includes(status)
-                        const questionMarksLabel = getQuestionMarksLabel(question)
+                        const canEditCreatedCard = status !== 'Generating' && (!isLockedApprovalCard || canStartCardEdit)
+                        const questionMarksLabel = isCreatedSaqSingleQuestionOutput && hasVisibleMarks(question.marks)
+                          ? String(question.marks)
+                          : getQuestionMarksLabel(question)
                         const curriculumMeta = [
                           question.year ? getYearDisplayLabel(question.year) : null,
                           question.subject,
@@ -5067,13 +6354,76 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                             ? getSelectionSummary(question.competencies, '', getShortCompetencyLabel)
                             : null,
                         ].filter(Boolean)
-                        const shouldShowCreatedCurriculum = curriculumMeta.length && (!isDescriptiveCard || !descriptiveSections.length)
+                        const isCreatedCardExpanded = openCreatedQuestionIds.includes(question.id)
+                        const isGeneratedDescriptiveWithSections = isDescriptiveCard && descriptiveSections.length > 0
+                        const shouldShowCreatedSubQuestionFlow = isGeneratedDescriptiveWithSections && !isCreatedSaqSingleQuestionOutput
+                        const descriptiveStructurePartCount = descriptiveSections.length
+                        const descriptiveStructureSubPartCount = descriptiveSections.reduce((total, section) => (
+                          total + (Array.isArray(section.children) ? section.children.length : 0)
+                        ), 0)
+                        const descriptiveStructureLabel = descriptiveStructurePartCount || descriptiveStructureSubPartCount
+                          ? `${descriptiveStructurePartCount} ${descriptiveStructurePartCount === 1 ? 'part' : 'parts'} - ${descriptiveStructureSubPartCount} ${descriptiveStructureSubPartCount === 1 ? 'sub-part' : 'sub-parts'}`
+                          : ''
+                        const createdDescriptiveParts = descriptiveSections.flatMap((section, sectionIndex) => {
+                          const children = Array.isArray(section.children) ? section.children : []
+                          return children.length
+                            ? children.map((child, childIndex) => ({
+                              item: child,
+                              fallback: section,
+                              key: child.id ?? `${question.id}-section-${sectionIndex}-child-${childIndex}`,
+                            }))
+                            : [{
+                              item: section,
+                              fallback: question,
+                              key: section.id ?? `${question.id}-section-${sectionIndex}`,
+                            }]
+                        })
+                        const shouldShowCreatedCurriculum = curriculumMeta.length && (!isDescriptiveCard || !shouldShowCreatedSubQuestionFlow)
+                        const createdCardTypeBadgeLabel = isCreatedSaqDescriptiveOutput
+                          ? 'SAQs'
+                          : isGeneratedDescriptiveWithSections
+                          ? typeMeta.shortLabel
+                          : typeMeta.shortLabel
+                        const createdCardTypeBadgeClass = createdCardTypeBadgeLabel === 'SAQs'
+                          ? 'is-saq-type'
+                          : createdCardTypeBadgeLabel === 'LAQs'
+                            ? 'is-laq-type'
+                            : createdCardTypeBadgeLabel === 'MCQ'
+                              ? 'is-mcq-type'
+                              : ''
+                        const primaryKpiSource = getCreatedQuestionPrimaryKpiSource(question)
+                        const primaryQuestionCategory = getCreatedQuestionKpiValue(question, 'questionCategory')
+                        const primaryCognitiveLevel = getCreatedQuestionKpiValue(question, 'cognitiveLevel')
+                        const primaryThinkingLevel = getCreatedQuestionKpiValue(question, 'thinkingLevel')
+                        const primaryDifficultyLevel = getCreatedQuestionKpiValue(question, 'difficultyLevel')
+                        const primaryCognitiveFunction = getCreatedQuestionKpiValue(question, 'cognitiveFunction')
+                        const primarySkillFocus = getCreatedQuestionKpiValue(question, 'skillFocus')
+                        const primaryOrganSystem = question.organSystem || primaryKpiSource.organSystem || ''
+                        const thinkingBadgeLabel = primaryThinkingLevel ? getThinkingLevelLabel(primaryThinkingLevel) : ''
+                        const thinkingBadgeClass = String(thinkingBadgeLabel).toLowerCase() === 'hot'
+                          ? 'is-hot'
+                          : String(thinkingBadgeLabel).toLowerCase() === 'lot'
+                            ? 'is-lot'
+                            : 'lilac'
+                        const rootCompetencyDisplay = getCreatedQuestionPrimaryCompetencyDisplay(question)
+                        const createdDisplayId = getCreatedQuestionDisplayId(index)
+                        const createdCardKpis = [
+                          { label: 'Question ID', value: createdDisplayId },
+                          { label: 'Suggested', value: questionMarksLabel ? `${questionMarksLabel} Mark${questionMarksLabel === '1' ? '' : 's'}` : '' },
+                          { label: 'Thinking', value: thinkingBadgeLabel },
+                          { label: 'Level', value: primaryDifficultyLevel },
+                          { label: 'Cognitive', value: primaryCognitiveLevel },
+                          { label: 'Function', value: primaryCognitiveFunction },
+                          { label: 'Skill Focus', value: primarySkillFocus },
+                          { label: 'Concept', value: primaryOrganSystem },
+                        ].filter((item) => Boolean(item.value))
                         return (
                           <article
                             key={question.id}
-                            className={`question-bank-created-card ${question.id === selectedQuestionId ? 'is-active' : ''} ${question.isCritical ? 'is-critical' : ''} ${approvalSelectedIds.includes(question.id) || isQuestionBankSelected ? 'is-approval-selected' : ''} ${isApprovalSelectMode || (isApprovedQuestionBankSelection && !isQuestionBankSent) ? 'is-selection-mode' : ''} ${isQuestionBankSent ? 'is-question-bank-sent' : ''} ${isLockedApprovalCard ? 'is-approval-locked' : ''}`}
+                            data-created-question-id={question.id}
+                            className={`question-bank-created-card ${isCreatedCardExpanded ? 'is-expanded' : ''} ${question.id === selectedQuestionId ? 'is-active' : ''} ${question.isCritical ? 'is-critical' : ''} ${approvalSelectedIds.includes(question.id) || isQuestionBankSelected ? 'is-approval-selected' : ''} ${isApprovalSelectMode || (isApprovedQuestionBankSelection && !isQuestionBankSent) ? 'is-selection-mode' : ''} ${isQuestionBankSent ? 'is-question-bank-sent' : ''} ${isLockedApprovalCard ? 'is-approval-locked' : ''}`}
                           >
-                            {isApprovalSelectMode || (isApprovedQuestionBankSelection && !isQuestionBankSent) ? (
+                            {isApprovalSelectMode || (isApprovedQuestionBankSelection && !isQuestionBankSent) || ['created', 'uploaded'].includes(activeQuestionTab) ? (
                               <label
                                 className="question-bank-approval-checkbox"
                                 onClick={(event) => event.stopPropagation()}
@@ -5094,13 +6444,18 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                 )}
                                 <span />
                               </label>
-                            ) : null}
+                            ) : (
+                              <span className="question-bank-created-row-check" aria-hidden="true" />
+                            )}
                             <div
                               className="question-bank-created-card-main"
-                              role={isApprovedQuestionBankSelection || !isLockedApprovalCard ? 'button' : undefined}
-                              tabIndex={status === 'Generating' || (isLockedApprovalCard && !isApprovedQuestionBankSelection) || (isApprovedQuestionBankSelection && isQuestionBankSent) ? -1 : 0}
+                              role="button"
+                              tabIndex={status === 'Generating' || (isApprovedQuestionBankSelection && isQuestionBankSent) ? -1 : 0}
                               aria-disabled={status === 'Generating' || (isApprovedQuestionBankSelection && isQuestionBankSent)}
                               onClick={() => {
+                                if (isApprovedQuestionBankSelection && isQuestionBankSent) {
+                                  return
+                                }
                                 if (isApprovedQuestionBankSelection) {
                                   toggleApprovedQuestionBankSelection(question.id)
                                   return
@@ -5109,13 +6464,14 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                   if (status === 'Created') toggleApprovalSelection(question.id)
                                   return
                                 }
-                                if (status !== 'Generating' && !isLockedApprovalCard) {
-                                  setOpenCreatedTagsId(null)
-                                  selectQuestionForEditing(question.id, question)
-                                  setActiveQuestionTab('create')
+                                if (status !== 'Generating') {
+                                  toggleCreatedQuestionDetails(question.id)
                                 }
                               }}
                               onKeyDown={(event) => {
+                                if (isApprovedQuestionBankSelection && isQuestionBankSent) {
+                                  return
+                                }
                                 if (isApprovedQuestionBankSelection && (event.key === 'Enter' || event.key === ' ')) {
                                   event.preventDefault()
                                   toggleApprovedQuestionBankSelection(question.id)
@@ -5126,18 +6482,42 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                   if (status === 'Created') toggleApprovalSelection(question.id)
                                   return
                                 }
-                                if (status !== 'Generating' && !isLockedApprovalCard && (event.key === 'Enter' || event.key === ' ')) {
+                                if (status !== 'Generating' && (event.key === 'Enter' || event.key === ' ')) {
                                   event.preventDefault()
-                                  setOpenCreatedTagsId(null)
-                                  selectQuestionForEditing(question.id, question)
-                                  setActiveQuestionTab('create')
+                                  toggleCreatedQuestionDetails(question.id)
                                 }
                               }}
                             >
                               <span>
-                                <span className="question-bank-created-header">
+                                  <span className="question-bank-created-header">
                                   <span className="question-bank-created-header-badges">
-                                    <span className="question-bank-badge type">{typeMeta.shortLabel}</span>
+                                    <span className="question-bank-badge success question-bank-created-source-badge">Institute</span>
+                                    <span className="question-bank-badge soft question-bank-created-id-badge">{createdDisplayId}</span>
+                                    {rootCompetencyDisplay ? (
+                                      <span className="question-bank-created-descriptive-code-wrap">
+                                        <span className="question-bank-created-descriptive-code" tabIndex={0}>
+                                          {rootCompetencyDisplay.code}
+                                          <Info size={11} strokeWidth={2.3} aria-hidden="true" />
+                                        </span>
+                                        <span className="question-bank-created-competency-popover" role="tooltip">
+                                          <span><b>Subject:</b> {rootCompetencyDisplay.subject}</span>
+                                          <span><b>Topic:</b> {rootCompetencyDisplay.topic}</span>
+                                          <span><b>Competency:</b> {rootCompetencyDisplay.competency}</span>
+                                        </span>
+                                      </span>
+                                    ) : null}
+                                    <span className={`question-bank-badge type ${createdCardTypeBadgeClass}`}>{createdCardTypeBadgeLabel}</span>
+                                    {shouldShowQuestionDetails && questionMarksLabel ? (
+                                      <span className="question-bank-badge soft question-bank-created-marks-badge">
+                                        {questionMarksLabel} mark{questionMarksLabel === '1' ? '' : 's'}
+                                      </span>
+                                    ) : null}
+                                    {shouldShowCreatedSubQuestionFlow ? (
+                                      <span className="question-bank-badge soft question-bank-created-sub-count-badge">
+                                        <ListChecks size={12} strokeWidth={2.3} />
+                                        {descriptiveStructureLabel}
+                                      </span>
+                                    ) : null}
                                     {shouldShowStatusBadge ? (
                                       <span className={`question-bank-badge ${status === 'Draft' ? 'warning' : status === 'Created' ? 'success' : status === 'Sent to Approval' ? 'blue' : status === 'Approved' ? 'success' : status === 'Approval Rejected' ? 'danger' : 'soft'}`}>
                                         {status === 'Generating' ? (
@@ -5159,22 +6539,17 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                         Author By : {getQuestionAuthorName(question)}
                                       </span>
                                     ) : null}
-                                    {shouldShowQuestionDetails && question.questionCategory ? (
-                                      <span className="question-bank-badge mint">{question.questionCategory}</span>
+                                    {shouldShowQuestionDetails && !shouldShowCreatedSubQuestionFlow && primaryQuestionCategory ? (
+                                      <span className="question-bank-badge mint">{primaryQuestionCategory}</span>
                                     ) : null}
-                                    {shouldShowQuestionDetails && question.cognitiveLevel ? (
-                                      <span className="question-bank-badge blue">{question.cognitiveLevel}</span>
+                                    {shouldShowQuestionDetails && !shouldShowCreatedSubQuestionFlow && primaryCognitiveLevel ? (
+                                      <span className="question-bank-badge blue">{primaryCognitiveLevel}</span>
                                     ) : null}
-                                    {shouldShowQuestionDetails && question.thinkingLevel ? (
-                                      <span className="question-bank-badge lilac">{getThinkingLevelLabel(question.thinkingLevel)}</span>
+                                    {shouldShowQuestionDetails && !shouldShowCreatedSubQuestionFlow && thinkingBadgeLabel ? (
+                                      <span className={`question-bank-badge ${thinkingBadgeClass}`}>{thinkingBadgeLabel}</span>
                                     ) : null}
-                                    {shouldShowQuestionDetails && question.difficultyLevel ? (
-                                      <span className="question-bank-badge soft">{question.difficultyLevel}</span>
-                                    ) : null}
-                                    {shouldShowQuestionDetails && questionMarksLabel ? (
-                                      <span className="question-bank-badge soft">
-                                        {questionMarksLabel} mark{questionMarksLabel === '1' ? '' : 's'}
-                                      </span>
+                                    {shouldShowQuestionDetails && !shouldShowCreatedSubQuestionFlow && primaryDifficultyLevel ? (
+                                      <span className="question-bank-badge soft">{primaryDifficultyLevel}</span>
                                     ) : null}
                                     {activeQuestionTab === 'report' && reportReasonText ? (
                                       <span className="question-bank-badge report-reason" title={reportReasonText}>
@@ -5186,13 +6561,19 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                         Action: {reportActionText}
                                       </span>
                                     ) : null}
+                                    {activeQuestionTab === 'approved' && isQuestionBankAdded ? (
+                                      <span className="question-bank-badge blue">
+                                        <Send size={13} strokeWidth={2.2} />
+                                        Add to Question Bank
+                                      </span>
+                                    ) : null}
                                     {status === 'Approved' && question.questionBankSentAt && shouldShowStatusBadge ? (
                                       <span className="question-bank-badge blue">
                                         <Send size={13} strokeWidth={2.2} />
                                         Sent to Question Bank
                                       </span>
                                     ) : null}
-                                    {shouldShowQuestionDetails && optionalTagGroups.length ? (
+                                    {!shouldShowCreatedSubQuestionFlow && !isCreatedSaqSingleQuestionOutput && question.type !== 'MCQ' && shouldShowQuestionDetails && optionalTagGroups.length ? (
                                       <span className="question-bank-created-tags-wrap">
                                         <button
                                           type="button"
@@ -5204,7 +6585,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                           aria-expanded={openCreatedTagsId === question.id}
                                         >
                                           <Info size={13} strokeWidth={2.2} />
-                                          View tags
+                                          + {optionalTagGroups.reduce((total, group) => total + group.values.length, 0)} more tags
                                         </button>
                                         <span
                                           className={`question-bank-created-tags-tooltip ${openCreatedTagsId === question.id ? 'is-open' : ''}`}
@@ -5224,29 +6605,125 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                       </span>
                                     ) : null}
                                   </span>
+                                  <span className="question-bank-created-card-actions">
+                                    {canEditCreatedCard ? (
+                                      <button
+                                        type="button"
+                                        className="question-bank-icon-btn"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          if (canStartCardEdit) {
+                                            openEditQuestionFlow(question.id)
+                                            return
+                                          }
+                                          setOpenCreatedTagsId(null)
+                                          selectQuestionForEditing(question.id, question)
+                                          setActiveQuestionTab('create')
+                                        }}
+                                        aria-label="Edit question"
+                                        title="Edit question"
+                                      >
+                                        <FilePenLine size={14} strokeWidth={2} />
+                                      </button>
+                                    ) : null}
+                                    {activeQuestionTab === 'approved' && isQuestionBankSent ? (
+                                      <button
+                                        type="button"
+                                        className="question-bank-icon-btn"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          deleteApprovedQuestionEverywhere(question.id)
+                                        }}
+                                        aria-label="Delete approved question"
+                                        title="Delete approved question"
+                                      >
+                                        <Trash2 size={14} strokeWidth={2} />
+                                      </button>
+                                    ) : null}
+                                    {!isLockedApprovalCard ? (
+                                      <button
+                                        type="button"
+                                        className="question-bank-icon-btn"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          setOpenCreatedTagsId(null)
+                                          if (activeQuestionTab === 'report') {
+                                            deleteCreatedReportQuestion(question.id)
+                                          } else {
+                                            handleDeleteQuestionById(question.id)
+                                          }
+                                        }}
+                                        aria-label="Delete question"
+                                      >
+                                        <Trash2 size={14} strokeWidth={2} />
+                                      </button>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      className="question-bank-icon-btn question-bank-created-expand-btn"
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        toggleCreatedQuestionDetails(question.id)
+                                      }}
+                                      aria-expanded={isCreatedCardExpanded}
+                                      aria-label={isCreatedCardExpanded ? 'Collapse question details' : 'Expand question details'}
+                                      title={isCreatedCardExpanded ? 'Collapse' : 'Expand'}
+                                    >
+                                      {isCreatedCardExpanded ? (
+                                        <ChevronUp size={14} strokeWidth={2.3} />
+                                      ) : (
+                                        <ChevronDown size={14} strokeWidth={2.3} />
+                                      )}
+                                    </button>
+                                  </span>
                                 </span>
-                                <div className="question-bank-created-question">
-                                  <strong className="question-bank-created-question-prefix">Q{index + 1}.</strong>
-                                  {getRichTextPreview(question.questionText) ? (
-                                    <div
-                                      className="question-bank-created-question-body"
-                                      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(question.questionText) }}
-                                    />
+                                <div className={shouldShowCreatedSubQuestionFlow ? 'question-bank-created-case-scenario' : `question-bank-created-question${isCreatedSaqSingleQuestionOutput ? ' question-bank-created-saq-single-question' : ''}`}>
+                                  {shouldShowCreatedSubQuestionFlow ? (
+                                    <>
+                                      <strong className="question-bank-created-question-number">Q{index + 1}.</strong>
+                                      <strong className="question-bank-created-case-label">Clinical Case Scenario:</strong>
+                                      <span>{getRichTextPreview(question.questionText) || question.title || 'Clinical case scenario not added.'}</span>
+                                    </>
+                                  ) : isCreatedSaqSingleQuestionOutput ? (
+                                    <>
+                                      <strong className="question-bank-created-question-prefix">Q{index + 1}.</strong>
+                                      <span className="question-bank-created-question-body">{getRichTextPreview(question.questionText) || question.title || 'Untitled question'}</span>
+                                    </>
                                   ) : (
-                                    <strong className="question-bank-created-question-body">
-                                      {question.title || 'Untitled question'}
-                                    </strong>
+                                    <>
+                                      <strong className="question-bank-created-question-prefix">Q{index + 1}.</strong>
+                                      {getRichTextPreview(question.questionText) ? (
+                                        <div
+                                          className="question-bank-created-question-body"
+                                          dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(question.questionText) }}
+                                        />
+                                      ) : (
+                                        <strong className="question-bank-created-question-body">
+                                          {question.title || 'Untitled question'}
+                                        </strong>
+                                      )}
+                                    </>
                                   )}
                                 </div>
-                                {shouldShowCreatedCurriculum ? (
+                                {isCreatedCardExpanded && shouldShowCreatedCurriculum && !isCreatedSaqSingleQuestionOutput && question.type !== 'MCQ' ? (
                                   <span className="question-bank-created-curriculum" title={curriculumMeta.join(' / ')}>
                                     {curriculumMeta.map((item) => (
                                       <span key={item}>{item}</span>
                                     ))}
                                   </span>
                                 ) : null}
-                                {shouldShowQuestionDetails ? (
+                                {isCreatedCardExpanded && shouldShowQuestionDetails ? (
                                   <>
+                                    {createdCardKpis.length && !isCreatedSaqSingleQuestionOutput && (!isDescriptiveCard || !shouldShowCreatedSubQuestionFlow) ? (
+                                      <span className="question-bank-created-kpi-strip">
+                                        {createdCardKpis.map((item) => (
+                                          <span key={`${question.id}-${item.label}`} className="question-bank-created-kpi">
+                                            <b>{item.label}</b>
+                                            <strong>{item.value}</strong>
+                                          </span>
+                                        ))}
+                                      </span>
+                                    ) : null}
                                     {question.images?.length ? (
                                       <span className="question-bank-created-images">
                                         {question.images.map((image, imageIndex) => (
@@ -5266,6 +6743,37 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                         ))}
                                       </span>
                                     ) : null}
+                                    {isCreatedSaqSingleQuestionOutput ? (
+                                      <span className="question-bank-created-saq-single-review">
+                                        <span className="question-bank-created-descriptive-tags" aria-label={`Tags for question ${index + 1}`}>
+                                          {question.cognitiveFunction ? (
+                                            <span className="question-bank-badge mint">{question.cognitiveFunction}</span>
+                                          ) : null}
+                                          {question.skillFocus ? (
+                                            <span className="question-bank-badge blue">{question.skillFocus}</span>
+                                          ) : null}
+                                          {question.organSystem ? (
+                                            <span className="question-bank-badge soft">{question.organSystem}</span>
+                                          ) : null}
+                                        </span>
+                                        <span className="question-bank-created-saq-full-question">
+                                          <b>Question</b>
+                                          <span>{getRichTextPreview(question.questionText) || question.title || 'Untitled question'}</span>
+                                        </span>
+                                        <span className="question-bank-created-inline-answer">
+                                          <b>Model answer</b>
+                                          <span>{getModelAnswerPreview(question.answerKey) || AUTO_GENERATED_DESCRIPTIVE_ANSWER_TEXT}</span>
+                                        </span>
+                                        <span className="question-bank-created-inline-answer question-bank-created-inline-answer-notes">
+                                          <b>Examiner's marking notes</b>
+                                          <span>{getExaminerNotesPreview(question, question)}</span>
+                                        </span>
+                                        <span className="question-bank-created-inline-answer question-bank-created-inline-answer-flaw">
+                                          <b><TriangleAlert size={12} strokeWidth={2.2} aria-hidden="true" /> Fatal flaw</b>
+                                          <span>{getFatalFlawPreview(question, question)}</span>
+                                        </span>
+                                      </span>
+                                    ) : null}
                                     {question.type === 'MCQ' ? (
                                       <span className="question-bank-created-options">
                                         {question.options
@@ -5276,7 +6784,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                             return (
                                               <b
                                                 key={option.id}
-                                                className={question.correctOptionIds.includes(option.id) ? 'is-correct' : ''}
+                                                className={asArray(question.correctOptionIds).includes(option.id) ? 'is-correct' : ''}
                                               >
                                                 {String.fromCharCode(65 + optionIndex)}. {getRichTextPreview(option.label)}
                                                 <span className="question-bank-option-distractor-preview">
@@ -5307,54 +6815,139 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                         })}
                                       </span>
                                     ) : null}
-                                    {isDescriptiveCard && descriptiveSections.length ? (
+                                    {isDescriptiveCard && shouldShowCreatedSubQuestionFlow ? (
                                       <span className="question-bank-created-descriptive-list">
-                                        {descriptiveSections.map((section, sectionIndex) => (
-                                          <span key={section.id ?? `${question.id}-section-${sectionIndex}`} className="question-bank-created-descriptive-item">
-                                            <span className="question-bank-created-descriptive-line">
-                                              <b>{ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1}.</b>
-                                              <span>
-                                                <span>{getRichTextPreview(section.questionText) || 'Question not added'}</span>
-                                                {!(section.children ?? []).length && hasVisibleMarks(section.marks) && getDescriptiveCompetencyCode(section) ? (
-                                                  <span className="question-bank-created-descriptive-code">{getDescriptiveCompetencyCode(section)}</span>
-                                                ) : null}
-                                              </span>
-                                              {!(section.children ?? []).length && hasVisibleMarks(section.marks) ? <em>{section.marks} marks</em> : null}
-                                            </span>
-                                            {(section.children ?? []).map((child, childIndex) => (
-                                              <span key={child.id ?? `${section.id}-child-${childIndex}`} className="question-bank-created-descriptive-child">
-                                                <span className="question-bank-created-descriptive-line is-child">
-                                                  <b>{String.fromCharCode(97 + childIndex)}.</b>
-                                                  <span>
-                                                    <span>{getRichTextPreview(child.questionText) || 'Question not added'}</span>
-                                                    {hasVisibleMarks(child.marks) && getDescriptiveCompetencyCode(child) ? (
-                                                      <span className="question-bank-created-descriptive-code">{getDescriptiveCompetencyCode(child)}</span>
-                                                    ) : null}
-                                                  </span>
-                                                  {hasVisibleMarks(child.marks) ? <em>{child.marks} marks</em> : null}
+                                        {createdDescriptiveParts.map((part, partIndex) => {
+                                          const partItem = part.item
+                                          const partFallback = part.fallback
+                                          const partCompetencyDisplay = getDescriptiveCompetencyDisplay(partItem, partFallback)
+                                          const partThinkingLabel = partItem.thinkingLevel
+                                            ? getThinkingLevelLabel(partItem.thinkingLevel)
+                                            : partFallback.thinkingLevel
+                                              ? getThinkingLevelLabel(partFallback.thinkingLevel)
+                                              : thinkingBadgeLabel
+                                          const partThinkingClass = String(partThinkingLabel).toLowerCase() === 'hot'
+                                            ? 'is-hot'
+                                            : String(partThinkingLabel).toLowerCase() === 'lot'
+                                              ? 'is-lot'
+                                              : 'lilac'
+                                          const partCategory = partItem.questionCategory || partFallback.questionCategory || question.questionCategory
+                                          const partTags = getCreatedSubQuestionOptionalTagGroups(partItem, partFallback)
+                                          const partDetailId = `${question.id}-${part.key}`
+                                          const isPartDetailsOpen = Boolean(openCreatedSubQuestionIds[partDetailId])
+                                          const partMoreTagCount = partTags.reduce((total, group) => total + group.values.length, 0)
+                                          const partAnswer = getModelAnswerPreview(partItem.answerKey)
+                                            || getModelAnswerPreview(partFallback.answerKey)
+                                            || getModelAnswerPreview(question.answerKey)
+                                          const partNotes = getExaminerNotesPreview(partItem, partFallback)
+                                            || getExaminerNotesPreview(partFallback, question)
+                                          const partFatalFlaw = getFatalFlawPreview(partItem, partFallback)
+                                            || getFatalFlawPreview(partFallback, question)
+
+                                          return (
+                                            <span key={part.key} className="question-bank-created-descriptive-item">
+                                              <span className="question-bank-created-descriptive-line">
+                                                <b>{String.fromCharCode(97 + partIndex)}.</b>
+                                                <span>
+                                                  <span>{getRichTextPreview(partItem.questionText) || 'Question not added'}</span>
                                                 </span>
                                               </span>
-                                            ))}
-                                          </span>
-                                        ))}
+                                              <span className="question-bank-created-sub-summary">
+                                                {partCompetencyDisplay ? (
+                                                  <span className="question-bank-created-descriptive-code-wrap">
+                                                    <span className="question-bank-created-descriptive-code" tabIndex={0}>
+                                                      {partCompetencyDisplay.code}
+                                                      <Info size={11} strokeWidth={2.3} aria-hidden="true" />
+                                                    </span>
+                                                    <span className="question-bank-created-competency-popover" role="tooltip">
+                                                      <span><b>Subject:</b> {partCompetencyDisplay.subject}</span>
+                                                      <span><b>Topic:</b> {partCompetencyDisplay.topic}</span>
+                                                      <span><b>Competency:</b> {partCompetencyDisplay.competency}</span>
+                                                    </span>
+                                                  </span>
+                                                ) : null}
+                                                {partThinkingLabel ? (
+                                                  <span className={`question-bank-badge question-bank-created-summary-badge ${partThinkingClass}`}>{partThinkingLabel}</span>
+                                                ) : null}
+                                                {partItem.difficultyLevel || partFallback.difficultyLevel || question.difficultyLevel ? (
+                                                  <span className="question-bank-badge question-bank-created-summary-badge soft">{partItem.difficultyLevel || partFallback.difficultyLevel || question.difficultyLevel}</span>
+                                                ) : null}
+                                                {partCategory ? (
+                                                  <span className="question-bank-badge question-bank-created-summary-badge is-category">{partCategory}</span>
+                                                ) : null}
+                                                {hasVisibleMarks(partItem.marks) ? (
+                                                  <span className="question-bank-badge question-bank-created-summary-badge question-bank-created-part-marks-badge">{partItem.marks} marks</span>
+                                                ) : null}
+                                                <button
+                                                  type="button"
+                                                  className="question-bank-badge question-bank-created-view-more-badge"
+                                                  onClick={(event) => {
+                                                    event.stopPropagation()
+                                                    toggleCreatedSubQuestionDetails(partDetailId)
+                                                  }}
+                                                  aria-expanded={isPartDetailsOpen}
+                                                >
+                                                  {isPartDetailsOpen ? (
+                                                    <ChevronUp size={12} strokeWidth={2.4} />
+                                                  ) : (
+                                                    <ChevronDown size={12} strokeWidth={2.4} />
+                                                  )}
+                                                  {isPartDetailsOpen ? 'Hide tags' : `+ ${partMoreTagCount} more tags`}
+                                                </button>
+                                              </span>
+                                              {isPartDetailsOpen ? (
+                                                <span className="question-bank-created-sub-details">
+                                                  {partTags.length ? (
+                                                    <span className="question-bank-created-descriptive-tags" aria-label={`Tags for sub-question ${String.fromCharCode(97 + partIndex)}`}>
+                                                      {partTags.flatMap((group) => group.values.map((value) => (
+                                                        <span key={`${part.key}-${group.label}-${value}`} className="question-bank-created-inline-tag-chip">
+                                                          <b>{group.label}</b>
+                                                          <span>{value}</span>
+                                                        </span>
+                                                      )))}
+                                                    </span>
+                                                  ) : null}
+                                                  {partAnswer ? (
+                                                    <span className="question-bank-created-inline-answer">
+                                                      <b>Model answer</b>
+                                                      <span>{partAnswer}</span>
+                                                    </span>
+                                                  ) : null}
+                                                  {partNotes ? (
+                                                    <span className="question-bank-created-inline-answer question-bank-created-inline-answer-notes">
+                                                      <b>Examiner's marking notes</b>
+                                                      <span>{partNotes}</span>
+                                                    </span>
+                                                  ) : null}
+                                                  {partFatalFlaw ? (
+                                                    <span className="question-bank-created-inline-answer question-bank-created-inline-answer-flaw">
+                                                      <b><TriangleAlert size={12} strokeWidth={2.2} aria-hidden="true" /> Fatal flaw</b>
+                                                      <span>{partFatalFlaw}</span>
+                                                    </span>
+                                                  ) : null}
+                                                </span>
+                                              ) : null}
+                                            </span>
+                                          )
+                                        })}
                                       </span>
                                     ) : null}
-                                    {isDescriptiveCard ? (() => {
-                                      const rootAnswer = getRichTextPreview(question.answerKey)
+                                    {isDescriptiveCard && !isCreatedSaqSingleQuestionOutput && !shouldShowCreatedSubQuestionFlow ? (() => {
+                                      const rootAnswer = getModelAnswerPreview(question.answerKey)
                                       const descriptiveAnswerItems = descriptiveSections.length
                                         ? descriptiveSections.flatMap((section, sectionIndex) => {
                                           const sectionLabel = ROMAN_NUMERALS[sectionIndex] ?? sectionIndex + 1
                                           const sectionChildren = section.children ?? []
                                           if (!sectionChildren.length) {
-                                            const sectionAnswer = getRichTextPreview(section.answerKey) || rootAnswer
+                                            const sectionAnswer = getModelAnswerPreview(section.answerKey) || rootAnswer
                                             return sectionAnswer ? [{
                                               key: `${section.id ?? `${question.id}-section-${sectionIndex}`}-answer`,
-                                              label: `${sectionLabel}.`,
+                                              label: `${String.fromCharCode(97 + sectionIndex)}.`,
                                               text: sectionAnswer,
                                             }] : []
                                           }
                                           return sectionChildren.map((child, childIndex) => {
-                                            const childAnswer = getRichTextPreview(child.answerKey) || getRichTextPreview(section.answerKey) || rootAnswer
+                                            const childAnswer = getModelAnswerPreview(child.answerKey) || getModelAnswerPreview(section.answerKey) || rootAnswer
                                             return childAnswer ? {
                                               key: `${child.id ?? `${section.id ?? sectionIndex}-child-${childIndex}`}-answer`,
                                               label: `${sectionLabel}.${String.fromCharCode(97 + childIndex)}.`,
@@ -5370,7 +6963,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
                                       return descriptiveAnswerItems.length ? (
                                         <span className="question-bank-created-descriptive-answer is-bottom">
-                                          <b>Answer &amp; Explanation</b>
+                                          <b>Model Answer</b>
                                           {descriptiveAnswerItems.map((answerItem) => (
                                             <span key={answerItem.key}>
                                               <strong>{answerItem.label}</strong>
@@ -5381,10 +6974,23 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                       ) : null
                                     })() : null}
                                     {!isDescriptiveCard && getRichTextPreview(question.answerKey) ? (
-                                      <span className="question-bank-created-answer">
-                                        <b>Answer & Explanation</b>
-                                        {getRichTextPreview(question.answerKey)}
-                                      </span>
+                                      question.type === 'MCQ' ? (
+                                        <span className="question-bank-created-mcq-review">
+                                          <span className="question-bank-created-mcq-answer-card">
+                                            <b>Answer key & rationale</b>
+                                            <span>{getModelAnswerPreview(question.answerKey)}</span>
+                                          </span>
+                                          <span className="question-bank-created-mcq-answer-card is-notes">
+                                            <b>Examiner's marking notes</b>
+                                            <span>{getExaminerNotesPreview(question, question)}</span>
+                                          </span>
+                                        </span>
+                                      ) : (
+                                        <span className="question-bank-created-answer">
+                                          <b>Answer & Explanation</b>
+                                          {getModelAnswerPreview(question.answerKey)}
+                                        </span>
+                                      )
                                     ) : null}
                                     {status === 'Approval Rejected' && question.approvalReviewRemarks ? (
                                       <span className="question-bank-created-answer is-rejected-remark">
@@ -5397,52 +7003,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                               </span>
                             </div>
 
-                            {canStartCardEdit || !isLockedApprovalCard ? (
-                              <span className="question-bank-created-card-actions">
-                                {canStartCardEdit ? (
-                                  <button
-                                    type="button"
-                                    className="question-bank-icon-btn"
-                                    onClick={() => openEditQuestionFlow(question.id)}
-                                    aria-label="Edit question"
-                                    title="Edit question"
-                                  >
-                                    <FilePenLine size={14} strokeWidth={2} />
-                                  </button>
-                                ) : null}
-                                {activeQuestionTab === 'approved' && isQuestionBankSent ? (
-                                  <button
-                                    type="button"
-                                    className="question-bank-icon-btn"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      deleteApprovedQuestionEverywhere(question.id)
-                                    }}
-                                    aria-label="Delete approved question"
-                                    title="Delete approved question"
-                                  >
-                                    <Trash2 size={14} strokeWidth={2} />
-                                  </button>
-                                ) : null}
-                                {!isLockedApprovalCard ? (
-                                  <button
-                                    type="button"
-                                    className="question-bank-icon-btn"
-                                    onClick={() => {
-                                      setOpenCreatedTagsId(null)
-                                      if (activeQuestionTab === 'report') {
-                                        deleteCreatedReportQuestion(question.id)
-                                      } else {
-                                        handleDeleteQuestionById(question.id)
-                                      }
-                                    }}
-                                    aria-label="Delete question"
-                                  >
-                                    <Trash2 size={14} strokeWidth={2} />
-                                  </button>
-                                ) : null}
-                              </span>
-                            ) : null}
                           </article>
                         )
                       })}
@@ -5450,36 +7010,87 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                   </section>
                 ) : null}
 
-                {['created', 'uploaded', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && !activeQuestionCards.length ? (
-                  <div className="question-bank-empty-state question-bank-tab-empty-state">
-                    <FilePenLine size={24} strokeWidth={2} />
-                    <strong>
-                      {activeQuestionTab === 'draft'
-                        ? 'No draft questions yet'
-                        : activeQuestionTab === 'uploaded'
-                          ? 'No uploaded questions yet'
-                        : activeQuestionTab === 'sent'
-                          ? 'No questions sent to approval yet'
-                          : activeQuestionTab === 'approved'
-                            ? 'No approved questions yet'
-                            : activeQuestionTab === 'rejected'
-                              ? 'No rejected questions yet'
-                          : 'No created questions yet'}
-                    </strong>
-                    <p>
-                      {activeQuestionTab === 'draft'
-                        ? 'Save a question as draft to see it here.'
-                        : activeQuestionTab === 'uploaded'
-                          ? 'Uploaded questions will appear here.'
-                        : activeQuestionTab === 'sent'
-                          ? 'Send created questions for approval to see them here.'
-                          : activeQuestionTab === 'approved'
-                            ? 'Approved questions will appear here after review.'
-                            : activeQuestionTab === 'rejected'
-                              ? 'Rejected questions will appear here for correction.'
-                        : 'Create a question to see it here.'}
-                    </p>
+                {approvalSelectedIds.length ? (
+                  <div className="question-bank-floating-selection-bar" role="status" aria-live="polite">
+                    <button
+                      type="button"
+                      className="question-bank-icon-btn question-bank-floating-selection-close"
+                      onClick={cancelApprovalSelection}
+                      aria-label="Clear selected questions"
+                      title="Clear selected questions"
+                    >
+                      <X size={15} strokeWidth={2.2} />
+                    </button>
+                    <span className="question-bank-approval-count-badge">
+                      {approvalSelectedIds.length} selected
+                    </span>
+                    <span className="question-bank-floating-selection-actions">
+                      <button
+                        type="button"
+                        className="question-bank-secondary-btn"
+                        onClick={selectAllApprovalQuestions}
+                        disabled={hasAllApprovalSelected}
+                      >
+                        <CheckCheck size={14} strokeWidth={2.2} />
+                        Select all
+                      </button>
+                      <button
+                        type="button"
+                        className="question-bank-secondary-btn"
+                        onClick={unselectAllApprovalQuestions}
+                      >
+                        <X size={14} strokeWidth={2.2} />
+                        Unselect all
+                      </button>
+                      <button
+                        type="button"
+                        className="question-bank-primary-btn"
+                        onClick={sendSelectedQuestionsToApproval}
+                      >
+                        <CheckCircle2 size={14} strokeWidth={2.2} />
+                        Send selected
+                      </button>
+                    </span>
                   </div>
+                ) : null}
+
+                {['created', 'uploaded', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && !activeQuestionCards.length ? (
+                  <section className="question-bank-created-panel">
+                    {approvalStatusTabs}
+                    <div className="question-bank-empty-state question-bank-tab-empty-state">
+                      <FilePenLine size={24} strokeWidth={2} />
+                      <strong>
+                        {activeQuestionTab === 'draft'
+                          ? 'No draft questions yet'
+                          : activeQuestionTab === 'uploaded'
+                            ? 'No uploaded questions yet'
+                          : activeQuestionTab === 'sent'
+                            ? 'No questions sent to approval yet'
+                            : activeQuestionTab === 'approved'
+                              ? 'No approved questions yet'
+                              : activeQuestionTab === 'rejected'
+                                ? 'No disapproved questions yet'
+                            : activeQuestionTab === 'report'
+                              ? 'No reported questions yet'
+                            : 'No created questions yet'}
+                      </strong>
+                      <p>
+                        {activeQuestionTab === 'draft'
+                          ? 'Save a question as draft to see it here.'
+                          : activeQuestionTab === 'uploaded'
+                            ? 'Uploaded questions will appear here.'
+                          : activeQuestionTab === 'sent'
+                            ? 'Send created questions for approval to see them here.'
+                            : activeQuestionTab === 'approved'
+                              ? 'Approved questions will appear here after review.'
+                              : activeQuestionTab === 'rejected'
+                                ? 'Disapproved questions will appear here for correction.'
+                            : activeQuestionTab === 'report'
+                              ? 'Reported questions will appear here for review.'
+                            : 'Create a question to see it here.'}
+                      </p>
+                    </div>
+                  </section>
                 ) : null}
 
               </div>
@@ -5487,6 +7098,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
             ) : (
             null
             )}
+            </section>
           </section>
         </main>
       </div>
@@ -5709,46 +7321,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
         </div>
       ), document.body) : null}
 
-      {selectedQuestion && activeQuestionTab === 'create' ? (
-        <div className={`question-bank-progress-widget ${isProgressWidgetOpen ? 'is-open' : ''}`}>
-          {isProgressWidgetOpen ? (
-            <div className="question-bank-progress-popover" role="dialog" aria-label="Process checklist">
-              <strong className="question-bank-process-title">Process checklist</strong>
-              <div className="question-bank-process-list">
-                {selectedProcessSteps.map((step, index) => (
-                  <div
-                    key={step.label}
-                    className={`question-bank-process-item ${step.done ? 'is-done' : index === selectedCurrentProcessIndex ? 'is-current' : ''}`}
-                  >
-                    <span>
-                      {step.done ? (
-                        <Check size={13} strokeWidth={2.5} />
-                      ) : (
-                        index + 1
-                      )}
-                    </span>
-                    <strong>{step.label}</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <button
-            type="button"
-            className="question-bank-progress-fab"
-            style={{ '--question-bank-progress': `${selectedProcessPercent}%` }}
-            onClick={() => setIsProgressWidgetOpen((current) => !current)}
-            aria-expanded={isProgressWidgetOpen}
-            aria-label="Toggle process checklist"
-          >
-            <span>
-              <strong>{completedProcessStepCount}</strong>
-              <small>/{selectedProcessSteps.length}</small>
-            </span>
-          </button>
-        </div>
-      ) : null}
-
       {activePreviewImage ? (
         <div className="question-bank-image-preview-modal" role="dialog" aria-modal="true" aria-label="Image preview">
           <button
@@ -5799,6 +7371,55 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
           </div>
         </div>
       ) : null}
+
+      {pendingDescriptiveBuilderMode && typeof document !== 'undefined' ? createPortal((
+        <div
+          className="question-bank-approval-modal question-bank-mode-confirm-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="question-bank-mode-confirm-title"
+        >
+          <button
+            type="button"
+            className="question-bank-approval-modal-backdrop"
+            onClick={cancelDescriptiveBuilderModeChange}
+            aria-label="Close question type confirmation"
+          />
+          <div className="question-bank-approval-modal-card question-bank-mode-confirm-card">
+            <div className="question-bank-mode-confirm-head">
+              <span className="question-bank-mode-confirm-icon">
+                <ListChecks size={18} strokeWidth={2.2} />
+              </span>
+              <div>
+                <h2 id="question-bank-mode-confirm-title">
+                  Switch to {pendingDescriptiveBuilderMode}?
+                </h2>
+                <p>
+                  {pendingDescriptiveBuilderMode === 'SAQs'
+                    ? 'SAQs uses a separate short-answer question flow. Switching will clear this LAQ form.'
+                    : 'LAQs uses the long-answer case stem and sub-question flow. Switching will clear this SAQ form.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="question-bank-icon-btn"
+                onClick={cancelDescriptiveBuilderModeChange}
+                aria-label="Close question type confirmation"
+              >
+                <X size={16} strokeWidth={2.2} />
+              </button>
+            </div>
+            <div className="question-bank-mode-confirm-actions">
+              <button type="button" className="question-bank-secondary-btn" onClick={cancelDescriptiveBuilderModeChange}>
+                No
+              </button>
+              <button type="button" className="question-bank-primary-btn" onClick={confirmDescriptiveBuilderModeChange}>
+                Switch to {pendingDescriptiveBuilderMode}
+              </button>
+            </div>
+          </div>
+        </div>
+      ), document.body) : null}
 
       {isApprovalModalOpen && typeof document !== 'undefined' ? createPortal((
         <div className={`question-bank-approval-modal ${pendingUploadApprovalQuestions.length ? 'is-upload-approval' : ''}`} role="dialog" aria-modal="true" aria-labelledby="question-bank-approval-title">

@@ -196,6 +196,15 @@ export const stripHtml = (value) => String(value ?? '')
   .replace(/\s+/g, ' ')
   .trim()
 
+export const isQuestionGenerationErrorText = (value) => {
+  const text = stripHtml(value).toLowerCase()
+  return text.includes('prompt_cache_retention')
+    || (
+      text.includes('extended prompt caching')
+      && text.includes('request payload')
+    )
+}
+
 export const renderMathTextToHtml = (value) => {
   const source = normalizeFormulaText(value)
   const parts = []
