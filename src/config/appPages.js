@@ -6,6 +6,7 @@ import {
   FileCheck2,
   FileSearch,
   FileText,
+  FilePlus2,
   LayoutTemplate,
   MessageSquareText,
   NotebookPen,
@@ -122,6 +123,7 @@ export const SIDEBAR_MENU = [
         label: 'Assessment Suite',
         icon: BookText,
         children: [
+          { label: APP_PAGES.QUESTION_BANK, navLabel: 'My Questions', icon: FilePlus2 },
           { label: APP_PAGES.QUESTION_BANK_NON_CREATE, navLabel: 'Question Bank', icon: FileSearch },
           { label: APP_PAGES.ASSESSMENT_CREATE, navLabel: 'Assessment', icon: TrendingUp },
         ],

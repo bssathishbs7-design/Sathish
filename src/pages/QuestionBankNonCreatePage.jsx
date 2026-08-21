@@ -3897,18 +3897,6 @@ export default function QuestionBankNonCreatePage({
                   <ChevronRight size={14} strokeWidth={2.4} />
                   <strong>Question Bank</strong>
                 </span>
-                <span className="question-bank-list-head-actions" role="group" aria-label="Question bank actions">
-                  {isEditable ? (
-                    <button
-                      type="button"
-                      className="question-bank-action-create-new"
-                      onClick={() => onNavigate?.(APP_PAGES.QUESTION_BANK)}
-                    >
-                      <Plus size={15} strokeWidth={2.3} />
-                      Create New Questions
-                    </button>
-                  ) : null}
-                </span>
               </section>
             ) : null}
             <section className="assessment-page-metrics-strip" aria-label="Question bank metrics">

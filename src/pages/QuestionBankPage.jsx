@@ -4650,7 +4650,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       <div className="question-bank-layout">
         <main className="question-bank-main">
           <section className="question-bank-create-page-head" aria-label="Question bank page navigation">
-            <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Create New Questions']} />
+            <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'My Questions']} />
           </section>
           <aside className="question-bank-create-right-rail" aria-label="Question bank create actions">
             {questionBankTabs}

@@ -49466,23 +49466,6 @@ body > .assessment-page-filter-menu {
   color: #dbeafe;
 }
 
-.question-bank-list-head-actions button.question-bank-action-create-new,
-.theme-dark .question-bank-list-head-actions button.question-bank-action-create-new {
-  border-color: #99d8cf;
-  background: #ffffff;
-  color: #00796b;
-  box-shadow: none;
-}
-
-.question-bank-list-head-actions button.question-bank-action-create-new:hover,
-.question-bank-list-head-actions button.question-bank-action-create-new:focus-visible,
-.theme-dark .question-bank-list-head-actions button.question-bank-action-create-new:hover,
-.theme-dark .question-bank-list-head-actions button.question-bank-action-create-new:focus-visible {
-  border-color: #14b8a6;
-  background: #e7fffa;
-  color: #005f56;
-}
-
 .question-bank-list-head-actions button.question-bank-action-add-assessment,
 .assessment-page-grid-action-controls button.question-bank-action-add-assessment,
 .theme-dark .question-bank-list-head-actions button.question-bank-action-add-assessment,
@@ -56380,19 +56363,6 @@ body > .assessment-page-filter-menu {
   box-shadow: none;
   font-size: 0.75rem;
   letter-spacing: 0;
-}
-
-.question-bank-non-create-page.is-full-page:not(.is-embedded) .question-bank-list-head-actions button.question-bank-action-create-new {
-  border-color: var(--qb-primary);
-  background: var(--qb-primary);
-  color: #ffffff;
-}
-
-.question-bank-non-create-page.is-full-page:not(.is-embedded) .question-bank-list-head-actions button.question-bank-action-create-new:hover,
-.question-bank-non-create-page.is-full-page:not(.is-embedded) .question-bank-list-head-actions button.question-bank-action-create-new:focus-visible {
-  border-color: var(--qb-primary-dark);
-  background: var(--qb-primary-dark);
-  color: #ffffff;
 }
 
 .question-bank-non-create-page.is-full-page:not(.is-embedded) .question-bank-list-head-actions button.question-bank-action-share-students {
