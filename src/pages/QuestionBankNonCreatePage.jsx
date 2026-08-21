@@ -922,7 +922,7 @@ const updateQuestionFavoriteInStorage = (questionId, isFavorite) => {
   window.dispatchEvent(new Event('question-bank-uploaded-questions'))
 }
 
-const updateQuestionInstituteInStorage = (questionId, isInstituteQuestionValue) => {
+const updateQuestionInstituteInStorage = (questionId, isInstituteQuestionValue, sourceQuestion = null) => {
   if (typeof window === 'undefined' || !questionId) return
 
   QUESTION_BANK_FAVORITE_STORAGE_KEYS.forEach((storageKey) => {
@@ -943,6 +943,16 @@ const updateQuestionInstituteInStorage = (questionId, isInstituteQuestionValue) 
 
       if (didUpdate) {
         window.localStorage.setItem(storageKey, JSON.stringify(nextQuestions))
+      } else if (storageKey === QUESTION_BANK_UPLOADED_KEY && isMedsyQuestion(sourceQuestion)) {
+        window.localStorage.setItem(storageKey, JSON.stringify([
+          ...parsed,
+          {
+            id: questionId,
+            authorName: 'Medsy',
+            isInstituteQuestion: isInstituteQuestionValue,
+            isInstitute: undefined,
+          },
+        ]))
       }
     } catch {
       // Ignore malformed local storage entries and keep the in-memory UI responsive.
@@ -2951,7 +2961,8 @@ export default function QuestionBankNonCreatePage({
         ? { ...item, isInstituteQuestion: nextInstituteState, isInstitute: undefined }
         : item
     )))
-    updateQuestionInstituteInStorage(questionId, nextInstituteState)
+    updateQuestionInstituteInStorage(questionId, nextInstituteState, question)
+    setPublishedQuestions(readAllQuestionBankQuestions())
   }
 
   const deleteQuestionFromList = (questionId) => {
