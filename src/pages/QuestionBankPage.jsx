@@ -4404,7 +4404,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       </button>
       <button
         type="button"
-        className={activeQuestionTab === 'created' ? 'is-active' : ''}
+        className={`${activeQuestionTab === 'created' ? 'is-active' : ''} ${createdQuestionCards.length > 0 ? 'has-count' : ''}`.trim()}
         onClick={() => {
           if (hasQuestionBankGenerationProcessorRunning) return
           setActiveQuestionTab('created')
