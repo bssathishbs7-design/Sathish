@@ -28,6 +28,7 @@ export const APP_PAGES = {
   EXAM_CONTROLS: 'Exam Controls',
   MY_ASSESSMENT: 'My Assessment',
   LEARN_PRACTICE: 'Learn & Practice',
+  START_PRACTICE: 'Start Practice',
   ONLINE_PRACTICE_EXAM: 'Online Practice Exam',
   ONLINE_PROCTORED_EXAM: 'Online Proctored Exam',
   QUESTION_BANK: 'Question Bank',

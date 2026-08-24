@@ -27,6 +27,7 @@ import StudentExamPage from './pages/StudentExamPage'
 import OnlinePracticeExamPage from './pages/OnlinePracticeExamPage'
 import OnlineProctoredExamPage from './pages/OnlineProctoredExamPage'
 import LearnPracticePage from './pages/LearnPracticePage'
+import StartPracticePage from './pages/StartPracticePage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import StudentManagementPage from './pages/StudentManagementPage'
 import ImageActivityPage from './pages/ImageActivityPage'
@@ -48,6 +49,7 @@ const PAGE_PATHS = {
   [APP_PAGES.EXAM_CONTROLS]: '/assessment/exam-controls',
   [APP_PAGES.MY_ASSESSMENT]: '/my-assessment',
   [APP_PAGES.LEARN_PRACTICE]: '/learn-practice',
+  [APP_PAGES.START_PRACTICE]: '/learn-practice/start',
   [APP_PAGES.ONLINE_PRACTICE_EXAM]: '/my-assessment/online-practice-exam',
   [APP_PAGES.ONLINE_PROCTORED_EXAM]: '/my-assessment/online-proctored-exam',
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
@@ -1356,6 +1358,8 @@ function App() {
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} mode="my-assessment" />
           ) : activePage === APP_PAGES.LEARN_PRACTICE ? (
             <LearnPracticePage onNavigate={navigateToPage} />
+          ) : activePage === APP_PAGES.START_PRACTICE ? (
+            <StartPracticePage onNavigate={navigateToPage} />
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
             <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (

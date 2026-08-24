@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BookOpenCheck, CheckCircle2, Info, Play, Search, Trash2, X } from 'lucide-react'
 import { corelationRatingRows } from './corelationRatingData'
+import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 import './LearnPracticePage.css'
 
 const LEARN_PRACTICE_SHARED_CARDS_KEY = 'vx-learn-practice-shared-cards'
+const START_PRACTICE_SELECTED_CARD_KEY = 'vx-start-practice-selected-card'
 const QUESTION_BANK_STORAGE_KEYS = [
   'vx-question-bank-published-questions',
   'vx-question-bank-uploaded-questions',
@@ -76,7 +78,7 @@ const clearQuestionShareState = (questionIds = []) => {
   window.dispatchEvent(new Event('question-bank-uploaded-questions'))
 }
 
-function LearnPracticePage() {
+function LearnPracticePage({ onNavigate }) {
   const [practiceCards, setPracticeCards] = useState(() => readSharedPracticeCards())
   const [query, setQuery] = useState('')
 
@@ -103,10 +105,21 @@ function LearnPracticePage() {
   }, [practiceCards, query])
 
   const hasSearch = Boolean(query.trim())
+  const startPractice = (card) => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(START_PRACTICE_SELECTED_CARD_KEY, JSON.stringify(card))
+    }
+    onNavigate?.(APP_PAGES.START_PRACTICE)
+  }
   const deleteAllPracticeCards = () => {
-    const deletedQuestionIds = practiceCards.flatMap((card) => (
-      Array.isArray(card?.questions) ? card.questions.map((question) => question?.id) : []
-    ))
+    const deletedQuestionIds = practiceCards.flatMap((card) => [
+      ...(Array.isArray(card?.questions) ? card.questions.map((question) => question?.id) : []),
+      ...(Array.isArray(card?.practiceSessions)
+        ? card.practiceSessions.flatMap((session) => (
+            Array.isArray(session?.questions) ? session.questions.map((question) => question?.id) : []
+          ))
+        : []),
+    ])
     setPracticeCards([])
     window.localStorage.setItem(LEARN_PRACTICE_SHARED_CARDS_KEY, JSON.stringify([]))
     clearQuestionShareState(deletedQuestionIds)
@@ -188,7 +201,7 @@ function LearnPracticePage() {
                     </div>
 
                     <div className="assessment-create-draft-footer assessment-create-published-footer learn-practice-footer">
-                      <button type="button" className="my-assessment-card-action is-start">
+                      <button type="button" className="my-assessment-card-action is-start" onClick={() => startPractice(card)}>
                         <Play size={14} strokeWidth={2.3} />
                         Start Practice
                       </button>

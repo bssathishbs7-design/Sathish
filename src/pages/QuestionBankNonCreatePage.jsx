@@ -317,12 +317,6 @@ const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionC
           ? <span className="is-marks">{getQuestionMarksTotal(question)} marks</span>
           : null}
         {renderQuestionStructureBadge(question)}
-        {isLearnPracticeShared ? (
-          <span className="assessment-page-question-shared-badge" title="Shared to students">
-            <Share2 size={12} strokeWidth={2.4} />
-            Shared
-          </span>
-        ) : null}
         {!isMatrixPreview && categoryLabel ? <span className="assessment-page-question-category-badge">{categoryLabel}</span> : null}
         {!isMatrixPreview && thinkingLabel ? <span className={getThinkingBadgeClassName(thinkingLabel)}>{getThinkingLevelLabel(thinkingLabel)}</span> : null}
         {!isMatrixPreview && difficultyLabel ? <span className="assessment-page-difficulty-badge">{difficultyLabel}</span> : null}
@@ -338,6 +332,12 @@ const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionC
           >
             + {hiddenTagCount} more tags
           </button>
+        ) : null}
+        {isLearnPracticeShared ? (
+          <span className="assessment-page-question-shared-badge" title="Shared to students">
+            <Share2 size={12} strokeWidth={2.4} />
+            Shared
+          </span>
         ) : null}
       </span>
       {actionControls}
@@ -367,6 +367,7 @@ const MEDSY_QUESTION_BANK_SEED_COUNTS = {
 const MEDSY_OPTION_DISTRACTORS = ['Terminology Confusion', 'False Association', 'Misclassification']
 const MEDSY_QUESTION_CATEGORIES = ['Direct', 'Reasoning', 'Application', 'Aetcom', 'Critical Thinking']
 const MEDSY_COGNITIVE_LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate']
+const COGNITIVE_LEVEL_OVERVIEW_ORDER = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate']
 const MEDSY_COGNITIVE_FUNCTIONS = ['Concept recall', 'Concept explanation', 'Clinical Reasoning', 'Judgement & Decision Making', 'Communication']
 const MEDSY_SKILL_FOCUS = ['Identification', 'Written response', 'Problem solving', 'Communication', 'Clinical correlation']
 const MEDSY_ORGAN_SYSTEMS = ['General', 'Nervous', 'Cardiovascular', 'Respiratory', 'Gastrointestinal', 'Musculoskeletal']
@@ -1051,10 +1052,50 @@ const readLearnPracticeSharedCards = () => {
 
 const getLearnPracticeSharedQuestionIds = () => new Set(
   readLearnPracticeSharedCards()
-    .flatMap((card) => Array.isArray(card?.questions) ? card.questions : [])
+    .flatMap((card) => [
+      ...(Array.isArray(card?.questions) ? card.questions : []),
+      ...(Array.isArray(card?.practiceSessions)
+        ? card.practiceSessions.flatMap((session) => Array.isArray(session?.questions) ? session.questions : [])
+        : []),
+    ])
     .map((question) => String(question?.id ?? '').trim())
     .filter(Boolean),
 )
+
+const normalizeLearnPracticeCardSessions = (card = {}) => {
+  if (Array.isArray(card.practiceSessions) && card.practiceSessions.length) {
+    return card.practiceSessions.map((session, index) => ({
+      id: session.id ?? `${card.id ?? card.competencyCode}-practice-${index + 1}`,
+      practiceNo: Number(session.practiceNo) || index + 1,
+      sharedAt: session.sharedAt || card.lastSharedAt || card.createdAt || '',
+      assignment: session.assignment ?? card.assignment ?? {},
+      questions: Array.isArray(session.questions) ? session.questions : [],
+      mcq: Number(session.mcq || 0),
+      saqs: Number(session.saqs || 0),
+      laqs: Number(session.laqs || 0),
+      status: session.status || 'In Progress',
+    }))
+  }
+
+  const legacyQuestions = Array.isArray(card.questions) ? card.questions : []
+  if (!legacyQuestions.length) return []
+  const typeCounts = legacyQuestions.reduce((counts, item) => ({
+    ...counts,
+    [item.typeKey]: (counts[item.typeKey] ?? 0) + 1,
+  }), { mcq: 0, saqs: 0, laqs: 0 })
+
+  return [{
+    id: `${card.id ?? card.competencyCode}-practice-1`,
+    practiceNo: 1,
+    sharedAt: card.lastSharedAt || card.createdAt || '',
+    assignment: card.assignment ?? {},
+    questions: legacyQuestions,
+    mcq: Number(card.mcq ?? typeCounts.mcq ?? 0),
+    saqs: Number(card.saqs ?? typeCounts.saqs ?? 0),
+    laqs: Number(card.laqs ?? typeCounts.laqs ?? 0),
+    status: 'In Progress',
+  }]
+}
 
 const persistLearnPracticeSharedCards = (questions = [], assignment = {}) => {
   if (typeof window === 'undefined' || !questions.length) return
@@ -1065,8 +1106,10 @@ const persistLearnPracticeSharedCards = (questions = [], assignment = {}) => {
     .map((card) => [card.competencyCode, {
       ...card,
       questions: Array.isArray(card.questions) ? card.questions : [],
+      practiceSessions: normalizeLearnPracticeCardSessions(card),
     }]))
 
+  const shareGroups = new Map()
   questions.forEach((question) => {
     const competencyCode = getQuestionShareCompetencyCode(question)
     const competencyName = getQuestionShareCompetencyName(question)
@@ -1074,46 +1117,78 @@ const persistLearnPracticeSharedCards = (questions = [], assignment = {}) => {
     const questionId = String(question?.id ?? question?.originalQuestionId ?? '').trim()
     if (!questionId) return
 
-    const existingCard = cardMap.get(competencyCode) ?? {
-      id: `learn-practice-${competencyCode.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`,
+    const normalizedQuestion = {
+      id: questionId,
+      title: getQuestionPreview(question),
+      type: getQuestionTypeLabel(question),
+      typeKey: getLearnPracticeQuestionTypeKey(question),
+      source: isMedsyQuestion(question) ? 'Medsy' : 'Institute',
+      marks: question?.marks ?? '',
+      subject: question?.subject ?? '',
+      topic: primaryTopic,
       competencyCode,
       competencyName,
-      questions: [],
-      createdAt: sharedAt,
     }
 
-    const nextQuestions = existingCard.questions.some((item) => String(item?.id ?? '') === questionId)
-      ? existingCard.questions
-      : [
-          ...existingCard.questions,
-          {
-            id: questionId,
-            title: getQuestionPreview(question),
-            type: getQuestionTypeLabel(question),
-            typeKey: getLearnPracticeQuestionTypeKey(question),
-            source: isMedsyQuestion(question) ? 'Medsy' : 'Institute',
-            marks: question?.marks ?? '',
-            subject: question?.subject ?? '',
-            topic: primaryTopic,
-            competencyCode,
-            competencyName,
-          },
-        ]
-    const typeCounts = nextQuestions.reduce((counts, item) => ({
+    const group = shareGroups.get(competencyCode) ?? {
+      competencyCode,
+      competencyName,
+      subject: question?.subject || '',
+      topic: primaryTopic,
+      questions: [],
+    }
+
+    if (!group.questions.some((item) => String(item?.id ?? '') === questionId)) {
+      group.questions.push(normalizedQuestion)
+    }
+    shareGroups.set(competencyCode, group)
+  })
+
+  shareGroups.forEach((group) => {
+    const existingCard = cardMap.get(group.competencyCode) ?? {
+      id: `learn-practice-${group.competencyCode.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`,
+      competencyCode: group.competencyCode,
+      competencyName: group.competencyName,
+      questions: [],
+      practiceSessions: [],
+      createdAt: sharedAt,
+    }
+    const existingSessions = normalizeLearnPracticeCardSessions(existingCard)
+    const nextPracticeNo = existingSessions.reduce((max, session) => Math.max(max, Number(session.practiceNo) || 0), 0) + 1
+    const sessionTypeCounts = group.questions.reduce((counts, item) => ({
       ...counts,
       [item.typeKey]: (counts[item.typeKey] ?? 0) + 1,
     }), { mcq: 0, saqs: 0, laqs: 0 })
+    const nextSession = {
+      id: `${existingCard.id ?? `learn-practice-${group.competencyCode}`}-practice-${nextPracticeNo}-${Date.now()}`,
+      practiceNo: nextPracticeNo,
+      sharedAt,
+      assignment,
+      questions: group.questions,
+      mcq: sessionTypeCounts.mcq,
+      saqs: sessionTypeCounts.saqs,
+      laqs: sessionTypeCounts.laqs,
+      status: 'In Progress',
+    }
+    const practiceSessions = [...existingSessions, nextSession]
+    const aggregateQuestions = practiceSessions.flatMap((session) => Array.isArray(session.questions) ? session.questions : [])
+    const aggregateTypeCounts = practiceSessions.reduce((counts, session) => ({
+      mcq: counts.mcq + Number(session.mcq || 0),
+      saqs: counts.saqs + Number(session.saqs || 0),
+      laqs: counts.laqs + Number(session.laqs || 0),
+    }), { mcq: 0, saqs: 0, laqs: 0 })
 
-    cardMap.set(competencyCode, {
+    cardMap.set(group.competencyCode, {
       ...existingCard,
-      subject: existingCard.subject || question?.subject || '',
-      topic: existingCard.topic || primaryTopic,
-      competencyName: existingCard.competencyName || competencyName,
-      questions: nextQuestions,
-      noOfQuestions: nextQuestions.length,
-      mcq: typeCounts.mcq,
-      saqs: typeCounts.saqs,
-      laqs: typeCounts.laqs,
+      subject: existingCard.subject || group.subject || '',
+      topic: existingCard.topic || group.topic,
+      competencyName: existingCard.competencyName || group.competencyName,
+      questions: aggregateQuestions,
+      practiceSessions,
+      noOfQuestions: aggregateQuestions.length,
+      mcq: aggregateTypeCounts.mcq,
+      saqs: aggregateTypeCounts.saqs,
+      laqs: aggregateTypeCounts.laqs,
       assignment,
       lastSharedAt: sharedAt,
     })
@@ -2667,12 +2742,16 @@ export default function QuestionBankNonCreatePage({
     { label: 'LAQs', count: landingValueCounts.types['Descriptive (LAQs)'] ?? 0 },
     { label: 'SAQs', count: landingValueCounts.types['Descriptive (SAQs)'] ?? 0 },
   ], ['#0f766e', '#7f91a8', '#f1bd68'], { includeZero: true })
-  const categoryRows = createBarRows(
-    ['Application', 'Direct', 'Reasoning', 'Critical Thinking', 'Aetcom'].map((label) => ({
-      label,
-      count: landingValueCounts.categories[label] ?? 0,
-    })),
-    ['#7f6f9f', '#4f7396', '#f1bd68', '#6094a4', '#6f9a84'],
+  const unmappedCognitiveLevelCount = landingQuestions.filter((question) => !String(question?.cognitiveLevel ?? '').trim()).length
+  const cognitiveLevelRows = createBarRows(
+    [
+      ...COGNITIVE_LEVEL_OVERVIEW_ORDER.map((label) => ({
+        label,
+        count: landingValueCounts.cognitiveLevels[label] ?? 0,
+      })),
+      ...(unmappedCognitiveLevelCount ? [{ label: 'Not mapped', count: unmappedCognitiveLevelCount }] : []),
+    ],
+    ['#2563eb', '#06b6d4', '#14b8a6', '#f59e0b', '#8b5cf6', '#ef4444', '#7f8794'],
     { includeZero: true },
   )
   const difficultyRows = createBarRows(
@@ -3663,13 +3742,13 @@ export default function QuestionBankNonCreatePage({
               <article className="question-bank-overview-card is-bars is-category">
                 <span className="question-bank-overview-card-head">
                   <span>
-                    <strong>Category Distribution</strong>
-                    <small>By question category</small>
+                    <strong>Cognitive Level</strong>
+                    <small>Distribution by cognitive level</small>
                   </span>
-                  <em>Total {formatMetricCount(categoryRows.reduce((total, item) => total + item.count, 0))}</em>
+                  <em>Total {formatMetricCount(cognitiveLevelRows.reduce((total, item) => total + item.count, 0))}</em>
                 </span>
                 <span className="question-bank-bar-list">
-                  {categoryRows.map((item) => (
+                  {cognitiveLevelRows.map((item) => (
                     <span key={item.label} className="question-bank-bar-row">
                       <span>
                         <em>{item.label}</em>
