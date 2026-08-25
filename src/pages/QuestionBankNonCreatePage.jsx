@@ -1119,6 +1119,7 @@ const persistLearnPracticeSharedCards = (questions = [], assignment = {}) => {
 
     const normalizedQuestion = {
       id: questionId,
+      questionText: question?.questionText || question?.title || question?.stem || getQuestionPreview(question),
       title: getQuestionPreview(question),
       type: getQuestionTypeLabel(question),
       typeKey: getLearnPracticeQuestionTypeKey(question),
@@ -1128,6 +1129,12 @@ const persistLearnPracticeSharedCards = (questions = [], assignment = {}) => {
       topic: primaryTopic,
       competencyCode,
       competencyName,
+      options: Array.isArray(question?.options) ? question.options : [],
+      answerKey: question?.answerKey ?? '',
+      modelAnswer: question?.modelAnswer ?? '',
+      rationale: question?.rationale ?? '',
+      descriptiveSections: Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : [],
+      subQuestions: Array.isArray(question?.subQuestions) ? question.subQuestions : [],
     }
 
     const group = shareGroups.get(competencyCode) ?? {

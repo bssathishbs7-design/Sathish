@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import { AlertTriangle, CheckCircle2, Info, Monitor, OctagonAlert } from 'lucide-react'
 import Navbar from './components/Navbar'
@@ -440,6 +440,8 @@ function App() {
   const [alerts, setAlerts] = useState([])
   const [queryRequestCount, setQueryRequestCount] = useState(() => readActiveQueryRequestCount())
   const [createdReportCount, setCreatedReportCount] = useState(() => readActiveCreatedReportCount())
+  const [practiceAnswerMode, setPracticeAnswerMode] = useState(false)
+  const previousSidebarCollapsedRef = useRef(null)
   const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
     || activePage === APP_PAGES.ONLINE_PRACTICE_EXAM
     || activePage === APP_PAGES.ONLINE_PROCTORED_EXAM
@@ -582,6 +584,28 @@ function App() {
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
+
+  useEffect(() => {
+    if (activePage !== APP_PAGES.START_PRACTICE) {
+      setPracticeAnswerMode(false)
+    }
+  }, [activePage])
+
+  useEffect(() => {
+    if (practiceAnswerMode) {
+      if (previousSidebarCollapsedRef.current === null) {
+        previousSidebarCollapsedRef.current = sidebarCollapsed
+      }
+      setSidebarCollapsed(true)
+      setMobileSidebarOpen(false)
+      return
+    }
+
+    if (previousSidebarCollapsedRef.current !== null) {
+      setSidebarCollapsed(previousSidebarCollapsedRef.current)
+      previousSidebarCollapsedRef.current = null
+    }
+  }, [practiceAnswerMode, sidebarCollapsed])
 
   useEffect(() => {
     if (!alerts.length) return undefined
@@ -1359,7 +1383,7 @@ function App() {
           ) : activePage === APP_PAGES.LEARN_PRACTICE ? (
             <LearnPracticePage onNavigate={navigateToPage} />
           ) : activePage === APP_PAGES.START_PRACTICE ? (
-            <StartPracticePage onNavigate={navigateToPage} />
+            <StartPracticePage onNavigate={navigateToPage} onPracticeAnswerModeChange={setPracticeAnswerMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
             <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
