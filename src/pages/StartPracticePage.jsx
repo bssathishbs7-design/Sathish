@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, BookOpenCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Info, Play, Timer, Trophy } from 'lucide-react'
+import { ArrowLeft, BarChart3, BookOpenCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Eye, Home, Info, Play, RotateCcw, Timer, Trophy, X } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
 import './StartPracticePage.css'
 
@@ -8,6 +8,7 @@ const START_PRACTICE_SELECTED_CARD_KEY = 'vx-start-practice-selected-card'
 const LEARN_PRACTICE_SHARED_CARDS_KEY = 'vx-learn-practice-shared-cards'
 const PRACTICE_EVALUATION_DURATION_MS = 5000
 const PRACTICE_TIMEOUT_NOTICE_MS = 2500
+const PRACTICE_SESSION_PAGE_SIZE = 5
 const QUESTION_BANK_STORAGE_KEYS = [
   'vx-question-bank-published-questions',
   'vx-question-bank-uploaded-questions',
@@ -85,6 +86,40 @@ const readSelectedPracticeCard = () => {
   }
 }
 
+const persistSelectedPracticeCard = (card = {}) => {
+  if (typeof window === 'undefined' || !card || typeof card !== 'object') return
+
+  const matchesCard = (item = {}) => (
+    String(item?.id ?? '') === String(card?.id ?? '')
+    || String(item?.competencyCode ?? '') === String(card?.competencyCode ?? '')
+  )
+
+  try {
+    window.sessionStorage.setItem(START_PRACTICE_SELECTED_CARD_KEY, JSON.stringify(card))
+  } catch {
+    // Keep the in-page state usable if session storage is unavailable.
+  }
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LEARN_PRACTICE_SHARED_CARDS_KEY) ?? '[]')
+    if (!Array.isArray(parsed)) return
+
+    let didUpdate = false
+    const nextCards = parsed.map((item) => {
+      if (!matchesCard(item)) return item
+      didUpdate = true
+      return card
+    })
+
+    if (didUpdate) {
+      window.localStorage.setItem(LEARN_PRACTICE_SHARED_CARDS_KEY, JSON.stringify(nextCards))
+      window.dispatchEvent(new Event('learn-practice-shared-cards'))
+    }
+  } catch {
+    // Ignore malformed shared-card storage; local UI state remains correct.
+  }
+}
+
 const writePracticeSessionStatus = (card = {}, sessionId = '', status = '') => {
   if (typeof window === 'undefined' || !card || !sessionId || !status) return
 
@@ -117,6 +152,64 @@ const writePracticeSessionStatus = (card = {}, sessionId = '', status = '') => {
     }
   } catch {
     // Keep the in-page status update even if session storage is malformed.
+  }
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LEARN_PRACTICE_SHARED_CARDS_KEY) ?? '[]')
+    if (!Array.isArray(parsed)) return
+
+    let didUpdate = false
+    const nextCards = parsed.map((item) => {
+      if (!matchesCard(item)) return item
+      didUpdate = true
+      return updateCard(item)
+    })
+
+    if (didUpdate) {
+      window.localStorage.setItem(LEARN_PRACTICE_SHARED_CARDS_KEY, JSON.stringify(nextCards))
+      window.dispatchEvent(new Event('learn-practice-shared-cards'))
+    }
+  } catch {
+    // Ignore malformed shared-card storage; local UI state remains correct.
+  }
+}
+
+const writePracticeSessionAttempt = (card = {}, sessionId = '', attempt = {}) => {
+  if (typeof window === 'undefined' || !card || !sessionId) return
+
+  const matchesCard = (item = {}) => (
+    String(item?.id ?? '') === String(card?.id ?? '')
+    || String(item?.competencyCode ?? '') === String(card?.competencyCode ?? '')
+  )
+  const updateCard = (item = {}) => {
+    const sessions = Array.isArray(item.practiceSessions) ? item.practiceSessions : []
+    const nextSessions = sessions.map((session) => (
+      String(session?.id ?? '') === String(sessionId)
+        ? {
+            ...session,
+            practiceAnswers: attempt.answers ?? {},
+            practiceTryLaterKeys: attempt.tryLaterKeys ?? [],
+            practiceSubmitted: Boolean(attempt.isSubmitted),
+          }
+        : session
+    ))
+    const didUpdateSession = nextSessions.some((session, index) => session !== sessions[index])
+
+    if (!didUpdateSession) return item
+
+    return {
+      ...item,
+      practiceSessions: nextSessions,
+    }
+  }
+
+  try {
+    const selectedCard = JSON.parse(window.sessionStorage.getItem(START_PRACTICE_SELECTED_CARD_KEY) ?? 'null')
+    if (selectedCard && typeof selectedCard === 'object' && matchesCard(selectedCard)) {
+      window.sessionStorage.setItem(START_PRACTICE_SELECTED_CARD_KEY, JSON.stringify(updateCard(selectedCard)))
+    }
+  } catch {
+    // Keep the in-page attempt even if session storage is malformed.
   }
 
   try {
@@ -382,7 +475,12 @@ const evaluateDescriptiveAnswer = (answer = '', modelAnswer = '', marks = 0) => 
     return { status: 'Wrong', earnedMarks: 0, maxMarks, ratio: 0 }
   }
 
-  const modelTerms = getReviewTerms(modelAnswer)
+  const modelText = stripHtml(modelAnswer)
+  if (!modelText || /^answer guidance will appear here\.?$/i.test(modelText)) {
+    return { status: 'Correct', earnedMarks: maxMarks, maxMarks, ratio: 1 }
+  }
+
+  const modelTerms = getReviewTerms(modelText)
   if (!modelTerms.length) {
     return { status: 'Needs review', earnedMarks: Math.max(1, Math.round(maxMarks * 0.5)), maxMarks, ratio: 0.5 }
   }
@@ -560,6 +658,9 @@ const getPracticeSessions = (card = {}) => {
       laqs: Number(session.laqs || 0),
       saqs: Number(session.saqs || 0),
       status: session.status || 'In Progress',
+      practiceAnswers: session.practiceAnswers ?? {},
+      practiceTryLaterKeys: Array.isArray(session.practiceTryLaterKeys) ? session.practiceTryLaterKeys : [],
+      practiceSubmitted: Boolean(session.practiceSubmitted),
     }))
   }
 
@@ -574,7 +675,34 @@ const getPracticeSessions = (card = {}) => {
     laqs: Number(card.laqs || 0),
     saqs: Number(card.saqs || 0),
     status: 'In Progress',
+    practiceAnswers: card.practiceAnswers ?? {},
+    practiceTryLaterKeys: Array.isArray(card.practiceTryLaterKeys) ? card.practiceTryLaterKeys : [],
+    practiceSubmitted: Boolean(card.practiceSubmitted),
   }] : []
+}
+
+const createRetakeSession = (card = {}, row = {}) => {
+  const sessions = getPracticeSessions(card)
+  const nextPracticeNo = sessions.reduce((max, session) => Math.max(max, Number(session.practiceNo || 0)), 0) + 1
+  const baseId = card.id || card.competencyCode || 'practice'
+
+  return {
+    id: `${baseId}-practice-${nextPracticeNo}-${Date.now()}`,
+    practiceNo: nextPracticeNo,
+    sharedAt: new Date().toISOString(),
+    assignment: {
+      ...(row.assignment ?? card.assignment ?? {}),
+      scheduleEnabled: false,
+    },
+    questions: Array.isArray(row.questions) ? row.questions : [],
+    mcq: Number(row.mcq || 0),
+    laqs: Number(row.laqs || 0),
+    saqs: Number(row.saqs || 0),
+    status: 'In Progress',
+    practiceAnswers: {},
+    practiceTryLaterKeys: [],
+    practiceSubmitted: false,
+  }
 }
 
 const getPracticeRows = (card = {}, now = new Date()) => getPracticeSessions(card).map((session) => {
@@ -599,12 +727,61 @@ const getPracticeRows = (card = {}, now = new Date()) => getPracticeSessions(car
   }
 })
 
+const getSessionScore = (session = {}) => {
+  const answers = session.practiceAnswers ?? {}
+  const questions = Array.isArray(session.questions) ? session.questions : []
+
+  return questions.reduce((score, question, index) => {
+    const questionKey = getQuestionKey(question, index)
+    const type = getQuestionType(question)
+    const questionMarks = getQuestionMarks(question)
+    const options = type === 'MCQ' ? getQuestionOptions(question) : []
+
+    if (type === 'LAQs' || type === 'SAQs') {
+      const hasDescriptiveParts = Array.isArray(question.descriptiveSections) && question.descriptiveSections.length
+      const parts = type === 'LAQs' || (type === 'SAQs' && hasDescriptiveParts)
+        ? getDescriptiveParts(question, questionKey)
+        : []
+
+      if (parts.length) {
+        const partScore = parts.reduce((partTotal, part) => {
+          const evaluation = evaluateDescriptiveAnswer(
+            answers[part.key] ?? '',
+            getAnswerText(part) || getAnswerText(question),
+            part.marks,
+          )
+          return partTotal + evaluation.earnedMarks
+        }, 0)
+
+        const typeKey = type.toLowerCase()
+
+        return {
+          ...score,
+          [typeKey]: score[typeKey] + partScore,
+          obtained: score.obtained + partScore,
+          total: score.total + questionMarks,
+        }
+      }
+    }
+
+    const evaluation = evaluateQuestionReview(question, answers[questionKey], options, questionMarks)
+    const typeKey = type.toLowerCase()
+    return {
+      ...score,
+      [typeKey]: score[typeKey] + evaluation.earnedMarks,
+      obtained: score.obtained + evaluation.earnedMarks,
+      total: score.total + evaluation.maxMarks,
+    }
+  }, { mcq: 0, saqs: 0, laqs: 0, obtained: 0, total: 0 })
+}
+
 function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
-  const [selectedCard] = useState(() => readSelectedPracticeCard())
+  const [selectedCard, setSelectedCard] = useState(() => readSelectedPracticeCard())
   const [mode, setMode] = useState('sessions')
   const [activeIndex, setActiveIndex] = useState(0)
   const [now, setNow] = useState(() => new Date())
   const [sessionStatuses, setSessionStatuses] = useState({})
+  const [sessionAttempts, setSessionAttempts] = useState({})
   const practiceRows = useMemo(() => getPracticeRows(selectedCard, now).map((row) => ({
     ...row,
     status: sessionStatuses[row.id] || row.status,
@@ -613,24 +790,97 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [answers, setAnswers] = useState({})
   const [tryLaterQuestions, setTryLaterQuestions] = useState(() => new Set())
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [showScoreDialog, setShowScoreDialog] = useState(false)
   const [timedOutSessionId, setTimedOutSessionId] = useState('')
   const [showTimeCompletedNotice, setShowTimeCompletedNotice] = useState(false)
   const [isEvaluatingPractice, setIsEvaluatingPractice] = useState(false)
   const [evaluationStartedAt, setEvaluationStartedAt] = useState(0)
   const [evaluationProgress, setEvaluationProgress] = useState(0)
   const [isPracticeSubmitted, setIsPracticeSubmitted] = useState(false)
+  const [sessionPage, setSessionPage] = useState(0)
   const visiblePracticeRows = useMemo(() => (
-    sessionFilter === 'all'
-      ? practiceRows
-      : practiceRows.filter((row) => row.type.toLowerCase() === sessionFilter)
+    practiceRows.filter((row) => {
+      if (sessionFilter === 'all') return true
+      if (sessionFilter === 'in-progress') return String(row.status).trim().toLowerCase() === 'in progress'
+      return row.type.toLowerCase() === sessionFilter
+    })
   ), [practiceRows, sessionFilter])
+  const sessionPageCount = Math.max(1, Math.ceil(visiblePracticeRows.length / PRACTICE_SESSION_PAGE_SIZE))
+  const currentSessionPage = Math.min(sessionPage, sessionPageCount - 1)
+  const paginatedPracticeRows = useMemo(() => {
+    const startIndex = currentSessionPage * PRACTICE_SESSION_PAGE_SIZE
+    return visiblePracticeRows.slice(startIndex, startIndex + PRACTICE_SESSION_PAGE_SIZE)
+  }, [currentSessionPage, visiblePracticeRows])
   const sessionFilterCounts = useMemo(() => ({
     all: practiceRows.length,
     scheduled: practiceRows.filter((row) => row.type === 'Scheduled').length,
     normal: practiceRows.filter((row) => row.type === 'Normal').length,
+    inProgress: practiceRows.filter((row) => String(row.status).trim().toLowerCase() === 'in progress').length,
   }), [practiceRows])
   const [activeSessionId, setActiveSessionId] = useState('')
   const activeSession = practiceRows.find((row) => row.id === activeSessionId) ?? practiceRows[0] ?? null
+  const isFinishedPracticeStatus = (status = '') => ['completed', 'expired'].includes(String(status).trim().toLowerCase())
+  const activeSessionTimeoutKey = activeSession?.id ?? ''
+  const activeSessionCountdown = activeSession?.countdown ?? ''
+  const activeSessionType = activeSession?.type ?? ''
+  const completedScoreRows = useMemo(() => {
+    const sessionsById = new Map(getPracticeSessions(selectedCard).map((session) => [String(session.id), session]))
+    const finishedRows = practiceRows.filter((row) => isFinishedPracticeStatus(row.status))
+
+    return finishedRows.map((row, index) => {
+      const session = sessionsById.get(String(row.id)) ?? row
+      const savedAttempt = sessionAttempts[row.id]
+      const liveAttempt = activeSessionTimeoutKey === row.id
+        ? {
+            answers,
+            tryLaterKeys: Array.from(tryLaterQuestions),
+            isSubmitted: isPracticeSubmitted,
+          }
+        : null
+      const attempt = liveAttempt ?? savedAttempt
+      const sessionForScore = attempt
+        ? {
+            ...session,
+            practiceAnswers: attempt.answers ?? session.practiceAnswers ?? {},
+            practiceTryLaterKeys: attempt.tryLaterKeys ?? session.practiceTryLaterKeys ?? [],
+            practiceSubmitted: Boolean(attempt.isSubmitted ?? session.practiceSubmitted),
+          }
+        : session
+      const score = getSessionScore(sessionForScore)
+
+      return {
+        id: row.id,
+        attempt: `Attempt ${index + 1}`,
+        dateTime: row.dateTime || '-',
+        mcq: Number(row.mcq || 0) > 0 ? score.mcq : '-',
+        saqs: Number(row.saqs || 0) > 0 ? score.saqs : '-',
+        laqs: Number(row.laqs || 0) > 0 ? score.laqs : '-',
+        obtained: score.obtained,
+        total: score.total,
+      }
+    })
+  }, [activeSessionTimeoutKey, answers, isPracticeSubmitted, practiceRows, selectedCard, sessionAttempts, tryLaterQuestions])
+
+  useEffect(() => {
+    setSessionPage(0)
+  }, [sessionFilter])
+
+  useEffect(() => {
+    setSessionPage((currentPage) => Math.min(currentPage, sessionPageCount - 1))
+  }, [sessionPageCount])
+  const scoreRows = useMemo(() => {
+    if (completedScoreRows.length <= 2) return completedScoreRows
+
+    const recentAttempt = completedScoreRows[completedScoreRows.length - 1]
+    return [
+      completedScoreRows[0],
+      completedScoreRows[1],
+      {
+        ...recentAttempt,
+        attempt: 'Recent Attempt',
+      },
+    ]
+  }, [completedScoreRows])
   const questions = useMemo(() => (
     Array.isArray(activeSession?.questions) ? activeSession.questions : []
   ), [activeSession])
@@ -655,9 +905,6 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     })
   }).length, [answers, questions])
   const competencyName = selectedCard?.competencyName || `Competency ${selectedCard?.competencyCode ?? ''}`
-  const activeSessionTimeoutKey = activeSession?.id ?? ''
-  const activeSessionCountdown = activeSession?.countdown ?? ''
-  const activeSessionType = activeSession?.type ?? ''
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000)
@@ -670,15 +917,31 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   }, [mode, onPracticeAnswerModeChange])
 
   useEffect(() => {
-    if (!showSubmitConfirm) return undefined
+    if (!showSubmitConfirm && !showScoreDialog) return undefined
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') setShowSubmitConfirm(false)
+      if (event.key === 'Escape') setShowScoreDialog(false)
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showSubmitConfirm])
+  }, [showScoreDialog, showSubmitConfirm])
+
+  useEffect(() => {
+    if (mode !== 'player' || !activeSessionTimeoutKey) return
+
+    const attempt = {
+      answers,
+      tryLaterKeys: Array.from(tryLaterQuestions),
+      isSubmitted: isPracticeSubmitted,
+    }
+    setSessionAttempts((current) => ({
+      ...current,
+      [activeSessionTimeoutKey]: attempt,
+    }))
+    writePracticeSessionAttempt(selectedCard, activeSessionTimeoutKey, attempt)
+  }, [activeSessionTimeoutKey, answers, isPracticeSubmitted, mode, selectedCard, tryLaterQuestions])
 
   useEffect(() => {
     const expiredRows = practiceRows.filter((row) => (
@@ -833,6 +1096,76 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     setEvaluationProgress(0)
     setIsPracticeSubmitted(false)
     setActiveIndex(0)
+  }
+
+  const clearStartPracticePageState = () => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(START_PRACTICE_SELECTED_CARD_KEY)
+    }
+    setActiveSessionId('')
+    setActiveIndex(0)
+    setAnswers({})
+    setTryLaterQuestions(new Set())
+    setShowSubmitConfirm(false)
+    setShowTimeCompletedNotice(false)
+    setIsEvaluatingPractice(false)
+    setEvaluationStartedAt(0)
+    setEvaluationProgress(0)
+    setIsPracticeSubmitted(false)
+  }
+
+  const openPracticeSession = (row, options = {}) => {
+    const isRetake = Boolean(options.retake)
+    const savedAttempt = sessionAttempts[row.id] ?? {
+      answers: row.practiceAnswers ?? {},
+      tryLaterKeys: row.practiceTryLaterKeys ?? [],
+      isSubmitted: Boolean(row.practiceSubmitted),
+    }
+    const finishedStatus = !isRetake && isFinishedPracticeStatus(row.status)
+
+    if (isRetake) {
+      const freshAttempt = {
+        answers: {},
+        tryLaterKeys: [],
+        isSubmitted: false,
+      }
+      const currentSessions = getPracticeSessions(selectedCard)
+      const retakeSession = createRetakeSession(selectedCard, row)
+      const nextCard = hydratePracticeCard({
+        ...selectedCard,
+        status: 'In Progress',
+        practiceSessions: [...currentSessions, retakeSession],
+      })
+
+      setSelectedCard(nextCard)
+      persistSelectedPracticeCard(nextCard)
+      setSessionStatuses((current) => ({ ...current, [retakeSession.id]: 'In Progress' }))
+      setSessionAttempts((current) => ({ ...current, [retakeSession.id]: freshAttempt }))
+      setActiveSessionId(retakeSession.id)
+      setActiveIndex(0)
+      setAnswers({})
+      setTryLaterQuestions(new Set())
+      setShowSubmitConfirm(false)
+      setShowTimeCompletedNotice(false)
+      setIsEvaluatingPractice(false)
+      setEvaluationStartedAt(0)
+      setEvaluationProgress(0)
+      setIsPracticeSubmitted(false)
+      setMode('player')
+      return
+    }
+
+    setActiveSessionId(row.id)
+    setActiveIndex(0)
+    setAnswers(isRetake ? {} : savedAttempt.answers ?? {})
+    setTryLaterQuestions(new Set(isRetake ? [] : savedAttempt.tryLaterKeys ?? []))
+    setShowSubmitConfirm(false)
+    setShowTimeCompletedNotice(false)
+    setIsEvaluatingPractice(false)
+    setEvaluationStartedAt(0)
+    setEvaluationProgress(0)
+    setIsPracticeSubmitted(isRetake ? false : finishedStatus || Boolean(savedAttempt.isSubmitted))
+    setMode('player')
   }
 
   const renderPracticePlayer = () => (
@@ -1062,20 +1395,24 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                   )
                 })}
               </div>
-              <div className="start-practice-summary-legend">
-                <span className="is-answered">Answered</span>
-                <span className="is-try-later">Try Later</span>
-                <span className="is-not-viewed">Not Viewed</span>
-                <span className="is-viewed">Viewed</span>
-              </div>
-              <button
-                type="button"
-                className={`start-practice-summary-try-later ${tryLaterQuestions.has(getQuestionKey(questions[activeIndex], activeIndex)) ? 'is-marked' : ''}`}
-                disabled={isPracticeSubmitted || isEvaluatingPractice || showTimeCompletedNotice}
-                onClick={() => toggleTryLater(getQuestionKey(questions[activeIndex], activeIndex))}
-              >
-                Try Later
-              </button>
+              {!isPracticeSubmitted ? (
+                <>
+                  <div className="start-practice-summary-legend">
+                    <span className="is-answered">Answered</span>
+                    <span className="is-try-later">Try Later</span>
+                    <span className="is-not-viewed">Not Viewed</span>
+                    <span className="is-viewed">Viewed</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`start-practice-summary-try-later ${tryLaterQuestions.has(getQuestionKey(questions[activeIndex], activeIndex)) ? 'is-marked' : ''}`}
+                    disabled={isEvaluatingPractice || showTimeCompletedNotice}
+                    onClick={() => toggleTryLater(getQuestionKey(questions[activeIndex], activeIndex))}
+                  >
+                    Try Later
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
                 className={`start-practice-submit-btn ${isPracticeSubmitted ? 'is-reset' : ''}`}
@@ -1088,7 +1425,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                   setShowSubmitConfirm(true)
                 }}
               >
-                {isPracticeSubmitted ? 'Reset Practice' : 'Submit Practice'}
+                {isPracticeSubmitted ? 'Retake Practice' : 'Submit Practice'}
               </button>
             </div>
           </aside>
@@ -1116,10 +1453,8 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="start-practice-submit-title"
-        aria-describedby="start-practice-submit-copy"
       >
-        <strong id="start-practice-submit-title">Submit Practice?</strong>
-        <p id="start-practice-submit-copy">Do you want to submit this practice now?</p>
+        <strong id="start-practice-submit-title">Do you want to submit this Practice now?</strong>
         <div className="start-practice-confirm-summary" aria-label="Submission summary">
           <span>
             <em>Answered</em>
@@ -1162,20 +1497,84 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     </div>
   ) : null
 
+  const scoreDialog = showScoreDialog ? (
+    <div
+      className="start-practice-confirm-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setShowScoreDialog(false)
+      }}
+    >
+      <div
+        className="start-practice-confirm-modal start-practice-score-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="start-practice-score-title"
+      >
+        <header className="start-practice-score-head">
+          <span>
+            <strong id="start-practice-score-title">
+              <Trophy size={17} strokeWidth={2.3} />
+              Practice Score
+            </strong>
+          </span>
+          <button type="button" onClick={() => setShowScoreDialog(false)} aria-label="Close score">
+            <X size={16} strokeWidth={2.4} />
+          </button>
+        </header>
+        <div className="start-practice-score-table-wrap">
+          <table className="start-practice-score-table">
+            <thead>
+              <tr>
+                <th>Practice Score</th>
+                <th>Date &amp; Time</th>
+                <th>MCQ</th>
+                <th>SAQs</th>
+                <th>LAQs</th>
+                <th>Obt. Marks</th>
+                <th>Total Marks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scoreRows.length ? scoreRows.map((row) => (
+                <tr key={row.id}>
+                  <td><span className="start-practice-score-attempt-badge">{row.attempt}</span></td>
+                  <td>{row.dateTime}</td>
+                  <td>{row.mcq}</td>
+                  <td>{row.saqs}</td>
+                  <td>{row.laqs}</td>
+                  <td>{row.obtained}</td>
+                  <td>{row.total}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan="7">No score is available yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <button type="button" className="start-practice-score-close" onClick={() => setShowScoreDialog(false)}>
+          Close
+        </button>
+      </div>
+    </div>
+  ) : null
+
   return (
     <section className="vx-content assessment-page start-practice-page">
       <div className="start-practice-shell">
         <header className={`start-practice-title-bar ${mode === 'player' ? 'is-player-header' : ''}`}>
           <div className="start-practice-title-main">
-            <button type="button" className="start-practice-title-back" onClick={() => {
+            <button type="button" className="start-practice-title-back" aria-label="Home" title="Home" onClick={() => {
               if (mode === 'player') {
                 setMode('sessions')
                 return
               }
+              clearStartPracticePageState()
               onNavigate?.(APP_PAGES.LEARN_PRACTICE)
             }}>
-              <ArrowLeft size={14} strokeWidth={2.4} />
-              Back
+              <Home size={15} strokeWidth={2.3} />
             </button>
             <strong className="start-practice-competency-badge" tabIndex={0}>
               {selectedCard.competencyCode}
@@ -1183,27 +1582,8 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
               <span role="tooltip">{competencyName}</span>
             </strong>
           </div>
-          {mode === 'player' ? (
-            <div className="start-practice-title-meta" aria-label="Practice session summary">
-              <span className="start-practice-title-attended">
-                <em>Attended</em>
-                <strong>{answeredCount} / {questions.length}</strong>
-              </span>
-              <div className="start-practice-title-totals" aria-label="Practice totals">
-                <span><em>Total Ques</em><strong>{formatCount(questions.length)}</strong></span>
-                <span><em>Total Marks</em><strong>{formatCount(totalMarks)}</strong></span>
-              </div>
-            </div>
-          ) : null}
-        </header>
-
-        {mode === 'sessions' ? (
-          <section className="start-practice-session-card" aria-label={`${selectedCard.competencyCode} practice sessions`}>
-            <div className="start-practice-session-toolbar">
-              <span>
-                <strong>Practice sessions</strong>
-                <small>{practiceRows.length} sessions available</small>
-              </span>
+          {mode === 'sessions' ? (
+            <div className="start-practice-title-actions">
               <div className="start-practice-session-filters" aria-label="Filter practice sessions">
                 {[
                   ['all', 'All'],
@@ -1221,7 +1601,36 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                className={`start-practice-title-progress ${sessionFilter === 'in-progress' ? 'is-active' : ''}`}
+                onClick={() => setSessionFilter('in-progress')}
+              >
+                Live Practice
+                <span>{sessionFilterCounts.inProgress}</span>
+              </button>
+              <button type="button" className="start-practice-title-analytics">
+                <BarChart3 size={15} strokeWidth={2.2} />
+                View Analytics
+              </button>
             </div>
+          ) : null}
+          {mode === 'player' ? (
+            <div className="start-practice-title-meta" aria-label="Practice session summary">
+              <span className="start-practice-title-attended">
+                <em>Attended</em>
+                <strong>{answeredCount} / {questions.length}</strong>
+              </span>
+              <div className="start-practice-title-totals" aria-label="Practice totals">
+                <span><em>Total Ques</em><strong>{formatCount(questions.length)}</strong></span>
+                <span><em>Total Marks</em><strong>{formatCount(totalMarks)}</strong></span>
+              </div>
+            </div>
+          ) : null}
+        </header>
+
+        {mode === 'sessions' ? (
+          <section className="start-practice-session-card" aria-label={`${selectedCard.competencyCode} practice sessions`}>
             <div className="start-practice-session-grid" role="table" aria-label="Practice sessions">
               <div className="start-practice-session-grid-head" role="row">
                 <span role="columnheader">Practice</span>
@@ -1230,8 +1639,11 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                 <span role="columnheader">Status</span>
                 <span role="columnheader">Action</span>
               </div>
-              {visiblePracticeRows.length ? visiblePracticeRows.map((row) => (
-                <div className="start-practice-session-row" role="row" key={row.id}>
+              {paginatedPracticeRows.length ? paginatedPracticeRows.map((row) => {
+                const isFinishedRow = isFinishedPracticeStatus(row.status)
+
+                return (
+                <div className={`start-practice-session-row ${isFinishedRow ? 'is-finished' : ''}`} role="row" key={row.id}>
                   <span className="start-practice-session-primary" role="cell">
                     <strong>
                       <BookOpenCheck size={14} strokeWidth={2.2} />
@@ -1263,40 +1675,71 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                     </span>
                   </span>
                   <span className="start-practice-session-action" role="cell">
-                    <button type="button" className="start-practice-row-score" disabled>
+                    <button
+                      type="button"
+                      className="start-practice-row-score"
+                      disabled={!isFinishedRow}
+                      onClick={() => setShowScoreDialog(true)}
+                    >
                       <Trophy size={13} strokeWidth={2.3} />
                       Score
                     </button>
-                    <button type="button" className="start-practice-row-start" onClick={() => {
-                      setActiveSessionId(row.id)
-                      setActiveIndex(0)
-                      setAnswers({})
-                      setTryLaterQuestions(new Set())
-                      setShowSubmitConfirm(false)
-                      setShowTimeCompletedNotice(false)
-                      setIsEvaluatingPractice(false)
-                      setEvaluationStartedAt(0)
-                      setEvaluationProgress(0)
-                      setIsPracticeSubmitted(false)
-                      setMode('player')
-                    }}>
-                      <Play size={13} strokeWidth={2.4} />
-                      Start
+                    <button
+                      type="button"
+                      className={`start-practice-row-start ${isFinishedRow ? 'is-view-retake' : ''}`}
+                      onClick={() => openPracticeSession(row)}
+                    >
+                      {isFinishedRow ? (
+                        <Eye size={13} strokeWidth={2.4} />
+                      ) : (
+                        <Play size={13} strokeWidth={2.4} />
+                      )}
+                      {isFinishedRow ? 'Review' : 'Start'}
+                    </button>
+                    <button
+                      type="button"
+                      className="start-practice-row-retake"
+                      onClick={() => openPracticeSession(row, { retake: true })}
+                      disabled={!isFinishedRow}
+                    >
+                      <RotateCcw size={13} strokeWidth={2.4} />
+                      Retake
                     </button>
                   </span>
                 </div>
-              )) : (
+                )
+              }) : (
                 <div className="start-practice-session-row is-empty" role="row">
                   <span className="start-practice-session-empty" role="cell">No practice sessions match this filter.</span>
                 </div>
               )}
             </div>
+            <footer className="start-practice-session-footer" aria-label="Practice session pagination">
+              <button
+                type="button"
+                onClick={() => setSessionPage((page) => Math.max(0, page - 1))}
+                disabled={currentSessionPage <= 0}
+              >
+                <ChevronLeft size={15} strokeWidth={2.4} />
+                Previous
+              </button>
+              <span>Page {visiblePracticeRows.length ? currentSessionPage + 1 : 0} of {visiblePracticeRows.length ? sessionPageCount : 0}</span>
+              <button
+                type="button"
+                onClick={() => setSessionPage((page) => Math.min(sessionPageCount - 1, page + 1))}
+                disabled={currentSessionPage >= sessionPageCount - 1 || !visiblePracticeRows.length}
+              >
+                Next
+                <ChevronRight size={15} strokeWidth={2.4} />
+              </button>
+            </footer>
           </section>
         ) : renderPracticePlayer()}
       </div>
 
       {submitConfirmationDialog ? createPortal(submitConfirmationDialog, document.body) : null}
       {timeCompletedDialog ? createPortal(timeCompletedDialog, document.body) : null}
+      {scoreDialog ? createPortal(scoreDialog, document.body) : null}
       {isEvaluatingPractice ? createPortal((
         <div className="start-practice-confirm-backdrop is-evaluating" role="presentation">
           <div
