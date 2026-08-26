@@ -1883,7 +1883,7 @@
 }
 
 .start-practice-evaluation-modal {
-  width: min(300px, 100%);
+  width: min(360px, 100%);
   min-height: 240px;
   place-items: center;
   gap: 10px;
@@ -1943,11 +1943,12 @@
 
 .start-practice-evaluation-modal > small {
   display: block;
-  max-width: 220px;
+  max-width: none;
   color: #00756b;
   font-size: 0.7rem;
   font-weight: 800;
   line-height: 1.35;
+  white-space: nowrap;
 }
 
 @keyframes start-practice-loader-pulse {

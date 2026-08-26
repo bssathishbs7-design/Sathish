@@ -35628,6 +35628,112 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
   box-shadow: 0 24px 64px rgba(13, 55, 38, 0.22);
 }
 
+.assessment-page-share-success-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 146;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.assessment-page-share-success-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 20, 18, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.assessment-page-share-success-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  width: min(340px, 100%);
+  padding: 22px 20px;
+  border: 1px solid #bdeee3;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top, rgba(95, 232, 177, 0.2), transparent 60%),
+    #ffffff;
+  box-shadow: 0 24px 64px rgba(13, 55, 38, 0.22);
+  text-align: center;
+  animation: assessment-page-share-success-in 0.22s ease-out both;
+}
+
+.assessment-page-share-success-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #74dac7;
+  border-radius: 16px;
+  background: #e7fffa;
+  color: #008c80;
+}
+
+.assessment-page-share-success-card strong {
+  color: #102a34;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.assessment-page-share-success-card p {
+  margin: 0;
+  color: #536b76;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.assessment-page-share-success-card small {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border: 1px solid #bfe9e1;
+  border-radius: 999px;
+  background: #ecfbf8;
+  color: #00796f;
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.assessment-page-share-success-card button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 104px;
+  min-height: 34px;
+  margin-top: 3px;
+  border: 1px solid #10b9a8;
+  border-radius: 10px;
+  background: #10b9a8;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.assessment-page-share-success-card button:hover,
+.assessment-page-share-success-card button:focus-visible {
+  background: #009f91;
+  outline: none;
+}
+
+@keyframes assessment-page-share-success-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .assessment-page-share-head {
   position: sticky;
   top: 0;
@@ -44961,6 +45067,34 @@ button.assessment-page-descriptive-more-tags:focus-visible {
 
 .theme-dark .assessment-page-share-head h2 {
   color: #eef6ff;
+}
+
+.theme-dark .assessment-page-share-success-card {
+  border-color: rgba(45, 212, 191, 0.45);
+  background:
+    radial-gradient(circle at top, rgba(45, 212, 191, 0.16), transparent 60%),
+    #132235;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.34);
+}
+
+.theme-dark .assessment-page-share-success-icon {
+  border-color: rgba(45, 212, 191, 0.55);
+  background: rgba(20, 184, 166, 0.18);
+  color: #99f6e4;
+}
+
+.theme-dark .assessment-page-share-success-card strong {
+  color: #eef6ff;
+}
+
+.theme-dark .assessment-page-share-success-card p {
+  color: #c3d4e8;
+}
+
+.theme-dark .assessment-page-share-success-card small {
+  border-color: rgba(45, 212, 191, 0.45);
+  background: rgba(20, 184, 166, 0.16);
+  color: #99f6e4;
 }
 
 .theme-dark .assessment-page-share-head p {

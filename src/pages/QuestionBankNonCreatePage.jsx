@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart3, BookOpenCheck, Brain, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, Trash2, TriangleAlert, X } from 'lucide-react'
+import { BarChart3, BookOpenCheck, Brain, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, Trash2, TriangleAlert, X } from 'lucide-react'
 import { isQuestionGenerationErrorText, stripHtml } from '../utils/mathText'
 import { assignInstituteQuestionBankIds } from '../utils/questionBankIdentity'
 import { APP_PAGES } from '../config/appPages'
@@ -2234,6 +2234,7 @@ export default function QuestionBankNonCreatePage({
   const [shareEndDate, setShareEndDate] = useState('')
   const [shareEndTime, setShareEndTime] = useState('')
   const [shareAssignError, setShareAssignError] = useState('')
+  const [shareSuccessNotice, setShareSuccessNotice] = useState(null)
   const [learnPracticeSharedQuestionIds, setLearnPracticeSharedQuestionIds] = useState(() => getLearnPracticeSharedQuestionIds())
   const [draftAssessmentOptions, setDraftAssessmentOptions] = useState(() => readAssessmentDrafts())
   const addedQuestionIdSet = useMemo(
@@ -2314,6 +2315,13 @@ export default function QuestionBankNonCreatePage({
       setShareStudentsSummaryPage(shareStudentsSummaryPageCount)
     }
   }, [shareStudentsSummaryPage, shareStudentsSummaryPageCount])
+
+  useEffect(() => {
+    if (!shareSuccessNotice) return undefined
+
+    const timer = window.setTimeout(() => setShareSuccessNotice(null), 2800)
+    return () => window.clearTimeout(timer)
+  }, [shareSuccessNotice])
 
   useEffect(() => {
     const syncLearnPracticeSharedQuestions = () => setLearnPracticeSharedQuestionIds(getLearnPracticeSharedQuestionIds())
@@ -2941,9 +2949,11 @@ export default function QuestionBankNonCreatePage({
       startsAt: shareScheduleEnabled ? shareScheduleStartDateTime?.toISOString() : '',
       endsAt: shareScheduleEnabled ? shareScheduleEndDateTime?.toISOString() : '',
     }
+    const sharedCount = selectedShareQuestions.length || availableSelectedGridQuestionIds.length
     shareQuestionsWithStudentsInStorage(availableSelectedGridQuestionIds, assignment)
     persistLearnPracticeSharedCards(selectedShareQuestions, assignment)
     setPublishedQuestions(readAllQuestionBankQuestions())
+    setShareSuccessNotice({ count: sharedCount, year: shareAssignYear })
     resetAssessmentSelection()
   }
 
@@ -4911,6 +4921,26 @@ export default function QuestionBankNonCreatePage({
                   Share to Students
                 </button>
               </div>
+            </div>
+          </div>,
+          document.body,
+        ) : null}
+
+        {shareSuccessNotice && typeof document !== 'undefined' ? createPortal(
+          <div className="assessment-page-share-success-modal" role="status" aria-live="polite">
+            <div className="assessment-page-share-success-backdrop" aria-hidden="true" />
+            <div className="assessment-page-share-success-card">
+              <span className="assessment-page-share-success-icon" aria-hidden="true">
+                <CheckCircle2 size={24} strokeWidth={2.4} />
+              </span>
+              <strong>Shared successfully</strong>
+              <p>
+                {shareSuccessNotice.count} {shareSuccessNotice.count === 1 ? 'question has' : 'questions have'} been shared to students.
+              </p>
+              <small>{shareSuccessNotice.year}</small>
+              <button type="button" onClick={() => setShareSuccessNotice(null)}>
+                Done
+              </button>
             </div>
           </div>,
           document.body,

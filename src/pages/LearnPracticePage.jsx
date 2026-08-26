@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BookOpenCheck, CheckCircle2, Info, Play, Search, Trash2, X } from 'lucide-react'
+import { CheckCircle2, Info, Play, Search, Trash2, X } from 'lucide-react'
 import { corelationRatingRows } from './corelationRatingData'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -39,6 +39,54 @@ const getCardSubject = (card) => (
   || getCompetencyRow(card?.competencyCode)?.subject
   || 'Human Anatomy'
 )
+const FINISHED_PRACTICE_STATUSES = new Set(['complete', 'completed', 'expired'])
+const getCardPracticeSessions = (card = {}) => {
+  if (Array.isArray(card.practiceSessions) && card.practiceSessions.length) return card.practiceSessions
+  return Array.isArray(card.questions) && card.questions.length
+    ? [{
+        status: card.status || 'In Progress',
+        questions: card.questions,
+        mcq: Number(card.mcq || 0),
+        saqs: Number(card.saqs || 0),
+        laqs: Number(card.laqs || 0),
+      }]
+    : []
+}
+const getPracticeQuestionType = (question = {}) => {
+  const type = String(question.type ?? question.questionType ?? '').toLowerCase()
+  if (type.includes('mcq') || type.includes('multiple')) return 'mcq'
+  if (type.includes('laq') || type.includes('long')) return 'laqs'
+  if (type.includes('saq') || type.includes('short')) return 'saqs'
+  return question.options?.length ? 'mcq' : ''
+}
+const getSessionTypeCount = (session = {}, typeKey = '') => {
+  const directValue = Number(session[typeKey] || 0)
+  if (directValue > 0) return directValue
+
+  const questions = Array.isArray(session.questions) ? session.questions : []
+  return questions.filter((question) => getPracticeQuestionType(question) === typeKey).length
+}
+const getPendingPracticeTypeCounts = (card = {}) => {
+  const sessions = getCardPracticeSessions(card)
+  return sessions.reduce((counts, session) => {
+    const status = String(session?.status ?? 'In Progress').trim().toLowerCase()
+    if (FINISHED_PRACTICE_STATUSES.has(status)) return counts
+
+    return {
+      mcq: counts.mcq + getSessionTypeCount(session, 'mcq'),
+      saqs: counts.saqs + getSessionTypeCount(session, 'saqs'),
+      laqs: counts.laqs + getSessionTypeCount(session, 'laqs'),
+    }
+  }, { mcq: 0, saqs: 0, laqs: 0 })
+}
+const getPracticeCardStatus = (card = {}) => {
+  const sessions = getCardPracticeSessions(card)
+  const isComplete = sessions.length > 0 && sessions.every((session) => (
+    FINISHED_PRACTICE_STATUSES.has(String(session?.status ?? '').trim().toLowerCase())
+  ))
+
+  return isComplete ? 'Complete' : 'In Progress'
+}
 
 const clearQuestionShareState = (questionIds = []) => {
   if (typeof window === 'undefined' || !questionIds.length) return
@@ -166,9 +214,14 @@ function LearnPracticePage({ onNavigate }) {
             <div className="assessment-create-draft-grid my-assessment-published-grid learn-practice-card-grid">
               {filteredCards.length ? filteredCards.map((card) => {
                 const competencyName = card.competencyName || `Competency ${card.competencyCode}`
+                const pendingCounts = getPendingPracticeTypeCounts(card)
+                const cardStatus = getPracticeCardStatus(card)
 
                 return (
-                  <article key={card.id ?? card.competencyCode} className="assessment-create-draft-card assessment-create-published-card learn-practice-card">
+                  <article
+                    key={card.id ?? card.competencyCode}
+                    className={`assessment-create-draft-card assessment-create-published-card learn-practice-card ${cardStatus === 'In Progress' ? 'is-in-progress' : 'is-complete'}`}
+                  >
                     <div className="assessment-create-published-head">
                       <div className="learn-practice-card-title">
                         <small className="learn-practice-card-context">
@@ -188,16 +241,27 @@ function LearnPracticePage({ onNavigate }) {
                         {card.competencyCode}
                         <Info size={11} strokeWidth={2.4} />
                       </span>
-                      <span className="assessment-create-published-supervision is-practice">
-                        <BookOpenCheck size={13} strokeWidth={2.3} />
-                        In Progress
+                      <span className={`learn-practice-status-badge ${cardStatus === 'Complete' ? 'is-complete' : 'is-progress'}`}>
+                        {cardStatus}
                       </span>
                     </span>
 
                     <div className="learn-practice-question-mix" aria-label={`${card.competencyCode} question type counts`}>
-                      <span><strong>{card.mcq || 0}</strong><em>MCQ</em></span>
-                      <span><strong>{card.saqs || 0}</strong><em>SAQs</em></span>
-                      <span><strong>{card.laqs || 0}</strong><em>LAQs</em></span>
+                      <span>
+                        {pendingCounts.mcq > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.mcq}</b> : null}
+                        <strong>{card.mcq || 0}</strong>
+                        <em>MCQ</em>
+                      </span>
+                      <span>
+                        {pendingCounts.saqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.saqs}</b> : null}
+                        <strong>{card.saqs || 0}</strong>
+                        <em>SAQs</em>
+                      </span>
+                      <span>
+                        {pendingCounts.laqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.laqs}</b> : null}
+                        <strong>{card.laqs || 0}</strong>
+                        <em>LAQs</em>
+                      </span>
                     </div>
 
                     <div className="assessment-create-draft-footer assessment-create-published-footer learn-practice-footer">

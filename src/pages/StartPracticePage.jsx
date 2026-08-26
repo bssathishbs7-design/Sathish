@@ -5,7 +5,8 @@ import { APP_PAGES } from '../config/appPages'
 import './StartPracticePage.css'
 
 const START_PRACTICE_SELECTED_CARD_KEY = 'vx-start-practice-selected-card'
-const PRACTICE_EVALUATION_DURATION_MS = 10000
+const LEARN_PRACTICE_SHARED_CARDS_KEY = 'vx-learn-practice-shared-cards'
+const PRACTICE_EVALUATION_DURATION_MS = 5000
 const PRACTICE_TIMEOUT_NOTICE_MS = 2500
 const QUESTION_BANK_STORAGE_KEYS = [
   'vx-question-bank-published-questions',
@@ -81,6 +82,60 @@ const readSelectedPracticeCard = () => {
     return parsed && typeof parsed === 'object' ? hydratePracticeCard(parsed) : null
   } catch {
     return null
+  }
+}
+
+const writePracticeSessionStatus = (card = {}, sessionId = '', status = '') => {
+  if (typeof window === 'undefined' || !card || !sessionId || !status) return
+
+  const matchesCard = (item = {}) => (
+    String(item?.id ?? '') === String(card?.id ?? '')
+    || String(item?.competencyCode ?? '') === String(card?.competencyCode ?? '')
+  )
+  const updateCard = (item = {}) => {
+    const sessions = Array.isArray(item.practiceSessions) ? item.practiceSessions : []
+    const nextSessions = sessions.map((session) => (
+      String(session?.id ?? '') === String(sessionId) ? { ...session, status } : session
+    ))
+    const didUpdateSession = nextSessions.some((session, index) => session !== sessions[index])
+
+    if (!didUpdateSession && String(`${item.id ?? item.competencyCode}-practice-1`) !== String(sessionId)) {
+      return item
+    }
+
+    return {
+      ...item,
+      status,
+      practiceSessions: didUpdateSession ? nextSessions : sessions,
+    }
+  }
+
+  try {
+    const selectedCard = JSON.parse(window.sessionStorage.getItem(START_PRACTICE_SELECTED_CARD_KEY) ?? 'null')
+    if (selectedCard && typeof selectedCard === 'object' && matchesCard(selectedCard)) {
+      window.sessionStorage.setItem(START_PRACTICE_SELECTED_CARD_KEY, JSON.stringify(updateCard(selectedCard)))
+    }
+  } catch {
+    // Keep the in-page status update even if session storage is malformed.
+  }
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LEARN_PRACTICE_SHARED_CARDS_KEY) ?? '[]')
+    if (!Array.isArray(parsed)) return
+
+    let didUpdate = false
+    const nextCards = parsed.map((item) => {
+      if (!matchesCard(item)) return item
+      didUpdate = true
+      return updateCard(item)
+    })
+
+    if (didUpdate) {
+      window.localStorage.setItem(LEARN_PRACTICE_SHARED_CARDS_KEY, JSON.stringify(nextCards))
+      window.dispatchEvent(new Event('learn-practice-shared-cards'))
+    }
+  } catch {
+    // Ignore malformed shared-card storage; local UI state remains correct.
   }
 }
 
@@ -626,6 +681,32 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   }, [showSubmitConfirm])
 
   useEffect(() => {
+    const expiredRows = practiceRows.filter((row) => (
+      row.type === 'Scheduled'
+      && row.countdown === '00:00:00'
+      && row.status !== 'Completed'
+      && row.status !== 'Expired'
+    ))
+
+    if (!expiredRows.length) return
+
+    expiredRows.forEach((row) => writePracticeSessionStatus(selectedCard, row.id, 'Expired'))
+    setSessionStatuses((current) => {
+      let changed = false
+      const next = { ...current }
+
+      expiredRows.forEach((row) => {
+        if (current[row.id] !== 'Completed' && current[row.id] !== 'Expired') {
+          next[row.id] = 'Expired'
+          changed = true
+        }
+      })
+
+      return changed ? next : current
+    })
+  }, [practiceRows, selectedCard])
+
+  useEffect(() => {
     if (!isEvaluatingPractice || !evaluationStartedAt) return undefined
 
     const updateProgress = () => {
@@ -638,6 +719,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
         setIsPracticeSubmitted(true)
         setEvaluationStartedAt(0)
         if (activeSessionTimeoutKey) {
+          writePracticeSessionStatus(selectedCard, activeSessionTimeoutKey, 'Completed')
           setSessionStatuses((current) => ({ ...current, [activeSessionTimeoutKey]: 'Completed' }))
         }
       }
@@ -646,7 +728,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     updateProgress()
     const timer = window.setInterval(updateProgress, 500)
     return () => window.clearInterval(timer)
-  }, [activeSessionTimeoutKey, evaluationStartedAt, isEvaluatingPractice])
+  }, [activeSessionTimeoutKey, evaluationStartedAt, isEvaluatingPractice, selectedCard])
 
   useEffect(() => {
     if (
@@ -684,11 +766,12 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
       setEvaluationStartedAt(0)
       setIsEvaluatingPractice(false)
       setIsPracticeSubmitted(true)
+      writePracticeSessionStatus(selectedCard, activeSessionTimeoutKey, 'Expired')
       setSessionStatuses((current) => ({ ...current, [activeSessionTimeoutKey]: 'Expired' }))
     }, PRACTICE_TIMEOUT_NOTICE_MS)
 
     return () => window.clearTimeout(revealTimer)
-  }, [activeSessionTimeoutKey, showTimeCompletedNotice])
+  }, [activeSessionTimeoutKey, selectedCard, showTimeCompletedNotice])
 
   if (!selectedCard) {
     return (

@@ -51,6 +51,33 @@
   transform: translateY(-2px);
 }
 
+.assessment-page.learn-practice-page .learn-practice-card.is-in-progress {
+  animation: learnPracticeCardPulse 1.9s ease-in-out infinite;
+}
+
+@keyframes learnPracticeCardPulse {
+  0%,
+  100% {
+    border-color: #f6c678;
+    background:
+      linear-gradient(180deg, rgba(255, 247, 237, 0.36) 0%, rgba(255, 255, 255, 0) 46%),
+      #ffffff;
+  }
+
+  50% {
+    border-color: #f59e0b;
+    background:
+      linear-gradient(180deg, rgba(255, 237, 213, 0.72) 0%, rgba(255, 255, 255, 0) 46%),
+      #ffffff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assessment-page.learn-practice-page .learn-practice-card.is-in-progress {
+    animation: none;
+  }
+}
+
 .assessment-page.learn-practice-page .learn-practice-card .assessment-create-published-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -150,6 +177,45 @@
   transform: translateY(0);
 }
 
+.assessment-page.learn-practice-page .learn-practice-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  max-width: 98px;
+  padding: 0 9px;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.assessment-page.learn-practice-page .learn-practice-status-badge.is-complete {
+  border-color: #8debcf;
+  background: #dffaf1;
+  color: #006f66;
+}
+
+.theme-dark .assessment-page.learn-practice-page .learn-practice-status-badge,
+[data-theme="dark"] .assessment-page.learn-practice-page .learn-practice-status-badge,
+[data-theme="oled"] .assessment-page.learn-practice-page .learn-practice-status-badge {
+  border-color: rgba(251, 146, 60, 0.42);
+  background: rgba(249, 115, 22, 0.16);
+  color: #fdba74;
+}
+
+.theme-dark .assessment-page.learn-practice-page .learn-practice-status-badge.is-complete,
+[data-theme="dark"] .assessment-page.learn-practice-page .learn-practice-status-badge.is-complete,
+[data-theme="oled"] .assessment-page.learn-practice-page .learn-practice-status-badge.is-complete {
+  border-color: rgba(95, 232, 210, 0.5);
+  background: rgba(20, 184, 166, 0.18);
+  color: #8ff7e6;
+}
+
 .assessment-page.learn-practice-page .learn-practice-question-mix {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -160,6 +226,7 @@
 }
 
 .assessment-page.learn-practice-page .learn-practice-question-mix span {
+  position: relative;
   display: grid;
   align-content: center;
   gap: 4px;
@@ -170,6 +237,26 @@
   border-radius: 8px;
   padding: 6px 5px;
   background: #f7fffc;
+}
+
+.assessment-page.learn-practice-page .learn-practice-notification-badge {
+  position: absolute;
+  top: -9px;
+  right: -7px;
+  display: inline-grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #ef1f2f;
+  color: #ffffff;
+  font-size: 0.64rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 4px 10px rgba(239, 31, 47, 0.26);
+  pointer-events: none;
 }
 
 .assessment-page.learn-practice-page .learn-practice-question-mix strong {
@@ -185,12 +272,6 @@
   font-style: normal;
   font-weight: 900;
   line-height: 1.1;
-}
-
-.assessment-page.learn-practice-page .assessment-create-published-supervision.is-practice {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #c2410c;
 }
 
 .assessment-page.learn-practice-page .learn-practice-footer {
