@@ -424,11 +424,11 @@
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   align-content: stretch;
-  min-height: calc(100vh - 184px);
-  min-height: calc(100dvh - 184px);
+  min-height: calc(100vh - 176px);
+  min-height: calc(100dvh - 176px);
   min-width: 0;
   overflow: hidden;
-  padding: 14px 16px 16px;
+  padding: 12px 16px 12px;
 }
 
 .start-practice-session-filters {
@@ -494,7 +494,7 @@
 .start-practice-session-grid {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 6px;
   position: relative;
 }
 
@@ -515,11 +515,11 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  min-height: 34px;
+  min-height: 30px;
   border: 0;
   border-bottom: 1px solid #d8e6df;
   border-radius: 0;
-  padding: 0 14px 8px;
+  padding: 0 14px 6px;
   background: rgba(255, 255, 255, 0.98);
   color: #567369;
 }
@@ -541,10 +541,10 @@
 }
 
 .start-practice-session-row {
-  min-height: 78px;
+  min-height: 70px;
   border: 1px solid #d8e6df;
   border-radius: 14px;
-  padding: 13px 10px;
+  padding: 9px 10px;
   background: #ffffff;
   color: #163229;
   cursor: pointer;
@@ -574,7 +574,7 @@
 .start-practice-session-detail {
   display: grid;
   align-content: center;
-  gap: 7px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -703,12 +703,12 @@
   grid-template-columns: 1fr;
   align-items: center;
   justify-items: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
-  min-height: 46px;
+  min-height: 40px;
   border: 1px solid #9ffef3;
   border-radius: 10px;
-  padding: 6px 8px;
+  padding: 5px 8px;
   background: #f7fffc;
 }
 
@@ -933,9 +933,9 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 8px;
   border-top: 1px solid #d8e6df;
-  padding: 10px 4px 0;
+  padding: 8px 4px 0;
 }
 
 .start-practice-session-footer span {
@@ -951,7 +951,7 @@
   justify-content: center;
   gap: 6px;
   min-width: 104px;
-  min-height: 34px;
+  min-height: 32px;
   border: 1px solid #cbe8df;
   border-radius: 12px;
   background: #ffffff;
