@@ -631,6 +631,18 @@
   font-weight: 750;
 }
 
+.start-practice-status.is-completed {
+  border-color: #8debcf;
+  background: #dffaf1;
+  color: #006f66;
+}
+
+.start-practice-status.is-expired {
+  border-color: #ffb4b4;
+  background: #fff1f1;
+  color: #e11d48;
+}
+
 .start-practice-session-row > span:nth-child(4) {
   display: flex;
   justify-content: center;
@@ -976,11 +988,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 34px;
+  min-height: 42px;
   border: 1px solid #d8e6df;
   border-left: 4px solid #c9d8d3;
   border-radius: 10px;
-  padding: 0 10px;
+  padding: 6px 12px;
   background: #f5f8f7;
   color: #002f3b;
 }
@@ -1832,65 +1844,127 @@
   cursor: wait;
 }
 
-.start-practice-evaluation-modal {
-  gap: 14px;
+.start-practice-confirm-backdrop.is-time-completed {
+  background: rgba(2, 21, 27, 0.62);
 }
 
-.start-practice-evaluation-modal > em {
-  justify-self: end;
-  color: #00756b;
-  font-style: normal;
-  font-family: var(--f-code, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 0.92rem;
-  font-weight: 950;
+.start-practice-time-modal {
+  width: min(380px, 100%);
+  place-items: center;
+  gap: 10px;
+  border-color: #ffb182;
+  border-radius: 18px;
+  padding: 22px 24px;
+  background:
+    radial-gradient(circle at top, rgba(255, 177, 130, 0.2), transparent 58%),
+    #fffaf6;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(2, 21, 27, 0.2);
 }
 
-.start-practice-evaluation-meter {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #dbe9e5;
-}
-
-.start-practice-evaluation-meter span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #00a99a, #5fe8b1);
-  transition: width var(--dur-control, 220ms) var(--ease-standard, ease);
-}
-
-.start-practice-evaluation-steps {
+.start-practice-time-modal > span {
   display: grid;
-  gap: 7px;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border: 1px solid #ff8a4d;
+  border-radius: 16px;
+  background: #fff2ea;
+  color: #e84d16;
 }
 
-.start-practice-evaluation-steps span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #789089;
-  font-size: 0.76rem;
-  font-weight: 800;
+.start-practice-time-modal > strong {
+  font-size: 1.08rem;
 }
 
-.start-practice-evaluation-steps span::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border: 1px solid #b9d9d0;
+.start-practice-time-modal > p {
+  max-width: 290px;
+  text-align: center;
+}
+
+.start-practice-evaluation-modal {
+  width: min(300px, 100%);
+  min-height: 240px;
+  place-items: center;
+  gap: 10px;
+  border-color: #9be7d1;
+  border-radius: 20px;
+  padding: 24px 22px;
+  background:
+    radial-gradient(circle at top, rgba(95, 232, 177, 0.22), transparent 58%),
+    #f7fffc;
+  box-shadow: 0 22px 56px rgba(2, 21, 27, 0.18);
+  text-align: center;
+}
+
+.start-practice-evaluation-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
   border-radius: 999px;
-  background: #ffffff;
+  background:
+    conic-gradient(#00a99a var(--evaluation-progress, 0deg), #d8e6df 0deg),
+    #dffaf1;
+  color: #00756b;
+  font-family: var(--f-code, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 1rem;
+  font-weight: 850;
+  animation: start-practice-loader-pulse 1200ms var(--ease-standard, ease) infinite;
 }
 
-.start-practice-evaluation-steps span.is-active {
-  color: #006f66;
+.start-practice-evaluation-ring::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: inherit;
+  background: #f7fffc;
 }
 
-.start-practice-evaluation-steps span.is-active::before {
-  border-color: #00a99a;
-  background: #00a99a;
-  box-shadow: 0 0 0 4px rgba(95, 232, 177, 0.18);
+.start-practice-evaluation-ring span {
+  position: relative;
+  z-index: 1;
+}
+
+.start-practice-evaluation-modal > strong {
+  color: #002f3b;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.start-practice-evaluation-modal > p {
+  margin: 0;
+  color: #58716a;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.start-practice-evaluation-modal > small {
+  display: block;
+  max-width: 220px;
+  color: #00756b;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+@keyframes start-practice-loader-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start-practice-evaluation-ring {
+    animation: none;
+  }
 }
 
 @keyframes start-practice-overlay-in {
@@ -2447,6 +2521,22 @@
   color: #fdba74;
 }
 
+.theme-dark .start-practice-status.is-completed,
+[data-theme="dark"] .start-practice-status.is-completed,
+[data-theme="oled"] .start-practice-status.is-completed {
+  border-color: rgba(95, 232, 210, 0.5);
+  background: rgba(20, 184, 166, 0.18);
+  color: #8ff7e6;
+}
+
+.theme-dark .start-practice-status.is-expired,
+[data-theme="dark"] .start-practice-status.is-expired,
+[data-theme="oled"] .start-practice-status.is-expired {
+  border-color: rgba(248, 113, 113, 0.52);
+  background: rgba(220, 38, 38, 0.16);
+  color: #fca5a5;
+}
+
 .theme-dark .start-practice-row-score,
 [data-theme="dark"] .start-practice-row-score,
 [data-theme="oled"] .start-practice-row-score {
@@ -2830,25 +2920,54 @@
   color: #e7fbf6;
 }
 
-.theme-dark .start-practice-evaluation-meter,
-[data-theme="dark"] .start-practice-evaluation-meter,
-[data-theme="oled"] .start-practice-evaluation-meter {
-  background: rgba(125, 211, 198, 0.16);
+.theme-dark .start-practice-evaluation-modal,
+[data-theme="dark"] .start-practice-evaluation-modal,
+[data-theme="oled"] .start-practice-evaluation-modal {
+  border-color: rgba(95, 232, 210, 0.36);
+  background:
+    radial-gradient(circle at top, rgba(95, 232, 177, 0.16), transparent 58%),
+    #0b1d2d;
 }
 
-.theme-dark .start-practice-evaluation-modal > em,
-.theme-dark .start-practice-evaluation-steps span.is-active,
-[data-theme="dark"] .start-practice-evaluation-modal > em,
-[data-theme="dark"] .start-practice-evaluation-steps span.is-active,
-[data-theme="oled"] .start-practice-evaluation-modal > em,
-[data-theme="oled"] .start-practice-evaluation-steps span.is-active {
-  color: #8ff7e6;
+.theme-dark .start-practice-time-modal,
+[data-theme="dark"] .start-practice-time-modal,
+[data-theme="oled"] .start-practice-time-modal {
+  border-color: rgba(251, 146, 60, 0.48);
+  background:
+    radial-gradient(circle at top, rgba(251, 146, 60, 0.16), transparent 58%),
+    #0b1d2d;
 }
 
-.theme-dark .start-practice-evaluation-steps span,
-[data-theme="dark"] .start-practice-evaluation-steps span,
-[data-theme="oled"] .start-practice-evaluation-steps span {
+.theme-dark .start-practice-time-modal > span,
+[data-theme="dark"] .start-practice-time-modal > span,
+[data-theme="oled"] .start-practice-time-modal > span {
+  border-color: rgba(251, 146, 60, 0.5);
+  background: rgba(251, 146, 60, 0.14);
+  color: #fdba74;
+}
+
+.theme-dark .start-practice-evaluation-ring::before,
+[data-theme="dark"] .start-practice-evaluation-ring::before,
+[data-theme="oled"] .start-practice-evaluation-ring::before {
+  background: #0b1d2d;
+}
+
+.theme-dark .start-practice-evaluation-modal > strong,
+[data-theme="dark"] .start-practice-evaluation-modal > strong,
+[data-theme="oled"] .start-practice-evaluation-modal > strong {
+  color: #e7fbf6;
+}
+
+.theme-dark .start-practice-evaluation-modal > p,
+[data-theme="dark"] .start-practice-evaluation-modal > p,
+[data-theme="oled"] .start-practice-evaluation-modal > p {
   color: #a7c5bd;
+}
+
+.theme-dark .start-practice-evaluation-modal > small,
+[data-theme="dark"] .start-practice-evaluation-modal > small,
+[data-theme="oled"] .start-practice-evaluation-modal > small {
+  color: #8ff7e6;
 }
 
 
@@ -3048,6 +3167,18 @@
   border-color: rgba(251, 146, 60, 0.52);
   background: rgba(251, 146, 60, 0.16);
   color: #fdba74;
+}
+
+.theme-dark .start-practice-status.is-completed {
+  border-color: rgba(95, 232, 210, 0.5);
+  background: rgba(20, 184, 166, 0.18);
+  color: #8ff7e6;
+}
+
+.theme-dark .start-practice-status.is-expired {
+  border-color: rgba(248, 113, 113, 0.52);
+  background: rgba(220, 38, 38, 0.16);
+  color: #fca5a5;
 }
 
 .theme-dark .start-practice-row-score {

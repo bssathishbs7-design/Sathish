@@ -5,7 +5,8 @@ import { APP_PAGES } from '../config/appPages'
 import './StartPracticePage.css'
 
 const START_PRACTICE_SELECTED_CARD_KEY = 'vx-start-practice-selected-card'
-const PRACTICE_EVALUATION_DURATION_MS = 20000
+const PRACTICE_EVALUATION_DURATION_MS = 10000
+const PRACTICE_TIMEOUT_NOTICE_MS = 2500
 const QUESTION_BANK_STORAGE_KEYS = [
   'vx-question-bank-published-questions',
   'vx-question-bank-uploaded-questions',
@@ -548,11 +549,17 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [mode, setMode] = useState('sessions')
   const [activeIndex, setActiveIndex] = useState(0)
   const [now, setNow] = useState(() => new Date())
-  const practiceRows = useMemo(() => getPracticeRows(selectedCard, now), [selectedCard, now])
+  const [sessionStatuses, setSessionStatuses] = useState({})
+  const practiceRows = useMemo(() => getPracticeRows(selectedCard, now).map((row) => ({
+    ...row,
+    status: sessionStatuses[row.id] || row.status,
+  })), [now, selectedCard, sessionStatuses])
   const [sessionFilter, setSessionFilter] = useState('all')
   const [answers, setAnswers] = useState({})
   const [tryLaterQuestions, setTryLaterQuestions] = useState(() => new Set())
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [timedOutSessionId, setTimedOutSessionId] = useState('')
+  const [showTimeCompletedNotice, setShowTimeCompletedNotice] = useState(false)
   const [isEvaluatingPractice, setIsEvaluatingPractice] = useState(false)
   const [evaluationStartedAt, setEvaluationStartedAt] = useState(0)
   const [evaluationProgress, setEvaluationProgress] = useState(0)
@@ -593,6 +600,9 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     })
   }).length, [answers, questions])
   const competencyName = selectedCard?.competencyName || `Competency ${selectedCard?.competencyCode ?? ''}`
+  const activeSessionTimeoutKey = activeSession?.id ?? ''
+  const activeSessionCountdown = activeSession?.countdown ?? ''
+  const activeSessionType = activeSession?.type ?? ''
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000)
@@ -627,13 +637,58 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
         setIsEvaluatingPractice(false)
         setIsPracticeSubmitted(true)
         setEvaluationStartedAt(0)
+        if (activeSessionTimeoutKey) {
+          setSessionStatuses((current) => ({ ...current, [activeSessionTimeoutKey]: 'Completed' }))
+        }
       }
     }
 
     updateProgress()
     const timer = window.setInterval(updateProgress, 500)
     return () => window.clearInterval(timer)
-  }, [evaluationStartedAt, isEvaluatingPractice])
+  }, [activeSessionTimeoutKey, evaluationStartedAt, isEvaluatingPractice])
+
+  useEffect(() => {
+    if (
+      mode !== 'player'
+      || !activeSessionTimeoutKey
+      || activeSessionType !== 'Scheduled'
+      || activeSessionCountdown !== '00:00:00'
+      || isPracticeSubmitted
+      || isEvaluatingPractice
+      || showTimeCompletedNotice
+      || timedOutSessionId === activeSessionTimeoutKey
+    ) return undefined
+
+    setTimedOutSessionId(activeSessionTimeoutKey)
+    setShowSubmitConfirm(false)
+    setShowTimeCompletedNotice(true)
+    return undefined
+  }, [
+    activeSessionCountdown,
+    activeSessionTimeoutKey,
+    activeSessionType,
+    isEvaluatingPractice,
+    isPracticeSubmitted,
+    mode,
+    showTimeCompletedNotice,
+    timedOutSessionId,
+  ])
+
+  useEffect(() => {
+    if (!showTimeCompletedNotice) return undefined
+
+    const revealTimer = window.setTimeout(() => {
+      setShowTimeCompletedNotice(false)
+      setEvaluationProgress(100)
+      setEvaluationStartedAt(0)
+      setIsEvaluatingPractice(false)
+      setIsPracticeSubmitted(true)
+      setSessionStatuses((current) => ({ ...current, [activeSessionTimeoutKey]: 'Expired' }))
+    }, PRACTICE_TIMEOUT_NOTICE_MS)
+
+    return () => window.clearTimeout(revealTimer)
+  }, [activeSessionTimeoutKey, showTimeCompletedNotice])
 
   if (!selectedCard) {
     return (
@@ -652,10 +707,12 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   }
 
   const setAnswerValue = (questionKey, value) => {
+    if (isPracticeSubmitted || isEvaluatingPractice || showTimeCompletedNotice) return
     setAnswers((current) => ({ ...current, [questionKey]: value }))
   }
 
   const toggleTryLater = (questionKey) => {
+    if (isPracticeSubmitted || isEvaluatingPractice || showTimeCompletedNotice) return
     setTryLaterQuestions((current) => {
       const next = new Set(current)
       if (next.has(questionKey)) next.delete(questionKey)
@@ -687,6 +744,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     setAnswers({})
     setTryLaterQuestions(new Set())
     setShowSubmitConfirm(false)
+    setShowTimeCompletedNotice(false)
     setIsEvaluatingPractice(false)
     setEvaluationStartedAt(0)
     setEvaluationProgress(0)
@@ -930,7 +988,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
               <button
                 type="button"
                 className={`start-practice-summary-try-later ${tryLaterQuestions.has(getQuestionKey(questions[activeIndex], activeIndex)) ? 'is-marked' : ''}`}
-                disabled={isPracticeSubmitted || isEvaluatingPractice}
+                disabled={isPracticeSubmitted || isEvaluatingPractice || showTimeCompletedNotice}
                 onClick={() => toggleTryLater(getQuestionKey(questions[activeIndex], activeIndex))}
               >
                 Try Later
@@ -938,7 +996,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
               <button
                 type="button"
                 className={`start-practice-submit-btn ${isPracticeSubmitted ? 'is-reset' : ''}`}
-                disabled={!isPracticeSubmitted && (answeredCount < questions.length || isEvaluatingPractice)}
+                disabled={!isPracticeSubmitted && (answeredCount < questions.length || isEvaluatingPractice || showTimeCompletedNotice)}
                 onClick={() => {
                   if (isPracticeSubmitted) {
                     resetPracticeAttempt()
@@ -997,6 +1055,26 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
             Yes
           </button>
         </div>
+      </div>
+    </div>
+  ) : null
+
+  const timeCompletedDialog = showTimeCompletedNotice ? (
+    <div className="start-practice-confirm-backdrop is-time-completed" role="presentation">
+      <div
+        className="start-practice-confirm-modal start-practice-time-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="start-practice-time-title"
+        aria-describedby="start-practice-time-copy"
+      >
+        <span aria-hidden="true">
+          <Timer size={24} strokeWidth={2.2} />
+        </span>
+        <strong id="start-practice-time-title">Time completed</strong>
+        <p id="start-practice-time-copy">
+          Your scheduled practice time is over. Answers will now be evaluated and revealed.
+        </p>
       </div>
     </div>
   ) : null
@@ -1096,7 +1174,11 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                     <span><strong>{row.laqs}</strong><em>LAQs</em></span>
                     <span><strong>{row.saqs}</strong><em>SAQs</em></span>
                   </span>
-                  <span role="cell"><span className="start-practice-status">{row.status}</span></span>
+                  <span role="cell">
+                    <span className={`start-practice-status is-${String(row.status).toLowerCase().replace(/\s+/g, '-')}`}>
+                      {row.status}
+                    </span>
+                  </span>
                   <span className="start-practice-session-action" role="cell">
                     <button type="button" className="start-practice-row-score" disabled>
                       <Trophy size={13} strokeWidth={2.3} />
@@ -1108,6 +1190,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                       setAnswers({})
                       setTryLaterQuestions(new Set())
                       setShowSubmitConfirm(false)
+                      setShowTimeCompletedNotice(false)
                       setIsEvaluatingPractice(false)
                       setEvaluationStartedAt(0)
                       setEvaluationProgress(0)
@@ -1130,6 +1213,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
       </div>
 
       {submitConfirmationDialog ? createPortal(submitConfirmationDialog, document.body) : null}
+      {timeCompletedDialog ? createPortal(timeCompletedDialog, document.body) : null}
       {isEvaluatingPractice ? createPortal((
         <div className="start-practice-confirm-backdrop is-evaluating" role="presentation">
           <div
@@ -1137,18 +1221,20 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="start-practice-evaluation-title"
+            aria-describedby="start-practice-evaluation-message"
           >
-            <strong id="start-practice-evaluation-title">Evaluating Practice</strong>
-            <p>Checking answers and preparing feedback.</p>
-            <div className="start-practice-evaluation-meter" aria-label={`Evaluation ${evaluationProgress}% complete`}>
-              <span style={{ width: `${evaluationProgress}%` }} />
+            <div
+              className="start-practice-evaluation-ring"
+              style={{ '--evaluation-progress': `${evaluationProgress * 3.6}deg` }}
+              aria-label={`Evaluation ${evaluationProgress}% complete`}
+            >
+              <span>{evaluationProgress}%</span>
             </div>
-            <div className="start-practice-evaluation-steps">
-              <span className={evaluationProgress >= 10 ? 'is-active' : ''}>Checking answers</span>
-              <span className={evaluationProgress >= 45 ? 'is-active' : ''}>Comparing with answer key</span>
-              <span className={evaluationProgress >= 75 ? 'is-active' : ''}>Preparing feedback</span>
-            </div>
-            <em>{evaluationProgress}%</em>
+            <strong id="start-practice-evaluation-title">Evaluating practice</strong>
+            <p>Checking your answers and preparing feedback.</p>
+            <small id="start-practice-evaluation-message">
+              Please wait. Do not close or refresh this page.
+            </small>
           </div>
         </div>
       ), document.body) : null}
