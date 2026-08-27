@@ -315,17 +315,17 @@ function LearnPracticePage({ onNavigate }) {
                       <div className="learn-practice-question-mix" aria-label={`${card.competencyCode} question type counts`}>
                         <span>
                           {pendingCounts.mcq > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.mcq}</b> : null}
-                          <strong>{card.mcq || 0}</strong>
+                          <strong>{card.mcq ? card.mcq : '-'}</strong>
                           <em>MCQ</em>
                         </span>
                         <span>
                           {pendingCounts.saqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.saqs}</b> : null}
-                          <strong>{card.saqs || 0}</strong>
+                          <strong>{card.saqs ? card.saqs : '-'}</strong>
                           <em>SAQs</em>
                         </span>
                         <span>
                           {pendingCounts.laqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.laqs}</b> : null}
-                          <strong>{card.laqs || 0}</strong>
+                          <strong>{card.laqs ? card.laqs : '-'}</strong>
                           <em>LAQs</em>
                         </span>
                       </div>

@@ -892,7 +892,7 @@ const isUsedInAssessmentQuestion = (question) => Boolean(
   || (Array.isArray(question?.assessmentNames) && question.assessmentNames.length)
 )
 
-const updateQuestionFavoriteInStorage = (questionId, isFavorite) => {
+const updateQuestionFavoriteInStorage = (questionId, isFavorite, sourceQuestion = null) => {
   if (typeof window === 'undefined' || !questionId) return
 
   QUESTION_BANK_FAVORITE_STORAGE_KEYS.forEach((storageKey) => {
@@ -913,6 +913,16 @@ const updateQuestionFavoriteInStorage = (questionId, isFavorite) => {
 
       if (didUpdate) {
         window.localStorage.setItem(storageKey, JSON.stringify(nextQuestions))
+      } else if (storageKey === QUESTION_BANK_UPLOADED_KEY && isMedsyQuestion(sourceQuestion)) {
+        window.localStorage.setItem(storageKey, JSON.stringify([
+          ...parsed,
+          {
+            id: questionId,
+            authorName: 'Medsy',
+            isFavorite,
+            isFavourite: undefined,
+          },
+        ]))
       }
     } catch {
       // Ignore malformed local storage entries and keep the in-memory UI responsive.
@@ -3044,7 +3054,7 @@ export default function QuestionBankNonCreatePage({
         ? { ...item, isFavorite: nextFavoriteState, isFavourite: undefined }
         : item
     )))
-    updateQuestionFavoriteInStorage(questionId, nextFavoriteState)
+    updateQuestionFavoriteInStorage(questionId, nextFavoriteState, question)
   }
 
   const toggleQuestionInstitute = (questionId) => {
