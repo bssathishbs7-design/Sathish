@@ -207,7 +207,30 @@
     border-color var(--dur-hover, 160ms) var(--ease-standard, ease),
     background-color var(--dur-hover, 160ms) var(--ease-standard, ease),
     color var(--dur-hover, 160ms) var(--ease-standard, ease);
+}
+
+.start-practice-title-progress.has-live-count {
   animation: start-practice-progress-alert 1.5s ease-in-out infinite;
+}
+
+.start-practice-title-progress.is-empty {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #e11d48;
+  box-shadow: none;
+}
+
+.start-practice-title-progress.is-empty span {
+  background: #ffe4e6;
+  color: #e11d48;
+}
+
+.start-practice-title-progress.is-empty:hover,
+.start-practice-title-progress.is-empty:focus-visible,
+.start-practice-title-progress.is-empty.is-active {
+  border-color: #fda4af;
+  background: #ffe4e6;
+  color: #be123c;
 }
 
 .start-practice-title-progress span {

@@ -1745,7 +1745,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
               </div>
               <button
                 type="button"
-                className={`start-practice-title-progress ${sessionFilter === 'in-progress' ? 'is-active' : ''}`}
+                className={`start-practice-title-progress ${sessionFilter === 'in-progress' ? 'is-active' : ''} ${sessionFilterCounts.inProgress > 0 ? 'has-live-count' : 'is-empty'}`}
                 onClick={() => setSessionFilter('in-progress')}
               >
                 Live Practice

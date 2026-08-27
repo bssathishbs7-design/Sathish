@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Info, Play, Search, Trash2, X } from 'lucide-react'
+import { BookOpenCheck, Info, Play, Search, Trash2, X } from 'lucide-react'
 import { corelationRatingRows } from './corelationRatingData'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -183,7 +183,7 @@ function LearnPracticePage({ onNavigate }) {
 
   const hasSearch = Boolean(query.trim())
   const filterOptions = [
-    { key: 'in-progress', label: 'In Progress', count: practiceStatusCounts.inProgress },
+    { key: 'in-progress', label: 'Live Practice', count: practiceStatusCounts.inProgress },
     { key: 'completed', label: 'Completed', count: practiceStatusCounts.completed },
     { key: 'all', label: 'All Practice', count: practiceStatusCounts.all },
   ]
@@ -218,25 +218,44 @@ function LearnPracticePage({ onNavigate }) {
         <section className="assessment-create-draft-shell assessment-create-published-shell my-assessment-published-shell learn-practice-shell" aria-label="Learn and practice shared cards">
           <>
             <div className="assessment-create-card-heading learn-practice-title-row">
-              <h2>Shared Practice</h2>
+              <h2>
+                <span className="learn-practice-title-icon" aria-hidden="true">
+                  <BookOpenCheck size={17} strokeWidth={2.2} />
+                </span>
+                Shared Practice
+              </h2>
+              {practiceCards.length ? (
+                <button
+                  type="button"
+                  className="learn-practice-delete-btn learn-practice-delete-all-btn"
+                  onClick={deleteAllPracticeCards}
+                  aria-label="Delete all shared practice cards"
+                >
+                  <Trash2 size={14} strokeWidth={2.3} />
+                </button>
+              ) : null}
             </div>
-            {practiceCards.length ? (
-              <div className="learn-practice-filter-bar" aria-label="Shared practice filters">
-                <div className="learn-practice-filter-group" role="group" aria-label="Filter practice cards by status">
-                  {filterOptions.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      className={`learn-practice-filter-btn ${statusFilter === option.key ? 'is-active' : ''}`}
-                      onClick={() => setStatusFilter(option.key)}
-                      aria-pressed={statusFilter === option.key}
-                    >
-                      {option.label}
-                      <span>{option.count}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="assessment-create-published-toolbar my-assessment-toolbar learn-practice-toolbar">
+            <div className="learn-practice-filter-bar" aria-label="Shared practice filters">
+              <div className="learn-practice-filter-group" role="group" aria-label="Filter practice cards by status">
+                {filterOptions.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={[
+                      'learn-practice-filter-btn',
+                      option.key === 'in-progress' ? 'is-live-practice' : '',
+                      option.key === 'in-progress' && option.count > 0 ? 'has-live-count' : '',
+                      statusFilter === option.key ? 'is-active' : '',
+                    ].filter(Boolean).join(' ')}
+                    onClick={() => setStatusFilter(option.key)}
+                    aria-pressed={statusFilter === option.key}
+                  >
+                    {option.label}
+                    <span>{option.count}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="assessment-create-published-toolbar my-assessment-toolbar learn-practice-toolbar">
                 <label className="assessment-create-published-search">
                   <Search size={15} strokeWidth={2.2} aria-hidden="true" />
                   <input
@@ -252,9 +271,8 @@ function LearnPracticePage({ onNavigate }) {
                     Clear
                   </button>
                 ) : null}
-                </div>
               </div>
-            ) : null}
+            </div>
           </>
 
           {practiceCards.length ? (
@@ -326,23 +344,8 @@ function LearnPracticePage({ onNavigate }) {
                   </div>
                 )}
               </div>
-              <div className="learn-practice-bottom-actions">
-                <button
-                  type="button"
-                  className="learn-practice-delete-btn learn-practice-delete-all-btn"
-                  onClick={deleteAllPracticeCards}
-                  aria-label="Delete all shared practice cards"
-                >
-                  <Trash2 size={14} strokeWidth={2.3} />
-                </button>
-              </div>
             </>
-          ) : (
-            <div className="assessment-create-placeholder my-assessment-empty-state learn-practice-empty">
-              <span aria-hidden="true"><CheckCircle2 size={24} strokeWidth={2.2} /></span>
-              <p>No shared practice cards yet.</p>
-            </div>
-          )}
+          ) : null}
         </section>
       </div>
     </section>
