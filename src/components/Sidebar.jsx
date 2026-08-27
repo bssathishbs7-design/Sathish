@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CornerDownRight, ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandLogoDark from '../assets/brand-logo-dark.svg'
@@ -50,6 +51,7 @@ export default function Sidebar({
     page: activePage,
     label: getActiveGroupLabel(activePage),
   }))
+  const [sidebarTooltip, setSidebarTooltip] = useState(null)
   const openGroupLabel = openGroupSelection.page === activePage
     ? openGroupSelection.label
     : getActiveGroupLabel(activePage)
@@ -72,9 +74,29 @@ export default function Sidebar({
   )
   const formatNotificationCount = (count) => (count > 9 ? '9+' : String(count))
   const handleSelectSidebarPage = (page) => {
+    setSidebarTooltip(null)
     setOpenGroupLabel(getActiveGroupLabel(page))
     onSelectPage(page)
   }
+  const showCollapsedTooltip = (event, label) => {
+    if (!useCollapsedFlyout || !label) return
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const tooltipHeight = 36
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+    const top = Math.min(
+      Math.max(12, rect.top + rect.height / 2 - tooltipHeight / 2),
+      Math.max(12, viewportHeight - tooltipHeight - 12),
+    )
+
+    setSidebarTooltip({
+      label,
+      left: rect.right + 10,
+      top,
+      arrowTop: rect.top + rect.height / 2 - top,
+    })
+  }
+  const hideCollapsedTooltip = () => setSidebarTooltip(null)
 
   useEffect(() => {
     if (!useCollapsedFlyout || !openGroupLabel) return undefined
@@ -89,6 +111,30 @@ export default function Sidebar({
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [activePage, openGroupLabel, useCollapsedFlyout])
+
+  useEffect(() => {
+    if (!sidebarTooltip) return undefined
+
+    const handleDismiss = (event) => {
+      if (event.key === 'Escape') {
+        setSidebarTooltip(null)
+      }
+    }
+
+    window.addEventListener('scroll', hideCollapsedTooltip, true)
+    window.addEventListener('resize', hideCollapsedTooltip)
+    document.addEventListener('keydown', handleDismiss)
+
+    return () => {
+      window.removeEventListener('scroll', hideCollapsedTooltip, true)
+      window.removeEventListener('resize', hideCollapsedTooltip)
+      document.removeEventListener('keydown', handleDismiss)
+    }
+  }, [sidebarTooltip])
+
+  useEffect(() => {
+    setSidebarTooltip(null)
+  }, [activePage, sidebarCollapsed, mobileSidebarOpen])
 
   return (
     <aside className={`vx-sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
@@ -127,6 +173,10 @@ export default function Sidebar({
                     type="button"
                     className={`vx-link vx-link-parent ${activeGroupMap[item.label] ? 'active' : ''} ${openGroupLabel === item.label ? 'is-open' : ''}`}
                     onClick={() => setOpenGroupLabel((current) => (current === item.label ? null : item.label))}
+                    onMouseEnter={(event) => showCollapsedTooltip(event, item.navLabel ?? item.label)}
+                    onMouseLeave={hideCollapsedTooltip}
+                    onFocus={(event) => showCollapsedTooltip(event, item.navLabel ?? item.label)}
+                    onBlur={hideCollapsedTooltip}
                     aria-expanded={openGroupLabel === item.label}
                   >
                     <span className="vx-link-icon" aria-hidden="true">
@@ -145,6 +195,10 @@ export default function Sidebar({
                         type="button"
                         className={`vx-sublink ${(child.page ?? child.label) === activePage ? 'active' : ''}`}
                         onClick={() => handleSelectSidebarPage(child.page ?? child.label)}
+                        onMouseEnter={(event) => showCollapsedTooltip(event, child.navLabel ?? child.label)}
+                        onMouseLeave={hideCollapsedTooltip}
+                        onFocus={(event) => showCollapsedTooltip(event, child.navLabel ?? child.label)}
+                        onBlur={hideCollapsedTooltip}
                       >
                         <span className="vx-sublink-arrow" aria-hidden="true">
                           <CornerDownRight size={15} strokeWidth={2.4} />
@@ -152,17 +206,17 @@ export default function Sidebar({
                         <span className="vx-sublink-icon" aria-hidden="true">
                           <child.icon size={14} strokeWidth={2} />
                         </span>
-                      <span className={useCollapsedFlyout ? 'vx-sublink-text' : 'vx-link-text'}>
-                        {child.navLabel ?? child.label}
-                      </span>
-                      {getNotificationCount(child.page ?? child.label) ? (
-                        <span className="vx-link-badge" aria-label={`${getNotificationCount(child.page ?? child.label)} notifications`}>
-                          {formatNotificationCount(getNotificationCount(child.page ?? child.label))}
+                        <span className={useCollapsedFlyout ? 'vx-sublink-text' : 'vx-link-text'}>
+                          {child.navLabel ?? child.label}
                         </span>
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
+                        {getNotificationCount(child.page ?? child.label) ? (
+                          <span className="vx-link-badge" aria-label={`${getNotificationCount(child.page ?? child.label)} notifications`}>
+                            {formatNotificationCount(getNotificationCount(child.page ?? child.label))}
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <button
@@ -170,6 +224,10 @@ export default function Sidebar({
                   type="button"
                   className={`vx-link ${item.label === activePage ? 'active' : ''}`}
                   onClick={() => handleSelectSidebarPage(item.label)}
+                  onMouseEnter={(event) => showCollapsedTooltip(event, item.navLabel ?? item.label)}
+                  onMouseLeave={hideCollapsedTooltip}
+                  onFocus={(event) => showCollapsedTooltip(event, item.navLabel ?? item.label)}
+                  onBlur={hideCollapsedTooltip}
                 >
                   <span className="vx-link-icon" aria-hidden="true">
                     <item.icon size={16} strokeWidth={2} />
@@ -186,6 +244,20 @@ export default function Sidebar({
           </div>
         ))}
       </div>
+      {sidebarTooltip && createPortal(
+        <div
+          className="vx-sidebar-tooltip"
+          role="tooltip"
+          style={{
+            left: `${sidebarTooltip.left}px`,
+            top: `${sidebarTooltip.top}px`,
+            '--vx-sidebar-tooltip-arrow-top': `${sidebarTooltip.arrowTop}px`,
+          }}
+        >
+          {sidebarTooltip.label}
+        </div>,
+        document.body,
+      )}
     </aside>
   )
 }

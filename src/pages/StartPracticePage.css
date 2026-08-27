@@ -488,6 +488,7 @@
 
 .start-practice-session-grid {
   display: grid;
+  grid-auto-rows: auto;
   align-content: start;
   gap: 6px;
   position: relative;
@@ -2540,6 +2541,10 @@
 
   .start-practice-title-bar {
     grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .start-practice-session-grid {
+    grid-auto-rows: auto;
   }
 
   .start-practice-session-filters {

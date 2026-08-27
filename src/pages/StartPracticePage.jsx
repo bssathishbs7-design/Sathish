@@ -8,7 +8,22 @@ const START_PRACTICE_SELECTED_CARD_KEY = 'vx-start-practice-selected-card'
 const LEARN_PRACTICE_SHARED_CARDS_KEY = 'vx-learn-practice-shared-cards'
 const PRACTICE_EVALUATION_DURATION_MS = 5000
 const PRACTICE_TIMEOUT_NOTICE_MS = 2500
-const PRACTICE_SESSION_PAGE_SIZE = 5
+const DEFAULT_PRACTICE_SESSION_PAGE_SIZE = 5
+const getPracticeSessionPageSize = () => {
+  if (typeof window === 'undefined') return DEFAULT_PRACTICE_SESSION_PAGE_SIZE
+
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight
+  const viewportWidth = window.visualViewport?.width ?? window.innerWidth
+  const isDesktop = viewportWidth >= 1024
+  const reservedHeight = isDesktop ? 275 : 360
+  const rowHeight = isDesktop ? 76 : 96
+  const minRows = isDesktop ? DEFAULT_PRACTICE_SESSION_PAGE_SIZE : 3
+  const maxRows = isDesktop ? 10 : 6
+  const availableRowSpace = Math.max(0, viewportHeight - reservedHeight)
+  const calculatedRows = Math.floor(availableRowSpace / rowHeight)
+
+  return Math.max(minRows, Math.min(maxRows, calculatedRows || minRows))
+}
 const QUESTION_BANK_STORAGE_KEYS = [
   'vx-question-bank-published-questions',
   'vx-question-bank-uploaded-questions',
@@ -798,6 +813,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [evaluationProgress, setEvaluationProgress] = useState(0)
   const [isPracticeSubmitted, setIsPracticeSubmitted] = useState(false)
   const [sessionPage, setSessionPage] = useState(0)
+  const [sessionPageSize, setSessionPageSize] = useState(() => getPracticeSessionPageSize())
   const visiblePracticeRows = useMemo(() => (
     practiceRows.filter((row) => {
       if (sessionFilter === 'all') return true
@@ -805,12 +821,12 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
       return row.type.toLowerCase() === sessionFilter
     })
   ), [practiceRows, sessionFilter])
-  const sessionPageCount = Math.max(1, Math.ceil(visiblePracticeRows.length / PRACTICE_SESSION_PAGE_SIZE))
+  const sessionPageCount = Math.max(1, Math.ceil(visiblePracticeRows.length / sessionPageSize))
   const currentSessionPage = Math.min(sessionPage, sessionPageCount - 1)
   const paginatedPracticeRows = useMemo(() => {
-    const startIndex = currentSessionPage * PRACTICE_SESSION_PAGE_SIZE
-    return visiblePracticeRows.slice(startIndex, startIndex + PRACTICE_SESSION_PAGE_SIZE)
-  }, [currentSessionPage, visiblePracticeRows])
+    const startIndex = currentSessionPage * sessionPageSize
+    return visiblePracticeRows.slice(startIndex, startIndex + sessionPageSize)
+  }, [currentSessionPage, sessionPageSize, visiblePracticeRows])
   const sessionFilterCounts = useMemo(() => ({
     all: practiceRows.length,
     scheduled: practiceRows.filter((row) => row.type === 'Scheduled').length,
@@ -864,6 +880,19 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   useEffect(() => {
     setSessionPage(0)
   }, [sessionFilter])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const updatePageSize = () => setSessionPageSize(getPracticeSessionPageSize())
+    window.addEventListener('resize', updatePageSize)
+    window.visualViewport?.addEventListener('resize', updatePageSize)
+
+    return () => {
+      window.removeEventListener('resize', updatePageSize)
+      window.visualViewport?.removeEventListener('resize', updatePageSize)
+    }
+  }, [])
 
   useEffect(() => {
     setSessionPage((currentPage) => Math.min(currentPage, sessionPageCount - 1))

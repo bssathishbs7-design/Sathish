@@ -368,6 +368,56 @@
   transform: translateX(2px);
 }
 
+.vx-sidebar-tooltip {
+  position: fixed;
+  z-index: 240;
+  max-width: min(240px, calc(100vw - 112px));
+  padding: 8px 11px;
+  border: 1px solid rgba(95, 232, 177, 0.26);
+  border-radius: 10px;
+  background: #07342f;
+  color: #f2fffb;
+  box-shadow: 0 14px 32px rgba(7, 52, 47, 0.22);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0;
+  pointer-events: none;
+  transform-origin: left center;
+  animation: vx-sidebar-tooltip-in var(--dur-hover, 140ms) var(--ease-standard, ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vx-sidebar-tooltip {
+    animation: none;
+  }
+}
+
+.vx-sidebar-tooltip::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: calc(var(--vx-sidebar-tooltip-arrow-top, 18px) - 5px);
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid rgba(95, 232, 177, 0.26);
+  border-bottom: 1px solid rgba(95, 232, 177, 0.26);
+  background: #07342f;
+  transform: rotate(45deg);
+}
+
+@keyframes vx-sidebar-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
 .vx-link.active {
   color: #0f6844;
   background: linear-gradient(180deg, #effff7, #ddfff0);
