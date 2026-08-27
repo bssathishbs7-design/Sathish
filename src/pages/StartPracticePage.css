@@ -2203,6 +2203,12 @@
   white-space: nowrap;
 }
 
+.start-practice-score-attempt-badge.is-recent {
+  border-color: #ffb86b;
+  background: #fff4e7;
+  color: #c65312;
+}
+
 .start-practice-score-close {
   justify-self: end;
   min-width: 96px;
@@ -3507,6 +3513,14 @@
   border-color: rgba(95, 232, 210, 0.48);
   background: rgba(20, 184, 166, 0.16);
   color: #8ff7e6;
+}
+
+.theme-dark .start-practice-score-attempt-badge.is-recent,
+[data-theme="dark"] .start-practice-score-attempt-badge.is-recent,
+[data-theme="oled"] .start-practice-score-attempt-badge.is-recent {
+  border-color: rgba(251, 146, 60, 0.55);
+  background: rgba(251, 146, 60, 0.18);
+  color: #fed7aa;
 }
 
 .theme-dark .start-practice-confirm-actions .is-secondary,

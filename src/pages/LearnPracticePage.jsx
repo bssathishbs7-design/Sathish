@@ -7,6 +7,7 @@ import './LearnPracticePage.css'
 
 const LEARN_PRACTICE_SHARED_CARDS_KEY = 'vx-learn-practice-shared-cards'
 const START_PRACTICE_SELECTED_CARD_KEY = 'vx-start-practice-selected-card'
+const START_PRACTICE_DEFAULT_FILTER_KEY = 'vx-start-practice-default-filter'
 const QUESTION_BANK_STORAGE_KEYS = [
   'vx-question-bank-published-questions',
   'vx-question-bank-uploaded-questions',
@@ -129,6 +130,7 @@ const clearQuestionShareState = (questionIds = []) => {
 function LearnPracticePage({ onNavigate }) {
   const [practiceCards, setPracticeCards] = useState(() => readSharedPracticeCards())
   const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('in-progress')
 
   useEffect(() => {
     const syncCards = () => setPracticeCards(readSharedPracticeCards())
@@ -142,20 +144,56 @@ function LearnPracticePage({ onNavigate }) {
     }
   }, [])
 
+  const practiceStatusCounts = useMemo(() => practiceCards.reduce((counts, card) => {
+    const status = getPracticeCardStatus(card)
+    if (status === 'Complete') {
+      counts.completed += 1
+    } else {
+      counts.inProgress += 1
+    }
+    counts.all += 1
+    return counts
+  }, { all: 0, inProgress: 0, completed: 0 }), [practiceCards])
+
+  useEffect(() => {
+    if (statusFilter === 'in-progress' && practiceStatusCounts.inProgress === 0) {
+      setStatusFilter('all')
+    }
+  }, [practiceStatusCounts.inProgress, statusFilter])
+
   const filteredCards = useMemo(() => {
     const searchText = query.trim().toLowerCase()
-    if (!searchText) return practiceCards
+    const statusFilteredCards = practiceCards.filter((card) => {
+      const status = getPracticeCardStatus(card)
+      if (statusFilter === 'completed') return status === 'Complete'
+      if (statusFilter === 'in-progress') return status === 'In Progress'
+      return true
+    })
 
-    return practiceCards.filter((card) => (
+    if (!searchText) return statusFilteredCards
+
+    return statusFilteredCards.filter((card) => (
       String(card?.competencyCode ?? '').toLowerCase().includes(searchText)
       || String(card?.competencyName ?? '').toLowerCase().includes(searchText)
+      || String(getCardSubject(card)).toLowerCase().includes(searchText)
+      || String(getCardFirstQuestionValue(card, 'topic')).toLowerCase().includes(searchText)
+      || String(getCardFirstQuestionValue(card, 'topics')).toLowerCase().includes(searchText)
     ))
-  }, [practiceCards, query])
+  }, [practiceCards, query, statusFilter])
 
   const hasSearch = Boolean(query.trim())
+  const filterOptions = [
+    { key: 'in-progress', label: 'In Progress', count: practiceStatusCounts.inProgress },
+    { key: 'completed', label: 'Completed', count: practiceStatusCounts.completed },
+    { key: 'all', label: 'All Practice', count: practiceStatusCounts.all },
+  ]
   const startPractice = (card) => {
     if (typeof window !== 'undefined') {
       window.sessionStorage.setItem(START_PRACTICE_SELECTED_CARD_KEY, JSON.stringify(card))
+      window.sessionStorage.setItem(
+        START_PRACTICE_DEFAULT_FILTER_KEY,
+        getPracticeCardStatus(card) === 'In Progress' ? 'in-progress' : 'all',
+      )
     }
     onNavigate?.(APP_PAGES.START_PRACTICE)
   }
@@ -178,16 +216,33 @@ function LearnPracticePage({ onNavigate }) {
     <section className="vx-content assessment-page is-my-assessment learn-practice-page">
       <div className="assessment-page-shell">
         <section className="assessment-create-draft-shell assessment-create-published-shell my-assessment-published-shell learn-practice-shell" aria-label="Learn and practice shared cards">
-          <div className="assessment-create-card-heading">
-            <h2>Shared Practice</h2>
+          <>
+            <div className="assessment-create-card-heading learn-practice-title-row">
+              <h2>Shared Practice</h2>
+            </div>
             {practiceCards.length ? (
-              <div className="assessment-create-published-toolbar my-assessment-toolbar learn-practice-toolbar">
+              <div className="learn-practice-filter-bar" aria-label="Shared practice filters">
+                <div className="learn-practice-filter-group" role="group" aria-label="Filter practice cards by status">
+                  {filterOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={`learn-practice-filter-btn ${statusFilter === option.key ? 'is-active' : ''}`}
+                      onClick={() => setStatusFilter(option.key)}
+                      aria-pressed={statusFilter === option.key}
+                    >
+                      {option.label}
+                      <span>{option.count}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="assessment-create-published-toolbar my-assessment-toolbar learn-practice-toolbar">
                 <label className="assessment-create-published-search">
                   <Search size={15} strokeWidth={2.2} aria-hidden="true" />
                   <input
                     type="search"
                     value={query}
-                    placeholder="Search competency..."
+                    placeholder="Search Practice..."
                     onChange={(event) => setQuery(event.target.value)}
                   />
                 </label>
@@ -197,6 +252,81 @@ function LearnPracticePage({ onNavigate }) {
                     Clear
                   </button>
                 ) : null}
+                </div>
+              </div>
+            ) : null}
+          </>
+
+          {practiceCards.length ? (
+            <>
+              <div className="assessment-create-draft-grid my-assessment-published-grid learn-practice-card-grid">
+                {filteredCards.length ? filteredCards.map((card) => {
+                  const competencyName = card.competencyName || `Competency ${card.competencyCode}`
+                  const pendingCounts = getPendingPracticeTypeCounts(card)
+                  const cardStatus = getPracticeCardStatus(card)
+
+                  return (
+                    <article
+                      key={card.id ?? card.competencyCode}
+                      className={`assessment-create-draft-card assessment-create-published-card learn-practice-card ${cardStatus === 'In Progress' ? 'is-in-progress' : 'is-complete'}`}
+                    >
+                      <div className="assessment-create-published-head">
+                        <div className="learn-practice-card-title">
+                          <small className="learn-practice-card-context">
+                            {getCardSubject(card)}
+                          </small>
+                          <strong>{competencyName}</strong>
+                        </div>
+                      </div>
+
+                      <span className="assessment-create-published-status-row">
+                        <span
+                          className="assessment-create-published-schedule-badge learn-practice-code-badge"
+                          tabIndex={0}
+                          aria-label={`${card.competencyCode} ${competencyName}`}
+                          data-tooltip={competencyName}
+                        >
+                          {card.competencyCode}
+                          <Info size={11} strokeWidth={2.4} />
+                        </span>
+                        <span className={`learn-practice-status-badge ${cardStatus === 'Complete' ? 'is-complete' : 'is-progress'}`}>
+                          {cardStatus}
+                        </span>
+                      </span>
+
+                      <div className="learn-practice-question-mix" aria-label={`${card.competencyCode} question type counts`}>
+                        <span>
+                          {pendingCounts.mcq > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.mcq}</b> : null}
+                          <strong>{card.mcq || 0}</strong>
+                          <em>MCQ</em>
+                        </span>
+                        <span>
+                          {pendingCounts.saqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.saqs}</b> : null}
+                          <strong>{card.saqs || 0}</strong>
+                          <em>SAQs</em>
+                        </span>
+                        <span>
+                          {pendingCounts.laqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.laqs}</b> : null}
+                          <strong>{card.laqs || 0}</strong>
+                          <em>LAQs</em>
+                        </span>
+                      </div>
+
+                      <div className="assessment-create-draft-footer assessment-create-published-footer learn-practice-footer">
+                        <button type="button" className="my-assessment-card-action is-start" onClick={() => startPractice(card)}>
+                          <Play size={14} strokeWidth={2.3} />
+                          Start Practice
+                        </button>
+                      </div>
+                    </article>
+                  )
+                }) : (
+                  <div className="assessment-create-placeholder my-assessment-empty-state">
+                    <p>No practice cards match your search.</p>
+                  </div>
+                )}
+              </div>
+              <div className="learn-practice-bottom-actions">
                 <button
                   type="button"
                   className="learn-practice-delete-btn learn-practice-delete-all-btn"
@@ -204,80 +334,9 @@ function LearnPracticePage({ onNavigate }) {
                   aria-label="Delete all shared practice cards"
                 >
                   <Trash2 size={14} strokeWidth={2.3} />
-                  Delete
                 </button>
               </div>
-            ) : null}
-          </div>
-
-          {practiceCards.length ? (
-            <div className="assessment-create-draft-grid my-assessment-published-grid learn-practice-card-grid">
-              {filteredCards.length ? filteredCards.map((card) => {
-                const competencyName = card.competencyName || `Competency ${card.competencyCode}`
-                const pendingCounts = getPendingPracticeTypeCounts(card)
-                const cardStatus = getPracticeCardStatus(card)
-
-                return (
-                  <article
-                    key={card.id ?? card.competencyCode}
-                    className={`assessment-create-draft-card assessment-create-published-card learn-practice-card ${cardStatus === 'In Progress' ? 'is-in-progress' : 'is-complete'}`}
-                  >
-                    <div className="assessment-create-published-head">
-                      <div className="learn-practice-card-title">
-                        <small className="learn-practice-card-context">
-                          {getCardSubject(card)}
-                        </small>
-                        <strong>{competencyName}</strong>
-                      </div>
-                    </div>
-
-                    <span className="assessment-create-published-status-row">
-                      <span
-                        className="assessment-create-published-schedule-badge learn-practice-code-badge"
-                        tabIndex={0}
-                        aria-label={`${card.competencyCode} ${competencyName}`}
-                        data-tooltip={competencyName}
-                      >
-                        {card.competencyCode}
-                        <Info size={11} strokeWidth={2.4} />
-                      </span>
-                      <span className={`learn-practice-status-badge ${cardStatus === 'Complete' ? 'is-complete' : 'is-progress'}`}>
-                        {cardStatus}
-                      </span>
-                    </span>
-
-                    <div className="learn-practice-question-mix" aria-label={`${card.competencyCode} question type counts`}>
-                      <span>
-                        {pendingCounts.mcq > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.mcq}</b> : null}
-                        <strong>{card.mcq || 0}</strong>
-                        <em>MCQ</em>
-                      </span>
-                      <span>
-                        {pendingCounts.saqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.saqs}</b> : null}
-                        <strong>{card.saqs || 0}</strong>
-                        <em>SAQs</em>
-                      </span>
-                      <span>
-                        {pendingCounts.laqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.laqs}</b> : null}
-                        <strong>{card.laqs || 0}</strong>
-                        <em>LAQs</em>
-                      </span>
-                    </div>
-
-                    <div className="assessment-create-draft-footer assessment-create-published-footer learn-practice-footer">
-                      <button type="button" className="my-assessment-card-action is-start" onClick={() => startPractice(card)}>
-                        <Play size={14} strokeWidth={2.3} />
-                        Start Practice
-                      </button>
-                    </div>
-                  </article>
-                )
-              }) : (
-                <div className="assessment-create-placeholder my-assessment-empty-state">
-                  <p>No practice cards match your search.</p>
-                </div>
-              )}
-            </div>
+            </>
           ) : (
             <div className="assessment-create-placeholder my-assessment-empty-state learn-practice-empty">
               <span aria-hidden="true"><CheckCircle2 size={24} strokeWidth={2.2} /></span>

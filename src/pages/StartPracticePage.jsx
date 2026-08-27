@@ -5,6 +5,7 @@ import { APP_PAGES } from '../config/appPages'
 import './StartPracticePage.css'
 
 const START_PRACTICE_SELECTED_CARD_KEY = 'vx-start-practice-selected-card'
+const START_PRACTICE_DEFAULT_FILTER_KEY = 'vx-start-practice-default-filter'
 const LEARN_PRACTICE_SHARED_CARDS_KEY = 'vx-learn-practice-shared-cards'
 const PRACTICE_EVALUATION_DURATION_MS = 5000
 const PRACTICE_TIMEOUT_NOTICE_MS = 2500
@@ -99,6 +100,12 @@ const readSelectedPracticeCard = () => {
   } catch {
     return null
   }
+}
+
+const readDefaultPracticeFilter = () => {
+  if (typeof window === 'undefined') return 'all'
+  const value = window.sessionStorage.getItem(START_PRACTICE_DEFAULT_FILTER_KEY)
+  return value === 'in-progress' ? 'in-progress' : 'all'
 }
 
 const persistSelectedPracticeCard = (card = {}) => {
@@ -244,6 +251,29 @@ const writePracticeSessionAttempt = (card = {}, sessionId = '', attempt = {}) =>
     }
   } catch {
     // Ignore malformed shared-card storage; local UI state remains correct.
+  }
+}
+
+const updatePracticeSessionInCard = (card = {}, sessionId = '', patch = {}) => {
+  if (!card || !sessionId) return card
+
+  const sessions = Array.isArray(card.practiceSessions) ? card.practiceSessions : []
+  let didUpdateSession = false
+  const nextSessions = sessions.map((session) => {
+    if (String(session?.id ?? '') !== String(sessionId)) return session
+    didUpdateSession = true
+    return {
+      ...session,
+      ...patch,
+    }
+  })
+
+  if (!didUpdateSession) return card
+
+  return {
+    ...card,
+    practiceSessions: nextSessions,
+    status: patch.status ?? card.status,
   }
 }
 
@@ -407,7 +437,12 @@ const getMcqCorrectOptionKey = (question = {}, options = []) => {
       || (normalizedOptionText && normalizedAnswer.includes(normalizedOptionText))
   })
 
-  if (matchedIndex < 0) return ''
+  if (matchedIndex < 0) {
+    const fallbackOption = options[0]
+    return fallbackOption !== undefined
+      ? String(fallbackOption.id ?? fallbackOption.value ?? getOptionText(fallbackOption) ?? 0)
+      : ''
+  }
   const option = options[matchedIndex]
   return String(option.id ?? option.value ?? getOptionText(option) ?? matchedIndex)
 }
@@ -676,6 +711,7 @@ const getPracticeSessions = (card = {}) => {
       practiceAnswers: session.practiceAnswers ?? {},
       practiceTryLaterKeys: Array.isArray(session.practiceTryLaterKeys) ? session.practiceTryLaterKeys : [],
       practiceSubmitted: Boolean(session.practiceSubmitted),
+      practiceAttemptHistory: Array.isArray(session.practiceAttemptHistory) ? session.practiceAttemptHistory : [],
     }))
   }
 
@@ -693,31 +729,8 @@ const getPracticeSessions = (card = {}) => {
     practiceAnswers: card.practiceAnswers ?? {},
     practiceTryLaterKeys: Array.isArray(card.practiceTryLaterKeys) ? card.practiceTryLaterKeys : [],
     practiceSubmitted: Boolean(card.practiceSubmitted),
+    practiceAttemptHistory: Array.isArray(card.practiceAttemptHistory) ? card.practiceAttemptHistory : [],
   }] : []
-}
-
-const createRetakeSession = (card = {}, row = {}) => {
-  const sessions = getPracticeSessions(card)
-  const nextPracticeNo = sessions.reduce((max, session) => Math.max(max, Number(session.practiceNo || 0)), 0) + 1
-  const baseId = card.id || card.competencyCode || 'practice'
-
-  return {
-    id: `${baseId}-practice-${nextPracticeNo}-${Date.now()}`,
-    practiceNo: nextPracticeNo,
-    sharedAt: new Date().toISOString(),
-    assignment: {
-      ...(row.assignment ?? card.assignment ?? {}),
-      scheduleEnabled: false,
-    },
-    questions: Array.isArray(row.questions) ? row.questions : [],
-    mcq: Number(row.mcq || 0),
-    laqs: Number(row.laqs || 0),
-    saqs: Number(row.saqs || 0),
-    status: 'In Progress',
-    practiceAnswers: {},
-    practiceTryLaterKeys: [],
-    practiceSubmitted: false,
-  }
 }
 
 const getPracticeRows = (card = {}, now = new Date()) => getPracticeSessions(card).map((session) => {
@@ -790,6 +803,44 @@ const getSessionScore = (session = {}) => {
   }, { mcq: 0, saqs: 0, laqs: 0, obtained: 0, total: 0 })
 }
 
+const createPracticeAttemptRecord = (session = {}, attempt = {}, status = 'Completed') => {
+  const score = getSessionScore({
+    ...session,
+    practiceAnswers: attempt.answers ?? {},
+    practiceTryLaterKeys: attempt.tryLaterKeys ?? [],
+    practiceSubmitted: true,
+  })
+
+  return {
+    id: `${session.id ?? 'practice'}-attempt-${Date.now()}`,
+    attemptedAt: new Date().toISOString(),
+    status,
+    mcq: score.mcq,
+    saqs: score.saqs,
+    laqs: score.laqs,
+    obtained: score.obtained,
+    total: score.total,
+    answers: attempt.answers ?? {},
+    tryLaterKeys: attempt.tryLaterKeys ?? [],
+  }
+}
+
+const appendPracticeAttemptRecord = (card = {}, sessionId = '', attempt = {}, status = 'Completed') => {
+  const session = getPracticeSessions(card).find((item) => String(item.id) === String(sessionId))
+  if (!session) return card
+
+  const attemptRecord = createPracticeAttemptRecord(session, attempt, status)
+  const existingHistory = Array.isArray(session.practiceAttemptHistory) ? session.practiceAttemptHistory : []
+
+  return updatePracticeSessionInCard(card, sessionId, {
+    status,
+    practiceAnswers: attempt.answers ?? {},
+    practiceTryLaterKeys: attempt.tryLaterKeys ?? [],
+    practiceSubmitted: true,
+    practiceAttemptHistory: [...existingHistory, attemptRecord],
+  })
+}
+
 function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [selectedCard, setSelectedCard] = useState(() => readSelectedPracticeCard())
   const [mode, setMode] = useState('sessions')
@@ -801,7 +852,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     ...row,
     status: sessionStatuses[row.id] || row.status,
   })), [now, selectedCard, sessionStatuses])
-  const [sessionFilter, setSessionFilter] = useState('all')
+  const [sessionFilter, setSessionFilter] = useState(() => readDefaultPracticeFilter())
   const [answers, setAnswers] = useState({})
   const [tryLaterQuestions, setTryLaterQuestions] = useState(() => new Set())
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
@@ -843,8 +894,27 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     const sessionsById = new Map(getPracticeSessions(selectedCard).map((session) => [String(session.id), session]))
     const finishedRows = practiceRows.filter((row) => isFinishedPracticeStatus(row.status))
 
-    return finishedRows.map((row, index) => {
+    let attemptIndex = 0
+
+    return finishedRows.flatMap((row) => {
       const session = sessionsById.get(String(row.id)) ?? row
+      const attemptHistory = Array.isArray(session.practiceAttemptHistory) ? session.practiceAttemptHistory : []
+      if (attemptHistory.length) {
+        return attemptHistory.map((record) => {
+          attemptIndex += 1
+          return {
+            id: String(record.id ?? `${row.id}-attempt-${attemptIndex}`),
+            attempt: `Attempt ${attemptIndex}`,
+            dateTime: formatDateTime(record.attemptedAt) || row.dateTime || '-',
+            mcq: Number(row.mcq || 0) > 0 ? Number(record.mcq || 0) : '-',
+            saqs: Number(row.saqs || 0) > 0 ? Number(record.saqs || 0) : '-',
+            laqs: Number(row.laqs || 0) > 0 ? Number(record.laqs || 0) : '-',
+            obtained: Number(record.obtained || 0),
+            total: Number(record.total || 0),
+          }
+        })
+      }
+
       const savedAttempt = sessionAttempts[row.id]
       const liveAttempt = activeSessionTimeoutKey === row.id
         ? {
@@ -863,23 +933,30 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
           }
         : session
       const score = getSessionScore(sessionForScore)
+      attemptIndex += 1
 
-      return {
+      return [{
         id: row.id,
-        attempt: `Attempt ${index + 1}`,
+        attempt: `Attempt ${attemptIndex}`,
         dateTime: row.dateTime || '-',
         mcq: Number(row.mcq || 0) > 0 ? score.mcq : '-',
         saqs: Number(row.saqs || 0) > 0 ? score.saqs : '-',
         laqs: Number(row.laqs || 0) > 0 ? score.laqs : '-',
         obtained: score.obtained,
         total: score.total,
-      }
+      }]
     })
   }, [activeSessionTimeoutKey, answers, isPracticeSubmitted, practiceRows, selectedCard, sessionAttempts, tryLaterQuestions])
 
   useEffect(() => {
     setSessionPage(0)
   }, [sessionFilter])
+
+  useEffect(() => {
+    if (sessionFilter === 'in-progress' && sessionFilterCounts.inProgress === 0) {
+      setSessionFilter('all')
+    }
+  }, [sessionFilter, sessionFilterCounts.inProgress])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -1007,11 +1084,26 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
       setEvaluationProgress(nextProgress)
 
       if (elapsed >= PRACTICE_EVALUATION_DURATION_MS) {
+        const finalAttempt = {
+          answers,
+          tryLaterKeys: Array.from(tryLaterQuestions),
+          isSubmitted: true,
+        }
         setIsEvaluatingPractice(false)
         setIsPracticeSubmitted(true)
         setEvaluationStartedAt(0)
         if (activeSessionTimeoutKey) {
+          setSessionAttempts((current) => ({
+            ...current,
+            [activeSessionTimeoutKey]: finalAttempt,
+          }))
+          writePracticeSessionAttempt(selectedCard, activeSessionTimeoutKey, finalAttempt)
           writePracticeSessionStatus(selectedCard, activeSessionTimeoutKey, 'Completed')
+          setSelectedCard((current) => {
+            const nextCard = appendPracticeAttemptRecord(current, activeSessionTimeoutKey, finalAttempt, 'Completed')
+            persistSelectedPracticeCard(nextCard)
+            return nextCard
+          })
           setSessionStatuses((current) => ({ ...current, [activeSessionTimeoutKey]: 'Completed' }))
         }
       }
@@ -1020,7 +1112,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     updateProgress()
     const timer = window.setInterval(updateProgress, 500)
     return () => window.clearInterval(timer)
-  }, [activeSessionTimeoutKey, evaluationStartedAt, isEvaluatingPractice, selectedCard])
+  }, [activeSessionTimeoutKey, answers, evaluationStartedAt, isEvaluatingPractice, selectedCard, tryLaterQuestions])
 
   useEffect(() => {
     if (
@@ -1053,17 +1145,32 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     if (!showTimeCompletedNotice) return undefined
 
     const revealTimer = window.setTimeout(() => {
+      const finalAttempt = {
+        answers,
+        tryLaterKeys: Array.from(tryLaterQuestions),
+        isSubmitted: true,
+      }
       setShowTimeCompletedNotice(false)
       setEvaluationProgress(100)
       setEvaluationStartedAt(0)
       setIsEvaluatingPractice(false)
       setIsPracticeSubmitted(true)
+      setSessionAttempts((current) => ({
+        ...current,
+        [activeSessionTimeoutKey]: finalAttempt,
+      }))
+      writePracticeSessionAttempt(selectedCard, activeSessionTimeoutKey, finalAttempt)
       writePracticeSessionStatus(selectedCard, activeSessionTimeoutKey, 'Expired')
+      setSelectedCard((current) => {
+        const nextCard = appendPracticeAttemptRecord(current, activeSessionTimeoutKey, finalAttempt, 'Expired')
+        persistSelectedPracticeCard(nextCard)
+        return nextCard
+      })
       setSessionStatuses((current) => ({ ...current, [activeSessionTimeoutKey]: 'Expired' }))
     }, PRACTICE_TIMEOUT_NOTICE_MS)
 
     return () => window.clearTimeout(revealTimer)
-  }, [activeSessionTimeoutKey, selectedCard, showTimeCompletedNotice])
+  }, [activeSessionTimeoutKey, answers, selectedCard, showTimeCompletedNotice, tryLaterQuestions])
 
   if (!selectedCard) {
     return (
@@ -1130,6 +1237,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const clearStartPracticePageState = () => {
     if (typeof window !== 'undefined') {
       window.sessionStorage.removeItem(START_PRACTICE_SELECTED_CARD_KEY)
+      window.sessionStorage.removeItem(START_PRACTICE_DEFAULT_FILTER_KEY)
     }
     setActiveSessionId('')
     setActiveIndex(0)
@@ -1158,19 +1266,20 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
         tryLaterKeys: [],
         isSubmitted: false,
       }
-      const currentSessions = getPracticeSessions(selectedCard)
-      const retakeSession = createRetakeSession(selectedCard, row)
-      const nextCard = hydratePracticeCard({
-        ...selectedCard,
+      const nextCard = hydratePracticeCard(updatePracticeSessionInCard(selectedCard, row.id, {
         status: 'In Progress',
-        practiceSessions: [...currentSessions, retakeSession],
-      })
+        practiceAnswers: {},
+        practiceTryLaterKeys: [],
+        practiceSubmitted: false,
+      }))
 
       setSelectedCard(nextCard)
       persistSelectedPracticeCard(nextCard)
-      setSessionStatuses((current) => ({ ...current, [retakeSession.id]: 'In Progress' }))
-      setSessionAttempts((current) => ({ ...current, [retakeSession.id]: freshAttempt }))
-      setActiveSessionId(retakeSession.id)
+      writePracticeSessionAttempt(nextCard, row.id, freshAttempt)
+      writePracticeSessionStatus(nextCard, row.id, 'In Progress')
+      setSessionStatuses((current) => ({ ...current, [row.id]: 'In Progress' }))
+      setSessionAttempts((current) => ({ ...current, [row.id]: freshAttempt }))
+      setActiveSessionId(row.id)
       setActiveIndex(0)
       setAnswers({})
       setTryLaterQuestions(new Set())
@@ -1567,7 +1676,11 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
             <tbody>
               {scoreRows.length ? scoreRows.map((row) => (
                 <tr key={row.id}>
-                  <td><span className="start-practice-score-attempt-badge">{row.attempt}</span></td>
+                  <td>
+                    <span className={`start-practice-score-attempt-badge ${row.attempt === 'Recent Attempt' ? 'is-recent' : ''}`}>
+                      {row.attempt}
+                    </span>
+                  </td>
                   <td>{row.dateTime}</td>
                   <td>{row.mcq}</td>
                   <td>{row.saqs}</td>
