@@ -7,10 +7,7 @@
 .start-practice-shell {
   display: grid;
   gap: 8px;
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: stretch;
-  min-height: calc(100vh - 104px);
-  min-height: calc(100dvh - 104px);
+  align-content: start;
   min-width: 0;
   padding: 10px;
 }
@@ -422,12 +419,10 @@
 
 .start-practice-session-card {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  align-content: stretch;
-  min-height: calc(100vh - 176px);
-  min-height: calc(100dvh - 176px);
+  grid-template-rows: auto auto;
+  align-content: start;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   padding: 12px 16px 12px;
 }
 
