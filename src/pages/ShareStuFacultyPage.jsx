@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   BarChart3,
@@ -316,7 +316,6 @@ function ShareStuFacultyPage({ onNavigate }) {
   const [expandedRows, setExpandedRows] = useState(() => new Set())
   const [activeReport, setActiveReport] = useState(null)
   const [now, setNow] = useState(() => new Date())
-  const hasInitializedExpandedRows = useRef(false)
 
   useEffect(() => {
     const syncSharedCards = () => setSharedCards(readSharedCards())
@@ -388,12 +387,7 @@ function ShareStuFacultyPage({ onNavigate }) {
     setExpandedRows((currentRows) => {
       const rowIds = rowIdSignature ? rowIdSignature.split('|') : []
       const availableRowIds = new Set(rowIds)
-      const nextRows = new Set([...currentRows].filter((rowId) => availableRowIds.has(rowId)))
-      if (!hasInitializedExpandedRows.current) {
-        rowIds.forEach((rowId) => nextRows.add(rowId))
-        hasInitializedExpandedRows.current = true
-      }
-      return nextRows
+      return new Set([...currentRows].filter((rowId) => availableRowIds.has(rowId)))
     })
   }, [rowIdSignature])
 

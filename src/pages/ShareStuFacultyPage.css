@@ -135,14 +135,14 @@
 .share-stu-faculty-groups {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 7px;
 }
 
 .share-stu-faculty-group {
   position: relative;
   overflow: visible;
   border: 1px solid #b7e4da;
-  border-radius: 16px;
+  border-radius: 9px;
   background:
     linear-gradient(180deg, rgba(231, 255, 249, 0.68), rgba(255, 255, 255, 0) 56%),
     #ffffff;
@@ -160,7 +160,7 @@
   gap: 16px;
   width: 100%;
   border: 0;
-  padding: 13px 14px;
+  padding: 8px 11px;
   background: transparent;
   color: #052f35;
   text-align: left;
@@ -312,8 +312,8 @@
   margin: 0 -14px 8px;
   border-bottom: 1px solid #d1e7e1;
   padding: 9px 18px;
-  background: #e7fbf6;
-  color: #557176;
+  background: #e2fff6;
+  color: #0f8364;
   font-size: 0.66rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -601,9 +601,9 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 30px;
+  min-height: 34px;
   border-radius: 8px;
-  padding: 0 11px;
+  padding: 0 13px;
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -623,13 +623,22 @@
 
 .share-stu-faculty-report-btn {
   justify-self: center;
-  width: 68px;
-  min-height: 26px;
-  padding: 0 9px;
+  width: 62px;
+  min-width: 62px;
+  height: 28px;
+  min-height: 28px;
+  gap: 5px;
   border: 1px solid #71d9c7;
+  border-radius: 7px;
+  padding: 0 10px;
   background: #00a99d;
   color: #ffffff;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
+}
+
+.share-stu-faculty-report-btn svg {
+  width: 12px;
+  height: 12px;
 }
 
 .share-stu-faculty-analytics-btn:hover,
