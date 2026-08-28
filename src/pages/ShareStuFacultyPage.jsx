@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   BarChart3,
-  BookOpenCheck,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -13,7 +12,6 @@ import {
   Search,
   Share2,
   Trophy,
-  UsersRound,
   X,
 } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
@@ -72,7 +70,74 @@ const getQuestionMarks = (question = {}) => {
   return Number.isFinite(marks) ? marks : 0
 }
 
+const toCount = (...values) => {
+  for (const value of values) {
+    if (value === undefined || value === null || value === '') continue
+    const number = Number(value)
+    if (Number.isFinite(number)) return number
+  }
+  return 0
+}
+
+const hasExplicitTypeCounts = (source = {}) => [
+  source.mcq,
+  source.mcqCount,
+  source.typeCounts?.mcq,
+  source.questionTypeCounts?.mcq,
+  source.saqs,
+  source.saq,
+  source.saqsCount,
+  source.saqCount,
+  source.typeCounts?.saqs,
+  source.typeCounts?.saq,
+  source.questionTypeCounts?.saqs,
+  source.questionTypeCounts?.saq,
+  source.laqs,
+  source.laq,
+  source.laqsCount,
+  source.laqCount,
+  source.typeCounts?.laqs,
+  source.typeCounts?.laq,
+  source.questionTypeCounts?.laqs,
+  source.questionTypeCounts?.laq,
+].some((value) => value !== undefined && value !== null && value !== '')
+
+const getExplicitTypeCounts = (source = {}) => ({
+  mcq: toCount(source.mcq, source.mcqCount, source.typeCounts?.mcq, source.questionTypeCounts?.mcq),
+  saqs: toCount(
+    source.saqs,
+    source.saq,
+    source.saqsCount,
+    source.saqCount,
+    source.typeCounts?.saqs,
+    source.typeCounts?.saq,
+    source.questionTypeCounts?.saqs,
+    source.questionTypeCounts?.saq,
+  ),
+  laqs: toCount(
+    source.laqs,
+    source.laq,
+    source.laqsCount,
+    source.laqCount,
+    source.typeCounts?.laqs,
+    source.typeCounts?.laq,
+    source.questionTypeCounts?.laqs,
+    source.questionTypeCounts?.laq,
+  ),
+  totalMarks: toCount(source.totalMarks, source.marks),
+})
+
 const countQuestionTypes = (questions = [], fallback = {}) => {
+  if (hasExplicitTypeCounts(fallback)) {
+    const explicitCounts = getExplicitTypeCounts(fallback)
+    const derivedMarks = questions.reduce((total, question) => total + getQuestionMarks(question), 0)
+
+    return {
+      ...explicitCounts,
+      totalMarks: explicitCounts.totalMarks || derivedMarks,
+    }
+  }
+
   const counts = questions.reduce((nextCounts, question) => {
     const type = getQuestionType(question)
     if (type) nextCounts[type] += 1
@@ -81,10 +146,10 @@ const countQuestionTypes = (questions = [], fallback = {}) => {
   }, { mcq: 0, saqs: 0, laqs: 0, totalMarks: 0 })
 
   return {
-    mcq: counts.mcq || Number(fallback.mcq || fallback.mcqCount || 0),
-    saqs: counts.saqs || Number(fallback.saqs || fallback.saqCount || 0),
-    laqs: counts.laqs || Number(fallback.laqs || fallback.laqCount || 0),
-    totalMarks: counts.totalMarks || Number(fallback.totalMarks || fallback.marks || 0),
+    mcq: counts.mcq,
+    saqs: counts.saqs,
+    laqs: counts.laqs,
+    totalMarks: counts.totalMarks || toCount(fallback.totalMarks, fallback.marks),
   }
 }
 
@@ -107,15 +172,67 @@ const getStatusClassName = (status = '') => {
   return 'is-progress'
 }
 
-const getScheduleLabel = (session = {}) => {
+const parseScheduledDateTime = (dateValue, timeValue) => {
+  if (!dateValue || !timeValue) return null
+
+  const date = new Date(`${dateValue}T${timeValue}`)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const formatCountdown = (targetDate, now = new Date()) => {
+  if (!targetDate) return null
+
+  const diffMs = targetDate.getTime() - now.getTime()
+  if (diffMs <= 0) return '00:00:00'
+
+  const totalSeconds = Math.floor(diffMs / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+const getScheduleLabel = (session = {}, now = new Date()) => {
   const schedule = session.schedule ?? {}
+  const assignment = session.assignment ?? {}
   if (typeof session.timeRemaining === 'string') return session.timeRemaining
   if (typeof session.remainingTime === 'string') return session.remainingTime
+
+  const isScheduled = Boolean(
+    assignment.scheduleEnabled
+    || session.isScheduled
+    || session.scheduled
+    || schedule.startDate
+    || schedule.startTime
+    || schedule.endDate
+    || schedule.endTime
+  )
+  const endDateTime = isScheduled
+    ? parseScheduledDateTime(
+      assignment.endDate ?? schedule.endDate ?? session.endDate,
+      assignment.endTime ?? schedule.endTime ?? session.endTime,
+    )
+    : null
+  const countdown = formatCountdown(endDateTime, now)
+  if (countdown) return countdown
+
   if (typeof session.scheduleLabel === 'string') return session.scheduleLabel
   if (typeof session.scheduleType === 'string') return session.scheduleType
   if (typeof schedule.label === 'string') return schedule.label
-  if (session.isScheduled || session.scheduled || schedule.startDate || schedule.startTime) return 'Scheduled'
+  if (isScheduled) return 'Scheduled'
   return 'Normal'
+}
+
+const isCountdownLabel = (value = '') => /^\d{2}:\d{2}:\d{2}$/.test(String(value).trim())
+
+const getScheduleClassName = (schedule = '', status = '') => {
+  const value = String(schedule).trim().toLowerCase()
+  const statusValue = String(status).trim().toLowerCase()
+  if (value === '00:00:00' || statusValue.includes('expire')) return 'is-expired'
+  if (isCountdownLabel(value)) return 'is-live'
+  if (value === 'normal') return 'is-normal'
+  return 'is-scheduled'
 }
 
 const getSharedDate = (card = {}) => {
@@ -125,13 +242,14 @@ const getSharedDate = (card = {}) => {
   return formatDateTime(getLatestDateValue(card.lastSharedAt, card.sharedAt, card.updatedAt, card.createdAt, sessionDates))
 }
 
-const getPracticeRows = (card = {}, cardQuestions = []) => {
+const getPracticeRows = (card = {}, cardQuestions = [], now = new Date()) => {
   const sessions = Array.isArray(card.practiceSessions) && card.practiceSessions.length
     ? card.practiceSessions
     : [{
       id: `${card.id ?? card.competencyCode ?? 'practice'}-1`,
       practiceNo: 1,
       sharedAt: card.lastSharedAt ?? card.sharedAt ?? card.updatedAt ?? card.createdAt,
+      assignment: card.assignment,
       status: card.status,
       questions: cardQuestions,
       mcq: card.mcq,
@@ -149,7 +267,7 @@ const getPracticeRows = (card = {}, cardQuestions = []) => {
       id: session.id ?? `${card.id ?? card.competencyCode ?? 'practice'}-${index + 1}`,
       practiceNo: Number(session.practiceNo || session.attemptNo || index + 1),
       sharedAt: formatDateTime(session.sharedAt ?? session.createdAt ?? card.lastSharedAt ?? card.sharedAt ?? card.createdAt),
-      schedule: getScheduleLabel(session),
+      schedule: getScheduleLabel(session, now),
       status: getSessionStatus(session),
       mcq: counts.mcq,
       saqs: counts.saqs,
@@ -197,6 +315,8 @@ function ShareStuFacultyPage({ onNavigate }) {
   const [page, setPage] = useState(1)
   const [expandedRows, setExpandedRows] = useState(() => new Set())
   const [activeReport, setActiveReport] = useState(null)
+  const [now, setNow] = useState(() => new Date())
+  const hasInitializedExpandedRows = useRef(false)
 
   useEffect(() => {
     const syncSharedCards = () => setSharedCards(readSharedCards())
@@ -210,6 +330,11 @@ function ShareStuFacultyPage({ onNavigate }) {
     }
   }, [])
 
+  useEffect(() => {
+    const timerId = window.setInterval(() => setNow(new Date()), 1000)
+    return () => window.clearInterval(timerId)
+  }, [])
+
   const rows = useMemo(() => sharedCards.map((card) => {
     const questions = getCardQuestions(card)
     const counts = countQuestionTypes(questions, card)
@@ -217,7 +342,7 @@ function ShareStuFacultyPage({ onNavigate }) {
     const competencyRow = getCompetencyRow(code)
     const competency = card.competencyName || competencyRow?.competency || `Competency ${code}`
     const subject = card.subject || questions.find((question) => question?.subject)?.subject || competencyRow?.subject || 'Human Anatomy'
-    const practices = getPracticeRows(card, questions)
+    const practices = getPracticeRows(card, questions, now)
     const totals = practices.reduce((nextTotals, practice) => ({
       mcq: nextTotals.mcq + practice.mcq,
       saqs: nextTotals.saqs + practice.saqs,
@@ -241,7 +366,7 @@ function ShareStuFacultyPage({ onNavigate }) {
       laqs: totals.laqs || counts.laqs,
       practices,
     }
-  }), [sharedCards])
+  }), [sharedCards, now])
 
   const filteredRows = useMemo(() => {
     const searchText = query.trim().toLowerCase()
@@ -257,23 +382,20 @@ function ShareStuFacultyPage({ onNavigate }) {
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
   const visibleRows = filteredRows.slice((Math.min(page, pageCount) - 1) * PAGE_SIZE, Math.min(page, pageCount) * PAGE_SIZE)
-  const totals = rows.reduce((nextTotals, row) => ({
-    cards: nextTotals.cards + 1,
-    questions: nextTotals.questions + row.total,
-    mcq: nextTotals.mcq + row.mcq,
-    saqs: nextTotals.saqs + row.saqs,
-    laqs: nextTotals.laqs + row.laqs,
-    livePractice: nextTotals.livePractice + row.livePractice,
-    practices: nextTotals.practices + row.practiceCount,
-  }), { cards: 0, questions: 0, mcq: 0, saqs: 0, laqs: 0, livePractice: 0, practices: 0 })
+  const rowIdSignature = rows.map((row) => row.id).join('|')
 
   useEffect(() => {
     setExpandedRows((currentRows) => {
-      const nextRows = new Set(currentRows)
-      rows.forEach((row) => nextRows.add(row.id))
+      const rowIds = rowIdSignature ? rowIdSignature.split('|') : []
+      const availableRowIds = new Set(rowIds)
+      const nextRows = new Set([...currentRows].filter((rowId) => availableRowIds.has(rowId)))
+      if (!hasInitializedExpandedRows.current) {
+        rowIds.forEach((rowId) => nextRows.add(rowId))
+        hasInitializedExpandedRows.current = true
+      }
       return nextRows
     })
-  }, [rows])
+  }, [rowIdSignature])
 
   useEffect(() => {
     setPage(1)
@@ -325,44 +447,6 @@ function ShareStuFacultyPage({ onNavigate }) {
             <ChevronRight size={14} strokeWidth={2.4} />
             <strong>Share to Students</strong>
           </span>
-        </section>
-
-        <div className="assessment-create-card-heading learn-practice-title-row share-stu-faculty-title-row">
-          <h2>
-            <span className="learn-practice-title-icon share-stu-faculty-icon" aria-hidden="true">
-              <Share2 size={18} strokeWidth={2.3} />
-            </span>
-            Share to Students
-          </h2>
-          <button type="button" onClick={() => onNavigate?.(APP_PAGES.QUESTION_BANK_NON_CREATE)}>
-            <ChevronLeft size={16} strokeWidth={2.4} />
-            Question Bank
-          </button>
-        </div>
-
-        <section className="share-stu-faculty-metrics" aria-label="Share to students metrics">
-          <article>
-            <BookOpenCheck size={17} strokeWidth={2.3} />
-            <strong>{totals.cards}</strong>
-            <span>Shared sets</span>
-          </article>
-          <article>
-            <UsersRound size={17} strokeWidth={2.3} />
-            <strong>{totals.questions}</strong>
-            <span>Total questions</span>
-          </article>
-          <article>
-            <strong>{totals.mcq}</strong>
-            <span>MCQ</span>
-          </article>
-          <article>
-            <strong>{totals.saqs}</strong>
-            <span>SAQs</span>
-          </article>
-          <article>
-            <strong>{totals.laqs}</strong>
-            <span>LAQs</span>
-          </article>
         </section>
 
         <section className="share-stu-faculty-card" aria-label="Shared question list">
@@ -458,12 +542,13 @@ function ShareStuFacultyPage({ onNavigate }) {
                                   <FileText size={14} strokeWidth={2.4} />
                                   # Practice {practice.practiceNo}
                                 </span>
-                                <span className="share-stu-faculty-schedule-pill">{practice.schedule}</span>
+                                <span className={`share-stu-faculty-schedule-pill ${getScheduleClassName(practice.schedule, practice.status)}`}>
+                                  {practice.schedule}
+                                </span>
                                 <span className="share-stu-faculty-mix">
                                   <span><b>{practice.mcq || '-'}</b><small>MCQ</small></span>
                                   <span><b>{practice.saqs || '-'}</b><small>SAQs</small></span>
                                   <span><b>{practice.laqs || '-'}</b><small>LAQs</small></span>
-                                  <span><b>{practice.total}</b><small>Total</small></span>
                                 </span>
                                 <span className={`share-stu-faculty-status ${getStatusClassName(practice.status)}`}>
                                   {practice.status}

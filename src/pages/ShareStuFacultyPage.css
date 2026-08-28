@@ -16,39 +16,6 @@
   box-shadow: none;
 }
 
-.share-stu-faculty-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #cfe5df;
-}
-
-.share-stu-faculty-title-row h2 {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  color: #007d73;
-  font-size: 1.1rem;
-  font-weight: 850;
-}
-
-.share-stu-faculty-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid #b8eee4;
-  border-radius: 10px;
-  background: #e5fbf4;
-  color: #008f83;
-}
-
-.share-stu-faculty-title-row button,
 .share-stu-faculty-footer button {
   display: inline-flex;
   align-items: center;
@@ -71,8 +38,6 @@
     transform var(--dur-hover, 160ms) var(--ease-standard, ease);
 }
 
-.share-stu-faculty-title-row button:hover,
-.share-stu-faculty-title-row button:focus-visible,
 .share-stu-faculty-footer button:not(:disabled):hover,
 .share-stu-faculty-footer button:not(:disabled):focus-visible {
   border-color: #71d9c7;
@@ -81,7 +46,6 @@
   transform: translateY(-1px);
 }
 
-.share-stu-faculty-title-row button:active,
 .share-stu-faculty-footer button:not(:disabled):active {
   transform: translateY(1px) scale(0.98);
 }
@@ -90,41 +54,6 @@
   color: #9fb2b7;
   cursor: not-allowed;
   opacity: 0.75;
-}
-
-.share-stu-faculty-metrics {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.share-stu-faculty-metrics article {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  column-gap: 10px;
-  min-height: 58px;
-  border: 1px solid #bfe8de;
-  border-radius: 12px;
-  padding: 10px 12px;
-  background:
-    linear-gradient(180deg, rgba(191, 230, 214, 0.24) 0%, rgba(255, 255, 255, 0) 58%),
-    #ffffff;
-  color: #007d73;
-}
-
-.share-stu-faculty-metrics article strong {
-  color: #032f35;
-  font-size: 1.18rem;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.share-stu-faculty-metrics article span {
-  grid-column: 2;
-  color: #536b72;
-  font-size: 0.72rem;
-  font-weight: 800;
 }
 
 .share-stu-faculty-card {
@@ -427,7 +356,7 @@
 
 .share-stu-faculty-mix {
   display: grid;
-  grid-template-columns: repeat(4, 44px);
+  grid-template-columns: repeat(3, 44px);
   gap: 4px;
   justify-content: center;
   justify-self: center;
@@ -440,16 +369,45 @@
   justify-content: center;
   justify-self: center;
   width: auto;
-  min-width: 72px;
-  max-width: 92px;
-  min-height: 24px;
+  min-width: 84px;
+  min-height: 26px;
   border: 1px solid #74dfc2;
   border-radius: 999px;
-  padding: 0 8px;
+  padding: 0 10px;
   background: #dcfbf1;
   color: #007d73;
-  font-size: 0.68rem;
-  font-weight: 900;
+  font-size: 0.7rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.share-stu-faculty-schedule-pill.is-normal {
+  border-color: #74dfc2;
+  background: #dcfbf1;
+  color: #007d73;
+}
+
+.share-stu-faculty-schedule-pill.is-live {
+  border-color: #64e4d2;
+  background: #d7fff8;
+  color: #007d73;
+  font-family: var(--f-code, ui-monospace, SFMono-Regular, Consolas, monospace);
+  letter-spacing: 0;
+}
+
+.share-stu-faculty-schedule-pill.is-expired {
+  border-color: #ffb8c3;
+  background: #fff0f3;
+  color: #ff1744;
+  font-family: var(--f-code, ui-monospace, SFMono-Regular, Consolas, monospace);
+  letter-spacing: 0;
+}
+
+.share-stu-faculty-schedule-pill.is-scheduled {
+  border-color: #8ec5ff;
+  background: #edf6ff;
+  color: #0066b3;
 }
 
 .share-stu-faculty-report-table {
@@ -825,35 +783,50 @@
   background: var(--bg);
 }
 
-[data-theme="dark"] .share-stu-faculty-title-row,
-[data-theme="oled"] .share-stu-faculty-title-row {
-  border-color: rgba(142, 229, 206, 0.28);
-}
-
 [data-theme="dark"] .share-stu-faculty-group,
 [data-theme="dark"] .share-stu-faculty-practice-row,
-[data-theme="dark"] .share-stu-faculty-metrics article,
 [data-theme="oled"] .share-stu-faculty-group,
-[data-theme="oled"] .share-stu-faculty-practice-row,
-[data-theme="oled"] .share-stu-faculty-metrics article {
+[data-theme="oled"] .share-stu-faculty-practice-row {
   background: var(--surface-card);
   color: var(--text-body);
 }
 
 [data-theme="dark"] .share-stu-faculty-group-main strong,
 [data-theme="dark"] .share-stu-faculty-toolbar h2,
-[data-theme="dark"] .share-stu-faculty-metrics article strong,
 [data-theme="oled"] .share-stu-faculty-group-main strong,
-[data-theme="oled"] .share-stu-faculty-toolbar h2,
-[data-theme="oled"] .share-stu-faculty-metrics article strong {
+[data-theme="oled"] .share-stu-faculty-toolbar h2 {
   color: var(--text-strong);
 }
 
-@media (max-width: 1100px) {
-  .share-stu-faculty-metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+[data-theme="dark"] .share-stu-faculty-schedule-pill.is-normal,
+[data-theme="oled"] .share-stu-faculty-schedule-pill.is-normal {
+  border-color: rgba(95, 232, 177, 0.48);
+  background: rgba(95, 232, 177, 0.14);
+  color: var(--mint-200, #9ffef3);
+}
 
+[data-theme="dark"] .share-stu-faculty-schedule-pill.is-live,
+[data-theme="oled"] .share-stu-faculty-schedule-pill.is-live {
+  border-color: rgba(95, 232, 177, 0.56);
+  background: rgba(95, 232, 177, 0.18);
+  color: var(--mint-200, #9ffef3);
+}
+
+[data-theme="dark"] .share-stu-faculty-schedule-pill.is-expired,
+[data-theme="oled"] .share-stu-faculty-schedule-pill.is-expired {
+  border-color: rgba(255, 112, 136, 0.62);
+  background: rgba(255, 23, 68, 0.16);
+  color: #ff8fa0;
+}
+
+[data-theme="dark"] .share-stu-faculty-schedule-pill.is-scheduled,
+[data-theme="oled"] .share-stu-faculty-schedule-pill.is-scheduled {
+  border-color: rgba(142, 197, 255, 0.56);
+  background: rgba(69, 154, 255, 0.16);
+  color: #9cccff;
+}
+
+@media (max-width: 1100px) {
   .share-stu-faculty-group-head,
   .share-stu-faculty-practice-head,
   .share-stu-faculty-practice-row {
@@ -883,18 +856,9 @@
 }
 
 @media (max-width: 780px) {
-  .share-stu-faculty-title-row,
   .share-stu-faculty-toolbar {
     align-items: stretch;
     grid-template-columns: 1fr;
-  }
-
-  .share-stu-faculty-title-row {
-    flex-direction: column;
-  }
-
-  .share-stu-faculty-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .share-stu-faculty-group-head,
