@@ -195,8 +195,8 @@
 
 .assessment-page.learn-practice-page .learn-practice-card-grid {
   align-items: start;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  justify-content: stretch;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 340px));
+  justify-content: start;
 }
 
 .assessment-page.learn-practice-page .learn-practice-card {

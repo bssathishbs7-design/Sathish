@@ -33,6 +33,7 @@ export const APP_PAGES = {
   ONLINE_PROCTORED_EXAM: 'Online Proctored Exam',
   QUESTION_BANK: 'Question Bank',
   QUESTION_BANK_NON_CREATE: 'Question Bank Overall Question',
+  SHARE_STU_FACULTY: 'sharestufaculty',
   BLUEPRINT: 'Correlation Rating',
   QUERY_REQUEST: 'Query Request',
   ACTIVITY_RESULT: 'Activity Result',
@@ -90,6 +91,7 @@ export const QUESTION_BANK_PAGES = [
 export const ASSESSMENT_SUITE_PAGES = [
   APP_PAGES.QUESTION_BANK,
   APP_PAGES.QUESTION_BANK_NON_CREATE,
+  APP_PAGES.SHARE_STU_FACULTY,
   APP_PAGES.ASSESSMENT_CREATE,
   APP_PAGES.CREATE_ASSESSMENT,
 ]

@@ -1060,8 +1060,8 @@ const readLearnPracticeSharedCards = () => {
   }
 }
 
-const getLearnPracticeSharedQuestionIds = () => new Set(
-  readLearnPracticeSharedCards()
+const getLearnPracticeSharedQuestionIds = (cards = readLearnPracticeSharedCards()) => new Set(
+  cards
     .flatMap((card) => [
       ...(Array.isArray(card?.questions) ? card.questions : []),
       ...(Array.isArray(card?.practiceSessions)
@@ -2246,6 +2246,7 @@ export default function QuestionBankNonCreatePage({
   const [shareAssignError, setShareAssignError] = useState('')
   const [shareSuccessNotice, setShareSuccessNotice] = useState(null)
   const [learnPracticeSharedQuestionIds, setLearnPracticeSharedQuestionIds] = useState(() => getLearnPracticeSharedQuestionIds())
+  const [learnPracticeSharedCardCount, setLearnPracticeSharedCardCount] = useState(() => readLearnPracticeSharedCards().length)
   const [draftAssessmentOptions, setDraftAssessmentOptions] = useState(() => readAssessmentDrafts())
   const addedQuestionIdSet = useMemo(
     () => new Set((addedQuestionIds ?? []).map((id) => String(id ?? '')).filter(Boolean)),
@@ -2334,7 +2335,11 @@ export default function QuestionBankNonCreatePage({
   }, [shareSuccessNotice])
 
   useEffect(() => {
-    const syncLearnPracticeSharedQuestions = () => setLearnPracticeSharedQuestionIds(getLearnPracticeSharedQuestionIds())
+    const syncLearnPracticeSharedQuestions = () => {
+      const sharedCards = readLearnPracticeSharedCards()
+      setLearnPracticeSharedQuestionIds(getLearnPracticeSharedQuestionIds(sharedCards))
+      setLearnPracticeSharedCardCount(sharedCards.length)
+    }
 
     window.addEventListener('storage', syncLearnPracticeSharedQuestions)
     window.addEventListener('learn-practice-shared-cards', syncLearnPracticeSharedQuestions)
@@ -2793,7 +2798,7 @@ export default function QuestionBankNonCreatePage({
     { key: 'medsy', label: 'Medsy Question', value: displayableQuestions.filter(isMedsyQuestion).length, icon: FileSearch, tone: 'medsy', activeMetricKey: 'medsy' },
     { key: 'created', label: 'Institute Questions', value: displayableQuestions.filter(isInstituteQuestion).length, icon: ListChecks, tone: 'created', activeMetricKey: 'created' },
     { key: 'favorites', label: 'Favorites', value: displayableQuestions.filter(isFavoriteQuestion).length, icon: Star, tone: 'favorites', activeMetricKey: 'favorites' },
-    { key: 'shared', label: 'Share to Students', value: embedded ? displayableQuestions.filter((question) => learnPracticeSharedQuestionIds.has(String(question?.id ?? ''))).length : 0, icon: Share2, tone: 'shared', activeMetricKey: 'shared', isStatic: !embedded },
+    { key: 'shared', label: 'Share to Students', value: embedded ? displayableQuestions.filter((question) => learnPracticeSharedQuestionIds.has(String(question?.id ?? ''))).length : learnPracticeSharedCardCount, icon: Share2, tone: 'shared', activeMetricKey: 'shared', navigateToPage: embedded ? null : APP_PAGES.SHARE_STU_FACULTY },
     { key: 'suggested', label: 'Report Question', value: [
       ...reportedQuestionRecords,
       ...createdReportedQuestionRecords,
@@ -4009,6 +4014,7 @@ export default function QuestionBankNonCreatePage({
               {visibleQuestionListSummaryMetrics.map((metric) => {
                 const Icon = metric.icon
                 const isStatic = Boolean(metric.isStatic)
+                const canNavigateMetric = Boolean(metric.navigateToPage)
                 const isActive = !isStatic && activeMetric === (metric.activeMetricKey ?? metric.key)
 
                 return (
@@ -4017,10 +4023,14 @@ export default function QuestionBankNonCreatePage({
                     type="button"
                     className={`is-${metric.tone} ${isActive ? 'is-active' : ''}`}
                     onClick={() => {
+                      if (canNavigateMetric) {
+                        onNavigate?.(metric.navigateToPage)
+                        return
+                      }
                       if (!metric.value || isStatic) return
                       openQuestionList(metric)
                     }}
-                    disabled={!metric.value || isStatic}
+                    disabled={!canNavigateMetric && (!metric.value || isStatic)}
                     aria-pressed={isActive}
                   >
                     <span className="assessment-page-metric-icon" aria-hidden="true">

@@ -28,6 +28,7 @@ import OnlinePracticeExamPage from './pages/OnlinePracticeExamPage'
 import OnlineProctoredExamPage from './pages/OnlineProctoredExamPage'
 import LearnPracticePage from './pages/LearnPracticePage'
 import StartPracticePage from './pages/StartPracticePage'
+import ShareStuFacultyPage from './pages/ShareStuFacultyPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import StudentManagementPage from './pages/StudentManagementPage'
 import ImageActivityPage from './pages/ImageActivityPage'
@@ -54,6 +55,7 @@ const PAGE_PATHS = {
   [APP_PAGES.ONLINE_PROCTORED_EXAM]: '/my-assessment/online-proctored-exam',
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
   [APP_PAGES.QUESTION_BANK_NON_CREATE]: '/question-bank/non-create',
+  [APP_PAGES.SHARE_STU_FACULTY]: '/sharestufaculty',
   [APP_PAGES.BLUEPRINT]: '/assessment-suite/corelation-rating',
   [APP_PAGES.QUERY_REQUEST]: '/query-request',
   [APP_PAGES.ACTIVITY_RESULT]: '/skills/activity-result',
@@ -91,6 +93,7 @@ const PHONE_UNSUPPORTED_PAGES = new Set([
   APP_PAGES.REVIEW_APPROVE,
   APP_PAGES.QUESTION_BANK,
   APP_PAGES.QUESTION_BANK_NON_CREATE,
+  APP_PAGES.SHARE_STU_FACULTY,
   APP_PAGES.BLUEPRINT,
   APP_PAGES.ASSESSMENT_EVALUATION,
   APP_PAGES.ASSESSMENT_STUDENT_EVALUATION,
@@ -1388,6 +1391,8 @@ function App() {
             <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
             <QuestionBankNonCreatePage onNavigate={navigateToPage} mode="editable" />
+          ) : activePage === APP_PAGES.SHARE_STU_FACULTY ? (
+            <ShareStuFacultyPage onNavigate={navigateToPage} />
           ) : activePage === APP_PAGES.BLUEPRINT ? (
             <BlueprintPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.QUERY_REQUEST ? (
