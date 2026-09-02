@@ -10,7 +10,7 @@
   display: flex;
   flex-direction: column;
   min-height: min(620px, calc(100vh - 245px));
-  gap: 6px;
+  gap: 10px;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -22,12 +22,19 @@
   justify-content: space-between;
   gap: 12px;
   margin: 0;
+  padding: 0 0 8px;
+  border-bottom: 1px solid #d7e6de;
 }
 
 .assessment-page.learn-practice-page .learn-practice-title-row h2 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin: 0;
+  color: #007d73;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.2;
 }
 
 .assessment-page.learn-practice-page .learn-practice-title-icon {
@@ -52,8 +59,11 @@
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-  padding: 8px 0;
+  border: 1px solid #cdeee7;
+  border-radius: 14px;
+  padding: 8px 10px;
   background: #f7fbfa;
+  box-shadow: none;
 }
 
 .assessment-page.learn-practice-page .learn-practice-filter-group {
@@ -194,17 +204,29 @@
 }
 
 .assessment-page.learn-practice-page .learn-practice-card-grid {
+  display: grid;
   align-items: start;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 340px));
-  justify-content: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  justify-content: stretch;
+  gap: 12px;
+}
+
+.vx-shell.is-collapsed .assessment-page.learn-practice-page .learn-practice-card-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .assessment-page.learn-practice-page .learn-practice-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
   align-self: start;
   min-height: 0;
-  border-color: #8ee5ce;
+  border-color: #d7e6de;
+  border-radius: 18px;
+  padding: 14px;
   background:
-    linear-gradient(180deg, rgba(191, 230, 214, 0.34) 0%, rgba(255, 255, 255, 0) 46%),
+    radial-gradient(circle at 18% 0%, rgba(95, 232, 177, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(231, 255, 249, 0.5) 0%, rgba(255, 255, 255, 0) 48%),
     #ffffff;
   box-shadow: none;
   cursor: pointer;
@@ -216,8 +238,8 @@
 
 .assessment-page.learn-practice-page .learn-practice-card:hover,
 .assessment-page.learn-practice-page .learn-practice-card:focus-within {
-  border-color: #9adfc1;
-  box-shadow: 0 10px 20px rgba(18, 42, 30, 0.05);
+  border-color: #8ee5ce;
+  box-shadow: 0 14px 24px rgba(10, 46, 33, 0.07);
   transform: translateY(-2px);
 }
 
@@ -257,6 +279,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   gap: 12px;
+  min-height: 54px;
 }
 
 .assessment-page.learn-practice-page .learn-practice-card-title {
@@ -268,7 +291,7 @@
 .assessment-page.learn-practice-page .learn-practice-card-context {
   overflow: hidden;
   color: #0a7f73;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -277,13 +300,13 @@
 
 .assessment-page.learn-practice-page .learn-practice-card .assessment-create-published-head strong {
   display: -webkit-box;
-  min-height: 36px;
+  min-height: 2.5em;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   color: #002f3b;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 800;
   line-height: 1.28;
   white-space: normal;
@@ -368,6 +391,15 @@
   white-space: nowrap;
 }
 
+.assessment-page.learn-practice-page .assessment-create-published-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #d8e6df;
+}
+
 .assessment-page.learn-practice-page .learn-practice-status-badge.is-complete {
   border-color: #8debcf;
   background: #dffaf1;
@@ -394,8 +426,6 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
-  border-top: 1px solid #d8e6df;
-  padding-top: 11px;
   text-align: center;
 }
 
@@ -406,10 +436,10 @@
   gap: 4px;
   justify-items: center;
   min-width: 0;
-  min-height: 48px;
+  min-height: 42px;
   border: 1px solid #9ffef3;
   border-radius: 8px;
-  padding: 6px 5px;
+  padding: 5px;
   background: #f7fffc;
 }
 
@@ -532,6 +562,10 @@
   .assessment-page.learn-practice-page .learn-practice-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .vx-shell.is-collapsed .assessment-page.learn-practice-page .learn-practice-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 
@@ -551,6 +585,10 @@
   }
 
   .assessment-page.learn-practice-page .learn-practice-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vx-shell.is-collapsed .assessment-page.learn-practice-page .learn-practice-card-grid {
     grid-template-columns: 1fr;
   }
 }
