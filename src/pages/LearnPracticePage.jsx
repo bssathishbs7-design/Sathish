@@ -183,7 +183,7 @@ function LearnPracticePage({ onNavigate }) {
 
   const hasSearch = Boolean(query.trim())
   const filterOptions = [
-    { key: 'in-progress', label: 'Live Practice', count: practiceStatusCounts.inProgress },
+    { key: 'in-progress', label: 'Live practice', count: practiceStatusCounts.inProgress },
     { key: 'completed', label: 'Completed', count: practiceStatusCounts.completed },
     { key: 'all', label: 'All Practice', count: practiceStatusCounts.all },
   ]
@@ -261,7 +261,7 @@ function LearnPracticePage({ onNavigate }) {
                   <input
                     type="search"
                     value={query}
-                    placeholder="Search Practice..."
+                    placeholder="Search practice..."
                     onChange={(event) => setQuery(event.target.value)}
                   />
                 </label>
@@ -333,7 +333,7 @@ function LearnPracticePage({ onNavigate }) {
                       <div className="assessment-create-draft-footer assessment-create-published-footer learn-practice-footer">
                         <button type="button" className="my-assessment-card-action is-start" onClick={() => startPractice(card)}>
                           <Play size={14} strokeWidth={2.3} />
-                          Start Practice
+                          Start practice
                         </button>
                       </div>
                     </article>

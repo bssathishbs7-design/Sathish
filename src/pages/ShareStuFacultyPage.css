@@ -885,3 +885,2127 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Premium refresh scoped to Share to Students faculty view. */
+.share-stu-faculty-page {
+  background:
+    radial-gradient(circle at top left, rgba(95, 232, 177, 0.16), transparent 30%),
+    linear-gradient(180deg, #f6fbf8 0%, #eef7f4 100%);
+}
+
+.share-stu-faculty-shell {
+  padding: 16px;
+  border: 1px solid rgba(15, 104, 68, 0.12);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(250, 255, 252, 0.9)),
+    #ffffff;
+  box-shadow: 0 18px 48px rgba(15, 49, 35, 0.08);
+}
+
+.share-stu-faculty-card {
+  gap: 14px;
+}
+
+.share-stu-faculty-toolbar {
+  min-height: 58px;
+  border: 1px solid rgba(15, 104, 68, 0.13);
+  border-radius: 20px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px rgba(15, 49, 35, 0.06);
+}
+
+.share-stu-faculty-toolbar h2 {
+  color: #143126;
+  font-size: 1.12rem;
+  letter-spacing: 0;
+}
+
+.share-stu-faculty-toolbar p {
+  color: #647c71;
+}
+
+.share-stu-faculty-toolbar label {
+  min-height: 42px;
+  border-color: rgba(15, 104, 68, 0.14);
+  border-radius: 999px;
+  background: #f8fcfa;
+  color: #0f6844;
+}
+
+.share-stu-faculty-toolbar label:focus-within {
+  border-color: rgba(15, 104, 68, 0.34);
+  box-shadow: 0 0 0 4px rgba(95, 232, 177, 0.18);
+}
+
+.share-stu-faculty-toolbar input {
+  color: #143126;
+}
+
+.share-stu-faculty-toolbar label button {
+  border-radius: 999px;
+  background: #effcf6;
+  color: #0f6844;
+}
+
+.share-stu-faculty-groups {
+  gap: 12px;
+}
+
+.share-stu-faculty-group {
+  overflow: hidden;
+  border-color: rgba(15, 104, 68, 0.13);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 255, 252, 0.96));
+  box-shadow: 0 14px 34px rgba(15, 49, 35, 0.06);
+}
+
+.share-stu-faculty-group:hover,
+.share-stu-faculty-group:focus-within {
+  border-color: rgba(15, 104, 68, 0.26);
+  box-shadow: 0 22px 46px rgba(15, 49, 35, 0.1);
+}
+
+.share-stu-faculty-group-head {
+  min-height: 70px;
+  padding: 14px 16px;
+}
+
+.share-stu-faculty-group-head:hover,
+.share-stu-faculty-group-head:focus-visible {
+  background: #fbfffd;
+}
+
+.share-stu-faculty-expand-btn {
+  width: 34px;
+  height: 34px;
+  border-color: rgba(15, 104, 68, 0.14);
+  border-radius: 14px;
+  background: #f4faf7;
+  color: #0f6844;
+}
+
+.share-stu-faculty-group-main strong {
+  color: #143126;
+  font-size: 0.94rem;
+}
+
+.share-stu-faculty-group-main em {
+  color: #647c71;
+}
+
+.share-stu-faculty-code,
+.share-stu-faculty-practice-badge,
+.share-stu-faculty-status,
+.share-stu-faculty-attempt-status,
+.share-stu-faculty-schedule-pill {
+  border-color: rgba(15, 104, 68, 0.14);
+  background: #f4faf7;
+  color: #0f6844;
+}
+
+.share-stu-faculty-code,
+.share-stu-faculty-parent-metrics b,
+.share-stu-faculty-mix b,
+.share-stu-faculty-schedule-pill,
+.share-stu-faculty-status,
+.share-stu-faculty-attempt-status,
+.share-stu-faculty-footer span {
+  font-family: var(--f-code, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  letter-spacing: 0;
+}
+
+.share-stu-faculty-parent-metrics {
+  gap: 8px;
+}
+
+.share-stu-faculty-parent-metrics span,
+.share-stu-faculty-mix span {
+  min-height: 42px;
+  border-color: rgba(15, 104, 68, 0.1);
+  border-radius: 14px;
+  background: #f8fcfa;
+}
+
+.share-stu-faculty-parent-metrics b,
+.share-stu-faculty-mix b {
+  color: #143126;
+  font-size: 0.86rem;
+}
+
+.share-stu-faculty-parent-metrics small,
+.share-stu-faculty-mix small {
+  color: #6a8177;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.share-stu-faculty-analytics-btn {
+  min-height: 38px;
+  border-color: rgba(15, 104, 68, 0.14);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f6844;
+}
+
+.share-stu-faculty-analytics-btn:hover,
+.share-stu-faculty-analytics-btn:focus-visible {
+  border-color: rgba(15, 104, 68, 0.28);
+  background: #effcf6;
+  color: #0a5839;
+}
+
+.share-stu-faculty-practice-panel {
+  border-top-color: rgba(15, 104, 68, 0.12);
+  padding: 0 16px 16px;
+  background: #fbfffd;
+}
+
+.share-stu-faculty-practice-head {
+  margin: 0 -16px 10px;
+  border-bottom-color: rgba(15, 104, 68, 0.12);
+  padding: 10px 20px;
+  background: #f0faf6;
+  color: #0f6844;
+}
+
+.share-stu-faculty-practice-row {
+  min-height: 56px;
+  border-color: rgba(15, 104, 68, 0.11);
+  border-radius: 16px;
+  padding: 8px 12px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 49, 35, 0.04);
+}
+
+.share-stu-faculty-practice-row:hover {
+  border-color: rgba(15, 104, 68, 0.24);
+  background: #fbfffd;
+  box-shadow: 0 14px 28px rgba(15, 49, 35, 0.08);
+}
+
+.share-stu-faculty-date {
+  color: #38544a;
+}
+
+.share-stu-faculty-date svg,
+.share-stu-faculty-practice-badge svg {
+  color: #0f6844;
+}
+
+.share-stu-faculty-schedule-pill.is-live {
+  border-color: rgba(15, 104, 68, 0.2);
+  background: #effcf6;
+  color: #0f6844;
+}
+
+.share-stu-faculty-schedule-pill.is-expired,
+.share-stu-faculty-status.is-expired,
+.share-stu-faculty-attempt-status.is-pending {
+  border-color: #f4c7bd;
+  background: #fff7f3;
+  color: #b42318;
+}
+
+.share-stu-faculty-schedule-pill.is-scheduled {
+  border-color: #c7def8;
+  background: #f3f8ff;
+  color: #255f9c;
+}
+
+.share-stu-faculty-status.is-progress {
+  border-color: #f2d7aa;
+  background: #fffaf0;
+  color: #9a5a14;
+}
+
+.share-stu-faculty-status.is-complete,
+.share-stu-faculty-attempt-status.is-submitted {
+  border-color: rgba(15, 104, 68, 0.16);
+  background: #effcf6;
+  color: #0f6844;
+}
+
+.share-stu-faculty-report-btn {
+  border-color: #0f6844;
+  border-radius: 999px;
+  background: #0f6844;
+  box-shadow: 0 10px 20px rgba(15, 104, 68, 0.16);
+}
+
+.share-stu-faculty-report-btn:hover,
+.share-stu-faculty-report-btn:focus-visible {
+  border-color: #0a5839;
+  background: #0a5839;
+}
+
+.share-stu-faculty-footer button {
+  min-height: 38px;
+  border-color: rgba(15, 104, 68, 0.14);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f6844;
+}
+
+.share-stu-faculty-footer button:not(:disabled):hover,
+.share-stu-faculty-footer button:not(:disabled):focus-visible {
+  border-color: rgba(15, 104, 68, 0.28);
+  background: #effcf6;
+  color: #0a5839;
+}
+
+.share-stu-faculty-empty {
+  min-height: 260px;
+  border-color: rgba(15, 104, 68, 0.18);
+  border-radius: 20px;
+  background: #fbfffd;
+}
+
+.share-stu-faculty-report-overlay {
+  background: rgba(2, 21, 27, 0.56);
+  backdrop-filter: blur(10px);
+}
+
+.share-stu-faculty-report-modal {
+  border-color: rgba(15, 104, 68, 0.16);
+  border-radius: 24px;
+  box-shadow: 0 30px 80px rgba(2, 21, 27, 0.22);
+}
+
+.share-stu-faculty-report-head {
+  border-bottom-color: rgba(15, 104, 68, 0.12);
+  background: #fbfffd;
+}
+
+.share-stu-faculty-report-head h2 {
+  color: #143126;
+}
+
+.share-stu-faculty-report-head h2 svg {
+  color: #0f6844;
+}
+
+.share-stu-faculty-report-head p {
+  color: #647c71;
+}
+
+.share-stu-faculty-report-head button {
+  border-color: rgba(15, 104, 68, 0.14);
+  border-radius: 14px;
+  background: #f8fcfa;
+  color: #0f6844;
+}
+
+.share-stu-faculty-report-table {
+  border-color: rgba(15, 104, 68, 0.13);
+  border-radius: 16px;
+}
+
+.share-stu-faculty-report-table th {
+  background: #f0faf6;
+  color: #0f6844;
+}
+
+.share-stu-faculty-report-table td {
+  color: #143126;
+}
+
+.share-stu-faculty-report-link {
+  border-color: rgba(15, 104, 68, 0.14);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f6844;
+}
+
+@media (max-width: 780px) {
+  .share-stu-faculty-shell {
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .share-stu-faculty-toolbar,
+  .share-stu-faculty-group {
+    border-radius: 18px;
+  }
+
+  .share-stu-faculty-parent-metrics,
+  .share-stu-faculty-mix {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+[data-theme="dark"] .share-stu-faculty-shell,
+[data-theme="oled"] .share-stu-faculty-shell,
+[data-theme="dark"] .share-stu-faculty-toolbar,
+[data-theme="oled"] .share-stu-faculty-toolbar,
+[data-theme="dark"] .share-stu-faculty-group,
+[data-theme="oled"] .share-stu-faculty-group,
+[data-theme="dark"] .share-stu-faculty-report-modal,
+[data-theme="oled"] .share-stu-faculty-report-modal {
+  border-color: rgba(95, 232, 177, 0.16);
+  background: linear-gradient(180deg, rgba(9, 31, 43, 0.96), rgba(6, 24, 34, 0.98));
+  box-shadow: none;
+}
+
+[data-theme="dark"] .share-stu-faculty-toolbar label,
+[data-theme="oled"] .share-stu-faculty-toolbar label,
+[data-theme="dark"] .share-stu-faculty-parent-metrics span,
+[data-theme="oled"] .share-stu-faculty-parent-metrics span,
+[data-theme="dark"] .share-stu-faculty-mix span,
+[data-theme="oled"] .share-stu-faculty-mix span,
+[data-theme="dark"] .share-stu-faculty-practice-row,
+[data-theme="oled"] .share-stu-faculty-practice-row,
+[data-theme="dark"] .share-stu-faculty-practice-panel,
+[data-theme="oled"] .share-stu-faculty-practice-panel,
+[data-theme="dark"] .share-stu-faculty-report-head,
+[data-theme="oled"] .share-stu-faculty-report-head {
+  border-color: rgba(95, 232, 177, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .share-stu-faculty-toolbar input,
+[data-theme="oled"] .share-stu-faculty-toolbar input,
+[data-theme="dark"] .share-stu-faculty-parent-metrics b,
+[data-theme="oled"] .share-stu-faculty-parent-metrics b,
+[data-theme="dark"] .share-stu-faculty-mix b,
+[data-theme="oled"] .share-stu-faculty-mix b,
+[data-theme="dark"] .share-stu-faculty-report-head h2,
+[data-theme="oled"] .share-stu-faculty-report-head h2,
+[data-theme="dark"] .share-stu-faculty-report-table td,
+[data-theme="oled"] .share-stu-faculty-report-table td {
+  color: #e5fff7;
+}
+
+/* Screenshot-aligned correction: lighter shell, stronger accordion rows. */
+.share-stu-faculty-page {
+  background:
+    linear-gradient(180deg, #f8fffc 0%, #edf8f4 100%);
+}
+
+.share-stu-faculty-page .question-bank-list-page-head {
+  margin-bottom: 0;
+}
+
+.share-stu-faculty-shell {
+  padding: 14px 28px 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.share-stu-faculty-card {
+  gap: 14px;
+  border: 0;
+  background: transparent;
+}
+
+.share-stu-faculty-toolbar {
+  min-height: 44px;
+  border: 0;
+  border-bottom: 1px solid rgba(15, 104, 68, 0.12);
+  border-radius: 0;
+  padding: 0 0 12px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.share-stu-faculty-toolbar h2 {
+  display: none;
+}
+
+.share-stu-faculty-toolbar p {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  margin: 0;
+  border: 1px solid rgba(15, 104, 68, 0.12);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #5f786d;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.share-stu-faculty-toolbar label {
+  max-width: 360px;
+  justify-self: end;
+  min-height: 42px;
+  border-color: rgba(15, 104, 68, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 8px 22px rgba(15, 49, 35, 0.04);
+}
+
+.share-stu-faculty-groups {
+  gap: 12px;
+}
+
+.share-stu-faculty-group {
+  border: 1px solid rgba(15, 104, 68, 0.14);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 34px rgba(15, 49, 35, 0.06);
+}
+
+.share-stu-faculty-group:hover,
+.share-stu-faculty-group:focus-within {
+  border-color: rgba(15, 104, 68, 0.2);
+  box-shadow: 0 18px 38px rgba(15, 49, 35, 0.08);
+}
+
+.share-stu-faculty-group-head {
+  grid-template-columns: minmax(260px, 1.1fr) minmax(96px, 190px) minmax(238px, auto) minmax(144px, auto);
+  min-height: 72px;
+  gap: 18px;
+  padding: 14px 16px;
+  background: transparent;
+}
+
+.share-stu-faculty-group-head:hover,
+.share-stu-faculty-group-head:focus-visible {
+  background: rgba(248, 255, 252, 0.72);
+}
+
+.share-stu-faculty-group-main {
+  gap: 10px;
+}
+
+.share-stu-faculty-expand-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 13px;
+  background: #effaf6;
+}
+
+.share-stu-faculty-group-main strong {
+  color: #143126;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.share-stu-faculty-group-main em {
+  color: #5f786d;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.share-stu-faculty-code {
+  justify-self: center;
+  min-width: 96px;
+  min-height: 22px;
+  border-color: rgba(15, 104, 68, 0.14);
+  background: #f3fbf8;
+  color: #0f6844;
+}
+
+.share-stu-faculty-parent-metrics {
+  grid-template-columns: repeat(3, 78px);
+}
+
+.share-stu-faculty-parent-metrics span {
+  min-width: 78px;
+  min-height: 48px;
+  border-color: rgba(15, 104, 68, 0.12);
+  border-radius: 14px;
+  background: #f7fcfa;
+}
+
+.share-stu-faculty-parent-metrics b {
+  font-size: 0.9rem;
+}
+
+.share-stu-faculty-parent-metrics small {
+  color: #60786d;
+  font-size: 0.58rem;
+}
+
+.share-stu-faculty-analytics-btn {
+  min-width: 144px;
+  min-height: 40px;
+  border-color: rgba(15, 104, 68, 0.14);
+  background: #ffffff;
+  color: #0f6844;
+}
+
+.share-stu-faculty-practice-panel {
+  border-top: 1px solid rgba(15, 104, 68, 0.12);
+  padding: 0 16px 16px;
+  background: rgba(246, 253, 250, 0.72);
+}
+
+.share-stu-faculty-practice-head,
+.share-stu-faculty-practice-row {
+  grid-template-columns:
+    minmax(230px, 1fr)
+    minmax(160px, 0.78fr)
+    minmax(118px, 0.5fr)
+    minmax(220px, 0.9fr)
+    minmax(120px, 0.52fr)
+    minmax(96px, 0.38fr);
+  column-gap: 12px;
+}
+
+.share-stu-faculty-practice-head {
+  position: static;
+  min-height: 40px;
+  margin: 0 -16px 10px;
+  border-bottom: 1px solid rgba(15, 104, 68, 0.12);
+  padding: 0 20px;
+  background: #eefaf6;
+  color: #00755d;
+  font-size: 0.66rem;
+}
+
+.share-stu-faculty-practice-list {
+  gap: 0;
+}
+
+.share-stu-faculty-practice-row {
+  min-height: 58px;
+  border-color: rgba(15, 104, 68, 0.12);
+  border-radius: 16px;
+  padding: 8px 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 49, 35, 0.04);
+}
+
+.share-stu-faculty-date,
+.share-stu-faculty-practice-badge {
+  color: #45645a;
+  font-weight: 850;
+}
+
+.share-stu-faculty-practice-badge {
+  min-width: 104px;
+  min-height: 24px;
+  background: #f5fcf9;
+}
+
+.share-stu-faculty-schedule-pill {
+  min-width: 84px;
+  min-height: 28px;
+  border-color: #5fe8d1;
+  background: #e6fff8;
+}
+
+.share-stu-faculty-mix {
+  grid-template-columns: repeat(3, 44px);
+  gap: 6px;
+}
+
+.share-stu-faculty-mix span {
+  width: 44px;
+  min-height: 42px;
+  border-radius: 14px;
+}
+
+.share-stu-faculty-status {
+  width: 88px;
+  min-height: 26px;
+}
+
+.share-stu-faculty-report-btn {
+  width: 62px;
+  min-width: 62px;
+  height: 30px;
+  min-height: 30px;
+  border-color: #0a6b4a;
+  background: #0a6b4a;
+  box-shadow: none;
+}
+
+.share-stu-faculty-footer {
+  padding-top: 2px;
+}
+
+.share-stu-faculty-footer button {
+  min-width: 130px;
+  min-height: 40px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+@media (max-width: 1100px) {
+  .share-stu-faculty-shell {
+    padding-inline: 18px;
+  }
+
+  .share-stu-faculty-group-head,
+  .share-stu-faculty-practice-head,
+  .share-stu-faculty-practice-row {
+    grid-template-columns: minmax(220px, 1fr) minmax(100px, auto) minmax(240px, auto);
+  }
+}
+
+@media (max-width: 780px) {
+  .share-stu-faculty-shell {
+    padding: 12px;
+  }
+
+  .share-stu-faculty-toolbar {
+    border-bottom: 0;
+  }
+
+  .share-stu-faculty-toolbar label {
+    max-width: none;
+    justify-self: stretch;
+  }
+
+  .share-stu-faculty-parent-metrics,
+  .share-stu-faculty-mix {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .share-stu-faculty-mix span {
+    width: auto;
+  }
+}
+
+/* Premium dashboard layer with metrics and motion. */
+.share-stu-faculty-page {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(95, 232, 177, 0.2), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(125, 211, 252, 0.14), transparent 28%),
+    linear-gradient(180deg, #f8fffc 0%, #edf8f4 100%);
+}
+
+.share-stu-faculty-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.share-stu-faculty-metric-card {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-height: 92px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 104, 68, 0.13);
+  border-radius: 22px;
+  padding: 16px 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(247, 253, 250, 0.88));
+  box-shadow: 0 18px 42px rgba(15, 49, 35, 0.08);
+  animation: shareFacultyMetricIn 520ms var(--ease-standard, ease) both;
+}
+
+.share-stu-faculty-metric-card:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.share-stu-faculty-metric-card:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.share-stu-faculty-metric-card:nth-child(4) {
+  animation-delay: 210ms;
+}
+
+.share-stu-faculty-metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: #5fe8b1;
+}
+
+.share-stu-faculty-metric-card::after {
+  content: "";
+  position: absolute;
+  right: -24px;
+  top: -28px;
+  width: 92px;
+  height: 92px;
+  border-radius: 999px;
+  background: rgba(95, 232, 177, 0.16);
+}
+
+.share-stu-faculty-metric-card.is-forest::before {
+  background: #0f6844;
+}
+
+.share-stu-faculty-metric-card.is-sky::before {
+  background: #38bdf8;
+}
+
+.share-stu-faculty-metric-card.is-amber::before {
+  background: #f59e0b;
+}
+
+.share-stu-faculty-metric-card b {
+  position: relative;
+  z-index: 1;
+  color: #143126;
+  font-family: var(--f-code, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.share-stu-faculty-metric-card small {
+  position: relative;
+  z-index: 1;
+  color: #647c71;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.share-stu-faculty-group {
+  animation: shareFacultyRowIn 460ms var(--ease-standard, ease) both;
+  transition:
+    border-color var(--dur-hover, 160ms) var(--ease-standard, ease),
+    box-shadow var(--dur-hover, 160ms) var(--ease-standard, ease),
+    transform var(--dur-hover, 160ms) var(--ease-standard, ease);
+}
+
+.share-stu-faculty-group:hover,
+.share-stu-faculty-group:focus-within {
+  transform: translateY(-2px);
+}
+
+.share-stu-faculty-practice-row {
+  transition:
+    border-color var(--dur-hover, 160ms) var(--ease-standard, ease),
+    background-color var(--dur-hover, 160ms) var(--ease-standard, ease),
+    box-shadow var(--dur-hover, 160ms) var(--ease-standard, ease),
+    transform var(--dur-hover, 160ms) var(--ease-standard, ease);
+}
+
+.share-stu-faculty-practice-row:hover {
+  border-color: rgba(15, 104, 68, 0.24);
+  background: #fbfffd;
+  box-shadow: 0 14px 28px rgba(15, 49, 35, 0.08);
+  transform: translateY(-1px);
+}
+
+.share-stu-faculty-analytics-btn:hover,
+.share-stu-faculty-analytics-btn:focus-visible,
+.share-stu-faculty-report-btn:hover,
+.share-stu-faculty-report-btn:focus-visible {
+  transform: translateY(-1px);
+}
+
+.share-stu-faculty-group-head:active,
+.share-stu-faculty-analytics-btn:active,
+.share-stu-faculty-report-btn:active,
+.share-stu-faculty-footer button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+@keyframes shareFacultyMetricIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shareFacultyRowIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-stu-faculty-metric-card,
+  .share-stu-faculty-group {
+    animation: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .share-stu-faculty-metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .share-stu-faculty-metric-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .share-stu-faculty-metric-card {
+    min-height: 76px;
+  }
+}
+
+[data-theme="dark"] .share-stu-faculty-metric-card,
+[data-theme="oled"] .share-stu-faculty-metric-card {
+  border-color: rgba(95, 232, 177, 0.16);
+  background: linear-gradient(180deg, rgba(9, 31, 43, 0.96), rgba(6, 24, 34, 0.98));
+  box-shadow: none;
+}
+
+[data-theme="dark"] .share-stu-faculty-metric-card b,
+[data-theme="oled"] .share-stu-faculty-metric-card b {
+  color: #e5fff7;
+}
+
+/* Final premium dashboard direction: filtered SaaS surface. */
+.share-stu-faculty-shell {
+  max-width: 1220px;
+  margin: 0 auto;
+}
+
+.share-stu-faculty-toolbar {
+  grid-template-columns: minmax(180px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 14px;
+}
+
+.share-stu-faculty-toolbar-actions {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(300px, 360px);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.share-stu-faculty-filter-tabs {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  gap: 4px;
+  overflow-x: auto;
+  border: 1px solid rgba(15, 104, 68, 0.12);
+  border-radius: 999px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.share-stu-faculty-filter-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  min-width: max-content;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 12px;
+  background: transparent;
+  color: #5f786d;
+  font-size: 0.74rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-hover, 160ms) var(--ease-standard, ease),
+    color var(--dur-hover, 160ms) var(--ease-standard, ease),
+    transform var(--dur-hover, 160ms) var(--ease-standard, ease);
+}
+
+.share-stu-faculty-filter-tabs button span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  padding: 0 6px;
+  background: rgba(15, 104, 68, 0.08);
+  color: #0f6844;
+  font-family: var(--f-code, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 0.68rem;
+  letter-spacing: 0;
+}
+
+.share-stu-faculty-filter-tabs button:hover,
+.share-stu-faculty-filter-tabs button:focus-visible {
+  background: #f3fbf8;
+  color: #143126;
+  outline: none;
+}
+
+.share-stu-faculty-filter-tabs button.is-active {
+  background: #0f6844;
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 104, 68, 0.16);
+}
+
+.share-stu-faculty-filter-tabs button.is-active span {
+  background: #ffffff;
+  color: #0f6844;
+}
+
+.share-stu-faculty-toolbar label {
+  max-width: none;
+  justify-self: stretch;
+}
+
+.share-stu-faculty-metric-strip {
+  gap: 14px;
+}
+
+.share-stu-faculty-metric-card {
+  min-height: 104px;
+  border-radius: 24px;
+  padding: 20px 20px 18px;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.9) 48%, rgba(230, 255, 248, 0.72) 100%);
+  box-shadow: 0 20px 48px rgba(15, 49, 35, 0.1);
+}
+
+.share-stu-faculty-metric-card::before {
+  width: 4px;
+}
+
+.share-stu-faculty-metric-card::after {
+  right: -16px;
+  top: -30px;
+  width: 112px;
+  height: 132px;
+  border-radius: 0;
+  background: linear-gradient(145deg, rgba(95, 232, 177, 0.22), rgba(255, 255, 255, 0));
+  transform: skewX(-16deg);
+}
+
+.share-stu-faculty-metric-card b {
+  font-size: 1.65rem;
+}
+
+.share-stu-faculty-metric-card small {
+  color: #5f786d;
+  font-size: 0.68rem;
+}
+
+.share-stu-faculty-group {
+  border-radius: 24px;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.98), rgba(249, 255, 252, 0.94));
+}
+
+.share-stu-faculty-group-head {
+  grid-template-columns: minmax(260px, 1.2fr) minmax(110px, 0.38fr) minmax(250px, auto) minmax(158px, auto);
+  min-height: 76px;
+}
+
+.share-stu-faculty-group-head[aria-expanded="true"] {
+  border-bottom: 1px solid rgba(15, 104, 68, 0.1);
+}
+
+.share-stu-faculty-practice-panel {
+  background:
+    linear-gradient(180deg, rgba(240, 250, 246, 0.86), rgba(248, 255, 252, 0.86));
+}
+
+.share-stu-faculty-practice-row {
+  margin-top: 10px;
+}
+
+.share-stu-faculty-practice-row:first-child {
+  margin-top: 0;
+}
+
+.share-stu-faculty-practice-head {
+  border-radius: 0;
+}
+
+.share-stu-faculty-report-modal {
+  animation: shareFacultyModalIn 220ms var(--ease-standard, ease) both;
+}
+
+@keyframes shareFacultyModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-stu-faculty-report-modal {
+    animation: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .share-stu-faculty-toolbar,
+  .share-stu-faculty-toolbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .share-stu-faculty-filter-tabs {
+    width: 100%;
+  }
+}
+
+@media (max-width: 780px) {
+  .share-stu-faculty-toolbar-actions {
+    gap: 10px;
+  }
+
+  .share-stu-faculty-filter-tabs {
+    justify-content: flex-start;
+  }
+}
+
+/* Compact premium correction: reduce dead space and improve row usability. */
+.share-stu-faculty-shell {
+  width: 100%;
+  max-width: none;
+  padding: 16px clamp(18px, 2.8vw, 34px) 18px;
+}
+
+.share-stu-faculty-card {
+  gap: 12px;
+}
+
+.share-stu-faculty-toolbar {
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 14px;
+  padding-bottom: 10px;
+}
+
+.share-stu-faculty-toolbar p {
+  min-height: 30px;
+  box-shadow: 0 8px 18px rgba(15, 49, 35, 0.05);
+}
+
+.share-stu-faculty-toolbar-actions {
+  grid-template-columns: minmax(360px, auto) minmax(280px, 360px);
+  justify-content: end;
+  gap: 10px;
+}
+
+.share-stu-faculty-filter-tabs {
+  justify-self: end;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.share-stu-faculty-filter-tabs button {
+  min-height: 30px;
+  padding: 0 11px;
+  font-size: 0.72rem;
+}
+
+.share-stu-faculty-toolbar label {
+  min-height: 40px;
+}
+
+.share-stu-faculty-metric-strip {
+  gap: 12px;
+}
+
+.share-stu-faculty-metric-card {
+  min-height: 78px;
+  border-radius: 18px;
+  padding: 14px 16px 13px;
+  box-shadow: 0 14px 30px rgba(15, 49, 35, 0.07);
+}
+
+.share-stu-faculty-metric-card::after {
+  right: -26px;
+  top: -44px;
+  width: 118px;
+  height: 150px;
+  opacity: 0.72;
+}
+
+.share-stu-faculty-metric-card b {
+  font-size: 1.32rem;
+}
+
+.share-stu-faculty-metric-card small {
+  font-size: 0.64rem;
+}
+
+.share-stu-faculty-groups {
+  gap: 10px;
+}
+
+.share-stu-faculty-group {
+  border-radius: 19px;
+  box-shadow: 0 10px 24px rgba(15, 49, 35, 0.055);
+}
+
+.share-stu-faculty-group:hover,
+.share-stu-faculty-group:focus-within {
+  box-shadow: 0 14px 30px rgba(15, 49, 35, 0.08);
+}
+
+.share-stu-faculty-group-head {
+  grid-template-columns: minmax(270px, 1.35fr) minmax(104px, 0.34fr) minmax(226px, auto) minmax(146px, auto);
+  min-height: 64px;
+  gap: 14px;
+  padding: 11px 16px;
+}
+
+.share-stu-faculty-expand-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+}
+
+.share-stu-faculty-group-main strong {
+  font-size: 0.96rem;
+}
+
+.share-stu-faculty-code {
+  min-width: 102px;
+}
+
+.share-stu-faculty-parent-metrics {
+  grid-template-columns: repeat(3, 72px);
+  gap: 6px;
+}
+
+.share-stu-faculty-parent-metrics span {
+  min-width: 72px;
+  min-height: 44px;
+  padding: 5px 6px;
+  border-radius: 13px;
+}
+
+.share-stu-faculty-parent-metrics b {
+  font-size: 0.84rem;
+}
+
+.share-stu-faculty-parent-metrics small {
+  font-size: 0.55rem;
+}
+
+.share-stu-faculty-analytics-btn {
+  min-width: 138px;
+  min-height: 38px;
+}
+
+.share-stu-faculty-practice-panel {
+  padding: 0 14px 14px;
+}
+
+.share-stu-faculty-practice-head {
+  min-height: 36px;
+  margin: 0 -14px 8px;
+  padding: 0 18px;
+}
+
+.share-stu-faculty-practice-head,
+.share-stu-faculty-practice-row {
+  grid-template-columns:
+    minmax(210px, 1fr)
+    minmax(132px, 0.58fr)
+    minmax(104px, 0.42fr)
+    minmax(168px, 0.68fr)
+    minmax(104px, 0.42fr)
+    minmax(76px, 0.32fr);
+}
+
+.share-stu-faculty-practice-row {
+  min-height: 52px;
+  margin-top: 8px;
+  border-radius: 14px;
+  padding: 7px 12px;
+}
+
+.share-stu-faculty-mix {
+  grid-template-columns: repeat(3, 40px);
+}
+
+.share-stu-faculty-mix span {
+  width: 40px;
+  min-height: 38px;
+  border-radius: 12px;
+}
+
+.share-stu-faculty-schedule-pill {
+  min-width: 78px;
+  min-height: 26px;
+}
+
+.share-stu-faculty-status {
+  width: 82px;
+  min-height: 24px;
+}
+
+.share-stu-faculty-report-btn {
+  height: 28px;
+  min-height: 28px;
+}
+
+.share-stu-faculty-footer {
+  margin-top: 2px;
+}
+
+.share-stu-faculty-footer button {
+  min-height: 38px;
+}
+
+.share-stu-faculty-metric-card:hover,
+.share-stu-faculty-metric-card:focus-within {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 38px rgba(15, 49, 35, 0.1);
+}
+
+.share-stu-faculty-metric-card,
+.share-stu-faculty-filter-tabs button,
+.share-stu-faculty-toolbar label,
+.share-stu-faculty-footer button {
+  transition:
+    border-color var(--dur-hover, 160ms) var(--ease-standard, ease),
+    background-color var(--dur-hover, 160ms) var(--ease-standard, ease),
+    box-shadow var(--dur-hover, 160ms) var(--ease-standard, ease),
+    transform var(--dur-hover, 160ms) var(--ease-standard, ease);
+}
+
+@media (max-width: 1180px) {
+  .share-stu-faculty-toolbar,
+  .share-stu-faculty-toolbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .share-stu-faculty-toolbar p,
+  .share-stu-faculty-filter-tabs {
+    justify-self: stretch;
+  }
+
+  .share-stu-faculty-filter-tabs {
+    width: 100%;
+  }
+}
+
+/* Completed header composition: title, filters, search, and richer metrics. */
+.share-stu-faculty-toolbar {
+  grid-template-columns: minmax(220px, 0.58fr) minmax(0, 1fr);
+  min-height: 56px;
+  padding: 10px 12px;
+}
+
+.share-stu-faculty-toolbar > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding-left: 8px;
+}
+
+.share-stu-faculty-toolbar h2 {
+  display: block;
+  margin: 0;
+  color: #123126;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.share-stu-faculty-toolbar p {
+  min-height: 0;
+  padding: 0;
+  color: #647c71;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.share-stu-faculty-toolbar-actions {
+  grid-template-columns: minmax(330px, max-content) minmax(300px, 400px);
+}
+
+.share-stu-faculty-metric-card {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  align-content: center;
+  gap: 2px 10px;
+  min-height: 76px;
+  padding: 12px 14px;
+}
+
+.share-stu-faculty-metric-card > span {
+  grid-row: span 3;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(15, 104, 68, 0.12);
+  border-radius: 13px;
+  background: #f2fbf7;
+  color: #0f6844;
+}
+
+/* Finish metric tiles: remove placeholder-looking right block. */
+.share-stu-faculty-metric-card {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  min-height: 70px;
+  padding: 12px 14px;
+}
+
+.share-stu-faculty-metric-card > span {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+}
+
+.share-stu-faculty-metric-card b,
+.share-stu-faculty-metric-card small,
+.share-stu-faculty-metric-card em {
+  grid-column: 2;
+}
+
+.share-stu-faculty-metric-card::after {
+  content: none;
+}
+
+.share-stu-faculty-metric-card::before {
+  inset: auto 14px 8px 48px;
+  height: 3px;
+}
+
+.share-stu-faculty-metric-card b {
+  font-size: 1.18rem;
+  line-height: 1;
+}
+
+.share-stu-faculty-metric-card small {
+  max-width: none;
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.share-stu-faculty-metric-card em {
+  color: #6f877c;
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+.share-stu-faculty-metric-card.is-forest > span {
+  background: #e9f8f0;
+  color: #0f6844;
+}
+
+.share-stu-faculty-metric-card.is-sky > span {
+  border-color: rgba(14, 165, 233, 0.2);
+  background: #eef9ff;
+  color: #0284c7;
+}
+
+.share-stu-faculty-metric-card.is-amber > span {
+  border-color: rgba(245, 158, 11, 0.22);
+  background: #fff8e8;
+  color: #b45309;
+}
+
+.share-stu-faculty-metric-card b,
+.share-stu-faculty-metric-card small,
+.share-stu-faculty-metric-card em {
+  grid-column: 2;
+}
+
+.share-stu-faculty-metric-card b {
+  font-size: 1.18rem;
+}
+
+.share-stu-faculty-metric-card small {
+  max-width: none;
+  font-size: 0.62rem;
+}
+
+.share-stu-faculty-metric-card em {
+  position: relative;
+  z-index: 1;
+  color: #82978d;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.1;
+}
+
+.share-stu-faculty-metric-card::after {
+  width: 68px;
+  height: 92px;
+  opacity: 0.58;
+}
+
+@media (max-width: 1180px) {
+  .share-stu-faculty-toolbar,
+  .share-stu-faculty-toolbar-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 780px) {
+  .share-stu-faculty-shell {
+    padding-inline: 12px;
+  }
+
+  .share-stu-faculty-group-head {
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .share-stu-faculty-parent-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Usability pass: compact, scannable grid with reduced page margins. */
+.share-stu-faculty-page {
+  min-height: calc(100svh - 72px);
+  padding: 0 8px 10px;
+  background:
+    linear-gradient(90deg, rgba(223, 255, 247, 0.78) 0%, rgba(248, 255, 252, 0.88) 34%, rgba(239, 249, 246, 0.94) 100%);
+}
+
+.share-stu-faculty-shell {
+  padding: 12px 14px 10px;
+}
+
+.share-stu-faculty-page .question-bank-list-page-head {
+  min-height: 34px;
+  padding-inline: 0;
+}
+
+.share-stu-faculty-toolbar {
+  grid-template-columns: max-content minmax(0, 1fr);
+  min-height: 42px;
+  margin-top: 0;
+  border-bottom: 1px solid rgba(15, 104, 68, 0.14);
+  padding-bottom: 10px;
+}
+
+.share-stu-faculty-toolbar p {
+  min-height: 28px;
+  padding-inline: 12px;
+  background: #ffffff;
+}
+
+.share-stu-faculty-toolbar-actions {
+  grid-template-columns: minmax(350px, max-content) minmax(260px, 360px);
+  gap: 10px;
+}
+
+.share-stu-faculty-filter-tabs {
+  height: 42px;
+  padding: 4px;
+}
+
+.share-stu-faculty-filter-tabs button {
+  min-height: 30px;
+  padding-inline: 12px;
+}
+
+.share-stu-faculty-toolbar label {
+  height: 42px;
+}
+
+.share-stu-faculty-metric-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.share-stu-faculty-metric-card {
+  min-height: 64px;
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 24px rgba(15, 49, 35, 0.06);
+}
+
+.share-stu-faculty-metric-card b {
+  font-size: 1.18rem;
+}
+
+.share-stu-faculty-metric-card small {
+  font-size: 0.6rem;
+}
+
+.share-stu-faculty-metric-card::after {
+  width: 82px;
+  height: 108px;
+  right: -28px;
+  top: -34px;
+}
+
+.share-stu-faculty-list-head {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.35fr) minmax(108px, 0.34fr) minmax(222px, auto) minmax(138px, auto);
+  align-items: center;
+  gap: 12px;
+  min-height: 34px;
+  border: 1px solid rgba(15, 104, 68, 0.1);
+  border-radius: 14px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #0f6844;
+  font-size: 0.64rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.share-stu-faculty-list-head span:nth-child(2),
+.share-stu-faculty-list-head span:nth-child(3),
+.share-stu-faculty-list-head span:nth-child(4) {
+  text-align: center;
+}
+
+.share-stu-faculty-groups {
+  gap: 8px;
+}
+
+.share-stu-faculty-group {
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 20px rgba(15, 49, 35, 0.045);
+}
+
+.share-stu-faculty-group:hover,
+.share-stu-faculty-group:focus-within {
+  box-shadow: 0 12px 26px rgba(15, 49, 35, 0.07);
+}
+
+.share-stu-faculty-group-head {
+  grid-template-columns: minmax(280px, 1.35fr) minmax(108px, 0.34fr) minmax(222px, auto) minmax(138px, auto);
+  min-height: 56px;
+  gap: 12px;
+  padding: 9px 16px;
+}
+
+.share-stu-faculty-expand-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 11px;
+}
+
+.share-stu-faculty-group-main strong {
+  font-size: 0.92rem;
+}
+
+.share-stu-faculty-group-main em {
+  font-size: 0.68rem;
+}
+
+.share-stu-faculty-code {
+  min-width: 100px;
+  min-height: 22px;
+}
+
+.share-stu-faculty-parent-metrics {
+  grid-template-columns: repeat(3, 68px);
+  gap: 6px;
+}
+
+.share-stu-faculty-parent-metrics span {
+  min-width: 68px;
+  min-height: 38px;
+  border-radius: 12px;
+  padding: 4px 6px;
+}
+
+.share-stu-faculty-parent-metrics b {
+  font-size: 0.78rem;
+}
+
+.share-stu-faculty-parent-metrics small {
+  font-size: 0.52rem;
+}
+
+.share-stu-faculty-analytics-btn {
+  min-width: 132px;
+  min-height: 34px;
+  font-size: 0.68rem;
+}
+
+.share-stu-faculty-practice-panel {
+  overflow: hidden;
+  padding: 0 12px 12px;
+  animation: shareFacultyExpandIn 220ms var(--ease-standard, ease) both;
+}
+
+.share-stu-faculty-practice-head,
+.share-stu-faculty-practice-row {
+  grid-template-columns:
+    minmax(190px, 1fr)
+    minmax(124px, 0.58fr)
+    minmax(92px, 0.42fr)
+    minmax(150px, 0.68fr)
+    minmax(92px, 0.42fr)
+    minmax(66px, 0.3fr);
+  column-gap: 10px;
+}
+
+.share-stu-faculty-practice-head {
+  min-height: 32px;
+  margin: 0 -12px 6px;
+  padding: 0 16px;
+  font-size: 0.62rem;
+}
+
+.share-stu-faculty-practice-row {
+  min-height: 46px;
+  margin-top: 6px;
+  border-radius: 12px;
+  padding: 6px 10px;
+}
+
+.share-stu-faculty-date,
+.share-stu-faculty-practice-badge,
+.share-stu-faculty-schedule-pill,
+.share-stu-faculty-status,
+.share-stu-faculty-report-btn {
+  font-size: 0.64rem;
+}
+
+.share-stu-faculty-mix {
+  grid-template-columns: repeat(3, 36px);
+  gap: 5px;
+}
+
+.share-stu-faculty-mix span {
+  width: 36px;
+  min-height: 34px;
+  border-radius: 10px;
+}
+
+.share-stu-faculty-mix b {
+  font-size: 0.72rem;
+}
+
+.share-stu-faculty-mix small {
+  font-size: 0.5rem;
+}
+
+.share-stu-faculty-schedule-pill {
+  min-width: 72px;
+  min-height: 24px;
+}
+
+.share-stu-faculty-status {
+  width: 76px;
+  min-height: 24px;
+}
+
+.share-stu-faculty-report-btn {
+  width: 58px;
+  min-width: 58px;
+  height: 26px;
+  min-height: 26px;
+}
+
+.share-stu-faculty-footer {
+  grid-template-columns: 128px 1fr 128px;
+  margin-top: 0;
+}
+
+.share-stu-faculty-footer button {
+  min-height: 36px;
+}
+
+@keyframes shareFacultyExpandIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-stu-faculty-practice-panel {
+    animation: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .share-stu-faculty-list-head {
+    display: none;
+  }
+
+  .share-stu-faculty-toolbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .share-stu-faculty-filter-tabs {
+    justify-self: stretch;
+    width: 100%;
+  }
+}
+
+@media (max-width: 780px) {
+  .share-stu-faculty-page {
+    padding-inline: 4px;
+  }
+
+  .share-stu-faculty-shell {
+    padding: 10px 8px;
+  }
+
+  .share-stu-faculty-metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .share-stu-faculty-group-head,
+  .share-stu-faculty-practice-head,
+  .share-stu-faculty-practice-row {
+    grid-template-columns: 1fr;
+  }
+
+  .share-stu-faculty-parent-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .share-stu-faculty-parent-metrics span {
+    min-width: 0;
+  }
+}
+
+/* Use the app scroll only; prevents the page from creating a second scrollbar. */
+.assessment-page.share-stu-faculty-page {
+  height: auto;
+  min-height: calc(100svh - 72px);
+  overflow: visible;
+}
+
+/* Top dashboard band redesign. */
+.share-stu-faculty-toolbar {
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 48px;
+  border: 1px solid rgba(15, 104, 68, 0.12);
+  border-radius: 18px;
+  padding: 6px 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(247, 255, 252, 0.76));
+  box-shadow: 0 14px 32px rgba(15, 49, 35, 0.07);
+  backdrop-filter: blur(12px);
+}
+
+.share-stu-faculty-toolbar::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 18px 0 0 18px;
+  background: linear-gradient(180deg, #5fe8b1, #0f6844);
+}
+
+.share-stu-faculty-toolbar p {
+  min-height: 34px;
+  border: 0;
+  padding: 0 12px 0 14px;
+  background: transparent;
+  box-shadow: none;
+  color: #315448;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.share-stu-faculty-toolbar-actions {
+  grid-template-columns: minmax(330px, max-content) minmax(280px, 360px);
+  justify-content: end;
+  gap: 8px;
+}
+
+.share-stu-faculty-filter-tabs {
+  height: 36px;
+  border-color: rgba(15, 104, 68, 0.12);
+  padding: 3px;
+  background: #edf8f4;
+  box-shadow: inset 0 1px 2px rgba(15, 49, 35, 0.04);
+}
+
+.share-stu-faculty-filter-tabs button {
+  min-height: 28px;
+  padding: 0 12px;
+  color: #496b5f;
+  font-size: 0.72rem;
+}
+
+.share-stu-faculty-filter-tabs button span {
+  min-width: 18px;
+  height: 18px;
+  background: rgba(15, 104, 68, 0.09);
+  color: #0f6844;
+}
+
+.share-stu-faculty-filter-tabs button.is-active {
+  background: #086545;
+  box-shadow: 0 9px 18px rgba(8, 101, 69, 0.18);
+}
+
+.share-stu-faculty-toolbar label {
+  height: 36px;
+  min-height: 36px;
+  border-color: rgba(15, 104, 68, 0.12);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.share-stu-faculty-toolbar input {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.share-stu-faculty-metric-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.share-stu-faculty-metric-card {
+  min-height: 72px;
+  border-radius: 18px;
+  padding: 12px 14px 11px 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(251, 255, 253, 0.95) 58%, rgba(223, 250, 241, 0.78) 100%);
+  box-shadow:
+    0 12px 26px rgba(15, 49, 35, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.share-stu-faculty-metric-card::before {
+  inset: auto 14px 10px 16px;
+  width: auto;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #5fe8b1, rgba(95, 232, 177, 0.14));
+}
+
+.share-stu-faculty-metric-card.is-forest::before {
+  background: linear-gradient(90deg, #0f6844, rgba(15, 104, 68, 0.14));
+}
+
+.share-stu-faculty-metric-card.is-sky::before {
+  background: linear-gradient(90deg, #0ea5e9, rgba(14, 165, 233, 0.14));
+}
+
+.share-stu-faculty-metric-card.is-amber::before {
+  background: linear-gradient(90deg, #f59e0b, rgba(245, 158, 11, 0.14));
+}
+
+.share-stu-faculty-metric-card::after {
+  right: 12px;
+  top: 12px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(15, 104, 68, 0.08);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(95, 232, 177, 0.2), rgba(255, 255, 255, 0.72));
+  opacity: 1;
+  transform: none;
+}
+
+.share-stu-faculty-metric-card b {
+  font-size: 1.24rem;
+}
+
+.share-stu-faculty-metric-card small {
+  max-width: calc(100% - 44px);
+  color: #60786d;
+  font-size: 0.6rem;
+  line-height: 1.15;
+}
+
+.share-stu-faculty-metric-card:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 1180px) {
+  .share-stu-faculty-toolbar,
+  .share-stu-faculty-toolbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .share-stu-faculty-toolbar p,
+  .share-stu-faculty-filter-tabs {
+    justify-self: stretch;
+  }
+}
+
+/* Final metric-card fix: remove the unfinished right placeholder after all prior overrides. */
+.share-stu-faculty-metric-card {
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-content: center;
+  min-height: 64px;
+  padding: 12px 14px;
+}
+
+.share-stu-faculty-metric-card::after {
+  display: none;
+  content: none;
+}
+
+.share-stu-faculty-metric-card::before {
+  inset: auto 14px 8px 60px;
+  height: 3px;
+  width: auto;
+}
+
+.share-stu-faculty-metric-card > span {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 36px;
+  height: 36px;
+}
+
+.share-stu-faculty-metric-card b,
+.share-stu-faculty-metric-card small {
+  grid-column: 2;
+  max-width: none;
+}
+
+.share-stu-faculty-metric-card b {
+  font-size: 1.2rem;
+}
+
+.share-stu-faculty-metric-card small {
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+/* Metric hover animation. */
+.share-stu-faculty-metric-card {
+  isolation: isolate;
+  cursor: pointer;
+  transform-origin: center;
+}
+
+.share-stu-faculty-metric-card::before {
+  transition:
+    inset var(--dur-control, 220ms) var(--ease-standard, ease),
+    opacity var(--dur-hover, 160ms) var(--ease-standard, ease);
+}
+
+.share-stu-faculty-metric-card:hover,
+.share-stu-faculty-metric-card:focus-within {
+  border-color: rgba(15, 104, 68, 0.22);
+  transform: translateY(-3px) scale(1.012);
+  box-shadow: 0 18px 36px rgba(15, 49, 35, 0.12);
+}
+
+.share-stu-faculty-metric-card:hover::before,
+.share-stu-faculty-metric-card:focus-within::before {
+  inset: auto 14px 8px 50px;
+  opacity: 1;
+}
+
+.share-stu-faculty-metric-card:hover > span,
+.share-stu-faculty-metric-card:focus-within > span {
+  animation: shareFacultyMetricIconPop 420ms var(--ease-standard, ease) both;
+}
+
+.share-stu-faculty-metric-card:hover b,
+.share-stu-faculty-metric-card:focus-within b {
+  animation: shareFacultyMetricNumberLift 360ms var(--ease-standard, ease) both;
+}
+
+@keyframes shareFacultyMetricIconPop {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: translateY(-2px) scale(1.08);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shareFacultyMetricNumberLift {
+  from {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-2px);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-stu-faculty-metric-card:hover,
+  .share-stu-faculty-metric-card:focus-within,
+  .share-stu-faculty-metric-card:hover > span,
+  .share-stu-faculty-metric-card:focus-within > span,
+  .share-stu-faculty-metric-card:hover b,
+  .share-stu-faculty-metric-card:focus-within b {
+    animation: none;
+    transform: none;
+  }
+}
+
+.share-stu-faculty-toolbar {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 52px;
+  border-radius: 18px;
+  padding: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(246, 253, 250, 0.9));
+}
+
+.share-stu-faculty-toolbar::before {
+  display: none;
+}
+
+.share-stu-faculty-toolbar > div:first-child:not(.share-stu-faculty-toolbar-actions) {
+  display: none;
+}
+
+.share-stu-faculty-toolbar-actions {
+  grid-template-columns: minmax(360px, max-content) minmax(320px, 420px);
+  justify-content: space-between;
+  width: 100%;
+}
+
+.share-stu-faculty-filter-tabs {
+  justify-self: start;
+}
+
+.share-stu-faculty-toolbar label {
+  justify-self: end;
+}
+
+.share-stu-faculty-metric-strip {
+  order: 0;
+}
+
+.share-stu-faculty-list-head {
+  margin-top: 0;
+}
+
+@media (max-width: 1180px) {
+  .share-stu-faculty-toolbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .share-stu-faculty-filter-tabs,
+  .share-stu-faculty-toolbar label {
+    justify-self: stretch;
+  }
+}

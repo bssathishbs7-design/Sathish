@@ -1324,7 +1324,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                     <div key={section.key} className={`start-practice-answer-group is-${section.accent}`}>
                       <header className="start-practice-answer-group-head">
                         <strong>{section.label}</strong>
-                        <span>{formatCount(section.items.length)} Questions • {formatCount(section.marks)} Marks</span>
+                        <span>{formatCount(section.items.length)} Questions - {formatCount(section.marks)} Marks</span>
                       </header>
                       {section.items.map((item, sectionIndex) => {
                         const orderedIndex = sectionOffset + sectionIndex
@@ -1748,7 +1748,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                 className={`start-practice-title-progress ${sessionFilter === 'in-progress' ? 'is-active' : ''} ${sessionFilterCounts.inProgress > 0 ? 'has-live-count' : 'is-empty'}`}
                 onClick={() => setSessionFilter('in-progress')}
               >
-                Live Practice
+                Live practice
                 <span>{sessionFilterCounts.inProgress}</span>
               </button>
               <button type="button" className="start-practice-title-analytics">
@@ -1764,7 +1764,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                 <strong>{answeredCount} / {questions.length}</strong>
               </span>
               <div className="start-practice-title-totals" aria-label="Practice totals">
-                <span><em>Total Ques</em><strong>{formatCount(questions.length)}</strong></span>
+                <span><em>Total ques</em><strong>{formatCount(questions.length)}</strong></span>
                 <span><em>Total Marks</em><strong>{formatCount(totalMarks)}</strong></span>
               </div>
             </div>

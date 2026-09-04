@@ -312,6 +312,7 @@ const buildStudentReportRows = (practice = {}) => reportStudents.map(([name, rol
 function ShareStuFacultyPage({ onNavigate }) {
   const [sharedCards, setSharedCards] = useState(() => readSharedCards())
   const [query, setQuery] = useState('')
+  const [activeFilter, setActiveFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [expandedRows, setExpandedRows] = useState(() => new Set())
   const [activeReport, setActiveReport] = useState(null)
@@ -369,15 +370,46 @@ function ShareStuFacultyPage({ onNavigate }) {
 
   const filteredRows = useMemo(() => {
     const searchText = query.trim().toLowerCase()
-    if (!searchText) return rows
+    return rows.filter((row) => {
+      const matchesSearch = !searchText || (
+        row.code.toLowerCase().includes(searchText)
+        || row.competency.toLowerCase().includes(searchText)
+        || row.subject.toLowerCase().includes(searchText)
+        || row.assignedTo.toLowerCase().includes(searchText)
+      )
+      const matchesFilter = (
+        activeFilter === 'all'
+        || (activeFilter === 'live' && row.livePractice > 0)
+        || (activeFilter === 'completed' && row.practices.some((practice) => practice.status === 'Complete'))
+        || (activeFilter === 'scheduled' && row.practices.some((practice) => getScheduleClassName(practice.schedule, practice.status) === 'is-scheduled'))
+      )
 
-    return rows.filter((row) => (
-      row.code.toLowerCase().includes(searchText)
-      || row.competency.toLowerCase().includes(searchText)
-      || row.subject.toLowerCase().includes(searchText)
-      || row.assignedTo.toLowerCase().includes(searchText)
-    ))
-  }, [query, rows])
+      return matchesSearch && matchesFilter
+    })
+  }, [activeFilter, query, rows])
+
+  const filterOptions = useMemo(() => [
+    { key: 'all', label: 'All', count: rows.length },
+    { key: 'live', label: 'Live', count: rows.filter((row) => row.livePractice > 0).length },
+    { key: 'completed', label: 'Completed', count: rows.filter((row) => row.practices.some((practice) => practice.status === 'Complete')).length },
+    { key: 'scheduled', label: 'Scheduled', count: rows.filter((row) => row.practices.some((practice) => getScheduleClassName(practice.schedule, practice.status) === 'is-scheduled')).length },
+  ], [rows])
+
+  const dashboardMetrics = useMemo(() => {
+    const totals = filteredRows.reduce((nextTotals, row) => ({
+      competencies: nextTotals.competencies + 1,
+      practices: nextTotals.practices + row.practiceCount,
+      questions: nextTotals.questions + row.total,
+      live: nextTotals.live + row.livePractice,
+    }), { competencies: 0, practices: 0, questions: 0, live: 0 })
+
+    return [
+      { label: 'Competency sets', value: totals.competencies, tone: 'mint', Icon: Share2 },
+      { label: 'Practice sessions', value: totals.practices, tone: 'forest', Icon: FileText },
+      { label: 'Shared questions', value: totals.questions, tone: 'sky', Icon: BarChart3 },
+      { label: 'Live practice', value: totals.live, tone: 'amber', Icon: Trophy },
+    ]
+  }, [filteredRows])
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
   const visibleRows = filteredRows.slice((Math.min(page, pageCount) - 1) * PAGE_SIZE, Math.min(page, pageCount) * PAGE_SIZE)
@@ -393,7 +425,7 @@ function ShareStuFacultyPage({ onNavigate }) {
 
   useEffect(() => {
     setPage(1)
-  }, [query])
+  }, [activeFilter, query])
 
   useEffect(() => {
     if (!activeReport) return undefined
@@ -444,29 +476,59 @@ function ShareStuFacultyPage({ onNavigate }) {
         </section>
 
         <section className="share-stu-faculty-card" aria-label="Shared question list">
+          <div className="share-stu-faculty-metric-strip" aria-label="Share to students summary">
+            {dashboardMetrics.map((metric) => (
+              <span className={`share-stu-faculty-metric-card is-${metric.tone}`} key={metric.label}>
+                <span aria-hidden="true">
+                  <metric.Icon size={16} strokeWidth={2.3} />
+                </span>
+                <b>{metric.value}</b>
+                <small>{metric.label}</small>
+              </span>
+            ))}
+          </div>
+
           <div className="share-stu-faculty-toolbar">
-            <div>
-              <h2>Shared questions</h2>
-              <p>{filteredRows.length} shared competency {filteredRows.length === 1 ? 'set' : 'sets'}</p>
+            <div className="share-stu-faculty-toolbar-actions">
+              <div className="share-stu-faculty-filter-tabs" role="group" aria-label="Filter shared questions">
+                {filterOptions.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={activeFilter === option.key ? 'is-active' : ''}
+                    onClick={() => setActiveFilter(option.key)}
+                    aria-pressed={activeFilter === option.key}
+                  >
+                    {option.label}
+                    <span>{option.count}</span>
+                  </button>
+                ))}
+              </div>
+              <label>
+                <Search size={15} strokeWidth={2.3} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={query}
+                  placeholder="Search shared questions..."
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+                {query ? (
+                  <button type="button" aria-label="Clear search" onClick={() => setQuery('')}>
+                    <X size={14} strokeWidth={2.4} />
+                  </button>
+                ) : null}
+              </label>
             </div>
-            <label>
-              <Search size={15} strokeWidth={2.3} aria-hidden="true" />
-              <input
-                type="search"
-                value={query}
-                placeholder="Search shared questions..."
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              {query ? (
-                <button type="button" aria-label="Clear search" onClick={() => setQuery('')}>
-                  <X size={14} strokeWidth={2.4} />
-                </button>
-              ) : null}
-            </label>
           </div>
 
           {visibleRows.length ? (
             <>
+              <div className="share-stu-faculty-list-head" aria-hidden="true">
+                <span>Competency</span>
+                <span>Code</span>
+                <span>Summary</span>
+                <span>Action</span>
+              </div>
               <div className="share-stu-faculty-groups">
                 {visibleRows.map((row) => {
                   const isExpanded = expandedRows.has(row.id)
@@ -601,7 +663,7 @@ function ShareStuFacultyPage({ onNavigate }) {
                   Practice report
                 </h2>
                 <p>
-                  {activeReport.parent.code} • # Practice {activeReport.practice.practiceNo}
+                  {activeReport.parent.code} - # Practice {activeReport.practice.practiceNo}
                 </p>
               </div>
               <button type="button" aria-label="Close report" onClick={() => setActiveReport(null)}>
