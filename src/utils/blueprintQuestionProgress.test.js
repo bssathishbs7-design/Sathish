@@ -122,3 +122,28 @@ test('uses fixed Blueprint marks only while Blueprint and the saved planner are 
     isPlannerSaved: true,
   }), 3)
 })
+
+test('resolves Blueprint SAQ marks from descriptive section category metadata', () => {
+  assert.equal(resolveBlueprintPreviewQuestionMarks({
+    question: {
+      type: 'Desc Short Answer Questions (SAQs)',
+      descriptiveSections: [
+        { questionCategory: 'Application', marks: '5' },
+      ],
+    },
+    questionTypeDraft: { 'SAQs (Application)': { perQuestionMarks: '8' } },
+    fallbackMarks: 5,
+    isBlueprintEnabled: true,
+    isPlannerSaved: true,
+  }), 8)
+})
+
+test('resolves Blueprint SAQ marks when saved planner category labels use variants', () => {
+  assert.equal(resolveBlueprintPreviewQuestionMarks({
+    question: { type: 'SAQs', questionCategory: 'AETCOM' },
+    questionTypeDraft: { 'SAQs (Critical Thinking)': { perQuestionMarks: '8' } },
+    fallbackMarks: 5,
+    isBlueprintEnabled: true,
+    isPlannerSaved: true,
+  }), 8)
+})

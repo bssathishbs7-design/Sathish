@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  autoAdjustBlueprintTargets,
   autoFillBlueprintAllocations,
   greatestCommonDivisorOf,
   rebalanceCompetencyTargets,
@@ -101,6 +102,33 @@ test('uses the exact fallback when round-robin reaches a remainder trap', () => 
   assert.equal(result.error, '')
   assert.equal(result.allocations.four.large, 1)
   assert.equal(result.allocations.six.small, 2)
+})
+
+test('auto-adjusts competency targets into an autofill-compatible distribution', () => {
+  const rows = [8, 4, 8, 4, 11, 4, 7, 11, 4, 7, 4, 4, 3, 3, 3, 3, 6, 6]
+    .map((targetMarks, index) => ({
+      key: `row-${index}`,
+      code: `AN${index + 1}`,
+      targetMarks,
+    }))
+  const columns = [
+    { key: 'saqLot', label: 'SAQ LoT', weight: 10, targetQuestionCount: 5 },
+    { key: 'saqHot', label: 'SAQ HoT', weight: 10, targetQuestionCount: 2 },
+    { key: 'laqLot', label: 'LAQ LoT', weight: 5, targetQuestionCount: 1 },
+    { key: 'laqHot', label: 'LAQ HoT', weight: 5, targetQuestionCount: 1 },
+    { key: 'mcqLot', label: 'MCQ LoT', weight: 1, targetQuestionCount: 8 },
+    { key: 'mcqHot', label: 'MCQ HoT', weight: 1, targetQuestionCount: 12 },
+  ]
+  const adjusted = autoAdjustBlueprintTargets({ rows, columns })
+  const result = autoFillBlueprintAllocations({
+    rows: adjusted.rows,
+    columns,
+  })
+
+  assert.equal(adjusted.error, '')
+  assert.equal(result.error, '')
+  assert.equal(adjusted.rows.reduce((total, row) => total + row.targetMarks, 0), 100)
+  assert.ok(adjusted.rows.some((row) => row.isRebalanced))
 })
 
 test('reshuffle preserves every row mark total and column question count', () => {

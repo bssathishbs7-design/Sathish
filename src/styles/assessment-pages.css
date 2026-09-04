@@ -22581,6 +22581,12 @@
   color: #b45309;
 }
 
+.create-assessment-blueprint-validation.is-warning {
+  border-color: #fdba74;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .create-assessment-blueprint-validation.is-invalid {
   border-color: #fecaca;
   background: #fff1f2;
@@ -22674,6 +22680,12 @@
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
+}
+
+.create-assessment-blueprint-mark-range.is-warning {
+  border-color: #fdba74;
+  background: #fff7ed;
+  color: #c2410c;
 }
 
 .create-assessment-blueprint-delete-btn {
@@ -43657,6 +43669,12 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   color: #fde68a;
 }
 
+.theme-dark .create-assessment-blueprint-validation.is-warning {
+  border-color: rgba(251, 146, 60, 0.46);
+  background: rgba(154, 52, 18, 0.24);
+  color: #fdba74;
+}
+
 .theme-dark .create-assessment-blueprint-validation.is-invalid {
   border-color: rgba(251, 113, 133, 0.5);
   background: rgba(127, 29, 29, 0.28);
@@ -43702,6 +43720,12 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   border-color: rgba(96, 165, 250, 0.42);
   background: rgba(30, 58, 138, 0.24);
   color: #bfdbfe;
+}
+
+.theme-dark .create-assessment-blueprint-mark-range.is-warning {
+  border-color: rgba(251, 146, 60, 0.46);
+  background: rgba(154, 52, 18, 0.24);
+  color: #fdba74;
 }
 
 .theme-dark .create-assessment-blueprint-delete-btn {

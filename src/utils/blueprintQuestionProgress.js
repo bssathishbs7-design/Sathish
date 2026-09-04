@@ -27,12 +27,35 @@ const normalizeBlueprintQuestionCategory = (value) => {
   return 'Direct'
 }
 
+const getBlueprintQuestionCategory = (question = {}) => {
+  if (question.questionCategory) return question.questionCategory
+
+  const sections = Array.isArray(question.descriptiveSections) ? question.descriptiveSections : []
+  const category = sections.find((section) => section?.questionCategory)?.questionCategory
+    ?? sections.flatMap((section) => (
+      Array.isArray(section?.children) ? section.children : []
+    )).find((child) => child?.questionCategory)?.questionCategory
+
+  return category || question.category
+}
+
 export const getBlueprintQuestionMarkRowLabel = (question = {}) => {
   const type = normalizeBlueprintQuestionType(question.type)
   if (type === 'mcq') return 'MCQs'
   if (type === 'laq') return 'LAQs'
-  if (type === 'saq') return `SAQs (${normalizeBlueprintQuestionCategory(question.questionCategory)})`
+  if (type === 'saq') return `SAQs (${normalizeBlueprintQuestionCategory(getBlueprintQuestionCategory(question))})`
   return ''
+}
+
+const normalizeBlueprintQuestionMarkRowLabel = (label) => {
+  const normalized = normalizeText(label)
+  if (normalized === 'mcqs') return 'MCQs'
+  if (normalized === 'laqs') return 'LAQs'
+  if (normalized.includes('saq')) {
+    const categoryLabel = String(label ?? '').match(/\(([^)]+)\)/)?.[1] ?? label
+    return `SAQs (${normalizeBlueprintQuestionCategory(categoryLabel)})`
+  }
+  return label
 }
 
 export const resolveBlueprintPreviewQuestionMarks = ({
@@ -46,7 +69,11 @@ export const resolveBlueprintPreviewQuestionMarks = ({
   if (!isBlueprintEnabled || !isPlannerSaved) return normalizedFallback
 
   const rowLabel = getBlueprintQuestionMarkRowLabel(question)
-  const blueprintMarks = Number(questionTypeDraft[rowLabel]?.perQuestionMarks) || 0
+  const blueprintRow = questionTypeDraft[rowLabel]
+    ?? Object.entries(questionTypeDraft).find(([label]) => (
+      normalizeBlueprintQuestionMarkRowLabel(label) === rowLabel
+    ))?.[1]
+  const blueprintMarks = Number(blueprintRow?.perQuestionMarks) || 0
   return blueprintMarks > 0 ? blueprintMarks : normalizedFallback
 }
 

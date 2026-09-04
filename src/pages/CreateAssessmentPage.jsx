@@ -62,6 +62,7 @@ import RichMathEditor from '../components/RichMathEditor'
 import GenerationProcessorCard from '../components/GenerationProcessorCard'
 import { APP_PAGES } from '../config/appPages'
 import {
+  autoAdjustBlueprintTargets,
   autoFillBlueprintAllocations,
   rebalanceCompetencyTargets,
   reshuffleBlueprintAllocations,
@@ -2059,12 +2060,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     && hasBlueprintDistribution
     && !blueprintDistributionMatchesTotal
   )
-  const blueprintDistributionStatusMessage = blueprintDistributionMatchesTotal
+  const blueprintDistributionTotalStatusMessage = blueprintDistributionMatchesTotal
     ? `Distribution complete: ${blueprintRoundedTotalMark} / ${blueprintRoundedTotalMark}`
     : blueprintDistributionRemaining > 0
       ? `${blueprintDistributionRemaining} marks remaining`
       : `Reduce ${Math.abs(blueprintDistributionRemaining)} marks`
-  const blueprintDistributionStatusClass = blueprintDistributionMatchesTotal
+  const blueprintDistributionTotalStatusClass = blueprintDistributionMatchesTotal
     ? 'is-valid'
     : blueprintDistributionRemaining > 0
       ? 'is-remaining'
@@ -2395,6 +2396,27 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const blueprintLowWeightageThreshold = blueprintUniqueDenominations.length > 1
     ? blueprintUniqueDenominations[1]
     : 0
+  const blueprintLargeQuestionDenominations = blueprintUniqueDenominations.filter((marks) => marks > 1)
+  const blueprintMinimumLargeQuestionMarks = blueprintLargeQuestionDenominations[0] || 0
+  const blueprintDistributionCompatibilityRows = blueprintMinimumLargeQuestionMarks > 0
+    ? blueprintTableRows.filter((row) => {
+      const distributionMarks = Number(row.distributionLabel) || 0
+      return distributionMarks > 0 && distributionMarks < blueprintMinimumLargeQuestionMarks
+    })
+    : []
+  const blueprintDistributionHasQuestionCompatibilityWarning = Boolean(
+    blueprintDistributionMatchesTotal
+    && blueprintDistributionCompatibilityRows.length,
+  )
+  const blueprintDistributionCompatibilitySummary = blueprintDistributionHasQuestionCompatibilityWarning
+    ? `${blueprintDistributionCompatibilityRows.length} ${blueprintDistributionCompatibilityRows.length === 1 ? 'competency' : 'competencies'} below ${formatBlueprintSplitNumber(blueprintMinimumLargeQuestionMarks)}-mark questions`
+    : ''
+  const blueprintDistributionStatusMessage = blueprintDistributionHasQuestionCompatibilityWarning
+    ? `Distribution total complete, but ${blueprintDistributionCompatibilitySummary}.`
+    : blueprintDistributionTotalStatusMessage
+  const blueprintDistributionStatusClass = blueprintDistributionHasQuestionCompatibilityWarning
+    ? 'is-warning'
+    : blueprintDistributionTotalStatusClass
   const blueprintTestSpecificationQuestionCounts = {
     mcqLot: blueprintQuestionTypeByLabel.MCQs?.lotQuestions || 0,
     mcqHot: blueprintQuestionTypeByLabel.MCQs?.hotQuestions || 0,
@@ -2774,6 +2796,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     ))),
     targetQuestionCount: blueprintQuestionTypeQuestionTotal,
   })
+  const blueprintQuestionCellMarks = Object.fromEntries(blueprintSpecificationRows.flatMap((row) => (
+    blueprintTestSpecificationColumns.map((column) => {
+      const countData = getBlueprintTestSpecificationCellCountData(row.key, column.key)
+      const normalizedCellKey = `${String(row.code).trim().toLowerCase().replace(/\s+/g, '')}:${column.key.toLowerCase()}`
+      return [normalizedCellKey, {
+        count: Number(countData.count) || 0,
+        marks: Number(countData.calculatedMarks) || 0,
+      }]
+    })
+  )))
   const blueprintQuestionProgressQuestions = activeCreateTab === 'questionBank'
     ? [...savedQuestions, ...blueprintQuestionBankSelection]
     : savedQuestions
@@ -3017,6 +3049,26 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       Object.entries(current).filter(([key]) => competencies.includes(key)),
     ))
   }
+  const updateBlueprintTotalMark = (totalMark) => {
+    if (!/^\d*$/.test(totalMark)) return
+    setBlueprintDraft((current) => (
+      current.totalMark === totalMark
+        ? current
+        : { ...current, totalMark }
+    ))
+    setBlueprintDistributionDraft({})
+    setBlueprintTestSpecificationCountDraft({})
+    setBlueprintTestSpecificationMarkDraft({})
+    setBlueprintRebalanceMetadata({})
+    setBlueprintChangedSpecificationCells([])
+    setBlueprintAutoFillIteration(0)
+    setIsBlueprintMatrixCreated(false)
+    setIsBlueprintCompetencyMatrixCreated(false)
+    setBlueprintCompetencyViewMode('multi')
+    if (selectedBlueprintRows.length && totalMark) {
+      setSaveStatus(`Distribution recalculated for ${totalMark} ${Number(totalMark) === 1 ? 'mark' : 'marks'}.`)
+    }
+  }
   const removeBlueprintCompetency = (competencyKey) => {
     setBlueprintDraft((current) => ({
       ...current,
@@ -3111,6 +3163,42 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintAutoFillIteration(0)
     setBlueprintChangedSpecificationCells([])
+  }
+  const buildBlueprintDistributionStateFromRows = (rows) => ({
+    draft: Object.fromEntries(rows.map((row) => [
+      row.key,
+      String(row.targetMarks),
+    ])),
+    metadata: Object.fromEntries(rows.map((row) => [
+      row.key,
+      {
+        originalTargetMarks: row.originalTargetMarks,
+        adjustedTargetMarks: row.targetMarks,
+        isRebalanced: row.isRebalanced,
+        delta: row.rebalanceDelta,
+        gcd: row.gcd || 1,
+      },
+    ])),
+  })
+  const getAutoAdjustedBlueprintDistribution = (rows) => {
+    const adjustResult = autoAdjustBlueprintTargets({
+      rows,
+      columns: blueprintAutoFillColumns,
+      coupledGroups: blueprintAutoFillCoupledGroups,
+    })
+    if (adjustResult.error || !adjustResult.allocations) return adjustResult
+
+    const adjustedAutoFillResult = autoFillBlueprintAllocations({
+      rows: adjustResult.rows,
+      columns: blueprintAutoFillColumns,
+      coupledGroups: blueprintAutoFillCoupledGroups,
+    })
+
+    return {
+      ...adjustResult,
+      allocations: adjustedAutoFillResult.allocations,
+      error: adjustedAutoFillResult.error || '',
+    }
   }
   const autoFillBlueprintTestSpecificationMatrix = () => {
     if (!blueprintTestSpecificationCanAutoFill) return
@@ -3211,6 +3299,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       coupledGroups: blueprintAutoFillCoupledGroups,
     })
     if (autoFillResult.error || !autoFillResult.allocations) {
+      const adjustedResult = getAutoAdjustedBlueprintDistribution(blueprintSpecificationRows)
+      if (!adjustedResult.error && adjustedResult.allocations) {
+        const distributionState = buildBlueprintDistributionStateFromRows(adjustedResult.rows)
+        const collapsedAdjustedAllocations = collapseAutoFillAllocations(adjustedResult.allocations)
+        setBlueprintDistributionDraft(distributionState.draft)
+        setBlueprintRebalanceMetadata(distributionState.metadata)
+        setBlueprintTestSpecificationCountDraft(collapsedAdjustedAllocations.countDraft)
+        setBlueprintTestSpecificationMarkDraft(collapsedAdjustedAllocations.markDraft)
+        setBlueprintChangedSpecificationCells([])
+        setBlueprintAutoFillIteration(1)
+        setSaveStatus('Distribution auto-adjusted and Table of Test Specifications autofilled.')
+        return
+      }
       setSaveStatus(autoFillResult.error || 'Unable to create a valid blueprint allocation.')
       return
     }
@@ -3391,28 +3492,48 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       return
     }
 
+    let matrixRows = rebalanceResult.rows.map((row) => ({ ...row, gcd: rebalanceResult.gcd }))
+    const feasibilityResult = autoFillBlueprintAllocations({
+      rows: matrixRows,
+      columns: blueprintAutoFillColumns,
+      coupledGroups: blueprintAutoFillCoupledGroups,
+    })
+    let matrixStatus = ''
+
+    if (feasibilityResult.error || !feasibilityResult.allocations) {
+      const adjustedResult = getAutoAdjustedBlueprintDistribution(matrixRows)
+      if (adjustedResult.error || !adjustedResult.allocations) {
+        if (blueprintDistributionHasQuestionCompatibilityWarning) {
+          const rowCodes = blueprintDistributionCompatibilityRows
+            .slice(0, 4)
+            .map((row) => row.code)
+            .join(', ')
+          const hiddenRowCount = Math.max(0, blueprintDistributionCompatibilityRows.length - 4)
+          setSaveStatus(
+            `${blueprintDistributionCompatibilitySummary}. ${rowCodes}${hiddenRowCount ? ` +${hiddenRowCount} more` : ''} can only receive smaller question formats unless distribution marks are increased.`,
+          )
+          return
+        }
+        setSaveStatus(adjustedResult.error || feasibilityResult.error || 'Unable to create a valid blueprint allocation.')
+        return
+      }
+      matrixRows = adjustedResult.rows
+      matrixStatus = 'Distribution auto-adjusted for the Table of Test Specifications.'
+    }
+
+    const distributionState = buildBlueprintDistributionStateFromRows(matrixRows)
     setBlueprintDistributionDraft((current) => ({
       ...current,
-      ...Object.fromEntries(rebalanceResult.rows.map((row) => [
-        row.key,
-        String(row.targetMarks),
-      ])),
+      ...distributionState.draft,
     }))
-    setBlueprintRebalanceMetadata(Object.fromEntries(
-      rebalanceResult.rows.map((row) => [row.key, {
-        originalTargetMarks: row.originalTargetMarks,
-        adjustedTargetMarks: row.targetMarks,
-        isRebalanced: row.isRebalanced,
-        delta: row.rebalanceDelta,
-        gcd: rebalanceResult.gcd,
-      }]),
-    ))
+    setBlueprintRebalanceMetadata(distributionState.metadata)
     setBlueprintTestSpecificationCountDraft({})
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintChangedSpecificationCells([])
     setBlueprintCompetencyViewMode('multi')
     setBlueprintAutoFillIteration(0)
     setIsBlueprintCompetencyMatrixCreated(true)
+    if (matrixStatus) setSaveStatus(matrixStatus)
   }
   const confirmBlueprintMatrixReset = () => {
     try {
@@ -4298,18 +4419,44 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const isSaveAssessmentDraftDisabled = selectedAssessmentQuestionCount === 0
   const canSaveAssessmentDraft = !isSaveAssessmentDraftDisabled
   const isBlueprintPreviewMarksActive = isBlueprintEnabled && isBlueprintPlannerSaved
+  const blueprintPreviewQuestionRelevance = getBlueprintQuestionRelevanceList(
+    previewQuestions,
+    blueprintQuestionRequirements,
+  )
   const blueprintPreviewMarksByQuestionId = useMemo(() => Object.fromEntries(
-    previewQuestions.map((item) => [
-      item.id,
-      resolveBlueprintPreviewQuestionMarks({
+    previewQuestions.map((item, index) => {
+      const fallbackMarks = getQuestionMarksTotal(item)
+      const match = getBlueprintQuestionMatch(item, blueprintQuestionRequirements)
+      const cellMarks = isBlueprintPreviewMarksActive && blueprintPreviewQuestionRelevance[index] && match.cellKey
+        ? blueprintQuestionCellMarks[match.cellKey]
+        : null
+      const cellMarkPerQuestion = cellMarks?.count > 0
+        ? cellMarks.marks / cellMarks.count
+        : 0
+
+      return [
+        item.id,
+        cellMarkPerQuestion > 0
+          ? cellMarkPerQuestion
+          : resolveBlueprintPreviewQuestionMarks({
         question: item,
         questionTypeDraft: blueprintQuestionTypeDraft,
-        fallbackMarks: getQuestionMarksTotal(item),
+        fallbackMarks,
         isBlueprintEnabled,
         isPlannerSaved: isBlueprintPlannerSaved,
       }),
-    ]),
-  ), [blueprintQuestionTypeDraft, isBlueprintEnabled, isBlueprintPlannerSaved, previewQuestions])
+      ]
+    }),
+  ), [
+    blueprintQuestionCellMarks,
+    blueprintPreviewQuestionRelevance,
+    blueprintQuestionRequirements,
+    blueprintQuestionTypeDraft,
+    isBlueprintEnabled,
+    isBlueprintPlannerSaved,
+    isBlueprintPreviewMarksActive,
+    previewQuestions,
+  ])
   const assessmentSummary = useMemo(() => {
     const rowsByType = previewQuestions.reduce((rows, item) => {
       const typeLabel = getSummaryTypeLabel(item.type)
@@ -7164,7 +7311,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         type="number"
                         min="1"
                         value={blueprintDraft.totalMark}
-                        onChange={(event) => setBlueprintDraft((current) => ({ ...current, totalMark: event.target.value }))}
+                        onChange={(event) => updateBlueprintTotalMark(event.target.value)}
                         placeholder="Total mark"
                         disabled={isBlueprintMatrixCreated}
                       />
@@ -7211,9 +7358,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     <tbody>
                       {blueprintTableRows.length ? blueprintTableRows.map((row) => {
                         const rebalanceInfo = blueprintRebalanceMetadata[row.key]
+                        const rowDistributionMarks = Number(row.distributionLabel) || 0
                         const isLowWeightage = blueprintLowWeightageThreshold > 0
-                          && Number(row.distributionLabel) > 0
-                          && Number(row.distributionLabel) < blueprintLowWeightageThreshold
+                          && rowDistributionMarks > 0
+                          && rowDistributionMarks < blueprintLowWeightageThreshold
+                        const isQuestionCompatibilityRisk = blueprintMinimumLargeQuestionMarks > 0
+                          && rowDistributionMarks > 0
+                          && rowDistributionMarks < blueprintMinimumLargeQuestionMarks
+                        const suggestedMarkLabel = isQuestionCompatibilityRisk
+                          ? `${formatBlueprintSplitNumber(blueprintMinimumLargeQuestionMarks)}+`
+                          : row.markRangeLabel
                         return (
                         <tr key={row.key}>
                           <td>
@@ -7256,7 +7410,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   tabIndex={0}
                                   role="img"
                                   aria-label="Low-weightage allocation"
-                                  data-tooltip="Allocation is smaller than larger question denominations; this competency will be restricted exclusively to smallest-weight assessment formats."
+                                  data-tooltip={isQuestionCompatibilityRisk
+                                    ? `This competency has only ${formatBlueprintSplitNumber(rowDistributionMarks)} marks, so AutoFill cannot place a ${formatBlueprintSplitNumber(blueprintMinimumLargeQuestionMarks)}-mark SAQ or LAQ here.`
+                                    : 'Allocation is smaller than larger question denominations; this competency will be restricted exclusively to smallest-weight assessment formats.'}
                                 >
                                   <Info size={12} strokeWidth={2.4} />
                                 </span>
@@ -7273,8 +7429,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             </div>
                           </td>
                           <td>
-                            <span className="create-assessment-blueprint-mark-range">
-                              {row.markRangeLabel || '-'}
+                            <span
+                              className={`create-assessment-blueprint-mark-range ${isQuestionCompatibilityRisk ? 'is-warning' : ''}`}
+                              title={isQuestionCompatibilityRisk
+                                ? `${formatBlueprintSplitNumber(blueprintMinimumLargeQuestionMarks)} or more marks can accept SAQ/LAQ questions. Smaller rows can only accept smaller question formats.`
+                                : undefined}
+                            >
+                              {suggestedMarkLabel || '-'}
                             </span>
                           </td>
                           <td>

@@ -138,6 +138,127 @@ const createEmptyAllocations = (rows, columns) => Object.fromEntries(
   ]),
 )
 
+const createAllocationTokens = ({
+  columns,
+  coupledGroups = [],
+  columnLookup,
+  coupledColumnKeys,
+}) => {
+  const tokens = []
+
+  coupledGroups.forEach((group) => {
+    const groupColumns = group.columnKeys.map((key) => columnLookup[key]).filter(Boolean)
+    if (!groupColumns.length) return
+    const requiredCount = Math.min(
+      ...groupColumns.map((column) => column.targetQuestionCount),
+    )
+    const combinedWeight = groupColumns.reduce((total, column) => total + column.weight, 0)
+    for (let index = 0; index < requiredCount; index += 1) {
+      tokens.push({
+        key: `${group.key || 'coupled'}-${index}`,
+        columnKeys: groupColumns.map((column) => column.key),
+        weight: combinedWeight,
+      })
+    }
+  })
+
+  columns
+    .filter((column) => !coupledColumnKeys.has(column.key))
+    .forEach((column) => {
+      for (let index = 0; index < column.targetQuestionCount; index += 1) {
+        tokens.push({
+          key: `${column.key}-${index}`,
+          columnKeys: [column.key],
+          weight: column.weight,
+        })
+      }
+    })
+
+  return tokens.sort((left, right) => right.weight - left.weight || left.key.localeCompare(right.key))
+}
+
+export const autoAdjustBlueprintTargets = ({
+  rows,
+  columns,
+  coupledGroups = [],
+}) => {
+  const normalizedRows = rows.map((row, index) => ({
+    ...row,
+    index,
+    originalTargetMarks: toNonNegativeInteger(row.targetMarks),
+    targetMarks: toNonNegativeInteger(row.targetMarks),
+  }))
+  const normalizedColumns = columns.map((column, index) => ({
+    ...column,
+    index,
+    weight: toNonNegativeInteger(column.weight),
+    targetQuestionCount: toNonNegativeInteger(column.targetQuestionCount),
+  })).filter((column) => column.weight > 0 && column.targetQuestionCount > 0)
+  const columnLookup = Object.fromEntries(
+    normalizedColumns.map((column) => [column.key, column]),
+  )
+  const coupledColumnKeys = new Set(coupledGroups.flatMap((group) => group.columnKeys))
+  const tokens = createAllocationTokens({
+    columns: normalizedColumns,
+    coupledGroups,
+    columnLookup,
+    coupledColumnKeys,
+  })
+  const targetTotal = normalizedRows.reduce((total, row) => total + row.targetMarks, 0)
+  const tokenTotal = tokens.reduce((total, token) => total + token.weight, 0)
+
+  if (!normalizedRows.length || targetTotal !== tokenTotal) {
+    return {
+      rows: normalizedRows,
+      allocations: null,
+      error: targetTotal === tokenTotal
+        ? 'Select at least one competency before adjusting the blueprint distribution.'
+        : 'Question marks do not equal the selected distribution total.',
+    }
+  }
+
+  const allocations = createEmptyAllocations(normalizedRows, normalizedColumns)
+  const rowTotals = Object.fromEntries(normalizedRows.map((row) => [row.key, 0]))
+  const rowQuestionCounts = Object.fromEntries(normalizedRows.map((row) => [row.key, 0]))
+
+  tokens.forEach((token) => {
+    const selectedRow = [...normalizedRows].sort((left, right) => {
+      const leftCurrent = rowTotals[left.key]
+      const rightCurrent = rowTotals[right.key]
+      const leftTarget = left.targetMarks
+      const rightTarget = right.targetMarks
+      const leftDelta = Math.abs((leftCurrent + token.weight) - leftTarget) - Math.abs(leftCurrent - leftTarget)
+      const rightDelta = Math.abs((rightCurrent + token.weight) - rightTarget) - Math.abs(rightCurrent - rightTarget)
+      return leftDelta - rightDelta
+        || rowQuestionCounts[left.key] - rowQuestionCounts[right.key]
+        || leftCurrent - rightCurrent
+        || left.index - right.index
+    })[0]
+
+    token.columnKeys.forEach((columnKey) => {
+      allocations[selectedRow.key][columnKey] += 1
+    })
+    rowTotals[selectedRow.key] += token.weight
+    rowQuestionCounts[selectedRow.key] += token.columnKeys.length
+  })
+
+  const adjustedRows = normalizedRows.map((row) => {
+    const targetMarks = rowTotals[row.key]
+    return {
+      ...row,
+      targetMarks,
+      isRebalanced: targetMarks !== row.originalTargetMarks,
+      rebalanceDelta: targetMarks - row.originalTargetMarks,
+    }
+  })
+
+  return {
+    rows: adjustedRows,
+    allocations,
+    error: '',
+  }
+}
+
 export const autoFillBlueprintAllocations = ({
   rows,
   columns,
@@ -169,35 +290,12 @@ export const autoFillBlueprintAllocations = ({
   const attemptExactAllocation = () => {
     const exactAllocations = createEmptyAllocations(normalizedRows, normalizedColumns)
     const exactRemainingMarks = normalizedRows.map((row) => row.targetMarks)
-    const tokens = []
-
-    coupledGroups.forEach((group) => {
-      const groupColumns = group.columnKeys.map((key) => columnLookup[key]).filter(Boolean)
-      if (!groupColumns.length) return
-      const requiredCount = Math.min(
-        ...groupColumns.map((column) => column.targetQuestionCount),
-      )
-      const combinedWeight = groupColumns.reduce((total, column) => total + column.weight, 0)
-      for (let index = 0; index < requiredCount; index += 1) {
-        tokens.push({
-          key: `${group.key || 'coupled'}-${index}`,
-          columnKeys: groupColumns.map((column) => column.key),
-          weight: combinedWeight,
-        })
-      }
+    const tokens = createAllocationTokens({
+      columns: normalizedColumns,
+      coupledGroups,
+      columnLookup,
+      coupledColumnKeys,
     })
-    normalizedColumns
-      .filter((column) => !coupledColumnKeys.has(column.key))
-      .forEach((column) => {
-        for (let index = 0; index < column.targetQuestionCount; index += 1) {
-          tokens.push({
-            key: `${column.key}-${index}`,
-            columnKeys: [column.key],
-            weight: column.weight,
-          })
-        }
-      })
-    tokens.sort((left, right) => right.weight - left.weight || left.key.localeCompare(right.key))
 
     const rowTargetTotal = exactRemainingMarks.reduce((total, marks) => total + marks, 0)
     const tokenMarksTotal = tokens.reduce((total, token) => total + token.weight, 0)
@@ -323,8 +421,15 @@ export const autoFillBlueprintAllocations = ({
         (row) => remainingMarks[row.key] >= column.weight,
       )
       if (!eligibleRows.length) {
+        const rowCodesWithRemainingMarks = normalizedRows
+          .filter((row) => remainingMarks[row.key] > 0)
+          .slice(0, 4)
+          .map((row) => `${row.code || row.key}: ${remainingMarks[row.key]}`)
+          .join(', ')
         return createAllocationFailure(
-          `Unable to place the remaining ${column.label || column.key} questions.`,
+          column.weight > 0 && rowCodesWithRemainingMarks
+            ? `Unable to place the remaining ${column.label || column.key} questions. Each needs ${column.weight} marks, but remaining competency slots are smaller (${rowCodesWithRemainingMarks}).`
+            : `Unable to place the remaining ${column.label || column.key} questions.`,
         )
       }
       const selectedRow = chooseEligibleRow(eligibleRows, [column.key])
