@@ -1158,10 +1158,44 @@
 }
 
 .share-stu-faculty-empty {
-  min-height: 260px;
-  border-color: rgba(15, 104, 68, 0.18);
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  min-height: 220px;
+  border: 1px dashed rgba(15, 104, 68, 0.22);
   border-radius: 20px;
-  background: #fbfffd;
+  padding: 28px 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(247, 255, 252, 0.8));
+}
+
+.share-stu-faculty-empty svg {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(15, 104, 68, 0.14);
+  border-radius: 14px;
+  padding: 8px;
+  background: #f0faf6;
+  color: #0f6844;
+  box-sizing: border-box;
+}
+
+.share-stu-faculty-empty strong {
+  margin: 0;
+  color: #123126;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.share-stu-faculty-empty p {
+  max-width: 460px;
+  margin: 0;
+  color: #647c71;
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.45;
 }
 
 .share-stu-faculty-report-overlay {
