@@ -1299,6 +1299,28 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     return 'not-viewed'
   }
 
+  const getSummaryReviewClass = (item = {}) => {
+    if (!isPracticeSubmitted || !item.question) return ''
+
+    const options = getQuestionOptions(item.question)
+    const visibleOptions = item.type === 'MCQ' && !options.length ? getFallbackMcqOptions() : options
+    const hasSavedDescriptiveParts = Array.isArray(item.question.descriptiveSections) && item.question.descriptiveSections.length
+    const shouldReviewParts = item.type === 'LAQs' || (item.type === 'SAQs' && hasSavedDescriptiveParts)
+    const descriptiveParts = shouldReviewParts ? getDescriptiveParts(item.question, item.key) : []
+    const partEvaluations = descriptiveParts.map((part) => (
+      evaluateDescriptiveAnswer(answers[part.key] ?? '', getAnswerText(part) || getAnswerText(item.question), part.marks)
+    ))
+    const reviewStatus = partEvaluations.length
+      ? (
+          partEvaluations.every((evaluation) => evaluation.status === 'Correct')
+            ? 'Correct'
+            : partEvaluations.every((evaluation) => evaluation.status === 'Wrong') ? 'Wrong' : 'Needs review'
+        )
+      : evaluateQuestionReview(item.question, answers[item.key], visibleOptions, item.marks).status
+
+    return `is-result-${reviewStatus.toLowerCase().replace(/\s+/g, '-')}`
+  }
+
   const startPracticeEvaluation = () => {
     setShowSubmitConfirm(false)
     setEvaluationProgress(0)
@@ -1517,10 +1539,11 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                                   const optionText = getOptionText(option)
                                   const optionKey = String(option.id ?? option.value ?? optionText ?? optionIndex)
                                   const optionLetter = String.fromCharCode(65 + optionIndex)
-                                  const isSelected = selectedAnswer === optionKey
+                                  const selectedOptionIndex = findOptionIndexByAnswer(selectedAnswer, visibleOptions)
+                                  const isSelected = selectedAnswer === optionKey || selectedOptionIndex === optionIndex
                                   const correctOptionIndex = findOptionIndexByAnswer(correctOptionKey, visibleOptions)
                                   const isCorrect = isPracticeSubmitted && correctOptionIndex === optionIndex
-                                  const isWrongSelection = isPracticeSubmitted && isSelected && correctOptionIndex >= 0 && correctOptionIndex !== optionIndex
+                                  const isWrongSelection = isPracticeSubmitted && isSelected && reviewStatus === 'Wrong'
 
                                   return (
                                     <button
@@ -1593,11 +1616,12 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                 {orderedQuestionItems.map((item, index) => {
                   const questionKey = item.key
                   const status = getQuestionStatus(questionKey)
+                  const reviewClass = getSummaryReviewClass(item)
                   return (
                     <button
                       key={questionKey}
                       type="button"
-                      className={`is-${status} ${item.index === activeIndex ? 'is-active' : ''}`}
+                      className={`is-${status} ${reviewClass} ${item.index === activeIndex ? 'is-active' : ''}`}
                       onClick={() => focusQuestionCard(item.index)}
                     >
                       {index + 1}
