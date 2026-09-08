@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, BarChart3, BookOpenCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Eye, Home, Info, Play, RotateCcw, Timer, Trophy, X } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
@@ -803,6 +803,19 @@ const getSessionScore = (session = {}) => {
   }, { mcq: 0, saqs: 0, laqs: 0, obtained: 0, total: 0 })
 }
 
+const getPracticeSessionTotalMarks = (session = {}, fallbackTotal = 0) => {
+  const attemptHistory = Array.isArray(session.practiceAttemptHistory) ? session.practiceAttemptHistory : []
+  const historyTotals = attemptHistory.map((record) => parseMarksValue(record?.total))
+  const explicitTotals = [
+    session.totalMarks,
+    session.maxMarks,
+    session.marks,
+    fallbackTotal,
+  ].map(parseMarksValue)
+
+  return Math.max(0, ...historyTotals, ...explicitTotals)
+}
+
 const createPracticeAttemptRecord = (session = {}, attempt = {}, status = 'Completed') => {
   const score = getSessionScore({
     ...session,
@@ -819,7 +832,7 @@ const createPracticeAttemptRecord = (session = {}, attempt = {}, status = 'Compl
     saqs: score.saqs,
     laqs: score.laqs,
     obtained: score.obtained,
-    total: score.total,
+    total: getPracticeSessionTotalMarks(session, score.total),
     answers: attempt.answers ?? {},
     tryLaterKeys: attempt.tryLaterKeys ?? [],
   }
@@ -841,6 +854,38 @@ const appendPracticeAttemptRecord = (card = {}, sessionId = '', attempt = {}, st
   })
 }
 
+const formatPracticeMarks = (obtained, total) => {
+  const obtainedMarks = Number(obtained)
+  const totalMarks = Number(total)
+
+  if (!Number.isFinite(obtainedMarks) || !Number.isFinite(totalMarks) || totalMarks <= 0) return '-'
+
+  return `${obtainedMarks}/${totalMarks}`
+}
+
+const getLatestPracticeMarks = (session = {}) => {
+  const attemptHistory = Array.isArray(session.practiceAttemptHistory) ? session.practiceAttemptHistory : []
+  const latestAttempt = attemptHistory.reduce((latest, record) => {
+    if (!latest) return record
+
+    const latestTime = Date.parse(latest.attemptedAt || '')
+    const recordTime = Date.parse(record.attemptedAt || '')
+
+    if (!Number.isFinite(latestTime) && !Number.isFinite(recordTime)) return record
+    if (!Number.isFinite(latestTime)) return record
+    if (!Number.isFinite(recordTime)) return latest
+    return recordTime >= latestTime ? record : latest
+  }, null)
+
+  const score = getSessionScore(session)
+  const totalMarks = getPracticeSessionTotalMarks(session, score.total)
+
+  if (latestAttempt) return formatPracticeMarks(latestAttempt.obtained, totalMarks)
+  if (!session.practiceSubmitted) return '-'
+
+  return formatPracticeMarks(score.obtained, totalMarks)
+}
+
 function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [selectedCard, setSelectedCard] = useState(() => readSelectedPracticeCard())
   const [mode, setMode] = useState('sessions')
@@ -848,15 +893,32 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [now, setNow] = useState(() => new Date())
   const [sessionStatuses, setSessionStatuses] = useState({})
   const [sessionAttempts, setSessionAttempts] = useState({})
-  const practiceRows = useMemo(() => getPracticeRows(selectedCard, now).map((row) => ({
-    ...row,
-    status: sessionStatuses[row.id] || row.status,
-  })), [now, selectedCard, sessionStatuses])
+  const practiceRows = useMemo(() => {
+    const sessionsById = new Map(getPracticeSessions(selectedCard).map((session) => [String(session.id), session]))
+
+    return getPracticeRows(selectedCard, now).map((row) => {
+      const status = sessionStatuses[row.id] || row.status
+      const session = sessionsById.get(String(row.id)) ?? row
+
+      return {
+        ...row,
+        status,
+        marks: ['completed', 'expired'].includes(String(status).trim().toLowerCase())
+          ? getLatestPracticeMarks(session)
+          : '-',
+      }
+    })
+  }, [now, selectedCard, sessionStatuses])
   const [sessionFilter, setSessionFilter] = useState(() => readDefaultPracticeFilter())
   const [answers, setAnswers] = useState({})
   const [tryLaterQuestions, setTryLaterQuestions] = useState(() => new Set())
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [showScoreDialog, setShowScoreDialog] = useState(false)
+  const [scoreSessionId, setScoreSessionId] = useState('')
+  const closeScoreDialog = useCallback(() => {
+    setShowScoreDialog(false)
+    setScoreSessionId('')
+  }, [])
   const [timedOutSessionId, setTimedOutSessionId] = useState('')
   const [showTimeCompletedNotice, setShowTimeCompletedNotice] = useState(false)
   const [isEvaluatingPractice, setIsEvaluatingPractice] = useState(false)
@@ -865,6 +927,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [isPracticeSubmitted, setIsPracticeSubmitted] = useState(false)
   const [sessionPage, setSessionPage] = useState(0)
   const [sessionPageSize, setSessionPageSize] = useState(() => getPracticeSessionPageSize())
+  const questionCardRefs = useRef({})
   const visiblePracticeRows = useMemo(() => (
     practiceRows.filter((row) => {
       if (sessionFilter === 'all') return true
@@ -892,13 +955,17 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const activeSessionType = activeSession?.type ?? ''
   const completedScoreRows = useMemo(() => {
     const sessionsById = new Map(getPracticeSessions(selectedCard).map((session) => [String(session.id), session]))
-    const finishedRows = practiceRows.filter((row) => isFinishedPracticeStatus(row.status))
+    const finishedRows = practiceRows.filter((row) => (
+      isFinishedPracticeStatus(row.status)
+      && (!scoreSessionId || String(row.id) === String(scoreSessionId))
+    ))
 
     let attemptIndex = 0
 
     return finishedRows.flatMap((row) => {
       const session = sessionsById.get(String(row.id)) ?? row
       const attemptHistory = Array.isArray(session.practiceAttemptHistory) ? session.practiceAttemptHistory : []
+      const sessionTotalMarks = getPracticeSessionTotalMarks(session)
       if (attemptHistory.length) {
         return attemptHistory.map((record) => {
           attemptIndex += 1
@@ -910,7 +977,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
             saqs: Number(row.saqs || 0) > 0 ? Number(record.saqs || 0) : '-',
             laqs: Number(row.laqs || 0) > 0 ? Number(record.laqs || 0) : '-',
             obtained: Number(record.obtained || 0),
-            total: Number(record.total || 0),
+            total: sessionTotalMarks || Number(record.total || 0),
           }
         })
       }
@@ -943,10 +1010,10 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
         saqs: Number(row.saqs || 0) > 0 ? score.saqs : '-',
         laqs: Number(row.laqs || 0) > 0 ? score.laqs : '-',
         obtained: score.obtained,
-        total: score.total,
+        total: getPracticeSessionTotalMarks(session, score.total),
       }]
     })
-  }, [activeSessionTimeoutKey, answers, isPracticeSubmitted, practiceRows, selectedCard, sessionAttempts, tryLaterQuestions])
+  }, [activeSessionTimeoutKey, answers, isPracticeSubmitted, practiceRows, scoreSessionId, selectedCard, sessionAttempts, tryLaterQuestions])
 
   useEffect(() => {
     setSessionPage(0)
@@ -1027,12 +1094,12 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') setShowSubmitConfirm(false)
-      if (event.key === 'Escape') setShowScoreDialog(false)
+      if (event.key === 'Escape') closeScoreDialog()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showScoreDialog, showSubmitConfirm])
+  }, [closeScoreDialog, showScoreDialog, showSubmitConfirm])
 
   useEffect(() => {
     if (mode !== 'player' || !activeSessionTimeoutKey) return
@@ -1203,6 +1270,23 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     })
   }
 
+  const focusQuestionCard = (questionIndex) => {
+    setActiveIndex(questionIndex)
+
+    window.requestAnimationFrame(() => {
+      const card = questionCardRefs.current[String(questionIndex)]
+      if (!card) return
+
+      const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      card.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      })
+      card.focus({ preventScroll: true })
+    })
+  }
+
   const getQuestionStatus = (questionKey) => {
     if (tryLaterQuestions.has(questionKey)) return 'try-later'
     const questionIndex = questions.findIndex((question, index) => getQuestionKey(question, index) === questionKey)
@@ -1244,6 +1328,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     setAnswers({})
     setTryLaterQuestions(new Set())
     setShowSubmitConfirm(false)
+    setScoreSessionId('')
     setShowTimeCompletedNotice(false)
     setIsEvaluatingPractice(false)
     setEvaluationStartedAt(0)
@@ -1362,7 +1447,15 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                     const cardEvaluation = descriptiveEvaluation || itemEvaluation
 
                     return (
-                      <article key={questionKey} className={`start-practice-answer-question ${descriptiveParts.length ? 'is-laq-case' : ''} is-${status} ${isActive ? 'is-active' : ''} ${isPracticeSubmitted && cardEvaluation ? getReviewClassName(cardEvaluation.status) : ''}`}>
+                      <article
+                        key={questionKey}
+                        ref={(node) => {
+                          if (node) questionCardRefs.current[String(item.index)] = node
+                          else delete questionCardRefs.current[String(item.index)]
+                        }}
+                        className={`start-practice-answer-question ${descriptiveParts.length ? 'is-laq-case' : ''} is-${status} ${isActive ? 'is-active' : ''} ${isPracticeSubmitted && cardEvaluation ? getReviewClassName(cardEvaluation.status) : ''}`}
+                        tabIndex={-1}
+                      >
                         {descriptiveParts.length ? (
                           <div className="start-practice-laq-parts">
                             <div className="start-practice-laq-case-stem">
@@ -1474,27 +1567,6 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                 })}
               </div>
             </section>
-            <footer className="start-practice-footer is-inside-answer-card">
-              <button
-                type="button"
-                disabled={activeOrderedIndex === 0}
-                onClick={() => setActiveIndex(orderedQuestionItems[Math.max(0, activeOrderedIndex - 1)]?.index ?? 0)}
-              >
-                <ChevronLeft size={15} strokeWidth={2.4} />
-                Previous
-              </button>
-              <span>Page {orderedQuestionItems.length ? activeOrderedIndex + 1 : 0} of {orderedQuestionItems.length}</span>
-              <div className="start-practice-footer-actions">
-                <button
-                  type="button"
-                  disabled={activeOrderedIndex >= orderedQuestionItems.length - 1}
-                  onClick={() => setActiveIndex(orderedQuestionItems[Math.min(orderedQuestionItems.length - 1, activeOrderedIndex + 1)]?.index ?? activeIndex)}
-                >
-                  Next
-                  <ChevronRight size={15} strokeWidth={2.4} />
-                </button>
-              </div>
-            </footer>
           </section>
           <aside className="start-practice-summary-panel" aria-label="Practice summary">
             <div className="start-practice-summary-card">
@@ -1526,7 +1598,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                       key={questionKey}
                       type="button"
                       className={`is-${status} ${item.index === activeIndex ? 'is-active' : ''}`}
-                      onClick={() => setActiveIndex(item.index)}
+                      onClick={() => focusQuestionCard(item.index)}
                     >
                       {index + 1}
                     </button>
@@ -1554,7 +1626,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
               <button
                 type="button"
                 className={`start-practice-submit-btn ${isPracticeSubmitted ? 'is-reset' : ''}`}
-                disabled={!isPracticeSubmitted && (answeredCount < questions.length || isEvaluatingPractice || showTimeCompletedNotice)}
+                disabled={!isPracticeSubmitted && (isEvaluatingPractice || showTimeCompletedNotice)}
                 onClick={() => {
                   if (isPracticeSubmitted) {
                     resetPracticeAttempt()
@@ -1640,7 +1712,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
       className="start-practice-confirm-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) setShowScoreDialog(false)
+        if (event.target === event.currentTarget) closeScoreDialog()
       }}
     >
       <div
@@ -1656,7 +1728,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
               Practice Score
             </strong>
           </span>
-          <button type="button" onClick={() => setShowScoreDialog(false)} aria-label="Close score">
+          <button type="button" onClick={closeScoreDialog} aria-label="Close score">
             <X size={16} strokeWidth={2.4} />
           </button>
         </header>
@@ -1696,7 +1768,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
             </tbody>
           </table>
         </div>
-        <button type="button" className="start-practice-score-close" onClick={() => setShowScoreDialog(false)}>
+        <button type="button" className="start-practice-score-close" onClick={closeScoreDialog}>
           Close
         </button>
       </div>
@@ -1779,6 +1851,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                 <span role="columnheader">Schedule</span>
                 <span role="columnheader">Question mix</span>
                 <span role="columnheader">Status</span>
+                <span role="columnheader">Marks</span>
                 <span role="columnheader">Action</span>
               </div>
               {paginatedPracticeRows.length ? paginatedPracticeRows.map((row) => {
@@ -1816,12 +1889,18 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                       {row.status}
                     </span>
                   </span>
+                  <span className="start-practice-session-marks" role="cell" aria-label={`Marks ${row.marks}`}>
+                    {row.marks}
+                  </span>
                   <span className="start-practice-session-action" role="cell">
                     <button
                       type="button"
                       className="start-practice-row-score"
                       disabled={!isFinishedRow}
-                      onClick={() => setShowScoreDialog(true)}
+                      onClick={() => {
+                        setScoreSessionId(row.id)
+                        setShowScoreDialog(true)
+                      }}
                     >
                       <Trophy size={13} strokeWidth={2.3} />
                       Score
