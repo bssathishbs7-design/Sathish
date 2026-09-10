@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import PracticeLeaveDialog from '../components/PracticeLeaveDialog'
 import { ArrowLeft, BarChart3, BookOpenCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Eye, Home, Info, Play, RotateCcw, Timer, Trophy, X } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
 import './StartPracticePage.css'
@@ -965,6 +966,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [now, setNow] = useState(() => new Date())
   const [sessionStatuses, setSessionStatuses] = useState({})
   const [sessionAttempts, setSessionAttempts] = useState({})
+  const [isReviewingAttempt, setIsReviewingAttempt] = useState(false)
   const practiceRows = useMemo(() => {
     const sessionsById = new Map(getPracticeSessions(selectedCard).map((session) => [String(session.id), session]))
 
@@ -975,7 +977,9 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
       return {
         ...row,
         status,
-        marks: ['completed', 'expired'].includes(String(status).trim().toLowerCase())
+        hasCompletedAttempt: Boolean(session.practiceAttemptHistory?.length || session.practiceSubmitted),
+        isRetakeInProgress: Boolean(session.practiceAttemptHistory?.length) && String(status).toLowerCase() === 'in progress',
+        marks: session.practiceAttemptHistory?.length || ['completed', 'expired'].includes(String(status).trim().toLowerCase())
           ? getLatestPracticeMarks(session)
           : '-',
       }
@@ -985,6 +989,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [answers, setAnswers] = useState({})
   const [tryLaterQuestions, setTryLaterQuestions] = useState(() => new Set())
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showScoreDialog, setShowScoreDialog] = useState(false)
   const [scoreSessionId, setScoreSessionId] = useState('')
   const closeScoreDialog = useCallback(() => {
@@ -1028,7 +1033,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const completedScoreRows = useMemo(() => {
     const sessionsById = new Map(getPracticeSessions(selectedCard).map((session) => [String(session.id), session]))
     const finishedRows = practiceRows.filter((row) => (
-      isFinishedPracticeStatus(row.status)
+      (row.hasCompletedAttempt || isFinishedPracticeStatus(row.status))
       && (!scoreSessionId || String(row.id) === String(scoreSessionId))
     ))
 
@@ -1174,7 +1179,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   }, [closeScoreDialog, showScoreDialog, showSubmitConfirm])
 
   useEffect(() => {
-    if (mode !== 'player' || !activeSessionTimeoutKey) return
+    if (mode !== 'player' || !activeSessionTimeoutKey || isReviewingAttempt) return
 
     const attempt = {
       answers,
@@ -1186,7 +1191,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
       [activeSessionTimeoutKey]: attempt,
     }))
     writePracticeSessionAttempt(selectedCard, activeSessionTimeoutKey, attempt)
-  }, [activeSessionTimeoutKey, answers, isPracticeSubmitted, mode, selectedCard, tryLaterQuestions])
+  }, [activeSessionTimeoutKey, answers, isPracticeSubmitted, isReviewingAttempt, mode, selectedCard, tryLaterQuestions])
 
   useEffect(() => {
     const expiredRows = practiceRows.filter((row) => (
@@ -1400,18 +1405,6 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
     setIsEvaluatingPractice(true)
   }
 
-  const resetPracticeAttempt = () => {
-    setAnswers({})
-    setTryLaterQuestions(new Set())
-    setShowSubmitConfirm(false)
-    setShowTimeCompletedNotice(false)
-    setIsEvaluatingPractice(false)
-    setEvaluationStartedAt(0)
-    setEvaluationProgress(0)
-    setIsPracticeSubmitted(false)
-    setActiveIndex(0)
-  }
-
   const clearStartPracticePageState = () => {
     if (typeof window !== 'undefined') {
       window.sessionStorage.removeItem(START_PRACTICE_SELECTED_CARD_KEY)
@@ -1431,13 +1424,18 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   }
 
   const openPracticeSession = (row, options = {}) => {
+    setShowLeaveConfirm(false)
     const isRetake = Boolean(options.retake)
-    const savedAttempt = sessionAttempts[row.id] ?? {
+    const session = getPracticeSessions(selectedCard).find((item) => String(item.id) === String(row.id)) ?? row
+    const latestAttempt = [...(session.practiceAttemptHistory ?? [])].sort((a, b) => (Date.parse(b.attemptedAt) || 0) - (Date.parse(a.attemptedAt) || 0))[0]
+    const isReview = !isRetake && !options.resume && (row.hasCompletedAttempt || isFinishedPracticeStatus(row.status))
+    setIsReviewingAttempt(isReview)
+    const savedAttempt = isReview && latestAttempt ? { ...latestAttempt, isSubmitted: true } : sessionAttempts[row.id] ?? {
       answers: row.practiceAnswers ?? {},
       tryLaterKeys: row.practiceTryLaterKeys ?? [],
       isSubmitted: Boolean(row.practiceSubmitted),
     }
-    const finishedStatus = !isRetake && isFinishedPracticeStatus(row.status)
+    const finishedStatus = isReview
 
     if (isRetake) {
       const freshAttempt = {
@@ -1445,7 +1443,11 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
         tryLaterKeys: [],
         isSubmitted: false,
       }
-      const nextCard = hydratePracticeCard(updatePracticeSessionInCard(selectedCard, row.id, {
+      // Preserve older completed sessions that predate attempt-history storage.
+      const cardWithHistory = !latestAttempt && row.hasCompletedAttempt
+        ? appendPracticeAttemptRecord(selectedCard, row.id, savedAttempt, 'Completed')
+        : selectedCard
+      const nextCard = hydratePracticeCard(updatePracticeSessionInCard(cardWithHistory, row.id, {
         status: 'In Progress',
         practiceAnswers: {},
         practiceTryLaterKeys: [],
@@ -1790,13 +1792,13 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                 disabled={!isPracticeSubmitted && (isEvaluatingPractice || showTimeCompletedNotice)}
                 onClick={() => {
                   if (isPracticeSubmitted) {
-                    resetPracticeAttempt()
+                    openPracticeSession(activeSession, activeSession.isRetakeInProgress ? { resume: true } : { retake: true })
                     return
                   }
                   setShowSubmitConfirm(true)
                 }}
               >
-                {isPracticeSubmitted ? 'Retake Practice' : 'Submit Practice'}
+                {isPracticeSubmitted ? (activeSession?.isRetakeInProgress ? 'Resume Retake' : 'Retake Practice') : 'Submit Practice'}
               </button>
             </div>
           </aside>
@@ -1943,6 +1945,10 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
           <div className="start-practice-title-main">
             <button type="button" className="start-practice-title-back" aria-label="Home" title="Home" onClick={() => {
               if (mode === 'player') {
+                if (!isReviewingAttempt && !isPracticeSubmitted) {
+                  setShowLeaveConfirm(true)
+                  return
+                }
                 setMode('sessions')
                 return
               }
@@ -2016,7 +2022,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                 <span role="columnheader">Action</span>
               </div>
               {paginatedPracticeRows.length ? paginatedPracticeRows.map((row) => {
-                const isFinishedRow = isFinishedPracticeStatus(row.status)
+                const isFinishedRow = row.hasCompletedAttempt || isFinishedPracticeStatus(row.status)
 
                 return (
                 <div className={`start-practice-session-row ${isFinishedRow ? 'is-finished' : ''}`} role="row" key={row.id}>
@@ -2046,8 +2052,8 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                     <span><strong>{row.saqs}</strong><em>SAQs</em></span>
                   </span>
                   <span role="cell">
-                    <span className={`start-practice-status is-${String(row.status).toLowerCase().replace(/\s+/g, '-')}`}>
-                      {row.status}
+                    <span className={`start-practice-status is-${String(row.isRetakeInProgress ? 'Completed' : row.status).toLowerCase().replace(/\s+/g, '-')}`}>
+                      {row.isRetakeInProgress ? 'Completed' : row.status}
                     </span>
                   </span>
                   <span className="start-practice-session-marks" role="cell" aria-label={`Marks ${row.marks}`}>
@@ -2081,7 +2087,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                     <button
                       type="button"
                       className="start-practice-row-retake"
-                      onClick={() => openPracticeSession(row, { retake: true })}
+                      onClick={() => openPracticeSession(row, row.isRetakeInProgress ? { resume: true } : { retake: true })}
                       disabled={!isFinishedRow}
                     >
                       <RotateCcw size={13} strokeWidth={2.4} />
@@ -2120,6 +2126,22 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
       </div>
 
       {submitConfirmationDialog ? createPortal(submitConfirmationDialog, document.body) : null}
+      {showLeaveConfirm && !isPracticeSubmitted && !showTimeCompletedNotice && !isEvaluatingPractice ? (
+        <PracticeLeaveDialog
+          onClose={() => setShowLeaveConfirm(false)}
+          onSave={() => {
+            const nextCard = updatePracticeSessionInCard(selectedCard, activeSessionTimeoutKey, {
+              practiceAnswers: answers,
+              practiceTryLaterKeys: Array.from(tryLaterQuestions),
+              practiceSubmitted: false,
+            })
+            setSelectedCard(nextCard)
+            persistSelectedPracticeCard(nextCard)
+            setShowLeaveConfirm(false)
+            setMode('sessions')
+          }}
+        />
+      ) : null}
       {timeCompletedDialog ? createPortal(timeCompletedDialog, document.body) : null}
       {scoreDialog ? createPortal(scoreDialog, document.body) : null}
       {isEvaluatingPractice ? createPortal((

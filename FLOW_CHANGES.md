@@ -1,5 +1,16 @@
 # Flow changes
 
+## 2026-09-10 - Confirm leaving unfinished practice
+
+- Home during an unfinished practice or retake asks whether to continue practice or save and leave for the session list.
+- Closing the confirmation keeps the current answers; Home from a completed review returns directly.
+
+## 2026-09-10 - Resume practice retakes
+
+- Returning Home during a retake preserves its draft and keeps the last completed marks, Score, and Review accessible.
+- Unfinished retakes show Retake in progress and Resume Retake; reviewing a completed attempt does not overwrite the draft.
+- Submitting a retake updates the completed result and restores the Retake action.
+
 ## 2026-08-07 — Overall analytics student result navigation
 
 - Student search on Overall Analytics now opens the existing completed student-result view by click or keyboard selection.

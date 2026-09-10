@@ -1,0 +1,93 @@
+.start-practice-confirm-modal.practice-leave-dialog {
+  width: min(440px, 100%);
+  padding: var(--s-5, 24px);
+  gap: var(--s-4, 16px);
+  border-radius: var(--radius-default, 18px);
+  max-height: calc(100dvh - var(--s-6, 32px));
+  overflow-y: auto;
+}
+
+.practice-leave-dialog-heading strong {
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.practice-leave-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3, 12px);
+  color: var(--text-strong);
+}
+
+.practice-leave-dialog-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-body);
+  cursor: pointer;
+}
+
+.practice-leave-dialog-close:hover {
+  background: var(--surface-mist);
+}
+
+.practice-leave-dialog-close:active {
+  transform: translateY(1px) scale(.96);
+}
+
+.practice-leave-dialog button:focus-visible {
+  outline: 2px solid var(--text-strong);
+  outline-offset: var(--s-1, 4px);
+}
+
+.practice-leave-dialog p#practice-leave-description {
+  margin: 0;
+  color: var(--text-body, inherit);
+  font-size: 14px;
+  line-height: 1.65;
+  font-weight: 400;
+}
+
+.practice-leave-dialog .start-practice-confirm-actions {
+  margin-top: var(--s-3, 12px);
+  gap: var(--s-3, 12px);
+}
+
+.practice-leave-dialog .start-practice-confirm-actions button {
+  white-space: normal;
+  min-height: 44px;
+  padding: var(--s-3, 12px);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.practice-leave-dialog .start-practice-confirm-actions .is-primary {
+  background: var(--forest-900, #0f6844);
+  border-color: var(--forest-900, #0f6844);
+  color: var(--on-brand, #ffffff);
+}
+
+.practice-leave-dialog .start-practice-confirm-actions .is-primary:hover {
+  filter: brightness(.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start-practice-confirm-backdrop:has(.practice-leave-dialog),
+  .practice-leave-dialog {
+    animation: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .practice-leave-dialog .start-practice-confirm-actions {
+    grid-template-columns: 1fr;
+  }
+}

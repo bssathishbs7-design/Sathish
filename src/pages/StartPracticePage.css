@@ -765,6 +765,7 @@
 .start-practice-session-action button {
   width: 100%;
   min-width: 0;
+  height: 36px;
   gap: 4px;
   padding-inline: 5px;
 }
