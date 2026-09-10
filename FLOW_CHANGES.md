@@ -1,5 +1,15 @@
 # Flow changes
 
+## 2026-09-10 - Live practice sharing updates
+
+- Newly shared sessions appear in the selected competency's practice list without reloading, including shares from another tab.
+- Updates preserve the active filter, page, existing attempts, and current answers.
+
+## 2026-09-10 - Competency analytics
+
+- View Analytics opens the selected competency's completed-attempt summary, score trend, type breakdown, and history.
+- Back returns to the practice list with its previous filter and page.
+
 ## 2026-09-10 - Confirm leaving unfinished practice
 
 - Home during an unfinished practice or retake asks whether to continue practice or save and leave for the session list.

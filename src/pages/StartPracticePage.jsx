@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PracticeLeaveDialog from '../components/PracticeLeaveDialog'
+import { restoreCompletedPracticeHistory } from '../services/competencyAnalytics'
+import { mergeNewPracticeSessions } from '../services/practiceShareSync'
 import { ArrowLeft, BarChart3, BookOpenCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Eye, Home, Info, Play, RotateCcw, Timer, Trophy, X } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
 import './StartPracticePage.css'
@@ -774,6 +776,9 @@ const getPracticeSessions = (card = {}) => {
     return card.practiceSessions.map((session, index) => ({
       id: session.id ?? `${card.id ?? card.competencyCode}-practice-${index + 1}`,
       practiceNo: Number(session.practiceNo) || index + 1,
+      totalMarks: session.totalMarks,
+      maxMarks: session.maxMarks,
+      marks: session.marks,
       sharedAt: session.sharedAt || card.lastSharedAt || '',
       assignment: session.assignment ?? card.assignment ?? {},
       questions: Array.isArray(session.questions) ? session.questions : [],
@@ -792,6 +797,9 @@ const getPracticeSessions = (card = {}) => {
   return legacyQuestions.length ? [{
     id: `${card.id ?? card.competencyCode}-practice-1`,
     practiceNo: 1,
+    totalMarks: card.totalMarks,
+    maxMarks: card.maxMarks,
+    marks: card.marks,
     sharedAt: card.lastSharedAt || card.sharedToStudentsAt || '',
     assignment: card.assignment ?? {},
     questions: legacyQuestions,
@@ -954,13 +962,53 @@ const getLatestPracticeMarks = (session = {}) => {
   const totalMarks = getPracticeSessionTotalMarks(session, score.total)
 
   if (latestAttempt) return formatPracticeMarks(latestAttempt.obtained, totalMarks)
-  if (!session.practiceSubmitted) return '-'
+  if (!session.practiceSubmitted && !['completed', 'expired'].includes(String(session.status).trim().toLowerCase())) return '-'
 
   return formatPracticeMarks(score.obtained, totalMarks)
 }
 
-function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
+function StartPracticePage({ onNavigate, onPracticeAnswerModeChange, onOpenAnalytics, analyticsReturnState }) {
   const [selectedCard, setSelectedCard] = useState(() => readSelectedPracticeCard())
+  useEffect(() => {
+    const syncSharedSessions = (event) => {
+      if (event?.type === 'storage' && event.key !== LEARN_PRACTICE_SHARED_CARDS_KEY && event.key !== null) return
+      let cards
+      try {
+        cards = JSON.parse(window.localStorage.getItem(LEARN_PRACTICE_SHARED_CARDS_KEY) || '[]')
+      } catch {
+        return
+      }
+      if (!Array.isArray(cards)) return
+      setSelectedCard((current) => {
+        if (!current) return current
+        const incoming = cards.find((card) => card && (
+          (current.id && String(card.id) === String(current.id))
+          || (current.competencyCode && card.competencyCode === current.competencyCode)
+        ))
+        if (!incoming) return current
+        const base = current.practiceSessions?.length ? current : { ...current, practiceSessions: getPracticeSessions(current) }
+        const next = mergeNewPracticeSessions(base, incoming)
+        if (next === base) return current
+        return hydratePracticeCard(next)
+      })
+    }
+    window.addEventListener('learn-practice-shared-cards', syncSharedSessions)
+    window.addEventListener('storage', syncSharedSessions)
+    syncSharedSessions()
+    return () => {
+      window.removeEventListener('learn-practice-shared-cards', syncSharedSessions)
+      window.removeEventListener('storage', syncSharedSessions)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedCard) return
+    try {
+      window.sessionStorage.setItem(START_PRACTICE_SELECTED_CARD_KEY, JSON.stringify(selectedCard))
+    } catch {
+      // Live updates remain available when storage cannot be written.
+    }
+  }, [selectedCard])
   const [mode, setMode] = useState('sessions')
   const [activeIndex, setActiveIndex] = useState(0)
   const [now, setNow] = useState(() => new Date())
@@ -980,12 +1028,14 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
         hasCompletedAttempt: Boolean(session.practiceAttemptHistory?.length || session.practiceSubmitted),
         isRetakeInProgress: Boolean(session.practiceAttemptHistory?.length) && String(status).toLowerCase() === 'in progress',
         marks: session.practiceAttemptHistory?.length || ['completed', 'expired'].includes(String(status).trim().toLowerCase())
-          ? getLatestPracticeMarks(session)
+          ? getLatestPracticeMarks({ ...session, status })
           : '-',
       }
     })
   }, [now, selectedCard, sessionStatuses])
-  const [sessionFilter, setSessionFilter] = useState(() => readDefaultPracticeFilter())
+  const returnState = analyticsReturnState?.card?.competencyCode === selectedCard?.competencyCode ? analyticsReturnState : null
+  const [sessionFilter, setSessionFilter] = useState(() => returnState?.filter ?? readDefaultPracticeFilter())
+  const previousSessionFilter = useRef(sessionFilter)
   const [answers, setAnswers] = useState({})
   const [tryLaterQuestions, setTryLaterQuestions] = useState(() => new Set())
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
@@ -1002,7 +1052,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   const [evaluationStartedAt, setEvaluationStartedAt] = useState(0)
   const [evaluationProgress, setEvaluationProgress] = useState(0)
   const [isPracticeSubmitted, setIsPracticeSubmitted] = useState(false)
-  const [sessionPage, setSessionPage] = useState(0)
+  const [sessionPage, setSessionPage] = useState(() => returnState?.page ?? 0)
   const [sessionPageSize, setSessionPageSize] = useState(() => getPracticeSessionPageSize())
   const questionCardRefs = useRef({})
   const visiblePracticeRows = useMemo(() => (
@@ -1093,7 +1143,8 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
   }, [activeSessionTimeoutKey, answers, isPracticeSubmitted, practiceRows, scoreSessionId, selectedCard, sessionAttempts, tryLaterQuestions])
 
   useEffect(() => {
-    setSessionPage(0)
+    if (previousSessionFilter.current !== sessionFilter) setSessionPage(0)
+    previousSessionFilter.current = sessionFilter
   }, [sessionFilter])
 
   useEffect(() => {
@@ -1990,7 +2041,16 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                 Live practice
                 <span>{sessionFilterCounts.inProgress}</span>
               </button>
-              <button type="button" className="start-practice-title-analytics">
+              <button type="button" className="start-practice-title-analytics" onClick={() => {
+                const sessions = getPracticeSessions(selectedCard).map((session) => ({
+                  ...session,
+                  status: sessionStatuses[session.id] || session.status,
+                }))
+                const card = restoreCompletedPracticeHistory(selectedCard, sessions, getSessionScore, getPracticeSessionTotalMarks)
+                setSelectedCard(card)
+                persistSelectedPracticeCard(card)
+                onOpenAnalytics?.({ card, filter: sessionFilter, page: currentSessionPage })
+              }}>
                 <BarChart3 size={15} strokeWidth={2.2} />
                 View Analytics
               </button>

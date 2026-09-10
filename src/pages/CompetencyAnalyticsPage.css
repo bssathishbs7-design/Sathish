@@ -1,0 +1,44 @@
+.competency-analytics {
+  --ca-ink: var(--text-body, #333333);
+  --ca-surface: var(--surface-card, #ffffff);
+  --ca-line: var(--color-border, #d8eee2);
+  color: var(--ca-ink);
+  background: var(--ca-surface);
+  padding: var(--space-6);
+  min-width: 0;
+}
+.competency-analytics-header { display: flex; align-items: flex-start; gap: var(--space-4); padding-bottom: var(--space-5); border-bottom: 1px solid var(--ca-line); }
+.competency-analytics h1 { font-size: 22px; line-height: 1.4; margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.competency-analytics h2 { font-size: 16px; margin: 0 0 var(--space-2); font-weight: 650; }
+.competency-analytics p { font-size: 14px; line-height: 1.6; margin: var(--space-2) 0 0; font-weight: 400; }
+.competency-analytics button { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); background: var(--ca-surface); color: var(--ca-ink); border: 1px solid var(--ca-line); padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); cursor: pointer; }
+.competency-analytics button.ca-back { width: 40px; height: 40px; flex: 0 0 40px; padding: 0; }
+.competency-analytics button:hover { background: var(--surface-mist, #effcf6); }
+.competency-analytics button:active { transform: translateY(1px) scale(.97); }
+.competency-analytics :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; }
+.ca-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding: var(--space-6) 0; border-bottom: 1px solid var(--ca-line); gap: var(--space-5); }
+.ca-metrics dt { font-size: 13px; margin-bottom: var(--space-2); }
+.ca-metrics dd { font-family: var(--f-code, monospace); font-size: 26px; margin: 0; font-weight: 600; }
+.ca-charts { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--space-6); padding: var(--space-6) 0; border-bottom: 1px solid var(--ca-line); }
+.ca-charts section { min-width: 0; }
+.ca-trend { display: flex; align-items: end; gap: var(--space-4); overflow-x: auto; padding: var(--space-6) var(--space-2) var(--space-2); }
+.ca-trend-item { position: relative; min-width: 44px; flex: 1 0 44px; max-width: 100px; display: grid; gap: var(--space-2); text-align: center; font-size: 12px; }
+.ca-bar-track { height: 144px; display: flex; align-items: end; border-bottom: 1px solid var(--ca-line); }
+.ca-bar { width: 100%; background: var(--forest-900, #0f6844); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.ca-trend-item:nth-child(even) .ca-bar { background: var(--mint-200, #5fe8b1); }
+.ca-tooltip { display: none; position: absolute; z-index: 1; bottom: 32px; left: 0; width: 140px; padding: var(--space-2); background: var(--ca-surface); border: 1px solid var(--ca-line); text-align: left; }
+.ca-trend-item:hover .ca-tooltip, .ca-trend-item:focus .ca-tooltip { display: block; }
+.ca-number { font-family: var(--f-code, monospace); font-variant-numeric: tabular-nums; }
+.ca-breakdown { display: grid; gap: var(--space-5); padding-top: var(--space-6); }
+.ca-breakdown-label { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 13px; }
+.ca-breakdown meter { width: 100%; height: 16px; accent-color: var(--color-primary); }
+.ca-history { padding-top: var(--space-6); }
+.ca-table-scroll { overflow-x: auto; }
+.ca-history table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+.ca-history th, .ca-history td { padding: var(--space-4) var(--space-3); border-bottom: 1px solid var(--ca-line); white-space: nowrap; }
+.ca-history th { font-weight: 600; }
+.ca-empty { padding: var(--space-6) 0; text-align: center; }
+.ca-empty h2, .ca-empty button { margin-top: var(--space-4); }
+[data-theme="dark"] .competency-analytics, [data-theme="oled"] .competency-analytics, .theme-dark .competency-analytics { --ca-surface: var(--color-surface); --ca-ink: var(--color-text); }
+@media (max-width: 1023px) { .ca-charts { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .competency-analytics { padding: var(--space-4); } .ca-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .competency-analytics h1 { font-size: 18px; } }

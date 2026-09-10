@@ -28,6 +28,7 @@ import OnlinePracticeExamPage from './pages/OnlinePracticeExamPage'
 import OnlineProctoredExamPage from './pages/OnlineProctoredExamPage'
 import LearnPracticePage from './pages/LearnPracticePage'
 import StartPracticePage from './pages/StartPracticePage'
+import CompetencyAnalyticsPage from './pages/CompetencyAnalyticsPage'
 import ShareStuFacultyPage from './pages/ShareStuFacultyPage'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import StudentManagementPage from './pages/StudentManagementPage'
@@ -51,6 +52,7 @@ const PAGE_PATHS = {
   [APP_PAGES.MY_ASSESSMENT]: '/my-assessment',
   [APP_PAGES.LEARN_PRACTICE]: '/learn-practice',
   [APP_PAGES.START_PRACTICE]: '/learn-practice/start',
+  [APP_PAGES.COMPETENCY_ANALYTICS]: '/learn-practice/competency-analytics',
   [APP_PAGES.ONLINE_PRACTICE_EXAM]: '/my-assessment/online-practice-exam',
   [APP_PAGES.ONLINE_PROCTORED_EXAM]: '/my-assessment/online-proctored-exam',
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
@@ -420,6 +422,7 @@ function App() {
   const [isPhoneScreen, setIsPhoneScreen] = useState(() => isPhoneViewport())
   const useCompactLogo = sidebarCollapsed
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
+  const [practiceAnalyticsContext, setPracticeAnalyticsContext] = useState(null)
   const [questionBankMode, setQuestionBankMode] = useState('editable')
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)
@@ -1386,7 +1389,12 @@ function App() {
           ) : activePage === APP_PAGES.LEARN_PRACTICE ? (
             <LearnPracticePage onNavigate={navigateToPage} />
           ) : activePage === APP_PAGES.START_PRACTICE ? (
-            <StartPracticePage onNavigate={navigateToPage} onPracticeAnswerModeChange={setPracticeAnswerMode} />
+            <StartPracticePage onNavigate={navigateToPage} onPracticeAnswerModeChange={setPracticeAnswerMode} analyticsReturnState={practiceAnalyticsContext} onOpenAnalytics={(context) => {
+              setPracticeAnalyticsContext(context)
+              navigateToPage(APP_PAGES.COMPETENCY_ANALYTICS)
+            }} />
+          ) : activePage === APP_PAGES.COMPETENCY_ANALYTICS ? (
+            <CompetencyAnalyticsPage card={practiceAnalyticsContext?.card} onNavigate={navigateToPage} />
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
             <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
