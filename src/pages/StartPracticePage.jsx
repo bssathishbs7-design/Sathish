@@ -318,6 +318,11 @@ const cleanRevealAnswerText = (value = '') => (
   stripHtml(value).replace(/^correct\s+answer\s*:\s*/i, '').trim()
 )
 
+const isPlaceholderAnswerGuidance = (value = '') => (
+  !cleanRevealAnswerText(value)
+  || /^answer guidance will appear here\.?$/i.test(cleanRevealAnswerText(value))
+)
+
 const parseMarksValue = (value) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0
   const match = String(value ?? '').match(/\d+(\.\d+)?/)
@@ -545,6 +550,73 @@ const evaluateDescriptiveAnswer = (answer = '', modelAnswer = '', marks = 0) => 
 }
 
 const getReviewClassName = (status = '') => `is-review-${status.toLowerCase().replace(/\s+/g, '-')}`
+
+const getDescriptiveFeedbackSections = ({
+  answer = '',
+  evaluation = {},
+  guidance = '',
+  marks = 0,
+} = {}) => {
+  const status = evaluation.status || 'Needs review'
+  const earnedMarks = Number(evaluation.earnedMarks ?? 0)
+  const maxMarks = Number(evaluation.maxMarks ?? marks ?? 0)
+  const ratio = Number.isFinite(evaluation.ratio) ? evaluation.ratio : (maxMarks ? earnedMarks / maxMarks : 0)
+  const hasAnswer = Boolean(stripHtml(answer))
+  const cleanGuidance = cleanRevealAnswerText(guidance)
+  const hasGuidance = !isPlaceholderAnswerGuidance(cleanGuidance)
+  const roundedScore = `${earnedMarks}/${maxMarks || marks || 0}`
+
+  const assessmentRationale = !hasAnswer
+    ? 'No written response was submitted, so marks could not be awarded for this answer.'
+    : status === 'Correct'
+      ? 'The response covers the expected points closely enough for this practice evaluation.'
+      : status === 'Wrong'
+        ? 'The response does not yet show enough of the expected answer points for this question.'
+        : 'The response shows partial alignment with the expected answer and needs more complete coverage.'
+
+  const strengths = !hasAnswer
+    ? 'No strengths could be identified because an answer was not written.'
+    : ratio >= 0.72
+      ? 'Your answer includes the main expected points and stays relevant to the question.'
+      : ratio > 0
+        ? 'Your answer includes some relevant ideas that can be developed further.'
+        : 'Your answer attempts the question, but the key expected points are still missing.'
+
+  const improvements = !hasAnswer
+    ? 'Write a focused answer before submission so it can be evaluated against the expected points.'
+    : ratio >= 0.72
+      ? 'Add sharper sequencing, supporting details, and any missing keywords to make the answer complete.'
+      : ratio > 0
+        ? 'Expand the answer with the missing core points, clearer reasoning, and direct links to the question stem.'
+        : 'Rebuild the answer around the core concepts asked in the question and avoid unrelated content.'
+
+  return [
+    {
+      heading: 'Evaluation Report',
+      body: roundedScore,
+      status,
+      summary: true,
+    },
+    {
+      heading: 'Assessment Rationale',
+      body: assessmentRationale,
+    },
+    {
+      heading: 'Your Strengths',
+      body: strengths,
+    },
+    {
+      heading: 'Areas for Improvement',
+      body: improvements,
+    },
+    {
+      heading: 'Guidance for a Perfect Answer',
+      body: hasGuidance
+        ? cleanGuidance
+        : 'A perfect answer should directly address every part of the question, include the key expected points, and present them in a clear clinical sequence.',
+    },
+  ]
+}
 
 const evaluateQuestionReview = (question = {}, answer, options = [], marks = 0) => {
   const type = getQuestionType(question)
@@ -1487,38 +1559,70 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                               </strong>
                               <p>{getQuestionText(item.question)}</p>
                             </div>
-                            {descriptiveParts.map((part) => (
+                            {descriptiveParts.map((part, partIndex) => {
+                              const partEvaluation = partEvaluations[partIndex]
+                              const partAnswer = answers[part.key] ?? ''
+                              const feedbackSections = getDescriptiveFeedbackSections({
+                                answer: partAnswer,
+                                evaluation: partEvaluation,
+                                guidance: getAnswerText(part) || getAnswerText(item.question),
+                                marks: part.marks,
+                              })
+
+                              return (
                               <label className="start-practice-laq-part" key={part.key}>
                                 <span>
                                   <strong>{part.label}.</strong>
                                   <p>{part.text}</p>
                                   {isPracticeSubmitted ? (
-                                    <b className={`start-practice-review-status ${getReviewClassName(partEvaluations[descriptiveParts.indexOf(part)]?.status)}`}>
-                                      {partEvaluations[descriptiveParts.indexOf(part)]?.status}
+                                    <b className={`start-practice-review-status ${getReviewClassName(partEvaluation?.status)}`}>
+                                      {partEvaluation?.status}
                                     </b>
                                   ) : null}
-                                  <em>{isPracticeSubmitted ? `${partEvaluations[descriptiveParts.indexOf(part)]?.earnedMarks ?? 0} / ${part.marks}` : `${part.marks} Marks`}</em>
+                                  <em>{isPracticeSubmitted ? `${partEvaluation?.earnedMarks ?? 0} / ${part.marks}` : `${part.marks} Marks`}</em>
                                 </span>
                                 {isPracticeSubmitted ? (
                                   <p className="start-practice-written-answer">
-                                    {answers[part.key]?.trim() || 'No answer written.'}
+                                    {partAnswer.trim() || 'No answer written.'}
                                   </p>
                                 ) : (
                                   <textarea
                                     rows={7}
-                                    value={answers[part.key] ?? ''}
+                                    value={partAnswer}
                                     placeholder="Type your practice answer here..."
                                     onChange={(event) => setAnswerValue(part.key, event.target.value)}
                                   />
                                 )}
                                 {isPracticeSubmitted ? (
-                                  <div className="start-practice-review-block is-descriptive">
-                                    <strong>Model answer</strong>
-                                    <p>{cleanRevealAnswerText(getAnswerText(part) || getAnswerText(item.question))}</p>
+                                  <div className={`start-practice-review-block is-descriptive-feedback ${partEvaluation?.status === 'Wrong' ? 'is-feedback-wrong' : ''}`}>
+                                    {feedbackSections.map((section) => (
+                                      <section className={`start-practice-feedback-section ${section.summary ? 'is-summary-row' : ''}`} key={section.heading}>
+                                        {section.summary ? (
+                                          <>
+                                            <p className="start-practice-feedback-summary-item">
+                                              <strong>Evaluation Report :</strong>
+                                              <span>{section.body}</span>
+                                            </p>
+                                            <p className="start-practice-feedback-summary-item">
+                                              <strong>Status :</strong>
+                                              <span className={`start-practice-feedback-status ${getReviewClassName(section.status)}`}>
+                                                {section.status}
+                                              </span>
+                                            </p>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <strong>{section.heading}</strong>
+                                            {section.body ? <p>{section.body}</p> : null}
+                                          </>
+                                        )}
+                                      </section>
+                                    ))}
                                   </div>
                                 ) : null}
                               </label>
-                            ))}
+                              )
+                            })}
                           </div>
                         ) : (
                           <>
@@ -1574,10 +1678,43 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange }) {
                               />
                             )}
                             {isPracticeSubmitted ? (
-                              <div className={`start-practice-review-block is-${item.type.toLowerCase()}`}>
-                                <strong>{item.type === 'MCQ' ? 'Answer key & rationale' : 'Model answer'}</strong>
-                                <p>{cleanRevealAnswerText(getAnswerText(item.question))}</p>
-                              </div>
+                              item.type === 'MCQ' ? (
+                                <div className="start-practice-review-block is-mcq">
+                                  <strong>Answer key & rationale</strong>
+                                  <p>{cleanRevealAnswerText(getAnswerText(item.question))}</p>
+                                </div>
+                              ) : (
+                                <div className={`start-practice-review-block is-${item.type.toLowerCase()} is-descriptive-feedback ${itemEvaluation?.status === 'Wrong' ? 'is-feedback-wrong' : ''}`}>
+                                  {getDescriptiveFeedbackSections({
+                                    answer: answers[questionKey] ?? '',
+                                    evaluation: itemEvaluation,
+                                    guidance: getAnswerText(item.question),
+                                    marks: item.marks,
+                                  }).map((section) => (
+                                    <section className={`start-practice-feedback-section ${section.summary ? 'is-summary-row' : ''}`} key={section.heading}>
+                                      {section.summary ? (
+                                        <>
+                                          <p className="start-practice-feedback-summary-item">
+                                            <strong>Evaluation Report :</strong>
+                                            <span>{section.body}</span>
+                                          </p>
+                                          <p className="start-practice-feedback-summary-item">
+                                            <strong>Status :</strong>
+                                            <span className={`start-practice-feedback-status ${getReviewClassName(section.status)}`}>
+                                              {section.status}
+                                            </span>
+                                          </p>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <strong>{section.heading}</strong>
+                                          {section.body ? <p>{section.body}</p> : null}
+                                        </>
+                                      )}
+                                    </section>
+                                  ))}
+                                </div>
+                              )
                             ) : null}
                           </>
                         )}

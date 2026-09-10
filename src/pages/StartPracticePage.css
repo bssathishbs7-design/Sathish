@@ -1750,29 +1750,140 @@
 .start-practice-review-block {
   display: grid;
   gap: 5px;
-  border: 1px solid #00a99a;
+  border: 1px solid #75dccc;
   border-radius: 10px;
   padding: 9px 10px;
-  background: #effcf6;
+  background: #f6fffb;
 }
 
 .start-practice-review-block strong {
-  color: #00756b;
+  color: #0f8364;
   font-size: 0.72rem;
   font-weight: 900;
 }
 
 .start-practice-review-block p {
   margin: 0;
-  color: #002f3b;
+  color: #315b55;
   font-size: 0.8rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.35;
 }
 
 .start-practice-review-block p b {
-  color: #00756b;
+  color: #0f8364;
   font-weight: 900;
+}
+
+.start-practice-review-block.is-descriptive-feedback {
+  gap: 8px;
+}
+
+.start-practice-review-block.is-descriptive-feedback.is-feedback-wrong {
+  border-color: #ff9f9f;
+  background: #fff1f1;
+}
+
+.start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section + .start-practice-feedback-section {
+  border-top-color: rgba(220, 38, 38, 0.16);
+}
+
+.start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section > strong,
+.start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item strong {
+  color: #b42318;
+}
+
+.start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section > p,
+.start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item,
+.start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item > span:not(.start-practice-feedback-status) {
+  color: #5f2a2a;
+}
+
+.start-practice-feedback-section {
+  display: grid;
+  gap: 3px;
+}
+
+.start-practice-feedback-section + .start-practice-feedback-section {
+  border-top: 1px solid rgba(15, 131, 100, 0.14);
+  padding-top: 8px;
+}
+
+.start-practice-feedback-section > strong {
+  color: #0f8364;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.start-practice-feedback-section > p {
+  margin: 0;
+  color: #315b55;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.38;
+}
+
+.start-practice-feedback-section.is-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.start-practice-feedback-summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #315b55;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.start-practice-feedback-summary-item strong {
+  color: #0f8364;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.start-practice-feedback-summary-item > span:not(.start-practice-feedback-status) {
+  color: #315b55;
+  font-weight: 800;
+}
+
+.start-practice-feedback-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0 9px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.start-practice-feedback-status.is-review-correct {
+  border: 1px solid #9be7d1;
+  background: #dffaf1;
+  color: #08776d;
+}
+
+.start-practice-feedback-status.is-review-wrong {
+  border: 1px solid #ffb4b4;
+  background: #fff1f1;
+  color: #dc2626;
+}
+
+.start-practice-feedback-status.is-review-needs-review {
+  border: 1px solid #f6cda7;
+  background: #fff7ed;
+  color: #c2410c;
 }
 
 .start-practice-answer-question-actions {
@@ -4109,6 +4220,82 @@
 [data-theme="dark"] .start-practice-review-block p,
 [data-theme="oled"] .start-practice-review-block p {
   color: #e7fbf6;
+}
+
+.theme-dark .start-practice-feedback-section + .start-practice-feedback-section,
+[data-theme="dark"] .start-practice-feedback-section + .start-practice-feedback-section,
+[data-theme="oled"] .start-practice-feedback-section + .start-practice-feedback-section {
+  border-top-color: rgba(143, 247, 230, 0.18);
+}
+
+.theme-dark .start-practice-feedback-section > strong,
+[data-theme="dark"] .start-practice-feedback-section > strong,
+[data-theme="oled"] .start-practice-feedback-section > strong {
+  color: #8ff7e6;
+}
+
+.theme-dark .start-practice-feedback-section > p,
+[data-theme="dark"] .start-practice-feedback-section > p,
+[data-theme="oled"] .start-practice-feedback-section > p {
+  color: #e7fbf6;
+}
+
+.theme-dark .start-practice-feedback-status.is-review-correct,
+[data-theme="dark"] .start-practice-feedback-status.is-review-correct,
+[data-theme="oled"] .start-practice-feedback-status.is-review-correct {
+  border-color: rgba(95, 232, 210, 0.46);
+  background: rgba(20, 184, 166, 0.2);
+  color: #8ff7e6;
+}
+
+.theme-dark .start-practice-feedback-status.is-review-wrong,
+[data-theme="dark"] .start-practice-feedback-status.is-review-wrong,
+[data-theme="oled"] .start-practice-feedback-status.is-review-wrong {
+  border-color: rgba(248, 113, 113, 0.58);
+  background: rgba(220, 38, 38, 0.18);
+  color: #fecaca;
+}
+
+.theme-dark .start-practice-feedback-status.is-review-needs-review,
+[data-theme="dark"] .start-practice-feedback-status.is-review-needs-review,
+[data-theme="oled"] .start-practice-feedback-status.is-review-needs-review {
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.14);
+  color: #fde68a;
+}
+
+.theme-dark .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong,
+[data-theme="dark"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong,
+[data-theme="oled"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong {
+  border-color: rgba(248, 113, 113, 0.64);
+  background: rgba(127, 29, 29, 0.34);
+}
+
+.theme-dark .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section + .start-practice-feedback-section,
+[data-theme="dark"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section + .start-practice-feedback-section,
+[data-theme="oled"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section + .start-practice-feedback-section {
+  border-top-color: rgba(248, 113, 113, 0.22);
+}
+
+.theme-dark .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section > strong,
+.theme-dark .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item strong,
+[data-theme="dark"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section > strong,
+[data-theme="dark"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item strong,
+[data-theme="oled"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section > strong,
+[data-theme="oled"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item strong {
+  color: #fecaca;
+}
+
+.theme-dark .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section > p,
+.theme-dark .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item,
+.theme-dark .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item > span:not(.start-practice-feedback-status),
+[data-theme="dark"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section > p,
+[data-theme="dark"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item,
+[data-theme="dark"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item > span:not(.start-practice-feedback-status),
+[data-theme="oled"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-section > p,
+[data-theme="oled"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item,
+[data-theme="oled"] .start-practice-review-block.is-descriptive-feedback.is-feedback-wrong .start-practice-feedback-summary-item > span:not(.start-practice-feedback-status) {
+  color: #fee2e2;
 }
 
 .theme-dark .start-practice-summary-stats small,
