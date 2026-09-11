@@ -7405,7 +7405,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           <td>
                             {row.typeLabel ? (
                               <span className={`create-assessment-blueprint-type-badge ${row.typeLabel === 'Clinical' ? 'is-clinical' : 'is-non-clinical'}`}>
-                                {row.typeLabel}
+                                {/^non[\s-]*clinical$/i.test(row.typeLabel) ? 'Para - Clinical' : row.typeLabel}
                               </span>
                             ) : '-'}
                           </td>
@@ -7940,6 +7940,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                       </div>
                     </section>
 
+                    {isBlueprintQuestionSplitCreated ? (
                     <div className="create-assessment-blueprint-competency-actions">
                       <button
                         type="button"
@@ -7959,6 +7960,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         <span>Create Competency Matrix</span>
                       </button>
                     </div>
+                    ) : null}
                   </div>
 
                   {isBlueprintCompetencyMatrixCreated ? (

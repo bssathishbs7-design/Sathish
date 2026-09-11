@@ -1,5 +1,9 @@
 # Flow changes
 
+## 2026-09-11 - Blueprint specification actions
+
+- Reset Matrix and Create Competency Matrix appear only after Create Questions Split has completed, keeping the initial cognition stage focused on entering LoT/HoT percentages.
+
 ## 2026-09-10 - Live practice sharing updates
 
 - Newly shared sessions appear in the selected competency's practice list without reloading, including shares from another tab.
