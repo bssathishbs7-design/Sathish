@@ -59,6 +59,8 @@ import {
   X,
 } from 'lucide-react'
 import RichMathEditor from '../components/RichMathEditor'
+import BlueprintCountInfo from '../components/BlueprintCountInfo'
+import { allocateCategoryBreakdown } from '../utils/blueprintCategoryBreakdown'
 import GenerationProcessorCard from '../components/GenerationProcessorCard'
 import { APP_PAGES } from '../config/appPages'
 import {
@@ -2584,6 +2586,22 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const getBlueprintTestSpecificationNumber = (rowKey, fieldKey) => (
     getBlueprintTestSpecificationCellCountData(rowKey, fieldKey).calculatedMarks
   )
+  const blueprintSaqCategoryBreakdowns = Object.fromEntries(['saqLot', 'saqHot'].map((fieldKey) => {
+    const categories = blueprintSaqQuestionTypeRows.flatMap((row) => (
+      Array.from({ length: fieldKey === 'saqLot' ? row.lotQuestions : row.hotQuestions },
+        () => getQuestionCategorySectionLabel(row.label.replace(/^SAQs\s*\(|\)$/g, '')))
+    ))
+    return [fieldKey, allocateCategoryBreakdown({
+      units: blueprintTestSpecificationQuestionMarkUnits[fieldKey].map((marks, index) => ({
+        marks, category: categories[index],
+      })),
+      cells: blueprintSpecificationRows.map((row) => ({
+        key: row.key,
+        count: getBlueprintTestSpecificationCountNumber(row.key, fieldKey),
+        marks: getBlueprintTestSpecificationNumber(row.key, fieldKey),
+      })),
+    })]
+  }))
   const getBlueprintTestSpecificationRowTotal = (rowKey) => blueprintTestSpecificationColumns.reduce(
     (sum, column) => sum + getBlueprintTestSpecificationNumber(rowKey, column.key),
     0,
@@ -8062,10 +8080,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                     className={`create-assessment-blueprint-test-grid-cell is-count-entry ${isActive ? '' : 'is-disabled'} ${hasCountValue ? (countData.isValid ? 'is-valid' : 'is-invalid') : ''} ${isChanged ? 'is-reshuffled' : ''}`}
                                     key={`${row.key}-${column.key}`}
                                     role="cell"
-                                    title={isActive
+                                    title={column.group === 'SAQ' && countData.count > 0 ? undefined : isActive
                                       ? `${countData.count} Questions = ${formatBlueprintSplitNumber(countData.calculatedMarks)} Marks`
                                       : `${column.group} has no questions`}
                                   >
+                                    <span className="blueprint-count-field">
                                     <input
                                       className="create-assessment-blueprint-spec-small-number"
                                       type="text"
@@ -8079,6 +8098,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                       aria-label={`${row.code} ${column.group} ${column.label} question count`}
                                       disabled={!isActive || (isBlueprintPlannerSaved && !isBlueprintPlannerEditing)}
                                     />
+                                    {column.group === 'SAQ' && countData.count > 0 && isActive ? (
+                                      <BlueprintCountInfo
+                                        heading={`${row.code} (SAQs)`}
+                                        label={`${row.code} SAQ ${column.label}`}
+                                        entries={blueprintSaqCategoryBreakdowns[column.key]?.[row.key] ?? null}
+                                      />
+                                    ) : null}
+                                    </span>
                                     {hasCountValue ? (
                                       <small>{formatBlueprintSplitNumber(countData.calculatedMarks)} Marks</small>
                                     ) : null}
