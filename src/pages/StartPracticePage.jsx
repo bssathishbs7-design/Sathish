@@ -1,6 +1,8 @@
+import { getPracticeTagSnapshot } from '../services/practiceTagAnalytics'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PracticeLeaveDialog from '../components/PracticeLeaveDialog'
+import { getQuestionType, getQuestionMarks, parseMarksValue, getPracticeQuestionBreakdown } from '../services/practiceQuestionMetadata'
 import { restoreCompletedPracticeHistory } from '../services/competencyAnalytics'
 import { mergeNewPracticeSessions } from '../services/practiceShareSync'
 import { ArrowLeft, BarChart3, BookOpenCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Eye, Home, Info, Play, RotateCcw, Timer, Trophy, X } from 'lucide-react'
@@ -280,14 +282,6 @@ const updatePracticeSessionInCard = (card = {}, sessionId = '', patch = {}) => {
   }
 }
 
-const getQuestionType = (question = {}) => {
-  const type = String(question.type ?? question.questionType ?? '').toLowerCase()
-  if (type.includes('mcq') || type.includes('multiple')) return 'MCQ'
-  if (type.includes('laq') || type.includes('long')) return 'LAQs'
-  if (type.includes('saq') || type.includes('short')) return 'SAQs'
-  return question.options?.length ? 'MCQ' : 'Practice'
-}
-
 const stripHtml = (value = '') => String(value ?? '')
   .replace(/<br\s*\/?>/gi, ' ')
   .replace(/<\/(p|div|span|li|h[1-6])>/gi, ' ')
@@ -325,36 +319,6 @@ const isPlaceholderAnswerGuidance = (value = '') => (
   !cleanRevealAnswerText(value)
   || /^answer guidance will appear here\.?$/i.test(cleanRevealAnswerText(value))
 )
-
-const parseMarksValue = (value) => {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
-  const match = String(value ?? '').match(/\d+(\.\d+)?/)
-  return match ? Number(match[0]) : 0
-}
-
-const getQuestionMarks = (question = {}) => {
-  const directMarks = [
-    question.marks,
-    question.mark,
-    question.totalMarks,
-    question.maximumMarks,
-    question.marksText,
-  ].map(parseMarksValue).find((marks) => marks > 0)
-
-  if (directMarks) return directMarks
-
-  const sectionMarks = Array.isArray(question.descriptiveSections)
-    ? question.descriptiveSections.reduce((total, section) => total + parseMarksValue(section?.marks), 0)
-    : 0
-
-  if (sectionMarks > 0) return sectionMarks
-
-  const type = getQuestionType(question)
-  if (type === 'MCQ') return 1
-  if (type === 'SAQs') return 8
-  if (type === 'LAQs') return 10
-  return 0
-}
 
 const getQuestionKey = (question = {}, index = 0) => String(question.id ?? question.questionId ?? `practice-question-${index}`)
 
@@ -909,6 +873,8 @@ const createPracticeAttemptRecord = (session = {}, attempt = {}, status = 'Compl
     id: `${session.id ?? 'practice'}-attempt-${Date.now()}`,
     attemptedAt: new Date().toISOString(),
     status,
+    tagSnapshot: getPracticeTagSnapshot(session),
+    questionBreakdown: getPracticeQuestionBreakdown(session),
     mcq: score.mcq,
     saqs: score.saqs,
     laqs: score.laqs,

@@ -1,6 +1,39 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildCompetencyAnalytics, competencyAnalyticsSample, restoreCompletedPracticeHistory } from './competencyAnalytics.js'
+import { getPracticeQuestionBreakdown } from './practiceQuestionMetadata.js'
+
+test('breakdown sums available marks and repeats question counts for completed attempts only', () => {
+  const card = structuredClone(competencyAnalyticsSample)
+  card.practiceSessions[0].practiceAttemptHistory.push({ status: 'In Progress', saqs: 5 })
+  assert.deepEqual(buildCompetencyAnalytics(card).breakdown, [
+    { label: 'MCQ', obtained: 2, total: 2, count: 2 },
+    { label: 'SAQ', obtained: 6, total: 10, count: 2 },
+    { label: 'LAQ', obtained: 0, total: 0, count: 0 },
+  ])
+})
+
+test('question totals use explicit marks and count multipart questions once', () => {
+  assert.deepEqual(getPracticeQuestionBreakdown({ questions: [
+    { type: 'SAQ', marksText: '4 marks' },
+    { type: 'Short answer', maximumMarks: 6 },
+    { type: 'LAQ', descriptiveSections: [{ marks: 3 }, { marks: 7 }] },
+    { options: ['A', 'B'] },
+  ] }), {
+    mcq: { count: 1, total: 1 },
+    saqs: { count: 2, total: 10 },
+    laqs: { count: 1, total: 10 },
+  })
+})
+
+test('saved attempt metadata retains original counts and marks if session questions change', () => {
+  const card = structuredClone(competencyAnalyticsSample)
+  card.practiceSessions[0].practiceAttemptHistory = [{
+    status: 'Expired', saqs: 0, total: 20,
+    questionBreakdown: { mcq: { count: 0, total: 0 }, saqs: { count: 4, total: 20 }, laqs: { count: 0, total: 0 } },
+  }]
+  assert.deepEqual(buildCompetencyAnalytics(card).breakdown[1], { label: 'SAQ', obtained: 0, total: 20, count: 4 })
+})
 
 test('analytics keeps completed results while a retake draft is unfinished', () => {
   const card = structuredClone(competencyAnalyticsSample)

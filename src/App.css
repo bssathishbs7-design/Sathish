@@ -798,6 +798,7 @@
 }
 
 .vx-global-search {
+  visibility: hidden;
   min-height: 40px;
   border: 1px solid var(--vx-divider);
   border-radius: 10px;

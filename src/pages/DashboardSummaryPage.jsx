@@ -77,13 +77,17 @@ const normalizePerformanceLabel = (value) => {
   return ''
 }
 const formatThresholdLabel = (value) => normalizePerformanceLabel(value) || '-'
-const formatResultLabel = (value) => normalizePerformanceLabel(value) || '-'
+const formatResultLabel = (value) => ({
+  repeat: 'Repeat',
+  remedial: 'Remedial',
+  completed: 'Completed',
+}[normalizeLower(value)] || '-')
 const getPerformanceToneClass = (value) => {
   const normalized = normalizeLower(value)
 
-  if (normalized === 'exceeds') return 'is-good'
+  if (normalized === 'exceeds' || normalized === 'completed') return 'is-good'
   if (normalized === 'meets') return 'is-soft'
-  if (normalized === 'below') return 'is-warn'
+  if (['below', 'repeat', 'remedial'].includes(normalized)) return 'is-warn'
   if (normalized === 'pending') return 'is-warn'
 
   return 'is-soft'

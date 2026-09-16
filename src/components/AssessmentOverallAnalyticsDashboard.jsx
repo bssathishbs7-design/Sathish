@@ -14,7 +14,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import '../styles/assessment-overall-analytics.css'
 
 const clamp = (value) => Math.max(0, Math.min(100, Number(value) || 0))
@@ -91,18 +91,21 @@ function MasteryGaugeGraph({ items }) {
   )
 }
 
-function ThinkingGaugeGraph({ items }) {
+function ThinkingGaugeGraph({ items, coverage = false }) {
   const [selectedLabel, setSelectedLabel] = useState(null)
   const [previewLabel, setPreviewLabel] = useState(null)
-  if (!items.length || !items.some((item) => Number(item.value) > 0)) return <EmptyGraph />
+  if (!items.length || (!coverage && !items.some((item) => Number(item.value) > 0))) return <EmptyGraph />
   const hotItem = items.find((item) => /hot|higher/i.test(item.label)) || items[0]
-  const activeItem = items.find((item) => item.label === previewLabel)
+  const SummaryElement = coverage ? 'div' : 'button'
+  const activeItem = coverage ? hotItem : items.find((item) => item.label === previewLabel)
     || items.find((item) => item.label === selectedLabel)
     || hotItem
   const gaugePercentage = Math.max(0, Math.min(100, activeItem?.percentage || 0))
   const isHot = /hot|higher/i.test(activeItem?.label || '')
   const gaugeColor = isHot ? '#35c8a4' : '#dfb34c'
-  const angle = -180 + (gaugePercentage * 1.8)
+  const classifiedCount = items.reduce((sum, item) => sum + item.value, 0)
+  const needlePercentage = coverage && classifiedCount ? hotItem.value / classifiedCount * 100 : gaugePercentage
+  const angle = -180 + (needlePercentage * 1.8)
   const arcLength = 314.16
   const progressLength = (gaugePercentage / 100) * arcLength
   const gaugeTicks = [0, 25, 50, 75, 100].map((value) => {
@@ -121,7 +124,7 @@ function ThinkingGaugeGraph({ items }) {
   return (
     <div className="aoa-thinking-gauge">
       <div
-        className={`aoa-gauge-visual ${isHot ? 'is-hot' : 'is-lot'}`}
+        className={`aoa-gauge-visual ${isHot ? 'is-hot' : 'is-lot'} ${coverage && !classifiedCount ? 'is-unclassified' : ''}`}
         style={{
           '--gauge-color': gaugeColor,
           '--gauge-angle': `${angle}deg`,
@@ -131,49 +134,49 @@ function ThinkingGaugeGraph({ items }) {
       >
         <svg viewBox="0 0 260 160" role="img" aria-label={`${activeItem?.label || 'Thinking level'} ${gaugePercentage}%`}>
           <path className="aoa-gauge-track" d="M 30 130 A 100 100 0 0 1 230 130" />
-          <path key={`arc-${activeItem?.label}`} className="aoa-gauge-progress" d="M 30 130 A 100 100 0 0 1 230 130" strokeDasharray={`${progressLength} ${arcLength}`} />
+          <path visibility={coverage && !classifiedCount ? "hidden" : undefined} key={`arc-${activeItem?.label}`} className="aoa-gauge-progress" d="M 30 130 A 100 100 0 0 1 230 130" strokeDasharray={`${progressLength} ${arcLength}`} />
           <g className="aoa-gauge-ticks" aria-hidden="true">
             {gaugeTicks.map((tick) => <line key={tick.value} x1={tick.x1} y1={tick.y1} x2={tick.x2} y2={tick.y2} />)}
           </g>
-          <line key={`needle-${activeItem?.label}`} className="aoa-gauge-needle" x1="130" y1="130" x2="188" y2="130" />
+          <line visibility={coverage && !classifiedCount ? "hidden" : undefined} key={`needle-${activeItem?.label}`} className="aoa-gauge-needle" x1="130" y1="130" x2="188" y2="130" />
           <circle className="aoa-gauge-hub" cx="130" cy="130" r="8" />
           <text className="aoa-gauge-end-label" x="25" y="153">LoT</text>
           <text className="aoa-gauge-mid-label" x="130" y="13">Balanced</text>
           <text className="aoa-gauge-end-label" x="235" y="153">HoT</text>
         </svg>
-        <div className="aoa-gauge-reading"><em>Current thinking focus</em><strong>{gaugePercentage}%</strong></div>
+        <div className="aoa-gauge-reading"><em>{coverage ? 'Higher order thinking coverage' : 'Current thinking focus'}</em><strong>{coverage && !classifiedCount ? 'Unclassified' : `${gaugePercentage}%`}</strong></div>
       </div>
       <div className="aoa-gauge-breakdown" aria-label="Thinking level summary">
         {items.map((item, index) => (
-          <button
-            type="button"
+          <SummaryElement
+            type={coverage ? undefined : "button"}
             key={item.label}
             className={activeItem?.label === item.label ? 'is-active' : ''}
             style={{ '--gauge-item-color': item.color || (/hot|higher/i.test(item.label) ? '#35c8a4' : index % 2 ? '#efc93d' : '#35c8a4') }}
-            aria-pressed={selectedLabel === item.label}
-            onClick={() => setSelectedLabel(item.label)}
-            onMouseEnter={() => setPreviewLabel(item.label)}
-            onMouseLeave={() => setPreviewLabel(null)}
-            onFocus={() => setPreviewLabel(item.label)}
-            onBlur={() => setPreviewLabel(null)}
+            aria-pressed={coverage ? undefined : selectedLabel === item.label}
+            onClick={coverage ? undefined : () => setSelectedLabel(item.label)}
+            onMouseEnter={coverage ? undefined : () => setPreviewLabel(item.label)}
+            onMouseLeave={coverage ? undefined : () => setPreviewLabel(null)}
+            onFocus={coverage ? undefined : () => setPreviewLabel(item.label)}
+            onBlur={coverage ? undefined : () => setPreviewLabel(null)}
           >
             <span><i /><b>{item.label}</b></span>
             <strong>{item.percentage}%</strong>
             <small>{item.value} question{item.value === 1 ? '' : 's'}</small>
-          </button>
+          </SummaryElement>
         ))}
       </div>
     </div>
   )
 }
 
-function RadarGraph({ items, thresholds = {} }) {
+function RadarGraph({ items, thresholds = {}, coverage = false }) {
   const [activePoint, setActivePoint] = useState(null)
   const [view, setView] = useState('cohort')
-  if (!items.length || !items.some((item) => Number(item.value) > 0)) return <EmptyGraph />
+  if (!items.length || (!coverage && !items.some((item) => Number(item.value) > 0))) return <EmptyGraph />
   const size = 420
   const center = size / 2
-  const radius = 138
+  const radius = coverage ? 112 : 138
   const count = Math.max(items.length, 3)
   const getPoint = (index, valueRadius) => {
     const angle = (-Math.PI / 2) + (index / count) * Math.PI * 2
@@ -224,18 +227,18 @@ function RadarGraph({ items, thresholds = {} }) {
         {chartItems.map((item, index) => { const point = getPoint(index, radius + 28); const anchor = point.x < center - 8 ? 'end' : point.x > center + 8 ? 'start' : 'middle'; return <g key={`label-${item.label}`}><text className="aoa-radar-label" x={point.x} y={point.y - 4} textAnchor={anchor}>{item.label}</text><text className="aoa-radar-value" x={point.x} y={point.y + 13} textAnchor={anchor}>{item.percentage}% · {item.value} Qus</text></g> })}
       </svg>
       {activePoint && <div className="aoa-radar-tooltip" role="status" style={{ left: `${Math.max(18, Math.min(82, (activePoint.x / size) * 100))}%`, top: `${Math.max(12, Math.min(72, (activePoint.y / size) * 100))}%` }}><strong>{activePoint.label}</strong><span>{activePoint.percentage}% · {activePoint.value} question{activePoint.value === 1 ? '' : 's'}</span></div>}
-      <div className="aoa-radar-view-switch" role="tablist" aria-label="Bloom's taxonomy comparison">
+      {!coverage && <div className="aoa-radar-view-switch" role="tablist" aria-label="Bloom's taxonomy comparison">
         <button type="button" role="tab" aria-selected={view === 'you'} className={view === 'you' ? 'is-active' : ''} onClick={() => setView('you')}>You</button>
         <button type="button" role="tab" aria-selected={view === 'cohort'} className={view === 'cohort' ? 'is-active' : ''} onClick={() => setView('cohort')}>Cohort avg</button>
-      </div>
+      </div>}
     </div>
   )
 }
 
-function BubbleGraph({ items }) {
-  if (!items.length || !items.some((item) => Number(item.value) > 0)) return <EmptyGraph />
+function BubbleGraph({ items, coverage = false }) {
+  if (!items.length || (!coverage && !items.some((item) => Number(item.value) > 0))) return <EmptyGraph />
   const palette = ['#168d6b', '#4b7bec', '#7a58c8', '#d98b35', '#3d99ab']
-  const sortedItems = [...items].sort((left, right) => right.percentage - left.percentage)
+  const sortedItems = coverage ? items : [...items].sort((left, right) => right.percentage - left.percentage)
   return (
     <div className="aoa-function-bars" aria-label="Cognitive Function distribution">
       {sortedItems.map((item, index) => {
@@ -265,16 +268,17 @@ function BubbleGraph({ items }) {
   )
 }
 
-function SkillFocusGraph({ items }) {
+function SkillFocusGraph({ items, coverage = false }) {
+  const Container = coverage ? 'div' : Fragment
   const [activePoint, setActivePoint] = useState(null)
   const relevantItems = items
     .filter((item) => Number(item.value) > 0 || Number(item.percentage) > 0)
     .sort((left, right) => right.percentage - left.percentage)
   const defaultItems = items.filter((item) => !relevantItems.includes(item))
-  const visibleItems = [...relevantItems, ...defaultItems].slice(0, 5)
-  if (!visibleItems.length || !visibleItems.some((item) => Number(item.value) > 0)) return <EmptyGraph />
+  const visibleItems = coverage ? items : [...relevantItems, ...defaultItems].slice(0, 5)
+  if (!visibleItems.length || (!coverage && !visibleItems.some((item) => Number(item.value) > 0))) return <EmptyGraph />
   const average = Math.round(visibleItems.reduce((sum, item) => sum + item.percentage, 0) / visibleItems.length)
-  const chartWidth = 900
+  const chartWidth = coverage ? Math.max(700, visibleItems.length * 140) : 900
   const chartHeight = 320
   // Match the inner horizontal gutters so the first and last plotted categories
   // have the same visual breathing room as the labels below them.
@@ -294,9 +298,10 @@ function SkillFocusGraph({ items }) {
   }, '')
   const areaPath = points.length ? `${linePath} L ${points[points.length - 1].x} ${bounds.top + plotHeight} L ${points[0].x} ${bounds.top + plotHeight} Z` : ''
   return (
-    <div className="aoa-skill-area-chart">
-      <span className="aoa-skill-average">{average}% avg</span>
-      <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="Skill Focus Categories coverage chart" preserveAspectRatio="xMidYMid meet">
+    <Container {...(coverage ? { className: "clg-skill-content" } : {})}>
+    <div className="aoa-skill-area-chart" tabIndex={coverage ? 0 : undefined} role={coverage ? "region" : undefined} aria-label={coverage ? "Skill coverage chart. Scroll horizontally to explore all categories." : undefined}>
+      {!coverage && <span className="aoa-skill-average">{average}% avg</span>}
+      <svg style={coverage ? { minWidth: Math.max(560, visibleItems.length * 112) } : undefined} viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="Skill Focus Categories coverage chart" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="aoa-skill-area-fill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="#26a786" stopOpacity=".28" />
@@ -320,17 +325,19 @@ function SkillFocusGraph({ items }) {
       </svg>
       {activePoint && <div className="aoa-skill-tooltip" role="status" style={{ left: `${Math.max(16, Math.min(84, (activePoint.x / chartWidth) * 100))}%`, top: `${Math.min(72, Math.max(14, (activePoint.y / chartHeight) * 100 + 8))}%` }}><strong>{activePoint.label}</strong><span>{activePoint.percentage}% · {activePoint.value} questions</span></div>}
     </div>
+    {coverage && <p className="clg-scroll-hint">Scroll the chart to explore all {items.length} categories.</p>}
+    </Container>
   )
 }
 
-export function AssessmentAnalyticsGraphGrid({ tagAnalytics, bloomThresholds = {}, className = '' }) {
+export function AssessmentAnalyticsGraphGrid({ tagAnalytics, bloomThresholds = {}, className = '', coverage = false, coverageNotes = {} }) {
   return (
     <div className={`aoa-graph-grid ${className}`.trim()}>
-      <article className="aoa-panel is-mastery"><PanelHeading icon={Award} title="Progress Based Mastery" subtitle="Question distribution by mastery category" /><MasteryGaugeGraph items={tagAnalytics.questionCategory} /></article>
-      <article className="aoa-panel is-bloom"><PanelHeading icon={GraduationCap} title="Cognitive Levels - Bloom's Taxonomy" subtitle="Coverage across Bloom's cognitive levels" /><RadarGraph items={tagAnalytics.cognitiveLevel} thresholds={bloomThresholds} /></article>
-      <article className="aoa-panel is-thinking"><PanelHeading icon={TrendingUp} title="Thinking Level" subtitle="Higher and lower order thinking balance" /><ThinkingGaugeGraph items={tagAnalytics.thinkingLevel} /></article>
-      <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title="Cognitive Function" subtitle="Mental processes represented by the questions" /><BubbleGraph items={tagAnalytics.cognitiveFunction} /></article>
-      <article className="aoa-panel is-skill"><PanelHeading icon={Target} title="Skill Focus Categories" subtitle="Clinical and professional skill coverage" /><SkillFocusGraph items={tagAnalytics.skillFocus} /></article>
+      {!coverage && <article className="aoa-panel is-mastery"><PanelHeading icon={Award} title="Progress Based Mastery" subtitle="Question distribution by mastery category" /><MasteryGaugeGraph items={tagAnalytics.questionCategory} /></article>}
+      <article className="aoa-panel is-bloom"><PanelHeading icon={GraduationCap} title={coverage ? "Cognitive levels - Bloom's taxonomy" : "Cognitive Levels - Bloom's Taxonomy"} subtitle="Coverage across Bloom's cognitive levels" /><RadarGraph items={tagAnalytics.cognitiveLevel} thresholds={bloomThresholds} coverage={coverage} />{coverageNotes.cognitiveLevel}</article>
+      <article className="aoa-panel is-thinking"><PanelHeading icon={TrendingUp} title={coverage ? 'Thinking level' : 'Thinking Level'} subtitle="Higher and lower order thinking balance" /><ThinkingGaugeGraph items={tagAnalytics.thinkingLevel} coverage={coverage} />{coverageNotes.thinkingLevel}</article>
+      <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title={coverage ? 'Cognitive function' : 'Cognitive Function'} subtitle="Mental processes represented by the questions" /><BubbleGraph items={tagAnalytics.cognitiveFunction} coverage={coverage} />{coverageNotes.cognitiveFunction}</article>
+      <article className="aoa-panel is-skill"><PanelHeading icon={Target} title={coverage ? 'Skill focus categories' : 'Skill Focus Categories'} subtitle="Clinical and professional skill coverage" /><SkillFocusGraph items={tagAnalytics.skillFocus} coverage={coverage} />{coverageNotes.skillFocus}</article>
     </div>
   )
 }
