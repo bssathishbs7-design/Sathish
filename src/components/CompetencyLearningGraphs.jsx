@@ -22,9 +22,6 @@ export default function CompetencyLearningGraphs({ analytics: sourceAnalytics })
     return () => observer.disconnect()
   }, [])
   const items = Object.fromEntries(Object.entries(analytics).map(([key, group]) => [key, group.items]))
-  const notes = Object.fromEntries(Object.entries(analytics).map(([key, group]) => [key,
-    <p className="clg-note" key={key}>{group.total ? <><span className="ca-number">{group.unclassified}</span> unclassified of <span className="ca-number">{group.total}</span> questions{key === 'thinkingLevel' ? '. Needle shows balance among classified questions.' : '.'}</> : 'Complete a practice to see question coverage.'}</p>,
-  ]))
   const navigatePoints = (event) => {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
     const chart = event.target.closest('.aoa-panel')
@@ -38,7 +35,7 @@ export default function CompetencyLearningGraphs({ analytics: sourceAnalytics })
   return (
     <section ref={root} className="clg" aria-label="Learning coverage across completed attempts" onKeyDown={navigatePoints}>
       <p className="clg-description">Question coverage across completed attempts. A question can have multiple tags; percentages use all questions, including unclassified questions.</p>
-      <AssessmentAnalyticsGraphGrid tagAnalytics={items} coverage coverageNotes={notes} />
+      <AssessmentAnalyticsGraphGrid tagAnalytics={items} coverage />
     </section>
   )
 }

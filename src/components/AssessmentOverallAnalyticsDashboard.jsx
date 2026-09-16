@@ -1,3 +1,4 @@
+import SkillFocusCoverageGraph from './SkillFocusCoverageGraph'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -325,19 +326,18 @@ function SkillFocusGraph({ items, coverage = false }) {
       </svg>
       {activePoint && <div className="aoa-skill-tooltip" role="status" style={{ left: `${Math.max(16, Math.min(84, (activePoint.x / chartWidth) * 100))}%`, top: `${Math.min(72, Math.max(14, (activePoint.y / chartHeight) * 100 + 8))}%` }}><strong>{activePoint.label}</strong><span>{activePoint.percentage}% · {activePoint.value} questions</span></div>}
     </div>
-    {coverage && <p className="clg-scroll-hint">Scroll the chart to explore all {items.length} categories.</p>}
     </Container>
   )
 }
 
-export function AssessmentAnalyticsGraphGrid({ tagAnalytics, bloomThresholds = {}, className = '', coverage = false, coverageNotes = {} }) {
+export function AssessmentAnalyticsGraphGrid({ tagAnalytics, bloomThresholds = {}, className = '', coverage = false }) {
   return (
     <div className={`aoa-graph-grid ${className}`.trim()}>
       {!coverage && <article className="aoa-panel is-mastery"><PanelHeading icon={Award} title="Progress Based Mastery" subtitle="Question distribution by mastery category" /><MasteryGaugeGraph items={tagAnalytics.questionCategory} /></article>}
-      <article className="aoa-panel is-bloom"><PanelHeading icon={GraduationCap} title={coverage ? "Cognitive levels - Bloom's taxonomy" : "Cognitive Levels - Bloom's Taxonomy"} subtitle="Coverage across Bloom's cognitive levels" /><RadarGraph items={tagAnalytics.cognitiveLevel} thresholds={bloomThresholds} coverage={coverage} />{coverageNotes.cognitiveLevel}</article>
-      <article className="aoa-panel is-thinking"><PanelHeading icon={TrendingUp} title={coverage ? 'Thinking level' : 'Thinking Level'} subtitle="Higher and lower order thinking balance" /><ThinkingGaugeGraph items={tagAnalytics.thinkingLevel} coverage={coverage} />{coverageNotes.thinkingLevel}</article>
-      <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title={coverage ? 'Cognitive function' : 'Cognitive Function'} subtitle="Mental processes represented by the questions" /><BubbleGraph items={tagAnalytics.cognitiveFunction} coverage={coverage} />{coverageNotes.cognitiveFunction}</article>
-      <article className="aoa-panel is-skill"><PanelHeading icon={Target} title={coverage ? 'Skill focus categories' : 'Skill Focus Categories'} subtitle="Clinical and professional skill coverage" /><SkillFocusGraph items={tagAnalytics.skillFocus} coverage={coverage} />{coverageNotes.skillFocus}</article>
+      <article className="aoa-panel is-bloom"><PanelHeading icon={GraduationCap} title={coverage ? "Cognitive levels - Bloom's taxonomy" : "Cognitive Levels - Bloom's Taxonomy"} subtitle="Coverage across Bloom's cognitive levels" /><RadarGraph items={tagAnalytics.cognitiveLevel} thresholds={bloomThresholds} coverage={coverage} /></article>
+      <article className="aoa-panel is-thinking"><PanelHeading icon={TrendingUp} title={coverage ? 'Thinking level' : 'Thinking Level'} subtitle="Higher and lower order thinking balance" /><ThinkingGaugeGraph items={tagAnalytics.thinkingLevel} coverage={coverage} /></article>
+      <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title={coverage ? 'Cognitive function' : 'Cognitive Function'} subtitle="Mental processes represented by the questions" /><BubbleGraph items={tagAnalytics.cognitiveFunction} coverage={coverage} /></article>
+      <article className="aoa-panel is-skill"><PanelHeading icon={Target} title={coverage ? 'Skill focus categories' : 'Skill Focus Categories'} subtitle="Clinical and professional skill coverage" /><>{coverage ? <SkillFocusCoverageGraph items={tagAnalytics.skillFocus} /> : <SkillFocusGraph items={tagAnalytics.skillFocus} />}</></article>
     </div>
   )
 }
