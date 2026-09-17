@@ -1,0 +1,55 @@
+.faculty-analytics .competency-analytics-header { padding: var(--space-2) var(--space-3); gap: var(--space-3); border-radius: var(--radius-lg, 18px); }
+.faculty-analytics .competency-analytics-header .ca-back, .faculty-analytics .fa-practice select { min-height: 0; height: calc(var(--space-2) * 4); padding-block: var(--space-1); }
+.faculty-analytics .fa-title { min-width: 0; flex: 1; display: flex; align-items: center; gap: var(--space-3); }
+.faculty-analytics .fa-title h1 { margin: 0; font-size: var(--fs-small, 14px); line-height: 1.4; color: var(--text-strong); }
+.fa-header-meta { display: flex; flex-shrink: 0; align-items: center; gap: var(--space-2); white-space: nowrap; }
+.fa-header-year { border-left: 1px solid var(--ca-line); padding-left: var(--space-2); color: var(--text-muted); font-size: var(--fs-small, 14px); }
+.faculty-analytics .fa-header-meta .ca-code { padding: var(--space-1) var(--space-2); font-size: var(--fs-micro, 11px); }
+.fa-practice { display: flex; flex-shrink: 0; align-items: center; gap: var(--space-2); font-size: 12px; color: var(--ca-muted); }
+.faculty-analytics select { min-height: 36px; max-width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--ca-line); border-radius: var(--radius-lg); color: var(--ca-ink); background: var(--ca-surface); font: inherit; font-size: 12px; }
+.faculty-analytics .fa-description { display: block; min-width: 0; flex: 1; margin: 0; color: var(--text-muted); font-size: var(--fs-small, 14px); line-height: 1.4; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: help; }
+.fa-notice { margin: 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--ca-line); border-radius: var(--radius-lg); background: var(--ca-surface); color: var(--ca-muted); font-size: 13px; }
+.fa-students { min-width: 0; border: 1px solid var(--ca-line); border-radius: var(--radius-card, 28px); background: var(--ca-surface); overflow: hidden; }
+.fa-students-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.fa-students-title { min-width: 0; }
+.fa-students-heading h2 { display: flex; align-items: center; gap: var(--space-2); }
+.fa-student-filters { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.fa-status-filter { position: relative; flex: 0 0 auto; display: flex; align-items: center; }
+.faculty-analytics .fa-status-filter select { appearance: none; width: calc(var(--space-4) * 8); margin: 0; padding-inline: var(--space-3) calc(var(--space-2) * 4); cursor: pointer; line-height: normal; }
+.fa-status-filter > svg { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.fa-student-filters .fa-search { margin: 0; }
+.faculty-analytics .fa-student-filters select, .fa-student-filters .fa-search { height: calc(var(--space-2) * 4); min-height: 0; box-sizing: border-box; padding-block: var(--space-1); }
+.fa-search { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--ca-line); border-radius: var(--radius-lg); color: var(--ca-muted); }
+.fa-search input { width: 200px; min-width: 0; border: 0; outline: none; color: var(--ca-ink); background: transparent; font: inherit; font-size: 12px; }
+.fa-search:focus-within { outline: 2px solid var(--ca-brand); outline-offset: 2px; }
+.fa-table-scroll { max-height: 380px; overflow: auto; }
+.fa-table-scroll table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.fa-table-scroll th, .fa-table-scroll td { padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--ca-line); vertical-align: middle; }
+.fa-table-scroll th:nth-child(n+3), .fa-table-scroll td:nth-child(n+3) { text-align: center; }
+.faculty-analytics .fa-table-scroll td button { width: calc(var(--space-2) * 4); height: calc(var(--space-2) * 4); min-height: 0; padding: 0; }
+.faculty-analytics .fa-students .ca-code { padding: 0 var(--space-2); font-size: var(--fs-micro, 11px); line-height: 2; }
+.fa-table-scroll th { position: sticky; top: 0; z-index: 1; background: var(--ca-mist); font-weight: 600; white-space: nowrap; }
+.fa-table-scroll td:nth-child(n+4):nth-child(-n+5) { font-family: var(--f-code, ui-monospace, monospace); }
+.fa-table-scroll td:first-child { font-weight: 600; }
+.faculty-analytics .fa-table-scroll tbody tr { transition: background-color var(--dur-hover) var(--ease-standard); }
+.faculty-analytics .fa-table-scroll tbody tr:has(.ca-code):is(:hover, :focus-within) { background-color: color-mix(in srgb, var(--ca-brand) 6%, var(--ca-surface)); }
+.faculty-analytics .fa-table-scroll tbody tr:has(button:active) { background-color: color-mix(in srgb, var(--ca-brand) 10%, var(--ca-surface)); transition: none; }
+.fa-no-students { text-align: center; height: 100px; color: var(--ca-muted); }
+.faculty-analytics .fa-sample-caption { margin: var(--space-1) 0 0; padding: 0; color: var(--text-muted); font-size: var(--fs-micro, 11px); line-height: 1.4; }
+.fa-pagination { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--ca-line); font-size: 12px; }
+.faculty-analytics .fa-pagination button { height: calc(var(--space-2) * 4); min-height: 0; padding: var(--space-1) var(--space-3); font-size: inherit; }
+.fa-pagination > span:first-child { margin-right: auto; }
+.faculty-analytics button { cursor: pointer; }
+.faculty-analytics button:disabled { cursor: not-allowed; opacity: .45; }
+.faculty-analytics button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+@media (max-width: 767px) {
+  .faculty-analytics .fa-title { flex-direction: column; align-items: stretch; gap: var(--space-1); }
+  .fa-header-meta { flex-wrap: wrap; white-space: normal; }
+  .faculty-analytics .competency-analytics-header { flex-wrap: wrap; }
+  .fa-practice { width: 100%; justify-content: space-between; }
+  .fa-table-scroll table { min-width: 680px; }
+  .fa-student-filters { width: 100%; }
+  .fa-search { flex: 1; min-width: 0; }
+  .fa-search input { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .faculty-analytics button:active:not(:disabled) { transform: none; } }

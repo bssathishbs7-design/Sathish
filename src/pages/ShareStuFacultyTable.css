@@ -1,0 +1,180 @@
+/* Table-only presentation; dashboard cards and toolbar keep their existing styles. */
+.share-stu-faculty-page {
+  --share-table-surface: var(--surface-card, #ffffff);
+  --share-table-ink: var(--text-body, #333333);
+  --share-table-muted: var(--text-muted, #527363);
+  --share-table-brand: var(--forest-900, #0f6844);
+  --share-table-line: color-mix(in srgb, var(--share-table-brand) 16%, var(--share-table-surface));
+  --share-table-heading: var(--surface-mist, #f5f5f5);
+}
+:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) .share-stu-faculty-page {
+  --share-table-surface: var(--color-surface);
+  --share-table-ink: var(--color-text);
+  --share-table-muted: var(--color-text-muted);
+  --share-table-brand: var(--color-primary);
+  --share-table-heading: var(--color-bg);
+}
+/* The app header occupies 72px plus its two 1px borders. */
+.assessment-page.share-stu-faculty-page { height: calc(100dvh - 74px); min-height: 0; overflow: hidden; }
+.share-stu-faculty-page .share-stu-faculty-shell { height: 100%; min-height: 0; }
+.share-stu-faculty-page .question-bank-list-page-head { flex-shrink: 0; }
+.share-stu-faculty-page .share-stu-faculty-card { flex: 1; min-height: 0; }
+.share-stu-faculty-page :is(.share-stu-faculty-metric-strip, .share-stu-faculty-toolbar) { flex-shrink: 0; }
+.share-stu-faculty-table-frame { display: flex; flex-direction: column; flex: 1; min-height: 0; border: 1px solid var(--share-table-line); border-radius: var(--radius-lg); background: var(--share-table-surface); overflow: hidden; }
+.share-stu-faculty-page :is(.share-stu-faculty-list-head, .share-stu-faculty-footer) { flex-shrink: 0; }
+.share-stu-faculty-page .share-stu-faculty-list-head,
+.share-stu-faculty-page .share-stu-faculty-group-head {
+  grid-template-columns: minmax(0, 1.4fr) 100px minmax(264px, .8fr) 140px;
+  gap: var(--space-4);
+  padding-inline: var(--space-4);
+}
+.share-stu-faculty-page .share-stu-faculty-list-head {
+  min-height: 36px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--share-table-line);
+  background: var(--share-table-heading);
+  color: var(--share-table-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.share-stu-faculty-page .share-stu-faculty-groups { flex: 1; min-height: 0; gap: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; }
+.share-stu-faculty-page .share-stu-faculty-group {
+  flex-shrink: 0;
+  border: 0;
+  border-bottom: 1px solid var(--share-table-line);
+  border-radius: 0;
+  background: var(--share-table-surface);
+  box-shadow: none;
+}
+.share-stu-faculty-page .share-stu-faculty-group-head {
+  min-height: 56px;
+  padding-block: var(--space-2);
+  background: var(--share-table-surface);
+}
+.share-stu-faculty-page .share-stu-faculty-group-head:hover { background: var(--share-table-heading); }
+.share-stu-faculty-page .share-stu-faculty-group:last-child { border-bottom: 0; }
+.share-stu-faculty-page .share-stu-faculty-group-main strong { color: var(--share-table-ink); font-weight: 600; }
+.share-stu-faculty-page .share-stu-faculty-group-main em { color: var(--share-table-muted); font-size: 12px; font-weight: 400; }
+.share-stu-faculty-page .share-stu-faculty-parent-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; gap: var(--space-2); }
+.share-stu-faculty-page .share-stu-faculty-parent-metrics span,
+.share-stu-faculty-page .share-stu-faculty-mix span { min-width: 0; width: auto; border: 0; background: transparent; box-shadow: none; padding: var(--space-1); }
+.share-stu-faculty-page .share-stu-faculty-parent-metrics span { display: flex; align-items: center; justify-content: center; gap: var(--space-1); min-height: 24px; }
+.share-stu-faculty-page .share-stu-faculty-parent-metrics span + span { border-left: 1px solid var(--share-table-line); border-radius: 0; }
+.share-stu-faculty-page .share-stu-faculty-footer { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--share-table-line); background: var(--share-table-heading); }
+.share-stu-faculty-page .share-stu-faculty-footer button { min-height: 32px; padding-inline: var(--space-3); box-shadow: none; }
+.share-stu-faculty-page :is(.share-stu-faculty-list-head, .share-stu-faculty-footer) {
+  background: color-mix(in srgb, var(--mint-200, #5fe8b1) 16%, var(--share-table-surface));
+  color: var(--share-table-brand);
+}
+.share-stu-faculty-page .share-stu-faculty-footer > span { color: var(--share-table-brand); }
+.share-stu-faculty-page .share-stu-faculty-parent-metrics b,
+.share-stu-faculty-page .share-stu-faculty-mix b { color: var(--share-table-ink); font-size: 13px; font-weight: 600; }
+.share-stu-faculty-page .share-stu-faculty-parent-metrics small,
+.share-stu-faculty-page .share-stu-faculty-mix small { color: var(--share-table-muted); font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.share-stu-faculty-page .share-stu-faculty-practice-panel { padding: 0; background: var(--share-table-surface); border-top: 1px solid var(--share-table-line); animation: none; }
+.share-stu-faculty-page .share-stu-faculty-practice-head,
+.share-stu-faculty-page .share-stu-faculty-practice-row {
+  grid-template-columns: minmax(150px, 1.3fr) minmax(100px, .8fr) minmax(80px, .7fr) minmax(120px, 1fr) minmax(90px, .7fr) 64px;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 0;
+  box-shadow: none;
+}
+.share-stu-faculty-page .share-stu-faculty-practice-head {
+  min-height: 40px;
+  border: 0;
+  border-bottom: 1px solid var(--share-table-line);
+  background: var(--share-table-heading);
+  color: var(--share-table-muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.share-stu-faculty-page .share-stu-faculty-practice-row {
+  min-height: 48px;
+  border: 0;
+  border-bottom: 1px solid var(--share-table-line);
+  background: var(--share-table-surface);
+}
+.share-stu-faculty-page .share-stu-faculty-practice-row:last-child { border-bottom: 0; }
+.share-stu-faculty-page .share-stu-faculty-practice-row:hover { background: var(--share-table-heading); }
+.share-stu-faculty-page .share-stu-faculty-date,
+.share-stu-faculty-page .share-stu-faculty-practice-badge { color: var(--share-table-ink); font-size: 12px; font-weight: 400; }
+.share-stu-faculty-page .share-stu-faculty-practice-badge { border: 0; padding: 0; background: transparent; }
+.share-stu-faculty-page .share-stu-faculty-mix { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); width: 100%; }
+.share-stu-faculty-page .share-stu-faculty-schedule-pill,
+.share-stu-faculty-page .share-stu-faculty-status { font-size: 11px; font-weight: 500; }
+.share-stu-faculty-page .share-stu-faculty-report-btn,
+.share-stu-faculty-page .share-stu-faculty-analytics-btn {
+  min-height: 32px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid color-mix(in srgb, var(--share-table-brand) 40%, var(--share-table-surface));
+  border-radius: 999px;
+  background: var(--share-table-surface);
+  color: var(--share-table-brand);
+  box-shadow: none;
+  transition: background-color var(--motion-snappy), border-color var(--motion-snappy);
+}
+.share-stu-faculty-page :is(.share-stu-faculty-report-btn, .share-stu-faculty-analytics-btn):hover { background: var(--share-table-heading); border-color: var(--share-table-brand); transform: none; }
+.share-stu-faculty-page .share-stu-faculty-report-btn { width: 64px; min-width: 64px; padding-inline: var(--space-2); gap: var(--space-1); }
+.share-stu-faculty-page .share-stu-faculty-report-btn svg { flex-shrink: 0; }
+.share-stu-faculty-page :is(.share-stu-faculty-report-btn, .share-stu-faculty-analytics-btn):active { transform: translateY(1px) scale(.97); transition: none; }
+.share-stu-faculty-page :is(.share-stu-faculty-group-head, .share-stu-faculty-report-btn, .share-stu-faculty-analytics-btn):focus-visible { outline: 2px solid var(--share-table-brand); outline-offset: -2px; }
+@media (max-width: 1180px) {
+  .share-stu-faculty-page .share-stu-faculty-group-head { grid-template-columns: minmax(0, 1fr) auto; }
+  .share-stu-faculty-page .share-stu-faculty-parent-metrics { max-width: 280px; }
+  .share-stu-faculty-page .share-stu-faculty-practice-head { display: none; }
+  .share-stu-faculty-page .share-stu-faculty-practice-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .share-stu-faculty-page .share-stu-faculty-date { white-space: normal; line-height: 1.5; }
+}
+@media (max-width: 767px) {
+  .share-stu-faculty-page .share-stu-faculty-practice-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .share-stu-faculty-page :is(.share-stu-faculty-group-head, .share-stu-faculty-report-btn, .share-stu-faculty-analytics-btn) { transition: none; transform: none; }
+}
+
+.share-stu-faculty-page .faculty-live-badge {
+  --live-ink: var(--text-warning, #9a5a14);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--live-ink) 30%, var(--share-table-surface));
+  border-radius: 999px;
+  background: var(--surface-warning, #fff4df);
+  color: var(--live-ink);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.share-stu-faculty-page .share-stu-faculty-parent-metrics .faculty-live-badge b { color: inherit; }
+:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) .share-stu-faculty-page .faculty-live-badge {
+  --live-ink: var(--text-warning, #f2c879);
+  background: color-mix(in srgb, var(--live-ink) 12%, var(--share-table-surface));
+}
+.faculty-live-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: faculty-live-pulse var(--dur-live-pulse, 1800ms) var(--ease-standard, ease-in-out) infinite;
+}
+@keyframes faculty-live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .faculty-live-dot { animation: none; } }
+
+/* Scheduled practice rows use blue until their schedule expires. */
+.share-stu-faculty-page .share-stu-faculty-group-head.is-scheduled-row,
+.share-stu-faculty-page .share-stu-faculty-group-head.is-scheduled-row:hover,
+.share-stu-faculty-page .share-stu-faculty-practice-row.is-scheduled-row,
+.share-stu-faculty-page .share-stu-faculty-practice-row.is-scheduled-row:hover {
+  background: color-mix(in srgb, var(--sky-200, #bae6fd) 30%, var(--share-table-surface));
+  box-shadow: inset 3px 0 var(--sky-500, #0ea5e9);
+}

@@ -1,3 +1,6 @@
+import { buildFacultyReportSample as buildStudentReportRows } from '../services/facultyReportSample'
+import FloatingTooltip from '../components/FloatingTooltip'
+import { getScheduleLabel, getScheduleClassName, isPendingScheduledPractice } from '../services/facultyPracticeSchedule'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -18,6 +21,8 @@ import { APP_PAGES } from '../config/appPages'
 import { corelationRatingRows } from './corelationRatingData'
 import '../styles/assessment-pages.css'
 import './ShareStuFacultyPage.css'
+import './ShareStuFacultyTable.css'
+import './ShareStuFacultyReportControls.css'
 
 const LEARN_PRACTICE_SHARED_CARDS_KEY = 'vx-learn-practice-shared-cards'
 const PAGE_SIZE = 8
@@ -172,69 +177,6 @@ const getStatusClassName = (status = '') => {
   return 'is-progress'
 }
 
-const parseScheduledDateTime = (dateValue, timeValue) => {
-  if (!dateValue || !timeValue) return null
-
-  const date = new Date(`${dateValue}T${timeValue}`)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-const formatCountdown = (targetDate, now = new Date()) => {
-  if (!targetDate) return null
-
-  const diffMs = targetDate.getTime() - now.getTime()
-  if (diffMs <= 0) return '00:00:00'
-
-  const totalSeconds = Math.floor(diffMs / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-}
-
-const getScheduleLabel = (session = {}, now = new Date()) => {
-  const schedule = session.schedule ?? {}
-  const assignment = session.assignment ?? {}
-  if (typeof session.timeRemaining === 'string') return session.timeRemaining
-  if (typeof session.remainingTime === 'string') return session.remainingTime
-
-  const isScheduled = Boolean(
-    assignment.scheduleEnabled
-    || session.isScheduled
-    || session.scheduled
-    || schedule.startDate
-    || schedule.startTime
-    || schedule.endDate
-    || schedule.endTime
-  )
-  const endDateTime = isScheduled
-    ? parseScheduledDateTime(
-      assignment.endDate ?? schedule.endDate ?? session.endDate,
-      assignment.endTime ?? schedule.endTime ?? session.endTime,
-    )
-    : null
-  const countdown = formatCountdown(endDateTime, now)
-  if (countdown) return countdown
-
-  if (typeof session.scheduleLabel === 'string') return session.scheduleLabel
-  if (typeof session.scheduleType === 'string') return session.scheduleType
-  if (typeof schedule.label === 'string') return schedule.label
-  if (isScheduled) return 'Scheduled'
-  return 'Normal'
-}
-
-const isCountdownLabel = (value = '') => /^\d{2}:\d{2}:\d{2}$/.test(String(value).trim())
-
-const getScheduleClassName = (schedule = '', status = '') => {
-  const value = String(schedule).trim().toLowerCase()
-  const statusValue = String(status).trim().toLowerCase()
-  if (value === '00:00:00' || statusValue.includes('expire')) return 'is-expired'
-  if (isCountdownLabel(value)) return 'is-live'
-  if (value === 'normal') return 'is-normal'
-  return 'is-scheduled'
-}
-
 const getSharedDate = (card = {}) => {
   const sessionDates = Array.isArray(card.practiceSessions)
     ? card.practiceSessions.map((session) => session?.sharedAt ?? session?.createdAt).filter(Boolean)
@@ -267,6 +209,7 @@ const getPracticeRows = (card = {}, cardQuestions = [], now = new Date()) => {
       id: session.id ?? `${card.id ?? card.competencyCode ?? 'practice'}-${index + 1}`,
       practiceNo: Number(session.practiceNo || session.attemptNo || index + 1),
       sharedAt: formatDateTime(session.sharedAt ?? session.createdAt ?? card.lastSharedAt ?? card.sharedAt ?? card.createdAt),
+      questions,
       schedule: getScheduleLabel(session, now),
       status: getSessionStatus(session),
       mcq: counts.mcq,
@@ -278,44 +221,21 @@ const getPracticeRows = (card = {}, cardQuestions = [], now = new Date()) => {
   }).filter((practice) => practice.total > 0)
 }
 
-const reportStudents = [
-  ['Aarav Kumar', 'MC2501'],
-  ['Diya Raman', 'MC2502'],
-  ['Ishaan Patel', 'MC2503'],
-  ['Meera Nair', 'MC2504'],
-  ['Nikhil Joseph', 'MC2505'],
-]
-
-const buildStudentReportRows = (practice = {}) => reportStudents.map(([name, rollNo], index) => {
-  const totalMarks = Number(practice.totalMarks || practice.total || 0)
-  const status = index === 4 && practice.status === 'In Progress' ? 'In progress' : 'Submitted'
-  const mcqScore = practice.mcq ? Math.max(0, practice.mcq - (index % 2)) : '-'
-  const saqsScore = practice.saqs ? Math.max(0, practice.saqs - (index === 2 ? 1 : 0)) : '-'
-  const laqsScore = practice.laqs ? Math.max(0, practice.laqs - (index === 3 ? 1 : 0)) : '-'
-  const obtainedMarks = status === 'Submitted'
-    ? Math.max(0, totalMarks - (index % 3))
-    : '-'
-
-  return {
-    name,
-    rollNo,
-    status,
-    mcqScore,
-    saqsScore,
-    laqsScore,
-    obtainedMarks,
-    totalMarks,
-    submittedAt: status === 'Submitted' ? practice.sharedAt : '-',
-  }
-})
-
-function ShareStuFacultyPage({ onNavigate }) {
+function ShareStuFacultyPage({ onNavigate, onOpenAnalytics, returnState }) {
   const [sharedCards, setSharedCards] = useState(() => readSharedCards())
-  const [query, setQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState('all')
-  const [page, setPage] = useState(1)
-  const [expandedRows, setExpandedRows] = useState(() => new Set())
+  const [query, setQuery] = useState(returnState?.query ?? '')
+  const [activeFilter, setActiveFilter] = useState(returnState?.activeFilter ?? 'all')
+  const [page, setPage] = useState(returnState?.page ?? 1)
+  const [expandedRows, setExpandedRows] = useState(() => new Set(returnState?.expandedRows ?? []))
   const [activeReport, setActiveReport] = useState(null)
+  const [reportQuery, setReportQuery] = useState('')
+  const [reportPage, setReportPage] = useState(1)
+  const reportRows = activeReport ? buildStudentReportRows(activeReport.practice).filter((student) => (
+    `${student.name} ${student.rollNo}`.toLowerCase().includes(reportQuery.trim().toLowerCase())
+  )) : []
+  const reportPageCount = Math.max(1, Math.ceil(reportRows.length / 5))
+  const currentReportPage = Math.min(reportPage, reportPageCount)
+  const visibleReportRows = reportRows.slice((currentReportPage - 1) * 5, currentReportPage * 5)
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -353,6 +273,7 @@ function ShareStuFacultyPage({ onNavigate }) {
 
     return {
       id: card.id ?? code,
+      sourceCard: card,
       code,
       competency,
       subject,
@@ -381,7 +302,8 @@ function ShareStuFacultyPage({ onNavigate }) {
         activeFilter === 'all'
         || (activeFilter === 'live' && row.livePractice > 0)
         || (activeFilter === 'completed' && row.practices.some((practice) => practice.status === 'Complete'))
-        || (activeFilter === 'scheduled' && row.practices.some((practice) => getScheduleClassName(practice.schedule, practice.status) === 'is-scheduled'))
+        || (activeFilter === 'in-progress' && row.practices.some((practice) => practice.status === 'In Progress'))
+        || (activeFilter === 'scheduled' && row.practices.some(isPendingScheduledPractice))
       )
 
       return matchesSearch && matchesFilter
@@ -392,7 +314,8 @@ function ShareStuFacultyPage({ onNavigate }) {
     { key: 'all', label: 'All', count: rows.length },
     { key: 'live', label: 'Live', count: rows.filter((row) => row.livePractice > 0).length },
     { key: 'completed', label: 'Completed', count: rows.filter((row) => row.practices.some((practice) => practice.status === 'Complete')).length },
-    { key: 'scheduled', label: 'Scheduled', count: rows.filter((row) => row.practices.some((practice) => getScheduleClassName(practice.schedule, practice.status) === 'is-scheduled')).length },
+    { key: 'in-progress', label: 'In Progress', count: rows.filter((row) => row.practices.some((practice) => practice.status === 'In Progress')).length },
+    { key: 'scheduled', label: 'Scheduled', count: rows.filter((row) => row.practices.some(isPendingScheduledPractice)).length },
   ], [rows])
 
   const dashboardMetrics = useMemo(() => {
@@ -422,10 +345,6 @@ function ShareStuFacultyPage({ onNavigate }) {
       return new Set([...currentRows].filter((rowId) => availableRowIds.has(rowId)))
     })
   }, [rowIdSignature])
-
-  useEffect(() => {
-    setPage(1)
-  }, [activeFilter, query])
 
   useEffect(() => {
     if (!activeReport) return undefined
@@ -496,7 +415,7 @@ function ShareStuFacultyPage({ onNavigate }) {
                     key={option.key}
                     type="button"
                     className={activeFilter === option.key ? 'is-active' : ''}
-                    onClick={() => setActiveFilter(option.key)}
+                    onClick={() => { setActiveFilter(option.key); setPage(1) }}
                     aria-pressed={activeFilter === option.key}
                   >
                     {option.label}
@@ -510,10 +429,10 @@ function ShareStuFacultyPage({ onNavigate }) {
                   type="search"
                   value={query}
                   placeholder="Search shared questions..."
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event) => { setQuery(event.target.value); setPage(1) }}
                 />
                 {query ? (
-                  <button type="button" aria-label="Clear search" onClick={() => setQuery('')}>
+                  <button type="button" aria-label="Clear search" onClick={() => { setQuery(''); setPage(1) }}>
                     <X size={14} strokeWidth={2.4} />
                   </button>
                 ) : null}
@@ -523,8 +442,9 @@ function ShareStuFacultyPage({ onNavigate }) {
 
           {visibleRows.length ? (
             <>
+              <div className="share-stu-faculty-table-frame">
               <div className="share-stu-faculty-list-head" aria-hidden="true">
-                <span>Competency</span>
+                <span>Subject and Year</span>
                 <span>Code</span>
                 <span>Summary</span>
                 <span>Action</span>
@@ -536,7 +456,7 @@ function ShareStuFacultyPage({ onNavigate }) {
                   return (
                     <article className="share-stu-faculty-group" key={row.id}>
                       <div
-                        className="share-stu-faculty-group-head"
+                        className={`share-stu-faculty-group-head${row.practices.some(isPendingScheduledPractice) ? ' is-scheduled-row' : ''}`}
                         role="button"
                         tabIndex={0}
                         aria-expanded={isExpanded}
@@ -557,19 +477,29 @@ function ShareStuFacultyPage({ onNavigate }) {
                             <em>{row.assignedTo}</em>
                           </span>
                         </span>
-                        <span className="share-stu-faculty-code" data-tooltip={row.competency} tabIndex={0}>
+                        <FloatingTooltip className="share-stu-faculty-code" content={row.competency}>
                           {row.code}
                           <Info size={12} strokeWidth={2.4} aria-hidden="true" />
-                        </span>
+                        </FloatingTooltip>
                         <span className="share-stu-faculty-parent-metrics" aria-label="Shared summary">
                           <span><b>{row.practiceCount}</b><small>Practices</small></span>
                           <span><b>{row.total}</b><small>Questions</small></span>
-                          <span><b>{row.livePractice}</b><small>Live</small></span>
+                          <span>
+                            {row.livePractice > 0 ? (
+                              <strong className="faculty-live-badge">
+                                <i className="faculty-live-dot" aria-hidden="true" />
+                                <b>{row.livePractice}</b> Live
+                              </strong>
+                            ) : <b aria-label="No live practices">-</b>}
+                          </span>
                         </span>
                         <button
                           type="button"
                           className="share-stu-faculty-analytics-btn"
-                          onClick={(event) => event.stopPropagation()}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            onOpenAnalytics?.({ card: { ...row.sourceCard, competencyCode: row.code, competencyName: row.competency, subject: row.subject }, returnState: { query, activeFilter, page, expandedRows: [...expandedRows] } })
+                          }}
                           onKeyDown={(event) => event.stopPropagation()}
                         >
                           <BarChart3 size={15} strokeWidth={2.4} />
@@ -589,7 +519,7 @@ function ShareStuFacultyPage({ onNavigate }) {
                           </div>
                           <div className="share-stu-faculty-practice-list">
                             {row.practices.map((practice) => (
-                              <div className="share-stu-faculty-practice-row" key={practice.id}>
+                              <div className={`share-stu-faculty-practice-row${isPendingScheduledPractice(practice) ? ' is-scheduled-row' : ''}`} key={practice.id}>
                                 <span className="share-stu-faculty-date">
                                   <CalendarDays size={14} strokeWidth={2.3} />
                                   {practice.sharedAt}
@@ -612,7 +542,11 @@ function ShareStuFacultyPage({ onNavigate }) {
                                 <button
                                   type="button"
                                   className="share-stu-faculty-report-btn"
-                                  onClick={() => setActiveReport({ parent: row, practice })}
+                                  onClick={() => {
+                                    setReportQuery('')
+                                    setReportPage(1)
+                                    setActiveReport({ parent: row, practice })
+                                  }}
                                 >
                                   <Eye size={14} strokeWidth={2.4} />
                                   View
@@ -636,6 +570,7 @@ function ShareStuFacultyPage({ onNavigate }) {
                   Next
                   <ChevronRight size={15} strokeWidth={2.4} />
                 </button>
+              </div>
               </div>
             </>
           ) : (
@@ -663,31 +598,39 @@ function ShareStuFacultyPage({ onNavigate }) {
                   Practice report
                 </h2>
                 <p>
-                  {activeReport.parent.code} - # Practice {activeReport.practice.practiceNo}
+                  {activeReport.parent.code} - # Practice {activeReport.practice.practiceNo} ? Sample student results
                 </p>
               </div>
               <button type="button" aria-label="Close report" onClick={() => setActiveReport(null)}>
                 <X size={18} strokeWidth={2.4} />
               </button>
             </div>
+            <div className="faculty-report-toolbar">
+              <label className="faculty-report-search">
+                <Search size={16} aria-hidden="true" />
+                <input type="search" aria-label="Search students by name or ID" placeholder="Search student name or ID..." value={reportQuery} onChange={(event) => {
+                  setReportQuery(event.target.value)
+                  setReportPage(1)
+                }} />
+              </label>
+            </div>
             <div className="share-stu-faculty-report-table-wrap">
               <table className="share-stu-faculty-report-table">
                 <thead>
                   <tr>
-                    <th>Student name</th>
-                    <th>Roll no / ID</th>
-                    <th>Attempt status</th>
-                    <th>MCQ score</th>
-                    <th>SAQs score</th>
-                    <th>LAQs score</th>
-                    <th>Obt. marks</th>
-                    <th>Total marks</th>
-                    <th>Submitted at</th>
-                    <th>Report action</th>
+                    <th>Student Name</th>
+                    <th>Roll No./ ID</th>
+                    <th>Attempt Status</th>
+                    <th>MCQ</th>
+                    <th>SAQs</th>
+                    <th>LAQs</th>
+                    <th>Obt. Marks</th>
+                    <th>Total Marks</th>
+                    <th>Submitted At</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {buildStudentReportRows(activeReport.practice).map((student) => (
+                  {visibleReportRows.map((student) => (
                     <tr key={student.rollNo}>
                       <td>{student.name}</td>
                       <td>{student.rollNo}</td>
@@ -702,17 +645,18 @@ function ShareStuFacultyPage({ onNavigate }) {
                       <td>{student.obtainedMarks}</td>
                       <td>{student.totalMarks}</td>
                       <td>{student.submittedAt}</td>
-                      <td>
-                        <button type="button" className="share-stu-faculty-report-link">
-                          <Eye size={13} strokeWidth={2.4} />
-                          View
-                        </button>
-                      </td>
                     </tr>
                   ))}
+                  {!reportRows.length && <tr><td colSpan={9} className="faculty-report-empty">No students match your search.</td></tr>}
                 </tbody>
               </table>
             </div>
+            <nav className="faculty-report-pagination" aria-label="Practice report pagination">
+              <span role="status">{reportRows.length ? `${(currentReportPage - 1) * 5 + 1}–${Math.min(currentReportPage * 5, reportRows.length)} of ${reportRows.length} students` : '0 students'}</span>
+              <button type="button" disabled={currentReportPage <= 1} onClick={() => setReportPage(currentReportPage - 1)}><ChevronLeft size={15} />Previous</button>
+              <span>Page {currentReportPage} of {reportPageCount}</span>
+              <button type="button" disabled={currentReportPage >= reportPageCount} onClick={() => setReportPage(currentReportPage + 1)}>Next<ChevronRight size={15} /></button>
+            </nav>
           </section>
         </div>,
         document.body,

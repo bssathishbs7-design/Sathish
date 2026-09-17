@@ -1,3 +1,4 @@
+import { practiceSubmissionIdentity } from '../services/practiceSubmissionIdentity'
 import { getPracticeTagSnapshot } from '../services/practiceTagAnalytics'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -861,7 +862,7 @@ const getPracticeSessionTotalMarks = (session = {}, fallbackTotal = 0) => {
   return Math.max(0, ...historyTotals, ...explicitTotals)
 }
 
-const createPracticeAttemptRecord = (session = {}, attempt = {}, status = 'Completed') => {
+const createPracticeAttemptRecord = (session = {}, attempt = {}, status = 'Completed', studentIdentity = null) => {
   const score = getSessionScore({
     ...session,
     practiceAnswers: attempt.answers ?? {},
@@ -871,6 +872,7 @@ const createPracticeAttemptRecord = (session = {}, attempt = {}, status = 'Compl
 
   return {
     id: `${session.id ?? 'practice'}-attempt-${Date.now()}`,
+    ...practiceSubmissionIdentity(studentIdentity),
     attemptedAt: new Date().toISOString(),
     status,
     tagSnapshot: getPracticeTagSnapshot(session),
@@ -885,11 +887,11 @@ const createPracticeAttemptRecord = (session = {}, attempt = {}, status = 'Compl
   }
 }
 
-const appendPracticeAttemptRecord = (card = {}, sessionId = '', attempt = {}, status = 'Completed') => {
+const appendPracticeAttemptRecord = (card = {}, sessionId = '', attempt = {}, status = 'Completed', studentIdentity = null) => {
   const session = getPracticeSessions(card).find((item) => String(item.id) === String(sessionId))
   if (!session) return card
 
-  const attemptRecord = createPracticeAttemptRecord(session, attempt, status)
+  const attemptRecord = createPracticeAttemptRecord(session, attempt, status, studentIdentity)
   const existingHistory = Array.isArray(session.practiceAttemptHistory) ? session.practiceAttemptHistory : []
 
   return updatePracticeSessionInCard(card, sessionId, {
@@ -933,7 +935,7 @@ const getLatestPracticeMarks = (session = {}) => {
   return formatPracticeMarks(score.obtained, totalMarks)
 }
 
-function StartPracticePage({ onNavigate, onPracticeAnswerModeChange, onOpenAnalytics, analyticsReturnState }) {
+function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswerModeChange, onOpenAnalytics, analyticsReturnState }) {
   const [selectedCard, setSelectedCard] = useState(() => readSelectedPracticeCard())
   useEffect(() => {
     const syncSharedSessions = (event) => {
@@ -1261,7 +1263,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange, onOpenAnaly
           writePracticeSessionAttempt(selectedCard, activeSessionTimeoutKey, finalAttempt)
           writePracticeSessionStatus(selectedCard, activeSessionTimeoutKey, 'Completed')
           setSelectedCard((current) => {
-            const nextCard = appendPracticeAttemptRecord(current, activeSessionTimeoutKey, finalAttempt, 'Completed')
+            const nextCard = appendPracticeAttemptRecord(current, activeSessionTimeoutKey, finalAttempt, 'Completed', studentIdentity)
             persistSelectedPracticeCard(nextCard)
             return nextCard
           })
@@ -1273,7 +1275,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange, onOpenAnaly
     updateProgress()
     const timer = window.setInterval(updateProgress, 500)
     return () => window.clearInterval(timer)
-  }, [activeSessionTimeoutKey, answers, evaluationStartedAt, isEvaluatingPractice, selectedCard, tryLaterQuestions])
+  }, [activeSessionTimeoutKey, answers, evaluationStartedAt, isEvaluatingPractice, selectedCard, studentIdentity, tryLaterQuestions])
 
   useEffect(() => {
     if (
@@ -1323,7 +1325,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange, onOpenAnaly
       writePracticeSessionAttempt(selectedCard, activeSessionTimeoutKey, finalAttempt)
       writePracticeSessionStatus(selectedCard, activeSessionTimeoutKey, 'Expired')
       setSelectedCard((current) => {
-        const nextCard = appendPracticeAttemptRecord(current, activeSessionTimeoutKey, finalAttempt, 'Expired')
+        const nextCard = appendPracticeAttemptRecord(current, activeSessionTimeoutKey, finalAttempt, 'Expired', studentIdentity)
         persistSelectedPracticeCard(nextCard)
         return nextCard
       })
@@ -1331,7 +1333,7 @@ function StartPracticePage({ onNavigate, onPracticeAnswerModeChange, onOpenAnaly
     }, PRACTICE_TIMEOUT_NOTICE_MS)
 
     return () => window.clearTimeout(revealTimer)
-  }, [activeSessionTimeoutKey, answers, selectedCard, showTimeCompletedNotice, tryLaterQuestions])
+  }, [activeSessionTimeoutKey, answers, selectedCard, showTimeCompletedNotice, studentIdentity, tryLaterQuestions])
 
   if (!selectedCard) {
     return (

@@ -479,7 +479,9 @@
 }
 
 .assessment-page.learn-practice-page .learn-practice-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
   align-items: center;
   justify-content: stretch;
 }
@@ -591,6 +593,55 @@
   .vx-shell.is-collapsed .assessment-page.learn-practice-page .learn-practice-card-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.assessment-page.learn-practice-page .learn-practice-card .assessment-create-published-head {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.assessment-page.learn-practice-page .learn-practice-analytics-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: calc(var(--space-6) + var(--space-2));
+  padding: var(--space-2);
+  font-size: 0.76rem;
+  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--forest-900, #0f6844) 45%, var(--surface-card, #ffffff));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-brand, var(--forest-900, #0f6844));
+  cursor: pointer;
+  transition: box-shadow var(--motion-snappy), background-color var(--motion-snappy);
+}
+
+.assessment-page.learn-practice-page .learn-practice-analytics-btn:hover {
+  background: var(--surface-card, #ffffff);
+  box-shadow: var(--shadow-soft);
+}
+
+:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) .assessment-page.learn-practice-page .learn-practice-analytics-btn {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-surface));
+  color: var(--text-brand, var(--color-primary));
+  background: var(--color-surface);
+}
+
+.assessment-page.learn-practice-page .learn-practice-analytics-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: var(--space-1);
+}
+
+.assessment-page.learn-practice-page .learn-practice-analytics-btn:active {
+  transform: translateY(1px) scale(.96);
+  box-shadow: none;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assessment-page.learn-practice-page .learn-practice-analytics-btn { transition: none; transform: none; }
 }
 
 /* Premium refresh scoped to Learn Practice. */
@@ -797,6 +848,8 @@
 
 .assessment-page.learn-practice-page .learn-practice-footer .my-assessment-card-action {
   min-height: 40px;
+  min-width: 0;
+  padding-inline: var(--space-2);
   border-color: #0f6844;
   border-radius: 999px;
   background: #0f6844;

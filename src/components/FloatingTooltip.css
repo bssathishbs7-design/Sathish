@@ -1,0 +1,16 @@
+.floating-tooltip {
+  position: fixed;
+  z-index: 3000;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--forest-900, #0f6844) 25%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card, #ffffff);
+  color: var(--text-body, #333333);
+  box-shadow: var(--shadow-soft);
+  font: 400 12px/1.5 var(--font-family-base);
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+:is([data-theme="dark"], [data-theme="oled"]) .floating-tooltip { background: var(--color-surface); color: var(--color-text); }

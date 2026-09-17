@@ -30,6 +30,8 @@ import LearnPracticePage from './pages/LearnPracticePage'
 import StartPracticePage from './pages/StartPracticePage'
 import CompetencyAnalyticsPage from './pages/CompetencyAnalyticsPage'
 import ShareStuFacultyPage from './pages/ShareStuFacultyPage'
+import FacultyViewAnalyticsPage from './pages/FacultyViewAnalyticsPage'
+import { readFacultyAnalyticsContext, saveFacultyAnalyticsContext } from './services/facultyAnalytics'
 import FacultyManagementPageV2 from './pages/FacultyManagementPageV2'
 import StudentManagementPage from './pages/StudentManagementPage'
 import ImageActivityPage from './pages/ImageActivityPage'
@@ -58,6 +60,8 @@ const PAGE_PATHS = {
   [APP_PAGES.QUESTION_BANK]: '/question-bank',
   [APP_PAGES.QUESTION_BANK_NON_CREATE]: '/question-bank/non-create',
   [APP_PAGES.SHARE_STU_FACULTY]: '/sharestufaculty',
+  [APP_PAGES.FACULTY_VIEW_ANALYTICS]: '/facultyviewanalytics',
+  [APP_PAGES.FACULTY_STUDENT_ANALYTICS]: '/facultyviewanalytics/student',
   [APP_PAGES.BLUEPRINT]: '/assessment-suite/corelation-rating',
   [APP_PAGES.QUERY_REQUEST]: '/query-request',
   [APP_PAGES.ACTIVITY_RESULT]: '/skills/activity-result',
@@ -415,7 +419,7 @@ function AppAlert({ alert }) {
  * - Must remain the app entry shell because all page-level routing-like behavior depends on it.
  */
 function App() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => getPageFromPath(window.location.pathname) === APP_PAGES.FACULTY_VIEW_ANALYTICS)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [theme, setTheme] = useState(() => window.localStorage.getItem('vx-theme') ?? 'light')
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -423,6 +427,7 @@ function App() {
   const useCompactLogo = sidebarCollapsed
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
   const [practiceAnalyticsContext, setPracticeAnalyticsContext] = useState(null)
+  const [facultyAnalyticsContext, setFacultyAnalyticsContext] = useState(readFacultyAnalyticsContext)
   const [questionBankMode, setQuestionBankMode] = useState('editable')
   const [selectedImageActivity, setSelectedImageActivity] = useState(null)
   const [selectedInterpretationActivity, setSelectedInterpretationActivity] = useState(null)
@@ -532,7 +537,7 @@ function App() {
   }, [theme])
 
   useEffect(() => {
-    if (QUESTION_BANK_PAGES.includes(activePage)) {
+    if (QUESTION_BANK_PAGES.includes(activePage) || activePage === APP_PAGES.FACULTY_VIEW_ANALYTICS) {
       setSidebarCollapsed(true)
     }
   }, [activePage])
@@ -1387,9 +1392,12 @@ function App() {
           ) : activePage === APP_PAGES.MY_ASSESSMENT ? (
             <AssessmentDashboardPage onNavigate={navigateToPage} onAlert={showAlert} mode="my-assessment" />
           ) : activePage === APP_PAGES.LEARN_PRACTICE ? (
-            <LearnPracticePage onNavigate={navigateToPage} />
+            <LearnPracticePage onNavigate={navigateToPage} onOpenAnalytics={(context) => {
+              setPracticeAnalyticsContext(context)
+              navigateToPage(APP_PAGES.COMPETENCY_ANALYTICS)
+            }} />
           ) : activePage === APP_PAGES.START_PRACTICE ? (
-            <StartPracticePage onNavigate={navigateToPage} onPracticeAnswerModeChange={setPracticeAnswerMode} analyticsReturnState={practiceAnalyticsContext} onOpenAnalytics={(context) => {
+            <StartPracticePage studentIdentity={profileUser} onNavigate={navigateToPage} onPracticeAnswerModeChange={setPracticeAnswerMode} analyticsReturnState={practiceAnalyticsContext} onOpenAnalytics={(context) => {
               setPracticeAnalyticsContext(context)
               navigateToPage(APP_PAGES.COMPETENCY_ANALYTICS)
             }} />
@@ -1400,7 +1408,20 @@ function App() {
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
             <QuestionBankNonCreatePage onNavigate={navigateToPage} mode="editable" />
           ) : activePage === APP_PAGES.SHARE_STU_FACULTY ? (
-            <ShareStuFacultyPage onNavigate={navigateToPage} />
+            <ShareStuFacultyPage onNavigate={navigateToPage} returnState={facultyAnalyticsContext?.returnState} onOpenAnalytics={(context) => {
+              setFacultyAnalyticsContext(context)
+              saveFacultyAnalyticsContext(context)
+              navigateToPage(APP_PAGES.FACULTY_VIEW_ANALYTICS)
+            }} />
+          ) : activePage === APP_PAGES.FACULTY_VIEW_ANALYTICS ? (
+            <FacultyViewAnalyticsPage initialState={facultyAnalyticsContext?.student?.returnState} card={facultyAnalyticsContext?.card} onBack={() => navigateToPage(APP_PAGES.SHARE_STU_FACULTY)} onViewStudent={(student) => {
+              const context = { ...facultyAnalyticsContext, student }
+              setFacultyAnalyticsContext(context)
+              saveFacultyAnalyticsContext(context)
+              navigateToPage(APP_PAGES.FACULTY_STUDENT_ANALYTICS)
+            }} />
+          ) : activePage === APP_PAGES.FACULTY_STUDENT_ANALYTICS ? (
+            <CompetencyAnalyticsPage card={facultyAnalyticsContext?.student?.card ?? {}} studentLabel={facultyAnalyticsContext?.student ? `${facultyAnalyticsContext.student.name} · ${facultyAnalyticsContext.student.rollNo}` : 'Student unavailable'} onNavigate={navigateToPage} onBack={() => navigateToPage(APP_PAGES.FACULTY_VIEW_ANALYTICS)} />
           ) : activePage === APP_PAGES.BLUEPRINT ? (
             <BlueprintPage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.QUERY_REQUEST ? (

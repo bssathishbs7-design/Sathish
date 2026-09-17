@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BookOpenCheck, Info, Play, Search, Trash2, X } from 'lucide-react'
+import { BarChart3, BookOpenCheck, Info, Play, Search, Trash2, X } from 'lucide-react'
 import { corelationRatingRows } from './corelationRatingData'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -127,7 +127,7 @@ const clearQuestionShareState = (questionIds = []) => {
   window.dispatchEvent(new Event('question-bank-uploaded-questions'))
 }
 
-function LearnPracticePage({ onNavigate }) {
+function LearnPracticePage({ onNavigate, onOpenAnalytics }) {
   const [practiceCards, setPracticeCards] = useState(() => readSharedPracticeCards())
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('in-progress')
@@ -187,7 +187,7 @@ function LearnPracticePage({ onNavigate }) {
     { key: 'completed', label: 'Completed', count: practiceStatusCounts.completed },
     { key: 'all', label: 'All Practice', count: practiceStatusCounts.all },
   ]
-  const startPractice = (card) => {
+  const openPracticeCard = (card, analytics = false) => {
     if (typeof window !== 'undefined') {
       window.sessionStorage.setItem(START_PRACTICE_SELECTED_CARD_KEY, JSON.stringify(card))
       window.sessionStorage.setItem(
@@ -195,7 +195,11 @@ function LearnPracticePage({ onNavigate }) {
         getPracticeCardStatus(card) === 'In Progress' ? 'in-progress' : 'all',
       )
     }
-    onNavigate?.(APP_PAGES.START_PRACTICE)
+    if (analytics) {
+      onOpenAnalytics?.({ card, filter: 'all', page: 0 })
+    } else {
+      onNavigate?.(APP_PAGES.START_PRACTICE)
+    }
   }
   const deleteAllPracticeCards = () => {
     const deletedQuestionIds = practiceCards.flatMap((card) => [
@@ -331,7 +335,17 @@ function LearnPracticePage({ onNavigate }) {
                       </div>
 
                       <div className="assessment-create-draft-footer assessment-create-published-footer learn-practice-footer">
-                        <button type="button" className="my-assessment-card-action is-start" onClick={() => startPractice(card)}>
+                        <button
+                          type="button"
+                          className="learn-practice-analytics-btn"
+                          aria-label={`View analytics for ${card.competencyCode}`}
+                          title="View analytics"
+                          onClick={() => openPracticeCard(card, true)}
+                        >
+                          <BarChart3 size={16} aria-hidden="true" />
+                          Analytics
+                        </button>
+                        <button type="button" className="my-assessment-card-action is-start" onClick={() => openPracticeCard(card)}>
                           <Play size={14} strokeWidth={2.3} />
                           Start practice
                         </button>

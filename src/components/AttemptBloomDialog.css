@@ -1,0 +1,9 @@
+.ca-attempt-dialog { width: min(560px, calc(100% - var(--space-6))); max-width: none; max-height: calc(100dvh - var(--space-6)); padding: var(--space-5); margin: auto; border: 1px solid var(--ca-line); border-radius: var(--radius-card, 28px); background: var(--ca-surface); color: var(--ca-ink); overflow-y: auto; overscroll-behavior: contain; }
+.ca-attempt-dialog::backdrop { background: rgb(51 51 51 / 40%); }
+.ca-attempt-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+.ca-attempt-dialog-header > div { min-width: 0; }
+.competency-analytics button.ca-attempt-close { flex-shrink: 0; width: 36px; height: 36px; padding: var(--space-2); }
+.ca-attempt-chart { margin-top: var(--space-4); }
+.ca-attempt-chart .aoa-radar-wrap { min-height: 0; padding: var(--space-3) 0; }
+.ca-attempt-dialog .ca-attempt-empty { text-align: center; }
+@media (max-width: 767px) { .ca-attempt-dialog { padding: var(--space-4); } }

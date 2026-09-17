@@ -145,7 +145,9 @@ function ThinkingGaugeGraph({ items, coverage = false }) {
           <text className="aoa-gauge-mid-label" x="130" y="13">Balanced</text>
           <text className="aoa-gauge-end-label" x="235" y="153">HoT</text>
         </svg>
-        <div className="aoa-gauge-reading"><em>{coverage ? 'Higher order thinking coverage' : 'Current thinking focus'}</em><strong>{coverage && !classifiedCount ? 'Unclassified' : `${gaugePercentage}%`}</strong></div>
+        <div className="aoa-gauge-reading">
+          {coverage ? <em>{classifiedCount ? 'Higher order thinking coverage' : 'Unclassified'}</em> : <><em>Current thinking focus</em><strong>{gaugePercentage}%</strong></>}
+        </div>
       </div>
       <div className="aoa-gauge-breakdown" aria-label="Thinking level summary">
         {items.map((item, index) => (
@@ -171,7 +173,7 @@ function ThinkingGaugeGraph({ items, coverage = false }) {
   )
 }
 
-function RadarGraph({ items, thresholds = {}, coverage = false }) {
+export function RadarGraph({ items, thresholds = {}, coverage = false }) {
   const [activePoint, setActivePoint] = useState(null)
   const [view, setView] = useState('cohort')
   if (!items.length || (!coverage && !items.some((item) => Number(item.value) > 0))) return <EmptyGraph />
@@ -489,7 +491,7 @@ export default function AssessmentOverallAnalyticsDashboard({
         <section className="aoa-learning-studio" aria-label="Learning dimension graphs">
           <section className="aoa-panel aoa-attainment-panel">
             <PanelHeading icon={Target} title="Attainment explorer" subtitle={`Target threshold ${attainmentThreshold}%`} action={<div className="aoa-tabs" role="tablist">{attainmentTabs.map((tab) => <button type="button" role="tab" key={tab.key} className={attainmentTab === tab.key ? 'is-active' : ''} onClick={() => onAttainmentTabChange(tab.key)}>{tab.label}</button>)}</div>} />
-            <div className="aoa-attainment-list">{attainmentRows.length ? attainmentRows.slice(0, 10).map((row) => { const percentage = row.maxMarks ? Math.round((row.averageMarks / row.maxMarks) * 100) : 0; const attained = percentage >= attainmentThreshold; return <article key={`${attainmentTab}-${row.name}`} className={attained ? 'is-attained' : 'is-not-attained'}><span><strong title={row.name}>{row.name}</strong><small>Level {row.level}</small></span><div><i><b style={{ width: `${clamp(percentage)}%` }} /></i><em>{percentage}%</em></div><b>{attained ? 'Attained' : 'Not Attained'}</b></article> }) : <div className="aoa-empty-inline">No attainment data available.</div>}</div>
+            <div key={attainmentTab} className="aoa-attainment-list" tabIndex={0} role="region" aria-label="Attainment results">{attainmentRows.length ? attainmentRows.map((row) => { const percentage = row.maxMarks ? Math.round((row.averageMarks / row.maxMarks) * 100) : 0; const attained = percentage >= attainmentThreshold; return <article key={`${attainmentTab}-${row.name}`} className={attained ? 'is-attained' : 'is-not-attained'}><span><strong title={row.name}>{row.name}</strong><small>Level {row.level}</small></span><div><i><b style={{ width: `${clamp(percentage)}%` }} /></i><em>{percentage}%</em></div><b>{attained ? 'Attained' : 'Not Attained'}</b></article> }) : <div className="aoa-empty-inline">No attainment data available.</div>}</div>
           </section>
           <AssessmentAnalyticsGraphGrid tagAnalytics={tagAnalytics} bloomThresholds={bloomThresholds} />
         </section>

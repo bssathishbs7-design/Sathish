@@ -1,0 +1,27 @@
+.share-stu-faculty-report-modal {
+  --report-surface: var(--surface-card, #ffffff);
+  --report-ink: var(--text-body, #333333);
+  --report-brand: var(--forest-900, #0f6844);
+  --report-line: color-mix(in srgb, var(--report-brand) 18%, var(--report-surface));
+  display: flex;
+  flex-direction: column;
+}
+:is([data-theme="dark"], [data-theme="oled"]) .share-stu-faculty-report-modal {
+  --report-surface: var(--color-surface);
+  --report-ink: var(--color-text);
+  --report-brand: var(--color-primary);
+}
+.faculty-report-toolbar { display: flex; justify-content: flex-end; padding: var(--space-3) var(--space-5) 0; flex-shrink: 0; }
+.faculty-report-search { display: flex; align-items: center; gap: var(--space-2); width: min(100%, 320px); min-height: 36px; padding: var(--space-2) var(--space-3); border: 1px solid var(--report-line); border-radius: var(--radius-lg); background: var(--report-surface); color: var(--report-brand); }
+.faculty-report-search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; color: var(--report-ink); font: inherit; font-size: 12px; }
+.faculty-report-search:focus-within, .faculty-report-pagination button:focus-visible { outline: 2px solid var(--report-brand); outline-offset: 2px; }
+.share-stu-faculty-report-modal .share-stu-faculty-report-head { flex-shrink: 0; }
+.share-stu-faculty-report-modal .share-stu-faculty-report-table-wrap { min-height: 0; flex: 1; }
+.faculty-report-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-top: 1px solid var(--report-line); color: var(--report-ink); font-size: 12px; flex-shrink: 0; }
+.faculty-report-pagination > span:first-child { margin-right: auto; }
+.faculty-report-pagination button { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); min-height: 32px; padding: var(--space-2) var(--space-3); border: 1px solid var(--report-line); border-radius: 999px; background: var(--report-surface); color: var(--report-brand); font: inherit; cursor: pointer; transition: background-color var(--motion-snappy); }
+.faculty-report-pagination button:hover:not(:disabled) { background: color-mix(in srgb, var(--report-brand) 8%, var(--report-surface)); }
+.faculty-report-pagination button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.faculty-report-pagination button:disabled { opacity: .45; cursor: not-allowed; }
+.share-stu-faculty-report-table .faculty-report-empty { text-align: center; padding: var(--space-6); }
+@media (prefers-reduced-motion: reduce) { .faculty-report-pagination button { transition: none; transform: none; } }

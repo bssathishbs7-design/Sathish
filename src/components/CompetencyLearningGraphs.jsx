@@ -34,7 +34,6 @@ export default function CompetencyLearningGraphs({ analytics: sourceAnalytics })
   }
   return (
     <section ref={root} className="clg" aria-label="Learning coverage across completed attempts" onKeyDown={navigatePoints}>
-      <p className="clg-description">Question coverage across completed attempts. A question can have multiple tags; percentages use all questions, including unclassified questions.</p>
       <AssessmentAnalyticsGraphGrid tagAnalytics={items} coverage />
     </section>
   )

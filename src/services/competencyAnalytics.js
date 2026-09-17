@@ -36,9 +36,10 @@ export function restoreCompletedPracticeHistory(card, sessions, scoreSession, to
 export function buildCompetencyAnalytics(card = {}, questionSources = []) {
   const sessions = (Array.isArray(card.practiceSessions) ? card.practiceSessions : []).map(session => enrichPracticeTagSession(session, questionSources))
   const attempts = sessions.flatMap((session, index) => (
-    (Array.isArray(session.practiceAttemptHistory) ? session.practiceAttemptHistory : []).filter((record) => record && (!record.status || ['completed', 'expired'].includes(String(record.status).toLowerCase()))).map((record, recordIndex) => ({
+    (Array.isArray(session.practiceAttemptHistory) ? session.practiceAttemptHistory : []).filter((record) => record && (!record.status || ['completed', 'expired'].includes(String(record.status).toLowerCase()))).sort((a, b) => (Date.parse(a.attemptedAt) || 0) - (Date.parse(b.attemptedAt) || 0)).map((record, recordIndex) => ({
       id: String(record.id ?? `${session.id}-${recordIndex}`),
       practice: `Practice ${session.practiceNo || index + 1}`,
+      attemptNumber: recordIndex + 1,
       attemptedAt: record.attemptedAt || '',
       obtained: Math.max(0, Number(record.obtained) || 0),
       total: Math.max(0, Number(record.total) || 0),

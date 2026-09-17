@@ -164,7 +164,7 @@
 .aoa-empty-inline { min-height: 78px; padding: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--aoa-muted); font-size: 10px; }
 
 .aoa-tabs { margin-left: auto; padding: 3px; display: flex; gap: 2px; border: 1px solid var(--aoa-line); border-radius: 9px; background: var(--aoa-card); }.aoa-tabs button { padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--aoa-muted); font-size: 9px; font-weight: 800; cursor: pointer; }.aoa-tabs button.is-active { background: var(--aoa-teal-soft); color: #08786b; }
-.aoa-attainment-list { padding: 8px 14px 14px; display: grid; gap: 7px; }
+.aoa-attainment-list { --attainment-row-height: 64px; padding: 8px 14px 14px; display: grid; gap: 7px; grid-auto-rows: var(--attainment-row-height); max-height: calc(4 * var(--attainment-row-height) + 21px + 22px); overflow-y: auto; overflow-x: hidden; align-content: start; overscroll-behavior-y: contain; }
 .aoa-attainment-list article { min-height: 56px; padding: 10px 12px; display: grid; grid-template-columns: minmax(210px, .82fr) minmax(240px, 1.35fr) auto; align-items: center; gap: 18px; border: 1px solid var(--aoa-line); border-radius: 12px; background: color-mix(in srgb, var(--aoa-card) 90%, var(--aoa-soft)); }
 .aoa-attainment-list article:hover { border-color: color-mix(in srgb, var(--aoa-teal) 32%, var(--aoa-line)); background: color-mix(in srgb, var(--aoa-teal-soft) 38%, var(--aoa-card)); }
 .aoa-attainment-list article > span { min-width: 0; padding-left: 10px; display: flex; flex-direction: column; gap: 3px; border-left: 3px solid #b9dcd5; }
@@ -260,6 +260,7 @@
   .aoa-panel-heading { flex-wrap: wrap; }
   .aoa-tabs { width: 100%; margin-left: 0; }
   .aoa-tabs button { flex: 1; }
+  .aoa-attainment-list { --attainment-row-height: 104px; }
   .aoa-attainment-list article { grid-template-columns: minmax(130px, 1fr) 1fr; }
   .aoa-attainment-list article > b { grid-column: 2; }
   .aoa-table-wrap table { min-width: 740px; }
