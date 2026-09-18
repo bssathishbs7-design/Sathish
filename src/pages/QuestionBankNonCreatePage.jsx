@@ -4,9 +4,13 @@ import { BarChart3, BookOpenCheck, Brain, CheckCircle2, ChevronDown, ChevronLeft
 import { isQuestionGenerationErrorText, stripHtml } from '../utils/mathText'
 import { assignInstituteQuestionBankIds } from '../utils/questionBankIdentity'
 import { APP_PAGES } from '../config/appPages'
+import QuestionBankSort from '../components/QuestionBankSort'
+import { buildCurriculumSortIndex, getQuestionCurriculumSortRecord, sortBankQuestions } from '../utils/questionBankSort'
 import medsyIcon from '../assets/medsy-icon.svg'
 import { corelationRatingRows } from './corelationRatingData'
 import '../styles/assessment-pages.css'
+
+const curriculumSortIndex = buildCurriculumSortIndex(corelationRatingRows)
 
 const QUESTION_BANK_PUBLISHED_KEY = 'vx-question-bank-published-questions'
 const QUESTION_BANK_UPLOADED_KEY = 'vx-question-bank-uploaded-questions'
@@ -268,6 +272,7 @@ const usesSaqModeOneDetailPreview = (question) => (
 )
 
 const getQuestionBankDisplayId = (question, questionNumber = null) => {
+  if (question.bankDisplayId) return question.bankDisplayId
   const isMedsySource = isMedsyQuestion(question)
   const isInstituteSource = !isMedsySource && isInstituteQuestion(question)
   const rawDisplayNumber = String(
@@ -2202,6 +2207,7 @@ export default function QuestionBankNonCreatePage({
   const [publishedQuestions, setPublishedQuestions] = useState(() => readAllQuestionBankQuestions())
   const activeView = 'grid'
   const [filterSearchTerms, setFilterSearchTerms] = useState({})
+  const [questionSort, setQuestionSort] = useState({ field: '', direction: 'asc' })
   const [metricDefaultFilters, setMetricDefaultFilters] = useState(() => readMetricDefaultFilters())
   const [filters, setFilters] = useState(() => normalizeFilters({
     ...readMetricDefaultFilters(),
@@ -2256,7 +2262,7 @@ export default function QuestionBankNonCreatePage({
     () => new Set((addedQuestionIds ?? []).map((id) => String(id ?? '')).filter(Boolean)),
     [addedQuestionIds],
   )
-  const pageStateKey = `${activeMetric}:${JSON.stringify(filters)}`
+  const pageStateKey = `${activeMetric}:${JSON.stringify(filters)}:${JSON.stringify(questionSort)}`
   const currentPage = pageState.key === pageStateKey ? pageState.page : 1
   const setCurrentPage = (nextPage) => {
     setPageState((current) => {
@@ -2286,7 +2292,10 @@ export default function QuestionBankNonCreatePage({
   }, [addedQuestionIdSet, embedded, publishedQuestions, selectedGridQuestionIds])
 
   const displayableQuestions = useMemo(
-    () => publishedQuestions.filter(hasDisplayableQuestionContent),
+    () => publishedQuestions.filter(hasDisplayableQuestionContent).map((question, index) => ({
+      ...question,
+      bankDisplayId: getQuestionBankDisplayId(question, index + 1),
+    })),
     [publishedQuestions],
   )
   const selectedShareQuestions = useMemo(() => {
@@ -2378,6 +2387,10 @@ export default function QuestionBankNonCreatePage({
       return true
     })
   }, [activeMetric, displayableQuestions, embedded, learnPracticeSharedQuestionIds, reportedQuestionRecords, createdReportedQuestionRecords])
+  const sortRecordsByQuestion = useMemo(() => new Map(metricFilteredQuestions.map((question) => [
+    question, getQuestionCurriculumSortRecord(question, curriculumSortIndex),
+  ])), [metricFilteredQuestions])
+
   const filterOptions = useMemo(() => ({
     authors: getUniqueValues(metricFilteredQuestions, getQuestionAuthorName),
     types: getUniqueValues(metricFilteredQuestions, (question) => getQuestionTypeFilterLabel(question)),
@@ -2496,7 +2509,7 @@ export default function QuestionBankNonCreatePage({
   }
 
   const filteredQuestions = useMemo(() => {
-    return metricFilteredQuestions.filter((question) => {
+    const matchingQuestions = metricFilteredQuestions.filter((question) => {
       if (!hasFilterMatch(filters.authors, getQuestionAuthorName(question))) return false
       if (!hasFilterMatch(filters.types, getQuestionTypeFilterLabel(question))) return false
       if (!hasFilterMatch(filters.years, normalizeQuestionYearLabel(question.year))) return false
@@ -2517,7 +2530,8 @@ export default function QuestionBankNonCreatePage({
       if (!hasBooleanFilterMatch(filters.usedInAssessment, isUsedInAssessmentQuestion(question))) return false
       return true
     })
-  }, [filters, metricFilteredQuestions])
+    return sortBankQuestions(matchingQuestions, sortRecordsByQuestion, questionSort)
+  }, [filters, metricFilteredQuestions, questionSort, sortRecordsByQuestion])
 
   const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize))
   const safeCurrentPage = Math.min(currentPage, totalPages)
@@ -4163,6 +4177,14 @@ export default function QuestionBankNonCreatePage({
                   ) : null}
                 </span>
               ) : null}
+              <span className="qb-sort-header-actions qb-sort-scope">
+              <QuestionBankSort sort={questionSort}
+                onApply={(nextSort) => {
+                  setQuestionSort(nextSort)
+                  setCurrentPage(1)
+                  setOpenFilterKey('')
+                  setShowAdvancedFilters(false)
+                }} />
               <span className="assessment-page-expand-toggle" role="group" aria-label="Expand or collapse all visible questions">
                 <button
                   type="button"
@@ -4184,6 +4206,7 @@ export default function QuestionBankNonCreatePage({
                 >
                   <LayoutGrid size={14} strokeWidth={2.3} />
                 </button>
+              </span>
               </span>
             </div>
             {hasSelectedFilters(filters) ? (

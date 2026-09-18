@@ -1,5 +1,20 @@
 # Flow changes
 
+## 2026-09-18 - Sort anchored to its header button
+
+- Sort now toggles a small anchored panel without a modal backdrop or page scroll lock.
+- Clicking outside or moving keyboard focus outside dismisses it; Escape, Close and Apply sort return focus to the Sort button. Unapplied changes are discarded.
+
+## 2026-09-18 - Question bank sort-only panel
+
+- Replaced the combined Sort & filter panel with a compact Sort panel: Year, Subject, Topic, Competency or Code, ascending/descending direction, and Apply sort.
+- Removed the panel's search fields, filter checkboxes, filter count and Clear all. Existing header filters remain unchanged. Applying a sort orders all matching questions and returns to page 1.
+
+## 2026-09-18 - Question bank sort and filter
+
+- The question-list header now opens a Sort & filter panel with linked academic-year, subject, topic and competency filters, code search, and ascending/descending sorting.
+- Apply updates the existing header filters and returns to page 1; Clear all resets the panel draft before applying. Closing or pressing Escape discards unapplied changes.
+
 ## 2026-09-17 - Analytics from competency cards
 
 - The Analytics button at the bottom-left of each Learn & Practice card opens that competency's analytics directly, beside Start practice on the right. The selected card is retained for refresh and return to practice.
