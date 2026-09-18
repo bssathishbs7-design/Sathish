@@ -14,7 +14,7 @@ import {
   Search,
   Users,
 } from 'lucide-react'
-import PageBreadcrumbs from '../components/PageBreadcrumbs'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import '../styles/evaluation.css'
 import { skillAssessmentActivities } from './skillAssessmentData'
 
@@ -757,7 +757,7 @@ export default function SkillAssessmentPage({
   return (
     <section className="vx-content eval-page">
       <div className="eval-shell">
-        <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Evaluation' }]} />
+        <PageNavigationHeader items={['My Pages', 'Evaluation']} />
 
         <section className="eval-stats">
           {metricItems.map((item) => {

@@ -20,13 +20,13 @@ import {
   Shapes,
   Play,
   SendHorizonal,
-  ShieldCheck,
   Stethoscope,
   UserRound,
   Users,
 } from 'lucide-react'
 import MathText from '../components/MathText'
 import '../styles/student-exam.css'
+import '../styles/student-exam-compact.css'
 
 const ANSWER_PLACEHOLDER = 'Enter Response'
 const isGeneratedQuestionLabel = (value) => /^Q\d+$/i.test(String(value ?? '').trim())
@@ -49,8 +49,8 @@ const fallbackExam = {
     assignContent: { question: true, form: false, scaffolding: true },
     durationMinutes: null,
     proctoring: {
-      mode: 'Online Proctoring',
-      fullscreenRequired: true,
+      mode: 'Unmonitored',
+      fullscreenRequired: false,
       autoSubmitOnTimeout: true,
     },
     modules: {
@@ -369,26 +369,15 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   const [phase, setPhase] = useState('prestart')
   const [answers, setAnswers] = useState(() => buildInitialAnswers(sections))
   const [remainingSeconds, setRemainingSeconds] = useState((examData.durationMinutes ?? 0) * 60)
-  const [warningCount, setWarningCount] = useState(0)
-  const [tabSwitchCount, setTabSwitchCount] = useState(0)
-  const [fullscreenExitCount, setFullscreenExitCount] = useState(0)
-  const [proctoringLog, setProctoringLog] = useState([])
-  const [isFocusPaused, setIsFocusPaused] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false)
   const [submittedAt, setSubmittedAt] = useState('')
   const hasSubmittedRef = useRef(false)
-  const lastViolationAtRef = useRef(0)
 
   useEffect(() => {
     const nextSections = getAssignedSections(assignment)
     setAnswers(buildInitialAnswers(nextSections))
     setRemainingSeconds((nextSections.examData.durationMinutes ?? 0) * 60)
-    setWarningCount(0)
-    setTabSwitchCount(0)
-    setFullscreenExitCount(0)
-    setProctoringLog([])
-    setIsFocusPaused(false)
     setCurrentIndex(0)
     setIsSubmitConfirmOpen(false)
     setSubmittedAt('')
@@ -420,13 +409,8 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
 
   const isSubmissionReady = examItems.length > 0 && completedCount === examItems.length
 
-  const appendProctoringEvent = ({ message, eventType = 'Info', severity = 'info', detail = message }) => {
+  const appendSessionEvent = ({ eventType = 'Info', severity = 'info', detail }) => {
     const now = new Date()
-
-    setProctoringLog((current) => [
-      { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message, time: now.toLocaleTimeString('en-GB') },
-      ...current,
-    ].slice(0, 10))
 
     onRecordExamLog?.({
       activityId: resolved.id ?? assignment?.id ?? 'unknown-activity',
@@ -438,12 +422,12 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       detail,
       severity,
       timestamp: now.toISOString(),
-      status: phase === 'submitted' ? 'Completed' : 'Live',
+      status: ['Exam Submitted', 'Auto Submitted'].includes(eventType) ? 'Completed' : 'Live',
     })
   }
 
   useEffect(() => {
-    if (phase !== 'active' || isFocusPaused || !hasTimer) return undefined
+    if (phase !== 'active' || !hasTimer) return undefined
 
     const timer = window.setInterval(() => {
       setRemainingSeconds((current) => {
@@ -456,7 +440,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [hasTimer, isFocusPaused, phase])
+  }, [hasTimer, phase])
 
   useEffect(() => {
     if (!hasTimer || phase !== 'active' || remainingSeconds > 0 || hasSubmittedRef.current) return
@@ -464,115 +448,20 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasTimer, phase, remainingSeconds])
 
-  useEffect(() => {
-    if (phase !== 'active') return undefined
 
-    const registerViolation = (message, counter) => {
-      const now = Date.now()
-      if (now - lastViolationAtRef.current < 600) return
-      lastViolationAtRef.current = now
-
-      setWarningCount((current) => current + 1)
-      if (counter === 'tab') setTabSwitchCount((current) => current + 1)
-      if (counter === 'fullscreen') setFullscreenExitCount((current) => current + 1)
-      appendProctoringEvent({
-        message,
-        eventType: counter === 'fullscreen' ? 'Full Screen Exit' : 'Tab Switch',
-        severity: 'warning',
-        detail: message,
-      })
-      setIsFocusPaused(true)
-      onAlert?.({ tone: 'warning', message })
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) registerViolation('Focus was lost during the monitored exam.', 'tab')
-    }
-
-    const handleWindowBlur = () => {
-      registerViolation('Focus was lost during the monitored exam.', 'tab')
-    }
-
-    const handleFullscreenChange = () => {
-      if (examData.proctoring?.fullscreenRequired && !document.fullscreenElement) {
-        registerViolation('Fullscreen exit detected during the exam.', 'fullscreen')
-      }
-    }
-
-    const handleOffline = () => {
-      appendProctoringEvent({
-        message: 'Network connection was lost during the exam.',
-        eventType: 'Network Issue',
-        severity: 'warning',
-        detail: 'Device went offline during the monitored exam.',
-      })
-      onAlert?.({ tone: 'warning', message: 'Network connection lost. The event has been recorded.' })
-    }
-
-    const handleOnline = () => {
-      appendProctoringEvent({
-        message: 'Network connection was restored.',
-        eventType: 'Reconnected',
-        severity: 'info',
-        detail: 'Device reconnected to the network during the monitored exam.',
-      })
-    }
-
-    window.addEventListener('blur', handleWindowBlur)
-    window.addEventListener('offline', handleOffline)
-    window.addEventListener('online', handleOnline)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-
-    return () => {
-      window.removeEventListener('blur', handleWindowBlur)
-      window.removeEventListener('offline', handleOffline)
-      window.removeEventListener('online', handleOnline)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    }
-  }, [examData.proctoring?.fullscreenRequired, onAlert, phase])
-
-  const startExam = async () => {
+  const startExam = () => {
     if (isMarksDisabled) {
       onAlert?.({ tone: 'warning', message: 'This activity is unavailable because marks are disabled.' })
       return
     }
 
-    if (examData.proctoring?.fullscreenRequired && document.documentElement.requestFullscreen) {
-      try {
-        await document.documentElement.requestFullscreen()
-      } catch {
-        onAlert?.({ tone: 'warning', message: 'Fullscreen could not be enabled. Monitoring will continue.' })
-      }
-    }
-
-    appendProctoringEvent({
-      message: 'Exam started with online monitoring active.',
+    appendSessionEvent({
+      message: 'Activity started.',
       eventType: 'Exam Started',
       severity: 'info',
-      detail: 'Student started the monitored exam session.',
+      detail: 'Student started the activity.',
     })
-    setIsFocusPaused(false)
     setPhase('active')
-  }
-
-  const resumeExam = async () => {
-    if (examData.proctoring?.fullscreenRequired && !document.fullscreenElement && document.documentElement.requestFullscreen) {
-      try {
-        await document.documentElement.requestFullscreen()
-      } catch {
-        onAlert?.({ tone: 'warning', message: 'Resume attempted without fullscreen. Monitoring will continue.' })
-      }
-    }
-
-    appendProctoringEvent({
-      message: 'Exam resumed after monitoring interruption.',
-      eventType: 'Exam Resumed',
-      severity: 'info',
-      detail: 'Student resumed the exam after a monitoring pause.',
-    })
-    setIsFocusPaused(false)
   }
 
   const updateQuestionAnswer = (id, value, section) => {
@@ -612,12 +501,11 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
 
     hasSubmittedRef.current = true
     const submittedTimestamp = new Date().toLocaleString('en-GB')
-    setIsFocusPaused(false)
     setIsSubmitConfirmOpen(false)
     setSubmittedAt(submittedTimestamp)
     setPhase('submitted')
 
-    appendProctoringEvent({
+    appendSessionEvent({
       message: reason === 'timeout' ? 'Activity was auto-submitted.' : 'Activity submitted successfully.',
       eventType: reason === 'timeout' ? 'Auto Submitted' : 'Exam Submitted',
       severity: reason === 'timeout' ? 'warning' : 'success',
@@ -633,10 +521,12 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
       submittedAt: submittedTimestamp,
       answers,
       proctoring: {
-        warningCount,
-        tabSwitchCount,
-        fullscreenExitCount,
-        events: proctoringLog,
+        enabled: false,
+        mode: 'Unmonitored',
+        warningCount: 0,
+        tabSwitchCount: 0,
+        fullscreenExitCount: 0,
+        events: [],
         timedOut: reason === 'timeout',
       },
     })
@@ -660,11 +550,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   ]
   const instructionItems = [
     'Read each question fully before answering.',
-    'Stay on this page during the monitored attempt.',
     hasTimer ? 'Your activity will auto-submit when the timer ends.' : 'Submit the activity only after reviewing all answers.',
-    examData.proctoring?.fullscreenRequired
-      ? 'Fullscreen is required for this monitored attempt.'
-      : 'Keep the activity window active until submission.',
   ]
   const activityQuestionCount = sections.questionSections.length || examItems.length
   const activityQuestionBadge = formatQuestionCountLabel(resolved.type ?? 'Activity', activityQuestionCount)
@@ -699,7 +585,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                 Assessment Briefing
               </span>
               <h1>{resolved.title}</h1>
-              <p>Review the activity details, rules, and timing below before you begin this monitored student attempt.</p>
+              <p>Review the activity details and instructions before you begin.</p>
               <div className="student-exam-badge-row student-exam-summary-badges">
                 {prestartBadges.map((badge) => {
                   const BadgeIcon = badge.icon
@@ -731,16 +617,8 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                   <strong>Instruction</strong>
                 </div>
                 <div className="student-exam-entry-rule">
-                  <ShieldCheck size={18} strokeWidth={2.1} />
-                  <span>Online proctoring is active for this attempt.</span>
-                </div>
-                <div className="student-exam-entry-rule">
                   <Clock3 size={18} strokeWidth={2.1} />
-                  <span>{hasTimer ? 'Auto-submit will run when the timer reaches zero.' : 'No timer is configured, but your monitoring rules still apply.'}</span>
-                </div>
-                <div className="student-exam-entry-rule">
-                  <AlertTriangle size={18} strokeWidth={2.1} />
-                  <span>Tab switches and fullscreen exits are recorded.</span>
+                  <span>{hasTimer ? 'Auto-submit will run when the timer reaches zero.' : 'No time limit is configured for this activity.'}</span>
                 </div>
                 {isMarksDisabled ? (
                   <div className="student-exam-entry-rule">
@@ -773,7 +651,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
               <div className="student-exam-session-banner-copy">
                 <span className="student-exam-kicker">Live Exam Session</span>
                 <h1>{resolved.title}</h1>
-                <p>Monitored student attempt in progress. Review the active session details before continuing the response flow.</p>
+                <p>Activity in progress. Complete each question, then review and submit your answers.</p>
                 <div className="student-exam-session-banner-tags">
                   <span className={`student-exam-badge ${sessionTypeConfig.tone}`}>
                     <sessionTypeConfig.icon size={12} strokeWidth={2} />
@@ -820,9 +698,9 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
               </div>
 
               <div className="student-exam-session-banner-status">
-                <span className="student-exam-status-pill is-live-monitoring">
+                <span className="student-exam-status-pill is-session-active">
                   <span className="student-exam-live-dot" aria-hidden="true" />
-                  Live Monitoring
+                  Activity in progress
                 </span>
                 {hasTimer ? (
                   <span className="student-exam-status-pill">
@@ -834,27 +712,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
             </section>
 
             <section className="student-exam-stage-card">
-              {isFocusPaused ? (
-                <div className="student-exam-pause-overlay" role="alertdialog" aria-modal="true" aria-labelledby="exam-pause-title">
-                  <div className="student-exam-pause-card">
-                    <div className="student-exam-pause-icon" aria-hidden="true">
-                      <AlertTriangle size={20} strokeWidth={2.2} />
-                    </div>
-                    <span className="student-exam-panel-kicker">Monitoring Pause</span>
-                    <h2 id="exam-pause-title">Exam paused after focus loss</h2>
-                    <p>This event has been recorded. Resume the monitored exam to continue answering.</p>
-                    <div className="student-exam-pause-stats">
-                      <span>Warnings {warningCount}</span>
-                      <span>Tab switches {tabSwitchCount}</span>
-                      <span>Fullscreen exits {fullscreenExitCount}</span>
-                    </div>
-                    <button type="button" className="student-exam-primary-btn" onClick={resumeExam}>
-                      Resume Exam
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
               <StudentQuestionCard
                 item={currentItem}
                 activityType={resolved.type}
@@ -917,8 +774,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
             </div>
             <div className="student-exam-badge-row">
               <span className="student-exam-badge">Completed {completedCount} / {examItems.length}</span>
-              <span className="student-exam-badge">Warnings {warningCount}</span>
-              <span className="student-exam-badge">Tab switches {tabSwitchCount}</span>
             </div>
             <button type="button" className="student-exam-secondary-btn" onClick={onBackToActivities}>
               Back to My Skill Activity

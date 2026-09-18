@@ -1,5 +1,18 @@
 # Flow changes
 
+## 2026-09-18 - Unmonitored My Skills activity attempts
+
+- `/my-skills/exam` starts without requesting fullscreen. Focus changes, tab switches, fullscreen exits and network changes no longer record monitoring violations or pause the activity.
+- Removed monitoring instructions, warnings and resume overlays. Answer navigation, required-answer validation, submission confirmation and normal start/submission records remain available. Dedicated proctored-exam routes are unchanged.
+
+## 2026-09-18 - Evaluation breadcrumb navigation
+
+- Evaluation uses the shared My Pages / Evaluation breadcrumb with browser back and forward controls, matching Configuration and Approval Queue.
+
+## 2026-09-18 - Configuration breadcrumb navigation
+
+- Configuration uses the shared My Pages / Configuration breadcrumb with browser back and forward controls, matching Approval Queue. Removed the duplicate page title and old Skills breadcrumb.
+
 ## 2026-09-18 - Sort anchored to its header button
 
 - Sort now toggles a small anchored panel without a modal backdrop or page scroll lock.

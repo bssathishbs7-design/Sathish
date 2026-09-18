@@ -21,7 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
-import PageBreadcrumbs from '../components/PageBreadcrumbs'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import '../styles/config/skill-management.css'
 
 const competencyRecords = [
@@ -741,13 +741,7 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
   return (
     <section className="vx-content forms-page configuration-page">
       <div className="forms-flow-shell">
-        <PageBreadcrumbs items={[{ label: 'Skills' }, { label: 'Configuration' }]} />
-        <div className="vx-page-intro">
-          <div className="vx-page-intro-title">
-            <SlidersHorizontal size={18} strokeWidth={2} aria-hidden="true" />
-            <h1>Configuration</h1>
-          </div>
-        </div>
+        <PageNavigationHeader items={['My Pages', 'Configuration']} />
 
         <div className="forms-flow-panel">
           <div className="forms-flow-panel-head">

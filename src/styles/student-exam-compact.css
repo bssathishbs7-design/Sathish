@@ -1,0 +1,119 @@
+@import './medsy/question-sort-tokens.css';
+
+/* Compact presentation of the existing activity flow, using Medsy tokens. */
+.student-exam-page.student-exam-page {
+  --fs-body: 1.0625rem;
+  --fs-xs: .82rem;
+  --fs-micro: .6875rem;
+  --fs-h4: clamp(1.2rem, 1.6vw, 1.35rem);
+  --fs-h3: clamp(1.5rem, 3vw, 2rem);
+  box-sizing: border-box;
+  padding: var(--s-4);
+  background: var(--surface-mist);
+  color: var(--text-body);
+  font-size: var(--fs-xs);
+}
+.student-exam-page *, .student-exam-page *::before, .student-exam-page *::after { box-sizing: border-box; }
+.student-exam-page .student-exam-shell { width: min(var(--maxw), 100%); gap: var(--s-3); }
+.student-exam-page :is(.student-exam-entry, .student-exam-session-banner, .student-exam-stage-card, .student-exam-submitted-stage, .student-exam-confirm-dialog) {
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-xs);
+  gap: var(--s-4);
+}
+.student-exam-page .student-exam-entry { grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); align-items: start; }
+.student-exam-page :is(.student-exam-entry-copy, .student-exam-entry-side, .student-exam-entry-panel, .student-exam-stage, .student-exam-question-stage, .student-exam-question-top, .student-exam-question-copy, .student-exam-form-stack, .student-exam-submitted-copy) { gap: var(--s-3); }
+.student-exam-page :is(.student-exam-entry-copy h1, .student-exam-submitted-copy h2) { max-width: none; font-size: var(--fs-h3); line-height: 1.25; letter-spacing: -.02em; color: var(--text-strong); }
+.student-exam-page :is(.student-exam-session-banner-copy h1, .student-exam-confirm-dialog h3) { font-size: var(--fs-h4); line-height: 1.3; letter-spacing: -.02em; color: var(--text-strong); }
+.student-exam-page :is(.student-exam-entry-copy p, .student-exam-session-banner-copy p, .student-exam-question-copy p, .student-exam-submitted-copy p, .student-exam-confirm-dialog p) { margin: 0; max-width: none; font-size: var(--fs-xs); line-height: 1.5; color: var(--text-muted); }
+.student-exam-page :is(.student-exam-back-link, .student-exam-entry-rule, .student-exam-instruction-item) { font-size: var(--fs-xs); line-height: 1.5; gap: var(--s-2); color: var(--text-body); }
+.student-exam-page .student-exam-back-link { min-height: var(--s-6); font-weight: 500; }
+.student-exam-page :is(.student-exam-kicker, .student-exam-panel-kicker, .student-exam-badge[class], .student-exam-status-pill[class]) {
+  width: fit-content;
+  min-width: 0;
+  min-height: var(--s-5);
+  height: auto;
+  padding: var(--s-1) var(--s-2);
+  gap: var(--s-1);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-strong);
+  background: var(--surface-soft);
+  border-color: var(--border);
+  box-shadow: none;
+}
+.student-exam-page .student-exam-badge.is-critical { background: var(--butter); color: var(--warn-ink); }
+.student-exam-page :is(.student-exam-badge-row, .student-exam-session-banner-tags) { gap: var(--s-1); }
+.student-exam-page .student-exam-summary-badges .student-exam-badge { flex: 0 1 auto; width: auto; min-height: var(--s-5); height: auto; padding: var(--s-1) var(--s-2); white-space: normal; }
+.student-exam-page .student-exam-summary-grid { gap: var(--s-2); }
+.student-exam-page :is(.student-exam-summary-card, .student-exam-session-tile) { gap: var(--s-1); padding: var(--s-2) var(--s-3); min-width: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); box-shadow: none; }
+.student-exam-page :is(.student-exam-summary-card span, .student-exam-session-tile span, .student-exam-field span) { font-size: var(--fs-micro); line-height: 1.4; font-weight: 500; letter-spacing: 0; text-transform: none; white-space: normal; color: var(--text-muted); }
+.student-exam-page :is(.student-exam-summary-card strong, .student-exam-session-tile strong, .student-exam-entry-panel-head strong) { font-size: var(--fs-xs); line-height: 1.5; color: var(--text-strong); overflow-wrap: anywhere; }
+.student-exam-page .student-exam-entry-panel { padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); box-shadow: none; }
+.student-exam-page .student-exam-entry-panel-head { gap: var(--s-1); }
+.student-exam-page .student-exam-entry-rule svg { flex: 0 0 auto; width: var(--s-4); height: var(--s-4); }
+.student-exam-page .student-exam-instruction-list { gap: var(--s-2); padding: 0; }
+.student-exam-page .student-exam-instruction-dot { width: var(--s-1); height: var(--s-1); margin-top: var(--s-2); background: var(--forest); }
+.student-exam-page .student-exam-session-banner { grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr) auto; align-items: center; }
+.student-exam-page :is(.student-exam-session-banner-copy, .student-exam-session-banner-status) { gap: var(--s-2); }
+.student-exam-page .student-exam-session-banner-grid { gap: var(--s-2); }
+.student-exam-page .student-exam-live-dot { width: var(--s-2); height: var(--s-2); background: var(--forest); box-shadow: none; animation: none; }
+.student-exam-page .student-exam-stage-card { width: 100%; margin: 0; gap: var(--s-3); }
+.student-exam-page .student-exam-question-stage,
+.student-exam-page .student-exam-question-stage.is-critical { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.student-exam-page .student-exam-question-copy h2 { font-size: var(--fs-body); line-height: 1.5; letter-spacing: 0; color: var(--text-strong); }
+.student-exam-page :is(.student-exam-answer-area, .student-exam-answer-input, .student-exam-field input) { padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); font-size: var(--fs-xs); line-height: 1.6; box-shadow: none; transition: border-color var(--dur-control) var(--ease-standard); }
+.student-exam-page .student-exam-answer-area { min-height: 160px; resize: vertical; }
+.student-exam-page :is(.student-exam-answer-input, .student-exam-field input) { min-height: calc(var(--s-6) + var(--s-2)); }
+.student-exam-page :is(input, textarea)::placeholder { color: var(--text-muted); opacity: 1; }
+.student-exam-page .student-exam-field { gap: var(--s-1); }
+.student-exam-page .student-exam-choice-grid { gap: var(--s-2); }
+.student-exam-page .student-exam-choice-card { min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-3); gap: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); font-size: var(--fs-xs); box-shadow: none; transition: background var(--dur-hover) var(--ease-standard); }
+.student-exam-page .student-exam-choice-card:hover { transform: none; background: var(--surface-soft); border-color: var(--forest); box-shadow: none; }
+.student-exam-page .student-exam-choice-card.is-selected { background: var(--surface-soft); border-color: var(--forest); }
+.student-exam-page .student-exam-choice-card input { accent-color: var(--forest); }
+.student-exam-page .student-exam-stage-footer { gap: var(--s-3); padding-top: var(--s-3); margin-top: 0; border-color: var(--border); align-items: center; }
+.student-exam-page .student-exam-stage-progress { gap: var(--s-1); min-width: 0; width: min(240px, 100%); }
+.student-exam-page .student-exam-stage-progress span { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 500; font-family: var(--f-code, monospace); font-variant-numeric: tabular-nums; }
+.student-exam-page .student-exam-stage-progress-bar { height: var(--s-1); background: var(--surface-mist); }
+.student-exam-page .student-exam-stage-progress-bar span { background: var(--forest); }
+.student-exam-page :is(.student-exam-nav, .student-exam-confirm-actions) { gap: var(--s-2); }
+.student-exam-page :is(.student-exam-primary-btn, .student-exam-secondary-btn) { min-height: calc(var(--s-6) + var(--s-1)); padding: var(--s-2) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-pill); font-size: var(--fs-xs); line-height: 1.4; font-weight: 600; box-shadow: none; transition: background var(--dur-hover) var(--ease-standard); }
+.student-exam-page .student-exam-primary-btn { background: var(--forest); color: var(--on-brand); }
+.student-exam-page .student-exam-primary-btn:hover:not(:disabled) { background: var(--forest-700); transform: none; box-shadow: none; }
+.student-exam-page .student-exam-secondary-btn { background: var(--surface); color: var(--text-strong); }
+.student-exam-page .student-exam-secondary-btn:hover:not(:disabled) { background: var(--surface-soft); transform: none; box-shadow: none; }
+.student-exam-page :is(button, .student-exam-choice-card):active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.student-exam-page :is(button, input, textarea, .student-exam-choice-card):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.student-exam-page :is(.student-exam-primary-btn, .student-exam-secondary-btn):disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.student-exam-page .student-exam-stage-media { gap: var(--s-2); }
+.student-exam-page .student-exam-stage-media-card { flex-basis: 200px; width: 200px; padding: var(--s-2); border-radius: var(--r-sm); border-color: var(--border); background: var(--surface); }
+.student-exam-page .student-exam-stage-media-card img { height: 136px; background: var(--surface-mist); }
+.student-exam-page .student-exam-stage-media-card figcaption { gap: var(--s-1); margin-top: var(--s-1); color: var(--text-muted); font-size: var(--fs-micro); }
+.student-exam-page .student-exam-confirm-backdrop { padding: var(--s-4); background: rgba(var(--forest-rgb), .3); backdrop-filter: none; }
+.student-exam-page .student-exam-confirm-dialog { width: min(420px, 100%); max-height: calc(100dvh - var(--s-6)); overflow-y: auto; }
+.student-exam-page .student-exam-submitted-icon { width: var(--s-7); height: var(--s-7); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-strong); box-shadow: none; }
+@media (max-width: 1023px) {
+  .student-exam-page .student-exam-entry { grid-template-columns: minmax(0, 1fr); }
+  .student-exam-page .student-exam-session-banner { grid-template-columns: minmax(0, 1fr) auto; }
+  .student-exam-page .student-exam-session-banner-grid { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+  .student-exam-page.student-exam-page { padding: var(--s-2); }
+  .student-exam-page :is(.student-exam-entry, .student-exam-stage-card, .student-exam-session-banner) { padding: var(--s-3); }
+  .student-exam-page .student-exam-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .student-exam-page .student-exam-session-banner { grid-template-columns: minmax(0, 1fr); }
+  .student-exam-page .student-exam-session-banner-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .student-exam-page .student-exam-session-banner-status { justify-items: start; }
+  .student-exam-page .student-exam-stage-footer { align-items: stretch; }
+  .student-exam-page .student-exam-nav { display: flex; flex-wrap: wrap; }
+  .student-exam-page .student-exam-nav button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .student-exam-page *, .student-exam-page *::before, .student-exam-page *::after { animation: none !important; transition: none !important; }
+}

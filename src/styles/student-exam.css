@@ -29,8 +29,7 @@
 .student-exam-kicker,
 .student-exam-panel-kicker,
 .student-exam-badge,
-.student-exam-status-pill,
-.student-exam-pause-stats span {
+.student-exam-status-pill{
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -45,7 +44,7 @@
   text-transform: uppercase;
 }
 
-.student-exam-status-pill.is-live-monitoring {
+.student-exam-status-pill.is-session-active {
   gap: 10px;
   padding-left: 14px;
   padding-right: 16px;
@@ -77,8 +76,7 @@
 }
 
 .student-exam-badge,
-.student-exam-status-pill,
-.student-exam-pause-stats span {
+.student-exam-status-pill{
   border: 1px solid #dbe8e1;
   background: rgba(255, 255, 255, 0.92);
   color: #335346;
@@ -106,12 +104,6 @@
   border-color: rgba(45, 212, 191, 0.2);
   background: rgba(240, 254, 250, 0.96);
   color: #0f766e;
-}
-
-.student-exam-badge.is-proctoring {
-  border-color: rgba(16, 185, 129, 0.22);
-  background: rgba(236, 253, 245, 0.96);
-  color: #0f7a57;
 }
 
 .student-exam-badge.is-duration {
@@ -248,7 +240,6 @@
 .student-exam-entry-copy h1,
 .student-exam-topbar h1,
 .student-exam-question-copy h2,
-.student-exam-pause-card h2,
 .student-exam-submitted-copy h2,
 .student-exam-confirm-dialog h3 {
   margin: 0;
@@ -264,7 +255,6 @@
 
 .student-exam-entry-copy p,
 .student-exam-question-copy p,
-.student-exam-pause-card p,
 .student-exam-submitted-copy p,
 .student-exam-confirm-dialog p {
   margin: 0;
@@ -609,8 +599,6 @@
   transform: none;
   box-shadow: none;
 }
-
-.student-exam-pause-overlay,
 .student-exam-confirm-backdrop {
   position: fixed;
   inset: 0;
@@ -621,51 +609,11 @@
   background: rgba(4, 12, 9, 0.68);
   backdrop-filter: blur(12px);
 }
-
-.student-exam-pause-card,
 .student-exam-confirm-dialog {
   width: min(520px, 100%);
   padding: 30px 28px;
   display: grid;
   gap: 14px;
-}
-
-.student-exam-pause-card {
-  justify-items: center;
-  text-align: center;
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at top, rgba(95, 232, 177, 0.12), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 251, 248, 0.98) 100%);
-}
-
-.student-exam-pause-icon {
-  width: 58px;
-  height: 58px;
-  border-radius: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(245, 158, 11, 0.14);
-  color: #cf7a05;
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.12);
-}
-
-.student-exam-pause-card h2 {
-  font-size: clamp(1.55rem, 1.38rem + 0.5vw, 1.9rem);
-  line-height: 1.1;
-}
-
-.student-exam-pause-card p {
-  max-width: 28ch;
-  font-size: 1rem;
-}
-
-.student-exam-pause-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
 }
 
 .student-exam-submitted-stage {
@@ -696,7 +644,6 @@
 .theme-dark .student-exam-stage-media-card,
 .theme-dark .student-exam-badge,
 .theme-dark .student-exam-status-pill,
-.theme-dark .student-exam-pause-stats span,
 .theme-dark .student-exam-secondary-btn {
   border-color: rgba(95, 232, 177, 0.14);
   background:
@@ -708,7 +655,6 @@
 .theme-dark .student-exam-entry-copy h1,
 .theme-dark .student-exam-topbar h1,
 .theme-dark .student-exam-question-copy h2,
-.theme-dark .student-exam-pause-card h2,
 .theme-dark .student-exam-submitted-copy h2,
 .theme-dark .student-exam-confirm-dialog h3,
 .theme-dark .student-exam-primary-btn {
@@ -717,7 +663,6 @@
 
 .theme-dark .student-exam-entry-copy p,
 .theme-dark .student-exam-question-copy p,
-.theme-dark .student-exam-pause-card p,
 .theme-dark .student-exam-submitted-copy p,
 .theme-dark .student-exam-confirm-dialog p,
 .theme-dark .student-exam-stage-progress span,
@@ -780,12 +725,6 @@
   border-color: rgba(45, 212, 191, 0.22);
   background: rgba(10, 42, 37, 0.94);
   color: #8ff3df;
-}
-
-.theme-dark .student-exam-badge.is-proctoring {
-  border-color: rgba(95, 232, 177, 0.22);
-  background: rgba(11, 42, 31, 0.94);
-  color: #92eed0;
 }
 
 .theme-dark .student-exam-badge.is-duration {
@@ -895,22 +834,10 @@
   box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.16);
 }
 
-.theme-dark .student-exam-status-pill.is-live-monitoring {
+.theme-dark .student-exam-status-pill.is-session-active {
   color: #8ee4ca;
   border-color: rgba(95, 232, 177, 0.18);
   background: rgba(17, 31, 24, 0.96);
-}
-
-.theme-dark .student-exam-pause-card {
-  background:
-    radial-gradient(circle at top, rgba(95, 232, 177, 0.12), transparent 30%),
-    linear-gradient(180deg, rgba(17, 28, 23, 0.98) 0%, rgba(13, 23, 18, 0.98) 100%);
-}
-
-.theme-dark .student-exam-pause-icon {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f6c979;
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.14);
 }
 
 @media (max-width: 1100px) {
@@ -933,8 +860,7 @@
   .student-exam-entry,
   .student-exam-stage-card,
   .student-exam-submitted-stage,
-  .student-exam-confirm-dialog,
-  .student-exam-pause-card {
+  .student-exam-confirm-dialog{
     padding: 18px;
     border-radius: 24px;
   }
@@ -1146,8 +1072,7 @@
 .student-exam-kicker,
 .student-exam-panel-kicker,
 .student-exam-badge,
-.student-exam-status-pill,
-.student-exam-pause-stats span {
+.student-exam-status-pill{
   min-height: 26px;
   padding: 0 10px;
   gap: 6px;
@@ -1363,8 +1288,7 @@
   border-radius: 34px;
 }
 
-.student-exam-confirm-dialog,
-.student-exam-pause-card {
+.student-exam-confirm-dialog{
   border-radius: 30px;
 }
 
@@ -1381,7 +1305,6 @@
 .theme-dark .student-exam-stage-media-card,
 .theme-dark .student-exam-badge,
 .theme-dark .student-exam-status-pill,
-.theme-dark .student-exam-pause-stats span,
 .theme-dark .student-exam-secondary-btn,
 .theme-dark .student-exam-topbar {
   border-color: rgba(95, 232, 177, 0.14);
@@ -1459,7 +1382,6 @@
   .student-exam-stage-card,
   .student-exam-submitted-stage,
   .student-exam-confirm-dialog,
-  .student-exam-pause-card,
   .student-exam-topbar {
     padding: 18px;
     border-radius: 24px;
@@ -1566,8 +1488,7 @@
 .student-exam-kicker,
 .student-exam-panel-kicker,
 .student-exam-badge,
-.student-exam-status-pill,
-.student-exam-pause-stats span {
+.student-exam-status-pill{
   min-height: 23px;
   padding: 0 8px;
   gap: 5px;
