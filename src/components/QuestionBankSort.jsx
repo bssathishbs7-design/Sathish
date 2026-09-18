@@ -86,23 +86,23 @@ function SortPopover({ sort, triggerRef, panelId, onClose, onApply }) {
           <h2 id={titleId}>Sort questions</h2>
           <button type="button" className="qb-sort-close" aria-label="Close sort" onClick={() => onClose()}><X size={14} /></button>
         </header>
-          <div className="qb-sort-order">
-            <label className="qb-sort-field">Sort by
-              <select value={ordering.field} onChange={(event) => setOrdering({ ...ordering, field: event.target.value })}>
-                {curriculumFields.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-                <option value="codes">Code</option>
-              </select>
-            </label>
-            <label className="qb-sort-field">Direction
-              <select value={ordering.direction}
-                onChange={(event) => setOrdering({ ...ordering, direction: event.target.value })}>
-                <option value="asc">Ascending</option><option value="desc">Descending</option>
-              </select>
-            </label>
-            <button type="submit" className="qb-sort-apply" aria-label="Apply sort" title="Apply sort">
-              <Check size={16} aria-hidden="true" />
-            </button>
-          </div>
+        <div className="qb-sort-order">
+          <label className="qb-sort-field">Sort by
+            <select value={ordering.field} onChange={(event) => setOrdering({ ...ordering, field: event.target.value })}>
+              {curriculumFields.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              <option value="codes">Code</option>
+            </select>
+          </label>
+          <label className="qb-sort-field">Direction
+            <select value={ordering.direction}
+              onChange={(event) => setOrdering({ ...ordering, direction: event.target.value })}>
+              <option value="asc">Ascending</option><option value="desc">Descending</option>
+            </select>
+          </label>
+          <button type="submit" className="qb-sort-apply" aria-label="Apply sort" title="Apply sort">
+            <Check size={16} aria-hidden="true" />
+          </button>
+        </div>
       </form>
     </div>, document.querySelector('.vx-shell') ?? document.body,
   )

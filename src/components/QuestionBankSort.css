@@ -37,8 +37,8 @@
 
 .qb-sort-popover form { box-sizing: border-box; display: grid; gap: var(--s-2); padding: var(--s-3); max-height: inherit; overflow-y: auto; border-radius: inherit; }
 .qb-sort-popover header { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
-.qb-sort-popover h2 { margin: 0; font-size: var(--s-3); font-weight: 600; line-height: 1.5; color: var(--text-strong); }
-.qb-sort-popover label { font-size: var(--s-3); line-height: 1.5; color: var(--text-muted); }
+.qb-sort-popover h2 { margin: 0; font-size: var(--fs-xs, 0.82rem); font-weight: 600; line-height: 1.5; color: var(--text-strong); }
+.qb-sort-popover label { font-size: var(--fs-xs, 0.82rem); line-height: 1.5; color: var(--text-muted); }
 .qb-sort-order { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--s-6); gap: var(--s-2); align-items: end; }
 .qb-sort-field { display: grid; gap: var(--s-1); min-width: 0; font-weight: 500; }
 .qb-sort-popover select { box-sizing: border-box; width: 100%; min-width: 0; height: var(--s-6); padding: 0 var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); font: inherit; }
