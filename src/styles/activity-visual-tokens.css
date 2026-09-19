@@ -1,0 +1,48 @@
+/* Shared values from My Skill Activity and its embedded analytics dashboard. */
+:is(.my-skills-page, .dashboard-summary-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
+  --activity-text-strong: #101716;
+  --activity-text-body: #2c3633;
+  --activity-text-muted: #6d7a76;
+  --activity-surface: #ffffff;
+  --activity-line: #d7e6de;
+  --activity-chart-line: rgba(18, 31, 27, .1);
+  --activity-card-fill: linear-gradient(180deg, rgba(255, 255, 255, .98), rgba(247, 252, 249, .98));
+  --activity-chart-fill: rgba(255, 255, 255, .82);
+  --activity-shadow: 0 10px 24px rgba(10, 46, 33, .05);
+  --activity-chart-shadow: 0 24px 70px rgba(17, 24, 39, .09);
+  --activity-hover-shadow: 0 14px 24px rgba(13, 55, 38, .07);
+  --activity-hover-line: #cfe4d8;
+  --activity-chart: #0f9f8f;
+  --activity-green: #13a77b;
+  --activity-blue: #5870f6;
+  --activity-amber: #f3a331;
+  --activity-violet: #9b5cf6;
+  --activity-blue-soft: #edf0ff;
+  --activity-amber-soft: #fff2df;
+  --activity-green-soft: #e5fbf2;
+  --activity-violet-soft: #f3edff;
+  --activity-ease-hover: ease;
+  --activity-ease-chart: cubic-bezier(.2, .9, .2, 1);
+  --activity-dur-chart: 900ms;
+  --activity-dur-bar: 760ms;
+}
+
+:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) :is(.my-skills-page, .dashboard-summary-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
+  --activity-text-strong: #f7fbf9;
+  --activity-text-body: #d9e5df;
+  --activity-text-muted: #9cadab;
+  --activity-surface: #132238;
+  --activity-line: rgba(95, 232, 177, .12);
+  --activity-chart-line: rgba(148, 163, 184, .16);
+  --activity-card-fill: radial-gradient(circle at top right, rgba(95, 232, 177, .06), transparent 28%), linear-gradient(180deg, #111c30, #0d1627);
+  --activity-chart-fill: rgba(17, 28, 48, .84);
+  --activity-shadow: 0 10px 24px rgba(4, 16, 28, .22);
+  --activity-hover-shadow: 0 14px 24px rgba(4, 16, 28, .22);
+  --activity-hover-line: rgba(95, 232, 177, .34);
+}
+
+@keyframes activity-radar-enter {
+  0% { opacity: 0; transform: scale(.82); }
+  70% { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}

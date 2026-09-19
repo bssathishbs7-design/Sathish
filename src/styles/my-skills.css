@@ -1,3 +1,5 @@
+@import './activity-visual-tokens.css';
+
 .my-skills-page {
   display: grid;
   gap: 14px;
@@ -1082,7 +1084,7 @@
 .my-skills-activity-card:hover,
 .my-skills-activity-card:focus-within {
   transform: translateY(-2px);
-  border-color: #cfe4d8;
+  border-color: var(--activity-hover-line);
   box-shadow: 0 14px 24px rgba(13, 55, 38, 0.06);
 }
 
@@ -1500,8 +1502,8 @@
 .my-skills-insight-card,
 .my-skills-activity-card,
 .my-skills-metric-card {
-  border-color: #d7e6de;
-  box-shadow: 0 10px 24px rgba(10, 46, 33, 0.05);
+  border-color: var(--activity-line);
+  box-shadow: var(--activity-shadow);
 }
 
 .my-skills-overview {
@@ -1629,13 +1631,13 @@
   padding: 12px 13px;
   border-radius: 16px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 252, 249, 0.98));
+    var(--activity-card-fill);
 }
 
 .my-skills-metric-card:hover,
 .my-skills-metric-card:focus-visible {
   transform: translateY(-2px);
-  box-shadow: 0 14px 24px rgba(13, 55, 38, 0.07);
+  box-shadow: var(--activity-hover-shadow);
 }
 
 .my-skills-metric-card.is-active {
@@ -1727,8 +1729,8 @@
 .my-skills-activity-card:hover,
 .my-skills-activity-card:focus-within {
   transform: translateY(-2px);
-  border-color: #cfe4d8;
-  box-shadow: 0 14px 24px rgba(13, 55, 38, 0.07);
+  border-color: var(--activity-hover-line);
+  box-shadow: var(--activity-hover-shadow);
 }
 
 .my-skills-activity-card-head,

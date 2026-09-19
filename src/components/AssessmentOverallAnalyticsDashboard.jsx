@@ -238,12 +238,13 @@ export function RadarGraph({ items, thresholds = {}, coverage = false }) {
   )
 }
 
-function BubbleGraph({ items, coverage = false }) {
+/** Horizontal category distribution; label follows the data supplied by the panel. */
+function BubbleGraph({ items, coverage = false, label = 'Cognitive Function distribution' }) {
   if (!items.length || (!coverage && !items.some((item) => Number(item.value) > 0))) return <EmptyGraph />
   const palette = ['#168d6b', '#4b7bec', '#7a58c8', '#d98b35', '#3d99ab']
   const sortedItems = coverage ? items : [...items].sort((left, right) => right.percentage - left.percentage)
   return (
-    <div className="aoa-function-bars" aria-label="Cognitive Function distribution">
+    <div className="aoa-function-bars" aria-label={label}>
       {sortedItems.map((item, index) => {
         const color = item.color || palette[index % palette.length]
         const percentage = clamp(item.percentage)
@@ -271,21 +272,32 @@ function BubbleGraph({ items, coverage = false }) {
   )
 }
 
-function SkillFocusGraph({ items, coverage = false }) {
+/** Area chart. showAll includes every category; label names the supplied dataset. */
+function SkillFocusGraph({ items, coverage = false, showAll = false, label = 'Skill Focus Categories coverage chart' }) {
   const Container = coverage ? 'div' : Fragment
   const [activePoint, setActivePoint] = useState(null)
+  const chartRef = useRef(null)
+  const [renderedWidth, setRenderedWidth] = useState(1200)
+  useEffect(() => {
+    if (!showAll || !chartRef.current) return undefined
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) setRenderedWidth(entry.contentRect.width)
+    })
+    observer.observe(chartRef.current)
+    return () => observer.disconnect()
+  }, [showAll, items])
   const relevantItems = items
     .filter((item) => Number(item.value) > 0 || Number(item.percentage) > 0)
     .sort((left, right) => right.percentage - left.percentage)
   const defaultItems = items.filter((item) => !relevantItems.includes(item))
-  const visibleItems = coverage ? items : [...relevantItems, ...defaultItems].slice(0, 5)
+  const visibleItems = coverage || showAll ? items : [...relevantItems, ...defaultItems].slice(0, 5)
   if (!visibleItems.length || (!coverage && !visibleItems.some((item) => Number(item.value) > 0))) return <EmptyGraph />
   const average = Math.round(visibleItems.reduce((sum, item) => sum + item.percentage, 0) / visibleItems.length)
-  const chartWidth = coverage ? Math.max(700, visibleItems.length * 140) : 900
-  const chartHeight = 320
+  const chartWidth = coverage ? Math.max(700, visibleItems.length * 140) : showAll ? renderedWidth : 900
+  const chartHeight = showAll ? 280 : 320
   // Match the inner horizontal gutters so the first and last plotted categories
   // have the same visual breathing room as the labels below them.
-  const bounds = { left: 64, right: 64, top: 16, bottom: 80 }
+  const bounds = { left: showAll ? 88 : 64, right: showAll ? 88 : 64, top: 16, bottom: showAll ? 84 : 80 }
   const plotWidth = chartWidth - bounds.left - bounds.right
   const plotHeight = chartHeight - bounds.top - bounds.bottom
   const points = visibleItems.map((item, index) => ({
@@ -304,7 +316,7 @@ function SkillFocusGraph({ items, coverage = false }) {
     <Container {...(coverage ? { className: "clg-skill-content" } : {})}>
     <div className="aoa-skill-area-chart" tabIndex={coverage ? 0 : undefined} role={coverage ? "region" : undefined} aria-label={coverage ? "Skill coverage chart. Scroll horizontally to explore all categories." : undefined}>
       {!coverage && <span className="aoa-skill-average">{average}% avg</span>}
-      <svg style={coverage ? { minWidth: Math.max(560, visibleItems.length * 112) } : undefined} viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="Skill Focus Categories coverage chart" preserveAspectRatio="xMidYMid meet">
+      <svg ref={chartRef} style={coverage ? { minWidth: Math.max(560, visibleItems.length * 112) } : undefined} viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label={label} preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="aoa-skill-area-fill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="#26a786" stopOpacity=".28" />
@@ -319,10 +331,16 @@ function SkillFocusGraph({ items, coverage = false }) {
         <path className="aoa-skill-line" d={linePath} />
         {points.map((item) => {
           const compactLabel = item.label.length > 16 ? `${item.label.slice(0, 15)}…` : item.label
+          const labelLines = showAll ? item.label.replaceAll('/', '/ ').split(/\s+/).reduce((lines, word) => {
+            const last = lines.length - 1
+            if (last >= 0 && `${lines[last]} ${word}`.length <= (chartWidth < 1000 ? 16 : 22)) lines[last] += ` ${word}`
+            else lines.push(word)
+            return lines
+          }, []) : [compactLabel]
           return <g key={item.label} className="aoa-skill-point" tabIndex="0" aria-label={`${item.label}: ${item.percentage}% · ${item.value} questions`} onMouseEnter={() => setActivePoint(item)} onMouseLeave={() => setActivePoint(null)} onFocus={() => setActivePoint(item)} onBlur={() => setActivePoint(null)}>
           <circle cx={item.x} cy={item.y} r="5" />
-          <text className="aoa-skill-x-label" x={item.x} y={chartHeight - 44} textAnchor="middle">{compactLabel}</text>
-          <text className="aoa-skill-value-label" x={item.x} y={chartHeight - 24} textAnchor="middle">{item.percentage}% · {item.value} Qus</text>
+          <text className="aoa-skill-x-label" x={item.x} y={showAll ? chartHeight - 60 : chartHeight - 44} textAnchor="middle">{labelLines.map((line, index) => <tspan key={index} x={item.x} dy={index ? 16 : 0}>{line}</tspan>)}</text>
+          <text className="aoa-skill-value-label" x={item.x} y={chartHeight - (showAll ? 12 : 24)} textAnchor="middle">{item.percentage}% · {item.value} Qus</text>
           </g>
         })}
       </svg>
@@ -332,14 +350,20 @@ function SkillFocusGraph({ items, coverage = false }) {
   )
 }
 
-export function AssessmentAnalyticsGraphGrid({ tagAnalytics, bloomThresholds = {}, className = '', coverage = false }) {
+/** swapFunctionSkillVisuals displays skill progress tiles and a cognitive coverage chart. */
+export function AssessmentAnalyticsGraphGrid({ tagAnalytics, bloomThresholds = {}, className = '', coverage = false, swapFunctionSkillVisuals = false }) {
   return (
-    <div className={`aoa-graph-grid ${className}`.trim()}>
+    <div className={`aoa-graph-grid ${swapFunctionSkillVisuals ? 'has-swapped-category-charts' : ''} ${className}`.trim()}>
       {!coverage && <article className="aoa-panel is-mastery"><PanelHeading icon={Award} title="Progress Based Mastery" subtitle="Question distribution by mastery category" /><MasteryGaugeGraph items={tagAnalytics.questionCategory} /></article>}
       <article className="aoa-panel is-bloom"><PanelHeading icon={GraduationCap} title={coverage ? "Cognitive levels - Bloom's taxonomy" : "Cognitive Levels - Bloom's Taxonomy"} subtitle="Coverage across Bloom's cognitive levels" /><RadarGraph items={tagAnalytics.cognitiveLevel} thresholds={bloomThresholds} coverage={coverage} /></article>
       <article className="aoa-panel is-thinking"><PanelHeading icon={TrendingUp} title={coverage ? 'Thinking level' : 'Thinking Level'} subtitle="Higher and lower order thinking balance" /><ThinkingGaugeGraph items={tagAnalytics.thinkingLevel} coverage={coverage} /></article>
-      <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title={coverage ? 'Cognitive function' : 'Cognitive Function'} subtitle="Mental processes represented by the questions" /><BubbleGraph items={tagAnalytics.cognitiveFunction} coverage={coverage} /></article>
-      <article className="aoa-panel is-skill"><PanelHeading icon={Target} title={coverage ? 'Skill focus categories' : 'Skill Focus Categories'} subtitle="Clinical and professional skill coverage" /><>{coverage ? <SkillFocusCoverageGraph items={tagAnalytics.skillFocus} /> : <SkillFocusGraph items={tagAnalytics.skillFocus} />}</></article>
+      {swapFunctionSkillVisuals ? <>
+        <article className="aoa-panel is-skill"><PanelHeading icon={Target} title={coverage ? 'Skill focus categories' : 'Skill Focus Categories'} subtitle="Clinical and professional skill coverage" /><BubbleGraph items={tagAnalytics.skillFocus} coverage={coverage} label="Skill Focus Categories distribution" /></article>
+        <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title={coverage ? 'Cognitive function' : 'Cognitive Function'} subtitle="Mental processes represented by the questions" />{coverage ? <SkillFocusCoverageGraph items={tagAnalytics.cognitiveFunction} label="Cognitive function coverage" /> : <SkillFocusGraph items={tagAnalytics.cognitiveFunction} showAll label="Cognitive Function coverage chart" />}</article>
+      </> : <>
+        <article className="aoa-panel is-function"><PanelHeading icon={ClipboardCheck} title={coverage ? 'Cognitive function' : 'Cognitive Function'} subtitle="Mental processes represented by the questions" /><BubbleGraph items={tagAnalytics.cognitiveFunction} coverage={coverage} /></article>
+        <article className="aoa-panel is-skill"><PanelHeading icon={Target} title={coverage ? 'Skill focus categories' : 'Skill Focus Categories'} subtitle="Clinical and professional skill coverage" /><>{coverage ? <SkillFocusCoverageGraph items={tagAnalytics.skillFocus} /> : <SkillFocusGraph items={tagAnalytics.skillFocus} />}</></article>
+      </>}
     </div>
   )
 }
@@ -493,7 +517,7 @@ export default function AssessmentOverallAnalyticsDashboard({
             <PanelHeading icon={Target} title="Attainment explorer" subtitle={`Target threshold ${attainmentThreshold}%`} action={<div className="aoa-tabs" role="tablist">{attainmentTabs.map((tab) => <button type="button" role="tab" key={tab.key} className={attainmentTab === tab.key ? 'is-active' : ''} onClick={() => onAttainmentTabChange(tab.key)}>{tab.label}</button>)}</div>} />
             <div key={attainmentTab} className="aoa-attainment-list" tabIndex={0} role="region" aria-label="Attainment results">{attainmentRows.length ? attainmentRows.map((row) => { const percentage = row.maxMarks ? Math.round((row.averageMarks / row.maxMarks) * 100) : 0; const attained = percentage >= attainmentThreshold; return <article key={`${attainmentTab}-${row.name}`} className={attained ? 'is-attained' : 'is-not-attained'}><span><strong title={row.name}>{row.name}</strong><small>Level {row.level}</small></span><div><i><b style={{ width: `${clamp(percentage)}%` }} /></i><em>{percentage}%</em></div><b>{attained ? 'Attained' : 'Not Attained'}</b></article> }) : <div className="aoa-empty-inline">No attainment data available.</div>}</div>
           </section>
-          <AssessmentAnalyticsGraphGrid tagAnalytics={tagAnalytics} bloomThresholds={bloomThresholds} />
+          <AssessmentAnalyticsGraphGrid tagAnalytics={tagAnalytics} bloomThresholds={bloomThresholds} swapFunctionSkillVisuals />
         </section>
 
         <section className="aoa-panel aoa-question-panel">

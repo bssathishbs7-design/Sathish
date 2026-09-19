@@ -1,8 +1,8 @@
 ﻿import { useEffect, useId, useRef, useState } from 'react'
 import './SkillFocusCoverageGraph.css'
 
-/** @param {{items: Array<{label: string, value: number, percentage: number}>}} props All skill categories, including zero values. */
-export default function SkillFocusCoverageGraph({ items }) {
+/** @param {{items: Array<{label: string, value: number, percentage: number}>, label?: string}} props All categories, including zero values, and their accessible chart name. */
+export default function SkillFocusCoverageGraph({ items, label = 'Skill focus coverage' }) {
   const root = useRef(null)
   const tooltipId = useId()
   const [width, setWidth] = useState(800)
@@ -29,8 +29,8 @@ export default function SkillFocusCoverageGraph({ items }) {
   const line = points.map((point, i) => (i ? ' L ' : 'M ') + point.x + ' ' + point.y).join('')
   const area = points.length ? line + ' L ' + points.at(-1).x + ' 160 L ' + points[0].x + ' 160 Z' : ''
   const tooltipWidth = Math.min(208, width)
-  return <div ref={root} className="skill-coverage clg-skill-content" aria-label="Skill focus coverage">
-    <svg viewBox={'0 0 ' + width + ' ' + chartHeight} role="group" aria-label="All skill focus categories in one chart">
+  return <div ref={root} className="skill-coverage clg-skill-content" aria-label={label}>
+    <svg viewBox={'0 0 ' + width + ' ' + chartHeight} role="group" aria-label={label + ': all categories in one chart'}>
       {[0, 20, 40, 60, 80, 100].map(value => <g key={value} aria-hidden="true">
         <line className="skill-coverage-grid" x1="36" x2={width - 12} y1={160 - value * 1.4} y2={160 - value * 1.4} />
         <text x="28" y={164 - value * 1.4} textAnchor="end">{value}%</text>

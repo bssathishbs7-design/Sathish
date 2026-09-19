@@ -39,7 +39,7 @@
 .aoa-top-actions { gap: 8px; }.aoa-top-actions button { padding: 0 13px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 12px; font-weight: 750; }
 .aoa-top-actions .is-icon { width: 38px; padding: 0; }.aoa-top-actions .is-exit { border-color: #f2c3cc; background: #fff7f8; color: #be2945; }
 
-.aoa-shell { box-sizing: border-box; width: min(1480px, calc(100vw - 48px)); max-width: calc(100vw - 48px); min-width: 0; margin: 0 auto; padding: 20px 0 40px; display: grid; gap: 16px; }
+.aoa-shell { box-sizing: border-box; width: 100%; max-width: none; min-width: 0; margin: 0; padding: 20px 0 40px; display: grid; gap: 16px; }
 .aoa-shell > * { min-width: 0; max-width: 100%; }
 .aoa-overview { display: contents; }
 .aoa-command { position: relative; min-height: 132px; padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 22px; overflow: hidden; border: 1px solid var(--aoa-line); border-radius: 22px; background: radial-gradient(circle at 88% 18%, rgba(20, 184, 166, .14), transparent 30%), linear-gradient(135deg, #fff 0%, #f7fbfa 58%, #f4f8fb 100%); box-shadow: 0 16px 34px rgba(15, 23, 42, .06); }
@@ -247,7 +247,7 @@
   .aoa-topbar { height: auto; min-height: 68px; padding: 10px 12px; align-items: center; gap: 10px; }
   .aoa-top-actions .is-exit { width: 38px; padding: 0; font-size: 0; }
   .aoa-title p { max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .aoa-shell { width: calc(100vw - 24px); max-width: calc(100vw - 24px); margin: 0 auto; padding: 10px 0 28px; }
+  .aoa-shell { width: 100%; max-width: none; margin: 0; padding: 10px 0 28px; }
   .aoa-command { min-height: 0; padding: 18px; align-items: flex-start; flex-direction: column; }
   .aoa-command h2 { font-size: clamp(28px, 10vw, 38px); }
   .aoa-command-stats { width: 100%; }

@@ -3145,6 +3145,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         <AssessmentAnalyticsGraphGrid
           tagAnalytics={studentResultTagAnalytics}
           bloomThresholds={thresholdConfig.bloomsThresholds}
+          swapFunctionSkillVisuals
         />
       </section>
     )
@@ -3395,7 +3396,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 </article>
               ))}
             </div>
-            <button type="button" className="single-student-download" onClick={downloadStudentResultPdf}>
+            <button type="button" className="single-student-download" onClick={downloadStudentResultPdf} aria-label="Download student result" title="Download student result">
               <Download size={15} strokeWidth={2.4} />
             </button>
           </section>

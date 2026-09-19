@@ -1,0 +1,74 @@
+/* Activity design tokens, scoped to the individual assessment report. */
+.single-student-result-workspace {
+  --ssr-bg: var(--surface-mist);
+  --ssr-card: var(--activity-surface);
+  --ssr-soft: var(--surface-mist);
+  --ssr-line: var(--activity-line);
+  --ssr-ink: var(--activity-text-strong);
+  --ssr-muted: var(--activity-text-muted);
+  --ssr-teal: var(--activity-chart);
+  --ssr-mint: var(--activity-green-soft);
+  --ssr-track: color-mix(in srgb, var(--activity-chart) 12%, var(--activity-surface));
+}
+.single-student-result-workspace :is(.single-student-shell, .single-student-topbar-inner) {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: var(--space-4);
+}
+.single-student-result-workspace .single-student-learning {
+  --aoa-card: var(--activity-surface);
+  --aoa-line: var(--activity-line);
+  --aoa-ink: var(--activity-text-strong);
+  --aoa-muted: var(--activity-text-muted);
+  --aoa-teal: var(--activity-chart);
+  --aoa-teal-soft: var(--activity-green-soft);
+  --aoa-chart-track: var(--ssr-track);
+  --aoa-soft: var(--surface-mist);
+}
+.single-student-result-workspace :is(.single-result-hero.is-compact, .assessment-student-question-area.is-question-analytics) {
+  background: var(--activity-card-fill);
+  border-color: var(--activity-line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--activity-shadow);
+}
+.single-student-result-workspace .single-result-hero.is-compact {
+  grid-template-columns: minmax(220px, 1fr) minmax(320px, 1.15fr) minmax(360px, 1.6fr) auto;
+  padding: var(--space-4);
+  gap: var(--space-3);
+}
+.single-student-result-workspace .single-result-hero.is-compact :is(.single-result-outcome, .single-result-kpis) {
+  background: var(--activity-surface);
+  border-color: var(--activity-line);
+  height: auto;
+  min-height: 76px;
+}
+.single-student-result-workspace .single-result-hero.is-compact :is(.single-result-kpis small, .single-result-kpis em, .single-result-outcome > div > span, .single-student-score-strip em) {
+  font-size: var(--fs-micro, 11px);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.single-student-result-workspace .single-result-hero.is-compact .single-student-score-strip span { flex-wrap: wrap; }
+.single-student-result-workspace :is(.single-student-title h1, .single-student-person h2) { font-weight: 700; letter-spacing: -.02em; }
+.single-student-result-workspace :is(.single-student-title p, .aoa-panel-heading small) { font-weight: 500; }
+.single-student-result-workspace .aoa-panel-heading strong { font-weight: 700; }
+.single-student-result-workspace :is(.single-result-kpis strong, .single-student-score-strip strong) { font-family: var(--f-code, ui-monospace, monospace); font-variant-numeric: tabular-nums; }
+.single-student-result-workspace :is(.single-student-logo, .single-student-title button, .single-student-actions .is-icon) { background: var(--activity-surface); border-color: var(--activity-line); color: var(--activity-chart); }
+.single-student-result-workspace .single-student-download { background: var(--forest); color: var(--on-brand); border-color: var(--forest); }
+.single-student-result-workspace .single-result-hero.is-compact .single-student-download { grid-column: auto; }
+.single-student-result-workspace .single-student-person p small { background: var(--surface-mist); color: var(--activity-text-body); }
+.single-student-result-workspace .single-student-person p strong { background: var(--activity-green-soft); color: var(--forest-700); }
+.single-student-result-workspace .single-result-hero.is-compact .single-result-kpis em { white-space: normal; overflow: visible; }
+.single-student-result-workspace button:hover:not(:disabled) { box-shadow: var(--activity-hover-shadow); }
+.single-student-result-workspace .single-student-download:hover:not(:disabled) { background: var(--forest-700); }
+.single-student-result-workspace .assessment-result-question-table th,
+.single-student-result-workspace .assessment-result-question-table td small { font-size: var(--fs-micro, 11px); }
+@media (max-width: 1199px) {
+  .single-student-result-workspace .single-result-hero.is-compact { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .single-student-result-workspace .single-result-hero.is-compact .single-result-kpis { grid-column: 1; }
+  .single-student-result-workspace .single-result-hero.is-compact .single-student-download { grid-column: 2; grid-row: 2; justify-self: end; }
+}
+@media (max-width: 767px) {
+  .single-student-result-workspace .single-result-hero.is-compact { grid-template-columns: minmax(0, 1fr); }
+  .single-student-result-workspace .single-result-hero.is-compact .single-student-download { grid-column: 1; grid-row: auto; }
+}

@@ -38,6 +38,9 @@ import ImageActivityPage from './pages/ImageActivityPage'
 import InterpretationActivityPage from './pages/InterpretationActivityPage'
 import OspeActivityPage from './pages/OspeActivityPage'
 import { APP_PAGES, QUESTION_BANK_PAGES } from './config/appPages'
+import './styles/practice-activity-theme.css'
+import './styles/overall-analytics-theme.css'
+import './styles/student-result-theme.css'
 
 const PAGE_PATHS = {
   [APP_PAGES.DASHBOARD]: '/',

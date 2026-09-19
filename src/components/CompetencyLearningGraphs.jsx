@@ -34,7 +34,7 @@ export default function CompetencyLearningGraphs({ analytics: sourceAnalytics })
   }
   return (
     <section ref={root} className="clg" aria-label="Learning coverage across completed attempts" onKeyDown={navigatePoints}>
-      <AssessmentAnalyticsGraphGrid tagAnalytics={items} coverage />
+      <AssessmentAnalyticsGraphGrid tagAnalytics={items} coverage swapFunctionSkillVisuals />
     </section>
   )
 }

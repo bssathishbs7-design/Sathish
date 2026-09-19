@@ -1,5 +1,5 @@
-/* Medsy source tokens, scoped to the question-bank sort controls. */
-:is(.qb-sort-scope, .student-exam-page) {
+/* Medsy source tokens, scoped to question-bank controls, exams, and competency analytics. */
+:is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
 --white:#FFFFFF;
   --mist:#F5F5F5;
 
@@ -81,17 +81,17 @@
   --on-dark-line:rgba(255,255,255,.18); 
   --on-dark-chip:rgba(255,255,255,.14);
 }
-:is(.qb-sort-scope, .student-exam-page) {
+:is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
 --mint:oklch(87.5% .205 163);
     --grad-primary:linear-gradient(135deg,#0F6844 0%,#1a875a 48%,oklch(87.5% .205 163) 100%); 
     --grad-mint:linear-gradient(135deg,oklch(87.5% .205 163) 0%,#a6f2d6 100%); 
     --selection-bg:oklch(87.5% .205 163);
 }
-.theme-dark :is(.qb-sort-scope, .student-exam-page), [data-theme="dark"] :is(.qb-sort-scope, .student-exam-page),[data-theme="oled"] :is(.qb-sort-scope, .student-exam-page) {
+.theme-dark :is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace), [data-theme="dark"] :is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace),[data-theme="oled"] :is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
 --forest:oklch(75% .16 162);
     --text-brand:oklch(84% .17 163);
 }
-:is(.qb-sort-scope, .student-exam-page) {
+:is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
 --s-1:4px;
   --s-2:8px;
   --s-3:12px;
@@ -119,7 +119,7 @@
   --maxw:1180px; 
   --gut:clamp(20px,5vw,64px);
 }
-:is(.qb-sort-scope, .student-exam-page) {
+:is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
 --shadow-xs:0 1px 3px rgba(var(--forest-rgb),.06);
   --shadow-sm:0 4px 14px -6px rgba(var(--forest-rgb),.12);
   --shadow-md:0 16px 38px -14px rgba(var(--forest-rgb),.22);
@@ -157,11 +157,11 @@
   --dur-entrance:calc(.55s*var(--motion));  
   --dur-reveal:calc(1s*var(--motion));
 }
-:is(.qb-sort-scope, .student-exam-page) {
+:is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
 --surface-inverse:var(--ink);       
   --text-on-inverse:#FFFFFF;
 }
-.theme-dark :is(.qb-sort-scope, .student-exam-page), [data-theme="dark"] :is(.qb-sort-scope, .student-exam-page),[data-theme="oled"] :is(.qb-sort-scope, .student-exam-page) {
+.theme-dark :is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace), [data-theme="dark"] :is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace),[data-theme="oled"] :is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
 color-scheme:dark;
 
   
@@ -236,7 +236,7 @@ color-scheme:dark;
   --surface-inverse:#E7F4ED;
   --text-on-inverse:#0B1712;
 }
-[data-theme="oled"] :is(.qb-sort-scope, .student-exam-page) {
+[data-theme="oled"] :is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
 --bg:#000000;
   --surface:#070D0A;
   --surface-card:#0A130E;
@@ -252,7 +252,7 @@ color-scheme:dark;
   --shadow-md:0 16px 38px -14px rgba(0,0,0,.8);
   --shadow-lg:0 36px 70px -26px rgba(0,0,0,.85);
 }
-[data-density="compact"] :is(.qb-sort-scope, .student-exam-page) {
+[data-density="compact"] :is(.qb-sort-scope, .student-exam-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
 --fs-body:1rem;
   --s-3:10px;--s-4:14px;--s-5:20px;--s-6:26px;--s-7:38px;--s-8:52px;
 }

@@ -1,0 +1,175 @@
+@import './medsy/question-sort-tokens.css';
+@import './activity-visual-tokens.css';
+
+/* Shared Activity visual treatment; answer and result states retain their own colours. */
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) {
+  --text-strong: var(--activity-text-strong);
+  --text-body: var(--activity-text-body);
+  --text-muted: var(--activity-text-muted);
+  --surface: var(--activity-surface);
+  --practice-accent: var(--activity-chart);
+  color: var(--text-body);
+  background: radial-gradient(circle at top left, color-mix(in srgb, var(--practice-accent) 5%, transparent), transparent 35%);
+}
+
+.vx-content.assessment-page.learn-practice-page .learn-practice-shell {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  gap: var(--space-4);
+}
+
+.vx-content.assessment-page.start-practice-page .start-practice-shell { gap: var(--space-4); }
+
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-filter-bar, .learn-practice-card, .start-practice-title-bar, .start-practice-session-card, .start-practice-answer-main, .start-practice-summary-card, .start-practice-empty) {
+  border: 1px solid var(--activity-line);
+  background: var(--activity-card-fill);
+  box-shadow: var(--activity-shadow);
+  color: var(--text-body);
+  border-radius: var(--r-lg);
+}
+
+.vx-content.assessment-page.learn-practice-page .learn-practice-card {
+  border-radius: var(--r);
+  padding: var(--space-4);
+  gap: var(--space-3);
+}
+.vx-content.assessment-page.learn-practice-page .learn-practice-card::before {
+  inset: 0 auto 0 0;
+  width: var(--space-1);
+  height: auto;
+  background: linear-gradient(180deg, var(--mint-200), var(--practice-accent));
+  opacity: .65;
+}
+.vx-content.assessment-page.learn-practice-page .learn-practice-title-row { border-color: var(--activity-line); }
+.vx-content.assessment-page.learn-practice-page .learn-practice-title-icon { color: var(--activity-green); background: var(--activity-green-soft); border: 0; border-radius: var(--r-sm); }
+.vx-content.assessment-page.learn-practice-page .learn-practice-filter-btn.is-live-practice.has-live-count { animation: none; }
+
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-title-row h2, .learn-practice-card .assessment-create-published-head strong, .learn-practice-question-mix strong, .start-practice-session-primary strong, .start-practice-title-main > strong, .start-practice-summary-card h3, .start-practice-empty h2) {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-card-context, .learn-practice-question-mix em, .start-practice-session-primary em, .start-practice-session-detail small, .start-practice-session-grid-head, .start-practice-empty p) {
+  color: var(--text-muted);
+  font-size: max(var(--fs-micro, 11px), .75rem);
+}
+
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-question-mix > span, .start-practice-session-mix > span, .start-practice-title-attended, .start-practice-title-totals > span) {
+  border: 1px solid var(--activity-line);
+  border-radius: var(--r-sm);
+  background: var(--activity-card-fill);
+  color: var(--text-body);
+}
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-question-mix strong, .start-practice-session-mix strong, .start-practice-session-marks, .start-practice-title-attended strong, .start-practice-title-totals strong) {
+  color: var(--text-strong);
+  font-family: var(--f-code, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+.vx-content.assessment-page.start-practice-page :is(.start-practice-session-mix em, .start-practice-title-attended em, .start-practice-title-totals em) { color: var(--text-muted); font-size: var(--fs-micro, 11px); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-marks { border-color: var(--activity-line); background: transparent; }
+
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-filter-group, .start-practice-session-filters) {
+  background: transparent;
+  border-color: transparent;
+  gap: var(--space-2);
+}
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-filter-btn, .start-practice-session-filters button, .start-practice-title-progress) {
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--activity-line);
+  border-radius: var(--r-pill);
+  box-shadow: none;
+  font-weight: 600;
+  animation: none;
+}
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-filter-btn.is-active, .start-practice-session-filters button.is-active, .start-practice-title-progress.is-active) {
+  color: var(--text-strong);
+  background: color-mix(in srgb, var(--practice-accent) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--practice-accent) 40%, var(--surface));
+  box-shadow: var(--activity-shadow);
+}
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-filter-btn span, .start-practice-session-filters button span, .start-practice-title-progress span) {
+  background: color-mix(in srgb, var(--practice-accent) 10%, var(--surface));
+  color: var(--text-strong);
+  font-family: var(--f-code, ui-monospace, monospace);
+}
+.vx-content.assessment-page.learn-practice-page .assessment-create-published-search {
+  background: var(--surface);
+  border: 1px solid var(--activity-line);
+  border-radius: var(--r-pill);
+  color: var(--text-muted);
+}
+.vx-content.assessment-page.learn-practice-page .assessment-create-published-search input { color: var(--text-body); }
+.vx-content.assessment-page.learn-practice-page .assessment-create-published-search input::placeholder { color: var(--text-muted); }
+
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-analytics-btn, .start-practice-title-analytics, .start-practice-title-back, .start-practice-row-retake, .start-practice-session-footer button) {
+  color: var(--text-strong);
+  background: var(--surface);
+  border: 1px solid var(--activity-line);
+  border-radius: var(--r-pill);
+  box-shadow: none;
+}
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-footer .my-assessment-card-action, .start-practice-row-start, .start-practice-submit-btn) {
+  color: var(--on-brand);
+  background: var(--forest);
+  border-color: var(--forest);
+  border-radius: var(--r-pill);
+  box-shadow: none;
+}
+.vx-content.assessment-page.start-practice-page .start-practice-session-row {
+  color: var(--text-body);
+  background: var(--activity-card-fill);
+  border-color: var(--activity-line);
+  border-radius: var(--r);
+  box-shadow: var(--activity-shadow);
+}
+.vx-content.assessment-page.start-practice-page .start-practice-session-grid-head { border-color: var(--activity-line); background: transparent; }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-session-primary svg, .start-practice-session-detail svg) { color: var(--practice-accent); }
+.vx-content.assessment-page.start-practice-page .start-practice-answer-question:not(.is-review-correct, .is-review-wrong, .is-review-needs-review, .is-try-later) {
+  background: var(--activity-card-fill);
+  border-color: var(--activity-line);
+  box-shadow: var(--activity-shadow);
+}
+.vx-content.assessment-page.start-practice-page :is(.start-practice-answer-question-head p, .start-practice-laq-case-stem p) { color: var(--text-body); }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-section-questions, .start-practice-answer-group, .start-practice-answer-question, .start-practice-answer-options, .start-practice-answer-options button) { min-width: 0; overflow-wrap: anywhere; }
+
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(button, .learn-practice-card, .start-practice-session-row) {
+  transition: transform var(--dur-hover) var(--activity-ease-hover), background-color var(--dur-hover) var(--activity-ease-hover), border-color var(--dur-hover) var(--activity-ease-hover), box-shadow var(--dur-hover) var(--activity-ease-hover);
+}
+@media (hover: hover) {
+  .vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-card, .start-practice-session-row:not(.is-empty)):hover {
+    transform: translateY(-2px);
+    border-color: var(--activity-hover-line);
+    box-shadow: var(--activity-hover-shadow);
+    background: var(--activity-card-fill);
+  }
+  .vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-analytics-btn, .start-practice-title-analytics, .start-practice-title-back, .start-practice-row-retake, .start-practice-session-footer button, .learn-practice-filter-btn, .start-practice-session-filters button):hover:not(:disabled) {
+    background: color-mix(in srgb, var(--practice-accent) 10%, var(--surface));
+    border-color: var(--activity-hover-line);
+    color: var(--text-strong);
+  }
+  .vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-footer .my-assessment-card-action, .start-practice-row-start, .start-practice-submit-btn):hover:not(:disabled) { filter: brightness(.94); }
+}
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) button:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+.vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+@media (max-width: 1023px) {
+  .vx-content.assessment-page.start-practice-page .start-practice-shell { grid-template-rows: max-content auto; }
+  .vx-content.assessment-page.start-practice-page .start-practice-title-bar { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); height: auto; min-height: max-content; }
+  .vx-content.assessment-page.start-practice-page .start-practice-title-actions { width: 100%; justify-self: stretch; justify-content: flex-start; flex-wrap: wrap; }
+  .vx-content.assessment-page.start-practice-page .start-practice-session-filters { display: flex; flex: 1 1 100%; width: 100%; flex-wrap: wrap; }
+  .vx-content.assessment-page.start-practice-page .start-practice-title-main { justify-self: start; }
+  .vx-content.assessment-page.start-practice-page .start-practice-title-meta { flex-wrap: wrap; justify-self: stretch; }
+}
+@media (max-width: 767px) {
+  .vx-content.assessment-page.start-practice-page :is(.start-practice-answer-main, .start-practice-section, .start-practice-section-questions, .start-practice-answer-group, .start-practice-answer-layout) { grid-template-columns: minmax(0, 1fr); }
+  .vx-content.assessment-page.start-practice-page .start-practice-answer-group-head { flex-wrap: wrap; gap: var(--space-1); padding: var(--space-2); }
+  .vx-content.assessment-page.start-practice-page .start-practice-answer-group-head strong { white-space: normal; }
+  .vx-content.assessment-page.start-practice-page .start-practice-answer-group-head span { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) *,
+  .vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) *::before,
+  .vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) *::after { animation: none !important; transition: none !important; }
+  .vx-content.assessment-page:is(.learn-practice-page, .start-practice-page) :is(.learn-practice-card, .start-practice-session-row):hover { transform: none; }
+}

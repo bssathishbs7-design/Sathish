@@ -76,11 +76,13 @@
 .clg .aoa-function-bar-metric p { margin: 0; }
 .clg .clg-skill-content { min-width: 0; }
 .clg .aoa-radar-line, .clg .aoa-radar-area, .clg .aoa-function-bar-metric b, .clg .aoa-skill-line, .clg .aoa-skill-area { animation: none; }
-.clg .clg-revealed .aoa-radar-wrap, .clg .clg-revealed .clg-skill-content { animation: clg-reveal var(--dur-reveal) var(--ease-standard) both; }
-.clg .clg-revealed .aoa-function-bar-metric b { transform-origin: left; animation: clg-bar-enter var(--dur-reveal) var(--ease-standard) both; }
-.clg .clg-revealed .aoa-gauge-needle { animation: clg-needle-enter var(--dur-reveal) var(--ease-standard) both; }
+.clg .clg-revealed .aoa-radar-area { transform-origin: center; animation: activity-radar-enter var(--activity-dur-chart, var(--dur-reveal)) var(--activity-ease-chart, var(--ease-standard)) both; }
+.clg .clg-revealed .skill-coverage-area { transform-origin: center; animation: activity-radar-enter var(--activity-dur-chart, var(--dur-reveal)) var(--activity-ease-chart, var(--ease-standard)) both; }
+.clg .clg-revealed .skill-coverage-line { animation: clg-line-enter var(--activity-dur-chart, var(--dur-reveal)) var(--activity-ease-chart, var(--ease-standard)) both; }
+.clg .clg-revealed .aoa-function-bar-metric b { transform-origin: left; animation: clg-bar-enter var(--activity-dur-bar, var(--dur-reveal)) var(--activity-ease-chart, var(--ease-standard)) both; }
+.clg .clg-revealed .aoa-gauge-needle { animation: clg-needle-enter var(--activity-dur-chart, var(--dur-reveal)) var(--activity-ease-chart, var(--ease-standard)) both; }
 .clg .aoa-radar-point:hover, .clg .aoa-skill-point:hover { opacity: .85; }
-@keyframes clg-reveal { from { opacity: 0; transform: translateY(var(--space-2)); } to { opacity: 1; transform: translateY(0); } }
+@keyframes clg-line-enter { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 @keyframes clg-bar-enter { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes clg-needle-enter { from { transform: rotate(-180deg); } to { transform: rotate(var(--gauge-angle)); } }
 @media (max-width: 767px) {
@@ -94,4 +96,12 @@
 @container (max-width: 700px) { .clg .aoa-function-bars { grid-template-columns: minmax(0, 1fr); } }
 
 .clg .skill-coverage { margin: 0 var(--space-5) var(--space-5); }
+.clg .has-swapped-category-charts .aoa-function-bars { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); max-height: none; overflow: visible; }
+.clg .has-swapped-category-charts .aoa-function-bars article { padding: var(--space-3); }
+.clg .has-swapped-category-charts .aoa-function-bar-metric { grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); padding-left: 0; }
+.clg .has-swapped-category-charts .aoa-function-bar-metric strong { grid-column: 2; grid-row: 1; }
+.clg .has-swapped-category-charts .aoa-function-bar-metric p { grid-column: 1 / -1; grid-row: 2; }
+@container (max-width: 1100px) { .clg .has-swapped-category-charts .aoa-function-bars { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container (max-width: 700px) { .clg .has-swapped-category-charts .aoa-function-bars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (max-width: 420px) { .clg .has-swapped-category-charts .aoa-function-bars { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 767px) { .clg .skill-coverage { margin: 0 var(--space-4) var(--space-4); } }

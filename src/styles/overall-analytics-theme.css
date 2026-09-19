@@ -1,0 +1,62 @@
+@import './medsy/question-sort-tokens.css';
+@import './activity-visual-tokens.css';
+
+/* Match Activity analytics without changing the shared graphs on other routes. */
+:is(.aoa-page, .single-student-result-workspace) .aoa-shell { padding-inline: var(--space-4); }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts > :is(.is-skill, .is-function) { grid-column: 1 / -1; display: flex; flex-direction: column; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts > :is(.is-skill, .is-function) .aoa-panel-heading { min-height: 76px; box-sizing: border-box; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts > .is-skill .aoa-function-bars { grid-template-columns: repeat(5, minmax(0, 1fr)); min-height: 0; max-height: none; overflow: visible; padding: var(--space-3); gap: var(--space-2); align-content: start; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts .aoa-function-bars article { gap: var(--space-1); min-width: 0; padding: var(--space-3); border: 1px solid var(--activity-line); border-radius: var(--r-sm); background: var(--activity-card-fill); align-content: space-between; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts .aoa-function-bar-label span { font-weight: 600; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts .aoa-function-bar-metric { grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1); padding-left: 0; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts .aoa-function-bar-metric strong { grid-column: 2; grid-row: 1; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts .aoa-function-bar-metric p { grid-column: 1 / -1; grid-row: 2; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts .aoa-function-bar-metric small { font-size: var(--fs-micro, 11px); }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts > .is-function .aoa-skill-area-chart { display: flex; align-items: flex-start; padding: var(--space-3) var(--space-4); min-height: 0; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts > .is-function .aoa-skill-area-chart svg { width: 100%; height: 280px; min-height: 0; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts .aoa-skill-x-label { font-size: var(--fs-small, 12px); font-weight: 600; }
+:is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts :is(.aoa-skill-y-label, .aoa-skill-value-label) { font-family: var(--f-code); font-size: var(--fs-micro, 11px); font-weight: 500; font-variant-numeric: tabular-nums; }
+@media (max-width: 1023px) {
+  :is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts > .is-skill .aoa-function-bars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  :is(.aoa-page, .single-student-result-workspace) .has-swapped-category-charts > .is-skill .aoa-function-bars { grid-template-columns: minmax(0, 1fr); }
+}
+.vx-shell :is(.aoa-page, .single-student-result-workspace) {
+  --aoa-card: var(--activity-surface);
+  --aoa-soft: var(--activity-surface);
+  --aoa-line: var(--activity-line);
+  --aoa-ink: var(--activity-text-strong);
+  --aoa-muted: var(--activity-text-muted);
+  --aoa-teal: var(--activity-chart);
+  --aoa-teal-soft: color-mix(in srgb, var(--activity-chart) 10%, var(--activity-surface));
+  --aoa-chart-track: color-mix(in srgb, var(--activity-chart) 12%, var(--activity-surface));
+  color: var(--aoa-ink);
+  background: radial-gradient(circle at top left, color-mix(in srgb, var(--activity-chart) 5%, transparent), transparent 35%), var(--surface-mist);
+  cursor: auto;
+}
+:is(.aoa-page, .single-student-result-workspace) :is(.aoa-filterbar, .aoa-metric) { border-color: var(--activity-line); background: var(--activity-card-fill); box-shadow: var(--activity-shadow); }
+:is(.aoa-page, .single-student-result-workspace) .aoa-panel { border-color: var(--activity-chart-line); background: var(--activity-chart-fill); box-shadow: var(--activity-chart-shadow); }
+:is(.aoa-page, .single-student-result-workspace) .aoa-panel-heading { background: transparent; }
+:is(.aoa-page, .single-student-result-workspace) :is(.aoa-filterbar-title, .aoa-metric-copy small, .aoa-panel-heading strong) { color: var(--activity-text-strong); }
+:is(.aoa-page, .single-student-result-workspace) .aoa-metric-copy :is(small, em) { font-size: var(--fs-micro, 11px); }
+:is(.aoa-page, .single-student-result-workspace) .aoa-metric-copy strong { font-family: var(--f-code, ui-monospace, monospace); font-variant-numeric: tabular-nums; }
+:is(.aoa-page, .single-student-result-workspace) .aoa-panel-icon { border-radius: var(--r-sm); background: var(--activity-green-soft); color: var(--activity-green); }
+:is(.aoa-page, .single-student-result-workspace) .is-bloom .aoa-panel-icon { background: var(--activity-blue-soft); color: var(--activity-blue); }
+:is(.aoa-page, .single-student-result-workspace) .is-thinking .aoa-panel-icon { background: var(--activity-amber-soft); color: var(--activity-amber); }
+:is(.aoa-page, .single-student-result-workspace) .is-skill .aoa-panel-icon { background: var(--activity-violet-soft); color: var(--activity-violet); }
+:is(.aoa-page, .single-student-result-workspace) .aoa-search { background: var(--activity-surface); border-color: var(--activity-line); border-radius: var(--r-pill); box-shadow: none; }
+:is(.aoa-page, .single-student-result-workspace) .aoa-search input { font-size: var(--fs-small, 14px); font-weight: 400; letter-spacing: normal; }
+:is(.aoa-page, .single-student-result-workspace) .aoa-search input::placeholder { color: var(--activity-text-muted); }
+:is(.aoa-page, .single-student-result-workspace) button { border-radius: var(--r-pill); transition: transform var(--dur-hover) var(--activity-ease-hover), background-color var(--dur-hover) var(--activity-ease-hover), box-shadow var(--dur-hover) var(--activity-ease-hover); }
+:is(.aoa-page, .single-student-result-workspace) .aoa-metric { transition: transform var(--dur-hover) var(--activity-ease-hover), border-color var(--dur-hover) var(--activity-ease-hover), box-shadow var(--dur-hover) var(--activity-ease-hover); }
+:is(.aoa-page, .single-student-result-workspace) .aoa-metric:hover { border-color: var(--activity-hover-line); box-shadow: var(--activity-hover-shadow); }
+:is(.aoa-page, .single-student-result-workspace) :is(button:not(:disabled), .aoa-metric):active { transform: translateY(1px) scale(.97); transition: none; }
+:is(.aoa-page, .single-student-result-workspace) :focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+:is(.aoa-page, .single-student-result-workspace) .aoa-radar-line { stroke: var(--activity-chart); }
+:is(.aoa-page, .single-student-result-workspace) .aoa-radar-area { fill: color-mix(in srgb, var(--activity-chart) 16%, transparent); animation: activity-radar-enter var(--activity-dur-chart) var(--activity-ease-chart) both; }
+@media (prefers-reduced-motion: reduce) {
+  :is(.aoa-page, .single-student-result-workspace) *, :is(.aoa-page, .single-student-result-workspace) *::before, :is(.aoa-page, .single-student-result-workspace) *::after { animation: none !important; transition: none !important; }
+  :is(.aoa-page, .single-student-result-workspace) .aoa-metric:hover { transform: none; }
+  :is(.aoa-page, .single-student-result-workspace) .aoa-gauge-needle { transform: rotate(var(--gauge-angle)); }
+}
