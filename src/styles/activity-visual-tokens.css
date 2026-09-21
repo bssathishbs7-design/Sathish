@@ -1,5 +1,5 @@
 /* Shared values from My Skill Activity and its embedded analytics dashboard. */
-:is(.my-skills-page, .dashboard-summary-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
+:is(.my-skills-page, .dashboard-summary-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace, .logbook-scope) {
   --activity-text-strong: #101716;
   --activity-text-body: #2c3633;
   --activity-text-muted: #6d7a76;
@@ -27,7 +27,7 @@
   --activity-dur-bar: 760ms;
 }
 
-:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) :is(.my-skills-page, .dashboard-summary-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace) {
+.logbook-scope[data-theme="dark"], .logbook-scope[data-theme="oled"], :is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) :is(.my-skills-page, .dashboard-summary-page, .competency-analytics, .learn-practice-page, .start-practice-page, .aoa-page, .single-student-result-workspace, .logbook-scope) {
   --activity-text-strong: #f7fbf9;
   --activity-text-body: #d9e5df;
   --activity-text-muted: #9cadab;

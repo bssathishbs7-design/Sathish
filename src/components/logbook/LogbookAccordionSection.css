@@ -1,0 +1,14 @@
+.lb-accordion { border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); min-width: 0; }
+.lb-accordion.is-open { border-color: var(--activity-hover-line); }
+.lb-accordion-heading { margin: 0; }
+.logbook-scope .lb-accordion-trigger { display: flex; align-items: center; gap: var(--s-3); width: 100%; border: 0; border-radius: var(--r); padding: var(--s-4); background: transparent; text-align: left; color: var(--text-strong); cursor: pointer; }
+.logbook-scope .lb-accordion-trigger:not(:disabled):active { transform: none; background: var(--surface-soft); }
+.lb-step-number { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-muted); font-family: var(--f-code); font-size: 12px; }
+.lb-accordion.is-open .lb-step-number, .lb-step-number.is-complete { background: var(--activity-chart); color: var(--on-brand); }
+.lb-step-copy { display: grid; gap: var(--s-1); flex: 1; min-width: 0; }
+.lb-step-copy strong { font-size: 13px; font-weight: 600; }
+.lb-step-copy small { color: var(--text-muted); font-size: var(--fs-micro); font-weight: 400; overflow-wrap: anywhere; }
+.lb-step-chevron { flex-shrink: 0; color: var(--text-muted); transition: transform var(--dur-control) var(--ease-standard); }
+.lb-accordion.is-open .lb-step-chevron { transform: rotate(180deg); }
+.lb-accordion-body { display: grid; gap: var(--s-4); padding: 0 var(--s-4) var(--s-4); animation: lb-section-reveal var(--dur-control) var(--ease-standard); }
+@keyframes lb-section-reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }

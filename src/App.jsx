@@ -21,6 +21,7 @@ import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import StartEvaluationPage from './pages/StartEvaluationPage'
 import ExamLogPage from './pages/ExamLogPage'
 import MySkillActivityPage from './pages/MySkillActivityPage'
+import LogbookPage from './pages/LogbookPage'
 import ProgressTrackingPage from './pages/ProgressTrackingPage'
 import ActivityResultPage from './pages/ActivityResultPage'
 import StudentExamPage from './pages/StudentExamPage'
@@ -77,6 +78,7 @@ const PAGE_PATHS = {
   [APP_PAGES.IMAGE_ACTIVITY]: '/skills/image-activity',
   [APP_PAGES.INTERPRETATION_ACTIVITY]: '/skills/interpretation-activity',
   [APP_PAGES.MY_SKILL_ACTIVITY]: '/my-skills/activity',
+  [APP_PAGES.LOGBOOK]: '/logbook',
   [APP_PAGES.STUDENT_EXAM]: '/my-skills/exam',
   [APP_PAGES.PROGRESS_TRACKING]: '/my-skills/progress',
   [APP_PAGES.FACULTY_MANAGEMENT]: '/faculty-management',
@@ -429,6 +431,18 @@ function App() {
   const [isPhoneScreen, setIsPhoneScreen] = useState(() => isPhoneViewport())
   const useCompactLogo = sidebarCollapsed
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
+  const [logbookNavigation, setLogbookNavigation] = useState({ route: { name: 'home' }, history: [], future: [] })
+  const navigateLogbook = (route) => setLogbookNavigation((current) => (
+    JSON.stringify(current.route) === JSON.stringify(route) ? current : {
+      route, history: [...current.history, current.route].slice(-10), future: [],
+    }
+  ))
+  const goBackLogbook = () => setLogbookNavigation((current) => current.history.length ? {
+    route: current.history[current.history.length - 1], history: current.history.slice(0, -1), future: [current.route, ...current.future].slice(0, 10),
+  } : current)
+  const goForwardLogbook = () => setLogbookNavigation((current) => current.future.length ? {
+    route: current.future[0], history: [...current.history, current.route].slice(-10), future: current.future.slice(1),
+  } : current)
   const [practiceAnalyticsContext, setPracticeAnalyticsContext] = useState(null)
   const [facultyAnalyticsContext, setFacultyAnalyticsContext] = useState(readFacultyAnalyticsContext)
   const [questionBankMode, setQuestionBankMode] = useState('editable')
@@ -647,6 +661,7 @@ function App() {
   }
 
   const navigateToPage = (page, options = {}) => {
+    if (page === APP_PAGES.LOGBOOK) navigateLogbook({ name: options.logbookReview ? 'faculty' : 'home' })
     const { replace = false, questionBankMode: nextQuestionBankMode = 'editable' } = options
     const nextPath = PAGE_PATHS[page] ?? PAGE_PATHS[APP_PAGES.DASHBOARD]
     const historyMethod = replace ? 'replaceState' : 'pushState'
@@ -1444,6 +1459,9 @@ function App() {
               completedEvaluationRows={completedEvaluationRows}
               onAlert={showAlert}
               onViewApproval={handleOpenApprovalView}
+              onOpenLogbookReview={() => {
+                navigateToPage(APP_PAGES.LOGBOOK, { logbookReview: true })
+              }}
             />
           ) : activePage === APP_PAGES.APPROVAL_VIEW ? (
             <ApprovalViewPage
@@ -1522,6 +1540,17 @@ function App() {
               onSaveSkillActivity={(savedActivity) => {
                 setSelectedInterpretationActivity(savedActivity)
               }}
+            />
+          ) : activePage === APP_PAGES.LOGBOOK ? (
+            <LogbookPage
+              route={logbookNavigation.route}
+              onNavigate={navigateLogbook}
+              onBack={goBackLogbook}
+              onForward={goForwardLogbook}
+              canForward={logbookNavigation.future.length > 0}
+              canBack={logbookNavigation.history.length > 0}
+              theme={theme}
+              identity={profileUser}
             />
           ) : activePage === APP_PAGES.MY_SKILL_ACTIVITY ? (
             <MySkillActivityPage

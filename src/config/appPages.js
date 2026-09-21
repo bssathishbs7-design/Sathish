@@ -49,6 +49,7 @@ export const APP_PAGES = {
   IMAGE_ACTIVITY: 'Image Activity',
   INTERPRETATION_ACTIVITY: 'Interpretation Activity',
   MY_SKILL_ACTIVITY: 'My Skill Activity',
+  LOGBOOK: 'My Logbook',
   STUDENT_EXAM: 'Student Exam',
   PROGRESS_TRACKING: 'Progress Tracking',
   FACULTY_MANAGEMENT: 'Faculty Management',
@@ -117,6 +118,10 @@ export const SIDEBAR_MENU = [
       {
         label: APP_PAGES.MY_SKILL_ACTIVITY,
         icon: BookOpenCheck,
+      },
+      {
+        label: APP_PAGES.LOGBOOK,
+        icon: BookText,
       },
       {
         label: APP_PAGES.REVIEW_APPROVE,

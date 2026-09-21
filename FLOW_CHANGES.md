@@ -1,5 +1,55 @@
 # Flow changes
 
+## 2026-09-21 - Compact subject catalogue
+
+- Added subject/code search and phase filtering to the Subjects tab. Compact subject cards retain the existing subject-detail destination and approved-attempt progress calculation.
+
+## 2026-09-21 - Compact learner overview
+
+- Replaced the duplicate pending-record list with direct Continue draft and Log remedial actions. Verification bar/status counts link to filtered records; pending records remain accessible from the summary and Pending tab.
+
+## 2026-09-21 - Progressive entry accordion
+
+- New/edit/remedial forms now use Subject & category, Activity details and Faculty verification accordion sections. Completing selectors advances automatically; Continue validates activity inputs before verification.
+- Completed sections can be reopened without losing values. Save draft remains available for eligible entries; submit appears only at verification. Validation opens and focuses the relevant section.
+
+## 2026-09-21 - Header search and status filter (reverted)
+
+- Reverted at user request: restored the Search tab and its original search/status controls in the results card.
+
+## 2026-09-21 - Profile access in Logbook card
+
+- Moved My profile from the Logbook tabs to an accessible profile icon in the top-right of the green entry card. The profile view and back/forward history remain available.
+
+## 2026-09-21 - Logbook page navigation
+
+- Reused the shared My Pages breadcrumb with back/forward controls. Logbook view history now supports forward navigation; choosing a new view clears the forward history.
+
+## 2026-09-21 - Prototype category forms
+
+- Subject and category now select the prototype field groups, date inputs and required/optional rules. Removed the universal record group, serial number and reflection inputs.
+- Added subject-specific categories and Achievements, Phase I certification and Dermatology SDL variants, and read-only certification grading. Remedial remains linked to a returned record.
+- Existing saved content is retained; fields absent from the new schema remain visible as previously recorded information during editing.
+
+## 2026-09-21 - Category-driven Logbook drawer
+
+- Restored new/edit/remedial entry to a full-height right-side drawer with fixed header and actions.
+- Selecting a log category reveals its activity fields, optional supporting information and faculty verification in the same form.
+
+## 2026-09-21 - Single-form Logbook entry
+
+- Replaced the four-step entry wizard with a single modal containing subject, date, category, activity details and faculty confirmation. Save draft and Submit for verification remain visible while the form scrolls.
+- Added searchable subject and grouped category pickers, plus recent-category shortcuts. Subject context is preselected when launched from a subject page; selecting a configured competency fills its editable activity title.
+- Added the 19 screenshot subjects and 16 visible category types. Existing category IDs and Human Anatomy records remain compatible; older Community visits entries remain available for editing and remedial attempts. No options are inferred for the cut-off Other group.
+- Subject/category changes preserve common fields and request confirmation only before discarding filled fields. Existing entry/remedial subject-category locks and draft recovery remain in place.
+
+## 2026-09-21 - Logbook
+
+- Added Logbook after My Skill Activity in the sidebar at `/logbook`, with overview, phase-grouped subjects, subject records, pending approvals, search and student profile.
+- Added a subject > category > details > learner sign-off drawer, draft saving, pending edits/withdrawal, linked remedial attempts and independent notes/comments.
+- Added Review Logbook from Approval Queue to a faculty demonstration verification view. Approval locks the signed entry and updates competency progress; return enables a linked remedial attempt.
+- Logbook view navigation is owned by App with a capped ten-destination back history. Local demo changes persist over sample curriculum records; confirmed reset restores those records.
+
 ## 2026-09-18 - Unmonitored My Skills activity attempts
 
 - `/my-skills/exam` starts without requesting fullscreen. Focus changes, tab switches, fullscreen exits and network changes no longer record monitoring violations or pause the activity.

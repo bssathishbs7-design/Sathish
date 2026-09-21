@@ -1,0 +1,23 @@
+.lb-drawer { position: fixed; inset: 0 0 0 auto; padding: 0; margin: 0; width: min(640px, 100%); max-width: 100%; height: 100dvh; max-height: 100dvh; border: 0; border-left: 1px solid var(--border); background: var(--surface); color: var(--text-body); box-shadow: var(--shadow-lg); }
+.lb-drawer::backdrop { background: color-mix(in srgb, var(--forest-900) 45%, transparent); }
+.lb-drawer-panel { min-height: 100%; display: flex; flex-direction: column; }
+.lb-drawer-head { display: flex; gap: var(--s-4); justify-content: space-between; align-items: flex-start; padding: var(--s-5); border-bottom: 1px solid var(--border); }
+.lb-drawer-head h2 { margin: var(--s-2) 0; }
+.lb-drawer-head p { color: var(--text-muted); margin: 0; }
+.lb-drawer-body { padding: var(--s-5); display: grid; gap: var(--s-5); }
+.lb-drawer-foot { margin-top: auto; position: sticky; bottom: 0; display: flex; gap: var(--s-3); justify-content: flex-end; flex-wrap: wrap; padding: var(--s-4) var(--s-5); border-top: 1px solid var(--border); background: var(--surface); }
+@media (max-width: 767px) { .lb-drawer-body, .lb-drawer-head { padding: var(--s-4); } }
+
+/* The entry drawer keeps its header and actions visible while the form scrolls. */
+.lb-drawer.is-entry-form { border-radius: 0; overflow: hidden; }
+.logbook-scope.lb-drawer.is-entry-form { background-color: var(--surface); }
+.lb-drawer.is-entry-form .lb-drawer-panel { min-height: 0; height: 100%; }
+.lb-drawer.is-entry-form .lb-drawer-head { flex-shrink: 0; padding: var(--s-4) var(--s-5); background: var(--activity-card-fill); }
+.lb-drawer.is-entry-form .lb-drawer-head h2 { font-size: 20px; letter-spacing: -.02em; margin: var(--s-1) 0; }
+.lb-drawer.is-entry-form .lb-drawer-head p { font-size: 13px; }
+.lb-drawer.is-entry-form .lb-drawer-head .lb-eyebrow { color: var(--text-brand); }
+@media (max-width: 767px) {
+  .lb-drawer.is-entry-form { width: 100%; max-width: 100%; height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; }
+  .lb-drawer.is-entry-form .lb-drawer-panel { height: 100%; }
+  .lb-drawer.is-entry-form .lb-drawer-head { padding: var(--s-4); }
+}
