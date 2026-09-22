@@ -1,0 +1,24 @@
+/* One palette for entry and competency statuses, including portalled drawers. */
+.logbook-scope .lb-status {
+  --lb-status-accent: var(--activity-line);
+  --lb-status-tint: 18%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-strong);
+  background: color-mix(in srgb, var(--lb-status-accent) var(--lb-status-tint), var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--lb-status-accent) 40%, var(--activity-line));
+}
+.logbook-scope .lb-status.is-draft { --lb-status-accent: var(--activity-violet); --lb-status-tint: 14%; }
+.logbook-scope .lb-status.is-pending { --lb-status-accent: var(--activity-amber); }
+.logbook-scope .lb-status.is-approved { --lb-status-accent: var(--activity-green); }
+.logbook-scope .lb-status.is-returned { --lb-status-accent: var(--coral); --lb-status-tint: 45%; }
+.logbook-scope .lb-status.is-not-started { --lb-status-accent: var(--activity-line); --lb-status-tint: 25%; }
+.logbook-scope .lb-status.is-in-progress { --lb-status-accent: var(--activity-blue); --lb-status-tint: 14%; }
+.logbook-scope .lb-status.is-certified { --lb-status-accent: var(--mint); --lb-status-tint: 25%; }
+.logbook-scope .lb-status.is-remedial-due { --lb-status-accent: var(--peach); --lb-status-tint: 45%; }

@@ -151,3 +151,36 @@
 ## 2026-09-17 - Faculty analytics default sidebar
 
 - Faculty Analytics opens with the sidebar collapsed to icons, including direct entry and refresh. The top navbar stays visible and its sidebar toggle remains available.
+
+## 2026-09-22 - Compact subject workspace
+- Replaced the subject category sidebar with a counted category dropdown and entry search. One Add entry action preselects the subject and eligible category; skill-specific Log attempt retains competency prefill.
+
+## 2026-09-22 - Subject entry tabs
+- Added All entries and Drafts tabs above the subject filters. Category and search apply within the selected tab; certifiable skills display under All entries.
+
+## 2026-09-22 - Subject category drawer
+- Combined All entries, Drafts, View more, search and Add entry in one scrolling toolbar. View more opens the shared right-side drawer; selecting a category filters all subject records. All entries and Drafts clear category selection.
+
+## 2026-09-22 - Disable empty log categories
+- Category drawer rows with zero entries remain visible but are disabled and cannot open a category view.
+
+## 2026-09-22 - Pending record discovery
+- Added combined search, Subject/Faculty grouping selector, dependent name filter and Pending/Draft status filter. Matching records now share one list instead of separate subject, draft and remedial panels. Group changes clear the dependent selection; Clear filters restores defaults.
+
+## 2026-09-22 - Hide Logbook Search tab
+- Hid Search from the Logbook navigation. Existing entry search fields and contextual search destinations remain available.
+
+## 2026-09-22 - Draft navigation tab
+- Added Draft after Pending with a live draft count. It opens a draft-only list using the existing search, subject/faculty filters and entry detail workflow. Clear filters retains the draft-only scope.
+
+## 2026-09-22 - Separate Pending and Draft records
+- Pending now contains only Pending records. Draft records remain exclusively in the Draft tab; filtering and clearing preserve each tab's status scope.
+
+## 2026-09-22 - Subject category workspace
+- Moved All entries, Drafts and category selection to a persistent right sidebar, replaced by a dropdown on tablet/mobile. The left column groups records by category and includes certifiable skill actions in the certification category. Search and Add entry now sit in the slim subject header; the View more drawer was removed.
+
+## 2026-09-22 - Category sidebar scrolling
+- Removed the sidebar's internal scroll and sticky positioning. Compact single-line category labels now flow with the page; full labels remain available on hover and to screen readers.
+
+## 2026-09-22 - Hide empty subject categories
+- Sidebar and mobile category navigation now hide zero-count categories and Drafts. All entries stays available as the default; a selection that becomes empty falls back to All entries.

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { ArrowRight, BookOpen, CheckCircle2, ChevronRight, Clock3, FilePenLine, Search, Undo2 } from 'lucide-react'
-import { CATEGORIES, STUDENT } from '../../services/logbookSample'
-import { entryTitle, facultyName, formatDate, searchEntries, skillProgress, subjectProgress } from '../../services/logbook'
+import { BookOpen, ChevronDown, ChevronRight, Search } from 'lucide-react'
+import { STUDENT } from '../../services/logbookSample'
+import { entryTitle, facultyName, formatDate, searchEntries } from '../../services/logbook'
 import { subjectLabel } from '../../services/logbookCatalog'
 import './LogbookViews.css'
 
@@ -11,32 +11,11 @@ export function EntryList({ entries, onOpen, empty = 'No entries here yet.' }) {
     <span className={`lb-entry-icon is-${entry.status.toLowerCase()}`}><BookOpen size={18} /></span><span className="lb-entry-copy"><strong>{entryTitle(entry)}</strong><small>{entry.values.competency ? `${entry.values.competency} · ` : ''}{subjectLabel(entry.subject)} · {facultyName(entry.faculty)}</small></span><span className="lb-entry-meta"><span className={`lb-status is-${entry.status.toLowerCase()}`}>{entry.status}</span><small>{formatDate(entry.date)}</small></span><ChevronRight size={16} />
   </button>)}</div> : <div className="lb-empty"><BookOpen size={26} /><p>{empty}</p></div>
 }
-export function ProgressRing({ percent }) {
-  return <svg className="lb-ring" viewBox="0 0 64 64" role="img" aria-label={`${percent}% of required attempts approved`}><circle cx="32" cy="32" r="26" className="lb-ring-track" /><circle cx="32" cy="32" r="26" className="lb-ring-value" pathLength="100" strokeDasharray={`${percent} 100`} transform="rotate(-90 32 32)" /><text x="32" y="36" textAnchor="middle">{percent}%</text></svg>
-}
-export function SubjectView({ subject, entries, onOpen, onNew }) {
-  const [category, setCategory] = useState('all')
-  const subjectEntries = entries.filter((entry) => entry.subject === subject.name)
-  const skills = skillProgress(entries, subject)
-  const progress = subjectProgress(entries, subject)
-  const categories = [{ id: 'all', name: 'All entries' }, ...CATEGORIES.filter((item) => subject.categories.includes(item.id)), { id: 'drafts', name: 'Drafts' }]
-  return <><section className="lb-subject-summary lb-card"><div><span className="lb-eyebrow">{subject.phase} · {subject.subtitle}</span><h2>{subjectLabel(subject.name)}</h2><p>{progress.required ? `${progress.approved} of ${progress.required} required attempts approved` : 'Competency requirements not configured'}</p></div><ProgressRing percent={progress.percent} /></section><div className="lb-subject-layout"><nav className="lb-categories" aria-label="Log categories">{categories.map((item) => <button key={item.id} className={category === item.id ? 'is-active' : ''} aria-current={category === item.id ? 'true' : undefined} onClick={() => setCategory(item.id)}>{item.name}<span>{subjectEntries.filter((entry) => item.id === 'all' || (item.id === 'drafts' ? entry.status === 'Draft' : entry.cat === item.id)).length}</span></button>)}</nav><div className="lb-stack">
-    {['all', 'cert'].includes(category) && skills.length > 0 && <section className="lb-card"><div className="lb-section-head"><h2>Certifiable skills</h2><CheckCircle2 size={19} /></div><div className="lb-table-wrap"><table className="lb-table"><thead><tr><th>Competency</th><th>Approved / required</th><th>Progress</th><th>Action</th></tr></thead><tbody>{skills.map((skill) => <tr key={skill.code}><td><span className="lb-code">{skill.code}</span><strong>{skill.name}</strong></td><td className="lb-mono">{skill.approved} / {skill.required}</td><td><span className={`lb-status ${skill.complete ? 'is-approved' : ''}`}>{skill.complete ? 'Certified' : skill.attempts.some((entry) => entry.status === 'Returned' && !entries.some((child) => child.linkedTo === entry.id && child.status !== 'Returned')) ? 'Remedial due' : skill.attempts.some((entry) => entry.status !== 'Draft') ? 'In progress' : 'Not started'}</span></td><td><button className="lb-text-btn" onClick={() => onNew(subject.name, 'cert', skill)}>Log attempt</button></td></tr>)}</tbody></table></div></section>}
-    <section className="lb-card"><div className="lb-section-head"><h2>{categories.find((item) => item.id === category).name}</h2><button className="lb-text-btn" onClick={() => onNew(subject.name, subject.categories.includes(category) && !CATEGORIES.find((item) => item.id === category)?.legacy ? category : '')}>Add entry <ArrowRight size={15} /></button></div><EntryList entries={subjectEntries.filter((entry) => category === 'all' || (category === 'drafts' ? entry.status === 'Draft' : entry.cat === category))} onOpen={onOpen} /></section>
-  </div></div></>
-}
-export function PendingView({ entries, onOpen }) {
-  const [group, setGroup] = useState('subject')
-  const pending = entries.filter((entry) => entry.status === 'Pending')
-  const groups = [...new Set(pending.map((entry) => group === 'subject' ? entry.subject : facultyName(entry.faculty)))]
-  const remedial = entries.filter((entry) => entry.status === 'Returned' && !entries.some((child) => child.linkedTo === entry.id && child.status !== 'Returned'))
-  return <div className="lb-stack lb-section-stack"><div className="lb-section-head"><div><h2>Pending approvals</h2><p className="lb-muted">Follow up on submissions and finish entries that need your attention.</p></div><div className="lb-segmented">{['subject', 'faculty'].map((value) => <button key={value} className={group === value ? 'is-active' : ''} aria-pressed={group === value} onClick={() => setGroup(value)}>By {value}</button>)}</div></div>{groups.map((name) => <section className="lb-card" key={name}><div className="lb-section-head"><h3>{name}</h3><Clock3 size={18} /></div><EntryList entries={pending.filter((entry) => (group === 'subject' ? entry.subject : facultyName(entry.faculty)) === name)} onOpen={onOpen} /></section>)}{!groups.length && <div className="lb-card lb-empty">No submissions are waiting on faculty.</div>}<div className="lb-dashboard-grid"><section className="lb-card"><div className="lb-section-head"><h2>Unsubmitted drafts</h2><FilePenLine size={18} /></div><EntryList entries={entries.filter((entry) => entry.status === 'Draft')} onOpen={onOpen} empty="No unfinished drafts." /></section><section className="lb-card"><div className="lb-section-head"><h2>Remedial due</h2><Undo2 size={18} /></div><EntryList entries={remedial} onOpen={onOpen} empty="No remedial attempts due." /></section></div></div>
-}
 export function SearchView({ entries, onOpen, initialStatus = '' }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState(initialStatus)
   const results = searchEntries(entries, query).filter((entry) => !status || entry.status === status)
-  return <section className="lb-card"><div className="lb-search-bar"><label className="lb-search"><Search size={18} /><input aria-label="Search logbook entries" placeholder="Search competency, topic, faculty, notes…" value={query} onChange={(event) => setQuery(event.target.value)} /></label><select aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{['Draft', 'Pending', 'Approved', 'Returned'].map((value) => <option key={value}>{value}</option>)}</select></div><p className="lb-muted" aria-live="polite">{results.length} {results.length === 1 ? 'entry' : 'entries'} found</p><EntryList entries={results} onOpen={onOpen} empty="No matching entries. Try another search or status." /></section>
+  return <section className="lb-card"><div className="lb-search-bar"><label className="lb-search"><Search size={18} /><input aria-label="Search logbook entries" placeholder="Search competency, topic, faculty, notes…" value={query} onChange={(event) => setQuery(event.target.value)} /></label><div className="lb-status-select"><select aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{['Draft', 'Pending', 'Approved', 'Returned'].map((value) => <option key={value}>{value}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></div></div><p className="lb-muted" aria-live="polite">{results.length} {results.length === 1 ? 'entry' : 'entries'} found</p><EntryList entries={results} onOpen={onOpen} empty="No matching entries. Try another search or status." /></section>
 }
 export function ProfileView({ entries, identity, onReset, busy }) {
   const [confirm, setConfirm] = useState(false)

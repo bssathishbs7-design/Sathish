@@ -22,7 +22,6 @@
 .lb-text-btn { display: inline-flex; align-items: center; gap: var(--s-2); padding: var(--s-1); border: 0; background: transparent; color: var(--text-brand); cursor: pointer; font-weight: 600; border-radius: var(--r-sm); }
 .lb-navigation { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); border-bottom: 1px solid var(--border); padding-bottom: var(--s-4); margin-bottom: var(--s-5); }
 .lb-navigation button { display: flex; gap: var(--s-2); align-items: center; padding: var(--s-3) var(--s-4); border: 1px solid transparent; background: transparent; color: var(--text-muted); border-radius: var(--r-pill); cursor: pointer; white-space: nowrap; }
-.lb-navigation button.is-active { color: var(--text-strong); background: var(--surface-soft); border-color: var(--border); font-weight: 600; }
 .lb-navigation button > span { display: grid; place-items: center; min-width: 20px; height: 20px; background: var(--surface-card); border-radius: var(--r-pill); font-family: var(--f-code); font-size: var(--fs-micro); }
 .lb-content, .lb-stack { display: grid; gap: var(--s-5); min-width: 0; }
 .lb-section-stack { gap: var(--s-6); }
@@ -33,10 +32,6 @@
 .lb-muted { color: var(--text-muted); }
 .lb-mono, .lb-code { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
 .lb-code { font-size: var(--fs-micro); padding: var(--s-1) var(--s-2); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-strong); }
-.lb-status { display: inline-flex; justify-content: center; align-items: center; padding: var(--s-1) var(--s-2); border-radius: var(--r-pill); font-size: var(--fs-micro); font-weight: 600; background: var(--surface-mist); border: 1px solid var(--border); color: var(--text-body); white-space: nowrap; }
-.lb-status.is-approved { background: var(--surface-soft); color: var(--text-brand); }
-.lb-status.is-pending { background: color-mix(in srgb, var(--sky) 25%, var(--surface-card)); color: var(--text-strong); }
-.lb-status.is-returned { background: color-mix(in srgb, var(--peach) 25%, var(--surface-card)); color: var(--text-strong); }
 .lb-field { display: grid; gap: var(--s-2); color: var(--text-strong); }
 .lb-field > span { font-weight: 600; display: flex; gap: var(--s-2); align-items: center; }
 .lb-field small { color: var(--text-muted); }
@@ -49,18 +44,15 @@
 .logbook-scope .lb-error { color: var(--danger-ink); }
 .lb-actions { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
 .lb-empty { display: grid; justify-items: center; align-content: center; gap: var(--s-3); text-align: center; padding: var(--s-6); min-height: 140px; color: var(--text-muted); }
-.lb-segmented { display: flex; gap: var(--s-1); padding: var(--s-1); background: var(--surface-mist); border: 1px solid var(--border); border-radius: var(--r-pill); }
-.lb-segmented button { padding: var(--s-2) var(--s-3); color: var(--text-muted); background: transparent; border: 0; border-radius: var(--r-pill); cursor: pointer; }
-.lb-segmented button.is-active { background: var(--surface-card); color: var(--text-strong); box-shadow: var(--shadow-xs); }
 .lb-search-bar { display: flex; gap: var(--s-3); }
 .lb-search { display: flex; align-items: center; gap: var(--s-3); flex: 1; min-width: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text-muted); background: var(--surface-card); }
 .lb-search input { width: 100%; min-width: 0; background: transparent; border: 0; color: var(--text-body); }
-.lb-search-bar select { flex: 0 1 160px; }
+
 .lb-toast { position: fixed; bottom: var(--s-5); left: 50%; transform: translateX(-50%); z-index: 1200; max-width: calc(100% - var(--s-6)); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); color: var(--text-strong); box-shadow: var(--shadow-lg); padding: var(--s-4) var(--s-5); }
 .lb-spin { animation: lb-spin var(--dur-reveal) linear infinite; }
 @keyframes lb-spin { to { transform: rotate(360deg); } }
 .lb-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-@media (max-width: 767px) { .lb-page { padding: var(--s-4); } .lb-page-head { align-items: flex-start; flex-wrap: wrap; } .lb-navigation { gap: var(--s-1); } .lb-navigation button { padding: var(--s-2) var(--s-3); } .lb-card { padding: var(--s-4); } .lb-search-bar { flex-direction: column; } .lb-search-bar select { flex-basis: auto; } .lb-page-head .lb-btn { width: 100%; } }
+@media (max-width: 767px) { .lb-page { padding: var(--s-4); } .lb-page-head { align-items: flex-start; flex-wrap: wrap; } .lb-navigation { gap: var(--s-1); } .lb-navigation button { padding: var(--s-2) var(--s-3); } .lb-card { padding: var(--s-4); } .lb-search-bar { flex-direction: column; } .lb-page-head .lb-btn { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .logbook-scope *, .logbook-scope *::before, .logbook-scope *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 
 /* Consume the My Skill Activity visual system across the page and portalled drawers. */
@@ -146,7 +138,9 @@ dialog.logbook-scope.lb-drawer {
 }
 .lb-page .lb-navigation { justify-content: flex-start; margin: 0; gap: var(--s-2); padding: var(--s-3); border: 1px solid var(--border); }
 .lb-page .lb-navigation button { min-height: 32px; padding: 0 var(--s-3); border-color: var(--border); background: var(--surface-card); font-size: 12px; font-weight: 600; }
-.lb-page .lb-navigation button.is-active { background: var(--surface-soft); color: var(--text-brand); border-color: var(--activity-hover-line); }
+.lb-page .lb-navigation button.is-active, .lb-page .lb-navigation button.is-active:hover { background: var(--forest); color: var(--on-brand); border-color: var(--forest); }
+.lb-page .lb-navigation button.is-active > svg { color: inherit; }
+.lb-page .lb-navigation button.is-active > span { background: var(--surface-card); color: var(--text-brand); }
 .lb-page .lb-content, .lb-page .lb-stack { gap: var(--s-4); }
 .lb-page :is(.lb-card, .lb-metric) { background: var(--activity-card-fill); border-color: var(--activity-line); box-shadow: var(--activity-shadow); }
 .lb-page .lb-card { padding: var(--s-4); border-radius: var(--r); }
@@ -191,3 +185,7 @@ dialog.logbook-scope.lb-drawer {
 }
 .lb-page .lb-create-card .lb-card-profile:focus-visible { outline: 2px solid var(--mint); outline-offset: var(--s-1); }
 .lb-page .lb-create-card .lb-card-profile:active { transform: scale(.95); transition: none; }
+
+/* Search focus belongs to the rounded composite control, including its icon. */
+.logbook-scope :is(.lb-search, .lb-pending-search) input:focus { outline: none; box-shadow: none; }
+.logbook-scope :is(.lb-search, .lb-pending-search):focus-within { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }

@@ -38,17 +38,7 @@
 .lb-recent-meta { display: grid; gap: var(--s-1); justify-items: end; flex-shrink: 0; }
 .lb-recent-row time { color: var(--text-muted); font-size: var(--fs-micro); font-family: var(--f-code); }
 .lb-recent-row > svg { flex-shrink: 0; }
-.lb-subject-progress { width: 100%; display: grid; gap: var(--s-2); text-align: left; padding: var(--s-3); margin-top: var(--s-2); border: 1px solid var(--activity-line); border-radius: var(--r-sm); background: var(--activity-chart-fill); color: var(--text-body); cursor: pointer; }
-.lb-progress-heading, .lb-progress-caption { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
-.lb-progress-heading strong { font-size: 13px; color: var(--text-strong); }
-.lb-subject-progress small, .lb-progress-caption { font-size: var(--fs-micro); color: var(--text-muted); }
-.lb-progress-heading small { white-space: nowrap; }
-.lb-progress-caption strong { font-family: var(--f-code); }
-.lb-subject-progress progress { appearance: none; width: 100%; height: var(--s-2); border: 0; border-radius: var(--r-pill); background: var(--activity-chart-line); overflow: hidden; }
-.lb-subject-progress progress::-webkit-progress-bar { background: var(--activity-chart-line); }
-.lb-subject-progress progress::-webkit-progress-value { background: var(--activity-chart); border-radius: var(--r-pill); }
-.lb-subject-progress progress::-moz-progress-bar { background: var(--activity-chart); }
-.lb-page .lb-overview :is(.lb-summary-item, .lb-recent-row, .lb-subject-progress):hover { border-color: var(--activity-hover-line); box-shadow: var(--activity-hover-shadow); }
+.lb-page .lb-overview :is(.lb-summary-item, .lb-recent-row):hover { border-color: var(--activity-hover-line); box-shadow: var(--activity-hover-shadow); }
 @media (max-width: 1199px) { .lb-overview-top, .lb-overview-bottom { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 767px) {
   .lb-summary-item:nth-child(2n) > small { left: auto; right: 0; }
@@ -60,3 +50,6 @@
 }
 
 @media (max-width: 1199px) { .lb-summary-strip { overflow-x: auto; scroll-padding: var(--s-1); } }
+
+.lb-active-subject-cards { display: grid; gap: var(--s-2); }
+

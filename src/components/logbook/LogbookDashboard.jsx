@@ -1,7 +1,8 @@
+import LogbookSubjectCard from './LogbookSubjectCard'
 import { useState } from 'react'
 import { ArrowRight, BookOpen, CheckCircle2, Clock3, FilePenLine, ChevronRight, Undo2 } from 'lucide-react'
 import { SUBJECTS } from '../../services/logbookSample'
-import { entryTitle, facultyName, formatDate, skillProgress, subjectProgress, today } from '../../services/logbook'
+import { entryTitle, facultyName, formatDate, skillProgress, today } from '../../services/logbook'
 import { subjectLabel } from '../../services/logbookCatalog'
 import './LogbookDashboard.css'
 
@@ -61,10 +62,7 @@ export default function LogbookDashboard({ entries, onNavigate, onOpen, onSubjec
         {recent.length ? recent.map(entry => <button className="lb-recent-row" key={entry.id} onClick={() => onOpen(entry.id)}><span className="lb-recent-icon"><BookOpen size={18} /></span><span className="lb-recent-name"><strong title={entryTitle(entry)}>{entryTitle(entry)}</strong><small title={subjectLabel(entry.subject)}>{subjectLabel(entry.subject)} / {facultyName(entry.faculty)}</small></span><span className="lb-recent-meta"><span className={`lb-status is-${entry.status.toLowerCase()}`}>{entry.status}</span><time dateTime={entry.date}>{formatDate(entry.date)}</time></span><ChevronRight size={16} /></button>) : <p className="lb-overview-empty">Your entries will appear here once you start logging.</p>}
       </section>
       <section className="lb-overview-panel"><div className="lb-section-head"><h2>Active subjects</h2><button className="lb-text-btn" onClick={() => onNavigate('subjects')}>View all <ArrowRight size={14} /></button></div>
-        {subjects.length ? subjects.map(subject => {
-          const progress = subjectProgress(entries, subject)
-          return <button className="lb-subject-progress" key={subject.name} onClick={() => onSubject(subject.name)}><span className="lb-progress-heading"><strong>{subjectLabel(subject.name)}</strong><small>{subject.count} entries</small></span>{progress.required ? <><progress value={progress.approved} max={progress.required} aria-label={`${subjectLabel(subject.name)}: ${progress.approved} of ${progress.required} required attempts approved`} /><span className="lb-progress-caption"><span>Required attempts approved</span><strong>{progress.approved}/{progress.required}</strong></span></> : <small>Certification requirements not configured</small>}</button>
-        }) : <p className="lb-overview-empty">Subjects appear after you submit an entry.</p>}
+        {subjects.length ? <div className="lb-active-subject-cards">{subjects.map(subject => <LogbookSubjectCard key={subject.name} subject={subject} entries={entries} onSubject={onSubject} />)}</div> : <p className="lb-overview-empty">Subjects appear after you submit an entry.</p>}
       </section>
     </div>
   </div>

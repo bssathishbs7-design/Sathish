@@ -1,23 +1,27 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Clock3, LayoutDashboard, LoaderCircle, Plus, Search, UserRound } from 'lucide-react'
+import { BookOpen, Clock3, FilePenLine, LayoutDashboard, LoaderCircle, Plus, Search, UserRound } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
+import SubjectView from '../components/logbook/LogbookSubjectDetail'
+import PendingView from '../components/logbook/LogbookPendingView'
 import LogbookSubjects from '../components/logbook/LogbookSubjects'
 import LogbookDashboard from '../components/logbook/LogbookDashboard'
 import LogbookBoundary from '../components/logbook/LogbookBoundary'
 import LogbookEntryForm from '../components/logbook/LogbookEntryForm'
 import LogbookEntryDetail from '../components/logbook/LogbookEntryDetail'
-import { EntryList, PendingView, ProfileView, SearchView, SubjectView } from '../components/logbook/LogbookViews'
+import { EntryList, ProfileView, SearchView } from '../components/logbook/LogbookViews'
 import { listLogbookEntries, resetLogbook, STORAGE_KEY, today } from '../services/logbook'
 import { SUBJECTS } from '../services/logbookSample'
 import '../styles/medsy/question-sort-tokens.css'
 import '../styles/ospe-activity.css'
 import '../styles/my-skills.css'
 import './LogbookPage.css'
+import '../components/logbook/LogbookStatus.css'
 
 const NAVIGATION = [
-  { name: 'home', label: 'Overview', icon: LayoutDashboard },
+  { name: 'home', label: 'Dashboard', icon: LayoutDashboard },
   { name: 'subjects', label: 'Subjects', icon: BookOpen },
   { name: 'pending', label: 'Pending', icon: Clock3 },
+  { name: 'draft', label: 'Draft', icon: FilePenLine },
   { name: 'search', label: 'Search', icon: Search },
 ]
 
@@ -53,7 +57,7 @@ function LogbookContent({ route, onNavigate, onBack, onForward, canBack, canForw
   }, [notice])
   const selected = entries.find((entry) => entry.id === selectedId)
   const subject = SUBJECTS.find((item) => item.name === route.id)
-  const title = route.name === 'profile' ? 'My profile' : route.name === 'subject' ? subject?.name || 'Subjects' : route.name === 'faculty' ? 'Faculty verification' : NAVIGATION.find((item) => item.name === route.name)?.label || 'Overview'
+  const title = route.name === 'profile' ? 'My profile' : route.name === 'subject' ? subject?.name || 'Subjects' : route.name === 'faculty' ? 'Faculty verification' : NAVIGATION.find((item) => item.name === route.name)?.label || 'Dashboard'
   const navigate = (name, id, status) => onNavigate({ name, id, status })
   const newEntry = (subjectName = '', cat = '', skill) => {
     setSelectedId(null)
@@ -89,14 +93,15 @@ function LogbookContent({ route, onNavigate, onBack, onForward, canBack, canForw
         <button className="tool-btn my-skills-live-card-cta lb-new-entry-btn" disabled={loading || Boolean(failure)} onClick={() => newEntry(route.name === 'subject' ? subject?.name : '')}><Plus size={16} />New entry</button>
       </div>
     </header>
-    <nav className="my-skills-toolbar lb-navigation" aria-label="Logbook views">{NAVIGATION.map(({ name, label, icon }) => { const NavIcon = icon; return <button key={name} className={`my-skills-filter-chip ${(route.name === name || (name === 'subjects' && route.name === 'subject')) ? 'is-active' : ''}`} aria-current={(route.name === name || (name === 'subjects' && route.name === 'subject')) ? 'page' : undefined} onClick={() => navigate(name)}><NavIcon size={15} />{label}{name === 'pending' && <span>{entries.filter((entry) => entry.status === 'Pending').length}</span>}</button> })}</nav>
+    <nav className="my-skills-toolbar lb-navigation" aria-label="Logbook views">{NAVIGATION.filter(item => item.name !== 'search').map(({ name, label, icon }) => { const NavIcon = icon; return <button key={name} className={`my-skills-filter-chip ${(route.name === name || (name === 'subjects' && route.name === 'subject')) ? 'is-active' : ''}`} aria-current={(route.name === name || (name === 'subjects' && route.name === 'subject')) ? 'page' : undefined} onClick={() => navigate(name)}><NavIcon size={15} />{label}{name === 'subjects' && <span>{SUBJECTS.length}</span>}{['pending', 'draft'].includes(name) && <span>{entries.filter(entry => entry.status === (name === 'pending' ? 'Pending' : 'Draft')).length}</span>}</button> })}</nav>
     {notice && <div className="lb-toast" role="status">{notice}</div>}
     {failure && <div className="lb-alert lb-error" role="alert">{failure}<button className="lb-btn" onClick={() => window.location.reload()}>Reload</button></div>}
     {loading ? <div className="lb-empty" role="status"><LoaderCircle size={25} className="lb-spin" /><p>Loading your Logbook…</p></div> : !failure && <div className="lb-content">
       {route.name === 'home' && <LogbookDashboard onEdit={edit} onRemedial={remedial} entries={entries} onNavigate={navigate} onOpen={setSelectedId} onSubject={(id) => navigate('subject', id)} />}
       {route.name === 'subjects' && <LogbookSubjects entries={entries} onSubject={(id) => navigate('subject', id)} />}
-      {route.name === 'subject' && subject && <SubjectView key={subject.name} subject={subject} entries={entries} onOpen={setSelectedId} onNew={newEntry} />}
-      {route.name === 'pending' && <PendingView entries={entries} onOpen={setSelectedId} />}
+      {route.name === 'subject' && subject && <SubjectView theme={theme} key={subject.name} subject={subject} entries={entries} onOpen={setSelectedId} onNew={newEntry} />}
+      {route.name === 'pending' && <PendingView key="pending" entries={entries} onOpen={setSelectedId} />}
+      {route.name === 'draft' && <PendingView key="draft" draftsOnly entries={entries} onOpen={setSelectedId} />}
       {route.name === 'search' && <SearchView key={route.status || 'all'} entries={entries} onOpen={setSelectedId} initialStatus={route.status} />}
       {route.name === 'profile' && <ProfileView entries={entries} identity={identity} onReset={reset} busy={resetting} />}
       {route.name === 'faculty' && <section className="lb-card"><div className="lb-section-head"><h2>Logbook verification</h2><span className="lb-sample">Faculty demo</span></div><p className="lb-muted">Review submitted entries, provide feedback and approve or return an attempt.</p><EntryList entries={entries.filter((entry) => entry.status === 'Pending')} onOpen={setSelectedId} empty="No Logbook entries awaiting verification." /></section>}
