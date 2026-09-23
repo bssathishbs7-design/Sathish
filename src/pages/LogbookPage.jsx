@@ -10,6 +10,8 @@ import LogbookEntryForm from '../components/logbook/LogbookEntryForm'
 import LogbookEntryDetail from '../components/logbook/LogbookEntryDetail'
 import { EntryList, ProfileView, SearchView } from '../components/logbook/LogbookViews'
 import { listLogbookEntries, resetLogbook, STORAGE_KEY, today } from '../services/logbook'
+import LogbookStudentWorkflow from '../components/logbook/LogbookStudentWorkflow'
+import { belongsTo } from '../services/adminLogbook'
 import { SUBJECTS } from '../services/logbookSample'
 import '../styles/medsy/question-sort-tokens.css'
 import '../styles/ospe-activity.css'
@@ -27,6 +29,7 @@ const NAVIGATION = [
  * @param {{route:{name:string,id?:string,status?:string}, onNavigate:Function, onBack:Function, onForward:Function, canBack:boolean, canForward:boolean, theme:string, identity:Object}} props
  */
 function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, canBack, canForward, theme, identity }) {
+  const studentId = identity.id || identity.registerId
   const legacyStatus = { pending: 'Pending', draft: 'Draft', approved: 'Approved' }[requestedRoute.name]
   const route = legacyStatus ? { ...requestedRoute, name: 'search', status: legacyStatus } : requestedRoute
   const [entries, setEntries] = useState([])
@@ -40,7 +43,7 @@ function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, 
   useEffect(() => {
     let active = true
     const refresh = async () => {
-      try { const rows = await listLogbookEntries(); if (active) { setEntries(rows); setFailure('') } }
+      try { const rows = await listLogbookEntries(); if (active) { setEntries(rows.filter(entry => belongsTo(entry, studentId))); setFailure('') } }
       catch (error) { if (active) setFailure(error.message) }
       finally { if (active) setLoading(false) }
     }
@@ -49,7 +52,7 @@ function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, 
     window.addEventListener('medsy-logbook-changed', refresh)
     window.addEventListener('storage', storage)
     return () => { active = false; window.removeEventListener('medsy-logbook-changed', refresh); window.removeEventListener('storage', storage) }
-  }, [])
+  }, [studentId])
   useEffect(() => {
     if (!notice) return undefined
     const timer = window.setTimeout(() => setNotice(''), 4500)
@@ -61,16 +64,18 @@ function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, 
   const navigate = (name, id, status) => onNavigate({ name, id, status })
   const newEntry = (subjectName = '', cat = '', skill) => {
     setSelectedId(null)
-    setForm({ mode: 'new', entry: { id: crypto.randomUUID(), subject: subjectName, cat, date: today(), status: 'Draft', faculty: '', values: skill ? { competency: skill.code, activity: skill.name } : {}, extra: {} } })
+    setForm({ mode: 'new', entry: { id: crypto.randomUUID(), studentId, subject: subjectName, cat, date: today(), status: 'Draft', faculty: '', values: skill ? { competency: skill.code, activity: skill.name } : {}, extra: {} } })
   }
   const edit = (entry) => { setSelectedId(null); setForm({ mode: 'edit', entry }) }
   const remedial = (entry) => {
+    const child = entries.find(item => item.linkedTo === entry.id && item.status !== 'Returned')
+    if (child) { if (child.status === 'Draft') edit(child); else setSelectedId(child.id); return }
     setSelectedId(null)
-    setForm({ mode: 'remedial', entry: { id: crypto.randomUUID(), subject: entry.subject, cat: entry.cat, date: today(), status: 'Draft', faculty: entry.faculty, linkedTo: entry.id, values: { competency: entry.values.competency || '', activity: entry.values.activity || '' }, extra: {} } })
+    setForm({ mode: 'remedial', entry: { id: crypto.randomUUID(), studentId, subject: entry.subject, cat: entry.cat, date: today(), status: 'Draft', faculty: entry.faculty, linkedTo: entry.id, values: { competency: entry.values.competency || '', activity: entry.values.activity || '' }, extra: {} } })
   }
   const reset = async () => {
     setResetting(true)
-    try { await resetLogbook(); setCommentDrafts({}); setSelectedId(null); setNotice('Sample Logbook restored.') }
+    try { await resetLogbook(studentId); setCommentDrafts({}); setSelectedId(null); setNotice('Sample Logbook restored.') }
     catch (error) { setFailure(error.message) }
     finally { setResetting(false) }
   }
@@ -92,9 +97,10 @@ function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, 
     {notice && <div className="lb-toast" role="status">{notice}</div>}
     {failure && <div className="lb-alert lb-error" role="alert">{failure}<button className="lb-btn" onClick={() => window.location.reload()}>Reload</button></div>}
     {loading ? <div className="lb-empty" role="status"><LoaderCircle size={25} className="lb-spin" /><p>Loading your Logbook…</p></div> : !failure && <div className="lb-content">
+      {route.name === 'home' && <LogbookStudentWorkflow entries={entries} onEdit={edit} />}
       {route.name === 'home' && <LogbookDashboard onEdit={edit} onRemedial={remedial} entries={entries} onNavigate={navigate} onOpen={setSelectedId} onSubject={(id) => navigate('subject', id)} />}
       {route.name === 'subjects' && <LogbookSubjects entries={entries} onSubject={(id) => navigate('subject', id)} />}
-      {route.name === 'subject' && subject && <SubjectView theme={theme} key={subject.name} subject={subject} entries={entries} onOpen={setSelectedId} onNew={newEntry} />}
+      {route.name === 'subject' && subject && <SubjectView theme={theme} key={subject.name} subject={subject} entries={entries} onOpen={setSelectedId} onNew={newEntry} studentId={studentId} onChanged={setNotice} />}
       {route.name === 'search' && <SearchView key={route.status || 'all'} entries={entries} onOpen={setSelectedId} initialStatus={route.status} />}
       {route.name === 'profile' && <ProfileView entries={entries} identity={identity} onReset={reset} busy={resetting} />}
       {route.name === 'faculty' && <section className="lb-card"><div className="lb-section-head"><h2>Logbook verification</h2><span className="lb-sample">Faculty demo</span></div><p className="lb-muted">Review submitted entries, provide feedback and approve or return an attempt.</p><EntryList entries={entries.filter((entry) => entry.status === 'Pending')} onOpen={setSelectedId} empty="No Logbook entries awaiting verification." /></section>}

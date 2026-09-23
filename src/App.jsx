@@ -21,6 +21,10 @@ import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import StartEvaluationPage from './pages/StartEvaluationPage'
 import ExamLogPage from './pages/ExamLogPage'
 import MySkillActivityPage from './pages/MySkillActivityPage'
+import useAdminLogbookRoute from './services/useAdminLogbookRoute'
+import AdminLogbookPage from './pages/AdminLogbookPage'
+import LogbookAccountDrawer from './components/logbook/LogbookAccountDrawer'
+import { LEARNERS as LOGBOOK_LEARNERS, REVIEWERS as LOGBOOK_REVIEWERS } from './services/logbookPeople'
 import LogbookPage from './pages/LogbookPage'
 import ProgressTrackingPage from './pages/ProgressTrackingPage'
 import ActivityResultPage from './pages/ActivityResultPage'
@@ -44,6 +48,7 @@ import './styles/overall-analytics-theme.css'
 import './styles/student-result-theme.css'
 
 const PAGE_PATHS = {
+  [APP_PAGES.ADMIN_LOGBOOK]: '/adminLogbook',
   [APP_PAGES.DASHBOARD]: '/',
   [APP_PAGES.CONFIGURATION]: '/skills/configuration',
   [APP_PAGES.EVALUATION]: '/skills/evaluation',
@@ -501,6 +506,13 @@ function App() {
     ?? readStoredStartEvaluationRecord()
     ?? completedEvaluationRows.find((row) => row.activityRecord)?.activityRecord
     ?? null
+  const [adminLogbookView, navigateAdminLogbook] = useAdminLogbookRoute()
+  const [logbookAccounts, setLogbookAccounts] = useState(() => { try { return JSON.parse(localStorage.getItem('medsy-logbook-accounts')) || {} } catch { return {} } })
+  const [logbookAccountOpen, setLogbookAccountOpen] = useState(false)
+  const logbookFaculty = LOGBOOK_REVIEWERS.find(person => person.id === logbookAccounts.faculty) || LOGBOOK_REVIEWERS[0]
+  const logbookStudent = LOGBOOK_LEARNERS.find(person => person.id === logbookAccounts.student) || LOGBOOK_LEARNERS[0]
+  const isLogbookWorkspace = [APP_PAGES.ADMIN_LOGBOOK, APP_PAGES.LOGBOOK].includes(activePage)
+  const logbookAccount = activePage === APP_PAGES.ADMIN_LOGBOOK ? logbookFaculty : logbookStudent
   const profileUser = {
     name: 'Karthik Subramanian',
     registerId: 'MC2568',
@@ -1339,16 +1351,20 @@ function App() {
             onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
             isProfileMenuOpen={isProfileMenuOpen}
             onToggleProfileMenu={() => setIsProfileMenuOpen((open) => !open)}
-            profileUser={profileUser}
+            profileUser={isLogbookWorkspace ? { ...logbookAccount, registerId: logbookAccount.id } : profileUser}
+            onLogbookAccount={isLogbookWorkspace ? () => { setIsProfileMenuOpen(false); setLogbookAccountOpen(true) } : undefined}
             onEditProfile={handleEditProfile}
             onSignOut={handleSignOut}
             profileToast={profileToast}
           />
         ) : null}
 
+        {logbookAccountOpen && isLogbookWorkspace && <LogbookAccountDrawer theme={theme} mode={navigationMode} account={logbookAccount} onClose={() => setLogbookAccountOpen(false)} onSelect={id => { const next = { ...logbookAccounts, [navigationMode]: id }; try { localStorage.setItem('medsy-logbook-accounts', JSON.stringify(next)); setLogbookAccounts(next); setLogbookAccountOpen(false) } catch { showAlert({ tone: 'danger', message: 'Unable to save account selection.' }) } }} />}
         <div key={activePage} className={`vx-page-surface vx-page-dissolve ${isExamMode ? 'is-exam-surface' : ''} ${shouldShowMobileUnsupported ? 'is-mobile-unsupported-surface' : ''}`}>
           {shouldShowMobileUnsupported ? (
             <MobileUnsupportedPage />
+          ) : activePage === APP_PAGES.ADMIN_LOGBOOK ? (
+            <AdminLogbookPage key={logbookFaculty.id} theme={theme} actor={logbookFaculty} view={adminLogbookView} onNavigate={navigateAdminLogbook} />
           ) : activePage === APP_PAGES.DASHBOARD ? (
             <DashboardSummaryPage
               onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}
@@ -1567,7 +1583,7 @@ function App() {
               }}
             />
           ) : activePage === APP_PAGES.LOGBOOK ? (
-            <LogbookPage
+            <LogbookPage key={logbookStudent.id}
               route={logbookNavigation.route}
               onNavigate={navigateLogbook}
               onBack={goBackLogbook}
@@ -1575,7 +1591,7 @@ function App() {
               canForward={logbookNavigation.future.length > 0}
               canBack={logbookNavigation.history.length > 0}
               theme={theme}
-              identity={profileUser}
+              identity={logbookStudent}
             />
           ) : activePage === APP_PAGES.MY_SKILL_ACTIVITY ? (
             <MySkillActivityPage

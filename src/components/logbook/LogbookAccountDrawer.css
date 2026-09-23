@@ -1,0 +1,5 @@
+.lb-account-row { display: grid; gap: var(--s-1); padding: var(--s-3); text-align: left; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); color: var(--text-strong); cursor: pointer; }
+.lb-account-row small { color: var(--text-muted); }
+.lb-account-row:hover, .lb-account-row[aria-pressed=true] { border-color: var(--forest); background: var(--surface-soft); }
+.lb-account-row:active { transform: scale(.97); }
+.lb-account-row:focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); }

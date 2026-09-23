@@ -54,11 +54,12 @@ test('service lifecycle retains links, locks approved records, appends comments 
   try {
     await saveLogbookEntry(entry(), true)
     assert.equal(applyDeltas(readDeltas())[0].status, 'Pending')
-    await updateLogbookEntry('test-entry', 'review', { status: 'Returned', remarks: 'Repeat the attempt.' })
+    const actor = { id: 'RM', departments: ['Human Anatomy'] }
+    await updateLogbookEntry('test-entry', 'review', { status: 'Returned', remarks: 'Repeat the attempt.', actor, attempt: 'F', rating: 'B' })
     await assert.rejects(saveLogbookEntry(entry(), true), /already been reviewed/)
     await saveLogbookEntry(entry({ id: 'remedial', linkedTo: 'test-entry' }), true)
     await assert.rejects(saveLogbookEntry(entry({ id: 'duplicate', linkedTo: 'test-entry' }), true), /already exists/)
-    await updateLogbookEntry('remedial', 'review', { status: 'Approved' })
+    await updateLogbookEntry('remedial', 'review', { status: 'Approved', actor, attempt: 'Re', rating: 'M' })
     await assert.rejects(updateLogbookEntry('remedial', 'withdraw'), /Only drafts/)
     await updateLogbookEntry('remedial', 'notes', { text: 'Independent note' })
     await updateLogbookEntry('remedial', 'comment', { text: 'First' })

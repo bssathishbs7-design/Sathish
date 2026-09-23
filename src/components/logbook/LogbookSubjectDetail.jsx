@@ -1,3 +1,5 @@
+import { StudentSubjectApproval } from './LogbookSignoff'
+import { awaitingRemedial } from '../../services/logbookPeople'
 import { useState } from 'react'
 import { Activity, Bone, BookOpen, FlaskConical, Microscope, Search, Stethoscope } from 'lucide-react'
 import { CATEGORIES } from '../../services/logbookSample'
@@ -13,7 +15,7 @@ const SUBJECT_ICONS = { AN: Bone, PY: Activity, BI: FlaskConical, PA: Microscope
 /** Subject workspace with category-grouped entries and responsive navigation.
  * @param {{subject:Object,entries:Object[],onOpen:Function,onNew:Function}} props
  */
-export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew }) {
+export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew, studentId, theme, onChanged }) {
   const SubjectIcon = SUBJECT_ICONS[subject.code] || (subject.phase === 'Phase III' ? Stethoscope : BookOpen)
   const [selectedCategory, setSelection] = useState('all')
   const [query, setQuery] = useState('')
@@ -38,14 +40,15 @@ export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew }
       <div className="lb-detail-title"><div className="lb-detail-subject-copy"><div><h2>{subjectLabel(subject.name)}</h2><span>{subject.phase} / {subject.subtitle}</span></div><small>{progress.required ? <><strong>{progress.approved}/{progress.required}</strong> attempts approved</> : 'Requirements not configured'}</small></div>{progress.required > 0 && <span className="lb-detail-percent" aria-label={`${progress.percent}% of required attempts approved`}>{progress.percent}%</span>}</div>
       <label className="lb-search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search subject entries" placeholder="Search entries" value={query} onChange={event => setQuery(event.target.value)} /></label>
     </header>
+    <StudentSubjectApproval subject={subject.name} studentId={studentId} entries={entries} theme={theme} onChanged={onChanged} />
     <div className="lb-detail-columns">
       <LogbookCategoryMenu options={options} value={selection} onChange={setSelection} />
       <div className="lb-detail-groups" aria-live="polite">
         {groups.map(group => { const CategoryIcon = CATEGORY_ICONS[group.id] || BookOpen; return <section className="lb-detail-panel" key={group.id}>
-          <header className="lb-detail-category-heading"><span className="lb-detail-category-icon"><CategoryIcon size={16} aria-hidden="true" /></span><div><h3>{group.name}</h3><p>{group.showSkills && <><span>{visibleSkills.length}</span> {visibleSkills.length === 1 ? 'skill' : 'skills'} ? </>}<span>{group.entries.length}</span> {group.entries.length === 1 ? 'entry' : 'entries'}</p></div></header>
+          <header className="lb-detail-category-heading"><span className="lb-detail-category-icon"><CategoryIcon size={16} aria-hidden="true" /></span><div><h3>{group.name}</h3><p>{group.showSkills && <><span>{visibleSkills.length}</span> {visibleSkills.length === 1 ? 'skill' : 'skills'} / </>}<span>{group.entries.length}</span> {group.entries.length === 1 ? 'entry' : 'entries'}</p></div></header>
           {group.showSkills && <div className="lb-detail-certification">
       <div className="lb-detail-skills">{visibleSkills.map(skill => {
-        const remedial = skill.attempts.some(entry => entry.status === 'Returned' && !entries.some(child => child.linkedTo === entry.id && child.status !== 'Returned'))
+        const remedial = skill.attempts.some(entry => awaitingRemedial(entry, entries))
         const status = skill.complete ? 'Certified' : remedial ? 'Remedial due' : skill.attempts.some(entry => entry.status !== 'Draft') ? 'In progress' : 'Not started'
         return <div className="lb-detail-skill" key={skill.code}>
           <span className="lb-detail-skill-icon"><BookOpen size={18} aria-hidden="true" /></span><div className="lb-detail-skill-name"><strong>{skill.name}</strong><span className="lb-code">{skill.code}</span></div>

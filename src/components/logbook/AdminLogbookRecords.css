@@ -1,0 +1,12 @@
+.admin-record-flags { display: flex; gap: var(--s-1); color: var(--text-muted); }
+.admin-record-flags:empty, .admin-entry-open small:empty { display: none; }
+.admin-group-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin: var(--s-3) 0 var(--s-2); }
+.admin-group-heading h3 { font-size: 13px; margin: 0; }
+.admin-group-heading small { color: var(--text-muted); font-size: var(--fs-micro); }
+.admin-progress-summary { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.admin-progress-summary span { border: 1px solid var(--border); border-radius: var(--r-pill); padding: var(--s-1) var(--s-2); font-size: 12px; color: var(--text-body); }
+.admin-requirements { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s-2); }
+.admin-requirements > div { padding: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.admin-requirements small { display: block; color: var(--text-muted); font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.admin-skill-progress { width: 100%; accent-color: var(--forest); height: var(--s-2); }
+.admin-logbook-page .admin-card-grid .lb-empty { grid-column: 1 / -1; }

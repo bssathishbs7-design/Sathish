@@ -210,3 +210,30 @@
 - Removed the Review Logbook shortcut from the Approval Queue header.
 
 - Added Faculty/Student header navigation modes. Student shows My Skill Activity, My Logbook, My Assessment and Learn & Practice; Faculty shows other menus. Mode and last destinations are persisted, direct links select their matching mode, and switching away from an edited form asks for confirmation.
+
+- Added Admin Logbook at /adminLogbook directly after Skills in the Faculty navigation.
+# Admin Logbook faculty workflow — 23 September 2026
+
+- Expanded Admin Logbook into Overview, Queue, Students, Subjects, Categories, Skills, History, Sign-offs and Search; mobile uses a section selector.
+- Reviews are scoped to the demo faculty department and assigned reviewer. Certifiable entries require grading; returns require feedback; bulk approval excludes individually graded entries. Reassignment records an audit event.
+- Faculty can assign entries to a student or cohort. Assigned work appears in the student's Dashboard, retains its subject/category/reviewer, and returns to the faculty queue after submission. Only unsubmitted assignments can be cancelled.
+- Faculty mark subject logbooks ready; learners submit through the configurable final approval chain. Each submission snapshots its approvers; returns allow resubmission and retain history.
+- Learner views show only the current demo student's entries. Faculty identity selection is explicitly a local demo control pending authenticated backend integration.
+# Admin Logbook compact navigation — 23 September 2026
+
+- Moved navigation into the shared Logbook header. Dashboard, Queue, Students and Subjects remain directly visible; More views contains Categories, Skills, History, Sign-offs and Search. Mobile retains the complete section selector. Review and approval workflows are unchanged.
+
+- Removed the Admin Logbook department/demo reviewer strip at user request. The page retains its default faculty reviewer; the demo identity switch is no longer exposed.
+
+- Admin Logbook navigation now displays every available section in one separate tab card below the header. Removed More views and the mobile selector; smaller screens scroll the same single row horizontally.
+
+- Removed the Final logbook approval section and its submission/history controls from the learner Dashboard at user request. Assigned activities remain available; existing sign-off records are retained.
+
+## Connected Logbook workflow — 23 September 2026
+
+- Connected learner and faculty records to the selected sample account, available inside the existing profile menu. Kept the removed reviewer strip out of the page. The local account preview is not authentication.
+- Ordinary returned entries now support corrections and same-entry resubmission; graded returns use linked remedial attempts. Draft remedials remain outstanding until submitted, and existing drafts are resumed instead of duplicated.
+- Assignments accept schema-specific fixed task details, optional deadlines and contextual student selection. Learners save progress without leaving To do, then submit to the assigning faculty. Returned assignments retain their Returned state while corrections are saved.
+- Added subject-level readiness and learner final-approval submission in a compact row and shared drawer. Subject-specific approval chains are snapshotted at submission; each approver can approve or return with feedback. The removed dashboard approval card stays removed.
+- Faculty navigation now preserves tabs, filters and drilldowns in browser history. Queue grouping, eligible bulk approval, department browsing, student/category/skill progress and dated decision history use shared records.
+- Dashboard metrics open their matching records, including outstanding remedial work, assignments and recent certification decisions. Learner resets preserve other students and subject chain settings. Stale forms cannot overwrite a newer decision or reassignment.

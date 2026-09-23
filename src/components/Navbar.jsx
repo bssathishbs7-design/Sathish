@@ -47,6 +47,7 @@ export default function Navbar({
   onToggleProfileMenu,
   profileUser,
   onEditProfile,
+  onLogbookAccount,
   onSignOut,
   profileToast,
 }) {
@@ -96,7 +97,7 @@ export default function Navbar({
             aria-haspopup="menu"
             onClick={onToggleProfileMenu}
           >
-            <span className="avatar" aria-hidden="true">KS</span>
+            <span className="avatar" aria-hidden="true">{profileUser.name.split(' ').filter(Boolean).map(word => word[0]).slice(0, 2).join('')}</span>
             <div>
               <strong>{profileUser.name}</strong>
               <p>{profileUser.registerId}</p>
@@ -109,13 +110,14 @@ export default function Navbar({
           {isProfileMenuOpen ? (
             <div className="vx-profile-tooltip" role="menu" aria-label="Profile menu">
               <div className="vx-profile-tooltip-head">
-                <span className="avatar vx-profile-avatar" aria-hidden="true">KS</span>
+                <span className="avatar vx-profile-avatar" aria-hidden="true">{profileUser.name.split(' ').filter(Boolean).map(word => word[0]).slice(0, 2).join('')}</span>
                 <div>
                   <strong>{profileUser.name}</strong>
                   <p>{profileUser.registerId}</p>
                 </div>
               </div> 
               <div className="vx-profile-divider" />
+              {onLogbookAccount && <button type="button" className="vx-profile-action" onClick={onLogbookAccount}><span><strong>Logbook account</strong><small>Switch sample account</small></span></button>}
               <button type="button" className="vx-profile-action" onClick={onEditProfile}>
                 <span className="vx-profile-action-icon" aria-hidden="true">
                   <UserPen size={16} strokeWidth={2} />

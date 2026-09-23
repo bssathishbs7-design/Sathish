@@ -1,0 +1,61 @@
+/* Admin views consume the same header, cards, metrics and navigation as My Logbook. */
+.admin-logbook-shell { display: grid; gap: var(--s-3); min-width: 0; }
+.admin-page-head .my-skills-overview-main { min-width: 0; }
+.admin-page-head .my-skills-overview-copy { display: grid; gap: var(--s-2); }
+.admin-page-head .my-skills-overview-copy p { margin: 0; }
+.admin-logbook-page .admin-action-card { cursor: default; }
+.admin-logbook-page .admin-action-card:is(:hover, :focus-within) { transform: none; }
+.admin-logbook-page .admin-action-card .lb-new-entry-btn { animation: none; min-height: 40px; }
+.admin-logbook-page .admin-logbook-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+.admin-logbook-metrics .lb-summary-item { cursor: pointer; }
+.admin-logbook-page .admin-logbook-metrics[data-count="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.admin-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); min-width: 0; align-items: start; }
+.admin-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
+.admin-tile { display: grid; grid-template-columns: 1fr auto; gap: var(--s-1) var(--s-3); width: 100%; text-align: left; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r); background: var(--activity-card-fill); color: var(--text-strong); cursor: pointer; transition: border-color var(--dur-hover) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard); }
+.admin-tile strong { font-size: 13px; }
+.admin-tile small { color: var(--text-muted); grid-column: 1; font-size: var(--fs-micro); }
+.admin-tile svg { grid-column: 2; grid-row: 1; color: var(--text-muted); }
+.admin-tile span { font-family: var(--f-code); font-size: var(--fs-micro); }
+.admin-tile:hover, .admin-entry:hover { border-color: var(--activity-hover-line); box-shadow: var(--activity-hover-shadow); }
+.admin-tile:active, .admin-entry-open:active { transform: translateY(1px) scale(.97); transition: none; }
+.admin-tile:focus-visible, .admin-entry-open:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.admin-overview-grid .admin-tile + .admin-tile { margin-top: var(--s-2); }
+.admin-entry-list { display: grid; gap: var(--s-2); }
+.admin-entry { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); border: 1px solid var(--border); border-radius: var(--r); background: var(--activity-card-fill); padding: 0 var(--s-3); min-width: 0; }
+.admin-entry-open { display: flex; flex: 1; min-width: 0; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; background: none; border: 0; color: var(--text-strong); text-align: left; cursor: pointer; }
+.admin-entry-open > span:first-child { display: grid; flex: 1; min-width: 0; gap: var(--s-1); overflow-wrap: anywhere; }
+.admin-entry-open strong { font-size: 13px; }
+.admin-entry-meta { display: grid; justify-items: end; gap: var(--s-1); flex: none; }
+.admin-entry-open > span:first-child small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-entry-open small { color: var(--text-muted); font-size: var(--fs-micro); }
+.admin-entry-open > svg { color: var(--text-muted); flex: none; }
+.admin-filters { display: flex; align-items: end; gap: var(--s-2); flex-wrap: wrap; }
+.admin-logbook-page .admin-filters .lb-search { flex: 1 1 240px; min-height: 40px; padding: 0 var(--s-3); box-shadow: none; }
+.admin-logbook-page .admin-filters .lb-search input { padding: var(--s-2) 0; min-height: 38px; font-size: 13px; }
+.admin-filters select, .admin-filters input[type=date] { min-height: 40px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); padding: var(--s-2); max-width: 100%; font-size: 12px; }
+.admin-date { display: grid; gap: var(--s-1); color: var(--text-muted); font-size: var(--fs-micro); }
+.admin-back { justify-self: start; }
+.admin-skill-student { padding: var(--s-3); display: grid; gap: var(--s-3); }
+.admin-logbook-page .lb-card { min-width: 0; }
+.admin-logbook-page .lb-card h2 { font-size: 16px; letter-spacing: -.03em; margin: 0; }
+.admin-logbook-page .lb-card > h2 { margin-bottom: var(--s-3); }
+.admin-logbook-page .lb-card.lb-stack > h2 { margin: 0; }
+.admin-logbook-page .lb-section-head { margin-bottom: var(--s-3); }
+.admin-logbook-page .lb-card.lb-stack { gap: var(--s-3); }
+.admin-logbook-page .lb-card > .lb-muted { margin: 0; font-size: 12px; }
+.admin-logbook-page .lb-alert { display: flex; gap: var(--s-3); justify-content: space-between; align-items: center; padding: var(--s-2) var(--s-3); font-size: 13px; }
+.admin-logbook-page details > summary { padding: var(--s-2) 0; font-size: 13px; }
+@media (max-width: 1023px) { .admin-overview-grid { grid-template-columns: 1fr; } .admin-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) {
+ .admin-logbook-page .admin-logbook-metrics, .admin-logbook-page .admin-logbook-metrics[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ .admin-card-grid { grid-template-columns: 1fr; }
+ .admin-entry-open { flex-wrap: wrap; }
+ .admin-entry-open > span:first-child { flex-basis: 100%; }
+ .admin-filters > * { width: 100%; }
+ .admin-logbook-page .admin-page-head { gap: var(--s-3); }
+}
+@media (prefers-reduced-motion: reduce) { .admin-tile { transition: none; } }
+
+.admin-logbook-page .lb-navigation.admin-tabs { display: flex; flex-wrap: nowrap; align-self: auto; gap: var(--s-2); margin: 0; padding: var(--s-3); min-width: 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); background: var(--activity-card-fill); box-shadow: var(--activity-shadow); scrollbar-width: thin; }
+.admin-logbook-page .admin-tabs button { flex: 0 0 auto; white-space: nowrap; }
+.admin-logbook-page .admin-page-head .my-skills-overview-main { grid-template-rows: auto 1fr; }

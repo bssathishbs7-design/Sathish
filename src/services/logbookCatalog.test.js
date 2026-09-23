@@ -1,3 +1,4 @@
+import { eligibleReviewers } from './logbookPeople.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { CATEGORIES, SUBJECTS, availableLogCategories, changeLogSelection, getLogbookGroups, recentLogCategories, subjectLabel } from './logbookCatalog.js'
@@ -35,7 +36,7 @@ test('all category and subject schemas submit with their required inputs only', 
  for(const subject of SUBJECTS) for(const category of availableLogCategories(subject.name)) {
   const values={}
   for(const field of fields(category.id,subject.name)) if(field.required && field.key!=='date') values[field.key]=field.options?.[0] || (field.type==='number'?'1':field.type==='date'?'2026-01-01':'Test record')
-  const record={subject:subject.name,cat:category.id,date:'2026-01-02',values,faculty:'RM',fAck:true}
+  const record={subject:subject.name,cat:category.id,date:'2026-01-02',values,faculty:eligibleReviewers(subject.name)[0].id,fAck:true}
   assert.deepEqual(validateEntry(record,true,'2026-09-21'),{},subject.name+' '+category.id)
  }
 })

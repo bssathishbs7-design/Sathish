@@ -1,5 +1,7 @@
 import { getLogbookGroups } from './logbookSchemas.js'
-import { CATEGORIES, FACULTY, SAMPLE_ENTRIES, SUBJECTS } from './logbookSample.js'
+import { CATEGORIES, COHORT_ENTRIES, FACULTY, SAMPLE_ENTRIES, SUBJECTS } from './logbookSample.js'
+import { belongsTo, isGraded, eligibleReviewers } from './logbookPeople.js'
+import { collectSkills } from './logbookProgress.js'
 
 /**
  * @typedef {Object} LogbookEntry
@@ -7,7 +9,7 @@ import { CATEGORIES, FACULTY, SAMPLE_ENTRIES, SUBJECTS } from './logbookSample.j
  * @property {string} subject Subject catalogue name.
  * @property {string} cat Category catalogue ID.
  * @property {string} date Local ISO date (YYYY-MM-DD).
- * @property {'Draft'|'Pending'|'Approved'|'Returned'} status
+ * @property {'Draft'|'Pending'|'Approved'|'Returned'|'To do'} status
  * @property {string} faculty Faculty catalogue ID.
  * @property {string} [linkedTo] Returned parent entry ID.
  * @property {Object<string,string>} values Schema field values.
@@ -42,7 +44,7 @@ export function readDeltas(storage = window.localStorage) {
 }
 
 /** Pure reconciliation: tombstones apply to seeds and added entries alike. */
-export function applyDeltas(deltas, seeds = SAMPLE_ENTRIES) {
+export function applyDeltas(deltas, seeds = [...SAMPLE_ENTRIES, ...COHORT_ENTRIES]) {
   const entries = [...deltas.added, ...seeds.filter((seed) => !deltas.added.some((entry) => entry.id === seed.id))]
   return entries.filter((entry) => !deltas.removed.includes(entry.id)).map((entry) => {
     const edit = deltas.edits[entry.id] || {}
@@ -55,7 +57,7 @@ export function validateEntry(entry, submit = false, now = today()) {
   const subject = SUBJECTS.find((item) => item.name === entry.subject)
   const category = CATEGORIES.find((item) => item.id === entry.cat)
   if (!subject) errors.subject = 'Select a subject.'
-  if (!category || (category.legacy && !subject?.categories.includes(entry.cat))) errors.cat = 'Select a category for this subject.'
+  if (!category || !subject?.categories.includes(entry.cat)) errors.cat = 'Select a category for this subject.'
   const values = entry.values || {}
   const fields = getLogbookGroups(entry.cat, entry.subject, Boolean(entry.linkedTo)).filter(group => !group.locked).flatMap(group => group.fields)
   const valueOf = key => key === 'date' ? entry.date : values[key]
@@ -68,7 +70,7 @@ export function validateEntry(entry, submit = false, now = today()) {
   }
   if (fields.some(field => field.key === 'admission') && values.admission && values.discharge && values.admission > values.discharge) errors.discharge = 'Discharge must be on or after admission.'
   if (submit) {
-    if (!FACULTY.some((person) => person.id === entry.faculty)) errors.faculty = 'Select a verifying faculty member.'
+    if (!eligibleReviewers(entry.subject).some((person) => person.id === entry.faculty)) errors.faculty = 'Select a faculty member from this subject department.'
     if (!entry.fAck) errors.fAck = 'Confirm that this entry is accurate.'
   }
   if ((entry.extra?.remarks || '').length > 500) errors.remarks = 'Use no more than 500 characters.'
@@ -77,10 +79,10 @@ export function validateEntry(entry, submit = false, now = today()) {
 }
 
 export function skillProgress(entries, subject) {
-  return subject.skills.map((skill) => {
-    const attempts = entries.filter((entry) => entry.subject === subject.name && entry.cat === 'cert' && entry.values.competency === skill.code)
+  return collectSkills(subject.name, entries).map((skill) => {
+    const attempts = entries.filter((entry) => entry.subject === subject.name && isGraded(entry) && (entry.values.competency || entry.values.activity) === skill.code)
     const approved = attempts.filter((entry) => entry.status === 'Approved').length
-    return { ...skill, approved, complete: approved >= skill.required, attempts }
+    return { ...skill, approved, complete: skill.required > 0 && approved >= skill.required, attempts }
   })
 }
 export function subjectProgress(entries, subject) {
@@ -98,28 +100,35 @@ export function searchEntries(entries, query) {
 }
 
 export async function listLogbookEntries() { return applyDeltas(readDeltas()) }
-function commit(deltas) {
+export function commit(deltas) {
   try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(deltas)) }
   catch { throw new Error('Unable to save Logbook changes. Free some browser storage and try again. Your form is still open.') }
   window.dispatchEvent(new Event('medsy-logbook-changed'))
   return applyDeltas(deltas)
 }
 /** Merge an entry mutation against the latest storage snapshot; never overwrite signed fields. */
-export async function saveLogbookEntry(entry, submit = false) {
+export async function saveLogbookEntry(entry, submit = false, studentId = entry.studentId || 'MC2568') {
   const deltas = readDeltas()
   if (deltas.removed.includes(entry.id)) throw new Error('This entry has been withdrawn. Close this form and create a new entry.')
   const current = applyDeltas(deltas).find((item) => item.id === entry.id)
-  if (current && !['Draft', 'Pending'].includes(current.status)) throw new Error('This entry has already been reviewed. Reopen it to see the latest decision.')
+  if (current && !belongsTo(current, studentId)) throw new Error('This entry belongs to another student.')
+  if (current && !['Draft', 'Pending', 'To do'].includes(current.status) && !(current.status === 'Returned' && !isGraded(current))) throw new Error('This entry has already been reviewed. Reopen it to see the latest decision.')
+  if (current && JSON.stringify(current.audit || []) !== JSON.stringify(entry.audit || [])) throw new Error('This entry has a newer faculty decision or reassignment. Reopen it before saving.')
+  if (current?.status === 'Returned' && (entry.cat !== current.cat || entry.subject !== current.subject)) throw new Error('Keep the original subject and category when correcting an entry.')
+  if (current?.assignment && (entry.subject !== current.subject || entry.cat !== current.cat || entry.faculty !== current.faculty)) throw new Error('Keep the assigned subject, category and reviewer.')
+  if (current?.assignment?.locked?.some(key => String(entry.values[key] || '') !== String(current.values[key] || ''))) throw new Error('Faculty-supplied task details cannot be changed.')
   if (entry.linkedTo) {
     const all = applyDeltas(deltas)
     const parent = all.find((item) => item.id === entry.linkedTo)
-    if (!parent || parent.status !== 'Returned' || parent.subject !== entry.subject || parent.cat !== entry.cat) throw new Error('The original returned entry is no longer available.')
+    if (!parent || !belongsTo(parent, studentId) || parent.status !== 'Returned' || !isGraded(parent) || parent.subject !== entry.subject || parent.cat !== entry.cat) throw new Error('The original returned entry is no longer available.')
     if (all.some((item) => item.linkedTo === parent.id && item.id !== entry.id && item.status !== 'Returned')) throw new Error('A remedial attempt already exists. Continue that attempt instead.')
   }
   const errors = validateEntry(entry, submit)
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0])
   const { fAck, ...record } = entry
-  const saved = { ...record, ...(record.cat === 'clerkship' ? { date: record.values.discharge || record.values.admission || record.date } : {}), updatedAt: new Date().toISOString(), status: submit ? 'Pending' : 'Draft', ...(submit && fAck ? { submittedAt: new Date().toISOString() } : {}), extra: { ...record.extra, comments: current?.extra?.comments || [] } }
+  const now = new Date().toISOString()
+  const resubmitting = current?.status === 'Returned' && submit
+  const saved = { ...record, studentId, ...(record.cat === 'clerkship' ? { date: record.values.discharge || record.values.admission || record.date } : {}), updatedAt: now, status: submit ? 'Pending' : current?.status === 'Returned' ? 'Returned' : current?.assignment ? 'To do' : 'Draft', ...(submit && fAck ? { submittedAt: current?.status === 'Pending' ? current.submittedAt || now : now } : {}), ...(resubmitting ? { verifiedAt: null, audit: [...(current.audit || []), { actor: studentId, action: 'Resubmitted', at: now, remarks: '' }] } : {}), extra: { ...record.extra, comments: current?.extra?.comments || [] } }
   if (current) deltas.edits[entry.id] = { ...deltas.edits[entry.id], ...saved }
   else deltas.added.unshift(saved)
   return commit(deltas)
@@ -137,11 +146,20 @@ export async function updateLogbookEntry(id, action, payload = {}) {
     if (!['Draft', 'Pending'].includes(entry.status)) throw new Error('Only drafts and pending entries can be withdrawn.')
     deltas.removed.push(id)
   } else if (action === 'review') {
-    if (entry.status !== 'Pending') throw new Error('Only pending entries can be reviewed.')
-    if (!['Approved', 'Returned'].includes(payload.status)) throw new Error('Select a valid decision.')
-    patch = { status: payload.status, verifiedAt: new Date().toISOString(), extra: { ...entry.extra, facultyRemarks: payload.remarks?.trim() || '' } }
+    if (!payload.actor) throw new Error('A faculty reviewer is required.')
+    const { reviewEntries } = await import('./adminLogbook.js')
+    return reviewEntries([id], payload.actor, payload)
   } else throw new Error('Unknown Logbook action.')
   if (patch) deltas.edits[id] = { ...deltas.edits[id], ...patch }
   return commit(deltas)
 }
-export async function resetLogbook() { return commit(emptyDeltas()) }
+export async function resetLogbook(studentId) {
+  if (!studentId) return commit(emptyDeltas())
+  const deltas = readDeltas(), owned = new Set(applyDeltas(deltas).filter(entry => belongsTo(entry, studentId)).map(entry => entry.id))
+  const seedIds = new Set([...SAMPLE_ENTRIES, ...COHORT_ENTRIES].filter(entry => belongsTo(entry, studentId)).map(entry => entry.id))
+  deltas.added = deltas.added.filter(entry => !belongsTo(entry, studentId))
+  deltas.edits = Object.fromEntries(Object.entries(deltas.edits).filter(([id]) => !owned.has(id) && !seedIds.has(id)))
+  deltas.removed = deltas.removed.filter(id => !owned.has(id) && !seedIds.has(id))
+  if (deltas.workflow) deltas.workflow.signoffs = Object.fromEntries(Object.entries(deltas.workflow.signoffs || {}).filter(([, record]) => record.studentId !== studentId))
+  return commit(deltas)
+}

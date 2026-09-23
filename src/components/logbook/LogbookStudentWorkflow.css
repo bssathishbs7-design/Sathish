@@ -1,0 +1,6 @@
+.lb-student-workflow { display: grid; gap: var(--s-4); }
+.lb-student-workflow:empty { display: none; }
+.lb-assigned-task { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.lb-assigned-task p { overflow-wrap: anywhere; color: var(--text-body); }
+.lb-assigned-task small { display: block; color: var(--text-muted); }
+@media (max-width: 767px) { .lb-assigned-task { flex-direction: column; align-items: stretch; } }

@@ -4,6 +4,7 @@ import LogbookDrawer from './LogbookDrawer'
 import LogbookAccordionSection from './LogbookAccordionSection'
 import LogbookPicker from './LogbookPicker'
 import { FACULTY } from '../../services/logbookSample'
+import { eligibleReviewers } from '../../services/logbookPeople'
 import { CATEGORIES, SUBJECTS, availableLogCategories, changeLogSelection, getLogbookGroups, getLogbookField, recentLogCategories } from '../../services/logbookCatalog'
 import { saveLogbookEntry, today, validateEntry } from '../../services/logbook'
 import './LogbookEntryForm.css'
@@ -24,7 +25,7 @@ export default function LogbookEntryForm({ entry, entries = [], mode, theme, onS
   const formRef = useRef(null)
   const noticeRef = useRef(null)
   const savingRef = useRef(false)
-  const lock = Boolean(form.linkedTo)
+  const lock = Boolean(form.linkedTo || form.assignment || form.status === 'Returned')
   const subject = SUBJECTS.find((item) => item.name === form.subject)
   const category = CATEGORIES.find((item) => item.id === form.cat)
   const groups = getLogbookGroups(form.cat, form.subject, Boolean(form.linkedTo)).map(group => {
@@ -65,7 +66,7 @@ export default function LogbookEntryForm({ entry, entries = [], mode, theme, onS
       const values = { ...current.values, [key]: value }
       if (key === 'competency') {
         const skill = subject?.skills.find((item) => item.code === value)
-        if (skill && schemaKeys.has('activity')) values.activity = skill.name
+        if (skill && schemaKeys.has('activity') && !current.assignment?.locked?.includes('activity')) values.activity = skill.name
       }
       return { ...current, values, fAck: false }
     })
@@ -95,7 +96,7 @@ export default function LogbookEntryForm({ entry, entries = [], mode, theme, onS
     if (Object.keys(next).length) { setConfirmClose(false); revealErrors(next); return }
     savingRef.current = true
     setBusy(true); setFailure('')
-    try { await saveLogbookEntry(form, submit); onSaved(submit ? 'Entry submitted for verification.' : 'Draft saved.') }
+    try { await saveLogbookEntry(form, submit); onSaved(submit ? 'Entry submitted for verification.' : form.assignment ? 'Progress saved.' : 'Changes saved.') }
     catch (error) { setFailure(error.message); showNotice(); setBusy(false) }
     finally { savingRef.current = false }
   }
@@ -124,7 +125,7 @@ export default function LogbookEntryForm({ entry, entries = [], mode, theme, onS
     } catch (error) { setFailure(error.message); showNotice() } finally { setBusy(false) }
   }
   const field = (key, definition = getLogbookField(form.cat, key, form.subject)) => {
-    const props = { id: `lb-${key}`, name: key, value: (key === 'date' ? form.date : form.values[key]) || '', onChange: (event) => key === 'date' ? change('date', event.target.value) : valueChange(key, event.target.value), 'aria-invalid': Boolean(errors[key]), 'aria-describedby': errors[key] ? `lb-error-${key}` : undefined, 'aria-required': Boolean(definition.required), placeholder: definition.placeholder }
+    const props = { id: `lb-${key}`, name: key, value: (key === 'date' ? form.date : form.values[key]) || '', onChange: (event) => key === 'date' ? change('date', event.target.value) : valueChange(key, event.target.value), 'aria-invalid': Boolean(errors[key]), 'aria-describedby': errors[key] ? `lb-error-${key}` : undefined, 'aria-required': Boolean(definition.required), placeholder: definition.placeholder, disabled: Boolean(form.assignment?.locked?.includes(key)) }
     const configuredCompetencies = key === 'competency' && subject?.skills.length > 0
     return <label className={`lb-field ${definition.wide || (form.cat === 'emergency' && key === 'date') ? 'lb-field-wide' : ''}`} key={key} htmlFor={`lb-${key}`}>
       <span>{definition.label}{definition.required && <span className="lb-required" aria-hidden="true"> *</span>}</span>
@@ -141,9 +142,10 @@ export default function LogbookEntryForm({ entry, entries = [], mode, theme, onS
         {(failure || confirmClose || selectionChange) && <div ref={noticeRef} tabIndex={-1} className="lb-form-notices">
           {failure && <div className="lb-alert lb-error" role="alert">{failure}</div>}
           {selectionChange && <div className="lb-alert" role="alert"><strong>Keep your entered information?</strong><p>This selection would clear: {selectionChange.removed.join(', ')}. All other fields will be kept.</p><div className="lb-actions"><button type="button" className="lb-btn" onClick={() => setSelectionChange(null)}>Keep current selection</button><button type="button" className="lb-btn lb-primary" onClick={() => { commitSelection(selectionChange.form) }}>Change selection</button></div></div>}
-          {confirmClose && <div className="lb-alert" role="alert"><strong>Keep your changes before closing?</strong><div className="lb-actions"><button type="button" className="lb-btn" onClick={() => setConfirmClose(false)}>Keep editing</button>{form.status !== 'Pending' && <button type="button" className="lb-btn" onClick={() => save(false)}>Save draft</button>}<button type="button" className="lb-btn" onClick={onClose}>Discard changes</button></div></div>}
+          {confirmClose && <div className="lb-alert" role="alert"><strong>Keep your changes before closing?</strong><div className="lb-actions"><button type="button" className="lb-btn" onClick={() => setConfirmClose(false)}>Keep editing</button>{form.status !== 'Pending' && <button type="button" className="lb-btn" onClick={() => save(false)}>{form.status === 'Returned' ? 'Save corrections' : form.assignment ? 'Save progress' : 'Save draft'}</button>}<button type="button" className="lb-btn" onClick={onClose}>Discard changes</button></div></div>}
         </div>}
         <fieldset className="lb-form-sections" disabled={Boolean(selectionChange)}>
+        {form.assignment && <div className="lb-alert">{form.assignment.instructions || 'Complete the assigned activity.'}<small> Faculty-supplied fields are locked.</small></div>}
         <p className="lb-form-hint"><span className="lb-required" aria-hidden="true">*</span> Required fields</p>
         <LogbookAccordionSection index={0} title="Subject & category" summary={contextReady ? subject.label + ' / ' + (category.shortName || category.name) : 'Choose where this learning belongs'} open={step === 0} complete={contextReady} onOpen={() => openStep(0)}>
             <LogbookPicker name="subject" label="Subject" value={form.subject} options={subjectOptions} onChange={(value) => select('subject', value)} placeholder="Search or select a subject" disabled={lock || busy} error={errors.subject} required />
@@ -171,12 +173,12 @@ export default function LogbookEntryForm({ entry, entries = [], mode, theme, onS
           </>}
         </LogbookAccordionSection>
         <LogbookAccordionSection index={2} title="Faculty verification" summary={form.faculty ? (FACULTY.find(person => person.id === form.faculty)?.name || 'Choose faculty') : 'Choose a reviewer and confirm your entry'} open={step === 2} complete={!Object.keys(validation).length} disabled={!contextReady} onOpen={() => { if (Object.keys(detailsErrors).length) revealErrors(detailsErrors); else openStep(2) }}>
-          <label className="lb-field"><span>Verifying faculty <span className="lb-required" aria-hidden="true">*</span></span><span className="lb-entry-select"><select name="faculty" value={form.faculty} aria-required="true" aria-invalid={Boolean(errors.faculty)} aria-describedby={errors.faculty ? 'lb-faculty-error' : undefined} onChange={(event) => change('faculty', event.target.value)}><option value="">Select faculty</option>{FACULTY.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span>{errors.faculty && <small id="lb-faculty-error" className="lb-error">{errors.faculty}</small>}</label>
+          <label className="lb-field"><span>Verifying faculty <span className="lb-required" aria-hidden="true">*</span></span><span className="lb-entry-select"><select disabled={Boolean(form.assignment)} name="faculty" value={form.faculty} aria-required="true" aria-invalid={Boolean(errors.faculty)} aria-describedby={errors.faculty ? 'lb-faculty-error' : undefined} onChange={(event) => change('faculty', event.target.value)}><option value="">Select faculty</option>{eligibleReviewers(form.subject).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span>{errors.faculty && <small id="lb-faculty-error" className="lb-error">{errors.faculty}</small>}</label>
           <label className="lb-check"><input name="fAck" type="checkbox" checked={form.fAck} onChange={(event) => change('fAck', event.target.checked)} aria-required="true" aria-invalid={Boolean(errors.fAck)} aria-describedby={errors.fAck ? 'lb-ack-error' : undefined} /><span>I confirm that this is an accurate record of my learning activity. <span className="lb-required" aria-hidden="true">*</span></span></label>{errors.fAck && <small id="lb-ack-error" className="lb-error">{errors.fAck}</small>}
         </LogbookAccordionSection>
         </fieldset>
       </fieldset>
-      <footer className="lb-drawer-foot lb-entry-footer"><span className="lb-entry-save-hint">Step {step + 1} of 3</span><div className="lb-actions">{form.status !== 'Pending' && <button type="button" className="lb-btn" disabled={busy || Boolean(selectionChange)} onClick={() => save(false)}>Save draft</button>}<button type="submit" className="lb-btn lb-primary" disabled={busy || Boolean(selectionChange)}>{busy ? <LoaderCircle className="lb-spin" size={16} /> : step === 2 ? <Check size={16} /> : <ArrowRight size={16} />}{busy ? 'Saving…' : step === 2 ? 'Submit for verification' : 'Continue'}</button></div></footer>
+      <footer className="lb-drawer-foot lb-entry-footer"><span className="lb-entry-save-hint">Step {step + 1} of 3</span><div className="lb-actions">{form.status !== 'Pending' && <button type="button" className="lb-btn" disabled={busy || Boolean(selectionChange)} onClick={() => save(false)}>{form.status === 'Returned' ? 'Save corrections' : form.assignment ? 'Save progress' : 'Save draft'}</button>}<button type="submit" className="lb-btn lb-primary" disabled={busy || Boolean(selectionChange)}>{busy ? <LoaderCircle className="lb-spin" size={16} /> : step === 2 ? <Check size={16} /> : <ArrowRight size={16} />}{busy ? 'Saving…' : step === 2 ? form.status === 'Returned' ? 'Resubmit for verification' : 'Submit for verification' : 'Continue'}</button></div></footer>
     </form>
   </LogbookDrawer>
 }

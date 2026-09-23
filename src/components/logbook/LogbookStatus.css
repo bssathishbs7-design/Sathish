@@ -16,6 +16,7 @@
 }
 .logbook-scope .lb-status.is-draft { --lb-status-accent: var(--activity-violet); --lb-status-tint: 14%; }
 .logbook-scope .lb-status.is-pending { --lb-status-accent: var(--activity-amber); }
+.logbook-scope .lb-status.is-to-do { --lb-status-accent: var(--activity-blue); --lb-status-tint: 14%; }
 .logbook-scope .lb-status.is-approved { --lb-status-accent: var(--activity-green); }
 .logbook-scope .lb-status.is-returned { --lb-status-accent: var(--coral); --lb-status-tint: 45%; }
 .logbook-scope .lb-status.is-not-started { --lb-status-accent: var(--activity-line); --lb-status-tint: 25%; }

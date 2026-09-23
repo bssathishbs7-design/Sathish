@@ -50,6 +50,7 @@ export const APP_PAGES = {
   INTERPRETATION_ACTIVITY: 'Interpretation Activity',
   MY_SKILL_ACTIVITY: 'My Skill Activity',
   LOGBOOK: 'My Logbook',
+  ADMIN_LOGBOOK: 'Admin Logbook',
   STUDENT_EXAM: 'Student Exam',
   PROGRESS_TRACKING: 'Progress Tracking',
   FACULTY_MANAGEMENT: 'Faculty Management',
@@ -115,6 +116,7 @@ export const SIDEBAR_MENU = [
           { label: APP_PAGES.DASHBOARD, icon: BarChart3 },
         ],
       },
+      { label: APP_PAGES.ADMIN_LOGBOOK, icon: BookText },
       {
         label: APP_PAGES.MY_SKILL_ACTIVITY,
         icon: BookOpenCheck,

@@ -1,9 +1,5 @@
 /** Sample curriculum only. Replace catalogues and requirements with institution API data. */
-export const FACULTY = [
-  { id: 'RM', name: 'Dr R. Menon' },
-  { id: 'AS', name: 'Dr A. Sharma' },
-  { id: 'PK', name: 'Dr P. Kumar' },
-]
+export { REVIEWERS as FACULTY } from './logbookPeople.js'
 export { CATEGORIES, FIELDS, SUBJECTS } from './logbookCatalog.js'
 export const STUDENT = { name: 'Karthik Subramanian', registerId: 'MC2568', programme: 'MBBS', batch: '2024–2029', postingEnd: '2026-10-15', posting: 'General Medicine' }
 
@@ -20,3 +16,11 @@ export const SAMPLE_ENTRIES = [
   id, subject, cat, date, status, faculty, values: { recordGroup: 'Practical record', serial: String(index + 1), ...values },
   extra: { notes: '', remarks: '', attachments: [], comments: [], ...(status === 'Returned' ? { facultyRemarks: 'Repeat the history with a clearer chronology and include relevant negative findings.' } : {}) },
 }))
+
+/** Cohort examples remain available without manually populating browser storage. */
+export const COHORT_ENTRIES = [
+  { ...SAMPLE_ENTRIES[4], id: 'cohort-1', studentId: 'MC2569', values: { ...SAMPLE_ENTRIES[4].values, topic: 'Cardiovascular assessment' } },
+  { ...SAMPLE_ENTRIES[3], id: 'cohort-2', studentId: 'MC2569', status: 'Pending', extra: { remarks: '', comments: [] } },
+  { ...SAMPLE_ENTRIES[0], id: 'cohort-3', studentId: 'MC2570', verifiedAt: '2026-09-20T10:00:00.000Z', audit: [{ actor: 'RM', action: 'Approved', remarks: 'Demonstrated independently.', at: '2026-09-20T10:00:00.000Z' }] },
+  { ...SAMPLE_ENTRIES[1], id: 'cohort-4', studentId: 'MC2570' },
+]
