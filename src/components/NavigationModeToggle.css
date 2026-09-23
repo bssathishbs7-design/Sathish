@@ -18,9 +18,8 @@
   .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-profile-trigger .avatar { width: var(--s-6, 32px); height: var(--s-6, 32px); }
   .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-profile-caret { display: none; }
 }
-@media (max-width: 767px) {
+@media (max-width: 359px) {
   .vx-shell .vx-topbar:has(.vx-navigation-mode) { flex-wrap: wrap; height: auto; padding-block: var(--s-2, 8px); }
   .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-actions { flex-basis: 100%; justify-content: flex-end; }
 }
 
-@media (max-width: 767px) { .vx-navigation-mode { flex-shrink: 1; min-width: 0; max-width: calc(100% - 48px); } .vx-navigation-mode button { flex: 1; min-width: 0; white-space: normal; } }
