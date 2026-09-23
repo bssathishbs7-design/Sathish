@@ -1565,9 +1565,7 @@
   padding: 18px;
   border-radius: 22px;
   background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.14), transparent 24%),
-    radial-gradient(circle at bottom left, rgba(95, 232, 177, 0.12), transparent 22%),
-    linear-gradient(145deg, #0f6d56 0%, #0e7c60 42%, #114639 100%);
+    var(--activity-featured-background);
 }
 
 .my-skills-live-card.is-carousel {
@@ -2183,3 +2181,8 @@
     justify-content: flex-start;
   }
 }
+
+/* Shared Logbook and learning feature-card surface. */
+.my-skills-page { --activity-featured-background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.14), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(95, 232, 177, 0.12), transparent 22%),
+    linear-gradient(145deg, #0f6d56 0%, #0e7c60 42%, #114639 100%); }

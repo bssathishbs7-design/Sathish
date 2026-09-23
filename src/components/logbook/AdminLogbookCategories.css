@@ -1,0 +1,8 @@
+.admin-category-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
+.admin-category-card.lb-subject-tile { grid-template-rows: 1fr auto; height: auto; min-height: var(--s-9); gap: var(--s-2); }
+.admin-category-card .lb-subject-tile-copy strong { display: block; overflow: visible; }
+.admin-category-footer { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-2); min-height: var(--s-5); font-size: var(--fs-micro); color: var(--text-muted); }
+.admin-category-students, .admin-category-clear { display: inline-flex; align-items: center; gap: var(--s-1); }
+.admin-category-clear svg { color: var(--text-brand); }
+@media (max-width: 1199px) { .admin-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .admin-category-grid { grid-template-columns: minmax(0, 1fr); } }

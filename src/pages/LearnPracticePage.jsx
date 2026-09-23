@@ -1,11 +1,23 @@
+import PracticeFeaturedCard from '../components/PracticeFeaturedCard'
+import { getPracticeOverview } from '../services/practiceOverview'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { useEffect, useMemo, useState } from 'react'
-import { BarChart3, BookOpenCheck, Info, Play, Search, Trash2, X } from 'lucide-react'
+import { Activity, Bone, FlaskConical, Microscope, ScanLine, Stethoscope, Pill, Users, Brain, Eye, Ear, Baby, BarChart3, BookOpenCheck, CheckCircle2, Clock3, LayoutGrid, Play, Search, Trash2, X } from 'lucide-react'
 import { corelationRatingRows } from './corelationRatingData'
 import { APP_PAGES } from '../config/appPages'
-import '../styles/assessment-pages.css'
+import '../styles/medsy/question-sort-tokens.css'
+import '../styles/ospe-activity.css'
+import '../styles/my-skills.css'
+import './LogbookPage.css'
+import '../components/logbook/LogbookStatus.css'
 import './LearnPracticePage.css'
 
+const PRACTICE_SUBJECT_ICONS = {
+  AN: [Bone, 'amber'], PY: [Activity, 'green'], BI: [FlaskConical, 'teal'],
+  PA: [Microscope, 'violet'], MI: [Microscope, 'amber'], PH: [Pill, 'violet'],
+  RD: [ScanLine, 'violet'], CM: [Users, 'green'], PS: [Brain, 'violet'],
+  OP: [Eye, 'teal'], EN: [Ear, 'amber'], PE: [Baby, 'green'],
+}
 const LEARN_PRACTICE_SHARED_CARDS_KEY = 'vx-learn-practice-shared-cards'
 const START_PRACTICE_SELECTED_CARD_KEY = 'vx-start-practice-selected-card'
 const START_PRACTICE_DEFAULT_FILTER_KEY = 'vx-start-practice-default-filter'
@@ -34,12 +46,16 @@ const normalizeCompetencyCode = (value) => String(value ?? '').replace(/\s+/g, '
 const getCompetencyRow = (code) => corelationRatingRows.find((row) => (
   normalizeCompetencyCode(row.code) === normalizeCompetencyCode(code)
 ))
-const getCardYear = (card) => card?.assignment?.year || card?.year || 'Not assigned'
 const getCardSubject = (card) => (
   card?.subject
   || getCardFirstQuestionValue(card, 'subject')
   || getCompetencyRow(card?.competencyCode)?.subject
   || 'Human Anatomy'
+)
+/** Resolve the assigned year, falling back to the competency curriculum. */
+const getCardYear = (card) => (
+  card?.assignment?.year || card?.year || getCardFirstQuestionValue(card, 'year')
+  || getCompetencyRow(card?.competencyCode)?.year || 'Year not specified'
 )
 const FINISHED_PRACTICE_STATUSES = new Set(['complete', 'completed', 'expired'])
 const getCardPracticeSessions = (card = {}) => {
@@ -104,14 +120,14 @@ const clearQuestionShareState = (questionIds = []) => {
         if (!questionIdSet.has(String(question?.id ?? ''))) return question
         didUpdate = true
         const {
-          sharedToStudents,
-          shareToStudents,
-          isSharedToStudents,
-          sharedWithStudents,
-          sharedStudentIds,
-          studentShareIds,
-          sharedToStudentsAt,
-          sharedAssignment,
+          sharedToStudents: _sharedToStudents,
+          shareToStudents: _shareToStudents,
+          isSharedToStudents: _isSharedToStudents,
+          sharedWithStudents: _sharedWithStudents,
+          sharedStudentIds: _sharedStudentIds,
+          studentShareIds: _studentShareIds,
+          sharedToStudentsAt: _sharedToStudentsAt,
+          sharedAssignment: _sharedAssignment,
           ...restQuestion
         } = question
 
@@ -182,11 +198,23 @@ function LearnPracticePage({ onNavigate, onOpenAnalytics }) {
     ))
   }, [practiceCards, query, statusFilter])
 
+  const overview = getPracticeOverview(practiceCards)
+  const metrics = [
+    { label: 'Available practice', value: overview.available, icon: BookOpenCheck, tone: 'amber' },
+    { label: 'In progress', value: overview.inProgress, icon: Clock3, tone: 'green' },
+    { label: 'Completed', value: overview.completed, icon: CheckCircle2, tone: 'teal' },
+    { label: 'Questions to practise', value: overview.remaining, icon: LayoutGrid, tone: 'violet' },
+  ]
+  const featuredItems = practiceCards.map((card, index) => {
+    const summary = getPracticeOverview([card])
+    const dates = [card.lastSharedAt, card.sharedAt, card.createdAt, ...(card.practiceSessions || []).map(session => session.sharedAt || session.createdAt)]
+    return { key: String(card.id || card.competencyCode || index), card, subject: getCardSubject(card), year: getCardYear(card), started: summary.inProgress > 0, remaining: summary.remaining, shared: Math.max(0, ...dates.map(date => Date.parse(date) || 0)) }
+  }).filter(item => item.remaining > 0).sort((a, b) => b.shared - a.shared).slice(0, 4)
   const hasSearch = Boolean(query.trim())
   const filterOptions = [
     { key: 'in-progress', label: 'Live practice', count: practiceStatusCounts.inProgress },
     { key: 'completed', label: 'Completed', count: practiceStatusCounts.completed },
-    { key: 'all', label: 'All Practice', count: practiceStatusCounts.all },
+    { key: 'all', label: 'All practice', count: practiceStatusCounts.all },
   ]
   const openPracticeCard = (card, analytics = false) => {
     if (typeof window !== 'undefined') {
@@ -218,150 +246,56 @@ function LearnPracticePage({ onNavigate, onOpenAnalytics }) {
   }
 
   return (
-    <section className="vx-content assessment-page is-my-assessment learn-practice-page">
-      <div className="assessment-page-shell">
+    <section className="vx-content ospe-page my-skills-page logbook-scope lb-page learn-practice-page">
+      <div className="ospe-shell my-skills-shell lb-shell learn-practice-shell">
         <PageNavigationHeader items={['My Pages', 'Learn & Practice']} />
-        <section className="assessment-create-draft-shell assessment-create-published-shell my-assessment-published-shell learn-practice-shell" aria-label="Learn and practice shared cards">
-          <>
-            <div className="assessment-create-card-heading learn-practice-title-row">
-              <h2>
-                <span className="learn-practice-title-icon" aria-hidden="true">
-                  <BookOpenCheck size={17} strokeWidth={2.2} />
-                </span>
-                Shared Practice
-              </h2>
-              {practiceCards.length ? (
-                <button
-                  type="button"
-                  className="learn-practice-delete-btn learn-practice-delete-all-btn"
-                  onClick={deleteAllPracticeCards}
-                  aria-label="Delete all shared practice cards"
-                >
-                  <Trash2 size={14} strokeWidth={2.3} />
-                </button>
-              ) : null}
-            </div>
-            <div className="learn-practice-filter-bar" aria-label="Shared practice filters">
-              <div className="learn-practice-filter-group" role="group" aria-label="Filter practice cards by status">
-                {filterOptions.map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    className={[
-                      'learn-practice-filter-btn',
-                      option.key === 'in-progress' ? 'is-live-practice' : '',
-                      option.key === 'in-progress' && option.count > 0 ? 'has-live-count' : '',
-                      statusFilter === option.key ? 'is-active' : '',
-                    ].filter(Boolean).join(' ')}
-                    onClick={() => setStatusFilter(option.key)}
-                    aria-pressed={statusFilter === option.key}
-                  >
-                    {option.label}
-                    <span>{option.count}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="assessment-create-published-toolbar my-assessment-toolbar learn-practice-toolbar">
-                <label className="assessment-create-published-search">
-                  <Search size={15} strokeWidth={2.2} aria-hidden="true" />
-                  <input
-                    type="search"
-                    value={query}
-                    placeholder="Search practice..."
-                    onChange={(event) => setQuery(event.target.value)}
-                  />
-                </label>
-                {hasSearch ? (
-                  <button type="button" className="assessment-create-published-clear-btn" onClick={() => setQuery('')}>
-                    <X size={14} strokeWidth={2.3} />
-                    Clear
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </>
-
-          {practiceCards.length ? (
-            <>
-              <div className="assessment-create-draft-grid my-assessment-published-grid learn-practice-card-grid">
-                {filteredCards.length ? filteredCards.map((card) => {
-                  const competencyName = card.competencyName || `Competency ${card.competencyCode}`
-                  const pendingCounts = getPendingPracticeTypeCounts(card)
-                  const cardStatus = getPracticeCardStatus(card)
-
-                  return (
-                    <article
-                      key={card.id ?? card.competencyCode}
-                      className={`assessment-create-draft-card assessment-create-published-card learn-practice-card ${cardStatus === 'In Progress' ? 'is-in-progress' : 'is-complete'}`}
-                    >
-                      <div className="assessment-create-published-head">
-                        <div className="learn-practice-card-title">
-                          <small className="learn-practice-card-context">
-                            {getCardSubject(card)}
-                          </small>
-                          <strong>{competencyName}</strong>
-                        </div>
-                      </div>
-
-                      <span className="assessment-create-published-status-row">
-                        <span
-                          className="assessment-create-published-schedule-badge learn-practice-code-badge"
-                          tabIndex={0}
-                          aria-label={`${card.competencyCode} ${competencyName}`}
-                          data-tooltip={competencyName}
-                        >
-                          {card.competencyCode}
-                          <Info size={11} strokeWidth={2.4} />
-                        </span>
-                        <span className={`learn-practice-status-badge ${cardStatus === 'Complete' ? 'is-complete' : 'is-progress'}`}>
-                          {cardStatus}
-                        </span>
-                      </span>
-
-                      <div className="learn-practice-question-mix" aria-label={`${card.competencyCode} question type counts`}>
-                        <span>
-                          {pendingCounts.mcq > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.mcq}</b> : null}
-                          <strong>{card.mcq ? card.mcq : '-'}</strong>
-                          <em>MCQ</em>
-                        </span>
-                        <span>
-                          {pendingCounts.saqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.saqs}</b> : null}
-                          <strong>{card.saqs ? card.saqs : '-'}</strong>
-                          <em>SAQs</em>
-                        </span>
-                        <span>
-                          {pendingCounts.laqs > 0 ? <b className="learn-practice-notification-badge">{pendingCounts.laqs}</b> : null}
-                          <strong>{card.laqs ? card.laqs : '-'}</strong>
-                          <em>LAQs</em>
-                        </span>
-                      </div>
-
-                      <div className="assessment-create-draft-footer assessment-create-published-footer learn-practice-footer">
-                        <button
-                          type="button"
-                          className="learn-practice-analytics-btn"
-                          aria-label={`View analytics for ${card.competencyCode}`}
-                          title="View analytics"
-                          onClick={() => openPracticeCard(card, true)}
-                        >
-                          <BarChart3 size={16} aria-hidden="true" />
-                          Analytics
-                        </button>
-                        <button type="button" className="my-assessment-card-action is-start" onClick={() => openPracticeCard(card)}>
-                          <Play size={14} strokeWidth={2.3} />
-                          Start practice
-                        </button>
-                      </div>
-                    </article>
-                  )
-                }) : (
-                  <div className="assessment-create-placeholder my-assessment-empty-state">
-                    <p>No practice cards match your search.</p>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : null}
+        <header className="my-skills-overview lb-page-head learn-practice-page-head">
+          <div className="my-skills-overview-main">
+            <span className="ospe-kicker">My learning</span>
+            <div className="my-skills-overview-copy"><h1>Learn & Practice</h1><p>Practise shared questions, build your understanding and follow your progress.</p></div>
+          </div>
+          <PracticeFeaturedCard items={featuredItems} onOpen={openPracticeCard} />
+        </header>
+        <section className="learn-practice-metrics" aria-label="Practice overview">
+          {metrics.map(({ label, value, icon, tone }) => {
+            const MetricIcon = icon
+            return <div className="learn-practice-metric" data-tone={tone} key={label}>
+            <span className="learn-practice-metric-icon"><MetricIcon size={18} aria-hidden="true" /></span>
+            <div><strong>{value}</strong><span>{label}</span></div>
+          </div>})}
+        </section>
+        <div className="learn-practice-filter-bar" aria-label="Shared practice filters">
+          <div className="learn-practice-filter-group" role="group" aria-label="Filter practice cards by status">
+            {filterOptions.map(option => {
+              const FilterIcon = { 'in-progress': Clock3, completed: CheckCircle2, all: LayoutGrid }[option.key]
+              return <button key={option.key} type="button" className={'my-skills-filter-chip learn-practice-filter-btn' + (statusFilter === option.key ? ' is-active' : '')} onClick={() => setStatusFilter(option.key)} aria-pressed={statusFilter === option.key}><FilterIcon size={15} aria-hidden="true" />{option.label}<span>{option.count}</span></button>
+            })}
+          </div>
+          <div className="learn-practice-toolbar">
+            <label className="lb-search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search practice" value={query} placeholder="Search competency or subject" onChange={event => setQuery(event.target.value)} /></label>
+            {practiceCards.length > 0 && <button type="button" className="lb-icon-btn learn-practice-delete-btn" onClick={deleteAllPracticeCards} aria-label="Delete all shared practice cards" title="Delete all shared practice cards"><Trash2 size={16} aria-hidden="true" /></button>}
+            {hasSearch && <button type="button" className="lb-btn" onClick={() => setQuery('')}><X size={14} aria-hidden="true" />Clear</button>}
+          </div>
+        </div>
+        <section className="learn-practice-results" aria-label="Shared practice">
+          <div className="learn-practice-card-grid">
+            {filteredCards.map(card => {
+              const competencyName = card.competencyName || ('Competency ' + card.competencyCode)
+              const pendingCounts = getPendingPracticeTypeCounts(card)
+              const [SubjectIcon, subjectTone] = PRACTICE_SUBJECT_ICONS[String(card.competencyCode || '').match(/^[a-z]+/i)?.[0]?.toUpperCase()] || [Stethoscope, 'teal']
+              const cardOverview = getPracticeOverview([card])
+              const cardStatus = cardOverview.completed ? 'Completed' : cardOverview.inProgress ? 'In progress' : getPracticeCardStatus(card) === 'Complete' ? 'Expired' : 'Not started'
+              return <article key={card.id ?? card.competencyCode} className="learn-practice-card" data-tone={subjectTone}>
+                <div className="learn-practice-card-head"><span className="learn-practice-card-icon"><SubjectIcon size={20} aria-hidden="true" /></span><span className="learn-practice-card-context"><span>{getCardSubject(card)}</span><span className="learn-practice-card-year">{getCardYear(card)}</span></span><span className={'lb-status ' + (cardStatus === 'Completed' ? 'is-approved' : 'is-pending')}>{cardStatus}</span></div>
+                <div className="learn-practice-card-title"><h3 title={card.competencyCode + ": " + competencyName}><span className="learn-practice-title-code">{card.competencyCode}</span>{" "}{competencyName}</h3></div>
+                <div className="learn-practice-question-mix" aria-label={card.competencyCode + ' question type counts'}>
+                  {[['mcq', 'MCQ'], ['saqs', 'SAQs'], ['laqs', 'LAQs']].map(([key, label]) => <div className="learn-practice-question-type" key={key}><span className="learn-practice-question-total"><strong>{card[key] || '-'}</strong><span>{label}</span></span>{pendingCounts[key] > 0 && <span className="learn-practice-notification-badge" title={pendingCounts[key] + ' questions in live practice'} aria-label={pendingCounts[key] + ' ' + label + ' questions in live practice'}>{pendingCounts[key]}</span>}</div>)}
+                </div>
+                <footer className="learn-practice-footer"><button type="button" className="lb-btn learn-practice-analytics-btn" aria-label={'View analytics for ' + card.competencyCode} onClick={() => openPracticeCard(card, true)}><BarChart3 size={16} aria-hidden="true" />Analytics</button><button type="button" className="lb-btn lb-primary learn-practice-start-btn" onClick={() => openPracticeCard(card)}><Play size={14} aria-hidden="true" />Start practice</button></footer>
+              </article>
+            })}
+            {!filteredCards.length && <div className="lb-card lb-empty learn-practice-empty"><BookOpenCheck size={28} aria-hidden="true" /><h3>{practiceCards.length ? 'No matching practice' : 'No shared practice yet'}</h3><p>{practiceCards.length ? 'Try another search or status filter.' : 'Practice shared by your faculty will appear here.'}</p></div>}
+          </div>
         </section>
       </div>
     </section>

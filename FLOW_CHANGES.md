@@ -237,3 +237,7 @@
 - Added subject-level readiness and learner final-approval submission in a compact row and shared drawer. Subject-specific approval chains are snapshotted at submission; each approver can approve or return with feedback. The removed dashboard approval card stays removed.
 - Faculty navigation now preserves tabs, filters and drilldowns in browser history. Queue grouping, eligible bulk approval, department browsing, student/category/skill progress and dated decision history use shared records.
 - Dashboard metrics open their matching records, including outstanding remedial work, assignments and recent certification decisions. Learner resets preserve other students and subject chain settings. Stale forms cannot overwrite a newer decision or reassignment.
+
+## 2026-09-23 - Featured practice shortcut
+
+- Learn & Practice now offers a header shortcut to unfinished practice, prioritising started sets then the latest shared sets. Manual previous/next controls select a set; Start practice and Continue practice use the existing practice destination.
