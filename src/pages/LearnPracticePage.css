@@ -84,3 +84,7 @@
 }
 
 @media (max-width: 1023px) { .learn-practice-page .learn-practice-page-head { grid-template-columns: minmax(0, 1fr); } }
+
+.learn-practice-page .learn-practice-page-navigation { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; }
+.learn-practice-page .learn-practice-page-navigation .page-navigation-header { flex: 1; min-width: 0; }
+.learn-practice-page .learn-practice-page-navigation .learn-practice-delete-btn { flex-shrink: 0; }

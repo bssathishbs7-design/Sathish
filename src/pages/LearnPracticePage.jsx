@@ -248,7 +248,10 @@ function LearnPracticePage({ onNavigate, onOpenAnalytics }) {
   return (
     <section className="vx-content ospe-page my-skills-page logbook-scope lb-page learn-practice-page">
       <div className="ospe-shell my-skills-shell lb-shell learn-practice-shell">
-        <PageNavigationHeader items={['My Pages', 'Learn & Practice']} />
+        <div className="learn-practice-page-navigation">
+          <PageNavigationHeader items={['My Pages', 'Learn & Practice']} />
+          {practiceCards.length > 0 && <button type="button" className="lb-icon-btn learn-practice-delete-btn" onClick={deleteAllPracticeCards} aria-label="Delete all shared practice cards" title="Delete all shared practice cards"><Trash2 size={16} aria-hidden="true" /></button>}
+        </div>
         <header className="my-skills-overview lb-page-head learn-practice-page-head">
           <div className="my-skills-overview-main">
             <span className="ospe-kicker">My learning</span>
@@ -273,7 +276,7 @@ function LearnPracticePage({ onNavigate, onOpenAnalytics }) {
           </div>
           <div className="learn-practice-toolbar">
             <label className="lb-search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search practice" value={query} placeholder="Search competency or subject" onChange={event => setQuery(event.target.value)} /></label>
-            {practiceCards.length > 0 && <button type="button" className="lb-icon-btn learn-practice-delete-btn" onClick={deleteAllPracticeCards} aria-label="Delete all shared practice cards" title="Delete all shared practice cards"><Trash2 size={16} aria-hidden="true" /></button>}
+            
             {hasSearch && <button type="button" className="lb-btn" onClick={() => setQuery('')}><X size={14} aria-hidden="true" />Clear</button>}
           </div>
         </div>
