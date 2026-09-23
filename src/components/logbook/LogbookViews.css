@@ -29,3 +29,7 @@ button.lb-metric { cursor: pointer; }
 .logbook-scope .lb-status-select select:hover { border-color: var(--activity-hover-line); }
 @media (max-width: 767px) { .lb-status-select { flex: none; width: 100%; } .logbook-scope .lb-search-bar .lb-search { flex: none; width: 100%; } }
 
+
+.lb-all-entries { display: grid; grid-template-columns: minmax(0, 7fr) minmax(240px, 3fr); gap: var(--s-3); align-items: start; }
+.lb-all-entry-results { grid-column: 1; grid-row: 1; min-width: 0; }
+@media (max-width: 1023px) { .lb-all-entries { grid-template-columns: minmax(0, 1fr); } .lb-all-entry-results { grid-column: auto; grid-row: auto; } }

@@ -9,32 +9,19 @@
 .lb-detail-title span, .lb-detail-title small { color: var(--text-muted); font-size: 12px; }
 .lb-detail-title small { display: block; margin-top: var(--s-1); }
 .lb-detail-title strong, .lb-detail-attempts strong { font-family: var(--f-code); font-variant-numeric: tabular-nums; color: var(--text-strong); }
-.lb-detail-header .lb-search { flex: 0 1 260px; padding: 0 var(--s-3); box-shadow: none; }
-.lb-detail-header .lb-search, .lb-detail-header > button { height: calc(var(--s-6) + var(--s-2)); box-sizing: border-box; }
+.lb-detail-header .lb-search { flex: 0 1 360px; padding: 0 var(--s-3); box-shadow: none; }
+.lb-detail-header .lb-search { height: calc(var(--s-6) + var(--s-2)); box-sizing: border-box; }
 .lb-detail-header .lb-search input { padding: 0; height: 100%; font-size: 13px; }
-.lb-detail-header > button { flex-shrink: 0; white-space: nowrap; }
 .lb-detail-progress-ring { width: var(--s-7); height: var(--s-7); flex-shrink: 0; }
 .lb-detail-progress-ring circle { fill: none; stroke-width: 3; }
 .lb-detail-ring-track { stroke: var(--activity-line); }
 .lb-detail-ring-value { stroke: var(--forest); stroke-linecap: round; }
 .lb-detail-columns { display: grid; grid-template-columns: minmax(0, 7fr) minmax(240px, 3fr); gap: var(--s-3); align-items: start; }
 .lb-detail-groups { display: grid; gap: var(--s-3); min-width: 0; }
-.lb-detail-panel, .lb-detail-sidebar { min-width: 0; padding: var(--s-4); border: 1px solid var(--activity-line); border-radius: var(--r); background: var(--activity-card-fill); }
-.lb-page .lb-detail-panel h3, .lb-page .lb-detail-sidebar h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2); margin: 0 0 var(--s-3); font-size: 14px; color: var(--text-strong); }
+.lb-detail-panel { min-width: 0; padding: var(--s-4); border: 1px solid var(--activity-line); border-radius: var(--r); background: var(--activity-card-fill); }
+.lb-page .lb-detail-panel h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2); margin: 0 0 var(--s-3); font-size: 14px; color: var(--text-strong); }
 .lb-detail-certification { margin-bottom: var(--s-3); }
 .lb-detail-certification:last-child { margin-bottom: 0; }
-.lb-detail-sidebar { display: flex; flex-direction: column; }
-.lb-detail-sidebar nav { display: grid; gap: var(--s-1); padding: var(--s-1); }
-.lb-detail-sidebar button { display: flex; align-items: center; gap: var(--s-2); box-sizing: border-box; padding: 0 var(--s-2); height: calc(var(--s-6) + var(--s-2)); border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--text-body); text-align: left; cursor: pointer; }
-.lb-detail-sidebar button svg { flex-shrink: 0; color: var(--text-muted); }
-.lb-detail-sidebar button > span { flex: 1; min-width: 0; font-size: 12px; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lb-detail-sidebar button small { display: grid; place-items: center; flex: 0 0 var(--s-5); width: var(--s-5); height: var(--s-5); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-muted); font-family: var(--f-code); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
-.lb-page .lb-detail-sidebar button:not(:disabled):hover { background: var(--surface-soft); box-shadow: none; }
-.lb-page .lb-detail-sidebar button[aria-current], .lb-page .lb-detail-sidebar button[aria-current]:hover { --text-brand: var(--forest); background: var(--forest); border-color: var(--forest); color: var(--on-brand); font-weight: 600; }
-.lb-detail-sidebar button[aria-current] svg { color: var(--on-brand); }
-.lb-detail-sidebar button[aria-current] small { background: var(--surface-card); color: var(--text-brand); }
-.lb-detail-sidebar button:not(:disabled):active { transform: translateY(1px); transition: none; }
-.lb-detail-mobile-category { display: none; }
 .lb-detail-groups .lb-entry-row { padding: var(--s-3); }
 .lb-detail-groups .lb-entry-icon { flex-basis: var(--s-6); height: var(--s-6); }
 .lb-detail-groups .lb-entry-copy { gap: var(--s-1); }
@@ -53,11 +40,6 @@
 
 @media (max-width: 1023px) {
   .lb-detail-columns { grid-template-columns: minmax(0, 1fr); }
-  .lb-detail-sidebar { display: none; }
-  .lb-detail-mobile-category { display: grid; gap: var(--s-2); color: var(--text-muted); font-size: 12px; }
-  .lb-detail-mobile-category > span:last-child { position: relative; }
-  .lb-detail-mobile-category select { appearance: none; width: 100%; height: calc(var(--s-6) + var(--s-2)); padding: 0 var(--s-7) 0 var(--s-3); border: 1px solid var(--activity-line); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); }
-  .lb-detail-mobile-category svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; }
 }
 @media (max-width: 767px) {
   .lb-detail-header { flex-wrap: wrap; }
@@ -83,3 +65,9 @@
 .lb-detail-progress-icon .lb-detail-progress-ring { position: absolute; inset: 0; }
 
 .lb-detail-title .lb-detail-percent { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: var(--s-6); padding: var(--s-1) var(--s-2); border: 1px solid var(--activity-line); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-strong); font-family: var(--f-code); font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600; }
+
+@media (min-width: 1024px) { .lb-detail-groups { grid-column: 1; grid-row: 1; } }
+
+.logbook-scope .lb-detail-header .lb-search { border: 1px solid color-mix(in srgb, var(--forest) 45%, var(--surface-card)); background: var(--surface-card); box-shadow: var(--shadow-xs); color: var(--text-strong); }
+.lb-detail-header .lb-search input::placeholder { color: var(--text-body); opacity: 1; }
+.logbook-scope .lb-detail-header .lb-search:hover { border-color: var(--forest); }

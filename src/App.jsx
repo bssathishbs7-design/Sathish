@@ -38,7 +38,7 @@ import StudentManagementPage from './pages/StudentManagementPage'
 import ImageActivityPage from './pages/ImageActivityPage'
 import InterpretationActivityPage from './pages/InterpretationActivityPage'
 import OspeActivityPage from './pages/OspeActivityPage'
-import { APP_PAGES, QUESTION_BANK_PAGES } from './config/appPages'
+import { APP_PAGES, QUESTION_BANK_PAGES, getNavigationMode, MODE_DEFAULT_PAGES } from './config/appPages'
 import './styles/practice-activity-theme.css'
 import './styles/overall-analytics-theme.css'
 import './styles/student-result-theme.css'
@@ -430,7 +430,23 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isPhoneScreen, setIsPhoneScreen] = useState(() => isPhoneViewport())
   const useCompactLogo = sidebarCollapsed
+  const [preferredNavigationMode, setPreferredNavigationMode] = useState(() => { try { return localStorage.getItem('medsy-navigation-mode') === 'student' ? 'student' : 'faculty' } catch { return 'faculty' } })
+  const editedForms = useRef(new WeakSet())
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
+  const navigationMode = getNavigationMode(activePage) || preferredNavigationMode
+  useEffect(() => {
+    try {
+      localStorage.setItem('medsy-navigation-mode', navigationMode)
+      if (getNavigationMode(activePage)) localStorage.setItem('medsy-last-page-' + navigationMode, activePage)
+    } catch { /* Navigation remains available when storage is disabled. */ }
+  }, [activePage, navigationMode])
+  useEffect(() => {
+    const rememberEdit = event => { const form = event.target.closest?.('form'); if (form) editedForms.current.add(form) }
+    document.addEventListener('input', rememberEdit, true)
+    document.addEventListener('change', rememberEdit, true)
+    return () => { document.removeEventListener('input', rememberEdit, true); document.removeEventListener('change', rememberEdit, true) }
+  }, [])
+
   const [logbookNavigation, setLogbookNavigation] = useState({ route: { name: 'home' }, history: [], future: [] })
   const navigateLogbook = (route) => setLogbookNavigation((current) => (
     JSON.stringify(current.route) === JSON.stringify(route) ? current : {
@@ -678,6 +694,15 @@ function App() {
     setQuestionBankMode(page === APP_PAGES.QUESTION_BANK ? nextQuestionBankMode : 'editable')
     setMobileSidebarOpen(false)
     setIsProfileMenuOpen(false)
+  }
+
+  const changeNavigationMode = mode => {
+    if (mode === navigationMode) return
+    if ([...document.querySelectorAll('form')].some(form => editedForms.current.has(form)) && !window.confirm('Switch view and leave this form? Unsaved changes will be lost.')) return
+    let target = MODE_DEFAULT_PAGES[mode]
+    try { const previous = localStorage.getItem('medsy-last-page-' + mode); if (PAGE_PATHS[previous] && getNavigationMode(previous) === mode) target = previous } catch { /* Use the default destination. */ }
+    setPreferredNavigationMode(mode)
+    navigateToPage(target)
   }
 
   const handleEditProfile = () => {
@@ -1278,6 +1303,7 @@ function App() {
 
       {!hideShellChrome ? (
         <Sidebar
+          navigationMode={navigationMode}
           mobileSidebarOpen={mobileSidebarOpen}
           sidebarCollapsed={sidebarCollapsed}
           theme={theme}
@@ -1301,6 +1327,8 @@ function App() {
 
         {!hideShellChrome ? (
           <Navbar
+            navigationMode={navigationMode}
+            onNavigationModeChange={changeNavigationMode}
             sidebarCollapsed={sidebarCollapsed}
             onOpenSidebar={() => setMobileSidebarOpen(true)}
             onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
@@ -1459,9 +1487,6 @@ function App() {
               completedEvaluationRows={completedEvaluationRows}
               onAlert={showAlert}
               onViewApproval={handleOpenApprovalView}
-              onOpenLogbookReview={() => {
-                navigateToPage(APP_PAGES.LOGBOOK, { logbookReview: true })
-              }}
             />
           ) : activePage === APP_PAGES.APPROVAL_VIEW ? (
             <ApprovalViewPage

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Clock3, FilePenLine, LayoutDashboard, LoaderCircle, Plus, Search, UserRound } from 'lucide-react'
+import { BookOpen, LayoutDashboard, LoaderCircle, Plus, Search, UserRound } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import SubjectView from '../components/logbook/LogbookSubjectDetail'
-import PendingView from '../components/logbook/LogbookPendingView'
 import LogbookSubjects from '../components/logbook/LogbookSubjects'
 import LogbookDashboard from '../components/logbook/LogbookDashboard'
 import LogbookBoundary from '../components/logbook/LogbookBoundary'
+import { closeLogbookDrawer } from '../components/logbook/closeLogbookDrawer'
 import LogbookEntryForm from '../components/logbook/LogbookEntryForm'
 import LogbookEntryDetail from '../components/logbook/LogbookEntryDetail'
 import { EntryList, ProfileView, SearchView } from '../components/logbook/LogbookViews'
@@ -20,15 +20,15 @@ import '../components/logbook/LogbookStatus.css'
 const NAVIGATION = [
   { name: 'home', label: 'Dashboard', icon: LayoutDashboard },
   { name: 'subjects', label: 'Subjects', icon: BookOpen },
-  { name: 'pending', label: 'Pending', icon: Clock3 },
-  { name: 'draft', label: 'Draft', icon: FilePenLine },
-  { name: 'search', label: 'Search', icon: Search },
+  { name: 'search', label: 'All entries', icon: Search },
 ]
 
 /** Page orchestration; App owns route/history. Form and detail drafts live beside their UI.
  * @param {{route:{name:string,id?:string,status?:string}, onNavigate:Function, onBack:Function, onForward:Function, canBack:boolean, canForward:boolean, theme:string, identity:Object}} props
  */
-function LogbookContent({ route, onNavigate, onBack, onForward, canBack, canForward, theme, identity }) {
+function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, canBack, canForward, theme, identity }) {
+  const legacyStatus = { pending: 'Pending', draft: 'Draft', approved: 'Approved' }[requestedRoute.name]
+  const route = legacyStatus ? { ...requestedRoute, name: 'search', status: legacyStatus } : requestedRoute
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [failure, setFailure] = useState('')
@@ -81,34 +81,27 @@ function LogbookContent({ route, onNavigate, onBack, onForward, canBack, canForw
       <div className="my-skills-overview-main">
         <span className="ospe-kicker">My Skills</span>
         <div className="my-skills-overview-copy"><h1>Logbook</h1><p>Record your learning experiences, track competency progress, and follow up on faculty verification.</p></div>
-        <div className="my-skills-overview-inline">
-          <span><strong>{entries.length}</strong> Entries</span>
-          <span><strong>{entries.filter((entry) => entry.status === 'Pending').length}</strong> Pending</span>
-          <span><strong>{entries.filter((entry) => entry.status === 'Approved').length}</strong> Approved</span>
-        </div>
+    <nav className="lb-navigation" aria-label="Logbook views">{NAVIGATION.map(({ name, label, icon }) => { const NavIcon = icon; return <button key={name} className={`my-skills-filter-chip ${(route.name === name || (name === 'subjects' && route.name === 'subject')) ? 'is-active' : ''}`} aria-current={(route.name === name || (name === 'subjects' && route.name === 'subject')) ? 'page' : undefined} onClick={() => navigate(name)}><NavIcon size={15} />{label}</button> })}</nav>
       </div>
       <div className="my-skills-live-card lb-create-card">
         <div className="my-skills-live-card-top"><span className="my-skills-live-indicator"><BookOpen size={15} /> Your learning record</span><button type="button" className="lb-card-profile" aria-label="My profile" title="My profile" aria-current={route.name === 'profile' ? 'page' : undefined} onClick={() => navigate('profile')}><UserRound size={18} /></button></div>
         <div className="my-skills-live-card-body"><strong>Capture your next experience</strong><p>Add an activity, reflect on what you learned, and submit it for verification.</p></div>
-        <button className="tool-btn my-skills-live-card-cta lb-new-entry-btn" disabled={loading || Boolean(failure)} onClick={() => newEntry(route.name === 'subject' ? subject?.name : '')}><Plus size={16} />New entry</button>
+        <button className="tool-btn my-skills-live-card-cta lb-new-entry-btn" disabled={loading || Boolean(failure)} onClick={() => newEntry(route.name === 'subject' ? subject?.name : '')}><Plus size={16} />Create New Logbook Entry</button>
       </div>
     </header>
-    <nav className="my-skills-toolbar lb-navigation" aria-label="Logbook views">{NAVIGATION.filter(item => item.name !== 'search').map(({ name, label, icon }) => { const NavIcon = icon; return <button key={name} className={`my-skills-filter-chip ${(route.name === name || (name === 'subjects' && route.name === 'subject')) ? 'is-active' : ''}`} aria-current={(route.name === name || (name === 'subjects' && route.name === 'subject')) ? 'page' : undefined} onClick={() => navigate(name)}><NavIcon size={15} />{label}{name === 'subjects' && <span>{SUBJECTS.length}</span>}{['pending', 'draft'].includes(name) && <span>{entries.filter(entry => entry.status === (name === 'pending' ? 'Pending' : 'Draft')).length}</span>}</button> })}</nav>
     {notice && <div className="lb-toast" role="status">{notice}</div>}
     {failure && <div className="lb-alert lb-error" role="alert">{failure}<button className="lb-btn" onClick={() => window.location.reload()}>Reload</button></div>}
     {loading ? <div className="lb-empty" role="status"><LoaderCircle size={25} className="lb-spin" /><p>Loading your Logbook…</p></div> : !failure && <div className="lb-content">
       {route.name === 'home' && <LogbookDashboard onEdit={edit} onRemedial={remedial} entries={entries} onNavigate={navigate} onOpen={setSelectedId} onSubject={(id) => navigate('subject', id)} />}
       {route.name === 'subjects' && <LogbookSubjects entries={entries} onSubject={(id) => navigate('subject', id)} />}
       {route.name === 'subject' && subject && <SubjectView theme={theme} key={subject.name} subject={subject} entries={entries} onOpen={setSelectedId} onNew={newEntry} />}
-      {route.name === 'pending' && <PendingView key="pending" entries={entries} onOpen={setSelectedId} />}
-      {route.name === 'draft' && <PendingView key="draft" draftsOnly entries={entries} onOpen={setSelectedId} />}
       {route.name === 'search' && <SearchView key={route.status || 'all'} entries={entries} onOpen={setSelectedId} initialStatus={route.status} />}
       {route.name === 'profile' && <ProfileView entries={entries} identity={identity} onReset={reset} busy={resetting} />}
       {route.name === 'faculty' && <section className="lb-card"><div className="lb-section-head"><h2>Logbook verification</h2><span className="lb-sample">Faculty demo</span></div><p className="lb-muted">Review submitted entries, provide feedback and approve or return an attempt.</p><EntryList entries={entries.filter((entry) => entry.status === 'Pending')} onOpen={setSelectedId} empty="No Logbook entries awaiting verification." /></section>}
     </div>}
     </div>
-    {form && <LogbookEntryForm key={form.entry.id} {...form} entries={entries} theme={theme} onClose={() => setForm(null)} onSaved={(message) => { setForm(null); setNotice(message) }} />}
-    {selected && !form && <LogbookEntryDetail key={selected.id} entry={selected} entries={entries} theme={theme} role={route.name === 'faculty' ? 'faculty' : 'learner'} commentDraft={commentDrafts[selected.id] || ''} onCommentDraft={(text) => setCommentDrafts((current) => ({ ...current, [selected.id]: text }))} onClose={() => setSelectedId(null)} onEdit={edit} onRemedial={remedial} onOpen={setSelectedId} onChanged={setNotice} />}
+    {form && <LogbookEntryForm key={form.entry.id} {...form} entries={entries} theme={theme} onClose={() => { void closeLogbookDrawer(() => setForm(null)) }} onSaved={(message) => { void closeLogbookDrawer(() => { setForm(null); setNotice(message) }) }} />}
+    {selected && !form && <LogbookEntryDetail key={selected.id} entry={selected} entries={entries} theme={theme} role={route.name === 'faculty' ? 'faculty' : 'learner'} commentDraft={commentDrafts[selected.id] || ''} onCommentDraft={(text) => setCommentDrafts((current) => ({ ...current, [selected.id]: text }))} onClose={() => { void closeLogbookDrawer(() => setSelectedId(null)) }} onEdit={edit} onRemedial={remedial} onOpen={setSelectedId} onChanged={setNotice} />}
   </section>
 }
 export default function LogbookPage(props) { return <LogbookBoundary><LogbookContent {...props} /></LogbookBoundary> }

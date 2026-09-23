@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { BookOpen, ChevronDown, ChevronRight, Search } from 'lucide-react'
-import { STUDENT } from '../../services/logbookSample'
+import { STUDENT, CATEGORIES } from '../../services/logbookSample'
 import { entryTitle, facultyName, formatDate, searchEntries } from '../../services/logbook'
 import { subjectLabel } from '../../services/logbookCatalog'
 import './LogbookViews.css'
+import LogbookCategoryMenu from './LogbookCategoryMenu'
 
 /** Presentational collection: all record data and navigation callbacks come from the page. */
 export function EntryList({ entries, onOpen, empty = 'No entries here yet.' }) {
@@ -14,8 +15,13 @@ export function EntryList({ entries, onOpen, empty = 'No entries here yet.' }) {
 export function SearchView({ entries, onOpen, initialStatus = '' }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState(initialStatus)
-  const results = searchEntries(entries, query).filter((entry) => !status || entry.status === status)
-  return <section className="lb-card"><div className="lb-search-bar"><label className="lb-search"><Search size={18} /><input aria-label="Search logbook entries" placeholder="Search competency, topic, faculty, notes…" value={query} onChange={(event) => setQuery(event.target.value)} /></label><div className="lb-status-select"><select aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{['Draft', 'Pending', 'Approved', 'Returned'].map((value) => <option key={value}>{value}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></div></div><p className="lb-muted" aria-live="polite">{results.length} {results.length === 1 ? 'entry' : 'entries'} found</p><EntryList entries={results} onOpen={onOpen} empty="No matching entries. Try another search or status." /></section>
+  const [category, setCategory] = useState('all')
+  const matches = searchEntries(entries, query).filter(entry => !status || entry.status === status)
+  const categoryIds = [...new Set(matches.map(entry => entry.cat))]
+  const options = [{ id: 'all', name: 'All entries', count: matches.length }, ...categoryIds.map(id => ({ ...(CATEGORIES.find(item => item.id === id) || { id, name: 'Other entries' }), count: matches.filter(entry => entry.cat === id).length }))]
+  const selection = options.some(item => item.id === category) ? category : 'all'
+  const results = matches.filter(entry => selection === 'all' || entry.cat === selection)
+  return <div className="lb-all-entries"><LogbookCategoryMenu options={options} value={selection} onChange={setCategory} /><section className="lb-card lb-all-entry-results"><div className="lb-search-bar"><label className="lb-search"><Search size={18} /><input aria-label="Search logbook entries" placeholder="Search competency, topic, faculty, notes…" value={query} onChange={(event) => setQuery(event.target.value)} /></label><div className="lb-status-select"><select aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{['Draft', 'Pending', 'Approved', 'Returned'].map((value) => <option key={value}>{value}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></div></div><p className="lb-muted" aria-live="polite">{results.length} {results.length === 1 ? 'entry' : 'entries'} found</p><EntryList entries={results} onOpen={onOpen} empty="No matching entries. Try another search or status." /></section></div>
 }
 export function ProfileView({ entries, identity, onReset, busy }) {
   const [confirm, setConfirm] = useState(false)

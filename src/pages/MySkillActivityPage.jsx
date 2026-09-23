@@ -1,3 +1,4 @@
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
@@ -302,6 +303,7 @@ export default function MySkillActivityPage({
   return (
     <section className="vx-content ospe-page my-skills-page">
       <div className="ospe-shell my-skills-shell">
+        <PageNavigationHeader items={['My Pages', 'My Skill Activity']} />
         <section className="my-skills-overview">
           <div className="my-skills-overview-main">
             <span className="ospe-kicker">My Skills</span>

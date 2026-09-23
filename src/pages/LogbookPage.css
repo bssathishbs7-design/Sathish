@@ -113,8 +113,8 @@ dialog.logbook-scope.lb-drawer {
 .lb-page .lb-create-card .my-skills-live-card-body p { margin: 0; color: var(--on-dark-muted); }
 .lb-page .lb-create-card .lb-new-entry-btn {
   justify-self: start; min-height: 44px; margin-top: auto; padding: var(--s-3) var(--s-5);
-  gap: var(--s-2); border: 1px solid var(--mint); border-radius: var(--r-pill);
-  background: var(--surface-card); color: var(--text-strong); font-weight: 700;
+  gap: var(--s-2); border: 1px solid var(--mint-200); border-radius: var(--r-pill);
+  background: linear-gradient(110deg, var(--mint-100), var(--mint-200)); color: var(--text-strong); font-weight: 700;
   box-shadow: var(--shadow-md); cursor: pointer;
   transition: transform var(--dur-hover) var(--ease-spring), background var(--dur-hover) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard);
 }
@@ -123,20 +123,20 @@ dialog.logbook-scope.lb-drawer {
   transition: transform var(--dur-control) var(--ease-spring);
 }
 .lb-page .lb-create-card .lb-new-entry-btn:not(:disabled):is(:hover, :focus-visible) {
-  background: var(--mint-200); color: var(--text-strong); transform: translateY(-2px); box-shadow: var(--shadow-lg);
+  background: linear-gradient(110deg, var(--mint-200), var(--mint-100)); transform: translateY(-2px); box-shadow: var(--shadow-lg);
 }
 .lb-page .lb-create-card .lb-new-entry-btn:not(:disabled):is(:hover, :focus-visible) svg { transform: rotate(90deg) scale(1.12); }
 .lb-page .lb-create-card .lb-new-entry-btn:focus-visible { outline: 2px solid var(--mint); outline-offset: var(--s-1); box-shadow: 0 0 0 5px var(--focus-ring); }
 .lb-page .lb-create-card .lb-new-entry-btn:not(:disabled):active { transform: translateY(1px) scale(.97); transition: none; }
 .lb-page .lb-create-card .lb-new-entry-btn:disabled { cursor: not-allowed; box-shadow: none; }
 :is([data-theme="dark"], [data-theme="oled"], .theme-dark) .lb-page .lb-create-card .lb-new-entry-btn {
-  background: var(--surface-inverse); color: var(--text-on-inverse);
+  background: linear-gradient(110deg, var(--mint-100), var(--mint-200)); color: var(--text-strong);
 }
 @media (prefers-reduced-motion: reduce) {
   .lb-page .lb-create-card .lb-new-entry-btn:not(:disabled):is(:hover, :focus-visible, :active),
   .lb-page .lb-create-card .lb-new-entry-btn:not(:disabled):is(:hover, :focus-visible) svg { transform: none; }
 }
-.lb-page .lb-navigation { justify-content: flex-start; margin: 0; gap: var(--s-2); padding: var(--s-3); border: 1px solid var(--border); }
+.lb-page .lb-navigation { position: relative; z-index: 1; justify-content: flex-start; align-self: end; margin: var(--s-2) 0 0; gap: var(--s-2); padding: 0; border: 0; background: transparent; box-shadow: none; }
 .lb-page .lb-navigation button { min-height: 32px; padding: 0 var(--s-3); border-color: var(--border); background: var(--surface-card); font-size: 12px; font-weight: 600; }
 .lb-page .lb-navigation button.is-active, .lb-page .lb-navigation button.is-active:hover { background: var(--forest); color: var(--on-brand); border-color: var(--forest); }
 .lb-page .lb-navigation button.is-active > svg { color: inherit; }
@@ -187,5 +187,22 @@ dialog.logbook-scope.lb-drawer {
 .lb-page .lb-create-card .lb-card-profile:active { transform: scale(.95); transition: none; }
 
 /* Search focus belongs to the rounded composite control, including its icon. */
-.logbook-scope :is(.lb-search, .lb-pending-search) input:focus { outline: none; box-shadow: none; }
-.logbook-scope :is(.lb-search, .lb-pending-search):focus-within { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.logbook-scope .lb-search input:focus { outline: none; box-shadow: none; }
+.logbook-scope .lb-search:focus-within { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+
+.lb-page .lb-page-head .my-skills-overview-main { grid-template-rows: auto auto 1fr; align-content: start; gap: var(--s-2); padding: var(--s-4); }
+.lb-page .lb-page-head .ospe-kicker { align-self: start; justify-self: start; box-sizing: border-box; height: var(--s-6); min-height: 0; padding: 0 var(--s-3); line-height: 1; font-size: var(--fs-micro); }
+
+.lb-page .lb-page-head .my-skills-overview-copy { gap: var(--s-2); }
+.lb-page .lb-page-head .my-skills-overview-copy p { font-size: 13px; line-height: 1.5; }
+.lb-page .lb-create-card { align-self: stretch; min-height: 0; padding: var(--s-4); gap: var(--s-2); }
+.lb-page .lb-create-card .my-skills-live-card-body { gap: var(--s-1); }
+.lb-page .lb-create-card .my-skills-live-card-body strong { max-width: none; font-size: 16px; }
+.lb-page .lb-create-card .lb-new-entry-btn { justify-self: stretch; justify-content: center; width: 100%; box-sizing: border-box; min-height: var(--s-7); padding: var(--s-3) var(--s-4); margin-top: var(--s-1); font-size: 14px; line-height: 1.4; font-weight: 700; }
+
+@media (max-width: 479px) { .lb-page .lb-navigation { gap: var(--s-1); } .lb-page .lb-navigation button { gap: var(--s-1); padding-inline: var(--s-2); font-size: var(--fs-micro); } }
+
+.lb-page .lb-create-card .lb-new-entry-btn:not(:disabled) { animation: lb-entry-pulse calc(var(--dur-reveal) * 2) var(--ease-standard) infinite; }
+.lb-page .lb-create-card .lb-new-entry-btn:is(:hover, :focus-visible, :active) { animation: none; }
+@keyframes lb-entry-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--mint) 45%, transparent); } 60% { box-shadow: 0 0 0 var(--s-2) color-mix(in srgb, var(--mint) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .lb-page .lb-create-card .lb-new-entry-btn:not(:disabled) { animation: none; } }

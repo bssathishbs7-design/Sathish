@@ -390,7 +390,7 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
   )
 }
 
-export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onViewApproval, onOpenLogbookReview }) {
+export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onViewApproval }) {
   const [activeModuleTab, setActiveModuleTab] = useState('assessment')
   const [searchQuery, setSearchQuery] = useState('')
   const [isReviewFilterOpen, setIsReviewFilterOpen] = useState(false)
@@ -590,7 +590,6 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
       <div className="eval-shell review-approve-shell assessment-page-shell assessment-create-page-shell">
         <div className="assessment-create-page-header review-approve-breadcrumb-head">
           <PageNavigationHeader items={['My Pages', 'Approval Queue']} />
-          {onOpenLogbookReview && <button type="button" className="tool-btn green" onClick={onOpenLogbookReview}>Review Logbook</button>}
         </div>
 
         <section className="review-approve-board">

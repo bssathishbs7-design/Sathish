@@ -1,3 +1,4 @@
+import NavigationModeToggle from './NavigationModeToggle'
 import {
   Bell,
   ChevronRight,
@@ -32,6 +33,8 @@ import {
  * - Shared top-level shell component in src/components/
  */
 export default function Navbar({
+  navigationMode,
+  onNavigationModeChange,
   sidebarCollapsed,
   onOpenSidebar,
   onToggleSidebar,
@@ -67,6 +70,7 @@ export default function Navbar({
         {sidebarCollapsed ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}
       </button>
 
+      <NavigationModeToggle mode={navigationMode} onChange={onNavigationModeChange} />
       <div className="vx-global-search">
         <span className="vx-search-icon" aria-hidden="true">
           <Search size={16} strokeWidth={2} />

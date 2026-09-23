@@ -1,5 +1,5 @@
 .lb-drawer { position: fixed; inset: 0 0 0 auto; padding: 0; margin: 0; width: min(640px, 100%); max-width: 100%; height: 100dvh; max-height: 100dvh; border: 0; border-left: 1px solid var(--border); background: var(--surface); color: var(--text-body); box-shadow: var(--shadow-lg); }
-.lb-drawer::backdrop { background: color-mix(in srgb, var(--forest-900) 45%, transparent); }
+.lb-drawer::backdrop { background: rgb(45 45 45 / 45%); }
 .lb-drawer-panel { min-height: 100%; display: flex; flex-direction: column; }
 .lb-drawer-head { display: flex; gap: var(--s-4); justify-content: space-between; align-items: flex-start; padding: var(--s-5); border-bottom: 1px solid var(--border); }
 .lb-drawer-head h2 { margin: var(--s-2) 0; }
@@ -22,3 +22,13 @@
   .lb-drawer.is-entry-form .lb-drawer-head { padding: var(--s-4); }
 }
 
+
+.lb-drawer[open] { animation: lb-drawer-enter var(--dur-overlay) var(--ease-emphasized) both; }
+.lb-drawer[open]::backdrop { animation: lb-backdrop-enter var(--dur-overlay) var(--ease-standard) both; }
+.lb-drawer[open].is-closing { animation: lb-drawer-exit var(--dur-overlay) var(--ease-exit) both; pointer-events: none; }
+.lb-drawer[open].is-closing::backdrop { animation: lb-backdrop-exit var(--dur-overlay) var(--ease-exit) both; }
+@keyframes lb-drawer-enter { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes lb-drawer-exit { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes lb-backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lb-backdrop-exit { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .lb-drawer[open], .lb-drawer[open]::backdrop, .lb-drawer[open].is-closing, .lb-drawer[open].is-closing::backdrop { animation: none; } }

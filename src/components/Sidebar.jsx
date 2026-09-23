@@ -4,7 +4,7 @@ import { CornerDownRight, ChevronDown, X } from 'lucide-react'
 import brandLogo from '../assets/brand-logo.svg'
 import brandLogoDark from '../assets/brand-logo-dark.svg'
 import brandMark from '../assets/brand-mark.svg'
-import { APP_PAGES, ASSESSMENT_PAGES, ASSESSMENT_SUITE_PAGES, SIDEBAR_MENU, SKILL_PAGES } from '../config/appPages'
+import { APP_PAGES, ASSESSMENT_PAGES, ASSESSMENT_SUITE_PAGES, SIDEBAR_MENU, SKILL_PAGES, STUDENT_MENU_PAGES } from '../config/appPages'
 
 /**
  * Sidebar Implementation Contract
@@ -30,6 +30,7 @@ export default function Sidebar({
   theme,
   useCompactLogo,
   activePage,
+  navigationMode = 'faculty',
   queryRequestCount = 0,
   createdReportCount = 0,
   onSelectPage,
@@ -162,7 +163,7 @@ export default function Sidebar({
 
         {SIDEBAR_MENU.map((group) => (
           <div key={group.section} className="vx-menu-group">
-            {group.items.map((item) => (
+            {group.items.filter(item => navigationMode === 'student' ? STUDENT_MENU_PAGES.includes(item.label) : !STUDENT_MENU_PAGES.includes(item.label)).map((item) => (
               item.children ? (
                 <div
                   key={item.label}

@@ -1,0 +1,26 @@
+.vx-navigation-mode { display: inline-flex; align-items: center; flex-shrink: 0; gap: var(--s-1, 4px); padding: var(--s-1, 4px); border: 1px solid var(--border, #cfe7db); border-radius: var(--r-pill, 999px); background: var(--surface-card, #fff); }
+.vx-navigation-mode button { border: 0; border-radius: var(--r-pill, 999px); padding: var(--s-1, 4px) var(--s-2, 8px); line-height: 1.4; background: transparent; color: var(--text-body, #333); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
+.vx-navigation-mode button:hover { background: var(--surface-soft, #e7fcf3); }
+.vx-navigation-mode button[aria-pressed="true"] { background: var(--forest, #0F6844); color: var(--on-brand, #fff); }
+.vx-navigation-mode button:focus-visible { outline: 2px solid var(--forest, #0F6844); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring, #c9f8e7); }
+.vx-navigation-mode button:active { transform: translateY(1px) scale(.97); transition: none; }
+.theme-dark .vx-navigation-mode { background: var(--surface-card, #153226); border-color: var(--border, #39775c); }
+.theme-dark .vx-navigation-mode button { color: var(--text-body, #f2faf6); }
+.theme-dark .vx-navigation-mode button[aria-pressed="true"] { background: var(--forest, #5fe8b1); color: var(--on-brand, #07130d); }
+@media (max-width: 767px) { .vx-navigation-mode button { padding: var(--s-1, 4px) var(--s-2, 8px); font-size: var(--fs-micro, 11px); } }
+@media (prefers-reduced-motion: reduce) { .vx-navigation-mode button { transition: none; } .vx-navigation-mode button:active { transform: none; } }
+@media (max-width: 479px) {
+  .vx-shell .vx-topbar:has(.vx-navigation-mode) { gap: var(--s-1, 4px); padding-inline: var(--s-2, 8px); }
+  .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-global-search { display: none; }
+  .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-actions { gap: var(--s-1, 4px); margin-left: auto; }
+  .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-icon-btn { width: var(--s-6, 32px); height: var(--s-6, 32px); min-width: var(--s-6, 32px); padding: 0; }
+  .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-profile-trigger { padding: 0; min-width: 0; }
+  .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-profile-trigger .avatar { width: var(--s-6, 32px); height: var(--s-6, 32px); }
+  .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-profile-caret { display: none; }
+}
+@media (max-width: 767px) {
+  .vx-shell .vx-topbar:has(.vx-navigation-mode) { flex-wrap: wrap; height: auto; padding-block: var(--s-2, 8px); }
+  .vx-shell .vx-topbar:has(.vx-navigation-mode) .vx-actions { flex-basis: 100%; justify-content: flex-end; }
+}
+
+@media (max-width: 767px) { .vx-navigation-mode { flex-shrink: 1; min-width: 0; max-width: calc(100% - 48px); } .vx-navigation-mode button { flex: 1; min-width: 0; white-space: normal; } }

@@ -1,3 +1,4 @@
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, BookOpenCheck, Info, Play, Search, Trash2, X } from 'lucide-react'
 import { corelationRatingRows } from './corelationRatingData'
@@ -219,6 +220,7 @@ function LearnPracticePage({ onNavigate, onOpenAnalytics }) {
   return (
     <section className="vx-content assessment-page is-my-assessment learn-practice-page">
       <div className="assessment-page-shell">
+        <PageNavigationHeader items={['My Pages', 'Learn & Practice']} />
         <section className="assessment-create-draft-shell assessment-create-published-shell my-assessment-published-shell learn-practice-shell" aria-label="Learn and practice shared cards">
           <>
             <div className="assessment-create-card-heading learn-practice-title-row">

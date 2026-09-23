@@ -110,7 +110,6 @@ export async function saveLogbookEntry(entry, submit = false) {
   if (deltas.removed.includes(entry.id)) throw new Error('This entry has been withdrawn. Close this form and create a new entry.')
   const current = applyDeltas(deltas).find((item) => item.id === entry.id)
   if (current && !['Draft', 'Pending'].includes(current.status)) throw new Error('This entry has already been reviewed. Reopen it to see the latest decision.')
-  if (current && (current.subject !== entry.subject || current.cat !== entry.cat)) throw new Error('Subject and category cannot change on an existing entry.')
   if (entry.linkedTo) {
     const all = applyDeltas(deltas)
     const parent = all.find((item) => item.id === entry.linkedTo)

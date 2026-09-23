@@ -184,3 +184,29 @@
 
 ## 2026-09-22 - Hide empty subject categories
 - Sidebar and mobile category navigation now hide zero-count categories and Drafts. All entries stays available as the default; a selection that becomes empty falls back to All entries.
+
+- Logbook: existing Draft and Pending entries allow subject/category changes, using the existing confirmation when category-specific values would be cleared. Linked remedial attempts retain their original context.
+
+- Added Approved tab with a live count and status-scoped search, subject/faculty filters, and entry details.
+
+- Dashboard metrics now link to all entries or the corresponding Draft, Pending, Approved and Returned records. Counts consistently represent entries.
+
+- Simplified Logbook navigation to Dashboard, Subjects and All entries. Status selection is in All entries; Dashboard metrics are informational and banner counts are removed. Existing status history opens All entries with the matching filter.
+
+- All entries now includes shared Log Categories navigation; category selection combines with search/status and counts reflect those filters. Zero-count categories are hidden; mobile uses a dropdown.
+
+- Added a manual recent-update carousel in the Logbook header. Arrows, dots and touch scrolling browse the latest four entries; selecting an update opens its details.
+
+- Header updates now auto-advance every five seconds without a heading or arrow controls. Dots and swipe remain; rotation pauses on hover, focus, hidden tabs and open dialogs, and respects reduced-motion preferences.
+
+- Removed header carousel dots and replaced horizontal auto-scrolling with a fade transition. Automatic updates, swipe and keyboard navigation remain available.
+
+- Removed the activity carousel from the Logbook header. Recent activity remains available in the Dashboard card.
+
+- Moved Dashboard, Subjects and All entries tabs inside the Logbook header below its description; removed the separate navigation container.
+
+- Removed the duplicate Add entry action from the subject header; the main Create New Logbook Entry action remains available.
+
+- Removed the Review Logbook shortcut from the Approval Queue header.
+
+- Added Faculty/Student header navigation modes. Student shows My Skill Activity, My Logbook, My Assessment and Learn & Practice; Faculty shows other menus. Mode and last destinations are persisted, direct links select their matching mode, and switching away from an edited form asks for confirmation.

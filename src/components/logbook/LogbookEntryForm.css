@@ -42,3 +42,12 @@
 .lb-schema-group h4 { margin: 0; color: var(--text-strong); }
 
 .logbook-scope .lb-required { color: var(--danger-ink); font-weight: 700; }
+
+.lb-faculty-readonly-grid > .lb-field:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.logbook-scope .lb-entry-form .lb-faculty-readonly { box-sizing: border-box; width: 100%; background: var(--surface-mist); color: var(--text-muted); cursor: default; }
+
+.lb-entry-select { display: block; position: relative; min-width: 0; }
+.logbook-scope .lb-entry-form .lb-entry-select select { appearance: none; box-sizing: border-box; width: 100%; height: var(--s-7); margin: 0; padding: 0 var(--s-7) 0 var(--s-3); font: inherit; cursor: pointer; }
+.lb-entry-select > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.logbook-scope .lb-entry-select select:not(:disabled):hover { border-color: var(--activity-hover-line); }
+.logbook-scope .lb-entry-select select:disabled { cursor: default; }
