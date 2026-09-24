@@ -263,3 +263,5 @@
 - Incoming comments highlight logbook entries and show unread counts. Viewing individual messages in the drawer marks them read for that account in this browser; opening an entry alone does not clear unseen comments. Read chat icons and attachments remain available.
 
 - 2026-09-24: Enabled Correlation Rating on phone viewports; the route now opens the page instead of the desktop-only notice. Metrics and filters wrap, with horizontal scrolling for the detailed table.
+
+- 2026-09-24: Added the shared My Pages / Learn & Practice / Start practice breadcrumb and history controls to the practice session list and empty state. Active practice retains its existing guarded exit.

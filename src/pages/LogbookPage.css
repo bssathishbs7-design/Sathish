@@ -58,6 +58,7 @@
 /* Consume the My Skill Activity visual system across the page and portalled drawers. */
 .vx-content.logbook-scope.lb-page,
 .vx-content.logbook-scope.correlation-rating-page,
+.vx-content.logbook-scope.start-practice-page,
 dialog.logbook-scope.lb-drawer {
   --text-strong: var(--activity-text-strong);
   --text-body: var(--activity-text-body);

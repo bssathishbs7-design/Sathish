@@ -44,6 +44,8 @@ import InterpretationActivityPage from './pages/InterpretationActivityPage'
 import OspeActivityPage from './pages/OspeActivityPage'
 import { APP_PAGES, QUESTION_BANK_PAGES, getNavigationMode, MODE_DEFAULT_PAGES } from './config/appPages'
 import './styles/practice-activity-theme.css'
+import './pages/StartPracticeLogbook.css'
+import './pages/StartPracticePlayer.css'
 import './styles/overall-analytics-theme.css'
 import './styles/student-result-theme.css'
 

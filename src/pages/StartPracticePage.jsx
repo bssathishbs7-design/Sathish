@@ -3,11 +3,13 @@ import { getPracticeTagSnapshot } from '../services/practiceTagAnalytics'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PracticeLeaveDialog from '../components/PracticeLeaveDialog'
+import PageNavigationHeader from '../components/PageNavigationHeader'
 import { getQuestionType, getQuestionMarks, parseMarksValue, getPracticeQuestionBreakdown } from '../services/practiceQuestionMetadata'
 import { restoreCompletedPracticeHistory } from '../services/competencyAnalytics'
 import { mergeNewPracticeSessions } from '../services/practiceShareSync'
 import { ArrowLeft, BarChart3, BookOpenCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Eye, Home, Info, Play, RotateCcw, Timer, Trophy, X } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
+import { corelationRatingRows } from './corelationRatingData'
 import './StartPracticePage.css'
 
 const START_PRACTICE_SELECTED_CARD_KEY = 'vx-start-practice-selected-card'
@@ -737,6 +739,7 @@ const formatCountdown = (targetDate, now = new Date()) => {
 }
 
 const getPracticeSessions = (card = {}) => {
+  if (!card) return []
   if (Array.isArray(card.practiceSessions) && card.practiceSessions.length) {
     return card.practiceSessions.map((session, index) => ({
       id: session.id ?? `${card.id ?? card.competencyCode}-practice-${index + 1}`,
@@ -785,7 +788,7 @@ const getPracticeRows = (card = {}, now = new Date()) => getPracticeSessions(car
   const endDateTime = isScheduled ? parseScheduledDateTime(assignment.endDate, assignment.endTime) : null
   return {
     ...session,
-    label: `# PRACTICE ${session.practiceNo}`,
+    label: `Practice ${session.practiceNo}`,
     dateTime: formatDateTime(session.sharedAt),
     type: isScheduled ? 'Scheduled' : 'Normal',
     from: isScheduled ? formatScheduleDate(assignment.startDate) : '-',
@@ -1174,6 +1177,10 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
     })
   }).length, [answers, questions])
   const competencyName = selectedCard?.competencyName || `Competency ${selectedCard?.competencyCode ?? ''}`
+  const curriculumRow = corelationRatingRows.find((row) => row.code.replace(/\s+/g, '').toUpperCase() === String(selectedCard?.competencyCode ?? '').replace(/\s+/g, '').toUpperCase())
+  const contextQuestions = [...(selectedCard?.questions ?? []), ...(selectedCard?.practiceSessions ?? []).flatMap((session) => session.questions ?? [])]
+  const practiceSubject = selectedCard?.subject || contextQuestions.find((question) => question.subject)?.subject || curriculumRow?.subject || 'Subject not specified'
+  const practiceYear = selectedCard?.assignment?.year || selectedCard?.year || contextQuestions.find((question) => question.year)?.year || curriculumRow?.year || 'Year not specified'
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000)
@@ -1337,7 +1344,8 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
 
   if (!selectedCard) {
     return (
-      <section className="vx-content assessment-page start-practice-page">
+      <section className="vx-content assessment-page start-practice-page logbook-scope">
+        <PageNavigationHeader items={['My Pages', 'Learn & Practice', 'Start practice']} />
         <div className="start-practice-empty">
           <span aria-hidden="true"><BookOpenCheck size={26} strokeWidth={2.2} /></span>
           <strong>No practice set selected</strong>
@@ -1958,8 +1966,9 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
   ) : null
 
   return (
-    <section className="vx-content assessment-page start-practice-page">
+    <section className={`vx-content assessment-page start-practice-page logbook-scope is-${mode}`}>
       <div className="start-practice-shell">
+        {mode === 'sessions' && <PageNavigationHeader items={['My Pages', 'Learn & Practice', 'Start practice']} />}
         <header className={`start-practice-title-bar ${mode === 'player' ? 'is-player-header' : ''}`}>
           <div className="start-practice-title-main">
             <button type="button" className="start-practice-title-back" aria-label="Home" title="Home" onClick={() => {
@@ -1976,12 +1985,47 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
             }}>
               <Home size={15} strokeWidth={2.3} />
             </button>
-            <strong className="start-practice-competency-badge" tabIndex={0}>
-              {selectedCard.competencyCode}
-              <Info size={11} strokeWidth={2.4} aria-hidden="true" />
-              <span role="tooltip">{competencyName}</span>
-            </strong>
+            <div className="start-practice-heading-copy">
+              <div className="start-practice-heading-line">
+                {mode === 'sessions' && <strong>{practiceSubject} <span aria-hidden="true">&middot;</span> {practiceYear}</strong>}
+                {mode === 'player' && <strong className="start-practice-competency-badge" tabIndex={0}>
+                  {selectedCard.competencyCode}
+                  <Info size={11} strokeWidth={2.4} aria-hidden="true" />
+                  <span role="tooltip">{competencyName}</span>
+                </strong>}
+              </div>
+              {mode === 'sessions' && <span>{selectedCard.competencyCode && <><b>{selectedCard.competencyCode}</b> &middot; </>}{competencyName}</span>}
+            </div>
           </div>
+          {mode === 'sessions' && (
+              <button type="button" className="start-practice-title-analytics" onClick={() => {
+                const sessions = getPracticeSessions(selectedCard).map((session) => ({
+                  ...session,
+                  status: sessionStatuses[session.id] || session.status,
+                }))
+                const card = restoreCompletedPracticeHistory(selectedCard, sessions, getSessionScore, getPracticeSessionTotalMarks)
+                setSelectedCard(card)
+                persistSelectedPracticeCard(card)
+                onOpenAnalytics?.({ card, filter: sessionFilter, page: currentSessionPage })
+              }}>
+                <BarChart3 size={15} strokeWidth={2.2} />
+                View analytics
+              </button>
+          )}
+          {mode === 'player' ? (
+            <div className="start-practice-title-meta" aria-label="Practice session summary">
+              <span className="start-practice-title-attended">
+                <em>Attended</em>
+                <strong>{answeredCount} / {questions.length}</strong>
+              </span>
+              <div className="start-practice-title-totals" aria-label="Practice totals">
+                <span><em>Total ques</em><strong>{formatCount(questions.length)}</strong></span>
+                <span><em>Total Marks</em><strong>{formatCount(totalMarks)}</strong></span>
+              </div>
+            </div>
+          ) : null}
+        </header>
+
           {mode === 'sessions' ? (
             <div className="start-practice-title-actions">
               <div className="start-practice-session-filters" aria-label="Filter practice sessions">
@@ -1994,6 +2038,7 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
                     key={value}
                     type="button"
                     className={sessionFilter === value ? 'is-active' : ''}
+                    aria-pressed={sessionFilter === value}
                     onClick={() => setSessionFilter(value)}
                   >
                     {label}
@@ -2009,34 +2054,10 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
                 Live practice
                 <span>{sessionFilterCounts.inProgress}</span>
               </button>
-              <button type="button" className="start-practice-title-analytics" onClick={() => {
-                const sessions = getPracticeSessions(selectedCard).map((session) => ({
-                  ...session,
-                  status: sessionStatuses[session.id] || session.status,
-                }))
-                const card = restoreCompletedPracticeHistory(selectedCard, sessions, getSessionScore, getPracticeSessionTotalMarks)
-                setSelectedCard(card)
-                persistSelectedPracticeCard(card)
-                onOpenAnalytics?.({ card, filter: sessionFilter, page: currentSessionPage })
-              }}>
-                <BarChart3 size={15} strokeWidth={2.2} />
-                View Analytics
-              </button>
+
             </div>
           ) : null}
-          {mode === 'player' ? (
-            <div className="start-practice-title-meta" aria-label="Practice session summary">
-              <span className="start-practice-title-attended">
-                <em>Attended</em>
-                <strong>{answeredCount} / {questions.length}</strong>
-              </span>
-              <div className="start-practice-title-totals" aria-label="Practice totals">
-                <span><em>Total ques</em><strong>{formatCount(questions.length)}</strong></span>
-                <span><em>Total Marks</em><strong>{formatCount(totalMarks)}</strong></span>
-              </div>
-            </div>
-          ) : null}
-        </header>
+
 
         {mode === 'sessions' ? (
           <section className="start-practice-session-card" aria-label={`${selectedCard.competencyCode} practice sessions`}>
@@ -2110,7 +2131,7 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
                       ) : (
                         <Play size={13} strokeWidth={2.4} />
                       )}
-                      {isFinishedRow ? 'Review' : 'Start'}
+                      {isFinishedRow ? 'Review' : Object.keys(row.practiceAnswers ?? {}).length ? 'Resume' : 'Start'}
                     </button>
                     <button
                       type="button"

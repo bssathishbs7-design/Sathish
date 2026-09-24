@@ -1,0 +1,104 @@
+/* Start Practice uses Logbook surfaces and controls; answer correctness states remain scoped to the player. */
+.vx-content.assessment-page.start-practice-page.logbook-scope { padding: var(--s-4); height: auto; overflow: visible; font-family: var(--font-family-base); color: var(--text-body); }
+.vx-content.assessment-page.start-practice-page .start-practice-shell { padding: 0; gap: var(--s-3); height: auto; overflow: visible; }
+.vx-content.assessment-page.start-practice-page.is-sessions .start-practice-shell { grid-template-rows: auto auto auto auto; }
+.vx-content.assessment-page.start-practice-page .start-practice-title-bar { padding: var(--s-3); border-radius: var(--r); background: var(--activity-card-fill); border-color: var(--border); box-shadow: var(--activity-shadow); }
+.vx-content.assessment-page.start-practice-page.is-sessions .start-practice-title-bar { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3); }
+.vx-content.assessment-page.start-practice-page .start-practice-title-main { grid-template-columns: auto minmax(0, 1fr); gap: var(--s-3); }
+.start-practice-heading-copy { display: grid; gap: var(--s-1); min-width: 0; }
+.start-practice-heading-copy > strong { font-size: 15px; color: var(--text-strong); }
+.start-practice-heading-copy > span { color: var(--text-muted); font-size: 12px; overflow-wrap: anywhere; }
+.vx-content.assessment-page.start-practice-page .start-practice-competency-badge { position: relative; display: inline-flex; align-items: center; gap: var(--s-1); min-height: 0; height: var(--s-5); padding: 0 var(--s-1); background: var(--surface-soft); color: var(--text-brand); border: 1px solid var(--border); border-radius: calc(var(--r-sm) / 2); font-family: var(--f-code); font-size: var(--fs-micro); line-height: 1; box-shadow: none; }
+.vx-content.assessment-page.start-practice-page .start-practice-title-actions { grid-column: 1 / -1; display: flex; justify-content: flex-start; flex-wrap: wrap; gap: var(--s-2); width: 100%; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-filters { flex: none; width: auto; display: flex; flex-wrap: wrap; gap: var(--s-2); padding: 0; border: 0; }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-session-filters button, .start-practice-title-progress, .start-practice-title-analytics) { min-height: 32px; padding: var(--s-1) var(--s-3); font-size: 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-muted); animation: none; }
+.vx-content.assessment-page.start-practice-page .start-practice-title-analytics { margin-left: auto; color: var(--text-strong); }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-session-filters button.is-active, .start-practice-title-progress.is-active) { background: var(--forest); border-color: var(--forest); color: var(--on-brand); }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-session-filters button span, .start-practice-title-progress span) { background: var(--surface-soft); color: var(--text-brand); border-radius: var(--r-pill); font-family: var(--f-code); font-size: var(--fs-micro); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-card { padding: 0; overflow: visible; border: 0; border-radius: var(--r); background: transparent; box-shadow: none; height: auto; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-grid { display: grid; gap: var(--s-2); overflow: visible; height: auto; max-height: none; }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-session-grid-head, .start-practice-session-row) { display: grid; grid-template-columns: minmax(150px, 1.3fr) minmax(96px, .8fr) minmax(140px, 1fr) 100px 64px minmax(210px, 1.4fr); gap: var(--s-3); align-items: center; padding: var(--s-3); margin: 0; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-grid-head { background: transparent; color: var(--text-muted); font-size: var(--fs-micro); text-transform: none; letter-spacing: normal; font-weight: 600; border: 0; border-bottom: 1px solid var(--border); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-row { min-height: 80px; background: var(--activity-card-fill); border: 1px solid var(--border); border-left: var(--s-1) solid var(--activity-amber); border-radius: var(--r); box-shadow: none; color: var(--text-body); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-row:not(.is-empty):hover { background: var(--surface-soft); transform: none; box-shadow: none; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-primary strong { color: var(--text-strong); font-size: 13px; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-primary em { font-size: var(--fs-micro); color: var(--text-muted); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-mix { display: flex; gap: var(--s-2); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-mix > span { padding: var(--s-1); min-width: 0; background: transparent; border: 0; box-shadow: none; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-action { display: flex; justify-content: flex-start; gap: var(--s-2); flex-wrap: wrap; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-action button { height: 36px; min-height: 36px; padding: 0 var(--s-2); font-size: var(--fs-micro); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-strong); cursor: pointer; box-shadow: none; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-action .start-practice-row-start { background: var(--forest); border-color: var(--forest); color: var(--on-brand); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-footer { padding: var(--s-2) var(--s-3); background: var(--surface-card); border: 0; color: var(--text-muted); }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-normal-badge, .start-practice-countdown-badge) { background: var(--surface-soft); color: var(--text-body); border: 1px solid var(--border); border-radius: var(--r-pill); font-size: var(--fs-micro); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-marks { color: var(--text-strong); font-size: 12px; }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-answer-main, .start-practice-summary-card, .start-practice-empty) { border-radius: var(--r); padding: var(--s-4); background: var(--activity-card-fill); border-color: var(--border); }
+@media (max-width: 1199px) {
+  .vx-content.assessment-page.start-practice-page :is(.start-practice-session-grid-head, .start-practice-session-row) { grid-template-columns: minmax(140px, 1.2fr) 96px minmax(120px, 1fr) 96px 56px minmax(150px, 1fr); gap: var(--s-2); }
+}
+@media (max-width: 1199px) {
+  .vx-content.assessment-page.start-practice-page .start-practice-session-grid-head { display: none; }
+  .vx-content.assessment-page.start-practice-page .start-practice-session-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-3); padding: var(--s-3); }
+  .vx-content.assessment-page.start-practice-page .start-practice-session-row > * { min-width: 0; }
+  .vx-content.assessment-page.start-practice-page .start-practice-session-action { grid-column: 1 / -1; justify-content: flex-end; }
+  .vx-content.assessment-page.start-practice-page .start-practice-session-marks::before { content: 'Marks '; font-family: var(--font-family-base); color: var(--text-muted); }
+}
+@media (max-width: 767px) {
+  .vx-content.assessment-page.start-practice-page.logbook-scope { padding: var(--s-2); }
+  .vx-content.assessment-page.start-practice-page .start-practice-title-main { grid-template-columns: auto minmax(0, 1fr); gap: var(--s-2); }
+  .vx-content.assessment-page.start-practice-page.is-sessions .start-practice-title-bar { grid-template-columns: minmax(0, 1fr); }
+  .vx-content.assessment-page.start-practice-page .start-practice-title-analytics { margin-left: auto; justify-self: end; }
+}
+.vx-content.assessment-page.start-practice-page .start-practice-title-main > .start-practice-heading-copy { display: grid; gap: var(--s-1); white-space: normal; overflow: visible; }
+.vx-content.assessment-page.start-practice-page .start-practice-heading-copy > strong { display: block; font-size: 15px; font-weight: 600; color: var(--text-strong); }
+.vx-content.assessment-page.start-practice-page .start-practice-heading-copy > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-width: 110ch; overflow: hidden; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-grid-head > span { font-size: var(--fs-micro); font-weight: 600; text-transform: none; letter-spacing: normal; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-primary strong { padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; font-weight: 600; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-marks { border: 0; background: transparent; border-radius: 0; justify-content: flex-start; text-align: left; }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-title-analytics, .start-practice-row-score, .start-practice-row-retake, .start-practice-session-footer button) { font-weight: 600; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-action button:disabled { cursor: not-allowed; opacity: .5; }
+@media (max-width: 767px) { .vx-content.assessment-page.start-practice-page .start-practice-competency-badge { justify-self: start; } }
+.vx-content.assessment-page.start-practice-page :is(.start-practice-session-grid-head, .start-practice-session-row) > [role] { text-align: left; justify-self: stretch; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-mix { justify-content: flex-start; }
+@media (max-width: 1199px) { .vx-content.assessment-page.start-practice-page .start-practice-session-marks::before { content: 'Marks: '; margin-right: var(--s-1); } }
+/* Colour identifies question types and session status without overwhelming the rows. */
+.vx-content.assessment-page.start-practice-page.is-sessions .start-practice-title-bar { border-top: var(--s-1) solid var(--forest); }
+.vx-content.assessment-page.start-practice-page .start-practice-title-back { background: var(--surface-soft); color: var(--text-brand); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-row.is-finished { border-left-color: var(--activity-green); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-row:not(.is-empty):hover { background: color-mix(in srgb, var(--mint-200) 20%, var(--surface-card)); border-color: var(--activity-hover-line); box-shadow: var(--activity-shadow); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-mix > span { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: color-mix(in srgb, var(--sky) 35%, var(--surface-card)); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-mix > span:nth-child(2) { background: color-mix(in srgb, var(--lilac) 35%, var(--surface-card)); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-mix > span:nth-child(3) { background: color-mix(in srgb, var(--peach) 35%, var(--surface-card)); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-mix strong { font-size: 12px; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-mix em { color: var(--text-body); font-size: var(--fs-micro); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-primary strong > svg { box-sizing: content-box; padding: var(--s-2); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-brand); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-action { justify-content: flex-start; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-action button:disabled { display: none; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-action .start-practice-row-start { order: 1; min-width: 72px; min-height: 36px; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-footer { margin-top: var(--s-2); border: 1px solid var(--border); border-radius: var(--r); }
+.vx-content.assessment-page.start-practice-page .start-practice-status.is-in-progress { color: var(--warn-ink); background: color-mix(in srgb, var(--butter) 40%, var(--surface-card)); border-color: var(--border); }
+.vx-content.assessment-page.start-practice-page .start-practice-status.is-completed { color: var(--text-brand); background: color-mix(in srgb, var(--mint-200) 45%, var(--surface-card)); border-color: var(--border); }
+@media (min-width: 1200px) {
+  .vx-content.assessment-page.start-practice-page :is(.start-practice-session-grid-head, .start-practice-session-row) { grid-template-columns: minmax(168px, 1fr) 80px 208px 96px 56px 232px; gap: var(--s-5); }
+}
+@media (max-width: 1199px) {
+  .vx-content.assessment-page.start-practice-page .start-practice-session-mix { grid-column: 1 / -1; }
+  .vx-content.assessment-page.start-practice-page .start-practice-session-primary strong > svg { padding: var(--s-1); }
+}
+
+.vx-content.assessment-page.start-practice-page .start-practice-heading-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); min-width: 0; }
+.vx-content.assessment-page.start-practice-page .start-practice-heading-line > strong:not(.start-practice-competency-badge) { color: var(--text-strong); font-size: 15px; font-weight: 600; }
+/* Give the column headings and rows identical insets and align their contents. */
+.vx-content.assessment-page.start-practice-page .start-practice-session-grid-head { background: var(--activity-card-fill); border: 1px solid var(--border); border-left-width: var(--s-1); border-radius: var(--r); min-height: 40px; padding-top: var(--s-2); padding-bottom: var(--s-2); }
+.vx-content.assessment-page.start-practice-page .start-practice-session-detail.is-schedule { display: flex; justify-content: flex-start; align-items: center; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-row > [role=cell] { margin: 0; padding-left: 0; padding-right: 0; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-mix > span { min-height: 32px; height: 32px; flex: 1; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-row > [role=cell]:nth-child(4) { display: flex; justify-content: flex-start; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-marks { display: flex; align-items: center; justify-content: flex-start; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-action button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); min-width: 68px; margin: 0; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-card { gap: 0; }
+.vx-content.assessment-page.start-practice-page .start-practice-session-footer { min-height: 44px; }
+@media (max-width: 1199px) { .vx-content.assessment-page.start-practice-page .start-practice-session-action { justify-content: flex-end; } }
+@media (min-width: 1200px) {
+  .vx-content.assessment-page.start-practice-page .start-practice-session-action { width: 100%; max-width: none; flex-wrap: nowrap; gap: var(--s-2); }
+  .vx-content.assessment-page.start-practice-page .start-practice-session-action button { flex: 0 0 72px; width: 72px; min-width: 72px; white-space: nowrap; }
+}
