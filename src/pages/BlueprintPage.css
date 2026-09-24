@@ -1,0 +1,78 @@
+.vx-content.correlation-rating-page .corelation-rating-panel { background: var(--activity-card-fill); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--activity-shadow); padding: var(--s-3); }
+.vx-content.correlation-rating-page .corelation-rating-saved-results { background: transparent; border: 0; gap: var(--s-3); }
+.vx-content.correlation-rating-page .corelation-rating-saved-filters { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-3); gap: var(--s-3); align-items: end; }
+.vx-content.correlation-rating-page :is(.corelation-rating-field > span, .corelation-rating-saved-filters > label > span) { color: var(--text-muted); font-size: var(--fs-micro); font-weight: 600; text-transform: none; letter-spacing: normal; }
+.vx-content.correlation-rating-page .corelation-rating-label-badge { background: var(--surface-card); border: 1px solid var(--border); color: var(--text-brand); font-family: var(--f-code); border-radius: var(--r-pill); font-size: var(--fs-micro); padding: 0 var(--s-2); }
+.vx-content.correlation-rating-page :is(.corelation-rating-topic-trigger, .corelation-rating-saved-filters select) { min-height: 36px; height: 36px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); box-shadow: none; padding: var(--s-2) var(--s-3); font-size: 12px; font-weight: 500; cursor: pointer; }
+.vx-content.correlation-rating-page .corelation-rating-saved-filters select { padding-right: var(--s-6); }
+.vx-content.correlation-rating-page .corelation-rating-saved-filters > label { position: relative; }
+.correlation-rating-page .correlation-type-chevron { position: absolute; right: var(--s-3); bottom: var(--s-3); pointer-events: none; color: var(--text-muted); }
+.vx-content.correlation-rating-page .corelation-rating-topic-trigger svg { color: var(--text-muted); }
+.vx-content.correlation-rating-page .corelation-rating-topic-menu { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--r-sm); box-shadow: var(--shadow-md); }
+.vx-content.correlation-rating-page .corelation-rating-topic-menu button { color: var(--text-body); background: var(--surface-card); min-height: 36px; font-size: 12px; }
+.vx-content.correlation-rating-page .corelation-rating-topic-menu button:is(:hover, .is-selected) { background: var(--surface-soft); color: var(--text-brand); }
+.vx-content.correlation-rating-page .corelation-rating-topic-search { background: var(--surface-card); color: var(--text-body); border: 1px solid var(--border); border-radius: var(--r-sm); min-height: 36px; }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-wrap { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; background: var(--surface-card); }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-scroll { overflow: auto; }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-table { background: var(--surface-card); color: var(--text-body); min-width: 700px; font-size: 12px; }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-table > thead > tr > th { background: var(--surface-soft); color: var(--text-muted); border-color: var(--border); padding: var(--s-2) var(--s-3); font-size: var(--fs-micro); font-weight: 600; text-transform: none; letter-spacing: normal; }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-row > td { padding: var(--s-2) var(--s-3); height: 44px; border-color: var(--border); background: var(--surface-card); color: var(--text-body); vertical-align: middle; }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-row:hover > td { background: var(--surface-soft); }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-toggle { color: var(--text-strong); font-size: 13px; font-weight: 600; gap: var(--s-2); }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-toggle svg { color: var(--text-brand); }
+.vx-content.correlation-rating-page :is(.corelation-rating-topic-summary-rated, .corelation-rating-topic-summary-count) { font-family: var(--f-code); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--text-body); }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-count { background: var(--surface-soft); border-radius: var(--r-pill); min-width: var(--s-5); }
+.vx-content.correlation-rating-page :is(.corelation-rating-topic-summary-type, .corelation-rating-topic-status) { min-height: var(--s-5); border: 1px solid var(--border); border-radius: var(--r-pill); padding: var(--s-1) var(--s-2); font-size: var(--fs-micro); font-weight: 500; color: var(--text-body); background: var(--surface-soft); }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-type.is-clinical { background: color-mix(in srgb, var(--lilac) 30%, var(--surface-card)); }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-type.is-non-clinical { background: color-mix(in srgb, var(--butter) 30%, var(--surface-card)); }
+.vx-content.correlation-rating-page .corelation-rating-topic-status.is-fully-rated { background: color-mix(in srgb, var(--mint-200) 45%, var(--surface-card)); color: var(--text-brand); }
+.vx-content.correlation-rating-page .corelation-rating-saved-topic-edit { color: var(--text-brand); background: var(--surface-soft); border: 1px solid var(--border); border-radius: var(--r-pill); min-width: var(--s-6); min-height: var(--s-6); }
+.vx-content.correlation-rating-page .corelation-rating-topic-pagination { padding: var(--s-2) var(--s-3); background: var(--surface-card); border-color: var(--border); }
+.vx-content.correlation-rating-page .corelation-rating-topic-pagination-summary :is(strong, span) { color: var(--text-muted); font-size: var(--fs-micro); font-weight: 500; }
+.vx-content.correlation-rating-page .corelation-rating-topic-pagination-actions button { background: var(--surface-card); border-color: var(--border); color: var(--text-brand); min-width: var(--s-6); min-height: var(--s-6); border-radius: var(--r-pill); }
+.vx-content.correlation-rating-page .corelation-rating-saved-collapse-switch { box-sizing: border-box; height: 36px; min-height: 36px; align-self: end; padding: 0; gap: 0; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); overflow: visible; }
+.vx-content.correlation-rating-page .corelation-rating-saved-collapse-switch button { box-sizing: border-box; width: 36px; height: 34px; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--text-muted); box-shadow: none; }
+.vx-content.correlation-rating-page .corelation-rating-saved-collapse-switch button:hover { background: var(--surface-soft); color: var(--text-brand); }
+.vx-content.correlation-rating-page .corelation-rating-saved-collapse-switch button.is-active { background: var(--forest); color: var(--on-brand); }
+.vx-content.correlation-rating-page button { cursor: pointer; transition: background var(--dur-hover) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard); }
+.vx-content.correlation-rating-page button:disabled { opacity: .5; cursor: not-allowed; }
+.vx-content.correlation-rating-page button:active:not(:disabled) { transform: translateY(1px); transition: none; }
+.vx-content.correlation-rating-page :is(button, input, select):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 var(--s-1) var(--focus-ring); }
+@media (max-width: 767px) { .vx-content.correlation-rating-page .corelation-rating-saved-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .vx-content.correlation-rating-page .corelation-rating-topic-pagination { flex-wrap: wrap; gap: var(--s-2); } }
+@media (prefers-reduced-motion: reduce) { .vx-content.correlation-rating-page button { transition: none; } }
+/* Expanded competencies use the same quiet surfaces and controls as Logbook. */
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-row > td { padding: 0 var(--s-3) var(--s-3); background: var(--surface-soft); border-color: var(--border); }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap { border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); overflow-x: auto; }
+.correlation-rating-page .correlation-detail-toolbar { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--border); }
+.correlation-rating-page .correlation-detail-toolbar strong { color: var(--text-strong); font-size: 12px; font-weight: 600; }
+.correlation-rating-page .correlation-detail-toolbar strong span { margin-left: var(--s-2); color: var(--text-muted); font-family: var(--f-code); }
+.correlation-rating-page .correlation-detail-toolbar button { border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-brand); padding: var(--s-2) var(--s-3); font-size: var(--fs-micro); }
+.correlation-rating-page .correlation-detail-toolbar button:hover { background: var(--surface-soft); }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table { min-width: 660px; width: 100%; table-layout: auto; background: var(--surface-card); }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table :is(th, td) { width: auto; padding: var(--s-3); border-color: var(--border); color: var(--text-body); background: var(--surface-card); font-size: 12px; line-height: 1.5; vertical-align: top; }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table th { font-size: var(--fs-micro); font-weight: 600; color: var(--text-muted); background: var(--surface-soft); text-transform: none; letter-spacing: normal; white-space: nowrap; }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table :is(th, td):first-child { width: 72px; }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table :is(th, td):nth-child(2) { width: 36%; min-width: 200px; overflow-wrap: normal; word-break: normal; }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table:not(.is-rationale-off) :is(th, td):nth-child(3) { width: 30%; min-width: 180px; }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table :is(th, td):last-child { width: 64px; text-align: left; }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table td:last-child { font-family: var(--f-code); }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table tbody tr:hover td { background: var(--surface-soft); }
+.vx-content.correlation-rating-page .corelation-rating-code-badge { background: var(--surface-soft); color: var(--text-brand); border: 1px solid var(--border); border-radius: var(--r-sm); font-family: var(--f-code); font-size: var(--fs-micro); padding: var(--s-1) var(--s-2); }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-type-badge { min-width: 0; width: auto; white-space: nowrap; border: 1px solid var(--border); border-radius: var(--r-pill); padding: var(--s-1) var(--s-2); background: var(--surface-soft); color: var(--text-body); font-size: var(--fs-micro); font-weight: 500; }
+.vx-content.correlation-rating-page .corelation-rating-rationale-preview { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.vx-content.correlation-rating-page .correlation-rationale-excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; }
+.vx-content.correlation-rating-page .corelation-rating-rationale-preview button { display: block; margin-left: 0; color: var(--text-brand); background: transparent; font-size: var(--fs-micro); padding: var(--s-1) 0; text-decoration: none; }
+.vx-content.correlation-rating-page :is(.corelation-rating-type-select, .corelation-rating-score-input) { border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); min-height: var(--s-6); font-size: 12px; }
+.vx-content.correlation-rating-page .corelation-rating-score-input { font-family: var(--f-code); }
+.vx-content.correlation-rating-page .corelation-rating-score-input:disabled { opacity: .5; cursor: not-allowed; }
+/* Keep one page scroller for both collapsed and expanded topic tables. */
+.vx-content.assessment-page.assessment-evaluation-page.correlation-rating-page { height: auto; min-height: calc(100svh - 82px); overflow: visible; }
+.vx-content.assessment-page.assessment-evaluation-page.correlation-rating-page .assessment-page-shell { height: auto; grid-template-rows: auto auto; overflow: visible; }
+.vx-content.correlation-rating-page :is(.corelation-rating-panel-combined, .corelation-rating-saved-results, .corelation-rating-topic-summary-wrap) { height: auto; flex: none; overflow: visible; }
+.vx-content.correlation-rating-page .corelation-rating-topic-summary-scroll { flex: none; max-height: none; overflow-x: auto; }
+.vx-content.correlation-rating-page .corelation-rating-bulk-type-switch { background: var(--surface-soft); border-color: var(--border); }
+.vx-content.correlation-rating-page .corelation-rating-bulk-type-switch button { color: var(--text-muted); font-size: var(--fs-micro); }
+.vx-content.correlation-rating-page .corelation-rating-bulk-type-switch button.is-active { background: var(--forest); color: var(--on-brand); }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-saved-table :is(th, td) { text-align: left; }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap :is(.corelation-rating-bulk-type-head, .corelation-rating-row-type-control) { align-items: flex-start; justify-items: start; justify-content: start; }
+.vx-content.correlation-rating-page .corelation-rating-topic-detail-wrap .corelation-rating-type-badge { margin: 0; }

@@ -929,25 +929,9 @@
 
 
 
-.corelation-rating-metric.is-subjects > span {
-  background: #ecfdf5;
-  color: #047857;
-}
 
-.corelation-rating-metric.is-topics > span {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
 
-.corelation-rating-metric.is-competency > span {
-  background: #fff7ed;
-  color: #c2410c;
-}
 
-.corelation-rating-metric.is-rating > span {
-  background: #f5f3ff;
-  color: #6d28d9;
-}
 
 .corelation-rating-controls {
   display: grid;
@@ -965,38 +949,8 @@
   min-height: 34px;
 }
 
-.corelation-rating-metric {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  justify-self: end;
-  gap: 8px;
-  min-height: 34px;
-  padding: 0 12px;
-  border: 1px solid #14b8a6;
-  border-radius: 8px;
-  background: #f0fdfa;
-  color: #00766d;
-  white-space: nowrap;
-}
 
-.corelation-rating-metric strong {
-  font-size: 0.76rem;
-  font-weight: 900;
-}
 
-.corelation-rating-metric span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 20px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
-  font-size: 0.64rem;
-  font-weight: 950;
-}
 
 .corelation-rating-field {
   position: relative;
@@ -3513,43 +3467,13 @@
   color: #bfdbfe;
 }
 
-.theme-dark .corelation-rating-metric {
-  border-color: rgba(45, 212, 191, 0.22);
-  background: rgba(15, 23, 42, 0.72);
-}
 
-.theme-dark .corelation-rating-metric small {
-  color: #9fb9c8;
-}
 
-.theme-dark .corelation-rating-metric strong {
-  color: #e6fffb;
-}
 
-.theme-dark .corelation-rating-metric span {
-  background: rgba(37, 99, 235, 0.24);
-  color: #bfdbfe;
-}
 
-.theme-dark .corelation-rating-metric.is-subjects > span {
-  background: rgba(16, 185, 129, 0.14);
-  color: #a7f3d0;
-}
 
-.theme-dark .corelation-rating-metric.is-topics > span {
-  background: rgba(37, 99, 235, 0.16);
-  color: #bfdbfe;
-}
 
-.theme-dark .corelation-rating-metric.is-competency > span {
-  background: rgba(249, 115, 22, 0.16);
-  color: #fdba74;
-}
 
-.theme-dark .corelation-rating-metric.is-rating > span {
-  background: rgba(124, 58, 237, 0.18);
-  color: #c4b5fd;
-}
 
 .theme-dark .corelation-rating-grid-heading {
   border-color: rgba(45, 212, 191, 0.2);

@@ -1,0 +1,15 @@
+.correlation-rating-page .correlation-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s-2); flex: none; }
+.correlation-rating-page .correlation-metrics-card { position: relative; display: flex; align-items: center; gap: var(--s-2); min-height: 64px; min-width: 0; padding: var(--s-2) var(--s-3); border: 1px solid var(--activity-line); border-radius: var(--r); background: var(--activity-card-fill); box-shadow: var(--activity-shadow); cursor: pointer; transition: background var(--dur-hover) var(--ease-standard), border-color var(--dur-hover) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard); }
+.correlation-rating-page .correlation-metrics-card:hover { background: var(--surface-soft); border-color: var(--activity-hover-line); box-shadow: var(--activity-hover-shadow); }
+.correlation-rating-page .correlation-metrics-card:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 var(--s-1) var(--focus-ring); }
+.correlation-rating-page .correlation-metrics-card:active { transform: translateY(1px); transition: none; }
+.correlation-rating-page .correlation-metrics-label { display: block; color: var(--text-muted); font-size: var(--fs-micro); font-weight: 500; line-height: 1.4; }
+.correlation-rating-page .correlation-metrics-icon { display: grid; place-items: center; flex: none; width: var(--s-6); height: var(--s-6); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-brand); }
+.correlation-rating-page .correlation-metrics-copy { display: grid; gap: var(--s-1); min-width: 0; }
+.correlation-rating-page .correlation-metrics-value { color: var(--text-strong); font-family: var(--f-code); font-size: 18px; font-variant-numeric: tabular-nums; line-height: 1.4; }
+.correlation-rating-page .correlation-metrics-value small { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 500; }
+@media (max-width: 1199px) { .correlation-rating-page .correlation-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .correlation-rating-page .correlation-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .correlation-rating-page .correlation-metrics-card { transition: none; } }
+
+.correlation-rating-page .correlation-metrics-card.is-pending .correlation-metrics-icon { background: var(--activity-amber-soft); color: var(--warn-ink); }

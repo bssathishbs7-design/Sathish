@@ -2,8 +2,14 @@ import { ChevronDown, ChevronLeft, ChevronRight, Grid2X2, ListChecks, Pencil, Sl
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PageNavigationHeader from '../components/PageNavigationHeader'
+import CorrelationMetrics from './CorrelationMetrics'
 import { corelationRatingRows } from './corelationRatingData'
+import { getDefaultCorrelationRationale } from '../services/correlationRationale'
 import '../styles/assessment-pages.css'
+import '../styles/medsy/question-sort-tokens.css'
+import '../styles/activity-visual-tokens.css'
+import './LogbookPage.css'
+import './BlueprintPage.css'
 
 const CORELATION_RATING_SAVED_ROWS_KEY = 'medsy-corelation-rating-saved-rows'
 const CORELATION_RATING_RATIONALE_KEY = 'medsy-corelation-rating-rationale-values'
@@ -35,14 +41,6 @@ const writeStoredObject = (key, value) => {
 
   window.localStorage.setItem(key, JSON.stringify(value))
 }
-
-const DEFAULT_RATIONALE = `This competency focuses on the basic structural and molecular organization of the eukaryotic cell, including the nucleus, cytoplasm, plasma membrane, and subcellular organelles. It also includes understanding the fluid mosaic model of biological membranes and the functions of cellular organelles in metabolism and homeostasis.
-
-The learning objectives require students to identify cell structures, describe membrane organization, and explain organelle functions. These elements provide fundamental biochemical and cellular biology knowledge that forms the scientific basis for understanding later concepts in physiology and pathology.
-
-Although applied correlations may help learners understand disease mechanisms at a molecular level, this competency primarily explains what cellular structures are and how they function rather than enabling direct clinical decision-making.
-
-Therefore, because the competency primarily describes cellular structure, membrane composition, and organelle function without influencing immediate patient-care decisions, it is classified as foundational scientific knowledge.`
 
 export default function BlueprintPage() {
   const savedTopicScrollRef = useRef(null)
@@ -305,7 +303,7 @@ export default function BlueprintPage() {
     }))
   }
 
-  const getRationaleValue = (key) => rationaleValues[key] ?? DEFAULT_RATIONALE
+  const getRationaleValue = (key, row) => rationaleValues[key] ?? getDefaultCorrelationRationale(row)
 
   const getRatingValue = (values) => {
     if (values?.rating) {
@@ -375,7 +373,6 @@ export default function BlueprintPage() {
     }),
     [savedRows],
   )
-  const savedMetricCount = allCorrelationRows.filter((row) => row.isRated).length
   const savedSubjectOptions = useMemo(
     () => {
       const options = new Map()
@@ -623,14 +620,10 @@ export default function BlueprintPage() {
   }
 
   return (
-    <section className="vx-content assessment-page assessment-evaluation-page">
+    <section className="vx-content assessment-page assessment-evaluation-page logbook-scope correlation-rating-page">
       <div className="assessment-page-shell assessment-evaluation-page-shell">
         <div className="corelation-rating-page-head">
           <PageNavigationHeader items={['My Pages', 'Correlation Rating']} />
-          <div className="corelation-rating-metric" aria-label={`${savedMetricCount} of ${corelationRatingRows.length} correlations completed`}>
-            <strong>Correlation Rating</strong>
-            <span>{savedMetricCount} / {corelationRatingRows.length}</span>
-          </div>
         </div>
 
         <section className="corelation-rating-panel corelation-rating-panel-combined" aria-label="Correlation rating setup">
@@ -833,6 +826,7 @@ export default function BlueprintPage() {
               {allCorrelationRows.length ? (
                 <>
                 <div className="corelation-rating-saved-results">
+                <CorrelationMetrics rows={filteredSavedCorrelationRows} allRows={allCorrelationRows} />
                 <div className="corelation-rating-saved-filters" aria-label="Saved correlation filters">
                   <div className="corelation-rating-field corelation-rating-subject-field">
                     <span className="corelation-rating-required-label">
@@ -956,6 +950,7 @@ export default function BlueprintPage() {
                   <label>
                     <span>Type</span>
                     <select
+                      aria-label="Filter correlation type"
                       value={savedFilterType}
                       onChange={(event) => setSavedFilterType(event.target.value)}
                     >
@@ -963,6 +958,7 @@ export default function BlueprintPage() {
                       <option value="Clinical">Clinical</option>
                       <option value="Non-Clinical">Para - Clinical</option>
                     </select>
+                    <ChevronDown className="correlation-type-chevron" size={15} aria-hidden="true" />
                   </label>
                   <div className="corelation-rating-saved-collapse-switch" role="group" aria-label="Saved topic display controls">
                     <button
@@ -1017,6 +1013,7 @@ export default function BlueprintPage() {
                           ? `Clinical: ${clinicalTypeCount} · Para - Clinical: ${paraClinicalTypeCount}`
                           : groupTypeLabel
                         const isInlineEditing = editingSavedGroupKey === group.key
+                        const showImpactFrequency = isInlineEditing || group.rows.some((row) => row.savedValues?.impact || row.savedValues?.frequency)
                         const currentGroupTypes = group.rows.map((row) => {
                           const values = isInlineEditing
                             ? ratingValues[row.key] ?? row.savedValues ?? {}
@@ -1122,30 +1119,21 @@ export default function BlueprintPage() {
                               <tr className="corelation-rating-topic-detail-row">
                                 <td colSpan={6}>
                                   <div className="corelation-rating-topic-detail-wrap" data-inline-editing={isInlineEditing ? 'true' : 'false'}>
-                                    <table className={`corelation-rating-saved-table${isRationaleEnabled ? '' : ' is-rationale-off'}`}>
+                                    <div className="correlation-detail-toolbar">
+                                      <strong>Competencies <span>{group.rows.length}</span></strong>
+                                      <button type="button" aria-pressed={isRationaleEnabled} onClick={() => {
+                                        setIsRationaleEnabled((current) => !current)
+                                        setOpenRationaleKey('')
+                                        setEditingRationaleKey('')
+                                      }}>
+                                        {isRationaleEnabled ? 'Hide rationale' : 'Show rationale'}
+                                      </button>
+                                    </div>
+                                    <table className={'corelation-rating-saved-table' + (isRationaleEnabled ? '' : ' is-rationale-off')}>
                                       <thead>
                                         <tr>
                                           <th>Code</th>
-                                          <th>
-                                            <div className="corelation-rating-competency-head">
-                                              <span>Competency</span>
-                                              <span className={`corelation-rating-rationale-head${isRationaleEnabled ? ' is-enabled' : ' is-disabled'}`}>
-                                                <span>Show Rationale</span>
-                                                <button
-                                                  type="button"
-                                                  className={isRationaleEnabled ? 'is-on' : ''}
-                                                  aria-pressed={isRationaleEnabled}
-                                                  onClick={() => {
-                                                    setIsRationaleEnabled((current) => !current)
-                                                    setOpenRationaleKey('')
-                                                    setEditingRationaleKey('')
-                                                  }}
-                                                >
-                                                  {isRationaleEnabled ? 'On' : 'Off'}
-                                                </button>
-                                              </span>
-                                            </div>
-                                          </th>
+                                          <th>Competency</th>
                                           {isRationaleEnabled && <th>Rationale</th>}
                                           <th>
                                             <div className="corelation-rating-bulk-type-head">
@@ -1175,8 +1163,8 @@ export default function BlueprintPage() {
                                               )}
                                             </div>
                                           </th>
-                                          <th>Impact</th>
-                                          <th>Frequency</th>
+                                          {showImpactFrequency && <th>Impact</th>}
+                                          {showImpactFrequency && <th>Frequency</th>}
                                           <th>Rating</th>
                                         </tr>
                                       </thead>
@@ -1190,9 +1178,8 @@ export default function BlueprintPage() {
                               const rowUsesImpactFrequency = rowType === 'Clinical'
                                 && Boolean(rowImpactFrequencyEnabled[row.key])
                               const ratingValue = getRatingValue(values)
-                              const rationaleValue = isInlineEditing || row.isRated ? getRationaleValue(row.key) : ''
-                              const isRationaleLong = rationaleValue.length > 120
-                              const rationalePreview = isRationaleLong ? `${rationaleValue.slice(0, 118).trim()}...` : rationaleValue || '-'
+                              const rationaleValue = getRationaleValue(row.key, row)
+
                               const isEditingRationale = editingRationaleKey === row.key
                               return (
                                 <tr key={row.key} className={isInlineEditing ? 'is-inline-editing' : ''}>
@@ -1202,8 +1189,8 @@ export default function BlueprintPage() {
                                     <td>
                                       <div className="corelation-rating-rationale-preview">
                                         <span>
-                                          {rationalePreview}
-                                          {isRationaleLong && (
+                                          <span className="correlation-rationale-excerpt">{rationaleValue || 'No rationale added.'}</span>
+                                          {(rationaleValue || isInlineEditing) && (
                                             <button
                                               type="button"
                                               onClick={() => setOpenRationaleKey((current) => {
@@ -1211,7 +1198,7 @@ export default function BlueprintPage() {
                                                 return current === row.key ? '' : row.key
                                               })}
                                             >
-                                              View More
+                                              {rationaleValue ? 'View rationale' : 'Add rationale'}
                                             </button>
                                           )}
                                         </span>
@@ -1334,7 +1321,7 @@ export default function BlueprintPage() {
                                       </span>
                                     )}
                                   </td>
-                                  <td>
+                                  {showImpactFrequency && <td>
                                     {isInlineEditing && rowUsesImpactFrequency ? (
                                       <input
                                         type="text"
@@ -1346,8 +1333,8 @@ export default function BlueprintPage() {
                                         placeholder="-"
                                       />
                                     ) : renderValue(values.impact)}
-                                  </td>
-                                  <td>
+                                  </td>}
+                                  {showImpactFrequency && <td>
                                     {isInlineEditing && rowUsesImpactFrequency ? (
                                       <input
                                         type="text"
@@ -1359,7 +1346,7 @@ export default function BlueprintPage() {
                                         placeholder="-"
                                       />
                                     ) : renderValue(values.frequency)}
-                                  </td>
+                                  </td>}
                                   <td>
                                     {isInlineEditing ? (
                                       <input
@@ -1475,9 +1462,8 @@ export default function BlueprintPage() {
                           const rowComplete = isRowComplete(currentValues, rowType, rowUsesImpactFrequency)
                           const ratingValue = getRatingValue(currentValues)
                           const isRowSaved = Boolean(savedRows[competencyKey]) && rowComplete && !editingCorrelationKeys[competencyKey]
-                          const rationaleValue = getRationaleValue(competencyKey)
-                          const isRationaleLong = rationaleValue.length > 120
-                          const rationalePreview = isRationaleLong ? `${rationaleValue.slice(0, 118).trim()}...` : rationaleValue
+                          const rationaleValue = getRationaleValue(competencyKey, row)
+
                           const isEditingRationale = editingRationaleKey === competencyKey
 
                           return (
@@ -1490,8 +1476,8 @@ export default function BlueprintPage() {
                               <td className="is-rationale">
                                   <div className="corelation-rating-rationale-preview">
                                     <span>
-                                      {rationalePreview}
-                                      {isRationaleLong && (
+                                      <span className="correlation-rationale-excerpt">{rationaleValue || 'No rationale added.'}</span>
+                                      {rationaleValue && (
                                         <button
                                           type="button"
                                           onClick={() => setOpenRationaleKey((current) => {
@@ -1499,7 +1485,7 @@ export default function BlueprintPage() {
                                             return current === competencyKey ? '' : competencyKey
                                           })}
                                         >
-                                          View More
+                                          View rationale
                                         </button>
                                       )}
                                     </span>
