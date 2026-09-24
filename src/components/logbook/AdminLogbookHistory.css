@@ -1,11 +1,15 @@
 .admin-history { display: grid; gap: var(--s-4); }
 .admin-history-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-3); }
 .admin-history-head p { margin: var(--s-1) 0 0; color: var(--text-muted); font-size: 12px; }
-.admin-history-summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); color: var(--text-muted); font-size: 12px; }
-.admin-history-summary > span { display: inline-flex; align-items: center; gap: var(--s-1); }
+.admin-history-summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); color: var(--text-muted); font-size: 12px; }
+.admin-history-summary .admin-history-stat { display: inline-flex; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-2); min-height: var(--s-6); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-body); font-size: var(--fs-micro); font-weight: 600; }
 .admin-history-summary strong, .admin-history-decision time { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
-.admin-history-summary strong { color: var(--text-strong); }
-.admin-history-summary svg { color: var(--text-muted); }
+.admin-history-summary strong { display: grid; place-items: center; min-width: var(--s-5); padding: var(--s-1); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-strong); line-height: 1; }
+.admin-history-summary .is-total svg { color: var(--text-brand); }
+.admin-history-summary .is-approved { background: color-mix(in srgb, var(--forest) 8%, var(--surface-card)); }
+.admin-history-summary .is-approved svg { color: var(--forest); }
+.admin-history-summary .is-returned { background: color-mix(in srgb, var(--warn-ink) 8%, var(--surface-card)); }
+.admin-history-summary .is-returned svg { color: var(--warn-ink); }
 .admin-history-day { min-width: 0; }
 .admin-history-date { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); }
 .admin-logbook-page .admin-history-date h3 { font-size: 12px; }

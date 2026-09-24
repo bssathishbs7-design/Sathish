@@ -35,7 +35,7 @@
 .admin-filters select, .admin-filters input[type=date] { min-height: 40px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); padding: var(--s-2); max-width: 100%; font-size: 12px; }
 .admin-date { display: grid; gap: var(--s-1); color: var(--text-muted); font-size: var(--fs-micro); }
 .admin-back { justify-self: start; }
-.admin-skill-student { padding: var(--s-3); display: grid; gap: var(--s-3); }
+
 .admin-logbook-page .lb-card { min-width: 0; }
 .admin-logbook-page .lb-card h2 { font-size: 16px; letter-spacing: -.03em; margin: 0; }
 .admin-logbook-page .lb-card > h2 { margin-bottom: var(--s-3); }

@@ -241,3 +241,19 @@
 ## 2026-09-23 - Featured practice shortcut
 
 - Learn & Practice now offers a header shortcut to unfinished practice, prioritising started sets then the latest shared sets. Manual previous/next controls select a set; Start practice and Continue practice use the existing practice destination.
+
+## 2026-09-24 - Student catalogue discovery
+
+- Admin Logbook Students supports name/ID search, status filters, sorting and reset. Student cards retain their existing detail destination.
+
+## 2026-09-24 - Faculty dashboard chart navigation
+
+- Added entry-status chart links to filtered Search and subject bars to existing subject details; sign-off summaries link to Sign-offs. A local subject filter updates the dashboard charts only.
+
+## 2026-09-24 - Dashboard universal search
+
+- Added compact dashboard search with optional status, subject, category and date filters, five quick results, existing entry-drawer access, and View all results navigation preserving filters in the Search tab URL.
+
+## 2026-09-24 - Dashboard search entry point
+
+- Removed Search from the Logbook tab bar. Dashboard universal search is the search entry point; View all results and dashboard chart links retain the full Search results route.

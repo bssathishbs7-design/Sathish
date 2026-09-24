@@ -1,0 +1,37 @@
+.admin-skills { display: grid; gap: var(--s-3); min-width: 0; }
+.admin-logbook-page .admin-skills-toolbar { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-3); }
+.admin-skills-toolbar .lb-search { flex: 1; min-width: 0; }
+.admin-logbook-page .admin-skills-toolbar .lb-search { min-height: 40px; padding: 0 var(--s-3); box-shadow: none; }
+.admin-logbook-page .admin-skills-toolbar .lb-search input { min-height: 38px; padding: var(--s-2) 0; font-size: 13px; }
+.admin-skills-select { position: relative; display: flex; min-width: 0; }
+.admin-logbook-page .admin-skills-select select { appearance: none; background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text-body); padding: var(--s-2) var(--s-6) var(--s-2) var(--s-3); min-height: 40px; cursor: pointer; max-width: 100%; }
+.admin-skills-select svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
+.admin-skills .admin-skills-result { margin: 0; font-size: 12px; }
+.admin-skill-card { border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); overflow: hidden; }
+.admin-logbook-page .admin-skill-card > summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--s-2) var(--s-3); padding: var(--s-4); list-style: none; cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
+.admin-skill-card > summary::-webkit-details-marker { display: none; }
+.admin-skill-card > summary:hover { background: var(--surface-soft); }
+.admin-skill-card > summary:active { background: var(--surface-soft); transform: translateY(1px); transition: none; }
+.admin-skill-card > summary:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; box-shadow: inset 0 0 0 5px var(--focus-ring); }
+.admin-skill-icon { display: grid; place-items: center; width: var(--s-6); height: var(--s-6); border-radius: var(--r-sm); background: color-mix(in srgb, var(--lilac) 35%, var(--surface-card)); color: var(--text-brand); }
+.admin-skill-copy, .admin-skill-certified { display: grid; gap: var(--s-1); min-width: 0; }
+.admin-skill-copy > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2); }
+.admin-skill-copy strong { font-size: 14px; color: var(--text-strong); overflow-wrap: anywhere; }
+.admin-skill-copy code, .admin-skill-certified strong { font-family: var(--f-code); font-variant-numeric: tabular-nums; color: var(--text-brand); }
+.admin-skill-copy small, .admin-skill-certified small { color: var(--text-muted); font-size: 12px; font-weight: 400; }
+.admin-skill-certified { text-align: right; }
+.admin-skill-stats { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: var(--s-2); font-size: var(--fs-micro); font-weight: 400; color: var(--text-body); }
+.admin-skill-stats > span { padding: var(--s-1) var(--s-2); border-radius: var(--r-pill); background: var(--surface-soft); }
+.admin-skill-stats > span:nth-child(2) { background: color-mix(in srgb, var(--butter) 30%, var(--surface-card)); }
+.admin-skill-chevron { color: var(--text-muted); transition: transform var(--dur-control) var(--ease-standard); }
+.admin-skill-card[open] .admin-skill-chevron { transform: rotate(180deg); }
+.admin-skill-people { border-top: 1px solid var(--border); padding: 0 var(--s-4); }
+.admin-skill-person { padding: var(--s-3) 0; display: grid; gap: var(--s-2); }
+.admin-skill-person + .admin-skill-person { border-top: 1px solid var(--border); }
+.admin-skill-person-link { display: flex; justify-content: space-between; gap: var(--s-3); text-align: left; padding: var(--s-2); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-strong); cursor: pointer; }
+.admin-skill-person-link > span { display: grid; gap: var(--s-1); }
+.admin-skill-person-link > span:last-child { text-align: right; }
+.admin-skill-person-link small { color: var(--text-muted); font-size: var(--fs-micro); }
+.admin-skill-person-link:active { transform: translateY(1px); transition: none; }
+@media (max-width: 767px) { .admin-logbook-page .admin-skills-toolbar { flex-wrap: wrap; } .admin-skills-toolbar .lb-search { flex-basis: 100%; } .admin-skills-select { flex: 1; } .admin-skills-select select { width: 100%; } .admin-logbook-page .admin-skill-card > summary { grid-template-columns: minmax(0, 1fr) auto; padding: var(--s-3); } .admin-skill-icon { display: none; } .admin-skill-certified { grid-column: 1; grid-row: 2; display: flex; align-items: baseline; gap: var(--s-1); text-align: left; } .admin-skill-chevron { grid-column: 2; grid-row: 1; } .admin-skill-stats { grid-column: 1 / -1; } }
+@media (prefers-reduced-motion: reduce) { .admin-skill-card > summary, .admin-skill-chevron { transition: none; } }

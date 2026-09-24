@@ -4,7 +4,7 @@ export const ADMIN_LOGBOOK_SECTIONS = ['Overview', 'Queue', 'Students', 'Subject
 const readView = () => {
   const params = new URLSearchParams(window.location.search)
   const section = params.get('view') || 'Overview'
-  return { section: ADMIN_LOGBOOK_SECTIONS.includes(section) ? section : 'Overview', id: params.get('id') || '', query: params.get('query') || '', status: params.get('status') || '', category: params.get('category') || '', show: params.get('show') || 'all', range: params.get('range') || 'all' }
+  return { section: ADMIN_LOGBOOK_SECTIONS.includes(section) ? section : 'Overview', id: params.get('id') || '', subject: params.get('subject') || '', query: params.get('query') || '', status: params.get('status') || '', category: params.get('category') || '', show: params.get('show') || 'all', range: params.get('range') || 'all' }
 }
 /** App-owned URL state: navigation pushes history; filter changes replace it. */
 export default function useAdminLogbookRoute() {

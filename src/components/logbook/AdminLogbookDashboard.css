@@ -1,0 +1,45 @@
+.faculty-dashboard { display: grid; gap: var(--s-4); }
+.admin-logbook-page .faculty-dashboard .admin-logbook-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s-2); }
+.admin-logbook-page .faculty-dashboard .lb-summary-item { padding: var(--s-3); min-width: 0; gap: var(--s-2); border-radius: var(--r); }
+.faculty-dashboard .my-skills-metric-card-copy span { font-size: 12px; }
+.faculty-dashboard-charts { display: grid; gap: var(--s-3); }
+.faculty-dashboard-heading, .faculty-chart-title { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.faculty-dashboard-heading p, .faculty-chart-note { margin: var(--s-1) 0 0; color: var(--text-muted); font-size: 12px; }
+.faculty-dashboard-filter { position: relative; display: flex; }
+.faculty-dashboard-filter select { appearance: none; padding: var(--s-2) var(--s-6) var(--s-2) var(--s-3); border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface-card); color: var(--text-body); cursor: pointer; min-height: 40px; }
+.faculty-dashboard-filter svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
+.faculty-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+.admin-logbook-page .faculty-chart { padding: var(--s-4); min-width: 0; }
+.faculty-chart h3 { margin: 0; font-size: 15px; }
+.faculty-chart-title > span { color: var(--text-muted); font-size: 12px; }
+.faculty-chart strong { font-family: var(--f-code); font-variant-numeric: tabular-nums; color: var(--text-strong); }
+.faculty-chart [data-tone="blue"] { --chart-colour: var(--activity-blue); }
+.faculty-chart [data-tone="amber"] { --chart-colour: var(--activity-amber); }
+.faculty-chart [data-tone="violet"] { --chart-colour: var(--activity-violet); }
+.faculty-chart [data-tone="green"] { --chart-colour: var(--activity-green); }
+.faculty-stage-chart { display: grid; gap: var(--s-2); margin-top: var(--s-4); }
+.faculty-stage-row, .faculty-subject-row { display: grid; grid-template-columns: 120px minmax(0, 1fr) 3ch auto; align-items: center; gap: var(--s-2); width: 100%; padding: var(--s-2); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-body); text-align: left; font-size: 12px; cursor: pointer; }
+.faculty-stage-row:active, .faculty-subject-row:active { transform: translateY(1px); transition: none; }
+.faculty-bar-track, .faculty-subject-bar { height: var(--s-3); background: var(--surface-soft); border-radius: var(--r-pill); overflow: hidden; }
+.faculty-bar-track > span { display: block; height: 100%; background: var(--chart-colour); border-radius: inherit; }
+.faculty-week-chart { display: flex; gap: var(--s-2); margin-top: var(--s-4); }
+.faculty-day { flex: 1; min-width: 0; display: grid; justify-items: center; gap: var(--s-1); }
+.faculty-day-track { height: 100px; width: 100%; max-width: var(--s-6); display: flex; align-items: end; border-bottom: 1px solid var(--border); }
+.faculty-day-track > span { display: block; width: 100%; background: var(--activity-chart); border-radius: var(--s-1) var(--s-1) 0 0; }
+.faculty-day small { font-size: var(--fs-micro); color: var(--text-muted); }
+.faculty-chart-legend { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-3) 0; }
+.faculty-chart-legend > span { display: flex; align-items: center; gap: var(--s-1); font-size: var(--fs-micro); color: var(--text-muted); }
+.faculty-chart-legend i { width: var(--s-2); height: var(--s-2); border-radius: var(--r-pill); background: var(--chart-colour); }
+.faculty-subject-row { grid-template-columns: minmax(100px, 1fr) minmax(0, 1fr) 3ch; }
+.faculty-subject-row > span:first-child { overflow-wrap: anywhere; }
+.faculty-subject-bar { display: flex; }
+.faculty-subject-bar > span { height: 100%; background: var(--chart-colour); }
+.faculty-subject-chart { max-height: 240px; overflow-y: auto; }
+.faculty-signoff-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); margin: var(--s-4) 0; }
+.faculty-signoff-grid > div { display: grid; gap: var(--s-2); padding: var(--s-3) var(--s-2); border-radius: var(--r-sm); background: var(--surface-soft); border-top: var(--s-1) solid var(--chart-colour); }
+.faculty-signoff-grid strong { font-size: 20px; }
+.faculty-signoff-grid span { font-size: var(--fs-micro); color: var(--text-muted); }
+.faculty-chart-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (max-width: 1439px) { .admin-logbook-page .faculty-dashboard .admin-logbook-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1023px) { .faculty-chart-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) { .admin-logbook-page .faculty-dashboard .admin-logbook-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .faculty-dashboard-heading { align-items: stretch; flex-direction: column; } .faculty-dashboard-filter select { width: 100%; } .faculty-signoff-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .faculty-stage-row { grid-template-columns: 100px minmax(0, 1fr) 2ch auto; } }

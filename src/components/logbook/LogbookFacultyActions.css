@@ -1,3 +1,24 @@
 .faculty-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .logbook-scope details > summary { cursor: pointer; color: var(--text-strong); font-weight: 600; }
 .logbook-scope details > summary:focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); }
+
+.faculty-assignment-form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.faculty-assignment-body { padding: var(--s-4) var(--s-5); overflow-y: auto; min-height: 0; flex: 1; }
+.faculty-assignment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.logbook-scope .faculty-assignment-grid .lb-field { position: relative; display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; font-size: 12px; font-weight: 600; }
+.faculty-assignment-grid .faculty-optional { position: absolute; right: 0; top: 0; font-size: var(--fs-micro); font-weight: 400; color: var(--text-muted); }
+.logbook-scope .faculty-assignment-grid :is(input,select,textarea) { min-width: 0; width: 100%; min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-3); font-size: 13px; font-weight: 400; }
+.faculty-assignment-details { grid-column: 1 / -1; display: grid; gap: var(--s-3); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); }
+.logbook-scope .faculty-assignment-details h3 { margin: 0; font-size: 13px; }
+.faculty-assignment-details p { margin: var(--s-1) 0 0; color: var(--text-muted); font-size: var(--fs-micro); }
+.faculty-assignment-instructions { grid-column: 1 / -1; }
+.faculty-assignment-form .lb-drawer-foot { flex-shrink: 0; position: static; }
+@media (max-width: 480px) { .faculty-assignment-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); } .faculty-assignment-body { padding: var(--s-4); } }
+
+.faculty-assignment-grid .faculty-required { color: var(--danger); font-weight: 700; }
+.logbook-scope .faculty-assignment-grid :is(select,input) { box-sizing: border-box; height: calc(var(--s-6) + var(--s-2)); min-height: calc(var(--s-6) + var(--s-2)); margin: 0; line-height: normal; border-radius: var(--r-sm); }
+
+.faculty-select { position: relative; display: block; min-width: 0; width: 100%; }
+.logbook-scope .faculty-assignment-grid .lb-field .faculty-select select { appearance: none; display: block; height: calc(var(--s-6) + var(--s-2)); padding: 0 var(--s-6) 0 var(--s-3); line-height: normal; text-overflow: ellipsis; cursor: pointer; }
+.faculty-select > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
+.logbook-scope .faculty-assignment-grid .lb-field input { padding-top: 0; padding-bottom: 0; }

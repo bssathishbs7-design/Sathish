@@ -19,9 +19,9 @@ export default function AdminLogbookHistory({ history, certified, onShowAll, onO
     <header className="admin-history-head">
       <div><h2>{certified ? 'Certified this week' : 'My signed history'}</h2><p>Review your past decisions and feedback.</p></div>
       <div className="admin-history-summary" aria-label="Decision summary">
-        <span><strong>{history.length}</strong> decisions</span>
-        <span><CheckCircle2 size={14} /><strong>{approved}</strong> approved</span>
-        <span><Undo2 size={14} /><strong>{history.length - approved}</strong> returned</span>
+        <span className="admin-history-stat is-total"><History size={14} aria-hidden="true" />Decisions<strong>{history.length}</strong></span>
+        <span className="admin-history-stat is-approved"><CheckCircle2 size={14} aria-hidden="true" />Approved<strong>{approved}</strong></span>
+        <span className="admin-history-stat is-returned"><Undo2 size={14} aria-hidden="true" />Returned<strong>{history.length - approved}</strong></span>
         {certified && <button className="lb-text-btn" onClick={onShowAll}>All decisions</button>}
       </div>
     </header>

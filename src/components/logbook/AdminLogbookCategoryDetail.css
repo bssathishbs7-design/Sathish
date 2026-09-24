@@ -1,0 +1,34 @@
+.admin-logbook-page .admin-category-detail { display: grid; gap: var(--s-3); padding: var(--s-4); }
+.admin-category-topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-4); }
+.admin-category-detail-head { display: flex; align-items: center; gap: var(--s-3); min-width: 0; flex: 1 1 280px; }
+.admin-category-detail-head h2 { margin: 0; font-size: 18px; }
+.admin-category-detail-head p, .admin-category-result { margin: var(--s-1) 0 0; font-size: 12px; color: var(--text-muted); }
+.admin-category-detail-head > .lb-btn { display: grid; place-items: center; padding: 0; width: 40px; height: 40px; min-height: 40px; flex-shrink: 0; }
+.admin-category-detail-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--r-sm); background: color-mix(in srgb, var(--lilac) 35%, var(--surface-card)); color: var(--text-brand); }
+.admin-category-status { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.admin-category-status button { display: inline-flex; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-2); min-height: var(--s-6); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-body); font-size: var(--fs-micro); font-weight: 600; cursor: pointer; }
+.admin-category-status strong { display: grid; place-items: center; min-width: var(--s-5); padding: var(--s-1); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-strong); line-height: 1; font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.admin-category-status svg { color: var(--text-brand); flex-shrink: 0; }
+.admin-category-status .is-approved { background: color-mix(in srgb, var(--forest) 8%, var(--surface-card)); }
+.admin-category-status :is(.is-pending, .is-returned) { background: color-mix(in srgb, var(--warn-ink) 8%, var(--surface-card)); }
+.admin-category-status .is-assigned { background: color-mix(in srgb, var(--lilac) 25%, var(--surface-card)); }
+.admin-category-status :is(.is-pending, .is-returned) svg { color: var(--text-body); }
+.admin-logbook-page .admin-category-status button[aria-pressed="true"] { background: var(--forest); color: var(--on-brand); border-color: var(--forest); box-shadow: none; }
+.admin-category-status button[aria-pressed="true"] svg { color: var(--on-brand); }
+.admin-category-status button:active { transform: translateY(1px) scale(.97); transition: none; }
+.admin-category-detail .admin-filters { align-items: center; }
+.admin-logbook-page .admin-category-detail .admin-filters .lb-search { min-height: 36px; }
+.admin-logbook-page .admin-category-detail .admin-filters .lb-search input { min-height: 34px; padding: var(--s-1) 0; font-size: 12px; }
+.admin-category-detail .admin-filter-select { display: flex; position: relative; }
+.admin-category-detail .admin-filter-select > svg { display: block; position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
+.admin-logbook-page .admin-category-detail .admin-filter-select select { appearance: none; min-height: 36px; padding: var(--s-2) var(--s-6) var(--s-2) var(--s-3); cursor: pointer; }
+.admin-category-detail .admin-entry-list { gap: 0; border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+.admin-logbook-page .admin-category-detail .admin-entry { border: 0; border-radius: 0; box-shadow: none; background: var(--surface-card); padding: 0 var(--s-3); }
+.admin-category-detail .admin-entry + .admin-entry { border-top: 1px solid var(--border); }
+.admin-category-detail .admin-entry-open { padding: var(--s-3) 0; }
+.admin-logbook-page .admin-category-detail .admin-entry-open:hover { background: transparent; box-shadow: none; }
+.admin-logbook-page .admin-category-detail .admin-entry:hover { background: var(--surface-soft); }
+.admin-category-detail .admin-entry-open > span:first-child small { white-space: normal; }
+.admin-category-detail .admin-entry-meta { grid-template-columns: auto auto; align-items: center; gap: var(--s-2); }
+.admin-category-detail .admin-record-flags { grid-column: 1 / -1; }
+@media (max-width: 767px) { .admin-logbook-page .admin-category-detail .admin-filters .lb-search { flex-basis: 100%; } .admin-category-detail .admin-filter-select { flex: 1 1 140px; width: auto; } .admin-category-detail .admin-filter-select select { width: 100%; } .admin-category-detail .admin-filters > .lb-btn { width: auto; } .admin-category-detail-icon { display: none; } .admin-category-detail .admin-entry-meta { margin-right: auto; } }
