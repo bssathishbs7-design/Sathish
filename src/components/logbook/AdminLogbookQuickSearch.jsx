@@ -1,3 +1,4 @@
+import LogbookCommentBadge from './LogbookCommentBadge'
 import { useRef, useState } from 'react'
 import { Search, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-react'
 import { entryTitle, formatDate } from '../../services/logbook'
@@ -40,7 +41,7 @@ export default function AdminLogbookQuickSearch({ entries, onOpen, onViewAll }) 
     {expanded && <div id="dashboard-search-filters" className="admin-quick-filters">{options.map(([key, label, values]) => <label key={key}><span>{label}</span><span className="admin-quick-select"><select aria-label={'Universal search ' + label.toLowerCase()} value={filters[key]} onChange={event => setFilters(current => ({ ...current, [key]: event.target.value }))}>{values.map(([value, text]) => <option value={value} key={value}>{text}</option>)}</select><ChevronDown size={15} aria-hidden="true" /></span></label>)}</div>}
     <div id="dashboard-search-results" ref={resultsRef} hidden={!active}>
       {active && <><div className="admin-quick-results-head"><span role="status">{matches.length ? `${matches.length} ${matches.length === 1 ? 'entry' : 'entries'} found${matches.length > 5 ? ' / Showing latest 5' : ''}` : 'No entries match your search.'}</span>{matches.length > 0 && <button className="lb-text-btn" onClick={() => onViewAll({ query, ...filters })}>View all results <ChevronRight size={14} /></button>}</div>
-      {matches.slice(0, 5).map(entry => <button className="admin-quick-result" key={entry.id} onClick={() => onOpen(entry.id)}><span><strong>{entryTitle(entry)}</strong><small>{learnerName(entry.studentId)} / {entry.subject}</small></span><span className="admin-quick-result-meta"><span className={'lb-status is-' + entry.status.toLowerCase().replaceAll(' ', '-')}>{entry.status}</span><small>{formatDate(entry.submittedAt || entry.date)}</small></span><ChevronRight size={16} aria-hidden="true" /></button>)}
+      {matches.slice(0, 5).map(entry => <button className="admin-quick-result" key={entry.id} onClick={() => onOpen(entry.id)}><span><strong>{entryTitle(entry)}<LogbookCommentBadge entry={entry} /></strong><small>{learnerName(entry.studentId)} / {entry.subject}</small></span><span className="admin-quick-result-meta"><span className={'lb-status is-' + entry.status.toLowerCase().replaceAll(' ', '-')}>{entry.status}</span><small>{formatDate(entry.submittedAt || entry.date)}</small></span><ChevronRight size={16} aria-hidden="true" /></button>)}
       {!matches.length && <p className="admin-quick-hint">Try a student name, competency code, or fewer filters.</p>}</>}
     </div>
   </section>

@@ -1,5 +1,9 @@
+import LogbookCommentMessage from './LogbookCommentMessage'
+import { useContext } from 'react'
+import { LogbookReaderContext } from '../../services/logbookCommentRead'
+import LogbookCommentBadge from './LogbookCommentBadge'
 import { useEffect, useState } from 'react'
-import { LoaderCircle, MessageSquare, Send } from 'lucide-react'
+import { LoaderCircle, Send } from 'lucide-react'
 import LogbookDrawer from './LogbookDrawer'
 import { CATEGORIES, getLogbookField } from '../../services/logbookCatalog'
 import { entryTitle, facultyName, formatDate, updateLogbookEntry } from '../../services/logbook'
@@ -11,6 +15,7 @@ import { REVIEWERS, actorName, learnerName, isGraded } from '../../services/admi
  * @param {{entry:Object, entries:Object[], theme:string, role?:string, commentDraft:string, onCommentDraft:Function, onClose:Function, onEdit:Function, onRemedial:Function, onOpen:Function, onChanged:Function}} props
  */
 export default function LogbookEntryDetail({ entry, entries, theme, role = 'learner', actor = REVIEWERS[0], commentDraft, onCommentDraft, onClose, onEdit, onRemedial, onOpen, onChanged }) {
+  const reader = useContext(LogbookReaderContext)
   const [notes, setNotes] = useState(entry.extra?.notes || '')
   const [confirmWithdraw, setConfirmWithdraw] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -53,9 +58,9 @@ export default function LogbookEntryDetail({ entry, entries, theme, role = 'lear
       {entry.status === 'Returned' && role === 'learner' && isGraded(entry) && <button className="lb-btn lb-primary" disabled={busy} onClick={() => leave(() => child ? onOpen(child.id) : onRemedial(entry))}>{child ? 'View linked remedial attempt' : 'Log a remedial attempt'}</button>}
       {entry.extra?.attachments?.length > 0 && <div className="lb-photo-grid">{entry.extra.attachments.map((photo, index) => <figure key={`${photo.name}-${index}`}>{/^data:image\/(png|jpeg|webp);base64,/.test(photo.dataUrl || '') && <img src={photo.dataUrl} alt={photo.name} />}<figcaption>{photo.name}</figcaption></figure>)}</div>}
       {role === 'learner' && <label className="lb-field"><span>Personal notes</span><textarea rows={4} maxLength={4000} value={notes} disabled={busy} onChange={(event) => setNotes(event.target.value)} /><small>Saved when you close this drawer. Not part of the signed record.{entry.extra?.notesEdited ? ` Last edited ${formatDate(entry.extra.notesEdited)}.` : ''}</small></label>}
-      <section className="lb-stack"><h3><MessageSquare size={18} /> Comments</h3>{!entry.extra?.comments?.length && <p className="lb-muted">No comments yet. Start a conversation about this entry.</p>}
-        {(entry.extra?.comments || []).map((comment, index) => <article className="lb-comment" key={comment.id || index}><div className="lb-comment-avatar" aria-hidden="true">{comment.by === 'faculty' ? 'F' : 'L'}</div><div><strong>{comment.who || (comment.by === 'faculty' ? 'Faculty' : 'Learner')}</strong><small>{comment.by === 'faculty' ? 'Faculty' : 'Learner'} · {new Date(comment.date).toLocaleString('en-IN')}</small><p>{comment.text}</p></div></article>)}
-        <label className="lb-field"><span>Add a comment</span><textarea value={commentDraft} onChange={(event) => onCommentDraft(event.target.value)} disabled={busy} rows={3} maxLength={2000} /><small>Posted comments cannot be edited or removed.</small></label><button className="lb-btn" disabled={busy || !commentDraft.trim()} onClick={() => mutate('comment', { text: commentDraft, by: role, who: role === 'faculty' ? actorName(actor.id) : learnerName(entry.studentId) })}><Send size={15} /> Post comment</button>
+      <section className="lb-stack"><h3>Comments <LogbookCommentBadge entry={entry} showAttachments={false} /></h3>{!entry.extra?.comments?.length && <p className="lb-muted">No comments yet. Start a conversation about this entry.</p>}
+        {(entry.extra?.comments || []).map((comment, index) => <LogbookCommentMessage key={comment.id || index} entryId={entry.id} comment={comment} />)}
+        <label className="lb-field"><span>Add a comment</span><textarea value={commentDraft} onChange={(event) => onCommentDraft(event.target.value)} disabled={busy} rows={3} maxLength={2000} /><small>Posted comments cannot be edited or removed.</small></label><button className="lb-btn" disabled={busy || !commentDraft.trim()} onClick={() => mutate('comment', { authorId: reader.id, text: commentDraft, by: role, who: role === 'faculty' ? actorName(actor.id) : learnerName(entry.studentId) })}><Send size={15} /> Post comment</button>
       </section>
       {role === 'faculty' && <FacultyReview entry={entry} actor={actor} onChanged={onChanged} onDirty={setReviewDirty} onBusy={setReviewBusy} />}
       {entry.grading && <p className="lb-alert">Attempt: {{ F: 'First', R: 'Repeat', Re: 'Remedial' }[entry.grading.attempt]} | Rating: {{ M: 'Meets expectations', B: 'Below expectations', E: 'Exceeds expectations' }[entry.grading.rating]} | Decision: {{ C: 'Certified', R: 'Repeat', Re: 'Remedial' }[entry.grading.decision]}</p>}

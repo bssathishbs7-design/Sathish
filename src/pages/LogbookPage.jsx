@@ -1,3 +1,4 @@
+import { LogbookReaderContext } from '../services/logbookCommentRead'
 import { useEffect, useState } from 'react'
 import { BookOpen, LayoutDashboard, LoaderCircle, Plus, Search, UserRound } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
@@ -110,4 +111,4 @@ function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, 
     {selected && !form && <LogbookEntryDetail key={selected.id} entry={selected} entries={entries} theme={theme} role={route.name === 'faculty' ? 'faculty' : 'learner'} commentDraft={commentDrafts[selected.id] || ''} onCommentDraft={(text) => setCommentDrafts((current) => ({ ...current, [selected.id]: text }))} onClose={() => { void closeLogbookDrawer(() => setSelectedId(null)) }} onEdit={edit} onRemedial={remedial} onOpen={setSelectedId} onChanged={setNotice} />}
   </section>
 }
-export default function LogbookPage(props) { return <LogbookBoundary><LogbookContent {...props} /></LogbookBoundary> }
+export default function LogbookPage(props) { return <LogbookBoundary><LogbookReaderContext.Provider value={{ id: props.identity.id || props.identity.registerId, name: props.identity.name, role: 'learner' }}><LogbookContent {...props} /></LogbookReaderContext.Provider></LogbookBoundary> }

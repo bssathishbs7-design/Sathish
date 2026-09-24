@@ -1,3 +1,4 @@
+import LogbookCommentBadge from './LogbookCommentBadge'
 import { useState } from 'react'
 import { BookOpen, ChevronDown, ChevronRight, Search } from 'lucide-react'
 import { STUDENT, CATEGORIES } from '../../services/logbookSample'
@@ -10,7 +11,7 @@ import LogbookCategoryMenu from './LogbookCategoryMenu'
 /** Presentational collection: all record data and navigation callbacks come from the page. */
 export function EntryList({ entries, onOpen, empty = 'No entries here yet.' }) {
   return entries.length ? <div className="lb-entry-list">{entries.map((entry) => <button className="lb-entry-row" key={entry.id} onClick={() => onOpen(entry.id)}>
-    <span className={`lb-entry-icon is-${entry.status.toLowerCase().replaceAll(' ', '-')}`}><BookOpen size={18} /></span><span className="lb-entry-copy"><strong>{entryTitle(entry)}</strong><small>{entry.values.competency ? `${entry.values.competency} · ` : ''}{subjectLabel(entry.subject)} · {facultyName(entry.faculty)}</small></span><span className="lb-entry-meta"><span className={`lb-status is-${entry.status.toLowerCase().replaceAll(' ', '-')}`}>{entry.status}</span><small>{formatDate(entry.date)}</small></span><ChevronRight size={16} />
+    <span className={`lb-entry-icon is-${entry.status.toLowerCase().replaceAll(' ', '-')}`}><BookOpen size={18} /></span><span className="lb-entry-copy"><span className="lb-title-with-indicators"><strong>{entryTitle(entry)}</strong><LogbookCommentBadge entry={entry} /></span><small>{entry.values.competency ? `${entry.values.competency} · ` : ''}{subjectLabel(entry.subject)} · {facultyName(entry.faculty)}</small></span><span className="lb-entry-meta"><span className={`lb-status is-${entry.status.toLowerCase().replaceAll(' ', '-')}`}>{entry.status}</span><small>{formatDate(entry.date)}</small></span><ChevronRight size={16} />
   </button>)}</div> : <div className="lb-empty"><BookOpen size={26} /><p>{empty}</p></div>
 }
 export function SearchView({ entries, onOpen, initialStatus = '' }) {

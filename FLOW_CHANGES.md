@@ -257,3 +257,7 @@
 ## 2026-09-24 - Dashboard search entry point
 
 - Removed Search from the Logbook tab bar. Dashboard universal search is the search entry point; View all results and dashboard chart links retain the full Search results route.
+
+## 2026-09-24 - Per-account comment read status
+
+- Incoming comments highlight logbook entries and show unread counts. Viewing individual messages in the drawer marks them read for that account in this browser; opening an entry alone does not clear unseen comments. Read chat icons and attachments remain available.

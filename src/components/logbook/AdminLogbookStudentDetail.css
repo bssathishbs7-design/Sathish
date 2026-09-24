@@ -1,0 +1,40 @@
+.admin-logbook-page .admin-student-detail { display: grid; gap: var(--s-3); padding: var(--s-4); }
+.admin-student-detail-head { display: flex; align-items: center; gap: var(--s-3); }
+.admin-student-detail-head h2 { margin: 0; font-size: 18px; }
+.admin-student-detail-head small { font-size: var(--fs-micro); font-family: var(--f-code); color: var(--text-muted); }
+.admin-student-detail-head > .lb-btn:first-child { padding: var(--s-2); }
+.admin-student-detail-head > .lb-btn:last-child { margin-left: auto; }
+.admin-student-detail-avatar { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--r-pill); background: color-mix(in srgb, var(--sky) 45%, var(--surface-card)); color: var(--text-strong); font-size: 13px; font-weight: 600; }
+.admin-student-detail-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); }
+.admin-student-detail-stats > div { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); padding: var(--s-3); background: var(--surface-soft); border-radius: var(--r-sm); color: var(--text-body); font-size: 12px; }
+.admin-student-detail-stats > div:nth-child(3) { background: color-mix(in srgb, var(--butter) 25%, var(--surface-card)); }
+.admin-student-detail-stats > div:last-child { background: color-mix(in srgb, var(--lilac) 25%, var(--surface-card)); }
+.admin-student-detail-stats svg { color: var(--text-brand); }
+.admin-student-detail-stats strong { font-family: var(--f-code); font-variant-numeric: tabular-nums; color: var(--text-strong); }
+.admin-student-subject-heading { display: flex; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; align-items: center; }
+.admin-student-subject-heading h3 { margin: 0; font-size: 13px; }
+.admin-student-subject-heading > span { color: var(--text-muted); font-size: var(--fs-micro); }
+.admin-student-subjects { display: grid; gap: var(--s-2); }
+.admin-student-subject { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; background: var(--surface-card); }
+.admin-logbook-page .admin-student-subject > summary { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); list-style: none; cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
+.admin-student-subject > summary::-webkit-details-marker { display: none; }
+.admin-student-subject > summary > span:first-child { display: grid; gap: var(--s-1); flex: 1; min-width: 0; }
+.admin-student-subject summary strong { font-size: 13px; color: var(--text-strong); }
+.admin-student-subject summary small { font-size: var(--fs-micro); font-weight: 400; color: var(--text-muted); }
+.admin-student-readiness { font-size: var(--fs-micro); font-weight: 500; padding: var(--s-1) var(--s-2); background: var(--surface-soft); border-radius: var(--r-pill); color: var(--text-body); }
+.admin-student-subject summary:hover { background: var(--surface-soft); }
+.admin-student-subject summary:active { transform: translateY(1px); transition: none; }
+.admin-student-subject[open] summary > svg { transform: rotate(180deg); }
+.admin-student-subject-body { display: grid; gap: var(--s-3); padding: var(--s-3); border-top: 1px solid var(--border); }
+.admin-student-subject-body > .lb-btn { justify-self: start; }
+.admin-logbook-page .admin-student-entries { padding: var(--s-4); gap: var(--s-3); }
+.admin-student-entries .admin-filters { align-items: center; }
+.admin-student-entries .admin-filter-select { position: relative; display: flex; }
+.admin-student-entries .admin-filter-select svg { display: block; position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
+.admin-logbook-page .admin-student-entries .admin-filter-select select { appearance: none; min-height: 36px; padding: var(--s-2) var(--s-6) var(--s-2) var(--s-3); cursor: pointer; }
+.admin-logbook-page .admin-student-entries .lb-search { min-height: 36px; }
+.admin-logbook-page .admin-student-entries .lb-search input { min-height: 34px; padding: var(--s-1) 0; font-size: 12px; }
+.admin-student-entries .admin-entry-list { gap: var(--s-1); }
+.admin-student-entries .admin-entry { border-radius: var(--r-sm); }
+@media (max-width: 767px) { .admin-student-detail-head { flex-wrap: wrap; gap: var(--s-2); } .admin-student-detail-head > .lb-btn:last-child { margin-left: 0; } .admin-student-detail-avatar { display: none; } .admin-student-detail-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .admin-student-detail-stats > div { padding: var(--s-2); } .admin-student-subject > summary { flex-wrap: wrap; } .admin-student-entries .admin-filter-select { flex: 1 1 140px; width: auto; } .admin-student-entries .admin-filter-select select { width: 100%; } .admin-logbook-page .admin-student-entries .lb-search { flex-basis: 100%; } .admin-student-entries .admin-filters > .lb-btn { width: auto; } }
+@media (prefers-reduced-motion: reduce) { .admin-logbook-page .admin-student-subject > summary { transition: none; } }

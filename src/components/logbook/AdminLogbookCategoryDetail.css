@@ -30,5 +30,4 @@
 .admin-logbook-page .admin-category-detail .admin-entry:hover { background: var(--surface-soft); }
 .admin-category-detail .admin-entry-open > span:first-child small { white-space: normal; }
 .admin-category-detail .admin-entry-meta { grid-template-columns: auto auto; align-items: center; gap: var(--s-2); }
-.admin-category-detail .admin-record-flags { grid-column: 1 / -1; }
 @media (max-width: 767px) { .admin-logbook-page .admin-category-detail .admin-filters .lb-search { flex-basis: 100%; } .admin-category-detail .admin-filter-select { flex: 1 1 140px; width: auto; } .admin-category-detail .admin-filter-select select { width: 100%; } .admin-category-detail .admin-filters > .lb-btn { width: auto; } .admin-category-detail-icon { display: none; } .admin-category-detail .admin-entry-meta { margin-right: auto; } }

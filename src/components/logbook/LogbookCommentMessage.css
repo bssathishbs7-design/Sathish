@@ -1,0 +1,2 @@
+.logbook-scope .lb-comment.is-new-comment { background: var(--surface-soft); border: 1px solid var(--forest-300); border-left: var(--s-1) solid var(--forest); border-radius: var(--r-sm); padding: var(--s-3); }
+.lb-new-comment-label { display: inline-block; margin-left: var(--s-2); padding: var(--s-1) var(--s-2); border-radius: var(--r-pill); font-size: var(--fs-micro); background: var(--forest); color: var(--on-brand); }

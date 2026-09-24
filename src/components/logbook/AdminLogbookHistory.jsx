@@ -1,3 +1,4 @@
+import LogbookCommentBadge from './LogbookCommentBadge'
 import { CheckCircle2, ChevronRight, History, Undo2 } from 'lucide-react'
 import { entryTitle, formatDate } from '../../services/logbook'
 import { learnerName } from '../../services/logbookPeople'
@@ -31,7 +32,7 @@ export default function AdminLogbookHistory({ history, certified, onShowAll, onO
       <div className="admin-history-list">{items.map(({ entry, event, key }) => <button className="admin-history-row" key={key} onClick={() => onOpen(entry.id)}>
         <span className={`admin-history-icon is-${event.action.toLowerCase()}`} aria-hidden="true">{event.action === 'Approved' ? <CheckCircle2 size={18} /> : <Undo2 size={18} />}</span>
         <span className="admin-history-copy">
-          <strong>{entryTitle(entry)}</strong>
+          <span className="admin-history-title"><strong>{entryTitle(entry)}</strong><LogbookCommentBadge entry={entry} /></span>
           <span className="admin-history-context"><span>{learnerName(entry.studentId)}</span><span>{entry.subject}</span><span>{categoryLabel(entry.cat)}</span></span>
           {event.remarks && <span className="admin-history-feedback" title={event.remarks}>Feedback: {event.remarks}</span>}
           {entry.status !== event.action && <span className="admin-history-updated">Updated since this decision</span>}

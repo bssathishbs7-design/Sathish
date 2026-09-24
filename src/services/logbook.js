@@ -141,7 +141,7 @@ export async function updateLogbookEntry(id, action, payload = {}) {
   if (action === 'notes') patch = { extra: { ...entry.extra, notes: payload.text, notesEdited: new Date().toISOString() } }
   else if (action === 'comment') {
     if (!payload.text?.trim()) throw new Error('Write a comment before posting.')
-    patch = { extra: { ...entry.extra, comments: [...(entry.extra?.comments || []), { id: crypto.randomUUID(), by: payload.by === 'faculty' ? 'faculty' : 'learner', who: payload.who || 'Learner', date: new Date().toISOString(), text: payload.text.trim() }] } }
+    patch = { extra: { ...entry.extra, comments: [...(entry.extra?.comments || []), { id: crypto.randomUUID(), authorId: payload.authorId || '', by: payload.by === 'faculty' ? 'faculty' : 'learner', who: payload.who || 'Learner', date: new Date().toISOString(), text: payload.text.trim() }] } }
   } else if (action === 'withdraw') {
     if (!['Draft', 'Pending'].includes(entry.status)) throw new Error('Only drafts and pending entries can be withdrawn.')
     deltas.removed.push(id)

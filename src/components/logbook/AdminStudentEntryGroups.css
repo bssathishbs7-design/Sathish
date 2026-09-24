@@ -1,0 +1,16 @@
+.admin-student-entry-group { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; background: var(--surface-card); }
+.admin-student-entry-group-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); padding: var(--s-2) var(--s-3); background: var(--surface-soft); border-bottom: 1px solid var(--border); }
+.admin-student-entry-category-icon { display: grid; place-items: center; width: var(--s-6); height: var(--s-6); flex-shrink: 0; border-radius: var(--r-sm); background: color-mix(in srgb, var(--lilac) 35%, var(--surface-card)); color: var(--text-brand); }
+.admin-logbook-page .admin-student-entry-group-head h3 { margin: 0; font-size: 13px; color: var(--text-strong); }
+.admin-student-entry-count, .admin-student-entry-pending { padding: var(--s-1) var(--s-2); font-size: var(--fs-micro); border-radius: var(--r-pill); color: var(--text-body); background: var(--surface-card); }
+.admin-student-entry-count { margin-left: auto; }
+.admin-student-entry-pending { background: color-mix(in srgb, var(--butter) 35%, var(--surface-card)); }
+.admin-logbook-page .admin-student-entry-group .admin-entry-list { gap: 0; }
+.admin-logbook-page .admin-student-entry-group .admin-entry { border: 0; border-radius: 0; background: var(--surface-card); box-shadow: none; padding: 0 var(--s-3); }
+.admin-logbook-page .admin-student-entry-group .admin-entry + .admin-entry { border-top: 1px solid var(--border); }
+.admin-student-entry-group .admin-entry-open { padding: var(--s-3) 0; }
+.admin-logbook-page .admin-student-entry-group .admin-entry:hover { background: var(--surface-soft); }
+.admin-logbook-page .admin-student-entry-group .admin-entry-open:hover { background: transparent; box-shadow: none; }
+.admin-student-entry-group .admin-entry-open > span:first-child small { white-space: normal; }
+.admin-student-entry-group .admin-entry-meta { grid-template-columns: auto auto; gap: var(--s-2); align-items: center; }
+@media (max-width: 767px) { .admin-student-entry-group .admin-entry-meta { margin-right: auto; } .admin-student-entry-group-head { gap: var(--s-1); } }
