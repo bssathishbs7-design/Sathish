@@ -1,4 +1,85 @@
+## 2026-09-25 - Explicit Blueprint question filters
+
+- Saving or updating a Blueprint now opens Question Bank without automatic requirement filters. Existing question selections and Blueprint progress remain intact.
+- Apply filter and View LAQs in the floating progress panel explicitly set the requirement filters; the active requirement alone no longer filters the bank.
+
+## 2026-09-25 - Blueprint selection through floating progress
+
+- In the Question Bank, hide the Blueprint dropdown, Next requirement, and Create question toolbar controls when the floating Blueprint panel is available. Requirement selection, step navigation, and creation remain available through the progress circle and panel.
+- Preserve other filters, question selection, sidebar actions, and the empty-results creation shortcut.
+
+## 2026-09-25 - Floating Blueprint requirements panel
+
+- Restored the bottom-left progress circle. It opens a non-modal panel above it; the bank remains interactive without a backdrop. Outside click, Escape, close, and the circle dismiss the panel.
+- MCQ and SAQ tables now separate QB availability, row actions, and completion; SAQ categories are inline rather than extra separator rows. LAQ actions sit beside each whole-question split table.
+
+## 2026-09-25 - Browse competency-relevant LAQs
+
+- LAQ requirements always offer View relevant LAQs, including when no whole question matches the exact split. Bank competency filters include nested question parts.
+- Exact split matching still controls Blueprint progress; creation remains available for missing matches.
+
+## 2026-09-25 - Compact Blueprint steps
+
+- Replaced the floating circle and competency cards with a toolbar progress button and compact MCQ, SAQ, LAQ steps. SAQ requirements follow Direct, Reasoning, Aetcom, Application order.
+- Requirement rows use actual bank availability to offer picking or creation; completed rows offer Preview review. Whole LAQ requirements display their saved part assignments and count once.
+- Next requirement follows the same type and category order, and the summary opens on the active requirement type.
+
+## 2026-09-25 - Row-by-row Blueprint selection
+
+- Blueprint dropdown shows each saved requirement with its live picked count and Done status. Adding or creating a question opens Preview and retains the active requirement.
+- Next requirement moves to the next pending row and applies its bank filters. The floating progress summary provides another route to individual requirements and displays LAQ parts without counting them as whole questions.
+
+## 2026-09-25 - Allow unrelated questions in Blueprint Preview
+
+- Question Bank selection and Add to Assessment now allow questions outside the saved Blueprint. Duplicate protection remains.
+- Unallocated questions remain in the original Preview with a Not relevant to Blueprint badge and do not increase Blueprint progress. Card styling is unchanged.
+
+## 2026-09-25 - Restore the existing Question Bank and Preview flow
+
+- Removed the added Blueprint picker panels and their exclusive styles. Requirements are chosen from the existing Question Bank filter bar.
+- Visible bank filters are the sole list filter; Blueprint rules validate selection capacity and marks without hiding contradictory results.
+- Add to Assessment returns to the existing Preview. Its header shows Blueprint progress, and existing Configuration/publication checks enforce completion.
+
+## 2026-09-25 - Open the active blueprint question requirement
+
+- Pick questions now collapses the requirement list and focuses the matching question-bank panel, with competency, thinking level, marks and remaining count visible. Back to requirements restores the list.
+
+## 2026-09-25 - Saved blueprint question selection and preview
+
+- Saving a matched blueprint opens inline requirement rows derived from its allocation, replacing the floating progress table.
+- Each row filters question-bank selection by competency, type, category, thinking level and marks. Whole LAQs retain explicit part assignments in the saved planner.
+- Users can create a prefilled matching question when bank coverage is missing, review selections, replace a question without removing the original until its replacement is accepted, and move to the next pending requirement.
+- Preview remains available while selection is incomplete; configuration and publication require all blueprint requirements to be satisfied without duplicate or surplus questions.
+
 # Flow changes
+
+## 2026-09-24 - Manual LAQ part marks
+
+- LAQ part marks are entered independently. Editing one part no longer redistributes marks to other parts; allocation totals and validation continue to update. This supersedes the automatic LAQ remainder allocation.
+
+## 2026-09-24 - Automatic calculations with Both-only SAQ count editing
+
+- Removed Auto tally. SAQ LoT-only and HoT-only rows calculate their counts automatically and lock both cognition count fields. Both rows permit complementary count edits. Switches and marks trigger automatic recalculation; incompatible percentage targets retain the visible difference without changing switches.
+
+## 2026-09-24 - Preserve switches during Auto tally
+
+- Auto tally now treats every LoT / HoT / Both selection as fixed and adjusts only MCQ counts and existing Both rows. LAQ parts remain unchanged. An impossible target leaves all values and selections untouched and shows the remaining cognition difference. This supersedes the earlier automatic switch-to-Both behaviour.
+
+## 2026-09-24 - Auto tally percentage conflicts
+
+- Added Auto tally in question specifications. For complete, valid inputs with a cognition mismatch, it finds an exact whole-question split and changes the fewest necessary SAQ selections to Both. LAQ part marks and classifications remain fixed. Failed searches preserve the current configuration and explain the conflict; successful searches show Matched and highlight updated numbers and selections briefly.
+
+## 2026-09-24 - Percentage rebalancing and LAQ remainder allocation
+
+- Each Blueprint edit preserves the latest manual input and releases earlier cognition-count overrides so eligible rows can rebalance against the assessment percentage targets. Fixed SAQ cognition selections remain respected; unattainable targets show marks remaining or over. Editing LAQ part marks distributes the remainder across the other parts while retaining their cognition selections.
+
+## 2026-09-24 - Editable Blueprint calculations
+
+- MCQ and SAQ cognition counts support manual edits with complementary counts and eligible automatic allocations recalculated. Editing an excluded SAQ level selects Both. LAQ summary counts reclassify the existing parts while preserving their marks. Each edit highlights its changed fields and dependent totals, and invalidates previous competency allocations.
+
+## 2026-09-24 - SAQ cognition selection
+
+- Each SAQ category now uses a LoT / HoT / Both toggle. Direct defaults to LoT; Reasoning, Aetcom and Application default to HoT. SAQ counts are calculated rather than manually edited; Both uses the configured cognition percentages and whole-question allocation. Changing a selection clears previous competency allocations for recalculation.
 
 ## 2026-09-21 - Compact subject catalogue
 

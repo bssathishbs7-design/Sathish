@@ -1,0 +1,68 @@
+.create-assessment-workspace .create-assessment-preview-list .create-assessment-preview-card .create-assessment-preview-actions > button:is(.create-assessment-preview-edit, .create-assessment-preview-delete, .create-assessment-preview-toggle) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 32px !important;
+  min-height: 32px !important;
+  width: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  align-self: start;
+  min-width: 32px !important;
+  aspect-ratio: 1 / 1;
+  border-radius: 6px !important;
+  padding: 0 !important;
+  flex: 0 0 auto;
+}
+.create-assessment-preview-list .create-assessment-preview-card .create-assessment-preview-actions > button:active {
+  transform: translateY(1px) scale(.97);
+}
+.create-assessment-preview-list .create-assessment-preview-card .create-assessment-preview-actions > button:focus-visible {
+  outline: 2px solid var(--forest);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px var(--mint-200);
+}
+
+.create-assessment-preview-list .create-assessment-preview-card > .create-assessment-preview-actions {
+  width: max-content !important;
+  justify-self: end !important;
+  align-items: start !important;
+  flex-wrap: nowrap !important;
+}
+
+/* A shared collapsed layout keeps MCQ, SAQ and LAQ headers aligned. */
+.create-assessment-workspace .create-assessment-preview-list .create-assessment-preview-card:not(.is-open) {
+  grid-template-columns: minmax(0, 1fr) max-content !important;
+  min-height: 0 !important;
+  padding: 12px 14px !important;
+  align-content: start !important;
+}
+.create-assessment-workspace .create-assessment-preview-list .create-assessment-preview-card:not(.is-open) .create-assessment-preview-main .create-assessment-preview-title-row strong {
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-height: none !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+}
+.create-assessment-workspace .create-assessment-preview-list .create-assessment-preview-card:not(.is-open) > .create-assessment-preview-actions {
+  position: static !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-self: start !important;
+  margin: 0 !important;
+}
+.create-assessment-workspace .create-assessment-preview-list .create-assessment-preview-card:not(.is-open) .create-assessment-preview-meta-row {
+  padding-right: 0 !important;
+}
+@media (max-width: 600px) {
+  .create-assessment-workspace .create-assessment-preview-list .create-assessment-preview-card:not(.is-open) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .create-assessment-workspace .create-assessment-preview-list .create-assessment-preview-card:not(.is-open) > .create-assessment-preview-actions {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+}

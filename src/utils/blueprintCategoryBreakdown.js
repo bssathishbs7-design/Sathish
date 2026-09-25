@@ -1,7 +1,7 @@
 /**
  * Assign configured SAQ units to planner cells, preserving question counts and marks.
  * @param {{units: {category: string, marks: number}[], cells: {key: string, count: number, marks: number}[]}} input
- * @returns {Object<string, {category: string, count: number}[]>|null} Null means the draft cannot be allocated.
+ * @returns {Object<string, {category: string, count: number, perQuestionMarks: number, totalMarks: number}[]>|null} Null means the draft cannot be allocated.
  */
 export function allocateCategoryBreakdown({ units, cells }) {
   const weights = [...new Set(units.map((unit) => unit.marks))].sort((a, b) => b - a)
@@ -39,14 +39,17 @@ export function allocateCategoryBreakdown({ units, cells }) {
   if (units.some((unit) => unit.marks <= 0) || !solve(0)) return null
   const order = ['Direct', 'Reasoning', 'Aetcom', 'Application']
   return Object.fromEntries(cells.map((cell, index) => {
-    const counts = {}
+    const counts = new Map()
     assignments[index].forEach((amount, i) => {
-      pools[i].splice(0, amount).forEach(({ category }) => {
-        counts[category] = (counts[category] || 0) + 1
+      pools[i].splice(0, amount).forEach(({ category, marks }) => {
+        const key = JSON.stringify([category, marks])
+        const entry = counts.get(key) || { category, count: 0, perQuestionMarks: marks, totalMarks: 0 }
+        entry.count += 1
+        entry.totalMarks = Number((entry.totalMarks + marks).toFixed(2))
+        counts.set(key, entry)
       })
     })
-    return [cell.key, Object.entries(counts)
-      .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
-      .map(([category, count]) => ({ category, count }))]
+    return [cell.key, [...counts.values()]
+      .sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category) || a.perQuestionMarks - b.perQuestionMarks)]
   }))
 }

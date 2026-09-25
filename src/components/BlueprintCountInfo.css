@@ -36,7 +36,7 @@
   position: fixed;
   z-index: 10000;
   width: max-content;
-  max-width: min(260px, calc(100vw - 16px));
+  max-width: min(380px, calc(100vw - 16px));
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -48,25 +48,13 @@
 }
 
 .blueprint-count-tooltip > strong { display: block; font-size: inherit; font-weight: 600; }
-.blueprint-count-tooltip dl { margin: var(--space-1) 0 0; }
-.blueprint-count-tooltip dl > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.blueprint-count-tooltip dt { min-width: 0; overflow-wrap: anywhere; }
-.blueprint-count-tooltip dl > div + div { margin-top: var(--space-1); }
-.blueprint-count-tooltip dd {
-  display: grid;
-  place-items: center;
-  min-width: var(--space-4);
-  min-height: var(--space-4);
-  margin: 0;
-  padding: 0;
-  color: inherit;
-  font-family: var(--f-code, monospace);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
+.blueprint-count-tooltip table { width: 100%; border-collapse: collapse; margin-top: var(--space-1); font-size: inherit; }
+.blueprint-count-tooltip th, .blueprint-count-tooltip td { padding: var(--space-1) var(--space-2); text-align: right; vertical-align: middle; }
+.blueprint-count-tooltip th:first-child { text-align: left; overflow-wrap: anywhere; }
+.blueprint-count-tooltip thead th { font-weight: 600; white-space: nowrap; }
+.blueprint-count-tooltip tr > :first-child { padding-left: 0; }
+.blueprint-count-tooltip tr > :last-child { padding-right: 0; }
+.blueprint-count-tooltip tbody th { font-weight: 400; }
+.blueprint-count-tooltip td { font-family: var(--f-code, monospace); font-variant-numeric: tabular-nums; }
+.blueprint-count-tooltip tfoot { border-top: 1px solid var(--color-border); font-weight: 600; }
 .blueprint-count-tooltip p { margin: var(--space-1) 0 0; font-size: inherit; line-height: inherit; }

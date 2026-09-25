@@ -1,0 +1,11 @@
+.blueprint-completion-toast-region { position: fixed; left: 16px; bottom: 116px; z-index: 1102; width: min(360px, calc(100vw - 32px)); font-family: var(--f-body); }
+.blueprint-completion-toast { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-3); padding-right: var(--s-6, 48px); border: 1px solid var(--mint-200); border-radius: var(--r-sm, 12px); background: var(--surface-card); color: var(--text-body); box-shadow: var(--shadow-sm); animation: blueprint-toast-enter var(--dur-entrance) var(--ease-standard); }
+.blueprint-completion-toast-icon { flex-shrink: 0; color: var(--text-brand); }
+.blueprint-completion-toast strong { color: var(--text-brand); font-size: 14px; }
+.blueprint-completion-toast p { margin: var(--s-1) 0 0; font-size: 12px; line-height: 1.5; }
+.blueprint-completion-toast-close { position: absolute; right: var(--s-2); top: var(--s-2); display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--mint-200); border-radius: 50%; background: var(--surface-card); color: var(--text-strong); cursor: pointer; }
+.blueprint-completion-toast-close:hover { background: var(--surface-mist); }
+.blueprint-completion-toast-close:active { transform: translateY(1px) scale(.97); }
+.blueprint-completion-toast-close:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
+@keyframes blueprint-toast-enter { from { opacity: 0; transform: translateY(var(--s-2)); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .blueprint-completion-toast { animation: none; } }

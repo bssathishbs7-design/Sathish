@@ -1,3 +1,5 @@
+import { matchesBlueprintBrowseCompetency } from '../utils/blueprintPicker'
+import BlueprintRequirementMenu from '../components/BlueprintRequirementMenu'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BarChart3, BookOpenCheck, Brain, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, FileSearch, Filter, Flag, Gauge, Info, LayoutGrid, ListChecks, Pencil, Plus, Search, Share2, Shuffle, Star, Tags, Trash2, TriangleAlert, X } from 'lucide-react'
@@ -2189,6 +2191,9 @@ const createImportedAssessmentQuestions = (questions = [], setup = {}) => (
   }))
 )
 
+/** Current visible bank inventory, shared with Blueprint progress opened from Preview. */
+export const readBlueprintBankQuestions = () => readAllQuestionBankQuestions().filter(hasDisplayableQuestionContent)
+
 export default function QuestionBankNonCreatePage({
   onNavigate,
   mode = 'readonly',
@@ -2197,6 +2202,13 @@ export default function QuestionBankNonCreatePage({
   onSelectionChange,
   addedQuestionIds = [],
   initialFilters = {},
+  blueprintRequirements,
+  activeRequirementId,
+  onRequirementChange,
+  onNextRequirement,
+  renderBlueprintProgress,
+  selectionLimit,
+  onCreateMissing,
 }) {
   const resolvedMode = mode === 'editable' ? 'editable' : 'readonly'
   const isEditable = resolvedMode === 'editable'
@@ -2210,7 +2222,7 @@ export default function QuestionBankNonCreatePage({
   const [questionSort, setQuestionSort] = useState({ field: '', direction: 'asc' })
   const [metricDefaultFilters, setMetricDefaultFilters] = useState(() => readMetricDefaultFilters())
   const [filters, setFilters] = useState(() => normalizeFilters({
-    ...readMetricDefaultFilters(),
+    ...(blueprintRequirements ? createEmptyFilters() : readMetricDefaultFilters()),
     ...initialFilters,
   }))
   const [landingFilters, setLandingFilters] = useState(() => readMetricDefaultFilters())
@@ -2515,7 +2527,11 @@ export default function QuestionBankNonCreatePage({
       if (!hasFilterMatch(filters.years, normalizeQuestionYearLabel(question.year))) return false
       if (!hasFilterMatch(filters.subjects, question.subject)) return false
       if (!hasFilterMatch(filters.topics, question.topics ?? [])) return false
-      if (!hasFilterMatch(filters.competencies, question.competencies ?? [])) return false
+      if (getQuestionTypeFilterLabel(question) === 'Descriptive (LAQs)') {
+        if (!matchesBlueprintBrowseCompetency(question, filters.competencies)) return false
+      } else {
+      if (!hasFilterMatch(filters.competencies, question.competencies ?? []) && !filters.competencies.some(code => (question.competencies || []).some(value => String(value).split(' ')[0].toLowerCase() === String(code).toLowerCase()))) return false
+      }
       if (!hasFilterMatch(filters.categories, getQuestionCategoryLabel(question.questionCategory, question))) return false
       if (!hasFilterMatch(filters.thinkingLevels, getThinkingLevelLabel(question.thinkingLevel))) return false
       if (!hasFilterMatch(filters.difficultyLevels, question.difficultyLevel)) return false
@@ -2920,6 +2936,7 @@ export default function QuestionBankNonCreatePage({
 
   const toggleGridQuestionSelection = (questionId) => {
     if (addedQuestionIdSet.has(String(questionId))) return
+    if (!availableSelectedGridQuestionIds.includes(questionId) && Number.isFinite(selectionLimit) && availableSelectedGridQuestionIds.length >= selectionLimit) return
     setIsEmbeddedSelectionBarClosed(false)
     setIsEmbeddedSelectionBarVisible(true)
     const nextSelection = availableSelectedGridQuestionIds.includes(questionId)
@@ -2999,7 +3016,7 @@ export default function QuestionBankNonCreatePage({
   const addSelectedQuestionsToEmbeddedAssessment = () => {
     if (!availableSelectedGridQuestionIds.length) return
     const selectedQuestions = getSelectedAssessmentQuestions()
-    onAddToAssessment?.(selectedQuestions)
+    onAddToAssessment?.(Number.isFinite(selectionLimit) ? selectedQuestions.slice(0, selectionLimit) : selectedQuestions)
     resetAssessmentSelection()
   }
 
@@ -4080,7 +4097,14 @@ export default function QuestionBankNonCreatePage({
             <div className="assessment-page-filter-strip" aria-label="Question filters">
               <span className="assessment-page-filter-controls">
                 <>
+                    {blueprintRequirements && !renderBlueprintProgress && <div className="assessment-page-filter-dropdown" data-filter-key="blueprint">
+                      <button type="button" className="has-selection" onClick={() => setOpenFilterKey(openFilterKey === 'blueprint' ? '' : 'blueprint')} aria-expanded={openFilterKey === 'blueprint'} title={blueprintRequirements.find(row => row.id === activeRequirementId)?.label}><span>Blueprint</span><ChevronDown size={14} strokeWidth={2.3} /></button>
+                      {openFilterKey === 'blueprint' && <BlueprintRequirementMenu rows={blueprintRequirements} activeId={activeRequirementId} onSelect={id => { setOpenFilterKey(''); onRequirementChange(id) }} />}
+                    </div>}
+                    {renderBlueprintProgress?.(displayableQuestions)}
                     {baseFilterDefinitions.map(renderFilterDropdown)}
+                    {!renderBlueprintProgress && onNextRequirement && <button type="button" className="assessment-page-more-filters-btn" onClick={onNextRequirement}>Next requirement<ChevronRight size={15} /></button>}
+                    {!renderBlueprintProgress && onCreateMissing && <button type="button" className="assessment-page-more-filters-btn" onClick={onCreateMissing}><Plus size={15} />Create question</button>}
                     {advancedFilterDefinitions.length ? (
                   <span className="assessment-page-more-filters-wrap" ref={moreFiltersRef}>
                     <button
@@ -4471,7 +4495,7 @@ export default function QuestionBankNonCreatePage({
                                   <input
                                     type="checkbox"
                                     checked={isGridQuestionSelected}
-                                    disabled={isAlreadyAddedToAssessment}
+                                    disabled={isAlreadyAddedToAssessment || (!isGridQuestionSelected && Number.isFinite(selectionLimit) && availableSelectedGridQuestionIds.length >= selectionLimit)}
                                     onChange={() => (
                                       hasEmbeddedAssessmentSelection
                                         ? toggleGridQuestionSelection(questionId)
@@ -4518,7 +4542,7 @@ export default function QuestionBankNonCreatePage({
                                     <input
                                       type="checkbox"
                                       checked={isGridQuestionSelected}
-                                      disabled={isAlreadyAddedToAssessment}
+                                    disabled={isAlreadyAddedToAssessment || (!isGridQuestionSelected && Number.isFinite(selectionLimit) && availableSelectedGridQuestionIds.length >= selectionLimit)}
                                       onChange={() => (
                                         hasEmbeddedAssessmentSelection
                                           ? toggleGridQuestionSelection(questionId)
@@ -5128,7 +5152,8 @@ export default function QuestionBankNonCreatePage({
           <section className="assessment-page-empty">
             <Info size={18} strokeWidth={2.2} />
             <strong>No matching questions</strong>
-            <p>Try changing the selected filters.</p>
+            <p>{blueprintRequirements ? `No questions match ${blueprintRequirements.find(row => row.id === activeRequirementId)?.label || "this requirement"} with the selected filters.` : "Try changing the selected filters."}</p>
+            {onCreateMissing && <button type="button" className="assessment-page-more-filters-btn" onClick={onCreateMissing}>Create question</button>}
           </section>
         ) : null}
 

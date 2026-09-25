@@ -3,8 +3,11 @@ import { createPortal } from 'react-dom'
 import { Info } from 'lucide-react'
 import './BlueprintCountInfo.css'
 
-/** Read-only planner breakdown. Heading is visible; label includes the cell's cognition level for accessibility. Entries are {category: string, count: number}[], or null for an invalid draft. */
-export default function BlueprintCountInfo({ heading, label, entries }) {
+/** Read-only breakdown. SAQ entries contain category/count/perQuestionMarks/totalMarks;
+ * LAQ entries contain question/part/marks. Null indicates an untraceable allocation.
+ * @param {{heading:string,label:string,entries:Array|null,kind?:'saq'|'laq'}} props
+ */
+export default function BlueprintCountInfo({ heading, label, entries, kind = 'saq' }) {
   const id = useId()
   const trigger = useRef(null)
   const popup = useRef(null)
@@ -62,7 +65,7 @@ export default function BlueprintCountInfo({ heading, label, entries }) {
       ref={trigger}
       type="button"
       className="blueprint-count-info"
-      aria-label={`${label} category counts`}
+      aria-label={`${label} ${kind === 'laq' ? 'split parts' : 'category counts'}`}
       aria-describedby={open ? id : undefined}
       aria-expanded={open}
       onPointerEnter={(event) => { cancelLeave(); if (event.pointerType === 'mouse') setOpen(true) }}
@@ -75,9 +78,20 @@ export default function BlueprintCountInfo({ heading, label, entries }) {
       <div ref={popup} id={id} role="tooltip" className="blueprint-count-tooltip" style={position}
         onPointerEnter={cancelLeave} onPointerLeave={leave}>
         <strong>{heading}</strong>
-        {entries ? <dl>{entries.map(({ category, count }) => (
-          <div key={category}><dt>{category}</dt><dd>{count}</dd></div>
-        ))}</dl> : <p>Category breakdown unavailable. Check the allocation counts and marks.</p>}
+        {kind === 'laq' ? <>
+          {entries ? <table aria-label={`${label} split breakdown`}>
+            <thead><tr><th scope="col">Question</th><th scope="col">Part</th><th scope="col">Marks</th></tr></thead>
+            <tbody>{entries.map(entry => <tr key={`${entry.question}-${entry.part}`}><th scope="row">LAQ {entry.question}</th><td>Part {entry.part}</td><td>{entry.marks}</td></tr>)}</tbody>
+            <tfoot><tr><th scope="row">Total</th><td>{entries.length} {entries.length === 1 ? 'part' : 'parts'}</td><td>{Number(entries.reduce((sum, entry) => sum + entry.marks, 0).toFixed(2))}</td></tr></tfoot>
+          </table> : <p>Split breakdown unavailable. These counts and marks do not uniquely identify the allocated parts.</p>}
+          <p>Cell count = parts. LAQ heading count = main questions.</p>
+        </> : entries ? <table aria-label={`${label} marks breakdown`}>
+          <thead><tr><th scope="col">Category</th><th scope="col" aria-label="Questions">Qty</th><th scope="col" aria-label="Marks per question">Pre/M</th><th scope="col" aria-label="Total marks">Total</th></tr></thead>
+          <tbody>{entries.map(({ category, count, perQuestionMarks, totalMarks }) => (
+            <tr key={`${category}-${perQuestionMarks}`}><th scope="row">{category}</th><td>{count}</td><td>{perQuestionMarks}</td><td>{totalMarks}</td></tr>
+          ))}</tbody>
+          <tfoot><tr><th scope="row">Total</th><td>{entries.reduce((sum, entry) => sum + entry.count, 0)}</td><td>—</td><td>{Number(entries.reduce((sum, entry) => sum + entry.totalMarks, 0).toFixed(2))}</td></tr></tfoot>
+        </table> : <p>Category breakdown unavailable. Check the allocation counts and marks.</p>}
       </div>, document.body,
     )}
   </>

@@ -1,0 +1,4 @@
+.create-assessment-blueprint-panel.qb-sort-scope [data-blueprint-changed="true"]:not(.is-invalid):not(button) {
+  color: var(--text-brand) !important;
+  font-weight: 800;
+}

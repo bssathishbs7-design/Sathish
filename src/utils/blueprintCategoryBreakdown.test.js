@@ -7,8 +7,8 @@ test('shows only the categories assigned to the cell and preserves column totals
   const result = allocateCategoryBreakdown({ units, cells: [
     { key: 'a', count: 2, marks: 10 }, { key: 'b', count: 2, marks: 10 },
   ] })
-  assert.deepEqual(result.a, [{ category: 'Aetcom', count: 1 }, { category: 'Application', count: 1 }])
-  assert.deepEqual(result.b, [{ category: 'Direct', count: 1 }, { category: 'Reasoning', count: 1 }])
+  assert.deepEqual(result.a, [{ category: 'Aetcom', count: 1, perQuestionMarks: 5, totalMarks: 5 }, { category: 'Application', count: 1, perQuestionMarks: 5, totalMarks: 5 }])
+  assert.deepEqual(result.b, [{ category: 'Direct', count: 1, perQuestionMarks: 5, totalMarks: 5 }, { category: 'Reasoning', count: 1, perQuestionMarks: 5, totalMarks: 5 }])
 })
 
 test('matches mixed marks across cells, backtracking when a later cell requires a denomination', () => {
@@ -19,15 +19,15 @@ test('matches mixed marks across cells, backtracking when a later cell requires 
     ],
     cells: [{ key: 'a', count: 2, marks: 6 }, { key: 'b', count: 1, marks: 4 }],
   })
-  assert.deepEqual(result.a, [{ category: 'Application', count: 2 }])
-  assert.deepEqual(result.b, [{ category: 'Direct', count: 1 }])
+  assert.deepEqual(result.a, [{ category: 'Application', count: 2, perQuestionMarks: 3, totalMarks: 6 }])
+  assert.deepEqual(result.b, [{ category: 'Direct', count: 1, perQuestionMarks: 4, totalMarks: 4 }])
 })
 
 test('recalculates changed cell counts and supports empty or partially allocated columns', () => {
   const units = [{ category: 'Aetcom', marks: 5 }, { category: 'Application', marks: 5 }]
   assert.deepEqual(allocateCategoryBreakdown({ units, cells: [
     { key: 'a', count: 0, marks: 0 }, { key: 'b', count: 1, marks: 5 },
-  ] }), { a: [], b: [{ category: 'Aetcom', count: 1 }] })
+  ] }), { a: [], b: [{ category: 'Aetcom', count: 1, perQuestionMarks: 5, totalMarks: 5 }] })
   assert.deepEqual(allocateCategoryBreakdown({ units: [], cells: [{ key: 'a', count: 0, marks: 0 }] }), { a: [] })
 })
 

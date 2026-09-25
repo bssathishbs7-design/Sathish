@@ -1,5 +1,16 @@
+import './PreviewQuestionActions.css'
+import BlueprintSelectionProgress from '../components/BlueprintSelectionProgress'
+import BlueprintCompletionToast from '../components/BlueprintCompletionToast'
+import './BlueprintDisableDialog.css'
+import { buildBlueprintPickerRows, getBlueprintPickerProgress, matchesBlueprintPickerRow, orderBlueprintRequirements } from '../utils/blueprintPicker'
+import { getLaqSplitBreakdowns } from '../utils/blueprintLaqBreakdown'
+import './BlueprintLaqLayout.css'
 import { createElement, Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import useBlueprintEditHighlights from '../hooks/useBlueprintEditHighlights'
+import { redistributeLaqLevels } from '../utils/blueprintEditing'
+import SaqCognitionToggle from '../components/SaqCognitionToggle'
+import { getSaqCognitionMode } from '../utils/saqCognition'
 import { sanitizeRichHtml } from '../utils/sanitizeHtml'
 import {
   allocateWeightedMarks,
@@ -69,13 +80,6 @@ import {
   rebalanceCompetencyTargets,
   reshuffleBlueprintAllocations,
 } from '../utils/blueprintAllocation'
-import {
-  createBlueprintQuestionRequirements,
-  getBlueprintQuestionRelevanceList,
-  getBlueprintQuestionMatch,
-  resolveBlueprintPreviewQuestionMarks,
-  summarizeBlueprintQuestionProgress,
-} from '../utils/blueprintQuestionProgress'
 import { isQuestionGenerationErrorText, stripHtml } from '../utils/mathText'
 import {
   DESCRIPTIVE_QUESTION_TYPES,
@@ -89,7 +93,7 @@ import {
   getShortCompetencyLabel,
   isDescriptiveQuestionType,
 } from '../utils/questionAuthoring'
-import QuestionBankNonCreatePage from './QuestionBankNonCreatePage'
+import QuestionBankNonCreatePage, { readBlueprintBankQuestions } from './QuestionBankNonCreatePage'
 import {
   corelationRatingRows,
   createAssessmentSubjectDirectory,
@@ -108,11 +112,9 @@ const CREATE_ASSESSMENT_CUSTOM_SECTIONS_KEY = 'vx-create-assessment-custom-secti
 const CREATE_ASSESSMENT_CUSTOM_EXAM_CATEGORIES_KEY = 'vx-create-assessment-custom-exam-categories'
 const CREATE_ASSESSMENT_TEMPLATES_KEY = 'vx-create-assessment-templates'
 const BLUEPRINT_PLANNER_STORAGE_KEY = 'vx-create-assessment-blueprint-planner'
-const BLUEPRINT_PROGRESS_POSITION_STORAGE_KEY = 'vx-create-assessment-blueprint-progress-position-v2'
 const ASSESSMENT_DRAFTS_STORAGE_KEY = 'vx-assessment-drafts'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
 const CORELATION_RATING_SAVED_ROWS_KEY = 'medsy-corelation-rating-saved-rows'
-const BLUEPRINT_PROGRESS_VISIBLE_TABS = new Set(['create', 'questionBank', 'preview'])
 
 const SUBJECT_DIRECTORY = createAssessmentSubjectDirectory
 const YEAR_OPTIONS = createAssessmentYearOptions
@@ -807,35 +809,7 @@ const readSavedBlueprintPlanner = (setup = {}) => {
   }
 }
 
-const getBlueprintProgressPositionStorageKey = (setup = {}) => (
-  `${BLUEPRINT_PROGRESS_POSITION_STORAGE_KEY}:${getAssessmentStorageSuffix(setup)}`
-)
 
-const readBlueprintProgressPosition = (setup = {}) => {
-  if (typeof window === 'undefined') return null
-  try {
-    const position = JSON.parse(window.localStorage.getItem(getBlueprintProgressPositionStorageKey(setup)) || 'null')
-    if (!Number.isFinite(position?.x) || !Number.isFinite(position?.y)) return null
-
-    const margin = 12
-    const ringSize = 72
-    const x = Math.min(
-      Math.max(margin, position.x),
-      Math.max(margin, window.innerWidth - ringSize - margin),
-    )
-    const y = Math.min(
-      Math.max(82, position.y),
-      Math.max(82, window.innerHeight - ringSize - margin),
-    )
-    return {
-      x,
-      y,
-      side: x + (ringSize / 2) < window.innerWidth / 2 ? 'left' : 'right',
-    }
-  } catch {
-    return null
-  }
-}
 
 const getBlueprintMarkRangeLabel = (value) => {
   const numericValue = Number(value)
@@ -1599,6 +1573,7 @@ function OptionalTagTextInput({ label, values, onChange }) {
 }
 
 export default function CreateAssessmentPage({ onNavigate, onSendToApproval, theme = 'light', onToggleTheme }) {
+  const blueprintEditHighlights = useBlueprintEditHighlights()
   const [setup, setSetup] = useState(() => ({
     ...CREATE_ASSESSMENT_DEFAULT_SETUP,
     ...readCreateAssessmentSetup(),
@@ -1635,7 +1610,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const assessmentSectionOrderStorageKey = getAssessmentSectionOrderStorageKey(setup)
   const assessmentCustomSectionsStorageKey = getAssessmentCustomSectionsStorageKey(setup)
   const [savedQuestions, setSavedQuestions] = useState(() => readSavedAssessmentQuestions(setup))
-  const [blueprintQuestionBankSelection, setBlueprintQuestionBankSelection] = useState([])
   const savedQuestionsRef = useRef(savedQuestions)
   const getCurrentAssessmentQuestions = () => (
     (savedQuestionsRef.current.length ? savedQuestionsRef.current : savedQuestions)
@@ -1654,7 +1628,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
   const [initialBlueprintPlanner] = useState(() => readSavedBlueprintPlanner(setup))
-  const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(false)
+  const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(Boolean(initialBlueprintPlanner) && initialBlueprintPlanner.enabled !== false)
   const [activeBlueprintTab, setActiveBlueprintTab] = useState(initialBlueprintPlanner ? 'questionSpecifications' : 'distribution')
   const [isBlueprintMatrixCreated, setIsBlueprintMatrixCreated] = useState(Boolean(initialBlueprintPlanner))
   const [isBlueprintQuestionSplitCreated, setIsBlueprintQuestionSplitCreated] = useState(Boolean(initialBlueprintPlanner))
@@ -1664,12 +1638,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [isBlueprintSaveConfirmOpen, setIsBlueprintSaveConfirmOpen] = useState(false)
   const [isBlueprintDisableConfirmOpen, setIsBlueprintDisableConfirmOpen] = useState(false)
   const [isBlueprintEnableConfirmOpen, setIsBlueprintEnableConfirmOpen] = useState(false)
+  const [savedPickerRows, setSavedPickerRows] = useState(initialBlueprintPlanner?.pickerRows || [])
+  const [activePickerId, setActivePickerId] = useState('')
+  const [filterRequirementId, setFilterRequirementId] = useState('')
+  const pickerBankRef = useRef(null)
+  const [pickerNavigationRequest, setPickerNavigationRequest] = useState(0)
+  const [replacingPickerQuestion, setReplacingPickerQuestion] = useState(null)
   const [isBlueprintPlannerSaved, setIsBlueprintPlannerSaved] = useState(Boolean(initialBlueprintPlanner))
   const [isBlueprintPlannerEditing, setIsBlueprintPlannerEditing] = useState(false)
-  const [isBlueprintProgressOpen, setIsBlueprintProgressOpen] = useState(false)
-  const [blueprintProgressPopoverStyle, setBlueprintProgressPopoverStyle] = useState(null)
-  const [blueprintProgressPosition, setBlueprintProgressPosition] = useState(() => readBlueprintProgressPosition(setup))
-  const [isBlueprintProgressDragging, setIsBlueprintProgressDragging] = useState(false)
   const [blueprintCompetencyViewMode, setBlueprintCompetencyViewMode] = useState('multi')
   const [blueprintDraft, setBlueprintDraft] = useState(initialBlueprintPlanner?.blueprintDraft ?? {
     subject: '',
@@ -1688,10 +1664,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [blueprintChangedSpecificationCells, setBlueprintChangedSpecificationCells] = useState([])
   const [blueprintCognitionWeightage, setBlueprintCognitionWeightage] = useState(initialBlueprintPlanner?.blueprintCognitionWeightage ?? { lot: '', hot: '' })
   const blueprintSpecLeftStackRef = useRef(null)
-  const blueprintProgressRef = useRef(null)
-  const blueprintProgressPopoverRef = useRef(null)
-  const blueprintProgressDragRef = useRef(null)
-  const suppressBlueprintProgressClickRef = useRef(false)
   const [blueprintSpecLeftStackHeight, setBlueprintSpecLeftStackHeight] = useState(0)
   const [activeMappingPicker, setActiveMappingPicker] = useState(null)
   const [mappingSearchValue, setMappingSearchValue] = useState('')
@@ -1703,7 +1675,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [openPreviewTagsId, setOpenPreviewTagsId] = useState(null)
   const [openPreviewCardIds, setOpenPreviewCardIds] = useState([])
   const [saveStatus, setSaveStatus] = useState('')
-  const [activeCreateTab, setActiveCreateTab] = useState(readCreateAssessmentInitialTab)
+  const [activeCreateTab, setActiveCreateTab] = useState(() => {
+    const initialTab = readCreateAssessmentInitialTab()
+    return initialTab === 'create' && initialBlueprintPlanner && initialBlueprintPlanner.enabled !== false ? 'questionBank' : initialTab
+  })
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(false)
   const isPublishedEditMode = Boolean(setupDraft.isPublishedEdit || setupDraft.sourcePublishedId || setup.isPublishedEdit || setup.sourcePublishedId)
   const isDescriptiveFirstSequence = setupDraft.proctoredSectionSequence === 'descriptive-first'
@@ -1743,7 +1718,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setIsBlueprintSaveConfirmOpen(false)
     setIsBlueprintDisableConfirmOpen(false)
     setIsBlueprintEnableConfirmOpen(false)
-    setIsBlueprintProgressOpen(false)
     setBlueprintChangedSpecificationCells([])
   }, [isBlueprintEnabled])
 
@@ -1801,122 +1775,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     window.addEventListener('keydown', handleEnableConfirmKeyDown)
     return () => window.removeEventListener('keydown', handleEnableConfirmKeyDown)
   }, [isBlueprintEnableConfirmOpen])
-
-  useEffect(() => {
-    if (!isBlueprintProgressOpen) return undefined
-    const closeBlueprintProgress = (event) => {
-      if (event.key && event.key !== 'Escape') return
-      if (!event.key && blueprintProgressRef.current?.contains(event.target)) return
-      setIsBlueprintProgressOpen(false)
-    }
-    document.addEventListener('pointerdown', closeBlueprintProgress)
-    document.addEventListener('keydown', closeBlueprintProgress)
-    return () => {
-      document.removeEventListener('pointerdown', closeBlueprintProgress)
-      document.removeEventListener('keydown', closeBlueprintProgress)
-    }
-  }, [isBlueprintProgressOpen])
-
-  useEffect(() => {
-    if (!isBlueprintProgressOpen) return undefined
-    const animationFrame = window.requestAnimationFrame(() => {
-      const triggerElement = blueprintProgressRef.current?.querySelector('.create-assessment-blueprint-progress')
-      const popoverElement = blueprintProgressPopoverRef.current
-      if (!triggerElement || !popoverElement) return
-
-      const viewportMargin = 12
-      const panelGap = 18
-      const workspaceHeaderBottom = document.querySelector('.create-assessment-workspace-header')?.getBoundingClientRect().bottom || 0
-      const minTop = Math.max(viewportMargin, workspaceHeaderBottom + viewportMargin)
-      const triggerRect = triggerElement.getBoundingClientRect()
-      const popoverRect = popoverElement.getBoundingClientRect()
-      const spaceAbove = triggerRect.top - minTop - panelGap
-      const spaceBelow = window.innerHeight - triggerRect.bottom - viewportMargin - panelGap
-
-      let top
-      if (spaceAbove >= popoverRect.height) {
-        top = triggerRect.top - popoverRect.height - panelGap
-      } else if (spaceBelow >= popoverRect.height) {
-        top = triggerRect.bottom + panelGap
-      } else {
-        top = triggerRect.top + (triggerRect.height / 2) - (popoverRect.height / 2)
-      }
-      top = Math.min(
-        Math.max(minTop, top),
-        Math.max(minTop, window.innerHeight - popoverRect.height - viewportMargin),
-      )
-
-      const spaceOnLeft = triggerRect.left - viewportMargin - panelGap
-      const spaceOnRight = window.innerWidth - triggerRect.right - viewportMargin - panelGap
-      const availableSideWidth = Math.max(spaceOnLeft, spaceOnRight)
-      const effectivePopoverWidth = spaceOnLeft < popoverRect.width
-        && spaceOnRight < popoverRect.width
-        && availableSideWidth >= 360
-        ? Math.min(popoverRect.width, availableSideWidth)
-        : popoverRect.width
-      let left
-      if (spaceOnLeft >= effectivePopoverWidth) {
-        left = triggerRect.left - effectivePopoverWidth - panelGap
-      } else if (spaceOnRight >= effectivePopoverWidth) {
-        left = triggerRect.right + panelGap
-      } else {
-        left = triggerRect.left + (triggerRect.width / 2) - (effectivePopoverWidth / 2)
-      }
-      left = Math.min(
-        Math.max(viewportMargin, left),
-        Math.max(viewportMargin, window.innerWidth - effectivePopoverWidth - viewportMargin),
-      )
-
-      setBlueprintProgressPopoverStyle((current) => ({
-        ...(current || {}),
-        top: `${top}px`,
-        left: `${left}px`,
-        right: 'auto',
-        bottom: 'auto',
-        width: `${effectivePopoverWidth}px`,
-      }))
-    })
-    return () => window.cancelAnimationFrame(animationFrame)
-  }, [isBlueprintProgressOpen])
-
-  useEffect(() => {
-    if (BLUEPRINT_PROGRESS_VISIBLE_TABS.has(activeCreateTab)) return
-    setIsBlueprintProgressOpen(false)
-  }, [activeCreateTab])
-
-  useEffect(() => {
-    if (!blueprintProgressPosition) return undefined
-    const keepBlueprintProgressInViewport = () => {
-      setIsBlueprintProgressOpen(false)
-      const margin = 12
-      const ringSize = blueprintProgressRef.current?.querySelector('.create-assessment-blueprint-progress')?.offsetWidth || 72
-      const clampedX = Math.min(
-        Math.max(margin, blueprintProgressPosition.x),
-        Math.max(margin, window.innerWidth - ringSize - margin),
-      )
-      const nextPosition = {
-        x: clampedX,
-        y: Math.min(
-          Math.max(82, blueprintProgressPosition.y),
-          Math.max(82, window.innerHeight - ringSize - margin),
-        ),
-        side: clampedX + (ringSize / 2) < window.innerWidth / 2 ? 'left' : 'right',
-      }
-      setBlueprintProgressPosition((current) => (
-        current && current.x === nextPosition.x && current.y === nextPosition.y
-          ? current
-          : nextPosition
-      ))
-      try {
-        window.localStorage.setItem(getBlueprintProgressPositionStorageKey(setup), JSON.stringify(nextPosition))
-      } catch {
-        // The position still updates for this session if storage is unavailable.
-      }
-    }
-    keepBlueprintProgressInViewport()
-    window.addEventListener('resize', keepBlueprintProgressInViewport)
-    return () => window.removeEventListener('resize', keepBlueprintProgressInViewport)
-  }, [blueprintProgressPosition, setup])
 
   useEffect(() => {
     if (activeBlueprintTab !== 'questionSpecifications') return undefined
@@ -2169,6 +2027,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     if (label === 'LAQs' && blueprintLaqHasRequiredValues && blueprintLaqSplitIsValid) {
       return total + blueprintLaqDerivedHotMarks
     }
+    const saqMode = getSaqCognitionMode(label, draft)
+    if (saqMode && saqMode !== 'both') return total + (saqMode === 'hot' ? Number(draft.totalMarks) || 0 : 0)
     const hasManualQuestionSplit = Object.prototype.hasOwnProperty.call(draft, 'hotQuestions')
       || Object.prototype.hasOwnProperty.call(draft, 'lotQuestions')
     const manualHotMarks = (Number(draft.hotQuestions) || 0) * (Number(draft.perQuestionMarks) || 0)
@@ -2177,7 +2037,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const blueprintAutomaticMarksRows = blueprintQuestionTypeLabels
     .map((label) => {
       const draft = blueprintQuestionTypeDraft[label] || {}
-      const hasManualMarksSplit = (label === 'LAQs' && blueprintLaqHasRequiredValues && blueprintLaqSplitIsValid)
+      const saqMode = getSaqCognitionMode(label, draft)
+      const hasManualMarksSplit = (saqMode && saqMode !== 'both') || (label === 'LAQs' && blueprintLaqHasRequiredValues && blueprintLaqSplitIsValid)
         || Object.prototype.hasOwnProperty.call(draft, 'hotQuestions')
         || Object.prototype.hasOwnProperty.call(draft, 'lotQuestions')
       return {
@@ -2193,7 +2054,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     .filter((row) => !row.hasManualMarksSplit && row.totalMarks > 0)
   const blueprintAutomaticMarksTotal = blueprintAutomaticMarksRows.reduce((total, row) => total + row.totalMarks, 0)
   const blueprintTargetHotMarksTotal = roundHalfUp(
-    (blueprintQuestionTypeEnteredMarksTotal * blueprintCognitionHotPercent) / 100,
+    ((blueprintRoundedTotalMark || blueprintQuestionTypeEnteredMarksTotal) * blueprintCognitionHotPercent) / 100,
   )
   const blueprintAutomaticHotMarksTarget = Math.min(
     Math.max(blueprintTargetHotMarksTotal - blueprintManualHotMarksTotal, 0),
@@ -2265,7 +2126,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   )
   const blueprintQuestionTypeRows = blueprintQuestionTypeLabels.map((label) => {
     const draft = blueprintQuestionTypeDraft[label] || {}
-    const hasDraftValue = (field) => Object.prototype.hasOwnProperty.call(draft, field)
+    const cognitionMode = getSaqCognitionMode(label, draft)
+    const hasDraftValue = (field) => (!cognitionMode || cognitionMode === 'both') && Object.prototype.hasOwnProperty.call(draft, field)
     const resolveSplitValue = (field, automaticValue, canAutoPopulate) => (
       hasDraftValue(field)
         ? draft[field]
@@ -2322,6 +2184,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         lotQuestionsValue = formatBlueprintSplitNumber(split.lotQuestions)
       }
     }
+    if (cognitionMode && cognitionMode !== 'both') {
+      hotQuestionsValue = hasValidQuestionTotal ? String(cognitionMode === 'hot' ? totalQuestions : 0) : ''
+      lotQuestionsValue = hasValidQuestionTotal ? String(cognitionMode === 'lot' ? totalQuestions : 0) : ''
+    }
     const hotQuestions = Number(hotQuestionsValue) || 0
     const lotQuestions = Number(lotQuestionsValue) || 0
     const hotMarks = usesLaqSplit
@@ -2342,6 +2208,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       : ''
     return {
       label,
+      cognitionMode,
       suggestionMarks: blueprintQuestionTypeSuggestions[label] || '-',
       perQuestionMarks,
       totalMarks,
@@ -2602,6 +2469,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       })),
     })]
   }))
+  const blueprintLaqSplitBreakdowns = Object.fromEntries(['laqLot', 'laqHot'].map(fieldKey => [fieldKey,
+    blueprintLaqSplitIsValid ? getLaqSplitBreakdowns({
+      parts: blueprintLaqQuestionCards.flatMap(card => card.splits.flatMap((split, index) =>
+        split.level === (fieldKey === 'laqLot' ? 'lot' : 'hot')
+          ? [{ question: card.questionIndex + 1, part: index + 1, marks: Number(split.marks) }] : [])),
+      cells: blueprintSpecificationRows.map(row => ({ key: row.key,
+        count: getBlueprintTestSpecificationCountNumber(row.key, fieldKey),
+        marks: getBlueprintTestSpecificationNumber(row.key, fieldKey),
+      })),
+    }) : null,
+  ]))
   const getBlueprintTestSpecificationRowTotal = (rowKey) => blueprintTestSpecificationColumns.reduce(
     (sum, column) => sum + getBlueprintTestSpecificationNumber(rowKey, column.key),
     0,
@@ -2803,185 +2681,43 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     : blueprintTestSpecificationTotalStatus === 'complete'
       ? 'over'
       : blueprintTestSpecificationTotalStatus
-  const blueprintQuestionRequirements = createBlueprintQuestionRequirements({
-    competencyCodes: blueprintSpecificationRows.map((row) => row.code),
-    columnQuestionCounts: blueprintTestSpecificationQuestionCounts,
-    cellQuestionCounts: Object.fromEntries(blueprintSpecificationRows.flatMap((row) => (
-      blueprintTestSpecificationColumns.map((column) => [
-        `${row.code}:${column.key}`,
-        getBlueprintTestSpecificationCountNumber(row.key, column.key),
-      ])
-    ))),
-    targetQuestionCount: blueprintQuestionTypeQuestionTotal,
+  const pickerDraftRows = buildBlueprintPickerRows({
+    competencies: blueprintSpecificationRows,
+    cells: Object.fromEntries(blueprintSpecificationRows.flatMap(row => blueprintTestSpecificationColumns.map(column => [
+      row.key + ':' + column.key, { count: getBlueprintTestSpecificationCountNumber(row.key, column.key), marks: getBlueprintTestSpecificationNumber(row.key, column.key) }
+    ]))),
+    saqBreakdowns: blueprintSaqCategoryBreakdowns,
+    cards: blueprintLaqSplitIsValid ? blueprintLaqQuestionCards : [],
+    subject: blueprintDraft.subject, topics: blueprintDraft.topics,
+    mcqMarks: Number(blueprintQuestionTypeDraft.MCQs?.perQuestionMarks) || 1,
   })
-  const blueprintQuestionCellMarks = Object.fromEntries(blueprintSpecificationRows.flatMap((row) => (
-    blueprintTestSpecificationColumns.map((column) => {
-      const countData = getBlueprintTestSpecificationCellCountData(row.key, column.key)
-      const normalizedCellKey = `${String(row.code).trim().toLowerCase().replace(/\s+/g, '')}:${column.key.toLowerCase()}`
-      return [normalizedCellKey, {
-        count: Number(countData.count) || 0,
-        marks: Number(countData.calculatedMarks) || 0,
-      }]
+  const pickerRows = orderBlueprintRequirements(savedPickerRows.length ? savedPickerRows : pickerDraftRows)
+  const pickerProgress = getBlueprintPickerProgress(pickerRows, savedQuestions)
+  const filterRequirement = pickerRows.find(row => row.id === filterRequirementId)
+  const activePickerRow = pickerRows.find(row => row.id === activePickerId)
+    || pickerRows.find(row => pickerProgress.used[row.id].length < row.count) || pickerRows[0]
+  const pickerEnabled = isBlueprintEnabled && isBlueprintPlannerSaved
+  const nextPickerRow = [...pickerRows.slice(pickerRows.indexOf(activePickerRow) + 1), ...pickerRows.slice(0, pickerRows.indexOf(activePickerRow))].find(row => pickerProgress.used[row.id].length < row.count)
+  const pickBlueprintRow = row => {
+    if (!row) return
+    setActivePickerId(row.id)
+    setFilterRequirementId(row.id)
+    setPickerNavigationRequest(value => value + 1)
+    setActiveCreateTab('questionBank')
+    setHasSelectedCreateTab(true)
+  }
+  useEffect(() => {
+    if (!pickerNavigationRequest || activeCreateTab !== 'questionBank') return
+    const frame = requestAnimationFrame(() => {
+      const panel = pickerBankRef.current
+      panel?.querySelector("button")?.focus({ preventScroll: true })
+      panel?.scrollIntoView({ block: 'start', behavior: 'instant' })
     })
-  )))
-  const blueprintQuestionProgressQuestions = activeCreateTab === 'questionBank'
-    ? [...savedQuestions, ...blueprintQuestionBankSelection]
-    : savedQuestions
-  const blueprintQuestionProgress = summarizeBlueprintQuestionProgress(
-    blueprintQuestionProgressQuestions,
-    blueprintQuestionRequirements,
-  )
-  const blueprintQuestionRelevance = getBlueprintQuestionRelevanceList(
-    savedQuestions,
-    blueprintQuestionRequirements,
-  )
-  const blueprintQuestionProgressPercent = blueprintQuestionProgress.target > 0
-    ? Math.min(100, Math.max(0, (blueprintQuestionProgress.matched / blueprintQuestionProgress.target) * 100))
-    : 0
-  const blueprintQuestionProgressState = blueprintQuestionProgress.complete
-    ? 'is-complete'
-    : blueprintQuestionProgress.matched > 0
-      ? 'is-partial'
-      : 'is-not-started'
-  const blueprintProgressGroupSummaries = blueprintTestSpecificationGroupSummaries
-    .map((group) => ({
-      ...group,
-      columns: blueprintTestSpecificationColumns.filter((column) => (
-        column.group === group.label
-        && (blueprintTestSpecificationQuestionCounts[column.key] || 0) > 0
-      )),
-    }))
-    .filter((group) => group.columns.length > 0)
-  const blueprintProgressColumns = blueprintProgressGroupSummaries.flatMap((group) => group.columns)
-  const getBlueprintProgressPopoverStyle = (triggerElement) => {
-    const triggerRect = triggerElement?.getBoundingClientRect()
-    if (!triggerRect) return null
-    const viewportMargin = 12
-    const workspaceHeaderBottom = document.querySelector('.create-assessment-workspace-header')?.getBoundingClientRect().bottom || 72
-    const headerOffset = Math.max(viewportMargin, workspaceHeaderBottom + viewportMargin)
-    const isCompactViewport = window.innerWidth <= 900
-    const panelGap = 18
-    const preferredWidth = Math.min(820, 360 + (blueprintProgressColumns.length * 90))
-    let width = isCompactViewport
-      ? Math.max(0, window.innerWidth - (viewportMargin * 2))
-      : Math.min(preferredWidth, Math.max(420, window.innerWidth - (viewportMargin * 2)))
-    const availableHeight = Math.max(180, window.innerHeight - headerOffset - viewportMargin)
-    const maxHeight = isCompactViewport
-      ? Math.min(560, availableHeight)
-      : Math.min(610, availableHeight)
-    const spaceOnLeft = triggerRect.left - viewportMargin - panelGap
-    const spaceOnRight = window.innerWidth - triggerRect.right - viewportMargin - panelGap
-    const availableSideWidth = Math.max(spaceOnLeft, spaceOnRight)
-    if (!isCompactViewport && spaceOnLeft < width && spaceOnRight < width && availableSideWidth >= 360) {
-      width = Math.min(width, availableSideWidth)
-    }
-    let left
-    if (spaceOnLeft >= width) {
-      left = triggerRect.left - width - panelGap
-    } else if (spaceOnRight >= width) {
-      left = triggerRect.right + panelGap
-    } else {
-      left = triggerRect.left + (triggerRect.width / 2) - (width / 2)
-    }
-    left = Math.min(
-      Math.max(viewportMargin, left),
-      Math.max(viewportMargin, window.innerWidth - width - viewportMargin),
-    )
-    const top = Math.min(
-      Math.max(headerOffset, triggerRect.top + (triggerRect.height / 2) - (maxHeight / 2)),
-      Math.max(headerOffset, window.innerHeight - maxHeight - viewportMargin),
-    )
-    return {
-      top: `${top}px`,
-      left: `${left}px`,
-      right: 'auto',
-      bottom: 'auto',
-      width: `${width}px`,
-      maxHeight: `${maxHeight}px`,
-    }
-  }
-  const handleBlueprintProgressPointerDown = (event) => {
-    if (event.pointerType === 'mouse' && event.button !== 0) return
-    const wrapRect = blueprintProgressRef.current?.getBoundingClientRect()
-    if (!wrapRect) return
-    blueprintProgressDragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: wrapRect.left,
-      originY: wrapRect.top,
-      currentX: wrapRect.left,
-      currentY: wrapRect.top,
-      width: wrapRect.width,
-      height: wrapRect.height,
-      moved: false,
-    }
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }
-  const handleBlueprintProgressPointerMove = (event) => {
-    const dragState = blueprintProgressDragRef.current
-    if (!dragState || dragState.pointerId !== event.pointerId) return
-    const deltaX = event.clientX - dragState.startX
-    const deltaY = event.clientY - dragState.startY
-    if (!dragState.moved && Math.hypot(deltaX, deltaY) < 5) return
-    dragState.moved = true
-    const margin = 12
-    const nextX = Math.min(
-      Math.max(margin, dragState.originX + deltaX),
-      Math.max(margin, window.innerWidth - dragState.width - margin),
-    )
-    const nextY = Math.min(
-      Math.max(82, dragState.originY + deltaY),
-      Math.max(82, window.innerHeight - dragState.height - margin),
-    )
-    dragState.currentX = nextX
-    dragState.currentY = nextY
-    setIsBlueprintProgressDragging(true)
-    setIsBlueprintProgressOpen(false)
-    setBlueprintProgressPosition({
-      x: nextX,
-      y: nextY,
-      side: nextX + (dragState.width / 2) < window.innerWidth / 2 ? 'left' : 'right',
-    })
-    event.preventDefault()
-  }
-  const handleBlueprintProgressPointerEnd = (event) => {
-    const dragState = blueprintProgressDragRef.current
-    if (!dragState || dragState.pointerId !== event.pointerId) return
-    event.currentTarget.releasePointerCapture?.(event.pointerId)
-    blueprintProgressDragRef.current = null
-    setIsBlueprintProgressDragging(false)
-    if (!dragState.moved) return
-
-    const margin = 12
-    const droppedPosition = {
-      x: Math.min(
-        Math.max(margin, dragState.currentX),
-        Math.max(margin, window.innerWidth - dragState.width - margin),
-      ),
-      y: Math.min(
-        Math.max(82, dragState.currentY),
-        Math.max(82, window.innerHeight - dragState.height - margin),
-      ),
-      side: dragState.currentX + (dragState.width / 2) < window.innerWidth / 2 ? 'left' : 'right',
-    }
-    setBlueprintProgressPosition(droppedPosition)
-    try {
-      window.localStorage.setItem(getBlueprintProgressPositionStorageKey(setup), JSON.stringify(droppedPosition))
-    } catch {
-      // Dragging remains available if browser storage is unavailable.
-    }
-    suppressBlueprintProgressClickRef.current = true
-    window.setTimeout(() => {
-      suppressBlueprintProgressClickRef.current = false
-    }, 0)
-  }
-  const isQuestionRelevantToSavedBlueprint = (item, index) => (
-    !isBlueprintEnabled
-    || !isBlueprintPlannerSaved
-    || blueprintQuestionRelevance[index]
-    || (index < 0 && getBlueprintQuestionMatch(item, blueprintQuestionRequirements).isRelevant)
-  )
+    return () => cancelAnimationFrame(frame)
+  }, [pickerNavigationRequest, activeCreateTab])
+  const pickerAcceptsQuestion = item => matchesBlueprintPickerRow(item, activePickerRow)
+  const pickerRemaining = activePickerRow ? Math.max(0, activePickerRow.count - pickerProgress.used[activePickerRow.id].length + (replacingPickerQuestion ? 1 : 0)) : 0
+  const isQuestionRelevantToSavedBlueprint = item => !pickerEnabled || Object.values(pickerProgress.used).some(items => items.some(question => question.id === item.id))
   const blueprintQuestionTypeHasInput = blueprintQuestionTypeRows.some((row) => row.perQuestionMarks || row.totalMarks)
   const blueprintQuestionTypeHasInvalidRows = blueprintQuestionTypeRows.some((row) => row.hasRequiredValues && !row.hasValidQuestionTotal)
     || (blueprintLaqHasRequiredValues && !blueprintLaqSplitIsValid)
@@ -3009,9 +2745,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     : !blueprintRoundedTotalMark || !blueprintQuestionTypeHasInput
     ? ''
     : blueprintQuestionTypeCognitionMismatch
-      ? `Closest valid split: HoT ${formatBlueprintSplitNumber(blueprintQuestionTypeHotMarksTotal)} / ${formatBlueprintSplitNumber(blueprintCognitionHotMarks)}, LoT ${formatBlueprintSplitNumber(blueprintQuestionTypeLotMarksTotal)} / ${formatBlueprintSplitNumber(blueprintCognitionLotMarks)}`
+      ? [['HoT', blueprintCognitionHotMarks - blueprintQuestionTypeHotMarksTotal], ['LoT', blueprintCognitionLotMarks - blueprintQuestionTypeLotMarksTotal]].filter(([, difference]) => difference !== 0).map(([level, difference]) => `${level}: ${formatBlueprintSplitNumber(Math.abs(difference))} marks ${difference > 0 ? 'remaining' : 'over'}`).join('; ')
     : blueprintQuestionTypeDifference === 0
-      ? `Question total complete: ${blueprintQuestionTypeTotal} / ${blueprintRoundedTotalMark}`
+      ? `Matched: ${blueprintQuestionTypeTotal} / ${blueprintRoundedTotalMark} marks`
       : blueprintQuestionTypeDifference > 0
         ? `${blueprintQuestionTypeDifference} marks remaining`
         : `Reduce ${Math.abs(blueprintQuestionTypeDifference)} marks`
@@ -3352,6 +3088,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       return
     }
 
+    if (!pickerDraftRows.length || pickerDraftRows.reduce((sum, row) => sum + row.count * row.marks, 0) !== blueprintRoundedTotalMark) {
+      setSaveStatus('The blueprint allocation could not be converted into question requirements. Check the split and matrix values.')
+      setIsBlueprintSaveConfirmOpen(false)
+      return
+    }
     const isUpdatingBlueprintPlanner = isBlueprintPlannerSaved
 
     try {
@@ -3366,28 +3107,66 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         blueprintTestSpecificationMarkDraft,
         blueprintRebalanceMetadata,
         validationStatus: blueprintTestSpecificationMatrixIsValid ? 'matched' : 'mismatched',
-        schemaVersion: 2,
+        enabled: true,
+        pickerRows: pickerDraftRows,
+        schemaVersion: 3,
         savedAt: new Date().toISOString(),
       }))
+      setSavedPickerRows(pickerDraftRows)
+      setActivePickerId(pickerDraftRows[0]?.id || '')
+      setFilterRequirementId('')
+      setPickerNavigationRequest(0)
       setIsBlueprintPlannerSaved(true)
       setIsBlueprintPlannerEditing(false)
       setIsBlueprintSaveConfirmOpen(false)
       setActiveCreateTab('questionBank')
       setHasSelectedCreateTab(true)
       setSaveStatus(isUpdatingBlueprintPlanner
-        ? 'Blueprint planner updated. Question filters and progress have been recalculated.'
+        ? 'Blueprint planner updated. Browse all questions or apply a requirement from Blueprint progress.'
         : 'Blueprint planner saved. Select or create questions to complete the blueprint.')
     } catch {
       setIsBlueprintSaveConfirmOpen(false)
       setSaveStatus('Unable to save the blueprint planner. Browser storage may be full.')
     }
   }
+  const invalidateBlueprintAllocations = (preservedLabel = null) => {
+    setBlueprintQuestionTypeDraft(current => Object.fromEntries(Object.entries(current).map(([label, draft]) => {
+      if (label === preservedLabel) return [label, draft]
+      const next = { ...draft }
+      for (const key of ['hotQuestions', 'lotQuestions', 'hotMarks', 'lotMarks']) delete next[key]
+      return [label, next]
+    })))
+    setIsBlueprintPlannerSaved(false)
+    setBlueprintTestSpecificationCountDraft({})
+    setBlueprintTestSpecificationMarkDraft({})
+    setBlueprintRebalanceMetadata({})
+    setBlueprintChangedSpecificationCells([])
+    setBlueprintAutoFillIteration(0)
+  }
+  const updateBlueprintSaqCognition = (label, cognitionMode) => {
+    if (blueprintQuestionTypeByLabel[label]?.cognitionMode === cognitionMode) return
+    invalidateBlueprintAllocations()
+    setBlueprintQuestionTypeDraft((current) => {
+      const next = { ...current[label], cognitionMode }
+      for (const key of ['hotQuestions', 'lotQuestions', 'hotMarks', 'lotMarks']) delete next[key]
+      return { ...current, [label]: next }
+    })
+  }
   const updateBlueprintQuestionTypeDraft = (label, field, value) => {
     const editableFields = ['perQuestionMarks', 'totalMarks', 'hotQuestions', 'lotQuestions']
     if (!editableFields.includes(field)) return
     const isQuestionCount = ['hotQuestions', 'lotQuestions'].includes(field)
+    const cognitionMode = getSaqCognitionMode(label, blueprintQuestionTypeDraft[label])
+    if (isQuestionCount && cognitionMode && cognitionMode !== 'both') return
     const isValidValue = isQuestionCount ? /^\d*$/.test(value) : /^\d*(?:\.\d{0,2})?$/.test(value)
     if (!isValidValue) return
+    invalidateBlueprintAllocations(isQuestionCount ? label : null)
+    if (label === 'LAQs' && isQuestionCount) {
+      setBlueprintLaqQuestionSplits(current => redistributeLaqLevels(
+        current.slice(0, blueprintLaqQuestionTotal), field === 'hotQuestions' ? 'hot' : 'lot', value,
+      ))
+      return
+    }
     setBlueprintQuestionTypeDraft((current) => {
       const currentRowDraft = current[label] || {}
       const currentRow = blueprintQuestionTypeByLabel[label]
@@ -3435,6 +3214,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const updateBlueprintLaqSplitCount = (questionIndex, value) => {
     if (!/^\d*$/.test(value)) return
+    invalidateBlueprintAllocations()
     const nextCount = value === '' ? 0 : Math.min(Math.max(Number(value), 0), 20)
     setBlueprintLaqQuestionSplits((current) => {
       const next = [...current]
@@ -3451,18 +3231,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const updateBlueprintLaqSplitMarks = (questionIndex, splitIndex, value) => {
     if (!/^\d*(?:\.\d{0,2})?$/.test(value)) return
-    setBlueprintLaqQuestionSplits((current) => current.map((question, currentQuestionIndex) => (
-      currentQuestionIndex === questionIndex
-        ? {
-            ...question,
-            splits: question.splits.map((split, currentSplitIndex) => (
-              currentSplitIndex === splitIndex ? { ...split, marks: value } : split
-            )),
-          }
-        : question
-    )))
+    invalidateBlueprintAllocations()
+    setBlueprintLaqQuestionSplits(current => current.map((question, index) => index === questionIndex
+      ? { ...question, splits: question.splits.map((part, index) => index === splitIndex ? { ...part, marks: value } : part) }
+      : question))
   }
   const updateBlueprintLaqSplitLevel = (questionIndex, splitIndex, level) => {
+    invalidateBlueprintAllocations()
     setBlueprintLaqQuestionSplits((current) => current.map((question, currentQuestionIndex) => (
       currentQuestionIndex === questionIndex
         ? {
@@ -3478,6 +3253,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const updateBlueprintCognitionWeightage = (level, value) => {
     if (!/^\d*$/.test(value)) return
+    invalidateBlueprintAllocations()
     if (value === '') {
       setBlueprintCognitionWeightage({ lot: '', hot: '' })
       setIsBlueprintQuestionSplitCreated(false)
@@ -3561,7 +3337,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
     setIsBlueprintPlannerSaved(false)
     setIsBlueprintPlannerEditing(false)
-    setIsBlueprintProgressOpen(false)
     setBlueprintCognitionWeightage({ lot: '', hot: '' })
     setBlueprintQuestionTypeDraft({})
     setBlueprintLaqQuestionSplits([])
@@ -3588,21 +3363,29 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const confirmBlueprintDistributionEdit = () => {
     setIsBlueprintPlannerEditing(true)
-    setIsBlueprintProgressOpen(false)
     setIsBlueprintEditConfirmOpen(false)
     setIsBlueprintMatrixCreated(false)
     setActiveBlueprintTab('distribution')
   }
   const confirmBlueprintDisable = () => {
     setIsBlueprintDisableConfirmOpen(false)
+    persistBlueprintEnabled(false)
     setIsBlueprintEnabled(false)
     setIsBlueprintPlannerEditing(false)
-    setIsBlueprintProgressOpen(false)
     setActiveCreateTab(savedQuestionsRef.current.length ? 'preview' : 'questionBank')
     setSelectedCreateQuestionTypeLabel('')
     setIsDescriptiveTypePickerOpen(false)
   }
+  const persistBlueprintEnabled = enabled => {
+    try {
+      const saved = readSavedBlueprintPlanner(setup)
+      if (saved) window.localStorage.setItem(getBlueprintPlannerStorageKey(setup), JSON.stringify({ ...saved, enabled }))
+    } catch {
+      setSaveStatus('Blueprint mode changed for this session only; browser storage is unavailable.')
+    }
+  }
   const confirmBlueprintEnable = () => {
+    persistBlueprintEnabled(true)
     setIsBlueprintEnableConfirmOpen(false)
     setIsBlueprintDisableConfirmOpen(false)
     if (!isBlueprintPlannerSaved) {
@@ -3639,7 +3422,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setActiveBlueprintTab(isBlueprintPlannerSaved ? 'questionSpecifications' : 'distribution')
     setActiveCreateTab('blueprint')
     setHasSelectedCreateTab(true)
-    setIsBlueprintProgressOpen(false)
   }
 
   const requestBlueprintToggle = () => {
@@ -4308,6 +4090,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const publishAssessmentDirectly = () => {
+    if (pickerEnabled && !getBlueprintPickerProgress(pickerRows, savedQuestionsRef.current).complete) {
+      setSaveStatus('Complete all blueprint requirements before continuing.')
+      setActiveCreateTab('questionBank')
+      return
+    }
     const nextSetup = persistSetupDraft('')
     const record = getPublishedAssessmentRecord(nextSetup, getCurrentAssessmentQuestions())
     const publishStorageResult = upsertPublishedAssessment(record)
@@ -4323,6 +4110,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const openApprovalModal = () => {
+    if (pickerEnabled && !getBlueprintPickerProgress(pickerRows, savedQuestionsRef.current).complete) {
+      setSaveStatus('Complete all blueprint requirements before continuing.')
+      setActiveCreateTab('questionBank')
+      return
+    }
     const errors = validateSetupDraft()
     const currentQuestions = getCurrentAssessmentQuestions()
     setConfigurationValidationStep(CONFIGURATION_VALIDATION_STEPS.length - 1)
@@ -4345,6 +4137,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const sendAssessmentToApproval = () => {
+    if (pickerEnabled && !getBlueprintPickerProgress(pickerRows, savedQuestionsRef.current).complete) {
+      setSaveStatus('Complete all blueprint requirements before continuing.')
+      setActiveCreateTab('questionBank')
+      return
+    }
     const nextSetup = persistSetupDraft('Sent to approval')
     const currentQuestions = getCurrentAssessmentQuestions()
     const approvalQuestionRows = createStorageLightAssessmentQuestions(currentQuestions)
@@ -4437,44 +4234,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const isSaveAssessmentDraftDisabled = selectedAssessmentQuestionCount === 0
   const canSaveAssessmentDraft = !isSaveAssessmentDraftDisabled
   const isBlueprintPreviewMarksActive = isBlueprintEnabled && isBlueprintPlannerSaved
-  const blueprintPreviewQuestionRelevance = getBlueprintQuestionRelevanceList(
-    previewQuestions,
-    blueprintQuestionRequirements,
-  )
-  const blueprintPreviewMarksByQuestionId = useMemo(() => Object.fromEntries(
-    previewQuestions.map((item, index) => {
-      const fallbackMarks = getQuestionMarksTotal(item)
-      const match = getBlueprintQuestionMatch(item, blueprintQuestionRequirements)
-      const cellMarks = isBlueprintPreviewMarksActive && blueprintPreviewQuestionRelevance[index] && match.cellKey
-        ? blueprintQuestionCellMarks[match.cellKey]
-        : null
-      const cellMarkPerQuestion = cellMarks?.count > 0
-        ? cellMarks.marks / cellMarks.count
-        : 0
-
-      return [
-        item.id,
-        cellMarkPerQuestion > 0
-          ? cellMarkPerQuestion
-          : resolveBlueprintPreviewQuestionMarks({
-        question: item,
-        questionTypeDraft: blueprintQuestionTypeDraft,
-        fallbackMarks,
-        isBlueprintEnabled,
-        isPlannerSaved: isBlueprintPlannerSaved,
-      }),
-      ]
-    }),
-  ), [
-    blueprintQuestionCellMarks,
-    blueprintPreviewQuestionRelevance,
-    blueprintQuestionRequirements,
-    blueprintQuestionTypeDraft,
-    isBlueprintEnabled,
-    isBlueprintPlannerSaved,
-    isBlueprintPreviewMarksActive,
-    previewQuestions,
-  ])
+  const blueprintPreviewMarksByQuestionId = Object.fromEntries(previewQuestions.map(item => [item.id, getQuestionMarksTotal(item)]))
   const assessmentSummary = useMemo(() => {
     const rowsByType = previewQuestions.reduce((rows, item) => {
       const typeLabel = getSummaryTypeLabel(item.type)
@@ -4944,7 +4704,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       }
     }).filter((section) => section.questions.length || section.isCustom)
   }, [blueprintPreviewMarksByQuestionId, fullPreviewSectionConfig, previewQuestions, previewSectionOrder, previewSectionTitles])
-  const previewSectionCount = previewSections.length
   const canSendAssessmentForApproval = useMemo(() => (
     Object.keys(validateSetupDraft(setupDraft)).length === 0 && previewQuestionCount > 0 && previewSections.length > 0
   ), [previewQuestionCount, previewSections.length, setupDraft])
@@ -5161,7 +4920,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const currentQuestions = savedQuestionsRef.current
     const nextQuestions = isEditingPreviewQuestion
       ? currentQuestions.map((item) => (item.id === targetEditingPreviewQuestionId ? nextQuestion : item))
-      : [nextQuestion, ...currentQuestions.filter((item) => item.id !== questionOverride.id)]
+      : [nextQuestion, ...currentQuestions.filter((item) => item.id !== questionOverride.id && item.id !== replacingPickerQuestion?.id)]
     const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
     savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
@@ -5187,10 +4946,22 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     if (!question || !canCreate) return
 
     if (editingPreviewQuestionId) {
+      if (pickerEnabled && !pickerRows.some(row => matchesBlueprintPickerRow(question, row))) { setSaveStatus('Keep this question aligned with a blueprint requirement.'); return }
       persistQuestion('Created')
       return
     }
 
+    if (pickerEnabled) {
+      if (!pickerAcceptsQuestion(question) || pickerRemaining < 1) {
+        setSaveStatus('This question must match the active blueprint requirement, including marks and thinking levels.')
+        return
+      }
+      persistQuestion('Created', question, { message: 'Question added to the blueprint selection.' })
+      setReplacingPickerQuestion(null)
+      setActivePickerId(activePickerRow.id)
+      setActiveCreateTab('preview')
+      return
+    }
     const isDescriptiveGeneration = isDescriptiveQuestionType(question.type)
     if (!isDescriptiveGeneration && question.type !== 'MCQ') {
       persistQuestion('Created')
@@ -5290,10 +5061,18 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const addQuestionBankSelectionToAssessment = (questions = []) => {
+    const existingIds = new Set(savedQuestionsRef.current.filter(item => item.id !== replacingPickerQuestion?.id).map(item => String(item.originalQuestionId || item.id)))
+    questions = questions.filter(item => {
+      const id = String(item.originalQuestionId || item.id)
+      if (existingIds.has(id)) return false
+      existingIds.add(id)
+      return true
+    })
+    if (replacingPickerQuestion) questions = questions.slice(0, 1)
     const importedQuestions = questions.map((item, index) => ({
       ...item,
       id: `assessment-imported-${item.id ?? Date.now()}-${index}`,
-      originalQuestionId: item.id ?? item.originalQuestionId,
+      originalQuestionId: item.originalQuestionId ?? item.id,
       status: 'Created',
       source: item.source || 'Question Bank',
       assessmentName: setup.assessmentName || 'Untitled Assessment',
@@ -5304,13 +5083,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
     const nextQuestions = [
       ...importedQuestions,
-      ...savedQuestionsRef.current.filter((item) => !questions.some((questionItem) => (
+      ...savedQuestionsRef.current.filter((item) => item.id !== replacingPickerQuestion?.id && !questions.some((questionItem) => (
         (questionItem.id ?? questionItem.originalQuestionId) === (item.originalQuestionId ?? item.id)
       ))),
     ]
     const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
     savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
+    if (pickerEnabled) {
+      setActivePickerId(activePickerRow?.id || '')
+      setReplacingPickerQuestion(null)
+    }
     setActiveCreateTab('preview')
     setHasSelectedCreateTab(true)
     setSaveStatus(
@@ -5741,6 +5524,21 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setHasSelectedCreateTab(true)
     setSelectedCreateQuestionTypeLabel(nextTypeMeta?.menuLabel ?? nextTypeMeta?.shortLabel ?? 'Create New Question')
     setSaveStatus('')
+  }
+
+  const createPickerQuestion = row => {
+    if (!row) return
+    const type = row.type === 'mcq' ? 'MCQ' : row.type === 'laq' ? 'Desc Long Answer Questions (LAQs)' : 'Desc Short Answer Questions (SAQs)'
+    const base = createQuestion(setup, type)
+    const metadata = { subject: row.subject, topics: [...row.topics], competencies: row.competency.split(', '), marks: String(row.marks), questionCategory: row.category || 'Direct', thinkingLevel: row.level === 'hot' ? 'HoT' : 'LoT' }
+    setQuestion({ ...base, ...metadata, ...(row.type !== 'mcq' ? { descriptiveSections: row.parts
+      ? row.parts.map(part => ({ ...createDescriptiveSubQuestion(base), marks: String(part.marks), competencies: [part.competency], thinkingLevel: part.level === 'hot' ? 'HoT' : 'LoT' }))
+      : [{ ...createDescriptiveSubQuestion(base), ...metadata }] } : {}) })
+    setActivePickerId(row.id)
+    setEditingPreviewQuestionId(null)
+    setActiveCreateTab('create')
+    setHasSelectedCreateTab(true)
+    setSelectedCreateQuestionTypeLabel(getQuestionTypeMeta(type)?.shortLabel || type)
   }
 
   const createQuestionTypeCards = (
@@ -6395,7 +6193,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     </div>
   ) : null
 
-  const renderCreateAssessmentActions = ({ primaryLabel = 'Generate Question' } = {}) => (
+  const renderCreateAssessmentActions = ({ primaryLabel = pickerEnabled ? 'Create question' : 'Generate Question' } = {}) => (
     <div className="question-bank-laq-form-actions create-assessment-modern-actions">
       <button type="button" className="question-bank-secondary-btn" onClick={() => persistQuestion('Draft')} disabled={!question}>
         <Save size={14} strokeWidth={2.2} />
@@ -7193,7 +6991,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           }}
         >
           <section
-            className="create-assessment-blueprint-reset-modal is-disable-blueprint"
+            className="create-assessment-blueprint-reset-modal is-disable-blueprint qb-sort-scope"
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="create-assessment-blueprint-disable-title"
@@ -7257,7 +7055,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       <div className="create-assessment-workspace-body">
       <main className="create-assessment-workspace-main">
         {isBlueprintEnabled && activeCreateTab === 'blueprint' ? (
-          <section className="create-assessment-blueprint-panel" aria-label="Blueprint configuration">
+          <section {...blueprintEditHighlights} className="create-assessment-blueprint-panel qb-sort-scope" aria-label="Blueprint configuration">
             <header className="create-assessment-blueprint-head">
               <div className="create-assessment-blueprint-tabs" role="tablist" aria-label="Blueprint sections">
                 <button
@@ -7584,9 +7382,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                     value={row.hotQuestionsValue}
                                     placeholder="-"
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotQuestions', event.target.value)}
-                                    readOnly={row.usesLaqSplit}
                                     aria-label={`${row.label} HoT questions`}
-                                    title={row.usesLaqSplit ? 'Calculated from LAQ splits' : 'Auto-populated and editable'}
+                                    title={row.label === 'LAQs' ? 'Edit the number of LAQ parts at this level' : 'Auto-populated and editable'}
                                   />
                                 </td>
                                 <td>
@@ -7606,9 +7403,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                     value={row.lotQuestionsValue}
                                     placeholder="-"
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotQuestions', event.target.value)}
-                                    readOnly={row.usesLaqSplit}
                                     aria-label={`${row.label} LoT questions`}
-                                    title={row.usesLaqSplit ? 'Calculated from LAQ splits' : 'Auto-populated and editable'}
+                                    title={row.label === 'LAQs' ? 'Edit the number of LAQ parts at this level' : 'Auto-populated and editable'}
                                   />
                                 </td>
                                 <td>
@@ -7648,6 +7444,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                                     aria-label={`LAQ question ${card.questionIndex + 1} split count`}
                                                   />
                                                 </label>
+                                                {card.splits.length > 0 && (
+                                                  <div className={`create-assessment-blueprint-laq-allocation-summary ${card.isValid ? 'is-valid' : 'is-pending'}`}>
+                                                    <span>Allocated <strong>{formatBlueprintSplitNumber(card.marksTotal)} / {formatBlueprintSplitNumber(blueprintLaqPerQuestionMarks)} marks</strong></span>
+                                                    <span>LoT <strong>{formatBlueprintSplitNumber(card.splits.reduce((sum, split) => sum + (split.level === 'lot' ? Number(split.marks) || 0 : 0), 0))}</strong></span>
+                                                    <span>HoT <strong>{formatBlueprintSplitNumber(card.splits.reduce((sum, split) => sum + (split.level === 'hot' ? Number(split.marks) || 0 : 0), 0))}</strong></span>
+                                                  </div>
+                                                )}
                                                 {card.splitCountValue ? (
                                                   <span className={`create-assessment-blueprint-laq-split-status ${card.isValid ? 'is-valid' : 'is-invalid'}`}>
                                                     {card.isValid
@@ -7679,11 +7482,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                                         />
                                                       </label>
                                                       <div className="create-assessment-blueprint-laq-cognition-field">
-                                                        <span>Cognition</span>
+                                                        <span>Select Thinking Level <em className="assessment-create-required-mark" aria-hidden="true">*</em></span>
                                                         <div
                                                           className="create-assessment-blueprint-laq-level-toggle"
                                                           role="group"
-                                                          aria-label={`LAQ question ${card.questionIndex + 1} part ${splitIndex + 1} cognition level`}
+                                                          aria-label={`LAQ question ${card.questionIndex + 1} part ${splitIndex + 1} thinking level (required)`}
                                                         >
                                                         <button
                                                           type="button"
@@ -7705,11 +7508,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                                       </div>
                                                     </div>
                                                   ))}
-                                                  <div className={`create-assessment-blueprint-laq-allocation-summary ${card.isValid ? 'is-valid' : 'is-pending'}`}>
-                                                    <span>Allocated <strong>{formatBlueprintSplitNumber(card.marksTotal)} / {formatBlueprintSplitNumber(blueprintLaqPerQuestionMarks)} marks</strong></span>
-                                                    <span>LoT <strong>{formatBlueprintSplitNumber(card.splits.reduce((sum, split) => sum + (split.level === 'lot' ? Number(split.marks) || 0 : 0), 0))}</strong></span>
-                                                    <span>HoT <strong>{formatBlueprintSplitNumber(card.splits.reduce((sum, split) => sum + (split.level === 'hot' ? Number(split.marks) || 0 : 0), 0))}</strong></span>
-                                                  </div>
+
                                                 </div>
                                               ) : (
                                                 <p className="create-assessment-blueprint-laq-split-empty">
@@ -7747,9 +7546,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               className={`create-assessment-blueprint-question-type-row is-child ${row.hasRequiredValues && !row.hasValidQuestionTotal ? 'is-invalid' : ''}`}
                             >
                               <td>
+                                <div className="saq-cognition-cell">
                                 <span className="create-assessment-blueprint-question-type-child-label">
                                   {row.childLabel}
                                 </span>
+                                <SaqCognitionToggle label={row.childLabel} value={row.cognitionMode} onChange={(mode) => updateBlueprintSaqCognition(row.label, mode)} />
+                                </div>
                               </td>
                               <td>
                                 <input
@@ -7789,7 +7591,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   placeholder="-"
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotQuestions', event.target.value)}
                                   aria-label={`${row.label} HoT questions`}
-                                  title="Auto-populated and editable"
+                                  readOnly={row.cognitionMode !== 'both'}
+                                  title={row.cognitionMode === 'both' ? 'Edit this count to update its complement' : 'Calculated from the selected cognition; select Both to edit counts'}
                                 />
                               </td>
                               <td>
@@ -7810,7 +7613,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   placeholder="-"
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotQuestions', event.target.value)}
                                   aria-label={`${row.label} LoT questions`}
-                                  title="Auto-populated and editable"
+                                  readOnly={row.cognitionMode !== 'both'}
+                                  title={row.cognitionMode === 'both' ? 'Edit this count to update its complement' : 'Calculated from the selected cognition; select Both to edit counts'}
                                 />
                               </td>
                               <td>
@@ -8082,7 +7886,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                     className={`create-assessment-blueprint-test-grid-cell is-count-entry ${isActive ? '' : 'is-disabled'} ${hasCountValue ? (countData.isValid ? 'is-valid' : 'is-invalid') : ''} ${isChanged ? 'is-reshuffled' : ''}`}
                                     key={`${row.key}-${column.key}`}
                                     role="cell"
-                                    title={column.group === 'SAQ' && countData.count > 0 ? undefined : isActive
+                                    title={['SAQ', 'LAQ'].includes(column.group) && countData.count > 0 ? undefined : isActive
                                       ? `${countData.count} Questions = ${formatBlueprintSplitNumber(countData.calculatedMarks)} Marks`
                                       : `${column.group} has no questions`}
                                   >
@@ -8100,11 +7904,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                       aria-label={`${row.code} ${column.group} ${column.label} question count`}
                                       disabled={!isActive || (isBlueprintPlannerSaved && !isBlueprintPlannerEditing)}
                                     />
-                                    {column.group === 'SAQ' && countData.count > 0 && isActive ? (
+                                    {['SAQ', 'LAQ'].includes(column.group) && countData.count > 0 && isActive ? (
                                       <BlueprintCountInfo
-                                        heading={`${row.code} (SAQs)`}
-                                        label={`${row.code} SAQ ${column.label}`}
-                                        entries={blueprintSaqCategoryBreakdowns[column.key]?.[row.key] ?? null}
+                                        heading={column.group === 'LAQ' ? row.code + ' (LAQs - ' + column.label + ')' : row.code + ' (SAQs)'}
+                                        label={row.code + ' ' + column.group + ' ' + column.label}
+                                        kind={column.group === 'LAQ' ? 'laq' : 'saq'}
+                                        entries={column.group === 'LAQ' && isBlueprintPlannerSaved && !isBlueprintPlannerEditing && savedPickerRows.length
+                                          ? savedPickerRows.flatMap(requirement => (requirement.parts || []).filter(part => part.competency === row.code && part.level === (column.key === 'laqLot' ? 'lot' : 'hot')).map(part => ({ question: Number(requirement.id.split(':')[1]) + 1, part: part.part, marks: part.marks })))
+                                          : (column.group === 'LAQ' ? blueprintLaqSplitBreakdowns : blueprintSaqCategoryBreakdowns)[column.key]?.[row.key] ?? null}
                                       />
                                     ) : null}
                                     </span>
@@ -8414,19 +8221,28 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           </section>
         ) : null}
 
+        <BlueprintCompletionToast enabled={pickerEnabled} complete={pickerProgress.complete} />
         {activeCreateTab === 'questionBank' ? (
-          <section className="create-assessment-question-bank-panel" aria-label="Question bank view">
+          <section ref={pickerBankRef} tabIndex={-1} className="create-assessment-question-bank-panel" aria-label="Question bank view">
             <QuestionBankNonCreatePage
+              key={pickerEnabled ? filterRequirementId + ':' + pickerNavigationRequest : 'bank'}
+              blueprintRequirements={pickerEnabled ? pickerRows.map(row => ({ id: row.id, picked: pickerProgress.used[row.id].length, count: row.count, label: [row.competency, row.type.toUpperCase(), row.category, row.level === 'split' ? 'By part' : row.level === 'hot' ? 'HoT' : 'LoT', row.marks + ' marks'].filter(Boolean).join(' / ') })) : undefined}
+              renderBlueprintProgress={pickerEnabled ? bankQuestions => <BlueprintSelectionProgress loadBankQuestions={readBlueprintBankQuestions} rows={pickerRows} progress={pickerProgress} activeId={activePickerRow?.id} bankQuestions={bankQuestions} selectedQuestions={savedQuestions} onSelect={row => { setReplacingPickerQuestion(null); pickBlueprintRow(row) }} onCreate={row => { setActivePickerId(row.id); createPickerQuestion(row) }} onReview={() => setActiveCreateTab('preview')} /> : undefined}
+              activeRequirementId={activePickerRow?.id}
+              onNextRequirement={pickerEnabled && nextPickerRow ? () => pickBlueprintRow(nextPickerRow) : undefined}
+              onRequirementChange={id => { setReplacingPickerQuestion(null); pickBlueprintRow(pickerRows.find(row => row.id === id)) }}
+              onCreateMissing={pickerEnabled && pickerRemaining > 0 ? () => createPickerQuestion(activePickerRow) : undefined}
               mode="readonly"
               embedded
               onNavigate={onNavigate}
               onAddToAssessment={addQuestionBankSelectionToAssessment}
-              onSelectionChange={setBlueprintQuestionBankSelection}
               addedQuestionIds={addedQuestionBankIds}
-              initialFilters={isBlueprintEnabled && isBlueprintPlannerSaved ? {
-                subjects: [blueprintDraft.subject],
-                topics: blueprintDraft.topics,
-                competencies: blueprintSpecificationRows.map((row) => `${row.code} ${row.name}`.trim()),
+              initialFilters={pickerEnabled && filterRequirement ? {
+                subjects: [filterRequirement.subject],
+                competencies: filterRequirement.competency.split(', '),
+                categories: filterRequirement.category ? [filterRequirement.category] : [],
+                thinkingLevels: filterRequirement.level === 'split' ? [] : [filterRequirement.level === 'hot' ? 'HoT' : 'LoT'],
+                types: [filterRequirement.type === 'mcq' ? 'MCQ' : filterRequirement.type === 'laq' ? 'Descriptive (LAQs)' : 'Descriptive (SAQs)'],
               } : {}}
             />
           </section>
@@ -8437,11 +8253,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             <div className="create-assessment-tab-panel-head">
               <span className="create-assessment-preview-head-copy">
                 <strong>Preview</strong>
-                <span>
-                  <b>{formatSummaryNumber(assessmentSummary.totalQuestions)} questions</b>
-                  <b>{formatSummaryNumber(assessmentSummary.totalMarks)} marks</b>
-                  <b>{formatSummaryNumber(previewSectionCount)} sections</b>
-                </span>
+                {pickerEnabled && <BlueprintSelectionProgress loadBankQuestions={readBlueprintBankQuestions} rows={pickerRows} progress={pickerProgress} activeId={activePickerRow?.id} selectedQuestions={savedQuestions} onSelect={row => { setReplacingPickerQuestion(null); pickBlueprintRow(row) }} onCreate={row => { setActivePickerId(row.id); createPickerQuestion(row) }} onReview={() => setActiveCreateTab('preview')} />}
+                {pickerEnabled && nextPickerRow && <button type="button" className="assessment-page-more-filters-btn" onClick={() => pickBlueprintRow(nextPickerRow)}>Next requirement</button>}
               </span>
               <span className="create-assessment-preview-section-actions">
                 <button
@@ -8682,7 +8495,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   return (
                     <article
                       key={item.id}
-                      className={`create-assessment-preview-card ${isPreviewCardOpen ? 'is-open' : ''} ${!isDescriptive ? 'is-mcq-preview' : ''} ${usesLaqQuestionFormat ? 'is-laq-preview' : ''} ${isSaqSinglePreview ? 'is-saq-single-preview' : ''} ${!isBlueprintRelevant ? 'is-blueprint-unrelated' : ''}`}
+                      className={`create-assessment-preview-card ${isPreviewCardOpen ? 'is-open' : ''} ${!isDescriptive ? 'is-mcq-preview' : ''} ${usesLaqQuestionFormat ? 'is-laq-preview' : ''} ${isSaqSinglePreview ? 'is-saq-single-preview' : ''}`}
                       draggable
                       onDragStart={() => setDraggedPreviewQuestionId(item.id)}
                       onDragOver={(event) => event.preventDefault()}
@@ -8779,9 +8592,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               {!isBlueprintRelevant ? (
                                 <span
                                   className="create-assessment-preview-chip is-blueprint-unrelated"
-                                  title="This question does not match the saved Blueprint competency, question type, or Level of Cognition requirement. It remains in Preview but is not included in Blueprint progress."
+                                  title="This question is not allocated to the saved Blueprint requirements. It remains in Preview and does not count towards Blueprint progress."
                                 >
-                                  Not Relevant to This Blueprint
+                                  Not relevant to Blueprint
                                 </span>
                               ) : null}
                             </span>
@@ -9045,7 +8858,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           </div>
                         ) : null}
                       </div>
-                      <div className="create-assessment-preview-actions">
+                      <div className="create-assessment-preview-actions qb-sort-scope">
                         <button
                           type="button"
                           className="create-assessment-preview-edit"
@@ -9922,7 +9735,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   <RotateCcw size={15} strokeWidth={2.2} />
                   Clear
                 </button>
-                <button type="button" className="is-primary" onClick={openApprovalModal} disabled={!canSendAssessmentForApproval}>
+                <button type="button" className="is-primary" onClick={openApprovalModal} disabled={!canSendAssessmentForApproval || (pickerEnabled && !pickerProgress.complete)}>
                   <ArrowRight size={15} strokeWidth={2.2} />
                   {primaryPublicationActionLabel}
                 </button>
@@ -10053,6 +9866,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           type="button"
           className={`create-assessment-action-btn is-create ${hasSelectedCreateTab && activeCreateTab === 'create' ? 'is-active' : ''}`}
           onClick={() => {
+            if (pickerEnabled && activePickerRow) { createPickerQuestion(activePickerRow); return }
             setActiveCreateTab('create')
             setHasSelectedCreateTab(true)
             setQuestion(null)
@@ -10099,7 +9913,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             setIsDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
-          disabled={!selectedAssessmentQuestionCount}
+          disabled={!selectedAssessmentQuestionCount && !pickerEnabled}
           aria-pressed={activeCreateTab === 'preview'}
         >
           <Eye size={16} strokeWidth={2.2} />
@@ -10115,6 +9929,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             setIsDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
+          disabled={pickerEnabled && !pickerProgress.complete}
           aria-pressed={activeCreateTab === 'configuration'}
         >
           <Settings size={16} strokeWidth={2.2} />
@@ -10137,168 +9952,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         </div>
       </aside>
       </div>
-      {isBlueprintEnabled
-        && isBlueprintPlannerSaved
-        && BLUEPRINT_PROGRESS_VISIBLE_TABS.has(activeCreateTab) ? (
-        <div
-          className={`create-assessment-blueprint-progress-wrap ${blueprintProgressPosition?.side === 'right' ? 'is-right-docked' : 'is-left-docked'} ${isBlueprintProgressDragging ? 'is-dragging' : ''}`}
-          ref={blueprintProgressRef}
-          style={blueprintProgressPosition
-            ? {
-                left: `${blueprintProgressPosition.x}px`,
-                top: `${blueprintProgressPosition.y}px`,
-                right: 'auto',
-                bottom: 'auto',
-              }
-            : undefined}
-        >
-          {isBlueprintProgressOpen ? (
-            <aside
-              className="create-assessment-blueprint-progress-popover is-viewport-positioned"
-              ref={blueprintProgressPopoverRef}
-              style={blueprintProgressPopoverStyle || undefined}
-              role="dialog"
-              aria-modal="false"
-              aria-label="Blueprint question progress"
-            >
-              <div className="create-assessment-blueprint-progress-table-head">
-                <h3>
-                  <FilePenLine size={14} strokeWidth={2.3} />
-                  <span>Blueprint Question Progress</span>
-                </h3>
-                <span className={blueprintQuestionProgress.complete ? 'is-complete' : 'is-progress'}>
-                  Selected: {blueprintQuestionProgress.matched} / {blueprintQuestionProgress.target} Questions
-                </span>
-                <span className="create-assessment-blueprint-progress-overall-bar" aria-hidden="true">
-                  <i style={{ width: `${blueprintQuestionProgressPercent}%` }} />
-                </span>
-              </div>
-              <div className="create-assessment-blueprint-progress-card-list">
-                {blueprintSpecificationRows.map((row) => {
-                  const rowProgress = blueprintProgressColumns.reduce((summary, column) => {
-                    const countData = getBlueprintTestSpecificationCellCountData(row.key, column.key)
-                    const requiredCount = Number(countData.count) || 0
-                    const progressCellKey = `${String(row.code).trim().toLowerCase().replace(/\s+/g, '')}:${column.key.toLowerCase()}`
-                    const selectedCount = Math.min(
-                      requiredCount,
-                      blueprintQuestionProgress.usedByCell[progressCellKey] || 0,
-                    )
-                    return {
-                      required: summary.required + requiredCount,
-                      selected: summary.selected + selectedCount,
-                    }
-                  }, { required: 0, selected: 0 })
-                  const rowProgressPercent = rowProgress.required > 0
-                    ? Math.min(100, (rowProgress.selected / rowProgress.required) * 100)
-                    : 100
-                  const rowProgressClass = rowProgress.selected >= rowProgress.required
-                    ? 'is-complete'
-                    : rowProgress.selected > 0
-                      ? 'is-partial'
-                      : 'is-incomplete'
-                  return (
-                    <article
-                      className={`create-assessment-blueprint-progress-competency-card ${rowProgressClass}`}
-                      key={row.key}
-                    >
-                      <header>
-                        <span
-                          className="create-assessment-blueprint-code-badge"
-                          tabIndex={0}
-                          role="button"
-                          aria-label={`View competency name for ${row.code}`}
-                          data-tooltip={row.name}
-                        >
-                          <span>{row.code}</span>
-                          <span className="create-assessment-blueprint-code-info" aria-hidden="true">
-                            <Info size={12} strokeWidth={2.4} />
-                          </span>
-                        </span>
-                        <span className={`create-assessment-blueprint-row-status ${rowProgressClass}`}>
-                          <span>
-                            {rowProgressClass === 'is-complete'
-                              ? <><Check size={13} strokeWidth={2.8} aria-hidden="true" /> Complete</>
-                              : rowProgressClass === 'is-partial' ? 'In progress' : 'Pending'}
-                          </span>
-                        </span>
-                      </header>
-                      <div className="create-assessment-blueprint-progress-allocation-groups">
-                        {blueprintProgressGroupSummaries.map((group) => (
-                          <section className="create-assessment-blueprint-progress-allocation-group" key={`${row.key}-${group.key}`}>
-                            <div className="create-assessment-blueprint-progress-allocation-title">
-                              <strong>{group.label}</strong>
-                              <small>{formatBlueprintSplitNumber(group.questionCount)} Qus</small>
-                            </div>
-                            <div className="create-assessment-blueprint-progress-allocation-values">
-                              {group.columns.map((column) => {
-                                const countData = getBlueprintTestSpecificationCellCountData(row.key, column.key)
-                                const requiredCount = Number(countData.count) || 0
-                                const progressCellKey = `${String(row.code).trim().toLowerCase().replace(/\s+/g, '')}:${column.key.toLowerCase()}`
-                                const selectedCount = Math.min(
-                                  requiredCount,
-                                  blueprintQuestionProgress.usedByCell[progressCellKey] || 0,
-                                )
-                                const selectionClass = selectedCount >= requiredCount && requiredCount > 0
-                                  ? 'is-complete'
-                                  : selectedCount > 0
-                                    ? 'is-partial'
-                                    : 'is-incomplete'
-                                return (
-                                  <span
-                                    className={`create-assessment-blueprint-progress-allocation-value is-${column.label.toLowerCase()} ${requiredCount > 0 ? selectionClass : 'is-empty'}`}
-                                    key={`${row.key}-${column.key}`}
-                                    title={`${row.code} ${column.group} ${column.label}: ${selectedCount} of ${requiredCount} questions selected; ${formatBlueprintSplitNumber(countData.calculatedMarks)} planned marks`}
-                                  >
-                                    <small>{column.label}</small>
-                                    <strong>{requiredCount > 0 ? `${selectedCount} / ${requiredCount}` : '—'}</strong>
-                                  </span>
-                                )
-                              })}
-                            </div>
-                          </section>
-                        ))}
-                      </div>
-                      <footer>
-                        <span>Progress</span>
-                        <span className="create-assessment-blueprint-row-progress">
-                          <strong>{rowProgress.selected} / {rowProgress.required}</strong>
-                          <i aria-hidden="true"><b style={{ width: `${rowProgressPercent}%` }} /></i>
-                        </span>
-                      </footer>
-                    </article>
-                  )
-                })}
-              </div>
-            </aside>
-          ) : null}
-          <button
-            type="button"
-            className={`create-assessment-blueprint-progress ${blueprintQuestionProgressState}`}
-            style={{ '--blueprint-progress': `${blueprintQuestionProgressPercent}%` }}
-            onPointerDown={handleBlueprintProgressPointerDown}
-            onPointerMove={handleBlueprintProgressPointerMove}
-            onPointerUp={handleBlueprintProgressPointerEnd}
-            onPointerCancel={handleBlueprintProgressPointerEnd}
-            onClick={(event) => {
-              if (suppressBlueprintProgressClickRef.current) return
-              if (isBlueprintProgressOpen) {
-                setIsBlueprintProgressOpen(false)
-                return
-              }
-              setBlueprintProgressPopoverStyle(getBlueprintProgressPopoverStyle(event.currentTarget))
-              setIsBlueprintProgressOpen(true)
-            }}
-            aria-expanded={isBlueprintProgressOpen}
-            aria-label={`${isBlueprintProgressOpen ? 'Close' : 'Open'} blueprint progress. ${blueprintQuestionProgress.matched} of ${blueprintQuestionProgress.target} questions complete`}
-            title="Table of Test Specifications"
-          >
-            <span className="create-assessment-blueprint-progress-copy">
-              <strong>{blueprintQuestionProgress.matched}/{blueprintQuestionProgress.target}</strong>
-              <small>Blueprint</small>
-            </span>
-          </button>
-        </div>
-      ) : null}
+
     </section>
   )
 }

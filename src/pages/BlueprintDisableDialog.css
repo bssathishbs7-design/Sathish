@@ -1,0 +1,31 @@
+/* Compact disable confirmation, matching the supplied reference. */
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope {
+  box-sizing: border-box; width: min(420px, calc(100vw - 32px)); padding: var(--s-5, 24px);
+  border-radius: var(--r-sm, 12px); background: var(--surface-card); font-family: var(--f-body, Inter, sans-serif);
+}
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope h2 {
+  margin: var(--s-3) 0 0; color: var(--text-strong); font-size: 16px; line-height: 1.25; font-weight: 800;
+}
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope p {
+  max-width: 340px; margin: var(--s-2) 0 0; color: var(--text-muted); font-size: 13px; line-height: 1.5; font-weight: 600;
+}
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope .create-assessment-blueprint-reset-actions {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); width: 100%; margin-top: var(--s-5, 24px);
+}
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope .create-assessment-blueprint-reset-actions button {
+  min-height: 40px; padding: var(--s-2); border-radius: 8px; font: 700 12px var(--f-body, Inter, sans-serif); cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease-standard);
+}
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope .is-cancel {
+  border: 1px solid var(--sky); background: var(--surface-card); color: var(--text-body);
+}
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope .is-confirm {
+  border: 1px solid #eb7020; background: #eb7020; color: #fff;
+}
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope .is-cancel:hover { background: var(--surface-mist); }
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope .is-confirm:hover { background: #ce5b12; border-color: #ce5b12; }
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope button:active { transform: translateY(1px) scale(.97); transition: none; }
+.create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .create-assessment-blueprint-reset-modal.is-disable-blueprint.qb-sort-scope .create-assessment-blueprint-reset-actions button { transition: none; }
+}
