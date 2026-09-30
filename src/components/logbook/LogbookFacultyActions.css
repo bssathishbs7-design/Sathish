@@ -1,4 +1,4 @@
-.faculty-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+﻿.faculty-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .logbook-scope details > summary { cursor: pointer; color: var(--text-strong); font-weight: 600; }
 .logbook-scope details > summary:focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); }
 
@@ -6,7 +6,7 @@
 .faculty-assignment-body { padding: var(--s-4) var(--s-5); overflow-y: auto; min-height: 0; flex: 1; }
 .faculty-assignment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
 .logbook-scope .faculty-assignment-grid .lb-field { position: relative; display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; font-size: 12px; font-weight: 600; }
-.faculty-assignment-grid .faculty-optional { position: absolute; right: 0; top: 0; font-size: var(--fs-micro); font-weight: 400; color: var(--text-muted); }
+.faculty-assignment-grid .faculty-optional { position: static; font-size: var(--fs-micro); font-weight: 400; color: var(--text-muted); }
 .logbook-scope .faculty-assignment-grid :is(input,select,textarea) { min-width: 0; width: 100%; min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-3); font-size: 13px; font-weight: 400; }
 .faculty-assignment-details { grid-column: 1 / -1; display: grid; gap: var(--s-3); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); }
 .logbook-scope .faculty-assignment-details h3 { margin: 0; font-size: 13px; }
@@ -22,3 +22,33 @@
 .logbook-scope .faculty-assignment-grid .lb-field .faculty-select select { appearance: none; display: block; height: calc(var(--s-6) + var(--s-2)); padding: 0 var(--s-6) 0 var(--s-3); line-height: normal; text-overflow: ellipsis; cursor: pointer; }
 .faculty-select > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
 .logbook-scope .faculty-assignment-grid .lb-field input { padding-top: 0; padding-bottom: 0; }
+/* Keep labels aligned; helper text does not introduce extra rows above controls. */
+.logbook-scope .faculty-assignment-grid .lb-field > span:first-child { line-height: 1.5; }
+.logbook-scope .faculty-assignment-details .lb-field > :is(input, .faculty-select) { margin-top: auto; }
+.logbook-scope .faculty-assignment-instructions textarea { min-height: var(--s-9); resize: vertical; }
+.logbook-scope .faculty-assignment-recipients { margin: var(--s-4) 0 0; }
+@media (max-width: 767px) {
+  .faculty-assignment-body,
+  .faculty-assignment-form .lb-drawer-foot { padding-inline: var(--s-4); }
+}
+/* Assignment footer actions share one size and subtly rounded corners. */
+.logbook-scope.lb-drawer .faculty-assignment-form .lb-drawer-foot { align-items: center; }
+.logbook-scope.lb-drawer .faculty-assignment-form .lb-drawer-foot .lb-btn {
+  min-height: calc(var(--s-6) + var(--s-3));
+  min-width: var(--s-9);
+  padding: var(--s-2) var(--s-4);
+  border-radius: calc(var(--r-sm) / 2);
+  font-size: var(--fs-small, .875rem);
+  font-weight: 600;
+  line-height: 1.5;
+  box-shadow: none;
+}
+.logbook-scope.lb-drawer .faculty-assignment-form .lb-drawer-foot .lb-btn:disabled {
+  opacity: 1;
+  background: var(--surface-soft);
+  border-color: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+

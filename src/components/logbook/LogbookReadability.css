@@ -1,0 +1,41 @@
+﻿/* Readable supporting copy across both Logbooks and their portalled drawers. */
+.vx-content.logbook-scope.lb-page,
+dialog.logbook-scope.lb-drawer {
+  --text-muted: color-mix(in srgb, var(--activity-text-body) 75%, var(--activity-text-muted));
+}
+.logbook-scope:is(.lb-page, .lb-drawer) :is(
+  p, small, .lb-muted, .lb-overview-note, .lb-overview-empty,
+  .lb-subject-tile-progress, .lb-recent-row time, .lb-entry-copy > span,
+  .faculty-chart-title > span, .faculty-chart-legend > span,
+  .faculty-signoff-grid span, .admin-category-footer, .admin-student-foot,
+  .admin-student-progress, .admin-student-subject-heading > span,
+  .admin-skill-stats, .lb-step-copy small, .lb-form-hint, .lb-entry-save-hint
+) {
+  font-size: var(--fs-small, .875rem);
+  line-height: 1.5;
+}
+.logbook-scope.lb-page .lb-summary-item .my-skills-metric-card-copy span,
+.logbook-scope.lb-page .lb-metric .my-skills-metric-card-copy span {
+  font-size: var(--fs-small, .875rem);
+  line-height: 1.5;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  display: block;
+  -webkit-line-clamp: unset;
+  max-height: none;
+}
+.logbook-scope.lb-page .my-skills-metric-card-copy { min-width: 0; }
+.logbook-scope.lb-page .lb-summary-item { height: auto; }
+.logbook-scope.lb-page .lb-subject-tile {
+  height: auto;
+  min-height: var(--s-9);
+  grid-template-rows: auto auto;
+}
+.logbook-scope.lb-page .lb-subject-tile-progress { line-height: 1.5; }
+.logbook-scope.lb-page .admin-entry-open > span:first-child small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.logbook-scope.lb-page .my-skills-overview-copy p { color: var(--text-muted); }
+.logbook-scope:is(.lb-page, .lb-drawer) :is(input, textarea)::placeholder { color: var(--text-muted); opacity: 1; }

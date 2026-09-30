@@ -33,3 +33,25 @@ button.lb-metric { cursor: pointer; }
 .lb-all-entries { display: grid; grid-template-columns: minmax(0, 7fr) minmax(240px, 3fr); gap: var(--s-3); align-items: start; }
 .lb-all-entry-results { grid-column: 1; grid-row: 1; min-width: 0; }
 @media (max-width: 1023px) { .lb-all-entries { grid-template-columns: minmax(0, 1fr); } .lb-all-entry-results { grid-column: auto; grid-row: auto; } }
+
+.logbook-scope .lb-search-view { display: grid; gap: var(--s-4); container-type: inline-size; }
+.logbook-scope .lb-filter-toolbar { display: grid; grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr)) auto; gap: var(--s-3); align-items: end; }
+.logbook-scope .lb-filter-toolbar .lb-field { min-width: 0; gap: var(--s-1); font-size: inherit; font-weight: 600; }
+.logbook-scope .lb-filter-toolbar :is(select,.lb-search,.lb-clear-filters) { box-sizing: border-box; height: calc(var(--s-6) + var(--s-3)); min-height: calc(var(--s-6) + var(--s-3)); margin: 0; }
+.logbook-scope.lb-page .lb-filter-toolbar .lb-field > .lb-toolbar-select { display: block; position: relative; width: 100%; min-width: 0; }
+.logbook-scope.lb-page .lb-filter-toolbar .lb-toolbar-select select { display: block; width: 100%; max-width: 100%; min-width: 0; appearance: none; background-image: none; padding: 0 var(--s-6) 0 var(--s-3); font-size: inherit; font-weight: 400; text-overflow: ellipsis; cursor: pointer; }
+.logbook-scope .lb-toolbar-select > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.logbook-scope .lb-filter-toolbar .lb-search { padding: 0 var(--s-3); gap: var(--s-2); box-shadow: none; }
+.logbook-scope .lb-filter-toolbar .lb-search svg { flex-shrink: 0; }
+.logbook-scope.lb-page .lb-filter-toolbar .lb-search input { height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; font-size: inherit; font-weight: 400; box-shadow: none; }
+.logbook-scope .lb-filter-toolbar .lb-clear-filters { padding-inline: var(--s-3); white-space: nowrap; }
+@container (max-width: 900px) {
+  .logbook-scope .lb-filter-toolbar { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .logbook-scope .lb-toolbar-search { grid-column: 1 / 4; }
+  .logbook-scope .lb-filter-toolbar .lb-clear-filters { grid-column: 4; grid-row: 1; }
+}
+@container (max-width: 540px) {
+  .logbook-scope .lb-filter-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .logbook-scope .lb-toolbar-search { grid-column: 1 / -1; }
+  .logbook-scope .lb-filter-toolbar .lb-clear-filters { grid-column: 2; grid-row: auto; }
+}

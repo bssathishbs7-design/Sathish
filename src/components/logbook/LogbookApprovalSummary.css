@@ -1,0 +1,19 @@
+.logbook-scope.is-approval .lb-approval-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); margin: 0; }
+.logbook-scope.is-approval .lb-approval-totals > div { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-4); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); min-width: 0; }
+.logbook-scope.is-approval .lb-approval-totals dt { order: 2; color: var(--text-muted); font-size: var(--fs-small, .875rem); line-height: 1.5; }
+.logbook-scope.is-approval .lb-approval-totals dd { margin: 0; min-height: var(--s-6); color: var(--text-strong); font-family: var(--f-code); font-size: calc(var(--fs-small, .875rem) * 2); line-height: 1.2; font-weight: 700; }
+.logbook-scope.is-approval .lb-approval-totals dd.is-unconfigured { font-family: var(--f-body); font-size: var(--fs-small, .875rem); line-height: 1.5; }
+.lb-approval-notices:empty { display: none; }
+.lb-approval-notices { display: grid; gap: var(--s-3); }
+.logbook-scope.is-approval .lb-approval-chain { padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-card); }
+.lb-approval-chain > header { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); flex-wrap: wrap; padding-bottom: var(--s-3); }
+.logbook-scope.is-approval .lb-signoff-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.logbook-scope.is-approval .lb-signoff-steps li { display: flex; align-items: flex-start; gap: var(--s-3); border-top: 1px solid var(--border); padding-block: var(--s-4); }
+.logbook-scope.is-approval .lb-signoff-steps li:last-child { padding-bottom: 0; }
+.lb-signoff-steps li > div { min-width: 0; overflow-wrap: anywhere; }
+.logbook-scope.is-approval .lb-signoff-steps strong { font-size: calc(var(--fs-small, .875rem) * 1.15); color: var(--text-strong); }
+.logbook-scope.is-approval .lb-signoff-steps small { display: block; margin-top: var(--s-1); color: var(--text-muted); }
+.lb-approval-step-number { display: grid; place-items: center; width: var(--s-6); height: var(--s-6); flex: 0 0 var(--s-6); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-brand); font-family: var(--f-code); font-weight: 700; }
+.is-signed > .lb-approval-step-number, .is-current > .lb-approval-step-number { background: var(--forest); color: var(--on-brand); }
+.is-returned > .lb-approval-step-number { background: var(--activity-amber-soft); color: var(--text-body); }
+@media (max-width: 767px) { .logbook-scope.is-approval .lb-approval-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); } .logbook-scope.is-approval .lb-approval-chain { padding: var(--s-4); } }

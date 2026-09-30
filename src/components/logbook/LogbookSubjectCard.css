@@ -23,3 +23,5 @@
 .lb-subject-ring { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke-width: 3; pointer-events: none; }
 .lb-subject-ring-track { stroke: var(--activity-line); }
 .lb-subject-ring-value { stroke: var(--forest); stroke-linecap: round; }
+.logbook-scope .lb-subject-tile:has(.lb-subject-approval-meta) { height: auto; min-height: var(--s-9); grid-template-rows: auto auto; }
+.logbook-scope .lb-subject-tile .lb-subject-approval-meta { color: var(--text-brand); white-space: normal; overflow-wrap: anywhere; }

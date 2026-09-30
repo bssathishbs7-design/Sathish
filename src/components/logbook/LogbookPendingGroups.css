@@ -1,0 +1,3 @@
+.logbook-scope .lb-pending-groups { display: grid; gap: var(--s-4); }
+.logbook-scope .lb-pending-groups .lb-actions { flex-wrap: wrap; }
+.logbook-scope .lb-pending-groups h3 { margin: 0; color: var(--text-strong); }

@@ -1,3 +1,4 @@
+import { subjectCategory } from '../../services/logbookSubjectGroups'
 import { BookOpen, CheckCircle2, ChevronRight, Users } from 'lucide-react'
 import { CATEGORIES } from '../../services/logbookCatalog'
 import { categoryLabel } from '../../services/logbookPresentation'
@@ -8,11 +9,11 @@ import './AdminLogbookCategories.css'
 /** Department category cards; selection opens the existing category records.
  * @param {{entries:Object[],onCategory:Function}} props
  */
-export default function AdminLogbookCategories({ entries, onCategory }) {
-  const categories = CATEGORIES.filter(category => entries.some(entry => entry.cat === category.id))
+export default function AdminLogbookCategories({ entries, onCategory, subjects = [] }) {
+  const categories = CATEGORIES.filter(category => category.id !== 'remedial' && (entries.some(entry => subjectCategory(entry) === category.id) || (!category.legacy && (!category.subjects || category.subjects.some(subject => subjects.includes(subject))))))
   if (!categories.length) return <div className="lb-card lb-empty"><BookOpen size={24} /><p>No department entries yet.</p></div>
   return <div className="admin-category-grid">{categories.map((category, index) => {
-    const rows = entries.filter(entry => entry.cat === category.id)
+    const rows = entries.filter(entry => subjectCategory(entry) === category.id)
     const students = new Set(rows.map(entry => entry.studentId || 'MC2568')).size
     const pending = rows.filter(entry => entry.status === 'Pending').length
     const CategoryIcon = CATEGORY_ICONS[category.id] || BookOpen

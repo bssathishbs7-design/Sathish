@@ -346,3 +346,51 @@
 - 2026-09-24: Enabled Correlation Rating on phone viewports; the route now opens the page instead of the desktop-only notice. Metrics and filters wrap, with horizontal scrolling for the detailed table.
 
 - 2026-09-24: Added the shared My Pages / Learn & Practice / Start practice breadcrumb and history controls to the practice session list and empty state. Active practice retains its existing guarded exit.
+
+## 2026-09-29 - Approved Logbook audit workflows
+
+- My Logbook subviews and filters now use App-owned browser URL/history state; section returns retain list filters and scroll. Admin Search is again directly reachable, with a mobile section selector and actionable parent breadcrumbs.
+- Ready and returned subject approvals appear in student Needs action; assignment tasks appear once, with deadlines. Skill remediation links resume an existing matching draft or create a linked attempt for the original competency.
+- Students review a submission summary before acknowledgement. Faculty review controls precede comments and have a persistent Review entry shortcut.
+- Pending-entry deletion, bulk approval, assignment cancellation and final sign-off use persistent contextual confirmations. Existing deletion semantics and discretionary faculty readiness are retained as approved.
+- Evidence thumbnails open an accessible inspection dialog; long record lists progressively reveal further results.
+
+## 2026-09-29 - Approved prototype comparison workflows
+
+- Completed subject logbooks are sealed; submitted final-approval logbooks block entry changes and assignments until returned. Assignment batches skip these learners and report actual recipient counts. Notes and comments remain separate from the sealed record body.
+- Pending corrections retain their subject/category. The legacy learner faculty route now opens learner Pending search without review controls.
+- Changed valid drafts and assigned tasks auto-save on close. Invalid or locked changes offer a discard/continue choice. An optional initial comment is posted once upon submission.
+- Faculty can read learner notes. Unlinked Returned entries may be explicitly deleted; records with remedial links retain their history.
+- Approval-chain configuration belongs to subject departments. New default chains use a subject HoD; submitted chains retain their snapshot. Returned approvals resume through learner resubmission rather than being marked ready again.
+- Pending search supports faculty/subject grouping; progress signals and subject cards lead into the existing entry and approval journeys.
+- Incompatible HTML prototype storage offers a separate app Logbook without altering the prototype data.
+
+## 2026-09-29 - End-to-end approval recheck
+
+- Sealed/in-review work no longer appears as actionable learner work or faculty review selections. Direct learner edit/remedial actions enforce the same lock.
+- Faculty Ready details display the planned approval chain. Returned rounds retain their historical chain while resubmission displays the current chain.
+- Confirmation captures the approval round/step and submission chain. Changed context requires a fresh confirmation; learner submission requires the owning learner identity.
+- When a remedial is returned again, follow-up continues from that latest returned attempt. Previous records link forward to existing attempts; creating another branch from the earlier parent is prevented. Existing historical records remain intact.
+
+## 2026-09-29 - Direct Admin Logbook account switching
+
+- Added the missing Viewing as selector below the existing header, available throughout Admin Logbook. Faculty, subject HoD, Dean and Director previews share App-owned identity and persistence with the profile account drawer.
+- Switching refreshes the account's queue, review permissions and approval views without a reload. Compatible sections stay open; switching to an office account from a department-only section returns to Overview.
+- Verified 11 browser assertions covering switching, persisted selection, role navigation and overflow at 1440, 768 and 390 pixels. Production build and component/page lint passed; App.jsx retains three pre-existing effect-related lint errors outside this change.
+
+### 2026-09-30 ? Admin subject browsing
+- Restored subject category navigation with filtered counts, category activity cards and one expanded activity at a time.
+- Certifiable activities include remedial attempts; each student attempt opens the existing permission-controlled entry drawer.
+- Added faculty subject summaries and aligned logged student counts. Existing review and sign-off permissions remain in force.
+
+### 2026-09-30 - Sign-off handoff continuity
+- Review links carry exact student ID and subject with a return-to-approval action; subject browsing links to readiness and approval details.
+- Sign-offs use URL-backed status, student and subject filters; dashboard metrics select the corresponding queue. Selected approval details persist when decisions move records between queues.
+- Learner approval tasks open details directly, with next-action summaries on subject pages. Shared prerequisites and inline return-feedback validation explain blockers before confirmation.
+- Existing approval permissions, chain snapshots and office pre-submission visibility are preserved.
+
+### 2026-09-30 - All-tab parity fixes
+- Dashboard and full search share notes, feedback and registration matching; certifiable category navigation consistently includes legacy remedial records.
+- Student assignment keeps the selected subject; skill-to-student links retain subject/competency with a return action.
+- History filters persist in the route, and metric links clear incompatible filters. Entry review validates missing grading/feedback before mutation.
+- Submitted sign-offs with unexpected pending work expose a blocking warning while retaining return/review actions.

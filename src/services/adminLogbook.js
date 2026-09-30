@@ -1,3 +1,4 @@
+import { signoffEligibility, assertSubjectWritable, subjectWriteBlock, assertLogbookText, signoffVersion } from './logbookPolicy.js'
 import { applyDeltas, commit, readDeltas, today } from './logbook.js'
 import { CATEGORIES, SUBJECTS } from './logbookSample.js'
 
@@ -16,8 +17,9 @@ import { LEARNERS, REVIEWERS, actorName, isGraded, belongsTo, actionable } from 
 import { getLogbookGroups } from './logbookSchemas.js'
 export const DEFAULT_CHAIN = ['HOD', 'DEAN', 'DIRECTOR']
 const timestamp = () => new Date().toISOString()
-const workflow = deltas => ({ chain: DEFAULT_CHAIN, chains: {}, signoffs: {}, ...deltas.workflow })
-export const chainFor = (state, subject) => state.chains?.[subject] || state.chain || DEFAULT_CHAIN
+export const defaultChain = subject => [`HOD-${SUBJECTS.find(item => item.name === subject)?.code}`, 'DEAN', 'DIRECTOR']
+const workflow = deltas => ({ chains: {}, signoffs: {}, ...deltas.workflow })
+export const chainFor = (state, subject) => state.chains?.[subject] || state.chain || defaultChain(subject)
 const requireThat = (condition, message) => { if (!condition) throw new Error(message) }
 const audit = (entry, actor, action, remarks) => [...(entry.audit || []), { actor: actor.id, action, remarks, at: timestamp() }]
 
@@ -29,12 +31,14 @@ export async function getLogbookWorkflow() { return workflow(readDeltas()) }
  */
 export async function reviewEntries(ids, actor, decision) {
   const deltas = readDeltas(), entries = applyDeltas(deltas)
+  assertLogbookText(decision.remarks, 'Feedback')
   requireThat(ids.length > 0, 'Select at least one entry.')
   requireThat(['Approved', 'Returned'].includes(decision.status), 'Choose a decision.')
   requireThat(decision.status !== 'Returned' || decision.remarks?.trim(), 'Add feedback before returning an entry.')
   for (const id of ids) {
     const entry = entries.find(item => item.id === id)
     requireThat(entry && actionable(entry, actor), 'This entry is no longer assigned to you for review.')
+    assertSubjectWritable(deltas, entry.studentId || 'MC2568', entry.subject)
     requireThat(ids.length === 1 || !isGraded(entry), 'Review certifiable skills individually.')
     if (isGraded(entry)) {
       requireThat(['F', 'R', 'Re'].includes(decision.attempt) && ['M', 'B', 'E'].includes(decision.rating), 'Select an attempt and rating.')
@@ -48,13 +52,15 @@ export async function reviewEntries(ids, actor, decision) {
 export async function reassignEntry(id, actor, faculty) {
   const deltas = readDeltas(), entry = applyDeltas(deltas).find(item => item.id === id)
   requireThat(entry && actionable(entry, actor), 'Only your pending entries can be reassigned.')
+  assertSubjectWritable(deltas, entry.studentId || 'MC2568', entry.subject)
   requireThat(faculty !== actor.id && REVIEWERS.some(person => person.id === faculty && person.departments.includes(entry.subject)), 'Choose another faculty member from this department.')
   deltas.edits[id] = { ...deltas.edits[id], faculty, audit: audit(entry, actor, 'Reassigned', actorName(faculty)) }
   return commit(deltas)
 }
 /** Assignment shape: {by, due, instructions, assignedAt}; student completes schema fields. */
-export const assignmentFields = (cat, subject) => (getLogbookGroups(cat, subject)[0]?.fields || []).filter(field => ['competency', 'moduleNo', 'topic', 'activity', 'numReq', 'depts', 'recordType', 'sessionType', 'exerciseType', 'activityType', 'exerciseNo', 'specimenNo', 'place', 'village', 'day', 'station', 'week', 'diagnosis', 'provDx'].includes(field.key))
+export const assignmentFields = (cat, subject) => (getLogbookGroups(cat, subject)[0]?.fields || []).filter(field => ['competency', 'moduleNo', 'topic', 'activity', 'depts', 'recordType', 'sessionType', 'exerciseType', 'activityType', 'exerciseNo', 'specimenNo', 'place', 'village', 'day', 'station', 'week', 'diagnosis', 'provDx'].includes(field.key))
 export async function assignEntries(actor, { studentId, subject, cat, due = '', instructions = '', values = {} }) {
+  assertLogbookText(instructions, 'Instructions')
   requireThat(actor.departments.includes(subject), 'Choose your department subject.')
   requireThat(CATEGORIES.some(category => category.id === cat) && SUBJECTS.find(item => item.name === subject)?.categories.includes(cat), 'Choose a category for this subject.')
   requireThat(!due || (/^\d{4}-\d{2}-\d{2}$/.test(due) && !Number.isNaN(Date.parse(due)) && new Date(due).toISOString().slice(0, 10) === due && due >= today()), 'Choose a valid due date from today onwards.')
@@ -69,43 +75,56 @@ export async function assignEntries(actor, { studentId, subject, cat, due = '', 
   const students = studentId === 'all' ? LEARNERS : LEARNERS.filter(person => person.id === studentId)
   requireThat(students.length, 'Choose a student.')
   const deltas = readDeltas()
-  students.forEach(person => deltas.added.unshift({ id: crypto.randomUUID(), studentId: person.id, subject, cat, faculty: actor.id, status: 'To do', date: today(), values: taskValues, extra: {}, assignment: { by: actor.id, due, instructions: instructions.trim(), locked: Object.keys(taskValues), assignedAt: timestamp() } }))
-  return commit(deltas)
+  const eligible = students.filter(person => !subjectWriteBlock(deltas, person.id, subject))
+  requireThat(eligible.length, 'No eligible recipients. These subject logbooks are signed off or awaiting final approval.')
+  eligible.forEach(person => deltas.added.unshift({ id: crypto.randomUUID(), studentId: person.id, subject, cat, faculty: actor.id, status: 'To do', date: today(), values: taskValues, extra: {}, assignment: { by: actor.id, due, instructions: instructions.trim(), locked: Object.keys(taskValues), assignedAt: timestamp() } }))
+  const entries = commit(deltas)
+  return { entries, assigned: eligible.length, skipped: students.length - eligible.length }
 }
 export async function cancelAssignment(id, actor) {
   const deltas = readDeltas(), entry = applyDeltas(deltas).find(item => item.id === id)
   requireThat(entry?.status === 'To do' && entry.assignment?.by === actor.id, 'Only your unsubmitted assignments can be cancelled.')
+  assertSubjectWritable(deltas, entry.studentId || 'MC2568', entry.subject)
   deltas.removed.push(id); return commit(deltas)
 }
 export async function saveApprovalChain(chain, subject, actor) {
   requireThat(chain.length && new Set(chain).size === chain.length && chain.every(id => REVIEWERS.some(person => person.id === id)), 'Choose at least one approver without duplicates.')
-  requireThat(!subject || actor?.departments.includes(subject) || ['Dean', 'Director'].includes(actor?.role), 'Only authorised faculty can configure this subject chain.')
+  requireThat(subject && actor?.departments.includes(subject), 'Only this subject department can configure its approval chain.')
   const deltas = readDeltas(), state = workflow(deltas)
   deltas.workflow = subject ? { ...state, chains: { ...state.chains, [subject]: chain } } : { ...state, chain }
   return commit(deltas)
 }
 /** Sign-off is separate from individual decisions; submitted chains are immutable snapshots.
- * @param {{studentId:string,subject:string,action:'ready'|'submit'|'approve'|'return',actor?:Object,remarks?:string}} request
+ * @param {{studentId:string,subject:string,action:'ready'|'submit'|'approve'|'return',actor?:Object,learnerId?:string,remarks?:string,expectedVersion?:string,expectedChain?:string[]}} request
+ * learnerId is required for learner submission; UI confirmations send expectedVersion,
+ * plus expectedChain for submission, to reject decisions based on stale review context.
  */
-export async function changeSignoff({ studentId, subject, action, actor, remarks = '', learnerId }) {
+export async function changeSignoff({ studentId, subject, action, actor, remarks = '', learnerId, expectedVersion, expectedChain }) {
   const deltas = readDeltas(), state = workflow(deltas), key = `${studentId}:${subject}`
   const previous = state.signoffs[key] || { studentId, subject, status: 'Not ready', history: [] }
+  requireThat(expectedVersion === undefined || expectedVersion === signoffVersion(previous), 'This approval changed after you opened the confirmation. Review the latest status before continuing.')
   const entries = applyDeltas(deltas).filter(entry => belongsTo(entry, studentId) && entry.subject === subject)
   requireThat(LEARNERS.some(person => person.id === studentId) && SUBJECTS.some(item => item.name === subject), 'Choose a valid student and subject.')
+  assertLogbookText(remarks, 'Sign-off feedback')
   let patch
   if (action === 'ready') {
     requireThat(actor?.departments.includes(subject), 'Only department faculty can mark this logbook ready.')
-    requireThat(['Not ready', 'Returned'].includes(previous.status), 'This logbook has already progressed.')
-    requireThat(entries.some(entry => entry.status === 'Approved') && !entries.some(entry => ['Pending', 'To do'].includes(entry.status)), 'Clear pending reviews and assignments, and verify at least one entry first.')
-    patch = { status: 'Ready' }
+    requireThat(previous.status === 'Not ready', 'This logbook has already progressed.')
+    requireThat(signoffEligibility(entries).allowed, signoffEligibility(entries).reason)
+    patch = { status: 'Ready', readyBy: actor.id, readyAt: timestamp() }
   } else if (action === 'submit') {
-    requireThat(!learnerId || learnerId === studentId, 'Only the owner can submit this logbook.')
+    requireThat(learnerId === studentId && !actor, 'Only the owner can submit this logbook.')
+    requireThat(expectedChain === undefined || JSON.stringify(expectedChain) === JSON.stringify(chainFor(state, subject)), 'The approval chain changed. Review the new approvers before submitting.')
     requireThat(['Ready', 'Returned'].includes(previous.status), 'Faculty must mark the logbook ready first.')
-    requireThat(entries.some(entry => entry.status === 'Approved') && !entries.some(entry => ['Pending', 'To do'].includes(entry.status)), 'Complete pending entries and assignments first.')
-    patch = { status: 'Submitted', submittedAt: timestamp(), chain: [...chainFor(state, subject)], step: 0 }
+    requireThat(signoffEligibility(entries).allowed, signoffEligibility(entries).reason)
+    patch = { status: 'Submitted', submittedAt: timestamp(), chain: [...chainFor(state, subject)], step: 0, remarks: '', recordRevisions: entries.filter(entry => !['Draft', 'To do'].includes(entry.status)).map(entry => ({ id: entry.id, updatedAt: entry.updatedAt || '', verifiedAt: entry.verifiedAt || '' })) }
   } else {
     requireThat(previous.status === 'Submitted' && previous.chain[previous.step] === actor?.id, 'This logbook is not awaiting your signature.')
     requireThat(['approve', 'return'].includes(action), 'Choose a sign-off decision.')
+    if (action === 'approve') {
+      requireThat(!entries.some(entry => ['Pending', 'To do'].includes(entry.status)), 'New pending work was found. Return the logbook before continuing.')
+      if (previous.recordRevisions) requireThat(JSON.stringify(previous.recordRevisions) === JSON.stringify(entries.filter(entry => !['Draft', 'To do'].includes(entry.status)).map(entry => ({ id: entry.id, updatedAt: entry.updatedAt || '', verifiedAt: entry.verifiedAt || '' }))), 'The submitted record set changed. Return the logbook for a fresh submission.')
+    }
     requireThat(action !== 'return' || remarks.trim(), 'Give a reason for returning the logbook.')
     patch = action === 'return' ? { status: 'Returned', remarks } : previous.step + 1 === previous.chain.length ? { status: 'Completed', completedAt: timestamp() } : { step: previous.step + 1 }
   }

@@ -1,7 +1,7 @@
 import './PreviewQuestionActions.css'
 import BlueprintSelectionProgress from '../components/BlueprintSelectionProgress'
 import BlueprintCompletionToast from '../components/BlueprintCompletionToast'
-import './BlueprintDisableDialog.css'
+import './BlueprintConfirmationDialog.css'
 import { buildBlueprintPickerRows, getBlueprintPickerProgress, matchesBlueprintPickerRow, orderBlueprintRequirements } from '../utils/blueprintPicker'
 import { getLaqSplitBreakdowns } from '../utils/blueprintLaqBreakdown'
 import './BlueprintLaqLayout.css'
@@ -6953,7 +6953,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       {isBlueprintSaveConfirmOpen ? (
         <div className="create-assessment-blueprint-reset-backdrop" role="presentation">
           <section
-            className="create-assessment-blueprint-reset-modal is-save-blueprint"
+            className="create-assessment-blueprint-reset-modal is-save-blueprint qb-sort-scope"
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="create-assessment-blueprint-save-title"

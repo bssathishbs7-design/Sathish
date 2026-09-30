@@ -1,6 +1,6 @@
+import { subjectWriteBlock } from '../../services/logbookPolicy'
 import { StudentSubjectApproval } from './LogbookSignoff'
 import { awaitingRemedial } from '../../services/logbookPeople'
-import { useState } from 'react'
 import { Activity, Bone, BookOpen, FlaskConical, Microscope, Search, Stethoscope } from 'lucide-react'
 import { CATEGORIES } from '../../services/logbookSample'
 import { subjectLabel } from '../../services/logbookCatalog'
@@ -15,10 +15,13 @@ const SUBJECT_ICONS = { AN: Bone, PY: Activity, BI: FlaskConical, PA: Microscope
 /** Subject workspace with category-grouped entries and responsive navigation.
  * @param {{subject:Object,entries:Object[],onOpen:Function,onNew:Function}} props
  */
-export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew, studentId, theme, onChanged }) {
+export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew, onRemedial, studentId, workflow, theme, onChanged, view = {}, onFilter }) {
+  const writeBlock = subjectWriteBlock(workflow, studentId, subject.name)
   const SubjectIcon = SUBJECT_ICONS[subject.code] || (subject.phase === 'Phase III' ? Stethoscope : BookOpen)
-  const [selectedCategory, setSelection] = useState('all')
-  const [query, setQuery] = useState('')
+  const selectedCategory = view.category || 'all'
+  const query = view.query || ''
+  const setSelection = category => onFilter({ category })
+  const setQuery = query => onFilter({ query })
   const subjectEntries = entries.filter(entry => entry.subject === subject.name)
   const skills = skillProgress(entries, subject)
   const progress = subjectProgress(entries, subject)
@@ -27,7 +30,7 @@ export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew, 
     { id: 'all', name: 'All entries', count: subjectEntries.length },
     { id: 'drafts', name: 'Drafts', count: subjectEntries.filter(entry => entry.status === 'Draft').length },
     ...categories.map(item => ({ ...item, count: subjectEntries.filter(entry => entry.cat === item.id).length })),
-  ].filter(item => item.id === 'all' || item.count > 0)
+  ]
   const selection = options.some(item => item.id === selectedCategory) ? selectedCategory : 'all'
   const results = searchEntries(subjectEntries.filter(entry => selection === 'all' || (selection === 'drafts' ? entry.status === 'Draft' : entry.cat === selection)), query)
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
@@ -40,7 +43,7 @@ export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew, 
       <div className="lb-detail-title"><div className="lb-detail-subject-copy"><div><h2>{subjectLabel(subject.name)}</h2><span>{subject.phase} / {subject.subtitle}</span></div><small>{progress.required ? <><strong>{progress.approved}/{progress.required}</strong> attempts approved</> : 'Requirements not configured'}</small></div>{progress.required > 0 && <span className="lb-detail-percent" aria-label={`${progress.percent}% of required attempts approved`}>{progress.percent}%</span>}</div>
       <label className="lb-search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search subject entries" placeholder="Search entries" value={query} onChange={event => setQuery(event.target.value)} /></label>
     </header>
-    <StudentSubjectApproval subject={subject.name} studentId={studentId} entries={entries} theme={theme} onChanged={onChanged} />
+    {writeBlock && <p className="lb-alert" role="status">{writeBlock}</p>}<StudentSubjectApproval open={view.approval === 'open'} onOpenChange={open => onFilter({ approval: open ? 'open' : '' })} subject={subject.name} studentId={studentId} entries={entries} theme={theme} onChanged={onChanged} />
     <div className="lb-detail-columns">
       <LogbookCategoryMenu options={options} value={selection} onChange={setSelection} />
       <div className="lb-detail-groups" aria-live="polite">
@@ -48,19 +51,19 @@ export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew, 
           <header className="lb-detail-category-heading"><span className="lb-detail-category-icon"><CategoryIcon size={16} aria-hidden="true" /></span><div><h3>{group.name}</h3><p>{group.showSkills && <><span>{visibleSkills.length}</span> {visibleSkills.length === 1 ? 'skill' : 'skills'} / </>}<span>{group.entries.length}</span> {group.entries.length === 1 ? 'entry' : 'entries'}</p></div></header>
           {group.showSkills && <div className="lb-detail-certification">
       <div className="lb-detail-skills">{visibleSkills.map(skill => {
-        const remedial = skill.attempts.some(entry => awaitingRemedial(entry, entries))
-        const status = skill.complete ? 'Certified' : remedial ? 'Remedial due' : skill.attempts.some(entry => entry.status !== 'Draft') ? 'In progress' : 'Not started'
+        const remedial = skill.attempts.find(entry => awaitingRemedial(entry, entries))
+        const status = remedial ? 'Remedial due' : !skill.required ? 'Target not configured' : skill.complete ? 'Certified' : skill.attempts.some(entry => entry.status !== 'Draft') ? 'In progress' : 'Not started'
         return <div className="lb-detail-skill" key={skill.code}>
           <span className="lb-detail-skill-icon"><BookOpen size={18} aria-hidden="true" /></span><div className="lb-detail-skill-name"><strong>{skill.name}</strong><span className="lb-code">{skill.code}</span></div>
-          <span className="lb-detail-attempts"><strong>{skill.approved}/{skill.required}</strong><small>Approved / required</small></span>
+          <span className="lb-detail-attempts"><strong>{skill.approved}/{skill.required || '—'}</strong><small>{skill.required ? 'Approved / required' : 'Target not configured'}</small></span>
           <span className={`lb-status ${'is-' + status.toLowerCase().replaceAll(' ', '-')}`}>{status}</span>
-          <button type="button" className="lb-btn" aria-label={`Log attempt for ${skill.code}`} onClick={() => onNew(subject.name, 'cert', skill)}>Log attempt</button>
+          <button type="button" className="lb-btn" disabled={Boolean(writeBlock)} aria-label={`${remedial ? 'Continue remedial' : 'Log attempt'} for ${skill.code}`} onClick={() => remedial ? onRemedial(remedial) : onNew(subject.name, 'cert', skill)}>{remedial ? 'Continue remedial' : 'Log attempt'}</button>
         </div>
       })}</div>
           </div>}
           {group.entries.length > 0 && <EntryList entries={group.entries} onOpen={onOpen} />}
         </section> })}
-        {!groups.length && <section className="lb-detail-panel lb-empty"><BookOpen size={24} aria-hidden="true" /><p>{query ? 'No matching entries or skills.' : 'No entries in this category yet.'}</p>{query && <button type="button" className="lb-btn" onClick={() => setQuery('')}>Clear search</button>}</section>}
+        {!groups.length && <section className="lb-detail-panel lb-empty"><BookOpen size={24} aria-hidden="true" /><p>{query ? 'No matching entries or skills.' : 'No entries in this category yet.'}</p>{!query && <button type="button" className="lb-btn" disabled={Boolean(writeBlock)} onClick={() => onNew(subject.name, selection === 'all' || selection === 'drafts' ? '' : selection)}>Create entry</button>}{query && <button type="button" className="lb-btn" onClick={() => setQuery('')}>Clear search</button>}</section>}
       </div>
     </div>
   </div>

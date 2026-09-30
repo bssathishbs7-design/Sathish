@@ -48,7 +48,6 @@
 .lb-search { display: flex; align-items: center; gap: var(--s-3); flex: 1; min-width: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text-muted); background: var(--surface-card); }
 .lb-search input { width: 100%; min-width: 0; background: transparent; border: 0; color: var(--text-body); }
 
-.lb-toast { position: fixed; bottom: var(--s-5); left: 50%; transform: translateX(-50%); z-index: 1200; max-width: calc(100% - var(--s-6)); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); color: var(--text-strong); box-shadow: var(--shadow-lg); padding: var(--s-4) var(--s-5); }
 .lb-spin { animation: lb-spin var(--dur-reveal) linear infinite; }
 @keyframes lb-spin { to { transform: rotate(360deg); } }
 .lb-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -84,33 +83,6 @@ dialog.logbook-scope.lb-drawer {
   transition: transform var(--dur-control) var(--ease-spring), box-shadow var(--dur-control) var(--ease-standard);
 }
 .lb-page .lb-create-card > * { position: relative; z-index: 1; }
-.lb-page .lb-create-card::before {
-  content: ''; position: absolute; inset: -50%; pointer-events: none;
-  background: radial-gradient(ellipse at 75% 35%, color-mix(in srgb, var(--mint) 24%, transparent), transparent 48%);
-  animation: lb-card-glow calc(var(--dur-reveal) * 4) var(--ease-emphasized) both;
-}
-.lb-page .lb-create-card::after {
-  content: ''; position: absolute; inset: -30% -60%; pointer-events: none;
-  background: linear-gradient(110deg, transparent 42%, color-mix(in srgb, var(--mint) 16%, transparent) 50%, transparent 58%);
-  transform: translateX(-65%); opacity: 0;
-  transition: transform var(--dur-reveal) var(--ease-emphasized), opacity var(--dur-control) var(--ease-standard);
-}
-@media (hover: hover) {
-  .lb-page .lb-create-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-  .lb-page .lb-create-card:hover::after { transform: translateX(65%); opacity: 1; }
-}
-.lb-page .lb-create-card:focus-within { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-.lb-page .lb-create-card:focus-within::after { transform: translateX(65%); opacity: 1; }
-.lb-page .lb-create-card:active { transform: translateY(1px); transition: none; }
-@keyframes lb-card-glow {
-  0% { transform: translate(-12%, 8%) scale(.9); opacity: 0; }
-  40% { opacity: 1; }
-  100% { transform: translate(12%, -8%) scale(1.1); opacity: .55; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .lb-page .lb-create-card:is(:hover, :focus-within, :active) { transform: none; }
-  .lb-page .lb-create-card::before, .lb-page .lb-create-card::after { display: none; }
-}
 .lb-page .lb-create-card .my-skills-live-card-body { min-height: auto; }
 .lb-page .lb-create-card .my-skills-live-card-body p { margin: 0; color: var(--on-dark-muted); }
 .lb-page .lb-create-card .lb-new-entry-btn {

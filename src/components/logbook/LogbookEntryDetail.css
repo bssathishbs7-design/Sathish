@@ -9,7 +9,3 @@
 .lb-comment small { display: block; color: var(--text-muted); margin-top: var(--s-1); }
 .lb-comment p { margin-bottom: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .lb-comment-avatar { flex: 0 0 var(--s-6); height: var(--s-6); display: grid; place-items: center; background: var(--surface-soft); border-radius: var(--r-pill); color: var(--text-strong); }
-.lb-photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
-.lb-photo-grid figure { margin: 0; }
-.lb-photo-grid img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: var(--r-sm); background: var(--surface-mist); }
-.lb-photo-grid figcaption { font-size: var(--fs-micro); overflow-wrap: anywhere; }

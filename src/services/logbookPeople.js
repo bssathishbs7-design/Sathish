@@ -13,17 +13,21 @@ export const REVIEWERS = [
   { id: 'AS', name: 'Dr A. Sharma', departments: ['Physiology', 'Pathology'], role: 'Faculty' },
   { id: 'PK', name: 'Dr P. Kumar', departments: ['Community Medicine', 'General Medicine'], role: 'Faculty' },
   ...SUBJECTS.filter(subject => !assignedSubjects.includes(subject.name)).map(subject => ({ id: `FAC-${subject.code}`, name: `${subject.label} faculty`, departments: [subject.name], role: 'Faculty' })),
-  { id: 'HOD', name: 'Head of department', departments: SUBJECTS.map(subject => subject.name), role: 'HoD' },
+  { id: 'HOD', name: 'Previous head of department', departments: [], role: 'HoD' },
+  ...SUBJECTS.map(subject => ({ id: `HOD-${subject.code}`, name: `${subject.label} head of department`, departments: [subject.name], role: 'HoD' })),
   { id: 'DEAN', name: 'Dean', departments: [], role: 'Dean' },
   { id: 'DIRECTOR', name: 'Director', departments: [], role: 'Director' },
 ]
 export const belongsTo = (entry, studentId) => (entry.studentId || 'MC2568') === studentId
 export const learnerName = id => LEARNERS.find(person => person.id === (id || 'MC2568'))?.name || id
+export const learnerRegisterId = id => LEARNERS.find(person => person.id === (id || 'MC2568'))?.registerId || id || 'MC2568'
 export const actorName = id => REVIEWERS.find(person => person.id === id)?.name || learnerName(id) || id
 export const isGraded = entry => ['cert', 'remedial'].includes(entry.cat)
 export const visibleTo = entry => entry.status !== 'Draft'
 export const actionable = (entry, actor) => Boolean(actor && visibleTo(entry) && entry.status === 'Pending' && entry.faculty === actor.id && actor.departments.includes(entry.subject))
 export const eligibleReviewers = subject => REVIEWERS.filter(person => person.departments.includes(subject))
-export const awaitingRemedial = (entry, entries) => entry.status === 'Returned' && !entries.some(child => child.linkedTo === entry.id && ['Pending', 'Approved'].includes(child.status))
+/** A remedial resolves only its owner's original subject, category and competency. */
+export const matchesRemedial = (parent, child) => child.linkedTo === parent.id && belongsTo(child, parent.studentId || 'MC2568') && child.subject === parent.subject && child.cat === parent.cat && (child.values.competency || child.values.activity) === (parent.values.competency || parent.values.activity)
+export const awaitingRemedial = (entry, entries) => entry.status === 'Returned' && !entries.some(child => matchesRemedial(entry, child) && child.status !== 'Draft')
 export const waitingDays = entry => Math.max(0, Math.floor((Date.now() - Date.parse(entry.submittedAt || `${entry.date}T00:00:00`)) / 86400000))
 export const overdueEntry = entry => entry.status === 'Pending' && waitingDays(entry) > 7

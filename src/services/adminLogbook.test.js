@@ -6,7 +6,7 @@ import { listLogbookEntries, readDeltas, saveLogbookEntry, STORAGE_KEY, today } 
 test('faculty review, assignments and sign-off lifecycle enforce ownership and preserve records', async () => {
   const previous = globalThis.window, data = new Map()
   globalThis.window = { localStorage: { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) }, dispatchEvent: () => {} }
-  const rm = REVIEWERS[0], as = REVIEWERS[1], pk = REVIEWERS[2], hod = REVIEWERS.find(person => person.id === 'HOD'), dean = REVIEWERS.find(person => person.id === 'DEAN'), director = REVIEWERS.find(person => person.id === 'DIRECTOR')
+  const rm = REVIEWERS[0], as = REVIEWERS[1], pk = REVIEWERS[2], hod = REVIEWERS.find(person => person.id === 'HOD-AN'), dean = REVIEWERS.find(person => person.id === 'DEAN'), director = REVIEWERS.find(person => person.id === 'DIRECTOR')
   try {
     await assert.rejects(reviewEntries(['im-2'], as, { status: 'Approved' }), /assigned/)
     await assert.rejects(reviewEntries(['im-2'], rm, { status: 'Returned' }), /feedback/)
@@ -32,21 +32,21 @@ test('faculty review, assignments and sign-off lifecycle enforce ownership and p
     await reviewEntries([task.id], rm, { status: 'Approved', attempt: 'F', rating: 'M' })
     const request = { studentId: 'MC2568', subject: 'Human Anatomy' }
     await changeSignoff({ ...request, action: 'ready', actor: rm })
-    await changeSignoff({ ...request, action: 'submit' })
-    await saveApprovalChain(['DEAN'])
+    await changeSignoff({ ...request, action: 'submit', learnerId: 'MC2568' })
+    await saveApprovalChain(['DEAN'], 'Human Anatomy', rm)
     let record = (await getLogbookWorkflow()).signoffs['MC2568:Human Anatomy']
-    assert.deepEqual(record.chain, ['HOD', 'DEAN', 'DIRECTOR'], 'In-flight chain is retained')
+    assert.deepEqual(record.chain, ['HOD-AN', 'DEAN', 'DIRECTOR'], 'In-flight chain is retained')
     await assert.rejects(changeSignoff({ ...request, action: 'approve', actor: dean }), /signature/)
     await assert.rejects(changeSignoff({ ...request, action: 'return', actor: hod }), /reason/)
     await changeSignoff({ ...request, action: 'approve', actor: hod })
     await changeSignoff({ ...request, action: 'approve', actor: dean })
     await changeSignoff({ ...request, action: 'return', actor: director, remarks: 'Clarify reflection.' })
-    await changeSignoff({ ...request, action: 'submit' })
+    await changeSignoff({ ...request, action: 'submit', learnerId: 'MC2568' })
     await changeSignoff({ ...request, action: 'approve', actor: dean })
     record = (await getLogbookWorkflow()).signoffs['MC2568:Human Anatomy']
     assert.equal(record.status, 'Completed'); assert.equal(record.history.length, 7)
     await assignEntries(rm, { ...assignment, studentId: 'all' })
-    assert.equal((await listLogbookEntries()).filter(entry => entry.status === 'To do').length, 3)
+    assert.equal((await listLogbookEntries()).filter(entry => entry.status === 'To do').length, 2)
     await assert.rejects(assignEntries(rm, { ...assignment, due: '2026-02-30' }), /valid due/)
     await assert.rejects(saveApprovalChain([]), /at least one/)
     assert.ok(readDeltas().workflow); assert.ok(data.has(STORAGE_KEY))

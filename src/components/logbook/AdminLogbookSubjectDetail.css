@@ -1,0 +1,19 @@
+.admin-subject-detail { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr); gap: var(--s-4); align-items: start; }
+.admin-subject-detail .lb-category-sidebar { grid-column: 1; grid-row: 1; }
+.admin-subject-detail .lb-category-sidebar button { height: auto; min-height: calc(var(--s-6) + var(--s-3)); padding: var(--s-2); }
+.admin-subject-detail .lb-category-sidebar button > span { white-space: normal; font-size: var(--fs-small); }
+.admin-subject-content { display: grid; gap: var(--s-4); min-width: 0; }
+.lb-page .admin-subject-group { padding: 0; overflow: hidden; }
+.admin-subject-group > header { display: flex; gap: var(--s-3); align-items: center; padding: var(--s-4); }
+.admin-subject-category-icon { display: grid; place-items: center; width: calc(var(--s-6) + var(--s-3)); height: calc(var(--s-6) + var(--s-3)); flex-shrink: 0; background: var(--surface-soft); color: var(--text-brand); border-radius: var(--r-sm); }
+.admin-subject-group h3, .admin-subject-group p { margin: 0; }
+.admin-subject-activity { border-top: 1px solid var(--activity-line); }
+.admin-subject-activity-toggle { width: 100%; display: flex; gap: var(--s-3); align-items: center; padding: var(--s-4); text-align: left; border: 0; border-radius: 0; background: transparent; color: var(--text-strong); font: inherit; cursor: pointer; }
+.admin-subject-activity-toggle > span:first-child { display: grid; gap: var(--s-1); flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.admin-subject-activity-toggle > svg { flex-shrink: 0; }
+.admin-subject-activity-toggle[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.admin-subject-activity-toggle:hover { background: var(--surface-soft); }
+.admin-subject-activity-toggle:active { transform: translateY(1px); }
+.admin-subject-attempts { padding: 0 var(--s-4) var(--s-4); }
+@media (max-width: 1023px) { .admin-subject-detail { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) { .admin-subject-activity-toggle { flex-wrap: wrap; } .admin-subject-activity-toggle > span:first-child { flex-basis: 75%; } }

@@ -1,9 +1,12 @@
+import { matchesAdminSearch } from '../../services/logbookAdminSearch'
+import { subjectCategory } from '../../services/logbookSubjectGroups'
 import LogbookCommentBadge from './LogbookCommentBadge'
 import { useRef, useState } from 'react'
+import { inLastDays } from '../../services/logbookDates'
 import { Search, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-react'
 import { entryTitle, formatDate } from '../../services/logbook'
 import { categoryLabel } from '../../services/logbookPresentation'
-import { actorName, learnerName, waitingDays } from '../../services/logbookPeople'
+import { learnerName } from '../../services/logbookPeople'
 import './AdminLogbookQuickSearch.css'
 
 /** Search only the records provided by the parent visibility policy; no additional data access.
@@ -17,12 +20,12 @@ export default function AdminLogbookQuickSearch({ entries, onOpen, onViewAll }) 
   const resultsRef = useRef(null)
   const filterCount = Object.entries(filters).filter(([key, value]) => key === 'range' ? value !== 'all' : Boolean(value)).length
   const active = Boolean(query.trim() || filterCount)
-  const matches = active ? entries.filter(entry => (!filters.status || entry.status === filters.status) && (!filters.subject || entry.subject === filters.subject) && (!filters.category || entry.cat === filters.category) && (filters.range === 'all' || waitingDays(entry) <= Number(filters.range)) && query.trim().toLowerCase().split(/\s+/).every(term => [learnerName(entry.studentId), entry.studentId || 'MC2568', entry.subject, categoryLabel(entry.cat), actorName(entry.faculty), entry.status, ...Object.values(entry.values || {}), entry.extra?.remarks, entry.extra?.facultyRemarks, ...(entry.extra?.comments || []).map(comment => comment.text)].join(' ').toLowerCase().includes(term))).sort((a, b) => (b.submittedAt || b.date).localeCompare(a.submittedAt || a.date)) : []
+  const matches = active ? entries.filter(entry => (!filters.status || entry.status === filters.status) && (!filters.subject || entry.subject === filters.subject) && (!filters.category || subjectCategory(entry) === (filters.category === 'remedial' ? 'cert' : filters.category)) && (filters.range === 'all' || inLastDays(entry.submittedAt || entry.date, Number(filters.range))) && matchesAdminSearch(entry, query)).sort((a, b) => (b.submittedAt || b.date).localeCompare(a.submittedAt || a.date)) : []
   const clear = () => { setQuery(''); setFilters({ status: '', subject: '', category: '', range: 'all' }); input.current?.focus() }
   const options = [
     ['status', 'Status', [['', 'All statuses'], ...['To do', 'Pending', 'Approved', 'Returned'].map(value => [value, value])]],
     ['subject', 'Subject', [['', 'All subjects'], ...[...new Set(entries.map(entry => entry.subject))].sort().map(value => [value, value])]],
-    ['category', 'Category', [['', 'All categories'], ...[...new Set(entries.map(entry => entry.cat))].map(value => [value, categoryLabel(value)])]],
+    ['category', 'Category', [['', 'All categories'], ...[...new Set(entries.map(subjectCategory))].map(value => [value, categoryLabel(value)])]],
     ['range', 'Date', [['all', 'Any time'], ['7', 'Last 7 days'], ['30', 'Last 30 days']]],
   ]
   const moveFocus = event => {

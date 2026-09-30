@@ -51,7 +51,7 @@ function PageNavigationHeader({
 
           return (
             <li key={`${item.label}-${index}`} className={isCurrent ? 'is-current' : ''}>
-              {item.label}
+              {item.onClick && !isCurrent ? <button type="button" className="page-navigation-parent" onClick={item.onClick}>{item.label}</button> : item.label}
             </li>
           )
         })}

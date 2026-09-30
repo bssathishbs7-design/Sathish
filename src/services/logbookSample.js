@@ -8,7 +8,7 @@ export const SAMPLE_ENTRIES = [
   ['an-2', 'Human Anatomy', 'cert', '2026-09-16', 'Approved', 'RM', { competency: 'AN1.2', activity: 'Identify anatomical landmarks', reflection: 'Repeated the demonstration with consistent identification.' }],
   ['py-1', 'Physiology', 'cert', '2026-09-17', 'Pending', 'AS', { competency: 'PY2.7', activity: 'Blood group determination', reflection: 'Practised interpreting agglutination results.' }],
   ['im-1', 'General Medicine', 'cert', '2026-09-18', 'Returned', 'RM', { competency: 'IM1.1', activity: 'Take a clinical history', reflection: 'Completed a supervised clinical history.' }],
-  ['im-2', 'General Medicine', 'ccp', '2026-09-19', 'Pending', 'RM', { topic: 'Respiratory assessment', patientId: 'DEMO-042', diagnosis: 'Respiratory case discussion', admission: '2026-09-18', reflection: 'Presented the history and examination findings.' }],
+  ['im-2', 'General Medicine', 'ccp', '2026-09-19', 'Pending', 'RM', { topic: 'Respiratory assessment', patientId: 'DEMO-042', diagnosis: 'Respiratory case discussion', ageGender: '34 / F', pa: 'P · Presented', admission: '2026-09-18', reflection: 'Presented the history and examination findings.' }],
   ['su-1', 'General Surgery', 'proc', '2026-09-20', 'Draft', '', { activity: 'Aseptic dressing technique', reflection: '' }],
   ['cm-1', 'Community Medicine', 'community', '2026-09-15', 'Approved', 'PK', { topic: 'Community health visit', village: 'Sample community', reflection: 'Documented household health needs and follow-up priorities.' }],
   ['pa-1', 'Pathology', 'cert', '2026-09-21', 'Pending', 'AS', { competency: 'PA2.1', activity: 'Peripheral blood smear examination', reflection: 'Identified the major cell types under supervision.' }],

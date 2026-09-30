@@ -1,3 +1,5 @@
+/* Keep the page width stable across short and scrollable Admin Logbook tabs. */
+html:has(.admin-logbook-page) { scrollbar-gutter: stable; }
 /* Admin views consume the same header, cards, metrics and navigation as My Logbook. */
 .admin-logbook-shell { display: grid; gap: var(--s-3); min-width: 0; }
 .admin-page-head .my-skills-overview-main { min-width: 0; }
@@ -9,7 +11,19 @@
 .admin-logbook-page .admin-logbook-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
 .admin-logbook-metrics .lb-summary-item { cursor: pointer; }
 .admin-logbook-page .admin-logbook-metrics[data-count="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.admin-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); min-width: 0; align-items: start; }
+.admin-overview-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--s-4); min-width: 0; align-items: stretch; }
+.admin-overview-grid > .lb-card:only-child { grid-column: 1 / -1; }
+.admin-logbook-page .admin-overview-grid > .lb-card { display: flex; flex-direction: column; }
+.admin-logbook-page .admin-overview-grid .lb-section-head { align-items: center; flex-wrap: nowrap; min-height: var(--s-6); }
+.admin-overview-grid .lb-section-head h2 { min-width: 0; }
+.admin-overview-grid .lb-section-head .lb-text-btn { flex-shrink: 0; white-space: nowrap; }
+.admin-overview-grid .admin-entry-list { align-content: start; }
+.admin-overview-grid .admin-entry-list:has(> .lb-empty) { flex: 1; align-content: stretch; }
+.admin-logbook-page .admin-overview-grid .lb-empty { flex: 1; min-height: var(--s-9); padding: var(--s-3); margin: 0; }
+.admin-overview-grid .admin-tile { grid-template-columns: minmax(0, 1fr) auto; }
+.admin-overview-grid .admin-tile :is(strong, small) { overflow-wrap: anywhere; }
+.admin-overview-grid .admin-tile small { grid-column: 1 / -1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-logbook-page .admin-overview-grid > .lb-card > .lb-muted { margin-top: var(--s-2); }
 .admin-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
 .admin-tile { display: grid; grid-template-columns: 1fr auto; gap: var(--s-1) var(--s-3); width: 100%; text-align: left; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r); background: var(--activity-card-fill); color: var(--text-strong); cursor: pointer; transition: border-color var(--dur-hover) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard); }
 .admin-tile strong { font-size: 13px; }

@@ -1,1 +1,14 @@
 .admin-subjects { min-width: 0; }
+
+.logbook-scope.lb-page .admin-subjects .lb-subject-tile {
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: start;
+  padding: var(--s-4);
+  row-gap: var(--s-3);
+}
+.admin-subjects .lb-subject-icon,
+.admin-subjects .lb-subject-tile-copy { align-self: start; }
+.admin-subjects .lb-subject-tile > svg { align-self: start; margin-top: var(--s-1); }
+.admin-subjects .lb-subject-tile-copy { gap: var(--s-1); }
+.admin-subjects .lb-subject-tile-copy strong { line-height: 1.5; }
+.admin-subjects .lb-subject-tile-progress { align-self: end; }

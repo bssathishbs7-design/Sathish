@@ -1,3 +1,4 @@
+import { subjectCategory } from '../../services/logbookSubjectGroups'
 import { BookOpen } from 'lucide-react'
 import { categoryLabel } from '../../services/logbookPresentation'
 import { CATEGORY_ICONS } from './logbookCategoryIcons'
@@ -7,8 +8,8 @@ import './AdminStudentEntryGroups.css'
  * @param {{rows:Object[],renderEntries:Function}} props
  */
 export default function AdminStudentEntryGroups({ rows, renderEntries }) {
-  return [...new Set(rows.map(entry => entry.cat))].map(category => {
-    const entries = rows.filter(entry => entry.cat === category)
+  return [...new Set(rows.map(subjectCategory))].map(category => {
+    const entries = rows.filter(entry => subjectCategory(entry) === category)
     const CategoryIcon = CATEGORY_ICONS[category] || BookOpen
     const pending = entries.filter(entry => entry.status === 'Pending').length
     return <section className="admin-student-entry-group" key={category} aria-label={categoryLabel(category)}>

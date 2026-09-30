@@ -7,7 +7,7 @@ import './AdminLogbookSubjects.css'
  * student's extra attempts cannot satisfy another student's requirements.
  * @param {{entries:Object[],onSubject:Function}} props
  */
-export default function AdminLogbookSubjects({ entries, onSubject }) {
+export default function AdminLogbookSubjects({ entries, onSubject, departments = [] }) {
   const logged = entries.filter(entry => !['Draft', 'To do'].includes(entry.status))
   const getProgress = subject => {
     const totals = LEARNERS.reduce((sum, learner) => {
@@ -16,5 +16,5 @@ export default function AdminLogbookSubjects({ entries, onSubject }) {
     }, { approved: 0, required: 0 })
     return { ...totals, percent: totals.required ? Math.round(totals.approved / totals.required * 100) : 0 }
   }
-  return <div className="admin-subjects"><LogbookSubjects entries={logged} onSubject={onSubject} getProgress={getProgress} progressDescription={'Approved attempts across ' + LEARNERS.length + ' students; requirements are counted separately for each student.'} /></div>
+  return <div className="admin-subjects"><p className="lb-alert">{departments.length ? `Your departments: ${departments.join(', ')}. Other subjects are available for read-only review.` : 'Office view: all subjects. Entry verification stays with the addressed faculty.'}</p><LogbookSubjects entries={logged} onSubject={onSubject} getProgress={getProgress} getSubjectSummary={subject => { const rows = entries.filter(entry => entry.subject === subject.name); const recorded = rows.filter(entry => !['Draft', 'To do'].includes(entry.status)); return { own: departments.includes(subject.name), students: new Set(recorded.map(entry => entry.studentId || 'MC2568')).size, pending: recorded.filter(entry => entry.status === 'Pending').length, returned: recorded.filter(entry => entry.status === 'Returned').length, todo: rows.filter(entry => entry.status === 'To do').length } }} progressDescription={'Approved attempts across ' + LEARNERS.length + ' students; requirements are counted separately for each student.'} /></div>
 }

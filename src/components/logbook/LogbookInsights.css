@@ -1,0 +1,8 @@
+.logbook-scope .lb-learning-insights { display: grid; gap: var(--s-3); }
+.logbook-scope .lb-insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+.logbook-scope .lb-insight { display: grid; gap: var(--s-1); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); text-align: left; color: var(--text-body); font: inherit; min-width: 0; }
+.logbook-scope button.lb-insight { cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
+.logbook-scope .lb-insight strong { color: var(--text-strong); }
+.logbook-scope button.lb-insight:hover { background: var(--surface-soft); }
+.logbook-scope button.lb-insight:active { transform: translateY(1px) scale(.97); transition: none; }
+@media (max-width: 767px) { .logbook-scope .lb-insight-grid { grid-template-columns: minmax(0, 1fr); } }

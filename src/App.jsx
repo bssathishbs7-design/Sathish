@@ -21,6 +21,7 @@ import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import StartEvaluationPage from './pages/StartEvaluationPage'
 import ExamLogPage from './pages/ExamLogPage'
 import MySkillActivityPage from './pages/MySkillActivityPage'
+import useLogbookNavigation from './services/useLogbookNavigation'
 import useAdminLogbookRoute from './services/useAdminLogbookRoute'
 import AdminLogbookPage from './pages/AdminLogbookPage'
 import LogbookAccountDrawer from './components/logbook/LogbookAccountDrawer'
@@ -453,18 +454,7 @@ function App() {
     return () => { document.removeEventListener('input', rememberEdit, true); document.removeEventListener('change', rememberEdit, true) }
   }, [])
 
-  const [logbookNavigation, setLogbookNavigation] = useState({ route: { name: 'home' }, history: [], future: [] })
-  const navigateLogbook = (route) => setLogbookNavigation((current) => (
-    JSON.stringify(current.route) === JSON.stringify(route) ? current : {
-      route, history: [...current.history, current.route].slice(-10), future: [],
-    }
-  ))
-  const goBackLogbook = () => setLogbookNavigation((current) => current.history.length ? {
-    route: current.history[current.history.length - 1], history: current.history.slice(0, -1), future: [current.route, ...current.future].slice(0, 10),
-  } : current)
-  const goForwardLogbook = () => setLogbookNavigation((current) => current.future.length ? {
-    route: current.future[0], history: [...current.history, current.route].slice(-10), future: current.future.slice(1),
-  } : current)
+  const [logbookRoute, navigateLogbook, logbookHistory] = useLogbookNavigation('/logbook', 'name', 'home')
   const [practiceAnalyticsContext, setPracticeAnalyticsContext] = useState(null)
   const [facultyAnalyticsContext, setFacultyAnalyticsContext] = useState(readFacultyAnalyticsContext)
   const [questionBankMode, setQuestionBankMode] = useState('editable')
@@ -507,13 +497,26 @@ function App() {
     ?? readStoredStartEvaluationRecord()
     ?? completedEvaluationRows.find((row) => row.activityRecord)?.activityRecord
     ?? null
-  const [adminLogbookView, navigateAdminLogbook] = useAdminLogbookRoute()
+  const [adminLogbookView, navigateAdminLogbook, adminLogbookHistory] = useAdminLogbookRoute()
   const [logbookAccounts, setLogbookAccounts] = useState(() => { try { return JSON.parse(localStorage.getItem('medsy-logbook-accounts')) || {} } catch { return {} } })
   const [logbookAccountOpen, setLogbookAccountOpen] = useState(false)
   const logbookFaculty = LOGBOOK_REVIEWERS.find(person => person.id === logbookAccounts.faculty) || LOGBOOK_REVIEWERS[0]
   const logbookStudent = LOGBOOK_LEARNERS.find(person => person.id === logbookAccounts.student) || LOGBOOK_LEARNERS[0]
   const isLogbookWorkspace = [APP_PAGES.ADMIN_LOGBOOK, APP_PAGES.LOGBOOK].includes(activePage)
   const logbookAccount = activePage === APP_PAGES.ADMIN_LOGBOOK ? logbookFaculty : logbookStudent
+  const selectLogbookAccount = (mode, id) => {
+    const accounts = mode === 'faculty' ? LOGBOOK_REVIEWERS : LOGBOOK_LEARNERS
+    const account = accounts.find(person => person.id === id)
+    if (!account) return
+    const next = { ...logbookAccounts, [mode]: id }
+    try {
+      localStorage.setItem('medsy-logbook-accounts', JSON.stringify(next))
+      setLogbookAccounts(next)
+      setLogbookAccountOpen(false)
+      if (mode === 'faculty' && !account.departments.length && !['Overview', 'Subjects', 'Sign-offs', 'Search'].includes(adminLogbookView.section)) navigateAdminLogbook({ section: 'Overview' })
+    } catch { showAlert({ tone: 'danger', message: 'Unable to save account selection.' }) }
+  }
+
   const profileUser = {
     name: 'Karthik Subramanian',
     registerId: 'MC2568',
@@ -690,7 +693,7 @@ function App() {
   }
 
   const navigateToPage = (page, options = {}) => {
-    if (page === APP_PAGES.LOGBOOK) navigateLogbook({ name: options.logbookReview ? 'faculty' : 'home' })
+    if (page === APP_PAGES.LOGBOOK) navigateLogbook({ name: options.logbookReview ? 'search' : 'home', ...(options.logbookReview ? { status: 'Pending' } : {}) })
     const { replace = false, questionBankMode: nextQuestionBankMode = 'editable' } = options
     const nextPath = PAGE_PATHS[page] ?? PAGE_PATHS[APP_PAGES.DASHBOARD]
     const historyMethod = replace ? 'replaceState' : 'pushState'
@@ -1360,12 +1363,12 @@ function App() {
           />
         ) : null}
 
-        {logbookAccountOpen && isLogbookWorkspace && <LogbookAccountDrawer theme={theme} mode={navigationMode} account={logbookAccount} onClose={() => setLogbookAccountOpen(false)} onSelect={id => { const next = { ...logbookAccounts, [navigationMode]: id }; try { localStorage.setItem('medsy-logbook-accounts', JSON.stringify(next)); setLogbookAccounts(next); setLogbookAccountOpen(false) } catch { showAlert({ tone: 'danger', message: 'Unable to save account selection.' }) } }} />}
+        {logbookAccountOpen && isLogbookWorkspace && <LogbookAccountDrawer theme={theme} mode={navigationMode} account={logbookAccount} onClose={() => setLogbookAccountOpen(false)} onSelect={id => selectLogbookAccount(navigationMode, id)} />}
         <div key={activePage} className={`vx-page-surface vx-page-dissolve ${isExamMode ? 'is-exam-surface' : ''} ${shouldShowMobileUnsupported ? 'is-mobile-unsupported-surface' : ''}`}>
           {shouldShowMobileUnsupported ? (
             <MobileUnsupportedPage />
           ) : activePage === APP_PAGES.ADMIN_LOGBOOK ? (
-            <AdminLogbookPage key={logbookFaculty.id} theme={theme} actor={logbookFaculty} view={adminLogbookView} onNavigate={navigateAdminLogbook} />
+            <AdminLogbookPage key={logbookFaculty.id} theme={theme} actor={logbookFaculty} onSelectActor={id => selectLogbookAccount('faculty', id)} view={adminLogbookView} history={adminLogbookHistory} onNavigate={navigateAdminLogbook} />
           ) : activePage === APP_PAGES.DASHBOARD ? (
             <DashboardSummaryPage
               onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}
@@ -1585,12 +1588,12 @@ function App() {
             />
           ) : activePage === APP_PAGES.LOGBOOK ? (
             <LogbookPage key={logbookStudent.id}
-              route={logbookNavigation.route}
+              route={logbookRoute}
               onNavigate={navigateLogbook}
-              onBack={goBackLogbook}
-              onForward={goForwardLogbook}
-              canForward={logbookNavigation.future.length > 0}
-              canBack={logbookNavigation.history.length > 0}
+              onBack={logbookHistory.back}
+              onForward={logbookHistory.forward}
+              canForward={logbookHistory.canForward}
+              canBack={logbookHistory.canBack}
               theme={theme}
               identity={logbookStudent}
             />

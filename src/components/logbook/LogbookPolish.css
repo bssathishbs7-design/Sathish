@@ -1,0 +1,47 @@
+/* Shared Logbook composition and controls consume the existing Medsy token palette. */
+.vx-content.logbook-scope.lb-page, dialog.logbook-scope.lb-drawer { --text-brand: var(--forest); }
+.logbook-scope.lb-page .lb-primary, .logbook-scope.lb-drawer .lb-primary {
+  background: var(--forest); color: var(--on-brand); border-color: var(--forest); border-radius: var(--r-pill);
+  animation: none; min-height: 44px;
+}
+.logbook-scope.lb-page .lb-primary:not(:disabled):hover, .logbook-scope.lb-drawer .lb-primary:not(:disabled):hover {
+  background: var(--forest-700); color: var(--on-brand); transform: none;
+}
+.logbook-scope.lb-page .lb-create-card::before, .logbook-scope.lb-page .lb-create-card::after { display: none; }
+.logbook-scope .admin-quick-search-label { color: var(--text-strong); }
+.logbook-scope :is(.lb-btn,.lb-icon-btn,.lb-action-link,.lb-text-btn) { min-height: 44px; }
+.logbook-scope :is(.lb-icon-btn) { min-width: 44px; }
+.logbook-scope :is(.lb-category-sidebar button,.lb-category-mobile select) { min-height: 44px; height: auto; padding-block: var(--s-2); }
+.logbook-scope .lb-category-sidebar button > span { white-space: normal; overflow-wrap: anywhere; }
+.logbook-scope.lb-page .lb-create-card:is(:hover,:focus-within,:active) { transform: none; }
+dialog.logbook-scope.lb-drawer { background: var(--surface); }
+.logbook-scope :is(.lb-action-row strong,.lb-action-row small,.lb-recent-name strong,.lb-recent-name small,.lb-entry-copy strong) { white-space: normal; overflow-wrap: anywhere; }
+
+.logbook-scope .page-navigation-parent { border: 0; background: transparent; color: var(--text-brand); font: inherit; cursor: pointer; min-height: 44px; padding-inline: var(--s-1); }
+.logbook-scope .lb-overview-top > :nth-child(2) { order: -1; }
+.logbook-scope .faculty-dashboard-charts { order: 4; }
+.logbook-scope .lb-overview-top { grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); }
+.logbook-scope .lb-verification-row.is-pending { --bar-colour: var(--activity-amber); }
+.logbook-scope .lb-verification-row.is-returned { --bar-colour: var(--coral); }
+.logbook-scope .faculty-chart [data-tone="violet"] { --chart-colour: var(--coral); }
+.logbook-scope .faculty-day { color: var(--text-body); background: transparent; border: 0; border-radius: var(--r-sm); padding: var(--s-1); cursor: default; }
+.logbook-scope .faculty-stage-chart:has(:focus-visible) button:not(:focus-visible), .logbook-scope .faculty-week-chart:has(:focus-visible) button:not(:focus-visible) { opacity: .6; }
+.logbook-scope :is(.lb-btn,.lb-new-entry-btn,.my-skills-filter-chip):not(:disabled):active { transform: translateY(1px) scale(.97); transition: none; }
+@media (max-width: 1023px) {
+  .logbook-scope .lb-overview-top { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 767px) {
+  .logbook-scope .lb-action-row { flex-wrap: wrap; }
+  .logbook-scope .lb-action-link { margin-left: auto; }
+  .logbook-scope .admin-filters { grid-template-columns: minmax(0,1fr); }
+  .logbook-scope .page-navigation-crumbs { flex-wrap: wrap; }
+  .logbook-scope .page-navigation-crumbs li { max-width: none; white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) { .logbook-scope *, .logbook-scope *::before, .logbook-scope *::after { animation: none !important; transition: none !important; } }
+
+/* Keep the supplied full header composition in every Logbook view. */
+.logbook-scope.lb-page .lb-page-head { grid-template-columns: minmax(0, 2.08fr) minmax(320px, 1fr); gap: var(--s-4); }
+.logbook-scope.lb-page .lb-create-card { cursor: default; }
+.logbook-scope.lb-page .lb-create-card .lb-new-entry-btn { animation: none; }
+.logbook-scope.admin-logbook-page .admin-page-head .my-skills-overview-main { grid-template-rows: auto auto 1fr; }
+@media (max-width: 1023px) { .logbook-scope.lb-page .lb-page-head { grid-template-columns: minmax(0, 1fr); } }

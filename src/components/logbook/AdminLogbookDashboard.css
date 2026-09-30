@@ -1,5 +1,5 @@
 .faculty-dashboard { display: grid; gap: var(--s-4); }
-.admin-logbook-page .faculty-dashboard .admin-logbook-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s-2); }
+.admin-logbook-page .faculty-dashboard .admin-logbook-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
 .admin-logbook-page .faculty-dashboard .lb-summary-item { padding: var(--s-3); min-width: 0; gap: var(--s-2); border-radius: var(--r); }
 .faculty-dashboard .my-skills-metric-card-copy span { font-size: 12px; }
 .faculty-dashboard-charts { display: grid; gap: var(--s-3); }
@@ -43,3 +43,5 @@
 @media (max-width: 1439px) { .admin-logbook-page .faculty-dashboard .admin-logbook-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 1023px) { .faculty-chart-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 767px) { .admin-logbook-page .faculty-dashboard .admin-logbook-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .faculty-dashboard-heading { align-items: stretch; flex-direction: column; } .faculty-dashboard-filter select { width: 100%; } .faculty-signoff-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .faculty-stage-row { grid-template-columns: 100px minmax(0, 1fr) 2ch auto; } }
+
+.admin-logbook-metrics .my-skills-metric-card-copy small { display: block; color: var(--text-muted); margin-top: var(--s-1); }
