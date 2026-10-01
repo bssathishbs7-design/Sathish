@@ -50,6 +50,49 @@ html:has(.admin-logbook-page) { scrollbar-gutter: stable; }
 .admin-date { display: grid; gap: var(--s-1); color: var(--text-muted); font-size: var(--fs-micro); }
 .admin-back { justify-self: start; }
 
+/* Subject details use compact summaries and distinct student/status/action columns. */
+.admin-logbook-page .admin-subject-summary > .admin-progress-summary { margin: 0; }
+.admin-logbook-page .admin-subject-summary > details.lb-card {
+ padding: 0;
+ border: 0;
+ border-top: 1px solid var(--border);
+ border-radius: 0;
+ background: transparent;
+ box-shadow: none;
+}
+.admin-logbook-page .admin-subject-summary > details > summary {
+ padding: var(--s-3) 0;
+ min-height: 44px;
+ box-sizing: border-box;
+ color: var(--text-strong);
+ font-weight: 600;
+ cursor: pointer;
+}
+.admin-subject-summary > details > summary:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.admin-subject-summary > details[open] > .faculty-fieldset { margin-top: var(--s-3); }
+.admin-logbook-page .admin-subject-approvals { row-gap: 0; }
+.admin-logbook-page .admin-subject-approvals > h2 { padding-bottom: var(--s-3); }
+.admin-subject-approvals > .lb-muted,
+.admin-subject-approvals > .lb-btn { margin-bottom: var(--s-3); justify-self: start; }
+.admin-subject-approval-row {
+ display: grid;
+ grid-template-columns: minmax(0, 1fr) minmax(100px, auto) 160px;
+ align-items: center;
+ gap: var(--s-4);
+ padding: var(--s-3) 0;
+ border-top: 1px solid var(--border);
+ min-width: 0;
+}
+.admin-subject-approval-student { display: grid; gap: var(--s-1); min-width: 0; overflow-wrap: anywhere; }
+.admin-subject-approval-student strong { color: var(--text-strong); font-size: 14px; font-weight: 600; }
+.admin-subject-approval-student > span { color: var(--text-muted); font-size: 13px; }
+.admin-subject-approval-row > .lb-status { justify-self: start; }
+.admin-subject-approval-row > .lb-btn { width: 100%; }
+@media (max-width: 600px) {
+ .admin-subject-approval-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3); }
+ .admin-subject-approval-row > .lb-btn { grid-column: 1 / -1; }
+}
+
 .admin-logbook-page .lb-card { min-width: 0; }
 .admin-logbook-page .lb-card h2 { font-size: 16px; letter-spacing: -.03em; margin: 0; }
 .admin-logbook-page .lb-card > h2 { margin-bottom: var(--s-3); }

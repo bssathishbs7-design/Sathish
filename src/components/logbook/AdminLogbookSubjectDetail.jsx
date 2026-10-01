@@ -21,7 +21,7 @@ export default function AdminLogbookSubjectDetail({ source, rows, category, onCa
   return <div className="admin-subject-detail">
     <LogbookCategoryMenu options={options} value={selected || 'all'} onChange={value => { setOpen(null); onCategory(value === 'all' ? '' : value) }} />
     <div className="admin-subject-content">
-      <section className="lb-card lb-stack" aria-label="Filter subject entries">{filters}<p className="lb-muted" aria-live="polite">{count(shown.length, 'entry', 'entries')}</p></section>
+      <section className="lb-card admin-subject-filters" aria-label="Filter subject entries">{filters}<p className="lb-muted" aria-live="polite">{count(shown.length, 'entry', 'entries')}</p></section>
       {!shown.length && <section className="lb-card lb-empty">{source.length ? 'No entries match these filters.' : 'No entries have been logged for this subject yet.'}</section>}
       {categories.filter(item => shown.some(entry => subjectCategory(entry) === item.id)).map(item => {
         const entries = shown.filter(entry => subjectCategory(entry) === item.id)

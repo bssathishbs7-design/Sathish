@@ -12,7 +12,7 @@ export default function AdminLogbookStudents({ students, query, show, onFilter, 
   const active = Boolean(query || show !== 'all' || sort !== 'recent')
   const clear = () => { onFilter({ query: '', show: 'all', sort: 'recent' }) }
   return <section className="admin-students" aria-label="Student logbooks">
-    <header><h2>Student logbooks</h2><p className="lb-muted">{rows.length} students / Review activity, readiness and follow-up.</p></header><div className="admin-students-toolbar lb-card">
+    <div className="admin-students-toolbar lb-card">
       <label className="lb-search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search students" placeholder="Search name or ID" value={query} onChange={event => onFilter({ query: event.target.value })} /></label>
       <label className="admin-students-control"><select aria-label="Filter students by status" title="Filter students by status" value={show} onChange={event => onFilter({ show: event.target.value })}><option value="all">All students</option><option value="pending">Awaiting review</option><option value="returned">Remedial due</option><option value="risk">Needs attention</option><option value="empty">No submissions</option></select><ChevronDown size={15} aria-hidden="true" /></label>
       <label className="admin-students-control"><select aria-label="Sort students" title="Sort students" value={sort} onChange={event => setSort(event.target.value)}><option value="recent">Recent activity</option><option value="pending">Most pending</option><option value="name">Name A-Z</option></select><ChevronDown size={15} aria-hidden="true" /></label>
