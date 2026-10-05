@@ -1,4 +1,6 @@
 .admin-logbook-page .admin-student-detail { display: grid; gap: var(--s-3); padding: var(--s-4); }
+.admin-logbook-page .admin-student-detail > .lb-alert { margin: 0; padding: var(--s-2) var(--s-3); }
+.admin-logbook-page .admin-student-detail .lb-btn { border-radius: calc(var(--r-sm) / 2); }
 .admin-student-detail-head { display: flex; align-items: center; gap: var(--s-3); }
 .admin-student-detail-head h2 { margin: 0; font-size: 18px; }
 .admin-student-detail-head small { font-size: var(--fs-micro); font-family: var(--f-code); color: var(--text-muted); }
@@ -18,15 +20,26 @@
 .admin-student-subject { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; background: var(--surface-card); }
 .admin-logbook-page .admin-student-subject > summary { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); list-style: none; cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
 .admin-student-subject > summary::-webkit-details-marker { display: none; }
-.admin-student-subject > summary > span:first-child { display: grid; gap: var(--s-1); flex: 1; min-width: 0; }
+.admin-student-subject > summary > span:first-child { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s-2) var(--s-4); flex: 1; min-width: 0; }
 .admin-student-subject summary strong { font-size: 13px; color: var(--text-strong); }
 .admin-student-subject summary small { font-size: var(--fs-micro); font-weight: 400; color: var(--text-muted); }
 .admin-student-readiness { font-size: var(--fs-micro); font-weight: 500; padding: var(--s-1) var(--s-2); background: var(--surface-soft); border-radius: var(--r-pill); color: var(--text-body); }
 .admin-student-subject summary:hover { background: var(--surface-soft); }
 .admin-student-subject summary:active { transform: translateY(1px); transition: none; }
 .admin-student-subject[open] summary > svg { transform: rotate(180deg); }
-.admin-student-subject-body { display: grid; gap: var(--s-3); padding: var(--s-3); border-top: 1px solid var(--border); }
-.admin-student-subject-body > .lb-btn { justify-self: start; }
+.admin-student-subject-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--s-3) var(--s-4); padding: var(--s-3); border-top: 1px solid var(--border); }
+.admin-readiness-context, .admin-readiness-coverage { display: grid; align-content: start; gap: var(--s-2); min-width: 0; }
+.admin-readiness-label { font-weight: 600; color: var(--text-strong); font-size: var(--fs-small, .875rem); }
+.admin-certification-summary { color: var(--text-brand); font-weight: 600; }
+.admin-student-subject-body > .lb-signoff-list { grid-column: 1 / -1; }
+.admin-logbook-page .admin-student-subject-body p { margin: 0; line-height: 1.5; }
+.admin-logbook-page .admin-student-subject-body .admin-requirements { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s-4); margin: 0; }
+.admin-logbook-page .admin-student-subject-body .admin-requirements > div { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); padding: var(--s-2) 0; min-width: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; }
+.admin-logbook-page .admin-student-subject-body .admin-requirements small { flex-shrink: 0; margin: 0; }
+.admin-student-readiness-action { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding-top: var(--s-3); border-top: 1px solid var(--border); }
+.admin-student-readiness-action > .lb-btn { flex-shrink: 0; }
+@media (max-width: 1023px) { .admin-student-subject-body { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) { .admin-student-readiness-action { align-items: stretch; flex-direction: column; } .admin-logbook-page .admin-student-subject-body .admin-requirements { grid-template-columns: minmax(0, 1fr); } }
 .admin-logbook-page .admin-student-entries { padding: var(--s-4); gap: var(--s-3); }
 .admin-student-entries .admin-filters { align-items: center; }
 .admin-student-entries .admin-filter-select { position: relative; display: flex; }

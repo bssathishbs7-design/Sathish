@@ -71,12 +71,15 @@ html:has(.admin-logbook-page) { scrollbar-gutter: stable; }
 .admin-subject-summary > details > summary:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
 .admin-subject-summary > details[open] > .faculty-fieldset { margin-top: var(--s-3); }
 .admin-logbook-page .admin-subject-approvals { row-gap: 0; }
-.admin-logbook-page .admin-subject-approvals > h2 { padding-bottom: var(--s-3); }
-.admin-subject-approvals > .lb-muted,
-.admin-subject-approvals > .lb-btn { margin-bottom: var(--s-3); justify-self: start; }
+.admin-subject-summary-head, .admin-subject-approvals-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.admin-logbook-page .admin-subject-summary { gap: var(--s-2); }
+.admin-subject-summary-head h2, .admin-subject-summary-head p, .admin-subject-approvals-head h2, .admin-subject-approvals-head p { margin: 0; }
+.admin-subject-approvals-head { padding-bottom: var(--s-3); }
+.admin-subject-approvals-head > div { display: grid; gap: var(--s-1); }
+.admin-subject-approvals-head > .lb-btn { flex-shrink: 0; }
 .admin-subject-approval-row {
  display: grid;
- grid-template-columns: minmax(0, 1fr) minmax(100px, auto) 160px;
+ grid-template-columns: minmax(0, 1fr) auto auto;
  align-items: center;
  gap: var(--s-4);
  padding: var(--s-3) 0;

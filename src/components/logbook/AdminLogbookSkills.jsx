@@ -1,3 +1,4 @@
+import LogbookSkillAttempts from './LogbookSkillAttempts'
 import { isLoggedEntry } from '../../services/logbookPolicy'
 import { useState } from 'react'
 import { Search, ChevronDown, CheckCircle2 } from 'lucide-react'
@@ -7,9 +8,9 @@ import './AdminLogbookSkills.css'
 import LogbookPagination from './LogbookPagination'
 
 /** Certification view over existing logbook records. Filters are local; callbacks retain page navigation and entry review.
- * @param {{subjects:string[],department:Object[],entries:Object[],onStudent:Function,renderEntries:Function}} props
+ * @param {{subjects:string[],department:Object[],entries:Object[],onStudent:Function,onOpenEntry:Function,busy:boolean}} props
  */
-export default function AdminLogbookSkills({ subjects, department, entries, onStudent, renderEntries, view = {}, onFilter }) {
+export default function AdminLogbookSkills({ subjects, department, entries, onStudent, onOpenEntry, busy, view = {}, onFilter }) {
   const query = view.query || '', subject = view.subject || ''
   const setQuery = query => onFilter({ query })
   const setSubject = subject => onFilter({ subject })
@@ -41,7 +42,7 @@ export default function AdminLogbookSkills({ subjects, department, entries, onSt
       </summary>
       <div className="admin-skill-people">{skill.people.map(person => <div className="admin-skill-person" key={person.id}>
         <button className="admin-skill-person-link" onClick={() => onStudent(person.id, skill.subject, skill.code)}><span><strong>{person.name}</strong><small>{learnerRegisterId(person.id)}</small></span><span><strong>{person.approved}/{skill.required || '?'}</strong><small>{!skill.required ? 'Target not configured' : person.complete ? 'Certified' : person.remedial ? 'Remedial due' : person.rows.length ? 'In progress' : 'Not started'}</small>{person.pending > 0 && <small>{person.pending} awaiting review</small>}</span></button>
-        {person.rows.length > 0 && renderEntries(person.rows)}
+        {person.rows.length > 0 && <LogbookSkillAttempts rows={person.rows} studentName={person.name} onOpen={onOpenEntry} busy={busy} />}
       </div>)}</div>
     </details>)}
     <LogbookPagination count={visible.length} limit={limit} onMore={() => setLimit(value => value + 25)} />{!visible.length && <div className="lb-card lb-empty"><p>{skills.length ? 'No skills match your search.' : 'No skills configured or logged for your departments.'}</p>{(query || subject) && <button className="lb-btn" onClick={clear}>Clear filters</button>}</div>}

@@ -44,6 +44,11 @@
   .admin-history-context > span + span { padding-left: var(--s-1); }
 }
 
-.admin-history-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: end; gap: var(--s-3); margin-block: var(--s-4); }
+.admin-history-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: end; gap: var(--s-3); margin: 0; }
+.logbook-scope .admin-history-filters .lb-field { min-width: 0; gap: var(--s-1); font-size: var(--fs-small, .875rem); }
+.admin-history-select { position: relative; display: flex; min-width: 0; }
+.admin-history-select > svg { position: absolute; top: 50%; right: var(--s-3); transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
+.logbook-scope .admin-history-filters :is(select, .lb-btn) { box-sizing: border-box; height: calc(var(--s-6) + var(--s-3)); min-height: calc(var(--s-6) + var(--s-3)); margin: 0; font-size: var(--fs-small, .875rem); }
+.logbook-scope .admin-history-filters select { appearance: none; background-image: none; width: 100%; min-width: 0; padding: 0 calc(var(--s-6) + var(--s-2)) 0 var(--s-3); text-overflow: ellipsis; cursor: pointer; }
 @media (max-width: 1023px) { .admin-history-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 767px) { .admin-history-filters { grid-template-columns: minmax(0, 1fr); } }

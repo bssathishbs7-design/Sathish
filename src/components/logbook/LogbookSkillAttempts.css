@@ -1,0 +1,9 @@
+.lb-skill-attempts { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-sm); }
+.admin-logbook-page .lb-skill-attempts table { width: 100%; border-collapse: collapse; margin: 0; font-size: var(--fs-small, .875rem); }
+.admin-logbook-page .lb-skill-attempts :is(th, td) { padding: var(--s-2) var(--s-3); text-align: left; color: var(--text-body); border: 0; border-bottom: 1px solid var(--border); }
+.admin-logbook-page .lb-skill-attempts thead th { background: var(--surface-soft); color: var(--text-muted); font-weight: 600; text-transform: none; letter-spacing: normal; }
+.admin-logbook-page .lb-skill-attempts tbody tr:last-child > * { border-bottom: 0; }
+.admin-logbook-page .lb-skill-attempts tr > :last-child { text-align: right; }
+.admin-logbook-page .lb-skill-attempts .lb-btn { min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-1) var(--s-3); border-radius: calc(var(--r-sm) / 2); }
+.lb-attempt-number { font-family: var(--f-code); font-variant-numeric: tabular-nums; margin-right: var(--s-2); }
+@media (max-width: 767px) { .admin-logbook-page .lb-skill-attempts :is(th, td) { padding: var(--s-2); } }

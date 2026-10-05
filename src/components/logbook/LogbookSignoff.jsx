@@ -1,4 +1,4 @@
-import { TriangleAlert } from 'lucide-react'
+import { ChevronRight, TriangleAlert } from 'lucide-react'
 import LogbookApprovalSummary from './LogbookApprovalSummary'
 import { signoffVersion, signoffEligibility } from '../../services/logbookPolicy'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -47,7 +47,7 @@ export default function LogbookSignoff({ records, actor, studentId, onChanged, e
   const mine = record?.status === 'Submitted' && record.chain[record.step] === actor?.id
   return <div className="lb-signoff-list">
     {!records.length && <p className="lb-empty">{empty}</p>}
-    {records.map(item => <button className="lb-signoff-row" key={`${item.studentId}:${item.subject}`} onClick={() => { setSelected(`${item.studentId}:${item.subject}`); setRemarks(''); setFeedbackError(''); setError(''); setNotice(''); setConfirm(''); setLeaveAction(null) }}><span><strong>{item.subject}</strong>{!studentId && <small>{learnerName(item.studentId)} · {learnerRegisterId(item.studentId)}</small>}</span><span><span className="lb-status">{statusLabel(item)}</span><small>{item.status === 'Ready' ? 'Awaiting learner submission' : item.status === 'Completed' ? 'Completed ' + formatDate(item.completedAt) : item.status === 'Returned' ? 'Returned ' + formatDate(item.history?.findLast(event => event.action === 'return')?.at) : item.submittedAt ? 'Submitted ' + formatDate(item.submittedAt) : 'Awaiting learner submission'}</small>{item.status === 'Submitted' && <small>Step {item.step + 1} of {item.chain.length}</small>}<small>View approval details</small></span></button>)}
+    {records.map(item => <button className="lb-signoff-row" key={`${item.studentId}:${item.subject}`} onClick={() => { setSelected(`${item.studentId}:${item.subject}`); setRemarks(''); setFeedbackError(''); setError(''); setNotice(''); setConfirm(''); setLeaveAction(null) }}><span className="lb-signoff-identity"><strong>{item.subject}</strong>{!studentId && <small>{learnerName(item.studentId)} · {learnerRegisterId(item.studentId)}</small>}</span><span className="lb-signoff-summary"><span className="lb-status">{statusLabel(item)}</span><small>{item.status === 'Ready' ? 'Awaiting learner submission' : item.status === 'Completed' ? 'Completed ' + formatDate(item.completedAt) : item.status === 'Returned' ? 'Returned ' + formatDate(item.history?.findLast(event => event.action === 'return')?.at) : item.submittedAt ? 'Submitted ' + formatDate(item.submittedAt) : 'Submission date unavailable'}</small>{item.status === 'Submitted' && <small>Step {item.step + 1} of {item.chain.length}</small>}</span><ChevronRight className="lb-signoff-chevron" size={18} aria-hidden="true" /></button>)}
     {record && <LogbookDrawer title="Logbook sign-off" variant="approval" theme={theme} onClose={close} busy={busy}>
       <div className="lb-drawer-body lb-approval-body">
         {notice && <p role="status" className="lb-alert">{notice}</p>}

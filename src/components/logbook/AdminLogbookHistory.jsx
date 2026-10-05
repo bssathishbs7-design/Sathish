@@ -2,7 +2,7 @@ import { inLastDays } from '../../services/logbookDates'
 import { useState } from 'react'
 import LogbookPagination from './LogbookPagination'
 import LogbookCommentBadge from './LogbookCommentBadge'
-import { CheckCircle2, ChevronRight, History, Undo2 } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight, History, Undo2 } from 'lucide-react'
 import { entryTitle, formatDate } from '../../services/logbook'
 import { learnerName, learnerRegisterId } from '../../services/logbookPeople'
 import { categoryLabel } from '../../services/logbookPresentation'
@@ -32,10 +32,10 @@ export default function AdminLogbookHistory({ history: allHistory, certified, on
       </div>
     </header>
     <div className="admin-history-filters">
-      <label className="lb-field">Subject<select value={view.historySubject || ''} onChange={event => onFilter({ historySubject: event.target.value })}><option value="">All subjects</option>{[...new Set(allHistory.map(item => item.entry.subject))].map(subject => <option key={subject}>{subject}</option>)}</select></label>
-      <label className="lb-field">Student<select value={view.historyStudent || ''} onChange={event => onFilter({ historyStudent: event.target.value })}><option value="">All students</option>{[...new Set(allHistory.map(item => item.entry.studentId || 'MC2568'))].map(id => <option key={id} value={id}>{learnerName(id)} / {learnerRegisterId(id)}</option>)}</select></label>
-      <label className="lb-field">Decision<select value={view.historyDecision || ''} onChange={event => onFilter({ historyDecision: event.target.value })}><option value="">All decisions</option><option>Approved</option><option>Returned</option></select></label>
-      <label className="lb-field">Decision date<select value={view.historyRange || ''} onChange={event => onFilter({ historyRange: event.target.value })}><option value="">Any time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></label>
+      <label className="lb-field">Subject<span className="admin-history-select"><select value={view.historySubject || ''} onChange={event => onFilter({ historySubject: event.target.value })}><option value="">All subjects</option>{[...new Set(allHistory.map(item => item.entry.subject))].map(subject => <option key={subject}>{subject}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span></label>
+      <label className="lb-field">Student<span className="admin-history-select"><select value={view.historyStudent || ''} onChange={event => onFilter({ historyStudent: event.target.value })}><option value="">All students</option>{[...new Set(allHistory.map(item => item.entry.studentId || 'MC2568'))].map(id => <option key={id} value={id}>{learnerName(id)} / {learnerRegisterId(id)}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span></label>
+      <label className="lb-field">Decision<span className="admin-history-select"><select value={view.historyDecision || ''} onChange={event => onFilter({ historyDecision: event.target.value })}><option value="">All decisions</option><option>Approved</option><option>Returned</option></select><ChevronDown size={16} aria-hidden="true" /></span></label>
+      <label className="lb-field">Decision date<span className="admin-history-select"><select value={view.historyRange || ''} onChange={event => onFilter({ historyRange: event.target.value })}><option value="">Any time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select><ChevronDown size={16} aria-hidden="true" /></span></label>
       <button className="lb-btn" onClick={() => onFilter({ historySubject: '', historyStudent: '', historyDecision: '', historyRange: '' })}>Clear filters</button>
     </div>
     {!history.length && <div className="lb-empty"><History size={24} /><p>No review decisions match this view.</p></div>}
