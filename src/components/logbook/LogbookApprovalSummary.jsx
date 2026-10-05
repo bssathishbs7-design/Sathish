@@ -19,7 +19,7 @@ export default function LogbookApprovalSummary({ record, chain, rows, requiremen
         const decision = round.findLast(event => event.actor === id && ['approve', 'return'].includes(event.action))
         const state = decision?.action === 'return' ? 'Returned' : decision?.action === 'approve' || record.status === 'Completed' ? 'Signed' : record.status === 'Submitted' && index === record.step ? 'Awaiting signature' : record.status === 'Returned' ? 'Not reached in this round' : 'Waiting'
         const tone = state === 'Signed' ? 'signed' : state === 'Returned' ? 'returned' : state === 'Awaiting signature' ? 'current' : 'waiting'
-        return <li key={id} className={'is-' + tone}><span className="lb-approval-step-number" aria-hidden="true">{index + 1}</span><div><strong>{actorName(id)}</strong><small>{REVIEWERS.find(person => person.id === id)?.role === 'HoD' ? 'Head of Department' : REVIEWERS.find(person => person.id === id)?.role || 'Approver'} &middot; {state}{decision?.at ? ` / ${formatDate(decision.at)}` : ''}</small>{decision?.remarks && <p className="lb-muted">{decision.remarks}</p>}</div></li>
+        return <li key={id} className={'is-' + tone}><span className="lb-approval-step-number" aria-hidden="true">{index + 1}</span><div><strong>{actorName(id)}</strong><small>{REVIEWERS.find(person => person.id === id)?.role === 'HoD' ? 'Head of Department' : REVIEWERS.find(person => person.id === id)?.role || 'Approver'}{decision?.at ? ` / ${formatDate(decision.at)}` : ''}</small>{decision?.remarks && <p className="lb-muted">{decision.remarks}</p>}</div><span className="lb-approval-step-state">{state}</span></li>
       })}</ol>
     </section>
   </>

@@ -52,26 +52,12 @@ html:has(.admin-logbook-page) { scrollbar-gutter: stable; }
 
 /* Subject details use compact summaries and distinct student/status/action columns. */
 .admin-logbook-page .admin-subject-summary > .admin-progress-summary { margin: 0; }
-.admin-logbook-page .admin-subject-summary > details.lb-card {
- padding: 0;
- border: 0;
- border-top: 1px solid var(--border);
- border-radius: 0;
- background: transparent;
- box-shadow: none;
-}
-.admin-logbook-page .admin-subject-summary > details > summary {
- padding: var(--s-3) 0;
- min-height: 44px;
- box-sizing: border-box;
- color: var(--text-strong);
- font-weight: 600;
- cursor: pointer;
-}
-.admin-subject-summary > details > summary:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
-.admin-subject-summary > details[open] > .faculty-fieldset { margin-top: var(--s-3); }
 .admin-logbook-page .admin-subject-approvals { row-gap: 0; }
 .admin-subject-summary-head, .admin-subject-approvals-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.admin-subject-title-group { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.admin-subject-name { display: grid; gap: var(--s-1); }
+.admin-subject-summary-head .admin-progress-summary { margin: 0; }
+.admin-logbook-page .admin-subject-summary.lb-card.lb-stack { gap: var(--s-2); padding: var(--s-3); }
 .admin-logbook-page .admin-subject-summary { gap: var(--s-2); }
 .admin-subject-summary-head h2, .admin-subject-summary-head p, .admin-subject-approvals-head h2, .admin-subject-approvals-head p { margin: 0; }
 .admin-subject-approvals-head { padding-bottom: var(--s-3); }

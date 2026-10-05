@@ -43,7 +43,7 @@ export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew, 
       <div className="lb-detail-title"><div className="lb-detail-subject-copy"><div><h2>{subjectLabel(subject.name)}</h2><span>{subject.phase} / {subject.subtitle}</span></div><small>{progress.required ? <><strong>{progress.approved}/{progress.required}</strong> attempts approved</> : 'Requirements not configured'}</small></div>{progress.required > 0 && <span className="lb-detail-percent" aria-label={`${progress.percent}% of required attempts approved`}>{progress.percent}%</span>}</div>
       <label className="lb-search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search subject entries" placeholder="Search entries" value={query} onChange={event => setQuery(event.target.value)} /></label>
     </header>
-    {writeBlock && <p className="lb-alert" role="status">{writeBlock}</p>}<StudentSubjectApproval open={view.approval === 'open'} onOpenChange={open => onFilter({ approval: open ? 'open' : '' })} subject={subject.name} studentId={studentId} entries={entries} theme={theme} onChanged={onChanged} />
+    <StudentSubjectApproval notice={writeBlock} open={view.approval === 'open'} onOpenChange={open => onFilter({ approval: open ? 'open' : '' })} subject={subject.name} studentId={studentId} entries={entries} theme={theme} onChanged={onChanged} />
     <div className="lb-detail-columns">
       <LogbookCategoryMenu options={options} value={selection} onChange={setSelection} />
       <div className="lb-detail-groups" aria-live="polite">

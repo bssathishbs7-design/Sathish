@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import './LogbookDrawer.css'
 
 /** Shared modal shell. Native dialog provides focus trapping and makes the app inert.
- * @param {{title:string, subtitle?:string, theme:string, onClose:Function, children:import('react').ReactNode, busy?:boolean, variant?:'drawer'|'form'|'approval'}} props
+ * @param {{title:string, subtitle?:string, theme:string, onClose:Function, children:import('react').ReactNode, busy?:boolean, variant?:'drawer'|'form'|'approval'|'compact'}} props
  */
 export default function LogbookDrawer({ title, subtitle, theme, onClose, children, busy = false, variant = 'drawer' }) {
   const dialog = useRef(null)
@@ -25,12 +25,12 @@ export default function LogbookDrawer({ title, subtitle, theme, onClose, childre
     }
   }, [])
   return createPortal(
-    <dialog ref={dialog} className={`logbook-scope lb-drawer${variant === 'form' ? ' is-entry-form' : variant === 'approval' ? ' is-approval' : ''}`} data-theme={theme} aria-labelledby={titleId}
+    <dialog ref={dialog} className={`logbook-scope lb-drawer${variant === 'form' ? ' is-entry-form' : variant === 'approval' ? ' is-approval' : variant === 'compact' ? ' is-compact-dialog' : ''}`} data-theme={theme} aria-labelledby={titleId}
       onCancel={(event) => { event.preventDefault(); event.stopPropagation(); if (!busy) onClose() }}
       onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (!busy) onClose() } }}
       onClick={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
       <div className="lb-drawer-panel">
-        <header className="lb-drawer-head"><div>{variant !== 'approval' && <span className="lb-eyebrow">Logbook</span>}<h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="lb-icon-btn" aria-label="Close drawer" disabled={busy} onClick={onClose}><X size={20} /></button></header>
+        <header className="lb-drawer-head"><div>{!['approval', 'compact'].includes(variant) && <span className="lb-eyebrow">Logbook</span>}<h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="lb-icon-btn" aria-label={variant === 'compact' ? 'Close dialog' : 'Close drawer'} disabled={busy} onClick={onClose}><X size={20} /></button></header>
         {children}
       </div>
     </dialog>, document.body,

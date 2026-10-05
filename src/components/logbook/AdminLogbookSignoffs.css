@@ -7,9 +7,9 @@
 .admin-signoff-select > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
 .logbook-scope .admin-signoff-filters :is(select, .lb-btn) { box-sizing: border-box; height: calc(var(--s-6) + var(--s-3)); min-height: calc(var(--s-6) + var(--s-3)); margin: 0; font-size: var(--fs-small, .875rem); }
 .logbook-scope .admin-signoff-filters select { appearance: none; background-image: none; width: 100%; min-width: 0; padding: 0 calc(var(--s-6) + var(--s-2)) 0 var(--s-3); cursor: pointer; text-overflow: ellipsis; }
-.logbook-scope .admin-signoffs .lb-signoff-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--s-4); padding: var(--s-3); border-radius: var(--r-sm); }
+.logbook-scope .admin-signoffs .lb-signoff-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto; gap: var(--s-4); padding: var(--s-3); border-radius: var(--r-sm); align-items: center; }
 .logbook-scope .admin-signoffs .lb-signoff-row > span { gap: var(--s-1); min-width: 0; }
-.admin-signoffs .lb-signoff-summary { justify-items: end; text-align: right; }
+.admin-signoffs .lb-signoff-summary { justify-items: start; text-align: left; }
 .admin-signoffs .lb-signoff-summary .lb-status { max-width: 100%; white-space: normal; }
 .lb-signoff-chevron { flex-shrink: 0; color: var(--text-muted); }
 @media (max-width: 767px) { .logbook-scope .admin-signoffs .lb-signoff-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-2); } .admin-signoffs .lb-signoff-summary { grid-column: 1; justify-items: start; text-align: left; } .admin-signoffs .lb-signoff-chevron { grid-column: 2; grid-row: 1 / 3; align-self: center; } .admin-signoffs-heading { align-items: start; flex-wrap: wrap; } }

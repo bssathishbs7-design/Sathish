@@ -4,7 +4,7 @@ import { useState } from 'react'
 import LogbookConfirm from './LogbookConfirm'
 import LogbookDrawer from './LogbookDrawer'
 import { CATEGORIES, SUBJECTS } from '../../services/logbookSample'
-import { actorName, assignEntries, assignmentFields, defaultChain, LEARNERS, REVIEWERS, saveApprovalChain } from '../../services/adminLogbook'
+import { assignEntries, assignmentFields, LEARNERS } from '../../services/adminLogbook'
 import { today } from '../../services/logbook'
 import './LogbookFacultyActions.css'
 
@@ -41,8 +41,4 @@ export function AssignmentDrawer({ actor, workflow, studentId = '', subject: ini
 
 export { default as SignoffList } from './LogbookSignoff'
 
-export function ApprovalChain({ chain, subject, actor, onChanged }) {
-  const [draft, setDraft] = useState(chain), [error, setError] = useState(''), [busy, setBusy] = useState(false)
-  const move = (index, direction) => { const next = [...draft]; [next[index], next[index + direction]] = [next[index + direction], next[index]]; setDraft(next) }
-  return <details className="lb-card"><summary>Configure approval chain</summary><p className="lb-muted">Applies to new submissions. In-progress logbooks keep their original chain.</p>{error && <p role="alert" className="lb-error">{error}</p>}<fieldset disabled={busy} className="faculty-fieldset lb-stack">{draft.map((id, index) => <div className="lb-actions" key={id}><span>{index + 1}. {actorName(id)}</span><button className="lb-btn" disabled={index === 0} onClick={() => move(index, -1)}>Move up</button><button className="lb-btn" disabled={index === draft.length - 1} onClick={() => move(index, 1)}>Move down</button><button className="lb-btn" disabled={draft.length === 1} onClick={() => setDraft(draft.filter(value => value !== id))}>Remove</button></div>)}<label className="lb-field">Add approver<select value="" onChange={event => setDraft([...draft, event.target.value])}><option value="">Choose approver</option>{REVIEWERS.filter(person => !draft.includes(person.id)).map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label><div className="lb-actions"><button className="lb-btn" onClick={() => setDraft(defaultChain(subject))}>Reset chain</button><button className="lb-btn lb-primary" onClick={async () => { setBusy(true); setError(''); try { await saveApprovalChain(draft, subject, actor); onChanged('Approval chain saved.') } catch (failure) { setError(failure.message) } finally { setBusy(false) } }}>{busy ? 'Saving…' : 'Save chain'}</button></div></fieldset></details>
-}
+export { default as ApprovalChain } from './ApprovalChainEditor'

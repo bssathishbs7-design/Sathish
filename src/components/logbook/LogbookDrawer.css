@@ -32,3 +32,13 @@
 @keyframes lb-backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
 @keyframes lb-backdrop-exit { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .lb-drawer[open], .lb-drawer[open]::backdrop, .lb-drawer[open].is-closing, .lb-drawer[open].is-closing::backdrop { animation: none; } }
+
+.logbook-scope.lb-drawer.is-compact-dialog { inset: 0; margin: auto; width: min(calc(var(--s-9) * 6), calc(100% - var(--s-4) * 2)); height: fit-content; max-height: calc(100dvh - var(--s-4) * 2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.lb-drawer.is-compact-dialog .lb-drawer-panel { min-height: 0; max-height: calc(100dvh - var(--s-4) * 2 - 2px); }
+.lb-drawer.is-compact-dialog .lb-drawer-head { flex-shrink: 0; align-items: center; padding: var(--s-3) var(--s-4); }
+.lb-drawer.is-compact-dialog .lb-drawer-head h2 { font-size: calc(var(--fs-small, .875rem) * 1.3); margin: 0 0 var(--s-1); }
+.lb-drawer.is-compact-dialog .lb-drawer-body { overflow-y: auto; min-height: 0; }
+.lb-drawer.is-compact-dialog .lb-drawer-foot { flex-shrink: 0; padding: var(--s-3) var(--s-4); }
+.lb-drawer.is-compact-dialog[open] { animation: lb-backdrop-enter var(--dur-overlay) var(--ease-standard) both; }
+
+@media (prefers-reduced-motion: reduce) { .lb-drawer.is-compact-dialog[open] { animation: none; } }

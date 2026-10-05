@@ -394,3 +394,10 @@
 - Student assignment keeps the selected subject; skill-to-student links retain subject/competency with a return action.
 - History filters persist in the route, and metric links clear incompatible filters. Entry review validates missing grading/feedback before mutation.
 - Submitted sign-offs with unexpected pending work expose a blocking warning while retaining return/review actions.
+
+### 2026-10-05 - Focused approval order editing
+- Subject pages show the saved signing order in a compact preview. Edit order opens a shared drawer for adding, removing and reordering approvers.
+- Saving returns to the subject; cancelling changed drafts asks whether to discard. Current approval chains remain unchanged.
+
+### 2026-10-05 - Compact approval order popup
+- Edit on the subject approval-order preview now opens a centred compact dialog, preserving save, discard, keyboard focus and approval permissions. Subject counts share the heading row.
