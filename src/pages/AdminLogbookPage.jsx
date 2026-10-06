@@ -1,3 +1,5 @@
+import { logbookActivityRows } from '../services/logbookActivityRows'
+import { latestEntryEvent } from '../services/logbookDates'
 import { matchesAdminSearch } from '../services/logbookAdminSearch'
 import { subjectCategory } from '../services/logbookSubjectGroups'
 import AdminLogbookSignoffs from '../components/logbook/AdminLogbookSignoffs'
@@ -67,10 +69,11 @@ function AdminLogbookContent({ onOpenSkill, theme, actor, view, onNavigate, onSe
   const navigate = (name, id = '', filters = {}) => { setChecked([]); onNavigate({ section: name, id, ...filters }) }
   const filter = patch => { if (busy) return; setChecked([]); onNavigate({ ...view, ...patch }, true) }
   const run = async operation => { setBusy(true); setError(''); try { await operation(); setNotice('Changes saved.'); setChecked([]) } catch (failure) { setError(failure.message) } finally { setBusy(false) } }
-  const visible = entries.filter(visibleTo)
+  const visibleAttempts = entries.filter(visibleTo)
+  const visible = logbookActivityRows(visibleAttempts)
   const department = office ? visible : visible.filter(entry => actor.departments.includes(entry.subject))
   const pending = visible.filter(entry => actionable(entry, actor) && !subjectWriteBlock(workflow, entry.studentId || 'MC2568', entry.subject)).sort((a, b) => (a.submittedAt || a.date).localeCompare(b.submittedAt || b.date))
-  const selected = visible.find(entry => entry.id === selectedId)
+  const selected = visibleAttempts.find(entry => entry.id === selectedId)
   const signoffs = Object.values(workflow?.signoffs || {}).filter(record => actor.departments.includes(record.subject) || (record.chain || []).includes(actor.id))
   const mySignoffs = signoffs.filter(record => record.status === 'Submitted' && record.chain[record.step] === actor.id)
   const students = LEARNERS.map(student => ({ ...student, ...learnerSummary(student.id, entries, actor.departments) }))
@@ -84,7 +87,7 @@ function AdminLogbookContent({ onOpenSkill, theme, actor, view, onNavigate, onSe
   let source = section === 'Queue' ? pending : ['Subjects', 'Search'].includes(section) ? visible : department
   if (section === 'Subjects' && view.studentId) source = source.filter(entry => belongsTo(entry, view.studentId))
   if (drill) source = source.filter(entry => section === 'Students' ? belongsTo(entry, drill) : section === 'Subjects' ? entry.subject === drill : subjectCategory(entry) === (drill === 'remedial' ? 'cert' : drill))
-  const results = searchIdle ? [] : source.filter(entry => (!view.skill || (entry.values.competency || entry.values.activity) === view.skill) && (!subject || entry.subject === subject) && (!status || entry.status === status) && (section === 'Subjects' || !category || subjectCategory(entry) === (category === 'remedial' ? 'cert' : category)) && (range === 'all' || inLastDays(entry.submittedAt || entry.date, Number(range))) && (show !== 'overdue' || overdueEntry(entry)) && (show !== 'remedial' || Boolean(entry.linkedTo)) && (show !== 'todo' || entry.status === 'To do') && (show !== 'assigned' || entry.assignment?.by === actor.id) && (show !== 'outstanding' || (entry.faculty === actor.id && isGraded(entry) && awaitingRemedial(entry, entries))) && matchesAdminSearch(entry, query)).sort((a, b) => section === 'Queue' ? (a.submittedAt || a.date).localeCompare(b.submittedAt || b.date) : (b.submittedAt || b.date).localeCompare(a.submittedAt || a.date))
+  const results = searchIdle ? [] : source.filter(entry => (!view.skill || (entry.values.competency || entry.values.activity) === view.skill) && (!subject || entry.subject === subject) && (!status || entry.status === status) && (section === 'Subjects' || !category || subjectCategory(entry) === (category === 'remedial' ? 'cert' : category)) && (range === 'all' || inLastDays(entry.submittedAt || entry.date, Number(range))) && (show !== 'overdue' || overdueEntry(entry)) && (show !== 'remedial' || Boolean(entry.linkedTo)) && (show !== 'todo' || entry.status === 'To do') && (show !== 'assigned' || entry.assignment?.by === actor.id) && (show !== 'outstanding' || (entry.faculty === actor.id && isGraded(entry) && awaitingRemedial(entry, entries))) && matchesAdminSearch(entry, query)).sort((a, b) => section === 'Queue' ? (a.submittedAt || a.date).localeCompare(b.submittedAt || b.date) : latestEntryEvent(b).localeCompare(latestEntryEvent(a)))
   const eligible = results.filter(entry => actionable(entry, actor) && !subjectWriteBlock(workflow, entry.studentId || 'MC2568', entry.subject) && !isGraded(entry)).map(entry => entry.id)
   const selectedIds = checked.filter(id => eligible.includes(id))
   useEffect(() => { if (selectAll.current) selectAll.current.indeterminate = selectedIds.length > 0 && selectedIds.length < eligible.length }, [selectedIds.length, eligible.length])
@@ -137,7 +140,7 @@ function AdminLogbookContent({ onOpenSkill, theme, actor, view, onNavigate, onSe
       {section === 'Sign-offs' && <AdminLogbookSignoffs {...signoffProps} records={signoffs} view={view} onFilter={filter} />}
     </>}
     {assignment && <AssignmentDrawer {...assignment} workflow={workflow} actor={actor} theme={theme} onChanged={setNotice} onClose={() => { void closeLogbookDrawer(() => setAssignment(null)) }} />}
-    {selected && <LogbookEntryDetail onOpenSkill={onOpenSkill} key={selected.id} entry={selected} workflow={workflow} entries={visible} theme={theme} role="faculty" actor={actor} commentDraft={comments[selected.id] || ''} onCommentDraft={text => setComments(current => ({ ...current, [selected.id]: text }))} onOpen={setSelectedId} onChanged={setNotice} onClose={() => { void closeLogbookDrawer(() => setSelectedId(null)) }} />}
+    {selected && <LogbookEntryDetail onOpenSkill={onOpenSkill} key={selected.id} entry={selected} workflow={workflow} entries={visibleAttempts} theme={theme} role="faculty" actor={actor} commentDraft={comments[selected.id] || ''} onCommentDraft={text => setComments(current => ({ ...current, [selected.id]: text }))} onOpen={setSelectedId} onChanged={setNotice} onClose={() => { void closeLogbookDrawer(() => setSelectedId(null)) }} />}
   </div></section>
 }
 export default function AdminLogbookPage(props) { return <LogbookBoundary><LogbookReaderContext.Provider value={{ id: props.actor.id, name: props.actor.name, role: 'faculty' }}><AdminLogbookContent {...props} /></LogbookReaderContext.Provider></LogbookBoundary> }

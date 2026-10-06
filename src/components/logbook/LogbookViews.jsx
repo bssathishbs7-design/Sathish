@@ -1,3 +1,4 @@
+import { logbookActivityRows } from '../../services/logbookActivityRows'
 import LogbookPendingGroups from './LogbookPendingGroups'
 import { isLoggedEntry, entrySubjectLocked } from '../../services/logbookPolicy'
 import LogbookCommentBadge from './LogbookCommentBadge'
@@ -22,7 +23,7 @@ export function EntryList({ entries, onOpen, empty = 'No entries here yet.' }) {
 }
 export function SearchView({ entries, onOpen, view = {}, onFilter, signoffs = [], onSubject }) {
   const { query = '', status = '', category = 'all', subject = '', range = 'all', sort = 'recent' } = view
-  const matches = searchEntries(entries, query).filter(entry => (!subject || entry.subject === subject) && (range === 'all' || inLastDays(entry.date, Number(range))) && (!status || (status === 'Logged entries' ? isLoggedEntry(entry) : status === 'Needs action' ? !entrySubjectLocked(entry, signoffs) && (['Draft', 'To do'].includes(entry.status) || (awaitingRemedial(entry, entries) && !entries.some(child => matchesRemedial(entry, child) && child.status === 'Draft'))) : entry.status === status)))
+  const matches = searchEntries(logbookActivityRows(entries), query).filter(entry => (!subject || entry.subject === subject) && (range === 'all' || inLastDays(entry.date, Number(range))) && (!status || (status === 'Logged entries' ? isLoggedEntry(entry) : status === 'Needs action' ? !entrySubjectLocked(entry, signoffs) && (['Draft', 'To do'].includes(entry.status) || (awaitingRemedial(entry, entries) && !entries.some(child => matchesRemedial(entry, child) && child.status === 'Draft'))) : entry.status === status)))
   const options = [{ id: 'all', name: 'All entries', count: matches.length }, ...CATEGORIES.filter(item => !item.legacy || entries.some(entry => entry.cat === item.id)).map(item => ({ ...item, count: matches.filter(entry => entry.cat === item.id).length }))]
   const results = matches.filter(entry => category === 'all' || entry.cat === category).sort((a,b) => (sort === 'oldest' ? a.date.localeCompare(b.date) : sort === 'date' ? b.date.localeCompare(a.date) : latestEntryEvent(b).localeCompare(latestEntryEvent(a))) || a.id.localeCompare(b.id))
   const clear = () => onFilter({ query: '', status: '', category: 'all', subject: '', range: 'all', sort: 'recent' })

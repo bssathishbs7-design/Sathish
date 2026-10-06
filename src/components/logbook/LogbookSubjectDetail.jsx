@@ -1,3 +1,4 @@
+import { logbookActivityRows } from '../../services/logbookActivityRows'
 import { subjectWriteBlock } from '../../services/logbookPolicy'
 import { StudentSubjectApproval } from './LogbookSignoff'
 import { awaitingRemedial } from '../../services/logbookPeople'
@@ -22,7 +23,7 @@ export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew, 
   const query = view.query || ''
   const setSelection = category => onFilter({ category })
   const setQuery = query => onFilter({ query })
-  const subjectEntries = entries.filter(entry => entry.subject === subject.name)
+  const subjectEntries = logbookActivityRows(entries).filter(entry => entry.subject === subject.name)
   const skills = skillProgress(entries, subject)
   const progress = subjectProgress(entries, subject)
   const categories = CATEGORIES.filter(item => subject.categories.includes(item.id) || subjectEntries.some(entry => entry.cat === item.id))

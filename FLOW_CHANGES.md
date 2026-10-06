@@ -409,3 +409,7 @@
 
 ### 2026-10-06 - Manual log category choices
 - Removed Skill competency and Certifiable skill competency from student entry creation and faculty assignment category lists. Skills-module records remain visible in Logbook views; locked existing records retain their category label.
+
+### 2026-10-06 - Combined skill activity rows
+- My Logbook and Admin Logbook lists show one row per student, subject and assigned skill, using its latest attempt status. Recent activity sorts by the latest event across that activity's attempts.
+- Opening the row retains the complete attempt history; historical attempts remain available for performance review. Filtering and pagination operate on combined rows.
