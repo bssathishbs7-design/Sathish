@@ -44,7 +44,7 @@ export default function LogbookEntryForm({ entry, entries = [], workflow, mode, 
   })
   const schemaKeys = new Set(groups.flatMap(group => group.fields.map(field => field.key)))
   const previousValues = Object.entries(form.values).filter(([key, value]) => !schemaKeys.has(key) && String(value || '').trim())
-  const visibleCategories = availableLogCategories(form.subject, form.cat)
+  const visibleCategories = availableLogCategories(form.subject, form.cat).filter(item => !['skill', 'cert'].includes(item.id) || (lock && item.id === form.cat))
   const recent = recentLogCategories(entries).filter(item => visibleCategories.some(category => category.id === item.id))
   const subjectOptions = SUBJECTS.map((item) => ({ value: item.name, label: `${item.label} · ${item.phase}`, group: item.phase, search: item.name }))
   const categoryOptions = visibleCategories.map((item) => ({ value: item.id, label: item.name, group: item.group }))

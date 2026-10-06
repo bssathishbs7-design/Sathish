@@ -874,6 +874,7 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       status: 'Assigned',
       assignedTo: `${assignYear} • ${assignSgt}`,
       certifiable: isCertifiable,
+      marks: hasMarks ? String(overallTotalMarks) : 'Nil',
       isCertifiable,
       thresholds: assignThresholds,
       schedule: isAssignScheduleEnabled ? assignSchedule : null,

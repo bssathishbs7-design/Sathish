@@ -187,6 +187,12 @@ const getAssignedSections = (assignment) => {
       }))
     : []
 
+  if (assignContent.checklist !== false) questionSections.push(...(modules.checklist || []).map((item, index) => ({
+    id: item.id || `checklist-${index + 1}`, section: 'question', kind: 'MCQ',
+    prompt: item.text || item.prompt, marks: '0', options: ['Performed under supervision'],
+    referenceImages: [], isCritical: Boolean(item.isCritical),
+  })))
+
   const formSections = assignContent.form
     ? (modules.form ?? []).map((item, index) => ({
         id: item.id ?? `form-${index + 1}`,
@@ -257,6 +263,7 @@ function StudentQuestionCard({
   onChangeQuestion,
   onChangeForm,
   referenceImages,
+  marksDisabled = false,
 }) {
   const isChoice = item.kind === 'MCQ' || item.kind === 'True or False'
   const options = item.kind === 'True or False' && item.options.length === 0 ? ['True', 'False'] : item.options
@@ -266,7 +273,7 @@ function StudentQuestionCard({
     { label: `AFF ${item.affective ?? 'Not Applicable'}`, tone: 'is-domain-affective' },
     { label: `PSY ${item.psychomotor ?? 'Not Applicable'}`, tone: 'is-domain-psychomotor' },
     ...(item.isCritical ? [{ label: 'Criticality', tone: 'is-critical', icon: AlertTriangle }] : []),
-    { label: `${item.marks} Mark${String(item.marks) === '1' ? '' : 's'}`, tone: 'is-marks', icon: BadgeCheck },
+    ...(!marksDisabled ? [{ label: `${item.marks} Mark${String(item.marks) === '1' ? '' : 's'}`, tone: 'is-marks', icon: BadgeCheck }] : []),
     ...(item.tags ?? []).map((tag) => ({ label: tag, tone: 'is-tag' })),
   ]
 
@@ -450,10 +457,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
 
 
   const startExam = () => {
-    if (isMarksDisabled) {
-      onAlert?.({ tone: 'warning', message: 'This activity is unavailable because marks are disabled.' })
-      return
-    }
 
     appendSessionEvent({
       message: 'Activity started.',
@@ -492,7 +495,6 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
   }
 
   const handleSubmit = (reason = 'manual') => {
-    if (isMarksDisabled) return
     if (hasSubmittedRef.current) return
     if (reason === 'manual' && !isSubmissionReady) {
       onAlert?.({ tone: 'warning', message: 'Complete every mandatory question before final submission.' })
@@ -517,8 +519,10 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
     onSubmitExam?.({
       ...resolved,
       status: 'Completed',
-      attemptCount: '1 / 1',
-      submittedAt: submittedTimestamp,
+      attemptCount: resolved.attemptCount || '1 / 1',
+      attemptNumber: Number(resolved.attemptNumber) || 1,
+      studentId: examContext.studentId,
+      submittedAt: new Date().toISOString(),
       answers,
       proctoring: {
         enabled: false,
@@ -623,22 +627,20 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
                 {isMarksDisabled ? (
                   <div className="student-exam-entry-rule">
                     <AlertTriangle size={18} strokeWidth={2.1} />
-                    <span>This activity is disabled because marks were turned off during activity creation.</span>
+                    <span>This activity is unscored. Faculty will evaluate your performance after submission.</span>
                   </div>
                 ) : null}
                 <div className="student-exam-instruction-list">
-                  {(isMarksDisabled
-                    ? ['This activity is locked for students until marks are enabled for the assigned activity.']
-                    : instructionItems).map((instruction) => (
+                  {instructionItems.map((instruction) => (
                     <div key={instruction} className="student-exam-instruction-item">
                       <span className="student-exam-instruction-dot" aria-hidden="true" />
                       <span>{instruction}</span>
                     </div>
                   ))}
                 </div>
-                <button type="button" className="student-exam-primary-btn" onClick={startExam} disabled={isMarksDisabled}>
+                <button type="button" className="student-exam-primary-btn" onClick={startExam}>
                   <Play size={16} strokeWidth={2.2} />
-                  {isMarksDisabled ? 'Activity Disabled' : 'Start Activity'}
+                  Start Activity
                 </button>
               </div>
             </div>
@@ -713,6 +715,7 @@ export default function StudentExamPage({ assignment, onBackToActivities, onSubm
 
             <section className="student-exam-stage-card">
               <StudentQuestionCard
+                marksDisabled={isMarksDisabled}
                 item={currentItem}
                 activityType={resolved.type}
                 value={currentItemValue}

@@ -1,0 +1,8 @@
+.lb-skill-record section { display: grid; gap: var(--s-3); }
+.lb-skill-record h3, .lb-skill-record p { margin: 0; }
+.lb-skill-history { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.lb-skill-history [aria-current] { border-color: var(--forest); background: var(--surface-soft); }
+.lb-skill-performance { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+.lb-skill-performance li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-2); padding: var(--s-3); border: 1px solid var(--activity-line); border-radius: var(--r-sm); }
+.lb-skill-performance strong { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.lb-skill-performance p { flex-basis: 100%; color: var(--text-muted); }

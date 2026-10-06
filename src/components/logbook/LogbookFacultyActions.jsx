@@ -17,7 +17,7 @@ export function AssignmentDrawer({ actor, workflow, studentId = '', subject: ini
   const submit = async event => { event.preventDefault(); setBusy(true); setError(''); try { const result = await assignEntries(actor, form); onChanged(`Assigned to ${result.assigned} student${result.assigned === 1 ? '' : 's'}.${result.skipped ? ` ${result.skipped} signed-off or in-review logbooks skipped.` : ''}`); onClose() } catch (failure) { setError(failure.message) } finally { setBusy(false) } }
   const recipients = form.studentId === 'all' ? LEARNERS : LEARNERS.filter(person => person.id === form.studentId)
   const eligible = recipients.filter(person => !subjectWriteBlock(workflow, person.id, form.subject))
-  const categories = SUBJECTS.find(subject => subject.name === form.subject)?.categories || []
+  const categories = (SUBJECTS.find(subject => subject.name === form.subject)?.categories || []).filter(id => !['skill', 'cert'].includes(id))
   const fields = assignmentFields(form.cat, form.subject)
   const close = () => { if (form.instructions || Object.keys(form.values).length || form.cat || form.due || form.studentId !== studentId) setConfirmClose(true); else onClose() }
   return <LogbookDrawer title="Assign entry" subtitle="Choose a student and activity to assign for review." variant="form" theme={theme} onClose={close} busy={busy}>

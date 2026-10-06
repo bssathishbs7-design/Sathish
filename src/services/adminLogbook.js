@@ -1,3 +1,4 @@
+import { readSkillEntries } from './skillLogbook.js'
 import { signoffEligibility, assertSubjectWritable, subjectWriteBlock, assertLogbookText, signoffVersion } from './logbookPolicy.js'
 import { applyDeltas, commit, readDeltas, today } from './logbook.js'
 import { CATEGORIES, SUBJECTS } from './logbookSample.js'
@@ -103,7 +104,7 @@ export async function changeSignoff({ studentId, subject, action, actor, remarks
   const deltas = readDeltas(), state = workflow(deltas), key = `${studentId}:${subject}`
   const previous = state.signoffs[key] || { studentId, subject, status: 'Not ready', history: [] }
   requireThat(expectedVersion === undefined || expectedVersion === signoffVersion(previous), 'This approval changed after you opened the confirmation. Review the latest status before continuing.')
-  const entries = applyDeltas(deltas).filter(entry => belongsTo(entry, studentId) && entry.subject === subject)
+  const entries = [...applyDeltas(deltas), ...readSkillEntries()].filter(entry => belongsTo(entry, studentId) && entry.subject === subject)
   requireThat(LEARNERS.some(person => person.id === studentId) && SUBJECTS.some(item => item.name === subject), 'Choose a valid student and subject.')
   assertLogbookText(remarks, 'Sign-off feedback')
   let patch
@@ -122,7 +123,7 @@ export async function changeSignoff({ studentId, subject, action, actor, remarks
     requireThat(previous.status === 'Submitted' && previous.chain[previous.step] === actor?.id, 'This logbook is not awaiting your signature.')
     requireThat(['approve', 'return'].includes(action), 'Choose a sign-off decision.')
     if (action === 'approve') {
-      requireThat(!entries.some(entry => ['Pending', 'To do'].includes(entry.status)), 'New pending work was found. Return the logbook before continuing.')
+      requireThat(!entries.some(entry => ['Pending', 'To do', 'Awaiting evaluation'].includes(entry.status)), 'New pending work was found. Return the logbook before continuing.')
       if (previous.recordRevisions) requireThat(JSON.stringify(previous.recordRevisions) === JSON.stringify(entries.filter(entry => !['Draft', 'To do'].includes(entry.status)).map(entry => ({ id: entry.id, updatedAt: entry.updatedAt || '', verifiedAt: entry.verifiedAt || '' }))), 'The submitted record set changed. Return the logbook for a fresh submission.')
     }
     requireThat(action !== 'return' || remarks.trim(), 'Give a reason for returning the logbook.')

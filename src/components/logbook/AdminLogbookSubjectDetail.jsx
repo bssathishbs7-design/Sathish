@@ -34,7 +34,7 @@ export default function AdminLogbookSubjectDetail({ source, rows, category, onCa
             const expanded = open === activity.key
             return <div className="admin-subject-activity" key={activity.key}>
               <button type="button" className="admin-subject-activity-toggle" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : activity.key)}>
-                <span><strong>{activity.title}</strong><span className="lb-muted">{count(students(activity.rows), 'student')} · {count(activity.rows.length, 'entry', 'entries')} · {activity.rows.filter(entry => entry.status === 'Approved').length} approved</span></span>
+                <span><strong>{activity.title}</strong><span className="lb-muted">{count(students(activity.rows), 'student')} · {count(activity.rows.length, 'entry', 'entries')} · {activity.rows.filter(entry => entry.status === 'Approved').length} approved{activity.rows.some(entry => entry.source === 'skills') && ` \u00b7 ${activity.rows.filter(entry => entry.status === 'Completed').length} completed`}</span></span>
                 {pending > 0 && <span className="lb-status is-pending">{pending} pending</span>}<ChevronDown size={18} aria-hidden="true" />
               </button>
               {expanded && <div className="admin-subject-attempts">{renderEntries(activity.rows)}</div>}

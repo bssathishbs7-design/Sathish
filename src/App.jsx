@@ -1,4 +1,6 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { SKILL_SAMPLE_ASSIGNMENTS } from './services/skillLogbookSample'
+import { normaliseSkillAssignment, studentSkillActivities } from './services/skillLogbook'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import { AlertTriangle, CheckCircle2, Info, Monitor, OctagonAlert } from 'lucide-react'
 import Navbar from './components/Navbar'
@@ -244,7 +246,10 @@ const storeActivityResultRecord = (record) => {
 
 const readStoredRows = (key) => {
   try {
-    const rows = JSON.parse(window.sessionStorage.getItem(key) || '[]')
+    const saved = window.sessionStorage.getItem(key)
+    if (saved === null && key === ASSIGNED_SKILL_ACTIVITIES_STORAGE_KEY) return SKILL_SAMPLE_ASSIGNMENTS
+    if (saved === null && key === EVALUATION_RECORDS_STORAGE_KEY) return SKILL_SAMPLE_ASSIGNMENTS.map(buildEvaluationRecordFromAssignment)
+    const rows = JSON.parse(saved || '[]')
     return Array.isArray(rows) ? rows : []
   } catch {
     return []
@@ -254,6 +259,7 @@ const readStoredRows = (key) => {
 const storeRows = (key, rows) => {
   try {
     window.sessionStorage.setItem(key, JSON.stringify(Array.isArray(rows) ? rows : []))
+    window.dispatchEvent(new Event('medsy-logbook-changed'))
   } catch (error) {
     console.warn(`Unable to persist session rows for ${key}.`, error)
   }
@@ -302,6 +308,9 @@ const buildEvaluationRecordFromAssignment = (assignment) => {
   return {
     id: assignment.id,
     sourceActivityId: assignment.sourceActivityId ?? assignment.id,
+    students: assignment.students,
+    subject: assignment.subject,
+    marks: assignment.marks,
     activityName: assignment.title ?? 'Untitled Activity',
     activityType: assignment.type ?? 'Activity',
     studentCount: assignment.studentCount ?? estimateStudentCount(year, sgt),
@@ -738,8 +747,10 @@ function App() {
     const { year, sgt } = parseAssignmentTarget(assignment.assignedTo)
     const assignmentInstanceId = assignment.assignmentInstanceId
       ?? `${assignment.id}-assigned-${Date.now()}`
-    const normalizedAssignment = {
+    if (assignedSkillActivities.some(item => item.id === assignmentInstanceId)) return
+    const normalizedAssignment = normaliseSkillAssignment({
       ...assignment,
+      facultyId: logbookFaculty.id,
       id: assignmentInstanceId,
       sourceActivityId: assignment.id,
       year,
@@ -749,7 +760,7 @@ function App() {
       action: 'Start Activity',
       tone: 'primary',
       evaluationStatus: 'Pending Evaluation',
-    }
+    })
 
     setApprovalQueueRows((current) => current.filter((item) => String(item.activityId ?? '') !== String(assignmentInstanceId)))
     setCompletedEvaluationRows((current) => current.filter((item) => String(item.activityId ?? '') !== String(assignmentInstanceId)))
@@ -758,7 +769,7 @@ function App() {
     ))
 
     setAssignedSkillActivities((current) => {
-      const next = current.filter((item) => item.id !== assignment.id)
+      const next = current.filter((item) => item.id !== normalizedAssignment.id)
       return [normalizedAssignment, ...next]
     })
     setEvaluationRecords((current) => [
@@ -771,13 +782,14 @@ function App() {
 
   const handleStartAssignedSkillActivity = (assignment) => {
     if (!assignment) return
+    if (assignment.action === 'Awaiting evaluation') return
     const actionLabel = String(assignment.action ?? '').trim().toLowerCase()
 
     if (actionLabel === 'view results' || String(assignment.status ?? '').trim().toLowerCase() === 'completed') {
       const activityId = assignment.id ?? assignment.activityId
       const linkedEvaluationRecord = evaluationRecords.find((item) => String(item.id ?? item.activityId) === String(activityId))
       const activityRows = completedEvaluationRows
-        .filter((row) => String(row.activityId ?? '') === String(activityId ?? ''))
+        .filter((row) => String(row.activityId ?? '') === String(activityId ?? '') && (!assignment.studentId || row.studentId === assignment.studentId || row.registerId === assignment.studentId))
         .sort((left, right) => {
           const leftAttempt = Number(left.attemptNumber) || 0
           const rightAttempt = Number(right.attemptNumber) || 0
@@ -804,7 +816,7 @@ function App() {
       return
     }
 
-    setSelectedStudentExamAssignment(assignment)
+    setSelectedStudentExamAssignment({ ...assignment, studentId: assignment.studentId || logbookStudent.id, studentName: assignment.studentName || logbookStudent.name })
     navigateToPage(APP_PAGES.STUDENT_EXAM)
   }
 
@@ -823,6 +835,7 @@ function App() {
         ? {
             ...item,
             ...submission,
+            submissions: [...(item.submissions || []).filter(row => !(row.studentId === submission.studentId && (Number(row.attemptNumber) || 1) === (Number(submission.attemptNumber) || 1))), { studentId: submission.studentId, studentName: submission.studentName, attemptNumber: Number(submission.attemptNumber) || 1, submittedAt: submission.submittedAt, answers: submission.answers }],
             status: 'Completed',
             action: 'View Results',
             tone: 'secondary',
@@ -856,7 +869,7 @@ function App() {
     const linkedAssignment = assignedSkillActivities.find((item) => item.id === recordId)
     const linkedApprovalRow = approvalQueueRows.find((item) => String(item.activityId ?? '') === String(recordId))
     const linkedSubmission = linkedAssignment?.answers ? linkedAssignment : null
-    const linkedCompletedRow = studentId
+    const linkedCompletedRow = studentId && !options.newAttempt
       ? completedEvaluationRows.find((row) => row.id === options.completedRowId)
         ?? [...completedEvaluationRows]
           .filter((row) => row.activityId === recordId && row.studentId === studentId)
@@ -900,6 +913,7 @@ function App() {
       assignment: linkedAssignment ?? record.assignment ?? record ?? null,
       approvalRecord: linkedApprovalRow ?? record.approvalRecord ?? null,
       latestSubmission: linkedSubmission,
+      skillEvaluations: completedEvaluationRows,
       nextAttemptStudentIds,
       nextAttemptStudents,
       nextAttemptNumber,
@@ -914,6 +928,20 @@ function App() {
     setSelectedEvaluationRecord(nextEvaluationRecord)
     storeStartEvaluationRecord(nextEvaluationRecord)
     navigateToPage(APP_PAGES.START_EVALUATION)
+  }
+
+  const handleOpenLogbookSkill = (entry, faculty = false) => {
+    const assignment = assignedSkillActivities.find(item => item.id === entry.sourceAssignmentId)
+    if (!assignment) { showAlert({ tone: 'warning', message: 'This skill assignment is no longer available.' }); return }
+    if (faculty) {
+      const record = evaluationRecords.find(item => item.id === assignment.id) || buildEvaluationRecordFromAssignment(assignment)
+      const completed = completedEvaluationRows.find(row => row.activityId === assignment.id && row.studentId === entry.studentId && Number(row.attemptNumber) === entry.attemptNumber)
+      handleOpenStartEvaluation(record, { studentId: entry.studentId, newAttempt: !completed, completedRowId: completed?.id })
+      return
+    }
+    const activity = studentSkillActivities([assignment], completedEvaluationRows, logbookStudent.id)[0]
+    if (activity?.action === 'Start Activity' || activity?.action === 'View Results') handleStartAssignedSkillActivity(activity)
+    else navigateToPage(APP_PAGES.MY_SKILL_ACTIVITY)
   }
 
   const handleOpenExamLog = (context) => {
@@ -950,9 +978,7 @@ function App() {
       const completedAttempts = sameStudentRows
         .filter((item) => String(item.rowStatus ?? '').trim().toLowerCase() === 'completed')
         .map((item) => Number(item.attemptNumber) || 1)
-      const nextAttemptNumber = isCompletedRow
-        ? Math.min(Math.max(0, ...completedAttempts) + 1, 10)
-        : Number(row.attemptNumber) || Math.max(1, Math.max(0, ...completedAttempts) + 1)
+      const nextAttemptNumber = Number(row.attemptNumber) || Math.max(1, Math.max(0, ...completedAttempts) + 1)
       const compositeId = `${row.activityId}:${row.studentId}:attempt-${nextAttemptNumber}`
       const normalizedRow = {
         ...row,
@@ -1065,12 +1091,6 @@ function App() {
       item.activityId === activityId ? nextPublishedRecord : item
     )))
 
-    if (nextAttemptCount && nextAttemptNumber) {
-      setCompletedEvaluationRows((current) => current.filter((row) => !(
-        String(row.activityId ?? '') === String(activityId)
-        && (Number(row.attemptNumber) || 0) === nextAttemptNumber
-      )))
-    }
 
     setAssignedSkillActivities((current) => {
       const existingActivity = current.find((item) => item.id === activityId)
@@ -1368,7 +1388,7 @@ function App() {
           {shouldShowMobileUnsupported ? (
             <MobileUnsupportedPage />
           ) : activePage === APP_PAGES.ADMIN_LOGBOOK ? (
-            <AdminLogbookPage key={logbookFaculty.id} theme={theme} actor={logbookFaculty} onSelectActor={id => selectLogbookAccount('faculty', id)} view={adminLogbookView} history={adminLogbookHistory} onNavigate={navigateAdminLogbook} />
+            <AdminLogbookPage onOpenSkill={entry => handleOpenLogbookSkill(entry, true)} key={logbookFaculty.id} theme={theme} actor={logbookFaculty} onSelectActor={id => selectLogbookAccount('faculty', id)} view={adminLogbookView} history={adminLogbookHistory} onNavigate={navigateAdminLogbook} />
           ) : activePage === APP_PAGES.DASHBOARD ? (
             <DashboardSummaryPage
               onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}
@@ -1378,6 +1398,7 @@ function App() {
             />
           ) : activePage === APP_PAGES.CONFIGURATION ? (
             <SkillManagementPage
+              onAssignActivity={handleAssignSkillActivity}
               onGenerateComplete={navigateToPage}
               onAlert={showAlert}
               savedImageActivities={savedImageActivities}
@@ -1587,7 +1608,7 @@ function App() {
               }}
             />
           ) : activePage === APP_PAGES.LOGBOOK ? (
-            <LogbookPage key={logbookStudent.id}
+            <LogbookPage onOpenSkill={handleOpenLogbookSkill} key={logbookStudent.id}
               route={logbookRoute}
               onNavigate={navigateLogbook}
               onBack={logbookHistory.back}
@@ -1599,9 +1620,9 @@ function App() {
             />
           ) : activePage === APP_PAGES.MY_SKILL_ACTIVITY ? (
             <MySkillActivityPage
-              assignedActivities={assignedSkillActivities}
+              assignedActivities={studentSkillActivities(assignedSkillActivities, completedEvaluationRows, logbookStudent.id)}
               evaluationRecords={evaluationRecords}
-              completedEvaluationRows={completedEvaluationRows}
+              completedEvaluationRows={completedEvaluationRows.filter(row => row.studentId === logbookStudent.id || row.registerId === logbookStudent.id)}
               onStartActivity={handleStartAssignedSkillActivity}
             />
           ) : activePage === APP_PAGES.ACTIVITY_RESULT ? (

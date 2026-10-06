@@ -1,3 +1,4 @@
+import { projectSkillEntries } from '../services/skillLogbook'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -214,7 +215,7 @@ const buildCompletedEvaluationRow = ({
     activityName: evaluationRecord?.activityName ?? 'Untitled Activity',
     activityType: evaluationRecord?.activityType ?? 'Activity',
     certifiable: isActivityCertifiable(evaluationRecord),
-    activityRecord: evaluationRecord,
+    activityRecord: { ...evaluationRecord, skillEvaluations: undefined },
     studentId: student?.id ?? 'unknown-student',
     studentName: student?.name ?? 'Student',
     registerId: student?.registerId ?? 'Not set',
@@ -480,7 +481,7 @@ const buildEvaluationItems = (assignment, record) => {
 }
 
 const buildStudentSubmission = (student, items, record, latestSubmission) => {
-  const hasRealSubmission = Boolean(latestSubmission?.answers) && student.id === 'student-1'
+  const hasRealSubmission = Boolean(latestSubmission?.answers) && (latestSubmission.studentId === student.id || student.id === 'student-1')
   const answers = latestSubmission?.answers ?? { questions: {}, forms: {}, scaffolding: {} }
 
   const normalizedType = String(record?.activityType ?? '').toLowerCase()
@@ -530,6 +531,17 @@ const buildStudentSubmission = (student, items, record, latestSubmission) => {
 
 const buildStudentRoster = (record, assignment, latestSubmission) => {
   const items = buildEvaluationItems(assignment, record)
+  if (assignment?.students?.length) {
+    const tracking = projectSkillEntries([assignment], record.skillEvaluations || [])
+    return assignment.students.map(student => {
+      const latest = tracking.filter(entry => entry.studentId === student.id).at(-1)
+      const attemptNumber = record.editingAttemptNumber || latest?.attemptNumber || 1
+      const submission = (assignment.submissions || []).find(row => row.studentId === student.id && (Number(row.attemptNumber) || 1) === attemptNumber)
+      const normalized = { ...student, attemptNumber, attemptLabel: `Attempt ${attemptNumber}`,
+        submissionStatus: submission || record.editingCompletedRowId ? 'Submitted' : 'Pending', evaluationStatus: 'Pending', submittedAt: submission?.submittedAt }
+      return { ...normalized, submission: buildStudentSubmission(normalized, items, record, submission) }
+    })
+  }
   const count = Math.max(1, Number(record?.studentCount ?? 6))
   const visibleCount = Math.min(count, 17)
   const notSubmittedSampleCount = visibleCount > 1
@@ -906,6 +918,8 @@ function StudentResponsePanel({
           label: item.label,
           type: item.type,
           sectionLabel: group.label,
+          prompt: item.prompt,
+          feedback: ({ checklist: checklistRemarks, form: formRemarks, scaffolding: scaffoldingRemarks, image: imageRemarks, question: manualQuestionRemarks }[item.type] || {})[item.id] || '',
           isCritical: Boolean(item.isCritical),
           isCompleted,
           decisionState: item.type === 'checklist'
@@ -987,6 +1001,7 @@ function StudentResponsePanel({
     manualQuestionDecisions,
     manualQuestionMarks,
     onEvaluationStateChange,
+    checklistRemarks, formRemarks, scaffoldingRemarks, imageRemarks, manualQuestionRemarks,
     scaffoldingDecisions,
     scaffoldingMarks,
   ])
@@ -1002,8 +1017,9 @@ function StudentResponsePanel({
   if (marksDisabled) {
     return (
       <section className="start-eval-detail-card start-eval-empty-state">
-        <strong>Evaluation unavailable</strong>
-        <p>This activity cannot be evaluated because marks were disabled during activity creation.</p>
+        <strong>Faculty decision</strong>
+        <p>Scoring is disabled for this activity. Review the submitted performance and select Completed, Repeat or Remedial.</p>
+        {(student.submission?.items || []).map((item, index) => <article key={item.id || index}><strong>{item.text || item.prompt || item.title || `Item ${index + 1}`}</strong><p>{item.answer || item.remarks || item.status || student.submissionStatus}</p>{item.answers?.map((answer, answerIndex) => <p key={answerIndex}>{answer.label}: {answer.value}</p>)}</article>)}
       </section>
     )
   }
@@ -1765,6 +1781,10 @@ export default function StartEvaluationPage({
   }, [activityCompletedRows, isSecondAttemptMode, reevaluationStudentMap])
   const finishedStudentIds = useMemo(() => {
     const ids = new Set()
+    if (evaluationRecord?.assignment?.students?.length) {
+      for (const student of baseRoster) if (activityCompletedRows.some(row => row.studentId === student.id && Number(row.attemptNumber) === student.attemptNumber && row.rowStatus === 'Completed') || submittedEvaluations[student.id]) ids.add(student.id)
+      return ids
+    }
 
     if (isSecondAttemptMode) {
       targetAttemptRowByStudent.forEach((row) => {
@@ -1781,7 +1801,7 @@ export default function StartEvaluationPage({
     })
 
     return ids
-  }, [activityCompletedRows, isSecondAttemptMode, submittedEvaluations, targetAttemptRowByStudent])
+  }, [activityCompletedRows, isSecondAttemptMode, submittedEvaluations, targetAttemptRowByStudent, baseRoster, evaluationRecord])
   const hasCompletedEvaluationHistory = activityCompletedRows.length > 0
   const activeApprovalStatus = getNormalizedResultStatus(
     activeApprovalRecord?.approvalStatus
@@ -1801,6 +1821,7 @@ export default function StartEvaluationPage({
   const isApprovalApproved = hasActiveApprovalGate && activeApprovalStatus === 'approved'
 
   const roster = useMemo(() => {
+    if (evaluationRecord?.assignment?.students?.length) return baseRoster
     const mappedRoster = baseRoster.map((student) => {
       const latestCompletedRow = latestCompletedRowByStudent.get(student.id)
       const targetAttemptRow = targetAttemptRowByStudent.get(student.id)
@@ -1862,7 +1883,7 @@ export default function StartEvaluationPage({
     return isSecondAttemptMode
       ? mappedRoster.filter((student) => reevaluationStudentMap.has(student.id))
       : mappedRoster
-  }, [baseRoster, isSecondAttemptMode, latestCompletedRowByStudent, reevaluationStudentMap, submittedEvaluations, targetAttemptRowByStudent])
+  }, [baseRoster, isSecondAttemptMode, latestCompletedRowByStudent, reevaluationStudentMap, submittedEvaluations, targetAttemptRowByStudent, evaluationRecord])
 
   const filteredStudents = useMemo(() => {
     const needle = studentSearch.trim().toLowerCase()
@@ -2008,9 +2029,9 @@ export default function StartEvaluationPage({
   }, [evaluationState.itemSummaries])
   const isReadyToSubmit = Boolean(selectedStudent?.id)
     && selectedStudent?.submissionStatus === 'Submitted'
-    && evaluationState.isReadyToSubmit
+    && (isMarksDisabled || evaluationState.isReadyToSubmit)
   const selectedDecision = decisionOptions.find((option) => option.id === selectedDecisionId) ?? null
-  const hasCriticalityFailure = (evaluationState.itemSummaries ?? []).some((item) => (
+  const hasCriticalityFailure = !isMarksDisabled && (evaluationState.itemSummaries ?? []).some((item) => (
     item.isCritical
     && (item.decisionState === 'wrong' || Number(item.obtainedMarks) <= 0)
   ))
@@ -2106,7 +2127,6 @@ export default function StartEvaluationPage({
   }
 
   const handleSubmitEvaluation = (decisionOverride = null) => {
-    if (isMarksDisabled) return
     const decisionToSubmit = decisionOverride ?? selectedDecision
     if (!selectedStudent || !decisionToSubmit) return
 
@@ -2178,7 +2198,6 @@ export default function StartEvaluationPage({
   }
 
   const handleSaveEvaluation = () => {
-    if (isMarksDisabled) return
     if (!selectedStudent?.id || !panelActions?.buildDraft) return
 
     if (isEditingCompletedEvaluation) {
@@ -2344,7 +2363,7 @@ export default function StartEvaluationPage({
                         <span className={`eval-status-pill ${selectedStudentBadge.tone}`}>
                           {selectedStudentBadge.label}
                         </span>
-                        <span className="start-eval-student-nav-total">Obtained Marks {obtainedMarks} / {totalMarks}</span>
+                        <span className="start-eval-student-nav-total">{isMarksDisabled ? 'Unscored activity' : `Obtained Marks ${obtainedMarks} / ${totalMarks}`}</span>
                         <span className="start-eval-student-nav-position">
                           Student {filteredStudents.length ? Math.max(selectedStudentIndex + 1, 1) : 0} of {filteredStudents.length}
                         </span>
@@ -2392,7 +2411,7 @@ export default function StartEvaluationPage({
                   <div className="start-eval-workspace-status">
                     {isMarksDisabled ? (
                       <span className="start-eval-submit-pill is-pending">
-                        Evaluation disabled because marks are off
+                        Decision-only evaluation; marks are off
                       </span>
                     ) : null}
                     {selectedStudent.submissionStatus !== 'Submitted' ? (
@@ -2433,7 +2452,7 @@ export default function StartEvaluationPage({
                       type="button"
                       className="ghost start-eval-submit-secondary"
                       onClick={handleSaveEvaluation}
-                      disabled={!selectedStudent?.id || isMarksDisabled}
+                      disabled={!selectedStudent?.id}
                     >
                       Save & Next
                     </button>
@@ -2444,7 +2463,7 @@ export default function StartEvaluationPage({
                         setSelectedDecisionId(hasCriticalityFailure ? 'decision-repeat' : '')
                         setIsSubmitPopupOpen(true)
                       }}
-                      disabled={!isReadyToSubmit || isMarksDisabled}
+                      disabled={!isReadyToSubmit}
                     >
                       Submit
                     </button>
@@ -2568,7 +2587,7 @@ export default function StartEvaluationPage({
                     <BadgeCheck size={14} strokeWidth={2} />
                   </span>
                   <span className="start-eval-submit-review-label">Score</span>
-                  <strong>{formatMarksValue(obtainedMarks)} / {formatMarksValue(totalMarks)}</strong>
+                  <strong>{isMarksDisabled ? 'Disabled' : `${formatMarksValue(obtainedMarks)} / ${formatMarksValue(totalMarks)}`}</strong>
                   <small>{evaluationRecord?.activityType ?? 'Activity'}</small>
                 </div>
                 <div className="start-eval-submit-review-row">

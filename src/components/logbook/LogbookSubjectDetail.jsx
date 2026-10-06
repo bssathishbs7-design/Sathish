@@ -51,13 +51,14 @@ export default function LogbookSubjectDetail({ subject, entries, onOpen, onNew, 
           <header className="lb-detail-category-heading"><span className="lb-detail-category-icon"><CategoryIcon size={16} aria-hidden="true" /></span><div><h3>{group.name}</h3><p>{group.showSkills && <><span>{visibleSkills.length}</span> {visibleSkills.length === 1 ? 'skill' : 'skills'} / </>}<span>{group.entries.length}</span> {group.entries.length === 1 ? 'entry' : 'entries'}</p></div></header>
           {group.showSkills && <div className="lb-detail-certification">
       <div className="lb-detail-skills">{visibleSkills.map(skill => {
+        const linkedSkill = entries.filter(entry => entry.source === 'skills' && entry.subject === subject.name && entry.values.competency === skill.code).sort((a, b) => b.attemptNumber - a.attemptNumber)[0]
         const remedial = skill.attempts.find(entry => awaitingRemedial(entry, entries))
         const status = remedial ? 'Remedial due' : !skill.required ? 'Target not configured' : skill.complete ? 'Certified' : skill.attempts.some(entry => entry.status !== 'Draft') ? 'In progress' : 'Not started'
         return <div className="lb-detail-skill" key={skill.code}>
           <span className="lb-detail-skill-icon"><BookOpen size={18} aria-hidden="true" /></span><div className="lb-detail-skill-name"><strong>{skill.name}</strong><span className="lb-code">{skill.code}</span></div>
           <span className="lb-detail-attempts"><strong>{skill.approved}/{skill.required || '—'}</strong><small>{skill.required ? 'Approved / required' : 'Target not configured'}</small></span>
           <span className={`lb-status ${'is-' + status.toLowerCase().replaceAll(' ', '-')}`}>{status}</span>
-          <button type="button" className="lb-btn" disabled={Boolean(writeBlock)} aria-label={`${remedial ? 'Continue remedial' : 'Log attempt'} for ${skill.code}`} onClick={() => remedial ? onRemedial(remedial) : onNew(subject.name, 'cert', skill)}>{remedial ? 'Continue remedial' : 'Log attempt'}</button>
+          <button type="button" className="lb-btn" disabled={Boolean(writeBlock)} aria-label={`${remedial ? 'Continue remedial' : 'Log attempt'} for ${skill.code}`} onClick={() => linkedSkill ? onOpen(linkedSkill.id) : remedial ? onRemedial(remedial) : onNew(subject.name, 'cert', skill)}>{linkedSkill ? 'View skill activity' : remedial ? 'Continue remedial' : 'Log attempt'}</button>
         </div>
       })}</div>
           </div>}

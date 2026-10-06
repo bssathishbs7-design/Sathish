@@ -164,7 +164,7 @@ const generationStatusSteps = [
  * Placement:
  * - Page-level workflow in src/pages/
  */
-function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenInterpretationActivity, onOpenOspeActivity, onAlert, savedImageActivities = {} }) {
+function SkillManagementPage({ onAssignActivity, onGenerateComplete, onOpenImageActivity, onOpenInterpretationActivity, onOpenOspeActivity, onAlert, savedImageActivities = {} }) {
   const generationPopoverRef = useRef(null)
   const activityNameInputRef = useRef(null)
   const [records, setRecords] = useState(competencyRecords)
@@ -478,7 +478,12 @@ function SkillManagementPage({ onGenerateComplete, onOpenImageActivity, onOpenIn
           }
         : record
     )))
-    onAlert?.({ tone: 'secondary', message: 'Assessment assigned successfully.' })
+    const record = records.find(item => item.id === recordId)
+    const activity = record?.activities.find(item => item.id === activityId)
+    if (activity) onAssignActivity?.({ id: activity.id, title: activity.name, type: activity.type,
+      certifiable: activity.certifiable, marks: activity.marks, subject: record.subject,
+      competency: record.competency, assignedTo: record.year,
+      activityData: { activity, record }, examData: savedImageActivities[activity.id]?.examData })
   }
 
   const handlePrimaryAction = (recordId, activityId) => {

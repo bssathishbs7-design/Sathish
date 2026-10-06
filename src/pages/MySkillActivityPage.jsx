@@ -16,45 +16,6 @@ import '../styles/my-skills.css'
 
 const statusFilters = ['All', 'Assigned', 'Live Activity', 'Completed']
 
-const defaultActivities = [
-  {
-    title: 'Upper Limb Landmark Identification',
-    type: 'Image',
-    status: 'Assigned',
-    action: 'Start Activity',
-    tone: 'primary',
-    attemptCount: '1 / 1',
-    createdDate: '06/04/2026',
-  },
-  {
-    title: 'Blood Group Determination Station',
-    type: 'OSCE',
-    status: 'Assigned',
-    action: 'Yet to Start',
-    tone: 'secondary',
-    attemptCount: '1 / 1',
-    createdDate: '05/04/2026',
-  },
-  {
-    title: 'Artificial Respiration Interpretation',
-    type: 'Interpretation',
-    status: 'Live Activity',
-    action: 'Start Activity',
-    tone: 'primary',
-    attemptCount: '1 / 1',
-    createdDate: '04/04/2026',
-  },
-  {
-    title: 'WBC Count Checklist Station',
-    type: 'OSPE',
-    status: 'Completed',
-    action: 'View Results',
-    tone: 'secondary',
-    attemptCount: '1 / 1',
-    createdDate: '02/04/2026',
-  },
-]
-
 const metricToFilter = {
   Assigned: 'Assigned',
   'Live Activity': 'Live Activity',
@@ -152,7 +113,6 @@ export default function MySkillActivityPage({
       tone: item.tone ?? (item.status === 'Completed' ? 'secondary' : 'primary'),
       status: item.status ?? 'Assigned',
     })),
-    ...(assignedActivities.length ? [] : defaultActivities),
   ]), [assignedActivities])
 
   const analyticReadyItems = useMemo(() => (
@@ -164,7 +124,7 @@ export default function MySkillActivityPage({
   ), [activityItems])
 
   const liveActivities = useMemo(() => (
-    activityItems.filter((item) => isLiveReadyActivity(item))
+    activityItems.filter((item) => item.action === 'Start Activity' && isLiveReadyActivity(item))
   ), [activityItems])
 
   const filteredItems = useMemo(() => {

@@ -23,3 +23,7 @@
 .logbook-scope .lb-status.is-in-progress { --lb-status-accent: var(--activity-blue); --lb-status-tint: 14%; }
 .logbook-scope .lb-status.is-certified { --lb-status-accent: var(--mint); --lb-status-tint: 25%; }
 .logbook-scope .lb-status.is-remedial-due { --lb-status-accent: var(--peach); --lb-status-tint: 45%; }
+
+.logbook-scope .lb-status.is-completed { --lb-status-accent: var(--activity-green); }
+.logbook-scope .lb-status.is-awaiting-evaluation { --lb-status-accent: var(--activity-amber); }
+.logbook-scope .lb-status:is(.is-repeat, .is-remedial) { --lb-status-accent: var(--peach); --lb-status-tint: 45%; }

@@ -914,6 +914,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       status: 'Assigned',
       assignedTo: `${assignYear} • ${assignSgt}`,
       certifiable: isCertifiable,
+      marks: hasMarks ? String(totalGeneratedMarks) : 'Nil',
       isCertifiable,
       thresholds: assignThresholds,
       schedule: isAssignScheduleEnabled ? assignSchedule : null,

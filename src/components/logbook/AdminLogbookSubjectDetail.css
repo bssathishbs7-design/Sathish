@@ -1,5 +1,5 @@
-.admin-subject-detail { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr); gap: var(--s-4); align-items: start; }
-.admin-subject-detail .lb-category-sidebar { grid-column: 1; grid-row: 1; }
+.admin-subject-detail { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr); gap: var(--s-4); align-items: start; }
+.admin-subject-detail .lb-category-sidebar { grid-column: 2; grid-row: 1; }
 .admin-subject-detail .lb-category-sidebar button { height: auto; min-height: calc(var(--s-6) + var(--s-3)); padding: var(--s-2); }
 .admin-subject-detail .lb-category-sidebar button > span { white-space: normal; font-size: var(--fs-small); }
 .admin-subject-content { display: grid; gap: var(--s-4); min-width: 0; }

@@ -1,3 +1,4 @@
+import LogbookSkillRecord from './LogbookSkillRecord'
 import { learnerRegisterId } from '../../services/logbookPeople'
 import { attestationLabel } from '../../services/logbookTitles'
 import { subjectWriteBlock, textLimitFor } from '../../services/logbookPolicy'
@@ -22,7 +23,7 @@ import { actorName, learnerName, isGraded, actionable } from '../../services/adm
 /** Entry inspection shared by learner and faculty demo views. Service validates lifecycle mutations.
  * @param {{entry:Object, entries:Object[], theme:string, role?:string, commentDraft:string, onCommentDraft:Function, onClose:Function, onEdit:Function, onRemedial:Function, onOpen:Function, onChanged:Function}} props
  */
-export default function LogbookEntryDetail({ entry, entries, theme, workflow, role = 'learner', actor = null, commentDraft, onCommentDraft, onClose, onEdit, onRemedial, onOpen, onChanged }) {
+export default function LogbookEntryDetail({ onOpenSkill, entry, entries, theme, workflow, role = 'learner', actor = null, commentDraft, onCommentDraft, onClose, onEdit, onRemedial, onOpen, onChanged }) {
   const reader = useContext(LogbookReaderContext)
   const [notes, setNotes] = useState(entry.extra?.notes || '')
   const [confirmWithdraw, setConfirmWithdraw] = useState(false)
@@ -57,6 +58,7 @@ export default function LogbookEntryDetail({ entry, entries, theme, workflow, ro
       if (close) onClose()
     } catch (error) { setFailure(error.message) } finally { mutation.current = false; setBusy(false) }
   }
+  if (entry.source === 'skills') return <LogbookSkillRecord entry={entry} entries={entries} theme={theme} onClose={onClose} onOpen={onOpen} onOpenSkill={onOpenSkill} />
   return <LogbookDrawer title={entryTitle(entry)} subtitle={`${entry.subject} · ${CATEGORIES.find((category) => category.id === entry.cat)?.name}`} theme={theme} onClose={() => leave()} busy={busy || reviewBusy}>
     <div className="lb-drawer-body">
       {notice && <div className="lb-alert" role="status">{notice}</div>}{leaveAction && <LogbookConfirm title="Discard unsaved review or reassignment changes?" onCancel={() => setLeaveAction(null)} onConfirm={() => { setReviewDirty(false); setLeaveAction(null); leaveAction() }} confirmLabel="Discard and continue" />}{confirmWithdraw && <LogbookConfirm title={entry.status === 'Draft' ? 'Delete this draft?' : `Delete this ${entry.status.toLowerCase()} entry?`} busy={busy} onCancel={() => setConfirmWithdraw(false)} onConfirm={() => mutate('withdraw', {}, true)} confirmLabel="Delete entry"><p>This removes the entry from your logbook and the review queue. This action cannot be undone.</p></LogbookConfirm>}{failure && <div className="lb-alert lb-error" role="alert">{failure}</div>}

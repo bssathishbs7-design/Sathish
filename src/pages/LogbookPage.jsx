@@ -35,7 +35,7 @@ import '../components/logbook/LogbookReadability.css'
 /** Page orchestration; App owns route/history. Form and detail drafts live beside their UI.
  * @param {{route:{name:string,id?:string,status?:string}, onNavigate:Function, onBack:Function, onForward:Function, canBack:boolean, canForward:boolean, theme:string, identity:Object}} props
  */
-function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, canBack, canForward, theme, identity }) {
+function LogbookContent({ onOpenSkill, route: requestedRoute, onNavigate, onBack, onForward, canBack, canForward, theme, identity }) {
   const studentId = identity.id || identity.registerId
   const legacyStatus = { pending: 'Pending', draft: 'Draft', approved: 'Approved', faculty: 'Pending' }[requestedRoute.name]
   const route = legacyStatus ? { ...requestedRoute, name: 'search', status: legacyStatus } : ['home', 'search', 'subjects', 'subject', 'profile'].includes(requestedRoute.name) ? requestedRoute : { name: 'home' }
@@ -71,7 +71,7 @@ function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, 
     setSelectedId(null)
     setForm({ mode: 'new', entry: { id: crypto.randomUUID(), studentId, subject: subjectName, cat, date: today(), status: 'Draft', faculty: '', values: skill ? { competency: skill.code, activity: skill.name } : {}, extra: {} } })
   }
-  const edit = (entry) => { const reason = subjectWriteBlock(workflow, studentId, entry.subject); if (reason) { setNotice(reason); return } setSelectedId(null); setForm({ mode: 'edit', entry }) }
+  const edit = (entry) => { if (entry.source === 'skills') { setSelectedId(entry.id); return } const reason = subjectWriteBlock(workflow, studentId, entry.subject); if (reason) { setNotice(reason); return } setSelectedId(null); setForm({ mode: 'edit', entry }) }
   const remedial = (entry) => {
     const reason = subjectWriteBlock(workflow, studentId, entry.subject)
     if (reason) { setNotice(reason); return }
@@ -112,7 +112,7 @@ function LogbookContent({ route: requestedRoute, onNavigate, onBack, onForward, 
     </div>}
     </div>
     {form && <LogbookEntryForm key={form.entry.id} {...form} workflow={workflow} entries={entries} theme={theme} onClose={() => { void closeLogbookDrawer(() => setForm(null)) }} onSaved={(message) => { void closeLogbookDrawer(() => { setForm(null); setNotice(message) }) }} />}
-    {selected && !form && <LogbookEntryDetail key={selected.id} entry={selected} workflow={workflow} entries={entries} theme={theme} role="learner" commentDraft={commentDrafts[selected.id] || ''} onCommentDraft={(text) => setCommentDrafts((current) => ({ ...current, [selected.id]: text }))} onClose={() => { void closeLogbookDrawer(() => setSelectedId(null)) }} onEdit={edit} onRemedial={remedial} onOpen={setSelectedId} onChanged={setNotice} />}
+    {selected && !form && <LogbookEntryDetail onOpenSkill={onOpenSkill} key={selected.id} entry={selected} workflow={workflow} entries={entries} theme={theme} role="learner" commentDraft={commentDrafts[selected.id] || ''} onCommentDraft={(text) => setCommentDrafts((current) => ({ ...current, [selected.id]: text }))} onClose={() => { void closeLogbookDrawer(() => setSelectedId(null)) }} onEdit={edit} onRemedial={remedial} onOpen={setSelectedId} onChanged={setNotice} />}
   </section>
 }
 export default function LogbookPage(props) { return <LogbookBoundary><LogbookReaderContext.Provider value={{ id: props.identity.id || props.identity.registerId, name: props.identity.name, role: 'learner' }}><LogbookContent {...props} /></LogbookReaderContext.Provider></LogbookBoundary> }

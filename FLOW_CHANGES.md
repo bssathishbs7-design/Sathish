@@ -401,3 +401,11 @@
 
 ### 2026-10-05 - Compact approval order popup
 - Edit on the subject approval-order preview now opens a centred compact dialog, preserving save, discard, keyboard focus and approval permissions. Subject counts share the heading row.
+
+### 2026-10-06 - Skills to Logbook tracking
+- Assigning a skill creates a read-only To do record for each student. The Certifiable toggle selects Skill competency or Certifiable skill.
+- Student submission shows Awaiting evaluation. Faculty decisions update the same attempt to Completed, Repeat or Remedial; Repeat/Remedial creates the next To do attempt in Skills and both Logbooks.
+- Logbook records link back to Skills; all performance changes stay in the Skills workflow. Unscored activities support faculty decisions.
+
+### 2026-10-06 - Manual log category choices
+- Removed Skill competency and Certifiable skill competency from student entry creation and faculty assignment category lists. Skills-module records remain visible in Logbook views; locked existing records retain their category label.

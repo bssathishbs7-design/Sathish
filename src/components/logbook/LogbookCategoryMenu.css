@@ -1,5 +1,5 @@
-.lb-category-sidebar { display: flex; flex-direction: column; }
-.lb-category-sidebar nav { display: grid; gap: var(--s-1); padding: var(--s-1); }
+.lb-category-sidebar { display: flex; flex-direction: column; position: sticky; top: var(--s-9); align-self: start; box-sizing: border-box; max-height: calc(100dvh - var(--s-9) - var(--s-4)); }
+.lb-category-sidebar nav { display: grid; gap: var(--s-1); padding: var(--s-1); min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 .lb-category-sidebar button { display: flex; align-items: center; gap: var(--s-2); box-sizing: border-box; padding: 0 var(--s-2); height: calc(var(--s-6) + var(--s-2)); border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--text-body); text-align: left; cursor: pointer; }
 .lb-category-sidebar button svg { flex-shrink: 0; color: var(--text-muted); }
 .lb-category-sidebar button > span { flex: 1; min-width: 0; font-size: 12px; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

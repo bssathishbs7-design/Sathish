@@ -1,10 +1,10 @@
 /** Shared local workflow rules. The API must enforce the same rules using authenticated identities. */
 export const LOGBOOK_TEXT_LIMIT = 500
-export const isLoggedEntry = entry => ['Pending', 'Approved', 'Returned'].includes(entry.status)
+export const isLoggedEntry = entry => ['Pending', 'Approved', 'Returned', 'Completed', 'Repeat', 'Remedial'].includes(entry.status)
 /** Shared entry prerequisites for faculty readiness and learner submission. */
 export function signoffEligibility(entries) {
-  const pending = entries.filter(entry => ['Pending', 'To do'].includes(entry.status)).length
-  const approved = entries.filter(entry => entry.status === 'Approved').length
+  const pending = entries.filter(entry => ['Pending', 'To do', 'Awaiting evaluation'].includes(entry.status)).length
+  const approved = entries.filter(entry => ['Approved', 'Completed'].includes(entry.status)).length
   return { pending, approved, allowed: !pending && approved > 0, reason: pending ? `Clear pending entries and assigned tasks first (${pending} remaining).` : !approved ? 'At least one approved entry is required before final approval.' : '' }
 }
 /** A confirmation is valid only for the exact approval round and step reviewed. */

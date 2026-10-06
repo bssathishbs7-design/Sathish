@@ -20,7 +20,7 @@ export function subjectActivityGroups(entries) {
   const groups = new Map()
   for (const entry of entries) {
     const title = subjectActivityTitle(entry)
-    const key = JSON.stringify([subjectCategory(entry), title.trim().toLowerCase()])
+    const key = JSON.stringify([subjectCategory(entry), entry.sourceActivityId || title.trim().toLowerCase()])
     if (!groups.has(key)) groups.set(key, { key, title, rows: [] })
     groups.get(key).rows.push(entry)
   }

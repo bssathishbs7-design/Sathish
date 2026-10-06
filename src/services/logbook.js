@@ -1,3 +1,4 @@
+import { readSkillEntries, isSkillEntry, isSkillEntryId } from './skillLogbook.js'
 import { assertSubjectWritable, assertLogbookText, validLogbookText, isLoggedEntry } from './logbookPolicy.js'
 import { entryTitle } from './logbookTitles.js'
 export { entryTitle } from './logbookTitles.js'
@@ -12,7 +13,10 @@ import { collectSkills, certificationTarget, REQUIREMENTS_VERSION } from './logb
  * @property {string} subject Subject catalogue name.
  * @property {string} cat Category catalogue ID.
  * @property {string} date Local ISO date (YYYY-MM-DD).
- * @property {'Draft'|'Pending'|'Approved'|'Returned'|'To do'} status
+ * @property {'Draft'|'Pending'|'Approved'|'Returned'|'To do'|'Awaiting evaluation'|'Completed'|'Repeat'|'Remedial'} status
+ * @property {'skills'} [source] Skills-owned entries are read-only projections.
+ * @property {string} [sourceAssignmentId] Stable Skills assignment identity.
+ * @property {number} [attemptNumber] Student attempt within the assignment.
  * @property {string} faculty Faculty catalogue ID.
  * @property {string} [linkedTo] Returned parent entry ID.
  * @property {Object<string,string>} values Schema field values.
@@ -92,7 +96,7 @@ export function validateEntry(entry, submit = false, now = today(), previous = n
 export function skillProgress(entries, subject) {
   return collectSkills(subject.name, entries).map((skill) => {
     const attempts = entries.filter((entry) => entry.subject === subject.name && isLoggedEntry(entry) && isGraded(entry) && (entry.values.competency || entry.values.activity) === skill.code)
-    const approved = attempts.filter((entry) => entry.status === 'Approved').length
+    const approved = attempts.filter((entry) => ['Approved', 'Completed'].includes(entry.status)).length
     return { ...skill, approved, complete: skill.required > 0 && approved >= skill.required, attempts }
   })
 }
@@ -110,7 +114,7 @@ export function searchEntries(entries, query) {
   })
 }
 
-export async function listLogbookEntries() { return applyDeltas(readDeltas()) }
+export async function listLogbookEntries() { return [...applyDeltas(readDeltas()), ...readSkillEntries()] }
 /** Begin a separate app namespace without importing or deleting prototype records. */
 export async function startSeparateLogbook() {
   if (window.localStorage.getItem(STORAGE_KEY)) return listLogbookEntries()
@@ -125,6 +129,7 @@ export function commit(deltas) {
 /** Merge an entry mutation against the latest storage snapshot; never overwrite signed fields. */
 export async function saveLogbookEntry(entry, submit = false, studentId = entry.studentId || 'MC2568') {
   const deltas = readDeltas()
+  if (isSkillEntry(entry) || isSkillEntryId(entry.id)) throw new Error('Skill entries are read-only. Continue in Skills.')
   if (deltas.removed.includes(entry.id)) throw new Error('This entry has been withdrawn. Close this form and create a new entry.')
   const current = applyDeltas(deltas).find((item) => item.id === entry.id)
   if (current && !belongsTo(current, studentId)) throw new Error('This entry belongs to another student.')
@@ -165,6 +170,7 @@ export async function saveLogbookEntry(entry, submit = false, studentId = entry.
   return commit(deltas)
 }
 export async function updateLogbookEntry(id, action, payload = {}) {
+  if (isSkillEntryId(id)) throw new Error('Skill entries are read-only. Continue in Skills.')
   const deltas = readDeltas()
   const entry = applyDeltas(deltas).find((item) => item.id === id)
   if (!entry) throw new Error('This entry is no longer available.')
