@@ -1816,7 +1816,7 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
               <button
                 type="button"
                 className={`start-practice-submit-btn ${isPracticeSubmitted ? 'is-reset' : ''}`}
-                disabled={!isPracticeSubmitted && (isEvaluatingPractice || showTimeCompletedNotice)}
+                disabled={isPracticeSubmitted || isEvaluatingPractice || showTimeCompletedNotice}
                 onClick={() => {
                   if (isPracticeSubmitted) {
                     openPracticeSession(activeSession, activeSession.isRetakeInProgress ? { resume: true } : { retake: true })
@@ -1998,7 +1998,7 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
             </div>
           </div>
           {mode === 'sessions' && (
-              <button type="button" className="start-practice-title-analytics" onClick={() => {
+              <button type="button" className="start-practice-title-analytics" disabled onClick={() => {
                 const sessions = getPracticeSessions(selectedCard).map((session) => ({
                   ...session,
                   status: sessionStatuses[session.id] || session.status,
@@ -2137,7 +2137,7 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
                       type="button"
                       className="start-practice-row-retake"
                       onClick={() => openPracticeSession(row, row.isRetakeInProgress ? { resume: true } : { retake: true })}
-                      disabled={!isFinishedRow}
+                      disabled
                     >
                       <RotateCcw size={13} strokeWidth={2.4} />
                       Retake

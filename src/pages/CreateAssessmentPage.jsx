@@ -101,6 +101,7 @@ import {
 } from './corelationRatingData'
 import '../styles/question-bank.css'
 import '../styles/assessment-pages.css'
+import './CreateAssessmentPage.css'
 
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
 const CREATE_ASSESSMENT_INITIAL_TAB_KEY = 'vx-create-assessment-initial-tab'
@@ -9247,7 +9248,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   <div className="create-assessment-duration-split-footer">
                                     <p className="create-assessment-duration-note">
                                       <Info size={14} strokeWidth={2.2} />
-                                      Enter one duration and the remaining time will be filled automatically.
+                                      Enter one duration; the other fills automatically.
                                     </p>
                                     <button type="button" onClick={() => updateSplitProctoredDuration(false)}>
                                       Clear Split
@@ -9701,7 +9702,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         </span>
                       </label>
 
-                      <label className={`create-assessment-schedule-toggle-field create-assessment-assign-sent-toggle ${setupErrors.approvalFlow ? 'has-error' : ''}`}>
+                      <label className={`create-assessment-schedule-field create-assessment-schedule-toggle-field create-assessment-assign-sent-toggle ${setupErrors.approvalFlow ? 'has-error' : ''}`}>
                         <span>Sent to <em>*</em></span>
                         <div className="create-assessment-mode-toggle" role="group" aria-label="Send option">
                           {[

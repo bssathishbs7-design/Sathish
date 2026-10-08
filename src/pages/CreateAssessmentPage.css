@@ -1,0 +1,78 @@
+.create-assessment-workspace .create-assessment-duration-split-footer {
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) max-content;
+  align-items: stretch;
+  overflow-x: auto;
+}
+
+.create-assessment-workspace .create-assessment-duration-split-footer .create-assessment-duration-note {
+  width: 100%;
+  max-width: none;
+  white-space: nowrap;
+}
+
+.create-assessment-workspace .create-assessment-duration-split-footer button {
+  white-space: nowrap;
+}
+
+.create-assessment-assign-grid > .create-assessment-assign-sent-toggle {
+  grid-template-rows: none;
+}
+
+.create-assessment-assign-sent-toggle .create-assessment-mode-toggle {
+  width: 100%;
+  min-height: 42px;
+  align-items: stretch;
+}
+
+.create-assessment-workspace .create-assessment-assign-select select {
+  padding-right: 36px;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 1200px) {
+  .create-assessment-workspace .create-assessment-assign-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 1.25fr) max-content;
+  }
+}
+
+.create-assessment-schedule-layout:has(> .create-assessment-timing-panel:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1024px) {
+  .create-assessment-timing-panel:only-child .create-assessment-schedule-grid.is-practice {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.create-assessment-workspace-main:has(> .question-bank-create-strip.has-empty-state) {
+  padding: 0;
+  scrollbar-gutter: auto;
+}
+
+.create-assessment-workspace .question-bank-create-strip.has-empty-state {
+  box-sizing: border-box;
+  min-height: 0;
+  padding: calc(var(--create-page-gutter) * 2);
+  place-items: center;
+}
+
+@media (min-width: 992px) {
+  .create-assessment-workspace-body:has(.question-bank-create-strip.has-empty-state) {
+    align-content: start;
+    align-items: stretch;
+    overflow: auto;
+  }
+
+  .create-assessment-workspace-main:has(> .question-bank-create-strip.has-empty-state) {
+    align-content: stretch;
+  }
+
+  .create-assessment-workspace-body:has(.question-bank-create-strip.has-empty-state) > .create-assessment-right-rail {
+    position: static;
+    align-self: stretch;
+    max-height: none;
+    overflow: visible;
+  }
+}

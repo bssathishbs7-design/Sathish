@@ -496,6 +496,7 @@ function ShareStuFacultyPage({ onNavigate, onOpenAnalytics, returnState }) {
                         <button
                           type="button"
                           className="share-stu-faculty-analytics-btn"
+                          disabled
                           onClick={(event) => {
                             event.stopPropagation()
                             onOpenAnalytics?.({ card: { ...row.sourceCard, competencyCode: row.code, competencyName: row.competency, subject: row.subject }, returnState: { query, activeFilter, page, expandedRows: [...expandedRows] } })

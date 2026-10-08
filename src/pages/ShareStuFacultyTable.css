@@ -178,3 +178,12 @@
   background: color-mix(in srgb, var(--sky-200, #bae6fd) 30%, var(--share-table-surface));
   box-shadow: inset 3px 0 var(--sky-500, #0ea5e9);
 }
+.share-stu-faculty-page button.share-stu-faculty-analytics-btn:disabled {
+  color: var(--share-table-muted);
+  background: var(--share-table-heading);
+  border-color: var(--share-table-line);
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}

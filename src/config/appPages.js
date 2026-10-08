@@ -7,6 +7,7 @@ import {
   FileSearch,
   FileText,
   FilePlus2,
+  GraduationCap,
   LayoutTemplate,
   MessageSquareText,
   NotebookPen,
@@ -154,6 +155,10 @@ export const SIDEBAR_MENU = [
       {
         label: APP_PAGES.QUERY_REQUEST,
         icon: MessageSquareText,
+      },
+      {
+        label: APP_PAGES.STUDENT_MANAGEMENT,
+        icon: GraduationCap,
       },
     ],
   },

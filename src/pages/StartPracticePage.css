@@ -4952,3 +4952,12 @@
   outline: none;
   transform: none;
 }
+.start-practice-page button.start-practice-title-analytics:disabled {
+  background: var(--surface-soft);
+  border-color: var(--border);
+  color: var(--text-muted);
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}

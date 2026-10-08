@@ -1,3 +1,31 @@
+## 2026-10-08 - Disable practice retakes
+
+- Disabled Retake in the practice session list and Retake Practice / Resume Retake in submitted practice reviews. Submit Practice retains its existing availability during an active attempt.
+
+## 2026-10-08 - Disable Start practice analytics navigation
+
+- Disabled View analytics in the Start practice header. Practice session actions remain available.
+
+## 2026-10-08 - Disable practice card analytics navigation
+
+- Disabled Analytics on Learn & Practice cards. Start practice remains available.
+
+## 2026-10-08 - Disable shared competency analytics navigation
+
+- Disabled View Analytics on Share to Students competency rows. Practice report View buttons remain available.
+
+## 2026-10-07 - Student file selection
+
+- Added Upload beside Add Student in the Student Management action card. Upload opens a file picker and displays the selected filename; it does not import student records.
+
+## 2026-10-07 - Student Management navigation header
+
+- Replaced the static Admin breadcrumb with the shared My Pages / Student management header and browser back/forward controls used across the app.
+
+## 2026-10-07 - Student Management sidebar access
+
+- Added Student Management directly below Query Request in the faculty sidebar, opening the existing student directory at `/student-management`.
+
 ## 2026-09-25 - Explicit Blueprint question filters
 
 - Saving or updating a Blueprint now opens Question Bank without automatic requirement filters. Existing question selections and Blueprint progress remain intact.
