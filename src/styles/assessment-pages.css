@@ -13784,6 +13784,13 @@
   cursor: pointer;
 }
 
+.assessment-create-draft-category.is-identity,
+.assessment-create-draft-footer > .assessment-create-saved-timestamp {
+  font-family: var(--f-code, monospace);
+  font-size: var(--fs-micro, 11px);
+  font-variant-numeric: tabular-nums;
+}
+
 .assessment-create-draft-footer > button:hover,
 .assessment-create-draft-footer > button:focus-visible {
   border-color: #10b9a8;
@@ -19324,6 +19331,7 @@
   display: block;
   min-width: 0;
   overflow: hidden;
+  font-size: inherit;
   font-weight: 500;
   line-height: 1.25;
   text-overflow: ellipsis;

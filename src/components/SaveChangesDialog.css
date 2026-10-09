@@ -1,0 +1,37 @@
+.save-changes-dialog { width: min(100% - var(--s-6), 480px); max-height: calc(100dvh - var(--s-6)); overflow: auto; padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-card); color: var(--text-body); box-shadow: var(--shadow-lg); }
+.save-changes-dialog::backdrop { background: color-mix(in srgb, var(--forest-900) 45%, transparent); }
+.save-changes-dialog h2 { margin: 0 0 var(--s-3); }
+.save-changes-dialog p { margin: 0 0 var(--s-4); }
+.save-changes-reference { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); color: var(--text-muted); }
+.save-changes-reference strong { padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--text-brand); font-family: var(--f-code); }
+.save-changes-dialog .save-changes-error { color: var(--danger-ink); }
+.save-changes-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); }
+.save-changes-actions button { min-height: 44px; padding: var(--s-2) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-body); cursor: pointer; }
+.save-changes-actions .is-discard { color: var(--danger-ink); border-color: var(--danger-line); }
+.save-changes-actions .is-save { background: var(--forest); color: var(--on-brand); border-color: var(--forest); }
+.save-changes-actions .is-save:not(:disabled):hover { background: var(--forest-700); color: var(--on-brand); }
+@media (max-width: 479px) { .save-changes-actions button { flex: 1 1 auto; } }
+
+.save-changes-actions button { transition: background var(--dur-hover) var(--ease-standard); }
+.save-changes-actions button:not(:disabled):hover { background: var(--surface-mist); }
+.save-changes-actions button:not(:disabled):active { transform: translateY(1px) scale(.97); transition: none; }
+.save-changes-actions button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
+.save-changes-actions button:disabled { cursor: wait; opacity: .6; }
+@media (prefers-reduced-motion: reduce) { .save-changes-actions button { transition: none; } }
+
+.save-changes-dialog.assessment-exit-dialog {
+  width: min(calc(100% - var(--s-6)), 380px);
+  padding: var(--s-4);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-md);
+}
+.save-changes-dialog.assessment-exit-dialog::backdrop { background: rgb(0 0 0 / 30%); }
+.save-changes-dialog.assessment-exit-dialog h2 { margin: 0 0 var(--s-2); font-size: 1rem; line-height: 1.4; }
+.save-changes-dialog.assessment-exit-dialog p { margin: 0 0 var(--s-4); font-size: var(--fs-xs, .75rem); line-height: 1.5; }
+.assessment-exit-dialog .save-changes-reference { gap: var(--s-2); min-height: 24px; }
+.assessment-exit-dialog .save-changes-reference strong { padding: 0 var(--s-2); font-size: var(--fs-micro); line-height: 2; }
+.assessment-exit-dialog .save-changes-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
+.assessment-exit-dialog .save-changes-actions button { min-height: 36px; padding: var(--s-2); font-size: var(--fs-xs, .75rem); line-height: 1.4; }
+.assessment-exit-dialog .save-changes-actions button:not(:disabled):hover { background: var(--surface-mist); border-color: var(--text-muted); }
+.assessment-exit-dialog .save-changes-actions .is-discard:not(:disabled):hover { background: color-mix(in srgb, var(--danger-ink) 8%, var(--surface)); border-color: var(--danger-ink); color: var(--danger-ink); }
+.assessment-exit-dialog .save-changes-actions .is-save:not(:disabled):hover { background: var(--forest-700); border-color: var(--forest-700); color: var(--on-brand); }

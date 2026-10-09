@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { reserveAssessmentIdentity } from '../services/assessmentIdentity'
 import { createPortal } from 'react-dom'
 import { ArrowRight, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
@@ -923,7 +924,7 @@ const formatDraftSavedDate = (value) => {
   if (!value) return 'Draft saved'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return 'Draft saved'
-  return `Saved ${date.toLocaleDateString()}`
+  return `${date.toLocaleDateString('en-GB')} · ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
 }
 
 const formatDisplayDate = (value) => {
@@ -1096,6 +1097,9 @@ const readExamControlLogRows = (assessment) => {
 }
 
 export default function AssessmentCreatePage({ onNavigate }) {
+  const creatingAssessmentRef = useRef(false)
+  const [isCreatingAssessment, setIsCreatingAssessment] = useState(false)
+  const [creationError, setCreationError] = useState('')
   const [draftAssessments, setDraftAssessments] = useState(readAssessmentDrafts)
   const [publishedAssessments, setPublishedAssessments] = useState(readPublishedAssessments)
   const [selectedPublishedLogAssessment, setSelectedPublishedLogAssessment] = useState(null)
@@ -1112,6 +1116,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
     const rows = readPublishedAssessments()
     const drafts = readAssessmentDrafts()
     if (requestedTab === 'evaluation') return 'evaluation'
+    if (requestedTab === 'draft') return 'draft'
     if (requestedTab === 'results') return 'results'
     if (requestedTab === 'published') return 'published'
     return rows.length ? 'published' : drafts.length ? 'draft' : 'published'
@@ -1270,14 +1275,21 @@ export default function AssessmentCreatePage({ onNavigate }) {
     return () => window.clearInterval(intervalId)
   }, [activeAssessmentTab])
 
-  const createAssessment = () => {
-    window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({
-      ...initialForm,
-      assessmentId: `assessment-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    }))
-    window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'create')
-    onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
+  const createAssessment = async () => {
+    if (creatingAssessmentRef.current) return
+    creatingAssessmentRef.current = true
+    setIsCreatingAssessment(true)
+    setCreationError('')
+    try {
+      const identity = await reserveAssessmentIdentity()
+      window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({ ...initialForm, ...identity }))
+      window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'create')
+      onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
+    } catch (error) {
+      setCreationError(error instanceof Error ? error.message : 'Unable to create assessment. Please try again.')
+      creatingAssessmentRef.current = false
+      setIsCreatingAssessment(false)
+    }
   }
 
   const continueDraftAssessment = (draft) => {
@@ -1458,12 +1470,16 @@ export default function AssessmentCreatePage({ onNavigate }) {
               type="button"
               className="assessment-create-new-btn"
               onClick={createAssessment}
+              disabled={isCreatingAssessment}
+              aria-busy={isCreatingAssessment}
             >
               <Plus size={17} strokeWidth={2.4} />
-              Create Assessment
+              {isCreatingAssessment ? 'Creating…' : 'Create Assessment'}
             </button>
           </div>
         </div>
+
+        {creationError && <p role="alert">{creationError}</p>}
 
         <section className="assessment-create-tabbar" aria-label="Assessment status tabs">
           <div className="assessment-create-tabs" role="tablist" aria-label="Assessment status filters">
@@ -1499,7 +1515,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
               <div className="assessment-create-draft-grid">
                 {filteredDraftAssessments.map((draft) => {
                   const assessmentName = getDraftValue(draft, 'assessmentName') || 'Untitled Assessment'
-                  const examCategory = getDraftValue(draft, 'examCategory') || 'Assessment'
+                  const assessmentCode = getDraftValue(draft, 'assessmentCode') || 'ID unavailable'
                   const academicYear = getDraftValue(draft, 'academicYear') || '-'
                   const course = String(getDraftValue(draft, 'course', 'assignCourse') || '-')
                     .replace(/\s*\(NMC Syllabus\)\s*/i, '')
@@ -1515,7 +1531,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                       <div className="assessment-create-draft-profile">
                         <div>
                         <strong>{assessmentName}</strong>
-                        <span className="assessment-create-draft-category">{examCategory}</span>
+                        <span className="assessment-create-draft-category is-identity" aria-label={`Assessment ID: ${assessmentCode}`}>{assessmentCode}</span>
                         <span>{questionCount} Questions | {totalMarks} Marks</span>
                         </div>
                         <button
@@ -1546,7 +1562,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                         <span>{course}</span>
                       </div>
                       <div className="assessment-create-draft-footer">
-                        <span>{formatDraftSavedDate(savedAt)}</span>
+                        <span className="assessment-create-saved-timestamp">{formatDraftSavedDate(savedAt)}</span>
                         <button type="button" onClick={() => continueDraftAssessment(draft)}>
                           Continue
                           <ArrowRight size={14} strokeWidth={2.3} />

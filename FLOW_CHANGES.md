@@ -441,3 +441,90 @@
 ### 2026-10-06 - Combined skill activity rows
 - My Logbook and Admin Logbook lists show one row per student, subject and assigned skill, using its latest attempt status. Recent activity sorts by the latest event across that activity's attempts.
 - Opening the row retains the complete attempt history; historical attempts remain available for performance review. Filtering and pagination operate on combined rows.
+## 2026-10-08 - Assessment ID on creation
+
+- Create Assessment reserves an `ASSTMMDDNNN` code using India time and a daily sequence starting at 001, alongside a separate unique internal ID. The code appears beside the header details and persists through draft, approval, and publication workflows.
+- Repeated clicks during creation are blocked. Loading a template or clearing configuration retains the current assessment identity. Sequence allocation is local to this browser; the service adapter supports replacement with a backend allocator.
+
+## 2026-10-08 - Assessment exit confirmation
+
+- Exit opens a confirmation with the current assessment ID and Save as Draft, Discard, and Cancel actions.
+- Save as Draft accepts incomplete work and returns to Drafts only after persistence succeeds. Reopening or resaving retains the assessment identity; matching titles remain separate assessments.
+- Discard restores the last saved workspace for existing assessments or removes the new unsaved workspace. Cancel and Escape keep the editor open. Save failures retain the editor and display an error.
+
+## 2026-10-09 - Reusable question breakdown templates
+
+- Save Template below Question Type Breakdown opens a name dialog with Save and Cancel. Names must be non-empty and unique; storage errors keep the dialog open.
+- Saved templates persist locally and appear in Blueprint Template alongside Create Blueprint (Default). Selecting one restores only question-type marks, cognition allocations and LAQ parts; curriculum and distribution remain unchanged.
+- Changing templates clears dependent competency allocations. Existing total and cognition validation prevents continuing with an incompatible breakdown.
+
+## 2026-10-09 - Template-controlled total marks
+
+- Selecting a saved Blueprint Template fills Total Mark with its saved total and makes the field read-only. Distribution and suggestion marks recalculate, and dependent matrices reset for the new total.
+- Selecting Create Blueprint (Default) clears Total Mark and restores manual entry.
+
+## 2026-10-09 - Include cognition in blueprint templates
+
+- Save Template now stores Level of Cognition percentages alongside Question Type Breakdown and LAQ parts. Selecting a template restores both sections and retains template-controlled Total Mark.
+- Templates continue to exclude subject, topics, competencies, distribution and Assessment Blueprint allocations. Older templates without cognition data prompt for percentages rather than inheriting unrelated values.
+
+## 2026-10-09 - Template detail cards and confirmed deletion
+
+- Blueprint Template lists saved names, marks, creator and LoT/HoT percentages in selectable cards. New templates record the current profile name; older entries show Creator unavailable.
+- Each saved template has a separate Delete action with Yes, delete and No confirmation. Default cannot be deleted. Failed deletion keeps the template available.
+- Deleting a selected template retains a snapshot in the current assessment so its loaded data and locked total survive saving and reopening; only its reusable list entry is removed.
+
+## 2026-10-09 - Validate totals before saving templates
+
+- Save Template is enabled only when total marks and both cognition mark targets tally, used question rows are complete, and LAQ parts are valid. Unused blank question types remain optional.
+
+## 2026-10-09 - Dependent blueprint fields
+
+- Blueprint inputs follow Subject, Topics, Competency, then optional Template and Total Mark. Template and marks stay disabled until a valid competency is selected.
+- Changing subject clears topics and all downstream values; changing topics clears competencies and downstream values. Changing or removing competencies clears the selected template, total, cognition, breakdown and dependent calculations.
+- Saved templates remain available across subjects. Selecting one after competency selection continues to restore its data and lock its total.
+
+## 2026-10-09 - Direct Assessment Blueprint for saved templates
+
+- With a saved template selected, Create Blueprint Matrix validates the saved cognition and breakdown, creates the competency matrix, and focuses Assessment Blueprint directly. Failed validation or allocation keeps the user on Distribution with an explanation.
+- Template cognition, question-type values, SAQ thinking modes and LAQ parts are read-only; Reset Matrix cannot clear them. Default creation keeps the existing editable steps.
+
+## 2026-10-09 - Suggested cognition adjustments
+
+- Editable question breakdowns with matching total marks and mismatched cognition now offer exact HoT/LoT adjustments, with the fewest question moves recommended first and alternatives collapsed.
+- Apply updates classifications without changing question totals or LAQ parts. Undo restores the previous breakdown while its context remains unchanged. Saved templates stay read-only.
+
+## 2026-10-09 - Percentage recommendations by question type
+
+- Replaced the general adjustment panel with recommendations beneath each populated breakdown row. MCQs and Both-mode SAQs offer the nearest whole-question split from cognition percentages, with Apply for that row and Undo.
+- Fixed SAQ selections and LAQ parts remain unchanged. LAQs show part counts and marks alongside percentage targets. Rounding and overall target differences are shown rather than claiming that applying one row balances the assessment.
+
+## 2026-10-09 - Remaining-budget allocations per question type
+
+- Row suggestions now subtract other completed rows from the assessment LoT/HoT mark targets. They show possible total marks and whole-question counts, including questions multiplied by marks per question.
+- Use fills the selected row's total and cognition counts while preserving other rows and fixed thinking levels. Blank totals offer smaller allocations as well as the maximum; entered totals constrain the options. Undo restores the previous breakdown.
+- Incomplete or overallocated rows explain why no option can be offered. LAQ parts remain fixed and contribute their actual marks to the remaining budget.
+
+## 2026-10-09 - Clickable allocation cards
+
+- Replaced allocation text and separate Use buttons with compact two-line cards. Clicking a card or activating it with the keyboard applies that row's allocation; a green border and check indicate the current selection.
+- Undo remains beside the cards. LAQ part summaries are read-only cards, and allocation calculations remain unchanged.
+
+## 2026-10-09 - Show allocation cards after row total entry
+
+- Allocation cards stay hidden until the row has a positive Total Marks value and disappear when it is cleared. Options use only the entered row total.
+
+## 2026-10-09 - Suggestions from thinking-level selection
+
+- Selecting LoT, HoT or Both can now reveal suggestions before row Total Marks is entered, superseding the previous total-entry gate. With no marks per question, the row prompts for that value first.
+- Once marks per question is available, cards offer allocations within the remaining assessment budget; selecting a card fills the row total. An entered total still constrains options.
+
+## 2026-10-09 - Explicit SAQ selection and row reset confirmation
+
+- New SAQ rows start without a selected thinking level and with their inputs disabled. Choosing LoT, HoT or Both enables the row. Empty rows no longer show the marks-per-question suggestion prompt.
+- Changing the thinking level of a populated row asks for Cancel or Reset row. Cancel preserves the selection and data; Reset clears only that row and applies the new selection. Empty-row changes and repeated selection need no confirmation.
+- Saved templates remain read-only, and populated legacy drafts keep their historical thinking-level classification.
+
+## 2026-10-09 - Full SAQ row reset
+
+- Confirming Reset row now clears the thinking-level selection as well as the row values. Fields return to disabled until a new selection is made. Cancel continues to preserve the row.

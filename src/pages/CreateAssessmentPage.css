@@ -1,3 +1,8 @@
+.create-assessment-workspace .create-assessment-blueprint-subject .create-assessment-blueprint-select-trigger strong {
+  font: inherit;
+  color: inherit;
+}
+
 .create-assessment-workspace .create-assessment-duration-split-footer {
   display: grid;
   grid-template-columns: minmax(max-content, 1fr) max-content;
@@ -75,4 +80,60 @@
     max-height: none;
     overflow: visible;
   }
+}
+.create-assessment-workspace .create-assessment-blueprint-head {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.create-assessment-blueprint-subject {
+  position: relative;
+  z-index: 3;
+  width: min(100%, calc(var(--s-8) * 4));
+  margin-bottom: var(--s-3);
+}
+
+.create-assessment-workspace .create-assessment-blueprint-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(220px, 1fr) minmax(130px, .52fr);
+}
+
+.create-assessment-blueprint-template {
+  align-self: end;
+  min-width: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .create-assessment-workspace .create-assessment-blueprint-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .create-assessment-workspace .create-assessment-blueprint-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.create-assessment-title-copy .create-assessment-header-details {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--create-page-gutter);
+  white-space: normal;
+}
+
+.create-assessment-header-code {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface-mist);
+  color: var(--text-brand);
+  font-family: var(--f-code, ui-monospace, monospace);
+  font-size: var(--fs-micro, 11px);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
 }

@@ -1,0 +1,18 @@
+﻿.create-assessment-blueprint-spec-table .blueprint-row-suggestion > td { padding: var(--s-2) var(--s-3); text-align: left; background: var(--surface-card); }
+.blueprint-row-suggestion-content { color: var(--text-body); }
+.blueprint-allocation-cards { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.create-assessment-blueprint-spec-card .blueprint-allocation-card { display: grid; grid-template-columns: minmax(0, 1fr) 16px; grid-template-rows: auto auto; column-gap: var(--s-2); row-gap: var(--s-1); padding: var(--s-2) var(--s-3); width: 184px; min-width: 0; max-width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); text-align: left; cursor: pointer; transition: background var(--dur-hover) var(--ease-standard), border-color var(--dur-hover) var(--ease-standard); }
+.create-assessment-blueprint-spec-card .blueprint-allocation-card .blueprint-allocation-title { grid-column: 1 / -1; white-space: nowrap; font-size: var(--fs-xs, .75rem); line-height: 1.4; font-weight: 600; color: var(--text-strong); }
+.create-assessment-blueprint-spec-card .blueprint-allocation-card .blueprint-allocation-split { grid-column: 1; grid-row: 2; font-size: var(--fs-micro, .6875rem); line-height: 1.4; font-weight: 400; color: var(--text-muted); font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.create-assessment-blueprint-spec-card .blueprint-allocation-card.is-selected { border-color: var(--forest); background: var(--surface-mist); }
+.create-assessment-blueprint-spec-card button.blueprint-allocation-card:hover { border-color: var(--forest); background: var(--surface-mist); }
+.blueprint-allocation-check { grid-column: 2; grid-row: 2; align-self: center; justify-self: end; color: var(--text-brand); }
+.create-assessment-blueprint-spec-card .blueprint-allocation-card.is-readonly { cursor: default; }
+.create-assessment-blueprint-spec-card .blueprint-allocation-undo { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); flex-shrink: 0; padding: var(--s-1) var(--s-2); min-height: 32px; border: 1px solid transparent; border-radius: var(--r-pill); background: transparent; color: var(--text-brand); font-size: var(--fs-xs, .75rem); cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
+.create-assessment-blueprint-spec-card .blueprint-allocation-undo:hover { background: var(--surface-mist); border-color: var(--border); }
+.blueprint-allocation-cards button:active { transform: translateY(1px) scale(.97); transition: none; }
+.blueprint-allocation-cards button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
+.create-assessment-blueprint-spec-card .blueprint-row-suggestion-meta { color: var(--text-muted); font-size: var(--fs-xs, .75rem); font-weight: 400; }
+.blueprint-laq-parts-label { display: block; margin-top: var(--s-1); color: var(--text-muted); font-size: var(--fs-micro, .6875rem); }
+@media (max-width: 1023px) { .blueprint-row-suggestion-content { max-width: calc(100vw - 100px); } }
+@media (prefers-reduced-motion: reduce) { .blueprint-allocation-cards button { transition: none; } }

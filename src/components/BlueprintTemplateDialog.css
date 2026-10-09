@@ -1,0 +1,24 @@
+.blueprint-template-name { display: grid; gap: var(--s-2); margin-bottom: var(--s-4); }
+.blueprint-template-name label { color: var(--text-strong); font-weight: 600; }
+.blueprint-template-name em { color: var(--danger-ink); }
+.blueprint-template-name input { width: 100%; min-width: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); font: inherit; }
+.blueprint-template-name input:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
+.blueprint-template-name input[aria-invalid="true"] { border-color: var(--danger-ink); }
+.create-assessment-blueprint-competency-actions .blueprint-template-save { margin-right: auto; }
+.blueprint-template-feedback { color: var(--danger-ink); font-size: var(--fs-micro); margin: var(--s-2) 0 0; }
+
+.save-changes-dialog.blueprint-template-dialog {
+  width: min(calc(100% - var(--s-6)), 400px);
+  padding: var(--s-4);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-md);
+}
+.save-changes-dialog.blueprint-template-dialog::backdrop { background: rgb(0 0 0 / 30%); }
+.blueprint-template-dialog h2 { margin-bottom: var(--s-1); font-size: 1rem; line-height: 1.4; }
+.blueprint-template-dialog #save-changes-description { margin-bottom: var(--s-4); color: var(--text-muted); font-size: var(--fs-xs, .75rem); line-height: 1.5; }
+.blueprint-template-dialog .blueprint-template-name { gap: var(--s-2); margin-bottom: var(--s-4); }
+.blueprint-template-dialog .blueprint-template-name label { font-size: var(--fs-xs, .75rem); }
+.blueprint-template-dialog .blueprint-template-name input { height: 40px; padding: var(--s-2) var(--s-3); font-size: var(--fs-xs, .75rem); }
+.blueprint-template-dialog .save-changes-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+.blueprint-template-dialog .save-changes-actions button { min-height: 36px; padding: var(--s-2) var(--s-3); font-size: var(--fs-xs, .75rem); line-height: 1.4; }
+.blueprint-template-dialog .save-changes-error { font-size: var(--fs-xs, .75rem); line-height: 1.5; }

@@ -1434,6 +1434,7 @@ function App() {
             <AssessmentCreatePage onNavigate={navigateToPage} onAlert={showAlert} />
           ) : activePage === APP_PAGES.CREATE_ASSESSMENT ? (
             <CreateAssessmentPage
+              currentUser={profileUser}
               onNavigate={navigateToPage}
               onAlert={showAlert}
               onSendToApproval={handleSendToApproval}
@@ -1730,5 +1731,4 @@ function App() {
 }
 
 export default App
-
 

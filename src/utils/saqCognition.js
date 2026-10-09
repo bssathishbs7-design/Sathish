@@ -5,5 +5,7 @@
 export function getSaqCognitionMode(label, draft = {}) {
   if (!label.startsWith('SAQs (')) return null
   if (['lot', 'hot', 'both'].includes(draft.cognitionMode)) return draft.cognitionMode
+  // Preserve the historical selection for populated drafts; new rows start empty.
+  if (!Number(draft.perQuestionMarks) && !Number(draft.totalMarks)) return null
   return label === 'SAQs (Direct)' ? 'lot' : 'hot'
 }
