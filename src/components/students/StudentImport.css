@@ -1,0 +1,8 @@
+.sm-upload { display: grid; justify-items: center; gap: var(--s-2); padding: var(--s-5); border: 1px dashed var(--border); border-radius: var(--r); background: var(--surface-soft); color: var(--text-body); }
+.sm-upload input { max-width: 100%; }
+.sm-upload span { color: var(--text-muted); font-size: var(--fs-small); }
+.sm-import-table { overflow: auto; max-height: 45dvh; border: 1px solid var(--border); border-radius: var(--r-sm); }
+.sm-import-table table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+.sm-import-table :is(th,td) { padding: var(--s-3); border-bottom: 1px solid var(--border); text-align: left; }
+.sm-import-table th { background: var(--surface-soft); color: var(--text-strong); position: sticky; top: 0; }
+.sm-import-table small { display: block; color: var(--text-muted); }

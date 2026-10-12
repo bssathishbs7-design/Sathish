@@ -1,0 +1,9 @@
+.sm-record dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.sm-record dt { color: var(--text-muted); font-size: var(--fs-small); }
+.sm-record dd { margin: var(--s-1) 0 0; color: var(--text-strong); overflow-wrap: anywhere; }
+.sm-record .student-management-status { justify-self: start; }
+.sm-timeline { margin: var(--s-3) 0 0; padding: 0; list-style: none; display: grid; gap: var(--s-3); }
+.sm-timeline li { display: grid; gap: var(--s-1); padding: var(--s-3); border-left: 2px solid var(--border); background: var(--surface-soft); border-radius: var(--r-sm); }
+.sm-timeline :is(span,time) { color: var(--text-muted); font-size: var(--fs-small); }
+.sm-timeline p { margin: var(--s-1) 0 0; overflow-wrap: anywhere; }
+@media (max-width: 479px) { .sm-record dl { grid-template-columns: 1fr; } }

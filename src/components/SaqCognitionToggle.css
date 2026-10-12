@@ -4,17 +4,10 @@
 .saq-cognition-cell > .create-assessment-blueprint-question-type-child-label { flex: 0 0 88px; padding-left: 0; }
 .saq-cognition-toggle { display: inline-grid; grid-template-columns: repeat(3, calc(var(--s-6) + var(--s-2))); flex-shrink: 0; padding: var(--s-1); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); vertical-align: middle; white-space: nowrap; }
 .saq-cognition-toggle button { box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 100%; min-width: 0; height: var(--s-5); padding: 0; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--text-muted); font: inherit; font-size: var(--fs-micro, 11px); cursor: pointer; transition: background var(--dur-control) var(--ease-standard), color var(--dur-control) var(--ease-standard); }
-.saq-cognition-toggle button:hover { background: var(--surface-card); color: var(--text-body); }
+.saq-cognition-toggle button:not([aria-disabled="true"]):hover { background: var(--surface-card); color: var(--text-body); }
 .saq-cognition-toggle button[aria-pressed="true"] { background: var(--forest); color: var(--on-brand); box-shadow: var(--shadow-xs); }
 .saq-cognition-toggle button:focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); }
-.saq-cognition-toggle button:active { transform: translateY(1px) scale(.97); transition: none; }
+.saq-cognition-toggle button:not([aria-disabled="true"]):active { transform: translateY(1px) scale(.97); transition: none; }
 @media (prefers-reduced-motion: reduce) { .saq-cognition-toggle button { transition: none; } }
-.saq-cognition-toggle button:disabled { cursor: default; opacity: .6; }
-.save-changes-dialog.saq-reset-dialog { width: min(calc(100% - var(--s-6)), 360px); padding: var(--s-4); border-radius: var(--r); box-shadow: var(--shadow-md); }
-.save-changes-dialog.saq-reset-dialog::backdrop { background: rgb(0 0 0 / 30%); }
-.save-changes-dialog.saq-reset-dialog h2 { margin: 0 0 var(--s-2); font-size: 1rem; line-height: 1.4; }
-.save-changes-dialog.saq-reset-dialog p { margin: 0 0 var(--s-4); font-size: var(--fs-xs, .75rem); line-height: 1.5; }
-.saq-reset-dialog .save-changes-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
-.saq-reset-dialog .save-changes-actions button { min-height: 36px; padding: var(--s-2); font-size: var(--fs-xs, .75rem); }
-.saq-reset-dialog .save-changes-actions .is-discard:not(:disabled):hover { background: color-mix(in srgb, var(--danger-ink) 8%, var(--surface)); border-color: var(--danger-ink); }
+.saq-cognition-toggle button:disabled, .saq-cognition-toggle button[aria-disabled="true"] { cursor: not-allowed; opacity: .6; }
 .create-assessment-blueprint-spec-table .is-child input:disabled { background: var(--surface-mist); color: var(--text-muted); cursor: not-allowed; opacity: .6; }

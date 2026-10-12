@@ -1,0 +1,22 @@
+import { useState } from 'react'
+import { ArrowRight, Trash2, Pencil, Plus } from 'lucide-react'
+import './StudentDirectory.css'
+
+/** Filtered rows are supplied by the page. Selection stays within that filtered view. */
+export default function StudentDirectory({ rows, canEdit, onOpen, onAction, onClear, title }) {
+  const [selected, setSelected] = useState([]), [page, setPage] = useState(1)
+  const pages = Math.max(1, Math.ceil(rows.length / 20)), current = Math.min(page, pages)
+  const shown = rows.slice((current - 1) * 20, current * 20)
+  const checked = rows.filter(student => selected.includes(student.id))
+  const ids = checked.map(student => student.id)
+  const canProgress = checked.length > 0 && checked.every(student => student.tracked && student.status === 'Active' && student.batch === checked[0].batch && student.year === checked[0].year)
+  return <section className="lb-card student-management-table-card">
+    <div className="sm-section-head student-management-table-head"><div><h2>{title}</h2><p role="status">{rows.length} students matched your current view.</p></div>{canEdit && <button className="lb-btn" onClick={() => onAction({ type: 'batch' })}><Plus size={16} />Add batch</button>}</div>
+    {canEdit && checked.length > 0 && <div className="sm-selection"><strong>{checked.length} selected</strong><div className="sm-actions"><button className="lb-btn lb-primary" disabled={!canProgress} onClick={() => onAction({ type: 'move', ids, action: checked[0].year === 'Internship' ? 'complete' : 'promote' })}><ArrowRight size={16} />{checked[0].year === 'Internship' ? 'Complete course' : 'Promote'}</button><button className="lb-btn" disabled={!canProgress || checked[0].year === 'Internship'} onClick={() => onAction({ type: 'move', ids, action: 'repeat' })}>Not promoted</button><button className="lb-btn" onClick={() => onAction({ type: 'delete', ids })}><Trash2 size={16} />Delete</button><button className="lb-btn" onClick={() => setSelected([])}>Clear selection</button></div>{!canProgress && <small>Select active students from the same batch and year, with year setup complete, to enable progression.</small>}</div>}
+    <div className="student-management-table-wrap" role="region" aria-label="Student directory" tabIndex={0}><table className="student-management-table"><thead><tr>{canEdit && <th><input type="checkbox" aria-label="Select all students on this page" checked={shown.length > 0 && shown.every(student => selected.includes(student.id))} onChange={event => setSelected(event.target.checked ? [...new Set([...selected, ...shown.map(student => student.id)])] : selected.filter(id => !shown.some(student => student.id === id)))} /></th>}<th>Student</th><th>Batch</th><th>Year</th><th>Subject</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+      {!shown.length && <tr><td colSpan={canEdit ? 7 : 6}><div className="lb-empty"><strong>No students found</strong><p>Try another name or filter.</p><button className="lb-btn" onClick={onClear}>Reset search and filters</button></div></td></tr>}
+      {shown.map(student => <tr key={student.id}>{canEdit && <td><input type="checkbox" aria-label={`Select ${student.name}`} checked={selected.includes(student.id)} onChange={event => setSelected(event.target.checked ? [...selected, student.id] : selected.filter(id => id !== student.id))} /></td>}<td><button className="sm-student-link" onClick={() => onOpen(student.id)}><strong>{student.name}</strong><span>{student.registrationId}</span></button></td><td>{student.batch}</td><td>{student.year}<small className="sm-cell-note">{student.tracked ? student.academicYear : 'Needs year setup'}</small></td><td>{student.subject}</td><td><span className={`student-management-status is-${student.status.toLowerCase()}`}>{student.status}</span></td><td><div className="sm-actions"><button className="lb-btn" onClick={() => onOpen(student.id)}>View</button>{canEdit && <button className="lb-icon-btn" aria-label={`Edit ${student.name}`} onClick={() => onAction({ type: 'save', student })}><Pencil size={16} /></button>}</div></td></tr>)}
+    </tbody></table></div>
+    {pages > 1 && <div className="sm-pagination"><button className="lb-btn" disabled={current === 1} onClick={() => setPage(current - 1)}>Previous</button><span>Page {current} of {pages}</span><button className="lb-btn" disabled={current === pages} onClick={() => setPage(current + 1)}>Next</button></div>}
+  </section>
+}

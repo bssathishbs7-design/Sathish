@@ -1,0 +1,14 @@
+.sm-editor { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.sm-form-body { margin: 0; border: 0; padding: var(--s-5); display: grid; gap: var(--s-4); min-width: 0; overflow-y: auto; flex: 1; align-content: start; }
+.sm-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.sm-field { min-width: 0; margin: 0; }
+.sm-field input, .sm-field select { min-height: 44px; }
+.sm-field :is(input,select):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.sm-field :is(input,select):disabled { opacity: .65; cursor: not-allowed; }
+.sm-field [aria-invalid="true"] { border-color: var(--danger-ink, var(--text-strong)); }
+.sm-error, .lb-field small.sm-error { color: var(--danger-ink, var(--text-strong)); }
+.sm-help { color: var(--text-muted); margin: 0; }
+.sm-spinner { animation: sm-spin var(--dur-reveal) linear infinite; }
+@keyframes sm-spin { to { transform: rotate(360deg); } }
+@media (max-width: 767px) { .sm-form-grid { grid-template-columns: 1fr; } .sm-form-body { padding: var(--s-4); } }
+@media (prefers-reduced-motion: reduce) { .sm-spinner { animation: none; } }

@@ -1,0 +1,11 @@
+.sm-selection { display: grid; gap: var(--s-3); padding: var(--s-3); background: var(--surface-soft); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.sm-selection small { color: var(--text-muted); }
+.sm-student-link { display: grid; gap: var(--s-1); text-align: left; background: none; border: 0; color: var(--text-strong); padding: var(--s-1); cursor: pointer; }
+.sm-student-link span, .sm-number, .sm-pagination span { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.sm-student-link span, .sm-cell-note { color: var(--text-muted); font-size: var(--fs-micro); }
+.sm-cell-note { display: block; margin-top: var(--s-1); }
+.sm-student-link:hover { color: var(--text-brand); }
+.sm-student-link:active { transform: translateY(1px) scale(.97); }
+.sm-student-link:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.sm-pagination { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-3); }
+.student-management-table input[type="checkbox"] { width: var(--s-4); height: var(--s-4); accent-color: var(--forest); }

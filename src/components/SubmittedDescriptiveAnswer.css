@@ -1,0 +1,7 @@
+.assessment-student-written-answer { grid-column: 1 / -1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-3); color: var(--text-body); }
+.assessment-student-written-answer p { white-space: pre-wrap; overflow-wrap: anywhere; margin: var(--s-2) 0 0; }
+.assessment-student-rich-answer { overflow: auto; overflow-wrap: anywhere; margin-top: var(--s-2); }
+.assessment-student-rich-answer img { max-width: 100%; height: auto; }
+.assessment-student-rich-answer table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.assessment-student-rich-answer :is(td,th) { border: 1px solid var(--border); padding: var(--s-2); }
+.assessment-student-rich-answer :is(ul,ol) { padding-left: var(--s-5); }

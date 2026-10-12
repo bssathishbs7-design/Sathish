@@ -1,0 +1,29 @@
+﻿.blueprint-question-outline.is-type-summary .create-assessment-blueprint-spec-table .blueprint-count-suggestions-row > td { padding: var(--s-2) var(--s-3); text-align: left; }
+.blueprint-count-suggestions-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-bottom: var(--s-2); font: 600 var(--fs-xs)/1.4 var(--f-body); color: var(--text-strong); }
+.blueprint-count-suggestions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: var(--s-2); font-family: var(--f-body); }
+.blueprint-count-suggestions .blueprint-count-card { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); font: 400 var(--fs-micro)/1.4 var(--f-body); text-align: left; cursor: pointer; transition: background var(--dur-hover) var(--ease-standard), border-color var(--dur-hover) var(--ease-standard); }
+.blueprint-count-suggestions .blueprint-count-equation { color: var(--text-strong); font-size: var(--fs-micro); font-weight: 500; }
+.blueprint-count-suggestions b, .blueprint-count-pagination > span { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.blueprint-count-card-split { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.blueprint-count-card-split .is-hot { color: var(--question-grid-hot, var(--text-body)); }
+.blueprint-count-card-split .is-lot { color: var(--question-grid-lot, var(--text-body)); }
+.blueprint-count-current { display: inline-flex; align-items: center; gap: var(--s-1); margin-left: auto; color: var(--text-brand); }
+.blueprint-count-card-balance, .blueprint-count-warning, .blueprint-count-message { display: flex; align-items: center; gap: var(--s-1); color: var(--text-muted); font-weight: 400; }
+.blueprint-count-card-balance.is-complete { color: var(--text-brand); }
+.blueprint-count-warning, .blueprint-count-message { color: var(--danger-ink); }
+.blueprint-count-warning svg, .blueprint-count-message svg { flex-shrink: 0; }
+.blueprint-count-message { margin: var(--s-1) 0 0; font-size: var(--fs-micro); }
+.blueprint-count-suggestions .blueprint-count-card.is-current { border-color: var(--forest); background: var(--mint-100); cursor: default; }
+.blueprint-count-suggestions button:hover { background: var(--mint-100); border-color: var(--forest); }
+.blueprint-count-pagination { display: flex; align-items: center; gap: var(--s-2); color: var(--text-muted); }
+.blueprint-count-pagination button { display: grid; place-items: center; padding: var(--s-1); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-brand); cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
+.blueprint-count-pagination button:hover:not(:disabled) { background: var(--mint-100); }
+.blueprint-count-pagination button:disabled { opacity: .4; cursor: not-allowed; }
+.blueprint-count-card:focus-visible, .blueprint-count-pagination button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-100); }
+.blueprint-count-suggestions button:active, .blueprint-count-pagination button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+@media (max-width: 767px) { .blueprint-count-suggestions { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .blueprint-count-suggestions button, .blueprint-count-pagination button { transition: none; } }
+
+.blueprint-count-suggestions .blueprint-count-card.is-allocated { background: color-mix(in srgb, var(--butter) 35%, var(--surface-card)); border-color: var(--warn-ink); box-shadow: inset 0 0 0 1px var(--warn-ink); }
+.blueprint-count-suggestions .blueprint-count-card.is-allocated .blueprint-count-card-balance { color: var(--text-strong); font-weight: 600; }
+.blueprint-count-suggestions button.is-allocated:hover { background: color-mix(in srgb, var(--butter) 50%, var(--surface-card)); }

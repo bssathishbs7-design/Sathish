@@ -4,9 +4,9 @@ import { X } from 'lucide-react'
 import './LogbookDrawer.css'
 
 /** Shared modal shell. Native dialog provides focus trapping and makes the app inert.
- * @param {{title:string, subtitle?:string, theme:string, onClose:Function, children:import('react').ReactNode, busy?:boolean, variant?:'drawer'|'form'|'approval'|'compact'}} props
+ * @param {{title:string, subtitle?:string, theme:string, onClose:Function, children:import('react').ReactNode, busy?:boolean, eyebrow?:string, variant?:'drawer'|'form'|'approval'|'compact'}} props
  */
-export default function LogbookDrawer({ title, subtitle, theme, onClose, children, busy = false, variant = 'drawer' }) {
+export default function LogbookDrawer({ title, subtitle, theme, onClose, children, busy = false, variant = 'drawer', eyebrow = 'Logbook' }) {
   const dialog = useRef(null)
   const titleId = useId()
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function LogbookDrawer({ title, subtitle, theme, onClose, childre
       onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (!busy) onClose() } }}
       onClick={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
       <div className="lb-drawer-panel">
-        <header className="lb-drawer-head"><div>{!['approval', 'compact'].includes(variant) && <span className="lb-eyebrow">Logbook</span>}<h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="lb-icon-btn" aria-label={variant === 'compact' ? 'Close dialog' : 'Close drawer'} disabled={busy} onClick={onClose}><X size={20} /></button></header>
+        <header className="lb-drawer-head"><div>{!['approval', 'compact'].includes(variant) && <span className="lb-eyebrow">{eyebrow}</span>}<h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="lb-icon-btn" aria-label={variant === 'compact' ? 'Close dialog' : 'Close drawer'} disabled={busy} onClick={onClose}><X size={20} /></button></header>
         {children}
       </div>
     </dialog>, document.body,

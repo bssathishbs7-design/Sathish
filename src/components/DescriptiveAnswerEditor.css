@@ -1,0 +1,27 @@
+.descriptive-editor { min-width: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); overflow: hidden; }
+.descriptive-editor:focus-within { border-color: var(--forest); box-shadow: 0 0 0 2px var(--focus-ring); }
+.descriptive-editor-toolbar,.descriptive-editor-context { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-1); padding: var(--s-2); border-bottom: 1px solid var(--border); background: var(--surface-soft); }
+.practice-exam-theme .descriptive-editor button { display: inline-flex; justify-content: center; align-items: center; min-width: 32px; min-height: 32px; padding: var(--s-1) var(--s-2); border: 1px solid transparent; background: transparent; color: var(--text-body); font: 500 12px var(--font-family-base); }
+.practice-exam-theme .descriptive-editor button:hover:not(:disabled),.practice-exam-theme .descriptive-editor button[aria-pressed="true"] { color: var(--text-brand); border-color: var(--border); background: var(--surface); }
+.descriptive-editor-content { min-height: 120px; max-height: 480px; overflow: auto; padding: var(--s-3); font: 400 14px/1.65 var(--font-family-base); overflow-wrap: anywhere; outline: none; }
+.descriptive-editor-content[data-empty="true"]:empty::before { content: 'Type your answer…'; color: var(--text-muted); pointer-events: none; }
+.descriptive-editor-content p { margin: 0 0 var(--s-2); }
+.practice-exam-theme .descriptive-editor-content span { color: inherit; font-size: inherit; font-weight: inherit; }
+.practice-exam-theme .descriptive-editor-content :is(b,strong) { font-weight: 700; }
+.practice-exam-theme .descriptive-editor-content :is(i,em) { font-style: italic; }
+.practice-exam-theme .descriptive-editor-content u { text-decoration: underline; }
+.descriptive-editor-content :is(ul,ol) { padding-left: var(--s-5); }
+.descriptive-editor-content img { max-width: 100%; height: auto; cursor: pointer; }
+.descriptive-editor-content table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-block: var(--s-2); }
+.descriptive-editor-content :is(td,th) { border: 1px solid var(--border); padding: var(--s-2); min-width: 40px; height: 36px; vertical-align: top; }
+.descriptive-editor-note,.descriptive-editor-error { display: block; padding: var(--s-2) var(--s-3); font-size: 12px; color: var(--text-muted); }
+.descriptive-editor-error { color: var(--danger-ink); }
+.practice-exam-theme .descriptive-editor .descriptive-editor-more { display: none; }
+.descriptive-editor[data-locked] { background: var(--surface-mist); }
+@media(max-width:767px) {
+  .descriptive-editor-content { font-size: 16px; }
+  .practice-exam-theme .descriptive-editor .descriptive-editor-extra { display: none; }
+  .practice-exam-theme .descriptive-editor .descriptive-editor-extra.is-visible,.practice-exam-theme .descriptive-editor .descriptive-editor-more { display: inline-flex; }
+  .practice-exam-theme .descriptive-editor button { min-width: 40px; min-height: 40px; }
+}
+@media(prefers-reduced-motion:reduce) { .practice-exam-theme .descriptive-editor button { transition: none; } }

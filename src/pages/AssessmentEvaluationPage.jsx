@@ -1,3 +1,5 @@
+import { descriptiveEvaluationComplete, descriptiveResponseKey, descriptiveResponseItems, normalizeDescriptiveResponses, descriptiveInputEnabled, descriptiveSections, readAssessmentAttempt } from '../services/descriptiveResponses'
+import SubmittedDescriptiveAnswer from '../components/SubmittedDescriptiveAnswer'
 import { AlertCircle, ArrowLeft, Award, ChartColumnBig, Check, ChevronDown, ChevronRight, ChevronUp, ClipboardCheck, ClipboardList, Clock3, Download, FileText, Filter, Goal, GraduationCap, Image as ImageIcon, Info, LogOut, Moon, Pencil, Percent, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Sun, Trash2, TrendingUp, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { APP_PAGES } from '../config/appPages'
@@ -24,7 +26,6 @@ const STUDENT_EXAM_SUBMISSION_STATUS_EVENT = 'vx-student-exam-submission-status-
 const ASSESSMENT_EVALUATION_ATTENDANCE_KEY = 'vx-assessment-evaluation-attendance'
 const ASSESSMENT_STUDENT_QUESTION_EVALUATION_KEY = 'vx-assessment-student-question-evaluation'
 const ASSESSMENT_STUDENT_EVALUATION_STATUS_KEY = 'vx-assessment-student-evaluation-status'
-const ONLINE_PROCTORED_ATTEMPT_STORAGE_KEY = 'vx-online-proctored-exam-attempts'
 const DEFAULT_EVALUATION_STUDENTS = [
   { id: 'MV1253', name: 'Student 1', attendance: 'P' },
   { id: 'MV1254', name: 'Student 2', attendance: 'P' },
@@ -296,7 +297,7 @@ const getManualAttendanceStorageKey = (assessment) => (
 )
 
 const getStudentQuestionEvaluationStorageKey = (assessment, student) => (
-  `${ASSESSMENT_STUDENT_QUESTION_EVALUATION_KEY}:${getAssessmentControlId(assessment)}:${student?.id || 'student'}`
+  `${ASSESSMENT_STUDENT_QUESTION_EVALUATION_KEY}:${getAssessmentControlId(assessment)}:${student?.id || 'student'}${descriptiveInputEnabled(assessment) ? `:attempt-${readAssessmentAttempt(assessment, student?.id).appliedResetVersion || 0}` : ''}`
 )
 
 const getStudentEvaluationStatusStorageKey = (assessment) => (
@@ -334,7 +335,7 @@ const isDescriptiveQuestionType = (type) => (
 
 const getQuestionMarksTotal = (item) => {
   if (isDescriptiveQuestionType(item?.type)) {
-    const sections = Array.isArray(item?.descriptiveSections) ? item.descriptiveSections : []
+    const sections = descriptiveSections(item)
     const sectionMarks = sections.reduce((total, section) => {
       const children = Array.isArray(section.children) ? section.children : []
       const childMarks = children.reduce((sum, child) => sum + parseMarksValue(child.marks), 0)
@@ -357,9 +358,10 @@ const getDescriptiveSectionMarks = (section) => {
   return getQuestionMarksTotal(section) || parseMarksValue(section?.marks)
 }
 
-const getDescriptiveScoringItems = (question, index) => {
+const getDescriptiveScoringItems = (question, index, answerInput = false) => {
+  if (answerInput) return descriptiveResponseItems(question, index).map(({ key, item }) => ({ key, maxMarks: getQuestionMarksTotal(item) || parseMarksValue(item.marks) }))
   const baseKey = getQuestionKey(question, `descriptive-${index + 1}`)
-  const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+  const sections = descriptiveSections(question)
 
   if (!sections.length) {
     return [{ key: baseKey, maxMarks: getQuestionMarksTotal(question) }]
@@ -615,15 +617,7 @@ const buildTagAnalyticsSeries = (questions = [], config) => {
   }))
 }
 
-const readStoredAttempt = (assessment, student) => {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(ONLINE_PROCTORED_ATTEMPT_STORAGE_KEY) || 'null')
-    const attempt = parsed?.[getAssessmentControlId(assessment)]?.[student?.id]
-    return attempt && typeof attempt === 'object' ? attempt : {}
-  } catch {
-    return {}
-  }
-}
+const readStoredAttempt = (assessment, student) => readAssessmentAttempt(assessment, student?.id)
 
 const getAssessmentStorageSuffix = (setup = {}) => {
   if (setup.assessmentId) return String(setup.assessmentId)
@@ -1003,7 +997,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     key: getQuestionKey(question, `mcq-${index + 1}`),
     maxMarks: getQuestionMarksTotal(question) || 1,
   }))
-  const descriptiveScoringItems = descriptiveQuestions.flatMap(getDescriptiveScoringItems)
+  const descriptiveScoringItems = descriptiveQuestions.flatMap((question, index) => getDescriptiveScoringItems(question, index, descriptiveInputEnabled(assessment)))
   const getScoringSummary = (items, evaluationState = {}) => items.reduce((summary, item) => {
     const result = evaluationState[item.key] || {}
     const hasMarks = result.marks !== undefined && result.marks !== null && result.marks !== ''
@@ -1029,9 +1023,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const isAbsent = String(row.attendance).toUpperCase() === 'A'
     const savedEvaluation = studentEvaluationStatuses[row.id] || {}
     const savedStatus = savedEvaluation.status || row.evaluationStatus
-    const evalStatus = isAbsent ? 'Absent' : (savedStatus === 'Completed' ? 'Completed' : 'Yet to Start')
     const storedQuestionState = readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, row))
     const savedQuestionState = Object.keys(storedQuestionState).length ? storedQuestionState : row.mockEvaluationState
+    const descriptiveComplete = !descriptiveInputEnabled(assessment) || descriptiveEvaluationComplete(descriptiveScoringItems, savedQuestionState)
+    const evalStatus = isAbsent ? 'Absent' : (savedStatus === 'Completed' && descriptiveComplete ? 'Completed' : 'Yet to Start')
     const rowMcqSummary = getScoringSummary(mcqScoringItems, savedQuestionState)
     const rowDescriptiveSummary = getScoringSummary(descriptiveScoringItems, savedQuestionState)
     const rowSummary = {
@@ -1051,7 +1046,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       evalStatus,
       markedEvaluated: Boolean(savedEvaluation.markedEvaluated),
       mcq: shouldFillScores && shouldShowMcqObtained ? formatTwoDigit(rowMcqSummary.obtainedMarks) : '-',
-      descriptive: shouldFillScores && shouldShowDescriptiveObtained ? formatTwoDigit(rowDescriptiveSummary.obtainedMarks) : '-',
+      descriptive: shouldFillScores && shouldShowDescriptiveObtained ? formatTwoDigit(rowDescriptiveSummary.obtainedMarks) : (!isAbsent && descriptiveInputEnabled(assessment) ? 'Pending evaluation' : '-'),
       attemptedQuestions: shouldFillScores ? `${formatTwoDigit(rowSummary.attempted)} / ${formatTwoDigit(rowSummary.total)}` : '-',
       maxMark: formatTwoDigit(maxMark),
       obtainedMarks: shouldFillScores ? formatTwoDigit(rowSummary.obtainedMarks) : '-',
@@ -1176,14 +1171,17 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const sendEvaluationToApproval = () => {
+    if (descriptiveInputEnabled(assessment) && pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
     onAlert?.({ tone: 'primary', message: 'Evaluation result sent to approval.' })
   }
 
   const directPublishEvaluationResult = () => {
+    if (descriptiveInputEnabled(assessment) && pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
     setIsDirectPublishConfirmOpen(true)
   }
 
   const confirmDirectPublishEvaluationResult = () => {
+    if (descriptiveInputEnabled(assessment) && pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
     const publishedAt = new Date().toISOString()
     const nextAssessment = {
       ...assessment,
@@ -1919,7 +1917,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     previewSectionGroups.forEach((section) => {
       section.questions.forEach((question, questionIndex) => {
         if (isDescriptiveQuestionType(question?.type)) {
-          const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+          const sections = descriptiveSections(question)
           const baseKey = getQuestionKey(question, `descriptive-${questionIndex + 1}`)
           if (!sections.length) {
             stats[baseKey] = buildStats(baseKey, getQuestionMarksTotal(question) || parseMarksValue(question?.marks), question)
@@ -1950,11 +1948,12 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }, [assessment, normalizedRows, previewSectionGroups])
 
   const getQuestionStatKeys = (question, questionIndex) => {
+    if (isDescriptiveQuestionType(question?.type) && descriptiveInputEnabled(assessment)) return descriptiveResponseItems(question, descriptiveQuestions.indexOf(question)).map(item => item.key)
     if (!isDescriptiveQuestionType(question?.type)) {
       return [getQuestionKey(question, `mcq-${questionIndex + 1}`)]
     }
 
-    const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+    const sections = descriptiveSections(question)
     const baseKey = getQuestionKey(question, `descriptive-${questionIndex + 1}`)
     if (!sections.length) return [baseKey]
 
@@ -2031,7 +2030,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       }
 
       if (isDescriptiveQuestionType(question?.type)) {
-        const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+        const sections = descriptiveSections(question)
         const baseKey = getQuestionKey(question, `descriptive-${questionIndex + 1}`)
         if (!sections.length) {
           collectStat(baseKey)
@@ -2200,6 +2199,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const renderDescriptiveScoringRow = (question, indexLabel, questionKey, isNestedSubQuestion = false) => {
+    const writtenAttempt = readStoredAttempt(assessment, resultStudent)
+    const writtenAnswers = normalizeDescriptiveResponses(descriptiveQuestions, writtenAttempt.descriptiveAnswers)
+    const submitted = writtenAttempt.isDescriptiveSubmitted || writtenAttempt.isAssessmentSubmitted
+    const showWrittenAnswer = !isOffline && descriptiveInputEnabled(assessment)
     const result = questionEvaluationState[questionKey] || {}
     const maxMarks = getQuestionMarksTotal(question) || parseMarksValue(question?.marks)
     const resultMeta = isOverallAnalyticsView
@@ -2208,7 +2211,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const hasValidMarks = result.status === 'evaluated' && !result.error && String(result.marks ?? '').trim() !== ''
     const hasInvalidMarks = Boolean(result.error)
     const shouldPromptMarks = !hasValidMarks && !hasInvalidMarks && result.status !== 'not-attempted'
-    const descriptiveActionControls = isReadOnlyQuestionView ? null : (
+    const descriptiveActionControls = isReadOnlyQuestionView || (showWrittenAnswer && !submitted) ? null : (
       <div className="assessment-question-actions is-descriptive-header-actions">
         <label className="assessment-mark-field assessment-compact-mark-control">
           <input
@@ -2260,6 +2263,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             </div>
           </div>
         </div>
+        {showWrittenAnswer && <SubmittedDescriptiveAnswer answer={writtenAnswers[questionKey]} submitted={submitted} />}
         {expandedDescriptiveAnswerKeys[questionKey] ? (
           <div className="assessment-question-answer-row">
             {renderDescriptiveAnswerKeyContent(question)}
@@ -2275,11 +2279,13 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const renderDescriptiveQuestion = (question, index, displayNumber = index + 1) => {
+    const responseIndex = descriptiveQuestions.indexOf(question)
+    const scopedAnswers = descriptiveInputEnabled(assessment)
     const baseKey = getQuestionKey(question, `descriptive-${index + 1}`)
-    const sections = Array.isArray(question?.descriptiveSections) ? question.descriptiveSections : []
+    const sections = descriptiveSections(question)
 
     if (!sections.length) {
-      return renderDescriptiveScoringRow(question, `${displayNumber}.`, baseKey)
+      return renderDescriptiveScoringRow(question, `${displayNumber}.`, scopedAnswers ? descriptiveResponseKey(question, responseIndex) : baseKey)
     }
 
     return (
@@ -2305,7 +2311,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             const sectionTitle = getQuestionText(section, `Sub question ${displayNumber} ${sectionLabel}`)
 
             if (!children.length) {
-              return renderDescriptiveScoringRow(section, sectionLabel, sectionKey)
+              return renderDescriptiveScoringRow(section, sectionLabel, scopedAnswers ? descriptiveResponseKey(question, responseIndex, sectionIndex) : sectionKey)
             }
 
             return (
@@ -2319,7 +2325,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                 {children.map((child, childIndex) => renderDescriptiveScoringRow(
                   child,
                   getAlphaLabel(childIndex),
-                  getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`),
+                  scopedAnswers ? descriptiveResponseKey(question, responseIndex, sectionIndex, childIndex) : getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`),
                   true,
                 ))}
               </section>
@@ -2350,7 +2356,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         }]
       }
 
-      return getDescriptiveScoringItems(question, questionIndex).map((item) => ({
+      return getDescriptiveScoringItems(question, descriptiveQuestions.indexOf(question), descriptiveInputEnabled(assessment)).map((item) => ({
         key: item.key,
         type: 'descriptive',
       }))
@@ -2377,7 +2383,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const selectedStudentStatusRecord = selectedStudent
     ? studentEvaluationStatuses[selectedStudent.id] || {}
     : {}
-  const selectedStudentAutoStatus = isMyAssessmentStudentResult && selectedStudent?.evaluationStatus === 'Completed'
+  const selectedStudentAutoStatus = isMyAssessmentStudentResult && selectedStudent?.evaluationStatus === 'Completed' && (!descriptiveInputEnabled(assessment) || descriptiveEvaluationComplete(descriptiveScoringItems, activeQuestionEvaluationState))
     ? 'Completed'
     : selectedStudent && previewSectionGroups.length
     ? previewSectionGroups.every((section) => getSectionEvaluationStatus(section) === 'completed')
@@ -3077,6 +3083,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           </button>
           {isExpanded ? (
             <div className="single-question-review-detail">
+              {isDescriptive && descriptiveInputEnabled(assessment) && (() => {
+                const attempt = readStoredAttempt(assessment, resultStudent)
+                const responses = normalizeDescriptiveResponses(descriptiveQuestions, attempt.descriptiveAnswers)
+                return descriptiveResponseItems(question, descriptiveQuestions.indexOf(question)).map((item, index) => <SubmittedDescriptiveAnswer key={item.key} answer={responses[item.key]} submitted={attempt.isDescriptiveSubmitted || attempt.isAssessmentSubmitted} label={index === 0 && !descriptiveSections(question).length ? 'Your response' : 'Your response ' + (index + 1)} />)
+              })()}
               {isDescriptive ? renderDescriptiveAnswerKeyContent(question) : (
                 <>
                   {renderMcqAnswerKeyOnly(question)}

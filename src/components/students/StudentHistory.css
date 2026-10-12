@@ -1,0 +1,6 @@
+.sm-history { display: grid; gap: var(--s-3); }
+.sm-history h2, .sm-history p { margin: 0; }
+.sm-history-item { border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-4); display: grid; gap: var(--s-3); }
+.sm-history-student { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+.sm-history-student span { flex: 1; color: var(--text-muted); }
+.sm-history-item time { font-family: var(--f-code); color: var(--text-muted); }

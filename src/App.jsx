@@ -1661,7 +1661,7 @@ function App() {
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
             <FacultyManagementPageV2 onAlert={showAlert} />
           ) : activePage === APP_PAGES.STUDENT_MANAGEMENT ? (
-            <StudentManagementPage onAlert={showAlert} />
+            <StudentManagementPage theme={theme} canEdit={profileUser.role === 'Admin'} />
           ) : activePage === APP_PAGES.DASHBOARD_SUMMARY ? (
             <DashboardSummaryPage
               onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}
@@ -1731,4 +1731,3 @@ function App() {
 }
 
 export default App
-

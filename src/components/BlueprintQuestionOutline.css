@@ -1,0 +1,38 @@
+﻿.blueprint-question-outline { order: 2; color: var(--text-body); background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+.blueprint-question-outline header, .blueprint-question-outline footer { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-3); flex-wrap: wrap; }
+.blueprint-question-outline header { justify-content: space-between; min-height: var(--s-6); }
+.blueprint-question-outline h3 { display: flex; align-items: center; gap: var(--s-2); margin: 0; font-size: var(--fs-sm, .875rem); color: var(--text-strong); }
+.blueprint-question-outline footer > span { flex: 1; font-size: var(--fs-micro, .6875rem); color: var(--text-muted); }
+.blueprint-outline-scroll { overflow-x: auto; }
+.blueprint-question-outline table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.blueprint-question-outline th, .blueprint-question-outline td { padding: var(--s-1) var(--s-3); text-align: center; border-bottom: 1px solid var(--border); height: var(--s-6); font-size: var(--fs-xs, .75rem); line-height: 1.25; }
+.blueprint-question-outline th:first-child { width: 32%; text-align: left; }
+.blueprint-outline-type { display: grid; grid-template-columns: calc(var(--s-8) + var(--s-5)) max-content; align-items: center; gap: var(--s-2); }
+.blueprint-question-outline input { box-sizing: border-box; width: calc(var(--s-7) + var(--s-6)); height: var(--s-6); min-height: 0; max-width: 100%; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); font-family: var(--f-code); font-size: var(--fs-xs, .75rem); text-align: center; }
+.blueprint-question-outline input:disabled { opacity: .6; background: var(--surface-mist); }
+.blueprint-question-outline input:focus, .blueprint-question-outline input:focus-visible { outline: none; outline-offset: 0; border-color: var(--forest); box-shadow: 0 0 0 2px color-mix(in srgb, var(--forest) 12%, transparent); }
+.blueprint-question-outline footer button:focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); }
+.blueprint-outline-number, .blueprint-question-outline tfoot td { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.blueprint-question-outline button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+@media (max-width: 767px) { .blueprint-question-outline table { min-width: 800px; } .blueprint-question-outline footer > span { flex-basis: 100%; order: 3; } }
+
+.blueprint-question-outline.is-type-summary .create-assessment-blueprint-spec-table :is(th, td):first-child { width: 32%; text-align: left; }
+.blueprint-question-outline.is-type-summary .create-assessment-blueprint-spec-table :is(th, td):not(:first-child) { width: 13.6%; text-align: center; }
+/* Keep the heading, table and footer joined inside the single card border. */
+.blueprint-question-outline.create-assessment-blueprint-spec-card { gap: 0; }
+.blueprint-question-outline.is-type-summary table.create-assessment-blueprint-spec-table { margin: 0; border: 0; border-radius: 0; }
+.blueprint-question-outline.is-type-summary table.create-assessment-blueprint-spec-table thead th,
+.blueprint-question-outline.is-type-summary table.create-assessment-blueprint-spec-table tfoot td { box-sizing: border-box; height: var(--s-6); padding: var(--s-1) var(--s-3); border-radius: 0; }
+.blueprint-question-outline footer { border-top: 1px solid var(--border); }
+.blueprint-question-outline tfoot td { border-bottom: 0; }
+.blueprint-outline-error { margin: 0; padding: var(--s-2) var(--s-3); color: var(--danger-ink); font-size: var(--fs-xs, .75rem); }
+
+.blueprint-question-outline table { min-width: 800px; }
+.blueprint-question-outline.create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-table th:nth-child(6) { background: var(--question-grid-lot-soft); color: var(--question-grid-lot); }
+.save-changes-dialog.blueprint-setup-reset-dialog { width: min(calc(100% - var(--s-6)), 380px); padding: var(--s-4); border-radius: var(--r); }
+.blueprint-setup-reset-dialog h2 { font-size: var(--fs-sm, .875rem); margin-bottom: var(--s-2); }
+.blueprint-setup-reset-dialog p { font-size: var(--fs-xs, .75rem); line-height: 1.5; }
+.blueprint-setup-reset-dialog .save-changes-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.blueprint-setup-reset-dialog .save-changes-actions button { min-height: 40px; font-size: var(--fs-xs, .75rem); }
+.blueprint-percentage-preview { display: block; margin-top: var(--s-1); font-size: var(--fs-micro); font-weight: 400; color: inherit; }
+

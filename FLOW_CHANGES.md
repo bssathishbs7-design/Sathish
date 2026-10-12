@@ -528,3 +528,152 @@
 ## 2026-10-09 - Full SAQ row reset
 
 - Confirming Reset row now clears the thinking-level selection as well as the row values. Fields return to disabled until a new selection is made. Cancel continues to preserve the row.
+
+## 2026-10-09 - Nearest percentage breakdown choices
+
+- Cards now wait for a row total and offer floor/ceiling whole-question splits closest to the assessment cognition percentages. The closest feasible card is Recommended; the other is Alternative. Unrelated all-LoT/all-HoT endpoints are removed for mixed rows.
+- Other rows' allocations filter these choices against remaining marks. Fixed SAQ modes and existing LAQ parts remain respected; no distant split is substituted when neither percentage choice fits.
+
+## 2026-10-09 - Two-stage allocation cards
+
+- With marks per question entered and the row total blank, cards use the remaining assessment LoT/HoT budgets. Entering a row total switches cards to its nearest percentage splits, still constrained by other allocations.
+- Clearing the row total returns to the available assessment allocation. Fixed SAQ selections, actual LAQ parts, card selection, Undo and reset confirmation remain intact.
+
+## 2026-10-09 - Independent breakdown row editing
+
+- Removed shared HoT/LoT redistribution and cross-row clearing of split counts. Editing marks, counts, LAQ parts, selecting cards or resetting changes only the affected breakdown row; totals and recommendations still recalculate.
+- Cognition percentage changes preserve the currently displayed allocations. Undo restores only the row associated with its card and remains available after unrelated row edits.
+
+## 2026-10-09 - Row correction cards for cognition mismatch
+
+- When assessment marks match but cognition totals do not, eligible MCQ/SAQ rows offer a correction card that moves whole questions toward the target and shows the remaining mismatch. Rows with nothing to contribute show no correction.
+- Corrections preserve row totals and marks per question. Changing a fixed thinking level requires Reset and apply confirmation; Cancel preserves values. Applying or undoing a correction affects only its row and recalculates the other suggestions.
+
+## 2026-10-09 - Mathematical correction cards and LAQ parts
+
+- Correction cards distinguish exact matches from partial corrections and never move more marks than the cognition gap. A row with no eligible whole-question or whole-part move has no correction card.
+- LAQ cards select existing parts whose combined marks best reduce the gap. Confirmation changes only their thinking levels; Cancel preserves them and Undo restores only the LAQ row.
+
+## 2026-10-09 - Remaining-balance breakdown selection
+
+- Row cards use the remaining assessment LoT and HoT budgets after excluding the row being edited. Entered row totals use that remaining ratio, constrained to whole questions within both budgets.
+- Entering or changing a non-LAQ row's marks leaves its cognition split pending until the user selects a card or enters a split. Applying a card and Undo affect only that row; other values remain unchanged. LAQ counts continue to come from explicitly configured parts.
+
+## 2026-10-09 - Optional pending breakdown rows
+
+- Empty and incomplete question-type rows no longer block suggestions in other rows. Only completed, valid allocations consume the total, LoT and HoT budgets and contribute to the table summary.
+- Applying a card includes that row in the allocation totals; Undo restores its prior allocation state. Draft marks remain available for that row's suggestions without reserving the assessment budget.
+
+## 2026-10-09 - Stable selected allocations and available thinking levels
+
+- Completed rows retain a Selected card; alternatives appear only through Edit allocation. Applying a replacement previews that row's before/after cognition marks and supports Cancel and row-only Undo.
+- SAQ thinking levels and LAQ part choices that exceed the remaining cognition budget are unavailable, with an accessible explanation. Existing SAQ selections remain available, and replacement budgets exclude the row's own allocation. No other row is automatically changed.
+
+## 2026-10-09 - Explicit alternative for insufficient cognition marks
+
+- Fixed LoT/HoT SAQ rows explain the exact remaining marks when their requested allocation cannot fit. If the same row total fits wholly in the opposite level, a Use HoT/LoT card offers that alternative.
+- The alternative previews and confirms the selection change before applying only that row. Cancel preserves the draft; Undo restores its values and thinking level. Invalid question totals or insufficient opposite budgets do not produce an alternative.
+
+## 2026-10-09 - Question-type outline before detailed breakdown
+
+- Create Questions Split opens a compact outline ordered MCQs, SAQ subtypes, and LAQs. Each entered row uses marks per question and whole-question count to calculate its total; SAQ inputs require LoT/HoT/Both selection.
+- Next requires an exact match to the assessment total and valid entered rows. It carries marks, counts and subtype selections into the detailed breakdown without applying cognition allocations. Unused rows remain optional.
+- Back preserves outline values. Back to question setup restores the current breakdown quantities; unchanged allocations survive the next handoff. Draft saving includes the outline stage and values.
+
+## 2026-10-10 - Hide unused types after question setup
+
+- Next carries only valid entered question types into the detailed breakdown. Unused MCQs, LAQs, and SAQ subtypes are hidden, including their editors and messages; the SAQ heading appears only when at least one subtype is included.
+- Accepted rows stay visible while edited. Back to question setup retains every optional type for adding it later. The included type list is saved with the draft and refreshed on Next.
+
+## 2026-10-10 - Automatic breakdown from confirmed setup
+
+- Edit setup in the breakdown header returns to the populated outline. Next recalculates whole-question cognition counts assessment-wide while preserving fixed SAQ levels and row quantities. Infeasible splits keep the user in setup with a specific explanation.
+- Removed suggestion cards, allocation selection/Undo controls and their exclusive component/styles. Breakdown setup fields are read-only; editing happens through setup and applies only on Next.
+- Existing complete LAQ parts are preserved when quantities are unchanged. Incomplete LAQs reserve residual cognition marks and retain the part editor, with a target note rather than a suggestion card.
+
+## 2026-10-10 - Automatic LAQ parts and remaining marks
+
+- Next creates positive LAQ parts matching the allocated cognition marks: a single part for one thinking level, or two parts when a question needs both. Existing complete parts are preserved.
+- When a part's marks edit is committed by leaving the field, the remaining marks create the next part(s) using the remaining cognition budget. Generated remainder parts refresh on subsequent edits; explicit parts and other questions/rows are preserved. Invalid or over-total edits are not force-filled.
+
+## 2026-10-10 - Derived LAQ part count and live remainder
+
+- Replaced manual Number of parts input with the read-only Parts count derived from visible rows.
+- Valid marks changes create or update remainder parts immediately while typing, preserving the question total and cognition budget. Removed the separate count-entry handler and exclusive input styles.
+
+### 2026-10-10 — Reset question type setup
+- Added Reset Setup beside Next with No / Yes, reset confirmation.
+- Confirmation clears question inputs, cognition selections, LAQ parts and generated breakdown/matrix state, staying on setup. Assessment subject, total and cognition targets are retained.
+- Cancelling preserves values; reset is disabled when setup is empty.
+
+### 2026-10-10 — Question-count suggestions in setup
+- Focusing or entering a row shows count options based on remaining total and cognition marks. Selecting a card fills only that row's question count; manual input and exact breakdown validation remain available.
+
+### 2026-10-10 — Preserve setup row allocations
+- Added total, HoT and LoT remaining balances and per-card after-selection balances.
+- Editing or selecting a row reserves its cognition marks; later edits release only their own row and cannot rebalance completed rows. Edit Setup preserves existing allocations.
+- Added precise row limits and guidance for remainders that cannot be filled with entered unused row marks. Create Breakdown still requires all targets to match.
+
+### 2026-10-10 — Read-only cognition badges
+- SAQ cognition labels and LAQ part thinking levels now display as badges. Removed LAQ thinking-level toggles; part marks remain editable and setup controls the planned allocation.
+
+### 2026-10-10 â€” Suggestions follow entered setup fields
+- Marks-only rows suggest counts; count-only rows suggest marks. Selection fills only the missing field.
+- Rows with both fields entered show one read-only calculation. Invalid values show guidance without proposing replacement inputs.
+
+### 2026-10-10 - Additional valid count suggestions
+- Completed rows retain the current calculation and offer nearby higher counts, preferring exact percentage splits. Show more reveals further options in ascending order.
+- Selecting an alternative updates only the active row and preserves other allocations.
+
+### 2026-10-10 - Reset cognition and question setup together
+- Reset Setup confirmation now clears LoT/HoT percentages along with question setup and generated allocations, while retaining the subject and assessment total.
+- Reset remains available when only percentages are filled; unset cognition summaries display dashes.
+
+### 2026-10-10 - Preserve LAQ setup allocation during split edits
+- Split mark edits preserve existing splits and thinking levels; they no longer generate remainder parts or remove blank splits.
+- Planned HoT/LoT marks and counts stay visible. Errors compare edited marks against the setup allocation and block saving or matrix creation until valid.
+
+### 2026-10-10 - Complete remaining marks with an LAQ suggestion
+- Setup shows remaining total and cognition marks and offers an explicit LAQ option when the remaining allocation fits.
+- Newly generated LAQs distribute cognition marks evenly where whole marks permit; existing split edits still preserve their allocation.
+
+### 2026-10-10 - Remove unsolicited setup guidance
+- Removed the remaining-marks strip and LAQ shortcut. Restored numeric-only setup totals; retained calculation logic.
+
+### 2026-10-10 - Compact suggestion pagination
+- Replaced expanding Show more with previous/next pages, three cards on desktop and one on mobile; open on the current option.
+- Preserved allocation calculations and explicit card selection.
+
+### 2026-10-10 - Prioritise fully allocated suggestions
+- All question types place the fully allocated suggestion first on page one, followed by remaining options in ascending order. Current selection stays separate from completion status.
+
+### 2026-10-12 - Student administration workflow
+- Student Management uses Admin Logbook navigation, cards and shared modal shells for the directory, batches, graduates, progression history and missing year setup.
+- Add/edit and Excel preview/import update a persistent local service. Students enter First Year; batch/year selection leads to promotion, repeating or internship completion with dates and history.
+- Student records expose status changes, year corrections and syllabus assignments. Deletion requires confirmation; progression undo requires a reason and rejects newer records. Read-only access hides mutation controls.
+
+## 2026-10-12 - Descriptive online answer flow
+- Enabled descriptive Answer Input for practice and proctored assessments, independent of MCQ mode.
+- Added persisted responses, resume and submission recovery, leaf-level faculty review, and evaluation-required result release.
+- Retained Read-Only mode and existing scheduling design.
+
+
+## 2026-10-12 - Compact exam navigation
+- Practice and proctored exams now use a left question navigator on desktop and an expandable Questions & progress panel above the questions on mobile.
+- Answering, timers, submission and proctoring behaviour remain unchanged.
+
+
+## 2026-10-12 - Restore original exam interface
+- Reverted the exam redesign and expandable navigation; restored original practice and proctored layouts and timer placement.
+- Retained descriptive answering, persistence, validation and submission fixes.
+
+
+### 2026-10-12 - Practice exam exit dialog dismissal
+- Clicking the backdrop of the practice exam exit confirmation closes the dialog and returns to the active exam. Clicking inside the dialog does not dismiss it.
+
+
+### 2026-10-12 - Rich descriptive answers in practice exams
+- Students can format each descriptive response, edit tables and upload, resize or remove images. Existing plain-text responses remain readable.
+- Pending image uploads block manual submission, exit and section switching. Submitted responses remain locked and faculty review displays sanitised rich content.
+- Images use the asynchronous mock upload service (PNG, JPEG or WebP, up to 512 KB and three per answer) and persist inside the saved response. The upload function is the backend API integration point.
+

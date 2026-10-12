@@ -1,7 +1,11 @@
+import useExamAttemptPersistence from '../services/useExamAttemptPersistence'
+import ExamSaveError from '../components/ExamSaveError'
+import { descriptiveResponseKey, descriptiveProgress, persistAssessmentAttempt, normalizeDescriptiveResponses, allowsDescriptiveTyping } from '../services/descriptiveResponses'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowLeft, Award, Ban, BatteryCharging, BellOff, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, FileText, Hand, Hash, Info, ListChecks, Monitor, Moon, ShieldCheck, Sun, Timer, Wifi, X } from 'lucide-react'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
+import './OnlineExamAlignment.css'
 
 const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
@@ -203,26 +207,7 @@ const getInitialStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => 
   }
 }
 
-const writeStoredAttempt = (assessment, attempt, studentId = CURRENT_STUDENT_ID) => {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(ONLINE_PROCTORED_ATTEMPT_STORAGE_KEY) || 'null')
-    const attempts = parsed && typeof parsed === 'object' ? parsed : {}
-    const assessmentId = getAssessmentId(assessment)
-    const assessmentAttempts = attempts[assessmentId] || {}
-    window.localStorage.setItem(ONLINE_PROCTORED_ATTEMPT_STORAGE_KEY, JSON.stringify({
-      ...attempts,
-      [assessmentId]: {
-        ...assessmentAttempts,
-        [studentId]: {
-          ...attempt,
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    }))
-  } catch {
-    // Attempt restore is best-effort.
-  }
-}
+const writeStoredAttempt = (assessment, attempt, studentId = CURRENT_STUDENT_ID) => persistAssessmentAttempt(ONLINE_PROCTORED_ATTEMPT_STORAGE_KEY, getAssessmentId(assessment), studentId, attempt)
 
 const writeStudentSubmissionStatus = (assessment, status, studentId = CURRENT_STUDENT_ID) => {
   try {
@@ -339,6 +324,8 @@ const isDescriptiveQuestionType = (type) => (
 
 const getQuestionText = (question) => (
   stripHtml(question?.questionText)
+  || stripHtml(question?.text)
+  || stripHtml(question?.prompt)
   || stripHtml(question?.title)
   || stripHtml(question?.question)
   || 'Question text not available'
@@ -721,7 +708,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(Number(initialAttempt.activeQuestionIndex || 0))
   const [answers, setAnswers] = useState(initialAttempt.answers || {})
   const [mcqQuestionStatuses, setMcqQuestionStatuses] = useState(initialAttempt.mcqQuestionStatuses || {})
-  const [descriptiveAnswers, setDescriptiveAnswers] = useState(initialAttempt.descriptiveAnswers || {})
+  const [descriptiveAnswers, setDescriptiveAnswers] = useState(() => normalizeDescriptiveResponses((assessment?.questionRows || []).filter(item => isDescriptiveQuestionType(item?.type)), initialAttempt.descriptiveAnswers || {}))
   const [submitModal, setSubmitModal] = useState(null)
   const [isMcqSubmitted, setIsMcqSubmitted] = useState(Boolean(initialAttempt.isMcqSubmitted))
   const [isDescriptiveSubmitted, setIsDescriptiveSubmitted] = useState(Boolean(initialAttempt.isDescriptiveSubmitted))
@@ -756,6 +743,37 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const lastMonitoringEventRef = useRef('')
   const startPointerIntentRef = useRef(false)
   const invigilatorLockInProgressRef = useRef(false)
+
+  const attemptSnapshot = useMemo(() => ({
+      hasStarted,
+      examStartedAt,
+      activeSequenceStartedAt,
+      activeSection,
+      activeDescriptiveGroupKey,
+      activeQuestionIndex,
+      answers,
+      mcqQuestionStatuses,
+      descriptiveAnswers,
+      isMcqSubmitted,
+      isDescriptiveSubmitted,
+      isAssessmentSubmitted,
+      appliedResetVersion,
+    }), [
+    activeDescriptiveGroupKey,
+    activeQuestionIndex,
+    activeSection,
+    activeSequenceStartedAt,
+    answers,
+    appliedResetVersion,
+    descriptiveAnswers,
+    examStartedAt,
+    hasStarted,
+    isAssessmentSubmitted,
+    isDescriptiveSubmitted,
+    isMcqSubmitted,
+    mcqQuestionStatuses,
+  ])
+  const { saveAttempt, attemptSaveError } = useExamAttemptPersistence(writeStoredAttempt, assessment, attemptSnapshot)
 
   const questionRows = useMemo(
     () => (Array.isArray(assessment?.questionRows) ? assessment.questionRows : []),
@@ -832,6 +850,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   ), [mcqQuestionStatuses, mcqQuestions])
   const mcqAllowsAnswerInput = isAnswerInputMode(setup.mcqDisplayType || assessment?.mcqDisplayType || 'Answer Input')
   const descriptiveAllowsAnswerInput = isAnswerInputMode(setup.descriptiveDisplayType || assessment?.descriptiveDisplayType || 'Read-Only')
+  const descriptiveAnswerCounts = descriptiveProgress(descriptiveQuestions, descriptiveAnswers)
+  const descriptiveAnswerSummary = descriptiveAllowsAnswerInput ? `${descriptiveAnswerCounts.answered} answered, ${descriptiveAnswerCounts.partial} partially answered, ${descriptiveAnswerCounts.unanswered} unanswered` : null
   const isMcqLocked = isMcqSubmitted || isAssessmentSubmitted
   const isDescriptiveLocked = isDescriptiveSubmitted || isAssessmentSubmitted
   const isFullscreenRequiredForDevice = !isMobileOrTabletDevice()
@@ -947,7 +967,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const sequenceTransitionRemainingSeconds = sequenceTransitionModal
     ? Math.max(0, 5 - Math.floor((timerNow - sequenceTransitionModal.startedAt) / 1000))
     : 0
-  const headerChips = []
+
   const sideNavMetaItems = [
     { label: 'Type', value: assessment?.examType || '-', tone: 'type' },
     {
@@ -960,6 +980,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       ? [{ label: 'Extended', value: `+${isSplitProctoredFlow ? activeSectionExtensionMinutes : extensionMinutes} mins`, tone: 'extended' }]
       : []),
   ]
+  const headerChips = []
   const detailItems = [
     { label: 'Total Marks', value: assessment?.totalMarks ?? '-', icon: Award },
     { label: 'Questions', value: assessment?.questionCount ?? questionRows.length, icon: Hash },
@@ -975,7 +996,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         success: `${assessment?.name || 'Assessment'} has been completed successfully.`,
       questions: questionRows.length,
       marks: assessment?.totalMarks ?? (mcqTotalMarks + descriptiveTotalMarks),
-      answered: null,
+      answered: descriptiveAnswerSummary,
     }
     : submitModal?.section === 'descriptive'
       ? {
@@ -984,7 +1005,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         success: 'Descriptive section submitted successfully.',
         questions: descriptiveQuestions.length,
         marks: descriptiveTotalMarks,
-        answered: null,
+        answered: descriptiveAnswerSummary,
       }
       : {
         title: 'Submit MCQ Assessment?',
@@ -1034,10 +1055,10 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
   const updateDescriptiveAnswer = (key, value) => {
     if (isDescriptiveLocked || shouldBlockProctoringActions) return
-    setDescriptiveAnswers((current) => ({
-      ...current,
-      [key]: value,
-    }))
+    if (!descriptiveAllowsAnswerInput) return
+    const nextAnswers = { ...descriptiveAnswers, [key]: value }
+    setDescriptiveAnswers(nextAnswers)
+    saveAttempt({ descriptiveAnswers: nextAnswers })
   }
 
   const startExam = async () => {
@@ -1137,6 +1158,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
   const confirmSubmit = () => {
     if (shouldBlockProctoringActions) return
+    if (!saveAttempt({ isMcqSubmitted: isMcqSubmitted || submitModal?.section === 'mcq' || Boolean(submitModal?.isFinal), isDescriptiveSubmitted: isDescriptiveSubmitted || submitModal?.section === 'descriptive' || Boolean(submitModal?.isFinal), isAssessmentSubmitted: Boolean(submitModal?.isFinal) })) return
+    if (submitModal?.isFinal) setIsAssessmentSubmitted(true)
     if (submitModal?.section === 'mcq') {
       setIsMcqSubmitted(true)
     }
@@ -1152,6 +1175,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
   const finalizeAssessmentSubmission = (options = {}) => {
     const { navigateAway = false, submissionStatus = 'Manual Submit' } = options
+    if (!saveAttempt({ isAssessmentSubmitted: true, isMcqSubmitted: hasMcqSection, isDescriptiveSubmitted: hasDescriptiveSection })) return false
 
     setIsAssessmentSubmitted(true)
     if (hasMcqSection) setIsMcqSubmitted(true)
@@ -1302,6 +1326,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const exitAnyway = () => {
+    if (!saveAttempt()) return
     setIsExitModalOpen(false)
     onExit?.(APP_PAGES.MY_ASSESSMENT)
   }
@@ -1558,14 +1583,16 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   useEffect(() => {
     if (!shouldBlockKeyboardForExamPage) return undefined
 
+    const canTypeAnswer = event => allowsDescriptiveTyping(event, descriptiveAllowsAnswerInput && !isDescriptiveLocked && !isExamActionLocked && !(shouldShowRemainingTime && remainingDurationSeconds <= 0) && !(shouldShowSequenceTimer && activeSequenceRemainingSeconds <= 0))
     const handleExamKeyboardEvent = (event) => {
+      if (canTypeAnswer(event)) return
       blockExamKeyboardEvent(event)
       if (event.type === 'keydown' && isKeyboardLockedForExam) {
         requestExamKeyboardLock()
       }
     }
     const handleExamTextFocus = (event) => {
-      if (!isTextInputTarget(event.target)) return
+      if (canTypeAnswer(event) || !isTextInputTarget(event.target)) return
       blockExamKeyboardEvent(event)
       if (typeof event.target.blur === 'function') {
         event.target.blur()
@@ -1575,7 +1602,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     if (isKeyboardLockedForExam) {
       requestExamKeyboardLock()
     }
-    if (isTextInputTarget(document.activeElement) && typeof document.activeElement.blur === 'function') {
+    if (!canTypeAnswer({ target: document.activeElement }) && isTextInputTarget(document.activeElement) && typeof document.activeElement.blur === 'function') {
       document.activeElement.blur()
     }
     window.addEventListener('keydown', handleExamKeyboardEvent, true)
@@ -1620,7 +1647,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         releaseExamKeyboardLock()
       }
     }
-  }, [isKeyboardLockedForExam, shouldBlockKeyboardForExamPage])
+  }, [isKeyboardLockedForExam, shouldBlockKeyboardForExamPage, descriptiveAllowsAnswerInput, isDescriptiveLocked, isExamActionLocked, shouldShowRemainingTime, remainingDurationSeconds, shouldShowSequenceTimer, activeSequenceRemainingSeconds])
 
   useEffect(() => {
     if (!hasStarted || isAssessmentSubmitted) return undefined
@@ -1722,6 +1749,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       event.stopPropagation()
     }
     const handleSelectStart = (event) => {
+      if (allowsDescriptiveTyping(event, descriptiveAllowsAnswerInput)) return
       event.preventDefault()
       event.stopPropagation()
     }
@@ -1832,39 +1860,6 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     }
   }, [hasStarted, isAssessmentSubmitted])
 
-  useEffect(() => {
-    if (!assessment) return
-    writeStoredAttempt(assessment, {
-      hasStarted,
-      examStartedAt,
-      activeSequenceStartedAt,
-      activeSection,
-      activeDescriptiveGroupKey,
-      activeQuestionIndex,
-      answers,
-      mcqQuestionStatuses,
-      descriptiveAnswers,
-      isMcqSubmitted,
-      isDescriptiveSubmitted,
-      isAssessmentSubmitted,
-      appliedResetVersion,
-    })
-  }, [
-    activeDescriptiveGroupKey,
-    activeQuestionIndex,
-    activeSection,
-    activeSequenceStartedAt,
-    answers,
-    appliedResetVersion,
-    assessment,
-    descriptiveAnswers,
-    examStartedAt,
-    hasStarted,
-    isAssessmentSubmitted,
-    isDescriptiveSubmitted,
-    isMcqSubmitted,
-    mcqQuestionStatuses,
-  ])
 
   useEffect(() => {
     if (!assessment || !hasStarted) return undefined
@@ -1929,7 +1924,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       setActiveDescriptiveGroupKey(storedAttempt.activeDescriptiveGroupKey || '')
       setAnswers(storedAttempt.answers || {})
       setMcqQuestionStatuses(storedAttempt.mcqQuestionStatuses || {})
-      setDescriptiveAnswers(storedAttempt.descriptiveAnswers || {})
+      setDescriptiveAnswers(normalizeDescriptiveResponses(descriptiveQuestions, storedAttempt.descriptiveAnswers || {}))
       setAppliedResetVersion(reset.version)
       writeStoredAttempt(assessment, {
         ...storedAttempt,
@@ -2027,6 +2022,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
     ) return
 
     if (activeSection === splitSequenceFirst && !isSplitSectionCompleted(activeSection)) {
+      if (!saveAttempt({ isMcqSubmitted: isMcqSubmitted || activeSection === 'mcq', isDescriptiveSubmitted: isDescriptiveSubmitted || activeSection === 'descriptive' })) return
       if (activeSection === 'mcq') setIsMcqSubmitted(true)
       if (activeSection === 'descriptive') setIsDescriptiveSubmitted(true)
       setSequenceTransitionModal({
@@ -2040,13 +2036,13 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
     if (activeSection === splitSequenceSecond && !isSplitSectionCompleted(activeSection)) {
       setSequenceAutoNotice(`${activeSequenceLabel} time is over. Submitting assessment.`)
-      finalizeAssessmentSubmission({ submissionStatus: 'Auto Submit' })
-      setIsTimeLimitModalOpen(true)
+      if (finalizeAssessmentSubmission({ submissionStatus: 'Auto Submit' }) !== false) setIsTimeLimitModalOpen(true)
     }
   }, [
     activeSection,
     activeSequenceLabel,
     activeSequenceRemainingSeconds,
+    timerNow,
     descriptiveGroups,
     isAssessmentSubmitted,
     shouldShowSequenceTimer,
@@ -2175,9 +2171,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   useEffect(() => {
     if (!shouldShowRemainingTime || remainingDurationSeconds > 0 || isAssessmentSubmitted) return
 
-    finalizeAssessmentSubmission({ submissionStatus: 'Auto Submit' })
-    setIsTimeLimitModalOpen(true)
-  }, [isAssessmentSubmitted, remainingDurationSeconds, shouldShowRemainingTime])
+    if (finalizeAssessmentSubmission({ submissionStatus: 'Auto Submit' }) !== false) setIsTimeLimitModalOpen(true)
+  }, [isAssessmentSubmitted, remainingDurationSeconds, shouldShowRemainingTime, timerNow])
 
   useEffect(() => {
     if (!isTimeLimitModalOpen) return undefined
@@ -2388,12 +2383,12 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               <li>To ensure a fair testing environment, the system uses a controlled online exam window.</li>
               <li>Please remain on the exam page at all times until you submit the assessment.</li>
               <li>Desktop exams require fullscreen mode; mobile and tablet exams are monitored through app and page activity.</li>
-              <li>Keyboard input is disabled during the live proctored exam. Use mouse or touch controls only.</li>
+              <li>{descriptiveAllowsAnswerInput ? "You can type in descriptive answer fields. Copy, paste, browser shortcuts and switching away from the exam remain restricted." : "Keyboard input is disabled during the live proctored exam. Use mouse or touch controls only."}</li>
               <li>Do not close the browser window before final submission.</li>
             </ul>
           </section>
 
-          <p className="online-proctored-fullscreen-note">Please click below to start your exam. Use mouse or touch only; switching apps, tabs, or leaving the exam screen will be monitored.</p>
+          <p className="online-proctored-fullscreen-note">Please use mouse or touch to start your exam. Switching apps, tabs, or leaving the exam screen will be monitored.</p>
 
           <div className="online-practice-start-footer">
             <label className="online-practice-agree">
@@ -2434,6 +2429,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
         </section>
       ) : (
         <section className="online-practice-workspace">
+          <ExamSaveError error={attemptSaveError} onRetry={() => { saveAttempt(); setTimerNow(Date.now()) }} />
           <div className="online-practice-exam-layout">
             <div className="online-practice-exam-main">
               {activeSection === 'mcq' && hasMcqSection ? (
@@ -2445,7 +2441,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               <article className={`online-practice-question-card ${activeSection === 'descriptive' ? 'is-descriptive-section' : ''}`.trim()}>
                 {activeSection === 'descriptive' ? (
                   descriptiveGroups.length ? (
-                    <div className="online-practice-descriptive-readonly" aria-label="Read only descriptive questions">
+                    <div className="online-practice-descriptive-readonly" aria-label={descriptiveAllowsAnswerInput ? "Descriptive questions and answers" : "Read-only descriptive questions"}>
                       {descriptiveGroups.map((group) => (
                         <section
                           className={`online-practice-descriptive-section ${group.toneClass}`}
@@ -2482,9 +2478,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                           <label className="online-practice-descriptive-answer">
                                             <span>Your answer</span>
                                               <textarea
-                                                disabled={isDescriptiveLocked || isExamActionLocked || isKeyboardLockedForExam}
-                                                value={descriptiveAnswers[section.id ?? `${question.id}-section-${index}`] ?? ''}
-                                                onChange={(event) => updateDescriptiveAnswer(section.id ?? `${question.id}-section-${index}`, event.target.value)}
+                                                data-descriptive-answer="true"
+                                                disabled={isDescriptiveLocked || isExamActionLocked || (shouldShowRemainingTime && remainingDurationSeconds <= 0) || (shouldShowSequenceTimer && activeSequenceRemainingSeconds <= 0)}
+                                                aria-label={`Your answer for question ${displayNumber}, section ${index + 1}`}
+                                                value={descriptiveAnswers[descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index)] ?? ''}
+                                                onChange={(event) => updateDescriptiveAnswer(descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index), event.target.value)}
                                                 placeholder="Type your answer..."
                                             />
                                           </label>
@@ -2501,9 +2499,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                                 <label className="online-practice-descriptive-answer is-nested">
                                                   <span>Your answer</span>
                                                   <textarea
-                                                    disabled={isDescriptiveLocked || isExamActionLocked || isKeyboardLockedForExam}
-                                                    value={descriptiveAnswers[child.id ?? `${question.id}-child-${index}-${childIndex}`] ?? ''}
-                                                    onChange={(event) => updateDescriptiveAnswer(child.id ?? `${question.id}-child-${index}-${childIndex}`, event.target.value)}
+                                                data-descriptive-answer="true"
+                                                    disabled={isDescriptiveLocked || isExamActionLocked || (shouldShowRemainingTime && remainingDurationSeconds <= 0) || (shouldShowSequenceTimer && activeSequenceRemainingSeconds <= 0)}
+                                                    aria-label={`Your answer for question ${displayNumber}, section ${index + 1}, part ${childIndex + 1}`}
+                                                value={descriptiveAnswers[descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index, childIndex)] ?? ''}
+                                                    onChange={(event) => updateDescriptiveAnswer(descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index, childIndex), event.target.value)}
                                                     placeholder="Type your answer..."
                                                   />
                                                 </label>
@@ -2517,9 +2517,11 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                     <label className="online-practice-descriptive-answer">
                                       <span>Your answer</span>
                                       <textarea
-                                        disabled={isDescriptiveLocked || isExamActionLocked || isKeyboardLockedForExam}
-                                        value={descriptiveAnswers[question.id ?? `${group.key}-${questionIndex}`] ?? ''}
-                                        onChange={(event) => updateDescriptiveAnswer(question.id ?? `${group.key}-${questionIndex}`, event.target.value)}
+                                                data-descriptive-answer="true"
+                                        disabled={isDescriptiveLocked || isExamActionLocked || (shouldShowRemainingTime && remainingDurationSeconds <= 0) || (shouldShowSequenceTimer && activeSequenceRemainingSeconds <= 0)}
+                                        aria-label={`Your answer for question ${displayNumber}`}
+                                                value={descriptiveAnswers[descriptiveResponseKey(question, descriptiveQuestions.indexOf(question))] ?? ''}
+                                        onChange={(event) => updateDescriptiveAnswer(descriptiveResponseKey(question, descriptiveQuestions.indexOf(question)), event.target.value)}
                                         placeholder="Type your answer..."
                                       />
                                     </label>
@@ -2896,6 +2898,8 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               <>
                 <h2 id="online-practice-submit-title">{submitModalCopy.title}</h2>
                 <p>{submitModalCopy.message}</p>
+                {descriptiveAllowsAnswerInput && (submitModal?.isFinal || submitModal?.section === 'descriptive') && (descriptiveAnswerCounts.partial + descriptiveAnswerCounts.unanswered > 0) && <p>Some descriptive answers are incomplete. You can still submit.</p>}
+                {attemptSaveError && <p role="alert">{attemptSaveError}</p>}
 
                 <div className="online-practice-submit-summary" aria-label="Submission summary">
                   <span>
@@ -2916,7 +2920,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                   </span>
                   {submitModalCopy.answered ? (
                     <span className="is-wide">
-                      <em>MCQ Progress</em>
+                      <em>Answer progress</em>
                       <strong>{submitModalCopy.answered}</strong>
                     </span>
                   ) : null}
@@ -2943,6 +2947,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
               <AlertTriangle size={32} strokeWidth={2.4} />
             </span>
             <h2 id="online-practice-exit-title">Hold on, you're not quite done!</h2>
+            {attemptSaveError && <p role="alert">{attemptSaveError}</p>}
             <p>This proctored exam is still in progress. Exiting now may leave the assessment incomplete. Are you sure you want to quit right now?</p>
             <div className="online-practice-submit-actions online-practice-exit-actions">
               <button type="button" onClick={finishTest}>
