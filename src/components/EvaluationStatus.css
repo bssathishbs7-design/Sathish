@@ -1,0 +1,9 @@
+﻿.evaluation-marking-status { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--s-1); padding: var(--s-1) var(--s-2); border-radius: var(--r-pill); font: 500 12px/1.5 var(--font-family-base); color: var(--text-body); background: var(--surface-soft); }
+.evaluation-marking-status strong { font: inherit; font-weight: 600; }
+.evaluation-marking-status.is-pending { background: color-mix(in srgb,var(--activity-amber) 22%,var(--surface-card)); color: var(--text-strong); border: 1px solid var(--activity-amber); }
+.evaluation-marking-status.is-done { background: var(--forest); color: var(--on-brand); border: 1px solid var(--forest); }
+.evaluation-marking-detail { padding-left: var(--s-2); margin-left: var(--s-1); border-left: 1px solid currentColor; }
+.evaluation-marking-status.is-invalid { background: var(--danger-soft); color: var(--danger-ink); border: 1px solid var(--danger-line); }
+
+.evaluation-marking-status.is-incorrect { background: var(--danger-soft); color: var(--danger-ink); border: 1px solid var(--danger-line); }
+.evaluation-marking-detail { font-family: var(--f-code); font-variant-numeric: tabular-nums; }

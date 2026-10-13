@@ -249,13 +249,13 @@ function LearnPracticePage({ onNavigate, onOpenAnalytics }) {
     <section className="vx-content ospe-page my-skills-page logbook-scope lb-page learn-practice-page">
       <div className="ospe-shell my-skills-shell lb-shell learn-practice-shell">
         <div className="learn-practice-page-navigation">
-          <PageNavigationHeader items={['My Pages', 'Learn & Practice']} />
+          <PageNavigationHeader items={['My Pages', 'My Practice']} />
           {practiceCards.length > 0 && <button type="button" className="lb-icon-btn learn-practice-delete-btn" onClick={deleteAllPracticeCards} aria-label="Delete all shared practice cards" title="Delete all shared practice cards"><Trash2 size={16} aria-hidden="true" /></button>}
         </div>
         <header className="my-skills-overview lb-page-head learn-practice-page-head">
           <div className="my-skills-overview-main">
             <span className="ospe-kicker">My learning</span>
-            <div className="my-skills-overview-copy"><h1>Learn & Practice</h1><p>Practise shared questions, build your understanding and follow your progress.</p></div>
+            <div className="my-skills-overview-copy"><h1>My Practice</h1><p>Practise shared questions, build your understanding and follow your progress.</p></div>
           </div>
           <PracticeFeaturedCard items={featuredItems} onOpen={openPracticeCard} />
         </header>

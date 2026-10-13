@@ -705,3 +705,28 @@
 ### 2026-10-13 - Featured assessment carousel
 - Featured assessments now support previous/next navigation and automatic rotation, pausing on focus, hover, hidden tabs and reduced motion. Each slide retains the existing start action for its own eligible live assessment.
 
+
+## 2026-10-13 - Evaluation response confirmation
+- Online submitted answers with content no longer offer the Not attempted action. Empty submitted responses offer Confirm unanswered; offline/read-only evaluation retains manual Not attempted marking.
+- Online MCQ correctness controls remain disabled before submission and for empty responses. Reset restores pending evaluation; question and parent progress remain distinct from answer correctness.
+
+## 2026-10-13 - Compact per-student marking
+- Added All questions / Pending only filtering and Next pending navigation. Enter on valid descriptive marks saves and focuses the next pending marks field; invalid marks stay in place.
+- Moved Reset evaluation into question actions. Complete evaluation remains gated on valid marking, then changes to Next student.
+- Expanded MCQ options replace the duplicate student-answer paragraph; descriptive responses stay visible during marking.
+
+## 2026-10-13 - Unified bottom evaluation actions
+- Combined View students, question filters, question/student progress, Next pending and Complete evaluation / Next student in one bottom floating card.
+- Removed the separate top filter bar and moved View students out of the overview header. The card reserves its measured height below the question list and uses two rows on tablet.
+
+## 2026-10-13 - Evaluation summary confirmation
+- Student evaluation uses one header progress indicator. Fully marked questions show Ready to complete; Final score and Outcome appear after Complete evaluation is confirmed.
+- Removed the duplicate student completion badge from the evaluation header. Resetting a question returns the summary to pending.
+
+### 2026-10-13 - Pending correction navigation
+- Replaced student evaluation question filters and Next pending with one Pending correction action. All cards remain visible; the action cycles focus through unevaluated cards and disables when none remain.
+
+
+### 2026-10-14 - Continue unfinished student evaluations
+- Next student skips completed and absent students and wraps to earlier unfinished evaluations. Returns to the evaluation table only when no eligible students remain.
+

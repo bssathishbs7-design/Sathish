@@ -4971,10 +4971,6 @@
   color: #2563eb;
 }
 
-.assessment-evaluation-row-actions button.is-reset {
-  border-color: #fed7aa;
-  color: #ea580c;
-}
 
 .assessment-evaluation-row-actions button.is-edit {
   border-color: #99f6e4;
@@ -4988,12 +4984,6 @@
   outline: none;
 }
 
-.assessment-evaluation-row-actions button.is-reset:hover,
-.assessment-evaluation-row-actions button.is-reset:focus-visible {
-  border-color: #fb923c;
-  background: #fff7ed;
-  outline: none;
-}
 
 .assessment-evaluation-row-actions button.is-edit:hover,
 .assessment-evaluation-row-actions button.is-edit:focus-visible {
@@ -6177,11 +6167,6 @@
   padding: 0;
 }
 
-.assessment-student-drawer-actions button.is-reset {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #ea580c;
-}
 
 .assessment-student-drawer-actions button.is-edit {
   border-color: #99f6e4;
@@ -8960,10 +8945,6 @@
   color: #93c5fd;
 }
 
-.theme-dark .assessment-evaluation-row-actions button.is-reset {
-  border-color: rgba(251, 146, 60, 0.45);
-  color: #fdba74;
-}
 
 .theme-dark .assessment-evaluation-row-actions button.is-edit {
   border-color: rgba(45, 212, 191, 0.45);
@@ -8976,11 +8957,6 @@
   background: rgba(37, 99, 235, 0.18);
 }
 
-.theme-dark .assessment-evaluation-row-actions button.is-reset:hover,
-.theme-dark .assessment-evaluation-row-actions button.is-reset:focus-visible {
-  border-color: #fb923c;
-  background: rgba(251, 146, 60, 0.16);
-}
 
 .theme-dark .assessment-evaluation-row-actions button.is-edit:hover,
 .theme-dark .assessment-evaluation-row-actions button.is-edit:focus-visible {
@@ -10254,11 +10230,6 @@
   color: #66788b;
 }
 
-.theme-dark .assessment-student-drawer-actions button.is-reset {
-  border-color: rgba(251, 146, 60, 0.5);
-  background: rgba(251, 146, 60, 0.16);
-  color: #fed7aa;
-}
 
 .theme-dark .assessment-student-drawer-actions button.is-edit {
   border-color: rgba(45, 212, 191, 0.45);

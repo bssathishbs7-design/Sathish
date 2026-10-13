@@ -1,0 +1,21 @@
+﻿.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme:has(.evaluation-action-bar) { padding-bottom: calc(var(--evaluation-action-height, 112px) + var(--s-5) + env(safe-area-inset-bottom)); }
+.evaluation-action-bar { position: fixed; z-index: 40; inset: auto var(--s-4) max(var(--s-3),env(safe-area-inset-bottom)); display: grid; grid-template-columns: auto minmax(160px,1fr) auto; align-items: center; gap: var(--s-3); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); box-shadow: var(--activity-shadow); }
+.evaluation-action-left,.evaluation-action-right { display: flex; align-items: center; gap: var(--s-2); }
+.evaluation-action-progress { display: grid; gap: var(--s-1); text-align: center; color: var(--text-muted); font: 400 11px/1.5 var(--font-family-base); }
+.evaluation-action-progress strong { color: var(--text-strong); font-size: 12px; font-weight: 600; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .evaluation-action-bar button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); padding: var(--s-2) var(--s-3); white-space: nowrap; min-height: 36px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .evaluation-action-bar .evaluation-action-primary { background: var(--forest); border-color: var(--forest); color: var(--on-brand); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .evaluation-action-bar .evaluation-action-primary:hover:not(:disabled) { background: var(--forest-700); }
+@media(max-width:1199px) {
+ .evaluation-action-bar { grid-template-columns: minmax(0,1fr) auto; gap: var(--s-2); }
+ .evaluation-action-left { grid-column: 1 / -1; }
+ .evaluation-action-progress { text-align: left; }
+}
+@media(max-width:767px) {
+ .evaluation-action-bar { left: var(--s-2); right: var(--s-2); }
+ .evaluation-action-left,.evaluation-action-right { flex-wrap: wrap; }
+ .evaluation-action-progress { min-width: 0; }
+}
+
+.student-evaluation-theme .evaluation-action-bar button:disabled { cursor: not-allowed; opacity: .5; }
+.student-evaluation-theme .assessment-question-row[data-question-key]:focus { outline: 2px solid var(--forest); outline-offset: var(--s-1); }

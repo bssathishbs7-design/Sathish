@@ -1345,14 +1345,14 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
   if (!selectedCard) {
     return (
       <section className="vx-content assessment-page start-practice-page logbook-scope">
-        <PageNavigationHeader items={['My Pages', 'Learn & Practice', 'Start practice']} />
+        <PageNavigationHeader items={['My Pages', 'My Practice', 'Start practice']} />
         <div className="start-practice-empty">
           <span aria-hidden="true"><BookOpenCheck size={26} strokeWidth={2.2} /></span>
           <strong>No practice set selected</strong>
-          <p>Choose a competency card from Learn & Practice to start a session.</p>
+          <p>Choose a competency card from My Practice to start a session.</p>
           <button type="button" onClick={() => onNavigate?.(APP_PAGES.LEARN_PRACTICE)}>
             <ArrowLeft size={15} strokeWidth={2.4} />
-            Back to Learn & Practice
+            Back to My Practice
           </button>
         </div>
       </section>
@@ -1968,7 +1968,7 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
   return (
     <section className={`vx-content assessment-page start-practice-page logbook-scope is-${mode}`}>
       <div className="start-practice-shell">
-        {mode === 'sessions' && <PageNavigationHeader items={['My Pages', 'Learn & Practice', 'Start practice']} />}
+        {mode === 'sessions' && <PageNavigationHeader items={['My Pages', 'My Practice', 'Start practice']} />}
         <header className={`start-practice-title-bar ${mode === 'player' ? 'is-player-header' : ''}`}>
           <div className="start-practice-title-main">
             <button type="button" className="start-practice-title-back" aria-label="Home" title="Home" onClick={() => {

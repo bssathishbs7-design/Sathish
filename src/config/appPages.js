@@ -28,7 +28,7 @@ export const APP_PAGES = {
   ASSESSMENT_DASHBOARD: 'Assessment Dashboard',
   EXAM_CONTROLS: 'Exam Controls',
   MY_ASSESSMENT: 'My Assessment',
-  LEARN_PRACTICE: 'Learn & Practice',
+  LEARN_PRACTICE: 'My Practice',
   START_PRACTICE: 'Start Practice',
   COMPETENCY_ANALYTICS: 'Competency analytics',
   ONLINE_PRACTICE_EXAM: 'Online Practice Exam',

@@ -1,0 +1,357 @@
+﻿@import '../styles/medsy/question-sort-tokens.css';
+@import '../styles/activity-visual-tokens.css';
+
+/* Student evaluation only: the same semantic surfaces and controls as My Assessment. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme {
+ --text-strong: var(--activity-text-strong); --text-body: var(--activity-text-body); --text-muted: var(--activity-text-muted);
+ --surface: var(--activity-surface); --surface-card: var(--activity-surface); --border: var(--activity-line);
+ --text-brand: var(--activity-chart); --surface-soft: color-mix(in srgb,var(--activity-chart) 6%,var(--activity-surface));
+ --f-code: ui-monospace,SFMono-Regular,Consolas,monospace;
+ display: grid; align-content: start; gap: var(--s-4); min-height: 100svh; height: auto;
+ padding: var(--s-4); background: var(--bg); color: var(--text-body); font: 400 13px/1.5 var(--font-family-base); overflow: visible;
+}
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme * { box-sizing: border-box; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header { position: static; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-3); padding: var(--s-4); border: 1px solid var(--border); border-radius: var(--r); background: var(--activity-card-fill); box-shadow: var(--activity-shadow); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-brand-block { display: flex; align-items: center; gap: var(--s-3); min-width: 0; flex: 1; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-logo { width: 44px; height: 44px; flex: 0 0 44px; border: 0; border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-brand); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-title-block { min-width: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-title-block h1 { font: 700 22px/1.3 var(--font-family-base); letter-spacing: -.025em; color: var(--text-strong); margin: 0; overflow-wrap: anywhere; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-title-block p { font: 400 12px/1.5 var(--font-family-base); color: var(--text-muted); margin: var(--s-1) 0 0; white-space: normal; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-card { display: grid; gap: var(--s-3); width: 100%; min-width: 0; margin: 0; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-head { position: static; top: auto; z-index: auto; display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; padding: var(--s-3) var(--s-4); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-head h2 { margin: 0; color: var(--text-strong); font: 600 16px/1.4 var(--font-family-base); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-subtitle { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-1) 0 0; color: var(--text-muted); font-size: 12px; font-weight: 400; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-head-actions { margin-left: auto; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid { position: static; top: auto; z-index: auto; display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: var(--s-3); padding: 0; margin: 0; background: transparent; border: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid > span { display: flex; align-items: center; gap: var(--s-2); min-width: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r); background: var(--activity-card-fill); box-shadow: var(--activity-shadow); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid > span > span { min-width: 0; display: grid; gap: var(--s-1); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid i { width: 32px; height: 32px; min-width: 32px; border-radius: var(--r-sm); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid em { color: var(--text-muted); font: 500 11px/1.4 var(--font-family-base); letter-spacing: 0; display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid strong { color: var(--text-strong); font: 600 13px/1.5 var(--font-family-base); white-space: normal; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-question-area { display: grid; gap: var(--s-3); margin: 0; padding: 0; min-width: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-question-section { margin: 0; padding: 0; min-width: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-question-section > header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-2); padding: var(--s-3) var(--s-4); margin: 0; border: 0; border-radius: 0; background: var(--surface-soft); cursor: pointer; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-question-section.is-descriptive > header { background: color-mix(in srgb,var(--activity-violet) 8%,var(--surface-card)); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-question-section h3 { font: 600 14px/1.5 var(--font-family-base); color: var(--text-strong); margin: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-section-head-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list { padding: 0 var(--s-4); display: grid; gap: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme :is(.assessment-question-row,.assessment-descriptive-group) { min-width: 0; margin: 0; padding: var(--s-4) 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: var(--surface-card); box-shadow: none; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-main { display: flex; align-items: flex-start; gap: var(--s-2); min-width: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-main > div { flex: 1; min-width: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--s-3); min-width: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head > p { flex: 1 1 320px; min-width: 0; margin: 0; color: var(--text-strong); font: 500 14px/1.6 var(--font-family-base); overflow-wrap: anywhere; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-number { font: 600 13px/1.6 var(--f-code); color: var(--text-muted); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme :is(.assessment-question-end-actions,.assessment-question-actions,.assessment-question-badges) { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-start; gap: var(--s-2); min-width: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme :is(.assessment-question-badge,.assessment-section-mark-badge,.assessment-max-mark-box) { padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-body); font: 500 11px/1.5 var(--font-family-base); white-space: normal; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme :is(.assessment-mcq-details-panel,.assessment-question-answer-row) { margin-top: var(--s-3); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > span { font: 400 13px/1.5 var(--font-family-base); color: var(--text-body); background: var(--surface-card); border-color: var(--border); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children { margin-top: var(--s-3); padding-left: 0; display: grid; gap: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme button { min-height: 36px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-body); font: 600 12px/1.5 var(--font-family-base); cursor: pointer; box-shadow: none; transition: background-color var(--dur-hover) var(--ease-standard),border-color var(--dur-hover) var(--ease-standard); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme button:hover:not(:disabled) { border-color: var(--forest); background: var(--surface-soft); color: var(--text-strong); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme button:disabled { opacity: .5; cursor: not-allowed; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme :is(button,input,select,[role="button"]):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-actions .is-correct.is-active { background: var(--forest); border-color: var(--forest); color: var(--on-brand); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-actions .is-wrong.is-active { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger-ink); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-actions .is-not-attempted.is-active { background: color-mix(in srgb,var(--activity-amber) 15%,var(--surface-card)); color: var(--text-body); border-color: var(--warn-ink); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-actions .assessment-mark-field { width: 132px; min-width: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme input { background: var(--surface-card); color: var(--text-body); border: 1px solid var(--border); border-radius: var(--r-sm); font: 400 13px/1.5 var(--font-family-base); min-height: 36px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mark-field input { width: 100%; animation: none; padding: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mark-field input[aria-invalid="true"] { border-color: var(--danger); background: var(--danger-soft); color: var(--danger-ink); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-floating-controls { position: static; bottom: auto; z-index: auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-3); width: 100%; margin: var(--s-1) 0 0; padding: var(--s-3) var(--s-4); left: auto; right: auto; transform: none; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); box-shadow: var(--activity-shadow); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-completed-badge { padding: 0; border: 0; background: transparent; color: var(--text-muted); font: 400 12px/1.5 var(--font-family-base); white-space: normal; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-floating-btn { padding: var(--s-2) var(--s-4); background: var(--forest); border-color: var(--forest); color: var(--on-brand); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-floating-btn:hover:not(:disabled) { background: var(--forest-700); color: var(--on-brand); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-panel { width: min(480px,100vw); background: var(--surface-card); color: var(--text-body); border-left: 1px solid var(--border); padding: var(--s-4); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-head { padding: 0 0 var(--s-3); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-search { background: var(--surface-soft); border: 1px solid var(--border); border-radius: var(--r-pill); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-search input { border: 0; background: transparent; min-width: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-table :is(th,td) { padding: var(--s-3) var(--s-2); border-color: var(--border); color: var(--text-body); font-size: 12px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-table th { background: var(--surface-soft); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-table :is(th,td):last-child { width: calc(var(--s-4) * 9); text-align: center; vertical-align: middle; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-table td:last-child > button,
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-actions { width: calc(var(--s-4) * 8); margin: 0 auto; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-actions { display: flex; align-items: center; justify-content: center; gap: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-table td button { display: inline-flex; align-items: center; justify-content: center; height: calc(var(--s-4) * 2 + var(--s-1)); min-height: calc(var(--s-4) * 2 + var(--s-1)); padding: 0 var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-body); font: 600 12px/1 var(--font-family-base); cursor: pointer; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-actions button { width: calc(var(--s-4) * 2 + var(--s-1)); min-width: calc(var(--s-4) * 2 + var(--s-1)); padding: 0; flex: 0 0 auto; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-table td button:hover:not(:disabled) { background: var(--surface-soft); border-color: var(--forest); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-table td button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-table td button:disabled { opacity: 1; background: var(--surface-soft); color: var(--text-muted); cursor: default; }
+@media(max-width:1199px) { .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media(max-width:767px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme { padding: var(--s-3); gap: var(--s-3); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header { padding: var(--s-3); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-title-block h1 { font-size: 18px; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--s-2); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid > span { padding: var(--s-2); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { display: grid; grid-template-columns: minmax(0,1fr); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { width: 100%; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options { grid-template-columns: minmax(0,1fr); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-floating-controls { bottom: var(--s-2); padding: var(--s-3); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-floating-actions { width: 100%; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-floating-btn { width: 100%; }
+}
+@media(prefers-reduced-motion:reduce) { .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme * { animation: none; transition: none; } }
+/* Keep tablet section headings aligned and scoring controls self-explanatory. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-question-section > header { flex-direction: row; text-align: left; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-actions .assessment-mark-field { display: flex; align-items: center; gap: var(--s-2); width: auto; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mark-field input { width: 80px; }
+.student-evaluation-theme .student-evaluation-mark-label { color: var(--text-muted); font: 500 12px/1.5 var(--font-family-base); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-actions :is(.is-correct,.is-wrong,.is-icon-only) { min-width: 36px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-section-status { padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-muted); font: 500 11px/1.5 var(--font-family-base); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-section-status.is-completed { color: var(--text-body); background: color-mix(in srgb,var(--activity-green) 10%,var(--surface-card)); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-name strong { font-weight: 600; color: var(--text-strong); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-drawer-id-status small { font-weight: 400; color: var(--text-muted); }
+
+/* One question surface, with separators instead of nested cards. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > :last-child { border-bottom: 1px solid var(--border); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent { display: flex; align-items: flex-start; gap: var(--s-2); padding: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent > div { flex: 1; min-width: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-content-head > p { font-weight: 700; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children .assessment-question-row { padding: var(--s-3); background: var(--surface-soft); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children .assessment-question-row:last-child { border-bottom: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children { border-radius: var(--r-sm); overflow: hidden; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-section { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-section > header { padding: var(--s-2) var(--s-3); color: var(--text-strong); background: var(--surface-soft); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head > p { font-size: 13px; line-height: 1.6; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { flex-shrink: 0; margin-left: auto; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-answer-row { border: 1px solid color-mix(in srgb,var(--activity-violet) 30%,var(--border)); border-left-width: 3px; border-radius: var(--r-sm); background: var(--surface-card); padding: var(--s-2) var(--s-3); margin-top: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid > span { box-shadow: none; padding: var(--s-2) var(--s-3); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-actions .is-not-attempted.is-active { border-color: var(--border); }
+/* Align question tools on a consistent baseline without inline disclosure buttons. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { align-items: center; gap: var(--s-2) var(--s-3); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-main { align-items: baseline; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head > p { font: 700 13px/1.6 var(--font-family-base); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-content-head > p { font-weight: 700; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { align-items: center; gap: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions button { display: inline-flex; align-items: center; justify-content: center; height: 32px; min-height: 32px; margin: 0; padding: 0 var(--s-3); font: 500 12px/1 var(--font-family-base); flex-shrink: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions button:has(svg):not(.is-not-attempted,.assessment-answer-key-toggle,.is-correct,.is-wrong) { width: 32px; min-width: 32px; padding: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-answer-key.is-collapsible { display: inline-flex; margin: 0; padding: 0; border: 0; background: transparent; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mark-field input { height: 32px; min-height: 32px; width: 64px; padding: var(--s-1) var(--s-2); font: 400 12px/1.5 var(--f-code); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-question-section > header { padding: var(--s-2) var(--s-3); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-question-section h3 { font-size: 14px; font-weight: 600; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-details-panel { margin-top: var(--s-3); padding: var(--s-3); background: var(--surface-soft); border: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > span { padding: var(--s-2); border-radius: var(--r-sm); font-size: 13px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-answer-key-content { display: grid; gap: var(--s-1); padding: 0; border: 0; background: transparent; color: var(--text-body); font: 400 13px/1.6 var(--font-family-base); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-answer-key-content strong { font-weight: 600; color: var(--text-strong); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children .assessment-question-row { padding: var(--s-2) var(--s-3); }
+@media (max-width:1199px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { display: grid; grid-template-columns: minmax(0,1fr); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { margin-left: 0; }
+}
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options { margin: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-details-panel { display: grid; gap: var(--s-2); }
+/* Stable scoring columns and readable response panels. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-number { min-width: 24px; line-height: 1.6; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent { align-items: baseline; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-content-head { align-items: baseline; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { min-width: 400px; justify-content: flex-end; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-badges { justify-content: flex-end; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid small { font: 400 11px/1.5 var(--font-family-base); color: var(--text-muted); }
+.student-evaluation-theme .evaluation-student-response { display: grid; gap: var(--s-1); margin-top: var(--s-2); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); font: 400 13px/1.6 var(--font-family-base); }
+.student-evaluation-theme .evaluation-student-response strong { font-size: 12px; font-weight: 600; color: var(--text-strong); }
+@media(max-width:1199px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { grid-template-columns: minmax(0,1fr); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { min-width: 0; justify-content: flex-start; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-detail-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+/* Exam identity and student identity form one compact header. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header { padding: var(--s-3) var(--s-4); border-radius: var(--r) var(--r) 0 0; box-shadow: none; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-title-block h1 { font-size: 18px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-logo { width: 36px; height: 36px; flex-basis: 36px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-card { margin-top: calc(-1 * var(--s-4)); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-head { padding: var(--s-2) var(--s-4); border-top: 0; border-radius: 0 0 var(--r) var(--r); background: var(--surface-card); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-head > div:not(.assessment-student-head-actions) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-head h2 { font-size: 14px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-subtitle { margin: 0; }
+@media(max-width:767px) { .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-card { margin-top: calc(-1 * var(--s-3)); } }
+/* Two-row overview: shared identity toolbar, followed by the summary strip. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header { display: grid; grid-template-columns: minmax(220px,1fr) minmax(360px,1.2fr) auto; gap: var(--s-3); padding: var(--s-3) var(--s-4); border-radius: var(--r); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-evaluation-card { margin-top: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .assessment-student-evaluation-head { min-width: 0; border: 0; border-left: 1px solid var(--border); border-radius: 0; padding: 0 0 0 var(--s-3); background: transparent; flex-wrap: nowrap; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .assessment-student-evaluation-head > div:not(.assessment-student-head-actions) { display: grid; gap: var(--s-1); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-head-actions { flex-shrink: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-title-block p { margin: 0; font-size: 11px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-title-block h1 { font-size: 16px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .evaluation-summary-grid { padding: var(--s-2) 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme { gap: var(--s-2); }
+@media(min-width:768px) and (max-width:1023px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header { grid-template-columns: minmax(160px,1fr) minmax(320px,1.5fr) auto; gap: var(--s-2); padding: var(--s-2); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-logo { display: none; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .assessment-student-evaluation-head { gap: var(--s-2); padding-left: var(--s-2); }
+ .student-evaluation-theme .evaluation-summary-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+ .student-evaluation-theme .evaluation-summary-group { padding: 0 var(--s-2); }
+ .student-evaluation-theme .evaluation-summary-group:nth-child(2) { border-right: 1px solid var(--border); }
+}
+@media(max-width:767px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header { display: flex; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .assessment-student-evaluation-head { flex-wrap: wrap; }
+}
+/* Compact submitted selection: a single border and an inline status icon. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > span { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: start; gap: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > .is-student-selected { border-color: var(--border); background: color-mix(in srgb,var(--forest) 8%,var(--surface-card)); box-shadow: none; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > .is-student-selected > b { background: var(--forest); color: var(--on-brand); }
+.student-evaluation-theme .evaluation-selection-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--text-brand); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > .is-student-selected.is-selected-wrong { border-color: var(--danger-line); background: var(--danger-soft); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > .is-selected-wrong > b { background: var(--danger-soft); color: var(--danger-ink); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .is-selected-wrong .evaluation-selection-icon { color: var(--danger-ink); }
+/* Marking progress is separate from selected-answer correctness. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row[data-evaluation] { border-left: 2px solid var(--border); padding-left: var(--s-3); margin: var(--s-2) 0; background: var(--surface-card); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row[data-evaluation="pending"] { border-left-color: var(--activity-amber); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row[data-evaluation="done"] { border-left-color: var(--forest); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row[data-evaluation="invalid"] { border-left-color: var(--danger-line); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children { background: var(--surface-card); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { min-width: 0; max-width: 520px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions .is-mcq-header-actions :is(.is-correct,.is-wrong) { width: auto; min-width: 0; padding: 0 var(--s-2); gap: var(--s-1); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { grid-template-columns: minmax(0,1fr); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { max-width: none; width: 100%; justify-content: flex-end; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-details-panel { background: transparent; border: 0; padding: 0; border-radius: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive > :is(.assessment-student-written-answer,.assessment-question-answer-row,.assessment-question-control-row) { margin-left: calc(24px + var(--s-2)); }
+.student-evaluation-theme .evaluation-mark-maximum { color: var(--text-muted); white-space: nowrap; font: 500 12px/1.5 var(--font-family-base); }
+@media(max-width:1023px) { .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { justify-content: flex-start; } }
+/* Compact marking list: full-width question with an aligned control strip. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { grid-template-columns: minmax(0,1fr); gap: var(--s-1); align-items: start; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { width: 100%; max-width: none; gap: var(--s-2); justify-content: flex-end; flex-wrap: wrap; min-height: 32px; margin: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row[data-evaluation] { padding-top: var(--s-2); padding-bottom: var(--s-2); margin: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list { padding: var(--s-2) 0 0; gap: var(--s-3); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-group { padding: var(--s-2) 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children { margin-top: var(--s-2); overflow: visible; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive > .assessment-student-written-answer { padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); margin-top: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-written-answer > strong { font-size: 12px; font-weight: 600; color: var(--text-strong); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-written-answer p { margin: var(--s-1) 0 0; font-size: 13px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-answer-row { padding-top: var(--s-2); padding-bottom: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .evaluation-student-response { padding-top: var(--s-2); padding-bottom: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .evaluation-row-menu button { width: auto !important; padding: var(--s-1) var(--s-2) !important; gap: var(--s-2); white-space: nowrap; }
+@media(max-width:1199px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { grid-template-columns: minmax(0,1fr); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { justify-content: flex-start; max-width: none; }
+}
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions .assessment-answer-key-toggle { width: max-content; min-width: max-content; white-space: nowrap; padding: 0 var(--s-2); gap: var(--s-1); }
+
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions :is(.assessment-question-actions,.assessment-question-badges,.assessment-answer-key.is-collapsible) { flex-wrap: nowrap; flex-shrink: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions button { white-space: nowrap; }
+@media(max-width:1199px) { .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { flex-wrap: wrap; margin-left: 0; } }
+
+/* Parent stems have no marking controls; keep their progress beside the stem. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent { padding-left: calc(var(--s-3) + 2px); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-content-head { grid-template-columns: minmax(0,1fr) auto; align-items: start; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-end-actions { width: auto; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-main { align-items: flex-start; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions .assessment-question-badges { gap: var(--s-1); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive > .assessment-student-written-answer { margin-top: var(--s-2); }
+/* One persistent overview card; sticky positioning reserves its document space. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header { position: sticky; top: 0; z-index: 30; align-self: start; background: var(--surface-card); box-shadow: var(--activity-shadow); row-gap: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header > .evaluation-summary { grid-column: 1 / -1; width: 100%; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .evaluation-summary-group:first-child { padding-left: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .evaluation-summary-group:last-child { padding-right: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-brand-block > .assessment-student-back-icon { flex: 0 0 32px; width: 32px; min-width: 32px; height: 32px; padding: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row { scroll-margin-top: 240px; }
+
+/* Single horizontal overview: exam, student, metrics, then page actions. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header { display: grid; grid-template-columns: minmax(240px,1.1fr) minmax(180px,.8fr) minmax(580px,2.6fr) auto; align-items: center; gap: var(--s-3); overflow-x: auto; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header > .assessment-evaluation-brand-block { grid-column: 1; grid-row: 1; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header > .assessment-student-evaluation-head { grid-column: 2; grid-row: 1; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header > .evaluation-summary { grid-column: 3; grid-row: 1; border-top: 0; border-left: 1px solid var(--border); padding-left: var(--s-3); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header > .assessment-evaluation-right-block { grid-column: 4; grid-row: 1; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .evaluation-summary-grid { grid-template-columns: repeat(4,minmax(0,1fr)); padding: 0; gap: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .evaluation-summary-group { padding: 0 var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .evaluation-summary-group strong { font-size: 12px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .evaluation-summary-group small { font-size: 11px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .evaluation-summary-responses { margin-top: var(--s-1); padding: var(--s-1) 0 0; background: transparent; font-size: 11px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-evaluation-top-header .evaluation-summary.is-in-progress .evaluation-summary-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+
+/* One card per numbered question; subquestions remain within that card. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-student-question-section > header { border: 1px solid var(--border); border-radius: var(--r-sm); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > :is(.assessment-question-row,.assessment-descriptive-group) { padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); box-shadow: var(--activity-shadow); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row[data-evaluation] { border-left-width: 3px; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row[data-evaluation="pending"] { border-left-color: var(--activity-amber); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row[data-evaluation="done"] { border-left-color: var(--forest); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row[data-evaluation="invalid"] { border-left-color: var(--danger-line); }
+
+/* Only standalone questions receive an outer result fill. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row:has(.evaluation-marking-status.is-done) { background: var(--surface-soft); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row:has(.evaluation-marking-status.is-incorrect) { background: var(--danger-soft); border-color: var(--danger-line); }
+
+/* Readable question hierarchy and individually scored subquestion cards. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > :is(.assessment-question-row,.assessment-descriptive-group) { padding: var(--s-3); box-shadow: none; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head > p { display: block; font-size: calc((var(--font-size-body) + var(--font-size-small)) / 2); font-weight: 700; line-height: 1.6; white-space: normal; overflow: visible; text-overflow: clip; -webkit-line-clamp: unset; max-height: none; overflow-wrap: anywhere; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-number { flex: 0 0 var(--s-5); padding-top: var(--s-1); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent { padding: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children { display: grid; gap: var(--s-2); margin-top: var(--s-2); padding: 0; background: transparent; border: 0; border-radius: 0; overflow: visible; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-section { display: grid; gap: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children .assessment-question-row[data-evaluation] { padding: var(--s-2) var(--s-3); margin: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children .assessment-question-row[data-mark-result="positive"] { background: var(--surface-soft); border-color: var(--border); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children .assessment-question-row[data-mark-result="negative"] { background: var(--danger-soft); border-color: var(--danger-line); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children .assessment-question-content-head > p { font-size: calc((var(--font-size-body) + var(--font-size-small)) / 2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > span { font-size: calc((var(--font-size-body) + var(--font-size-small)) / 2); line-height: 1.5; padding: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { padding-top: var(--s-1); }
+
+/* One result badge in each numbered question heading. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head:has(> .evaluation-marking-status) { grid-template-columns: minmax(0,1fr) auto; column-gap: var(--s-3); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head > .evaluation-marking-status { justify-self: end; align-self: start; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head:has(> .evaluation-marking-status) > .assessment-question-end-actions { grid-column: 1 / -1; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-content-head { grid-template-columns: minmax(0,1fr) auto auto; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-content-head > .assessment-question-end-actions { grid-column: 3; grid-row: 1; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row[data-evaluation="done"]:has(.evaluation-marking-status.is-incorrect) { border-left-color: var(--danger-line); }
+@media(max-width:767px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head:has(> .evaluation-marking-status) { grid-template-columns: minmax(0,1fr) auto; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head:has(> .evaluation-marking-status) > p { grid-column: 1 / -1; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head > .evaluation-marking-status { justify-self: start; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-content-head > .assessment-question-end-actions { grid-column: 2; grid-row: 2; }
+}
+
+/* Keep marking tools beside subquestion text where there is enough room. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent { flex-wrap: wrap; align-items: center; padding: 0 calc(var(--s-3) + 1px); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent > .assessment-question-number { padding-top: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-content-head { align-items: center; min-height: calc(var(--s-4) * 2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-content-head > .evaluation-marking-status { align-self: center; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent .assessment-question-end-actions { padding: 0; min-height: 0; align-self: center; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-parent > .assessment-question-tag-panel { flex: 0 0 100%; width: 100%; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-tag-panel { margin: var(--s-2) 0 0; padding: var(--s-3); background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text-body); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-tag-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--s-2) var(--s-4); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-tag-item { display: grid; grid-template-columns: minmax(0,1fr); align-content: start; gap: var(--s-1); padding: var(--s-2) 0; min-width: 0; border-color: var(--border); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-tag-item strong { color: var(--text-muted); font-weight: 500; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-tag-item span { color: var(--text-body); font-weight: 500; overflow-wrap: anywhere; }
+@media(max-width:767px) { .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-tag-grid { grid-template-columns: minmax(0,1fr); } }
+@media(min-width:768px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive .assessment-question-end-actions { display: grid; grid-template-columns: auto auto calc(var(--s-4) * 9); justify-content: end; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive .assessment-question-badges { grid-column: 1; grid-row: 1; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive .is-descriptive-header-actions { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: auto calc(var(--s-4) * 8) calc(var(--s-4) * 2); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .is-descriptive-header-actions .assessment-mark-field { grid-column: 1; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .is-descriptive-header-actions .is-not-attempted { grid-column: 2; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .is-descriptive-header-actions .evaluation-row-menu { grid-column: 3; grid-row: 1; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive .assessment-answer-key.is-collapsible { grid-column: 3; grid-row: 1; }
+}
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row .assessment-question-end-actions { gap: var(--s-2); align-items: center; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row .assessment-mark-field { display: grid; grid-template-columns: auto calc(var(--s-4) * 4) calc(var(--s-4) * 2); gap: var(--s-2); align-items: center; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row .evaluation-mark-maximum { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row .is-not-attempted { min-width: calc(var(--s-4) * 8); justify-content: center; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row .assessment-answer-key-toggle { min-width: calc(var(--s-4) * 9); justify-content: center; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row .assessment-question-end-actions { padding-right: calc(var(--s-3) + 1px); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row .assessment-question-actions { gap: var(--s-2); align-items: center; }
+@media(min-width:1200px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row .assessment-question-content-head { grid-template-columns: minmax(0,1fr) auto; grid-template-rows: auto auto; row-gap: var(--s-1); align-items: center; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row .assessment-question-content-head > p { grid-column: 1; grid-row: 1 / span 2; align-self: start; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row .assessment-question-content-head > .evaluation-marking-status { grid-column: 2; grid-row: 1; margin-right: calc(var(--s-3) + 1px); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row .assessment-question-content-head > .assessment-question-end-actions { grid-column: 2; grid-row: 2; width: auto; padding-top: 0; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children .assessment-question-content-head { grid-template-columns: minmax(0,1fr) auto; gap: var(--s-3); align-items: center; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-descriptive-children .assessment-question-end-actions { width: auto; padding-top: 0; }
+}
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-details-panel { margin-top: var(--s-2); gap: var(--s-2); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-details-panel .assessment-question-answer-row { margin-top: 0; padding-top: var(--s-2); padding-bottom: var(--s-2); }
+@media(max-width:1199px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row .assessment-question-end-actions { justify-content: start; padding-right: 0; }
+}
+/* MCQ: full-width stem, one review toolbar, then aligned options and key. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head { grid-template-columns: auto minmax(0,1fr); grid-template-rows: auto auto; gap: var(--s-2); align-items: center; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > p { grid-column: 1 / -1; grid-row: 1; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > .evaluation-marking-status { grid-column: 1; grid-row: 2; justify-self: start; align-self: center; margin: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > .assessment-question-end-actions { grid-column: 2; grid-row: 2; justify-content: end; width: 100%; padding: 0; margin: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-mcq .assessment-mcq-options > span { display: flex; align-items: flex-start; gap: var(--s-2); min-height: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-mcq .assessment-mcq-options > span > b { flex-shrink: 0; }
+@media(max-width:1023px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > .assessment-question-end-actions { grid-column: 1 / -1; grid-row: 3; justify-content: start; }
+}

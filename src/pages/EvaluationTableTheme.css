@@ -1,0 +1,111 @@
+﻿@import '../styles/medsy/question-sort-tokens.css';
+@import '../styles/activity-visual-tokens.css';
+
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme {
+ --text-strong: var(--activity-text-strong); --text-body: var(--activity-text-body); --text-muted: var(--activity-text-muted);
+ --surface: var(--activity-surface); --surface-card: var(--activity-surface); --border: var(--activity-line);
+ --surface-soft: color-mix(in srgb,var(--activity-chart) 6%,var(--surface-card));
+ --f-code: ui-monospace,SFMono-Regular,Consolas,monospace;
+ display: grid; grid-template-rows: minmax(0,1fr); gap: var(--s-3); padding: var(--s-3); height: 100dvh; min-height: 0; overflow: auto; color: var(--text-body); font: 400 13px/1.5 var(--font-family-base);
+}
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-top-header { position: static; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); box-shadow: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-title-block h1 { color: var(--text-strong); font: 700 18px/1.3 var(--font-family-base); margin: var(--s-1) 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-title-block p { color: var(--text-muted); font-size: 12px; font-weight: 400; margin: 0; white-space: normal; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-logo { width: var(--s-6); height: var(--s-6); border: 0; border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-body); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); min-height: 36px; border: 1px solid var(--border); border-radius: var(--r-pill); padding: var(--s-2) var(--s-3); background: var(--surface-card); color: var(--text-body); font: 500 12px/1.2 var(--font-family-base); cursor: pointer; box-shadow: none; transition: background var(--dur-hover) var(--ease-standard); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme button:hover:not(:disabled) { background: var(--surface-soft); border-color: var(--forest); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme button:disabled { opacity: .5; cursor: not-allowed; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme :is(button,input,select):focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-card { display: grid; grid-template-rows: auto auto auto minmax(0,1fr) auto; min-height: 0; gap: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); overflow: visible; box-shadow: var(--activity-shadow); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: var(--s-2); padding: var(--s-2); margin: 0; border: 0; background: transparent; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics > span { display: flex; gap: var(--s-2); align-items: flex-start; padding: var(--s-2) var(--s-3); margin: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); min-width: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics i { width: 24px; height: 24px; flex: 0 0 24px; border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-body); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics em { color: var(--text-muted); font: 500 11px/1.4 var(--font-family-base); text-transform: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics strong { display: block; color: var(--text-strong); font: 600 13px/1.5 var(--f-code); white-space: normal; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-tools { padding: var(--s-2) var(--s-3); background: transparent; gap: var(--s-3); border-color: var(--border); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-left-tools { display: flex; gap: var(--s-2); min-width: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-search-field { display: flex; align-items: center; gap: var(--s-2); flex: 1; max-width: 440px; padding: 0 var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-search-field svg { position: static; transform: none; color: var(--text-muted); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-search-field input { border: 0; background: transparent; padding: 0; width: 100%; min-height: 36px; font: inherit; color: var(--text-body); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-filter-menu { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--r-sm); box-shadow: var(--activity-shadow); z-index: 20; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-filter-menu :is(span,select) { color: var(--text-body); font: inherit; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-filter-menu select { background-color: var(--surface-card); border-color: var(--border); border-radius: var(--r-sm); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-wrap { width: 100%; min-height: 0; overflow: auto; max-height: none; border: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table thead th { position: sticky; top: 0; z-index: 2; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table thead th:last-child { z-index: 3; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table { width: 100%; min-width: 1180px; border-collapse: separate; border-spacing: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table :is(th,td) { padding: var(--s-2); border: 0; border-bottom: 1px solid var(--border); background: var(--surface-card); color: var(--text-body); vertical-align: middle; font: 400 12px/1.5 var(--font-family-base); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table th { background: var(--surface-soft); color: var(--text-muted); font-weight: 600; white-space: nowrap; text-transform: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table th button { border: 0; padding: 0; min-height: 24px; background: transparent; color: inherit; font-weight: 600; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table td:nth-child(3) { font-weight: 600; min-width: 150px; color: var(--text-strong); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table td:nth-child(n+5):nth-child(-n+10),
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table td:first-child { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table :is(th,td):last-child { position: sticky; right: 0; text-align: center; border-left: 1px solid var(--border); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table tbody tr:hover td { background: var(--surface-soft); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-row-actions { display: flex; align-items: center; justify-content: center; gap: var(--s-1); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-row-actions button.is-icon { width: 32px; height: 32px; min-height: 32px; padding: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme :is(.assessment-evaluation-row-actions .is-primary,.assessment-evaluation-floating-btn.is-publish) { background: var(--forest); color: var(--on-brand); border-color: var(--forest); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme :is(.assessment-evaluation-status,.assessment-evaluation-result-status,.assessment-evaluation-attendance) { font: 500 11px/1.4 var(--font-family-base); padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--text-body); background: var(--surface-soft); white-space: nowrap; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-status.is-yet-to-start { background: color-mix(in srgb,var(--activity-amber) 15%,var(--surface-card)); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme :is(.assessment-evaluation-status.is-absent,.assessment-evaluation-result-status.is-not-achieved) { background: var(--danger-soft); color: var(--danger-ink); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-footer { padding: var(--s-3) var(--s-4); background: transparent; color: var(--text-muted); border: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-floating-card { position: static; width: auto; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--s-2); margin: 0; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; transform: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .evaluation-table-empty { text-align: center; padding: var(--s-6); font-family: var(--font-family-base); }
+@media(max-width:1199px) { .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); } .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-tools { grid-template-columns: 1fr; } .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-toolbar-actions { justify-content: flex-start; flex-wrap: wrap; } }
+@media(max-width:767px) { .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme { padding: var(--s-2); } .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-top-header { flex-wrap: wrap; } }
+@media(prefers-reduced-motion:reduce) { .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme button { transition: none; } }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-card { margin: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics strong { font-size: 18px; line-height: 1.4; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics small { display: block; color: var(--text-muted); font: 400 11px/1.4 var(--font-family-base); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme :is(.assessment-evaluation-row-actions .is-primary,.assessment-evaluation-floating-btn.is-publish):hover:not(:disabled) { background: var(--forest-700); color: var(--on-brand); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-filter-menu select { appearance: auto; background-image: none; padding: var(--s-2); width: 100%; }
+
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics > span > span { display: grid; grid-template-columns: minmax(0,1fr); gap: 0; align-content: start; width: 100%; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics small { grid-column: 1 / -1; }
+
+/* Compact coloured summary and a single integrated table footer. */
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics > span { --metric-accent: var(--activity-chart); background: linear-gradient(120deg,var(--surface-card),color-mix(in srgb,var(--metric-accent) 5%,var(--surface-card))); box-shadow: var(--activity-shadow); transition: transform var(--dur-hover) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard), border-color var(--dur-hover) var(--ease-standard), background var(--dur-hover) var(--ease-standard); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics > span:hover { transform: translateY(calc(var(--s-1) / -2)); background: color-mix(in srgb,var(--metric-accent) 9%,var(--surface-card)); border-color: color-mix(in srgb,var(--metric-accent) 45%,var(--border)); box-shadow: var(--activity-hover-shadow); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics > span:active { transform: translateY(0); box-shadow: var(--activity-shadow); transition: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics .is-marks { --metric-accent: var(--activity-amber); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics .is-questions { --metric-accent: var(--activity-violet); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics .is-students { --metric-accent: var(--activity-blue); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics .is-absent { --metric-accent: var(--danger); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics .is-pending { --metric-accent: var(--activity-amber); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics i { background: color-mix(in srgb,var(--metric-accent) 14%,var(--surface-card)); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics em { font-size: 12px; font-weight: 600; color: var(--text-body); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table :is(th,td) { font-size: 13px; }
+.evaluation-table-theme .evaluation-text-value { font-family: var(--font-family-base); color: var(--text-muted); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-footer > .assessment-evaluation-floating-card { margin-left: 0; margin-right: auto; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .evaluation-table-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); color: var(--text-muted); font: 400 12px/1.5 var(--font-family-base); }
+@media(max-width:1023px) { .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .evaluation-table-pagination { width: 100%; justify-content: flex-end; } }
+@media(prefers-reduced-motion:reduce) { .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics > span { transition: none; transform: none; } }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-card > .assessment-evaluation-top-header { margin: 0; padding: var(--s-3); border: 0; border-bottom: 1px solid var(--border); border-radius: var(--r) var(--r) 0 0; background: transparent; box-shadow: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-card > .assessment-evaluation-metrics { padding: var(--s-2) var(--s-3); }
+
+/* Keep header icons at their intended size, without button padding shrinking them. */
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-icon-btn { width: calc(var(--s-5) + var(--s-4)); height: calc(var(--s-5) + var(--s-4)); padding: 0; flex-shrink: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-icon-btn svg { width: var(--s-4); height: var(--s-4); flex-shrink: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-tools { display: flex; flex-wrap: wrap; align-items: center; margin: var(--s-1) var(--s-3) var(--s-3); padding: var(--s-2); gap: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-left-tools { flex: 1 1 320px; align-items: center; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-search-field { max-width: none; min-width: 0; border-radius: var(--r-sm); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-search-field input { min-width: 0; min-height: calc(var(--s-5) + var(--s-4)); font-size: var(--fs-small); box-shadow: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-search-field:focus-within { border-color: var(--forest); box-shadow: 0 0 0 var(--s-1) var(--line-mint); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-search-field input:focus-visible,
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-search-field input:focus { outline: none; border: 0; box-shadow: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-tools button { min-height: calc(var(--s-5) + var(--s-4)); gap: var(--s-2); font-size: var(--fs-small); box-shadow: none; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-tools svg { width: var(--s-4); height: var(--s-4); flex-shrink: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-toolbar-actions { gap: var(--s-2); flex-wrap: wrap; }
+@media(max-width:767px) {
+ .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-toolbar-actions { width: 100%; }
+ .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-toolbar-actions button { flex: 1; white-space: normal; }
+}
+
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-attendance-toggle { display: inline-flex; align-items: center; gap: var(--s-1); padding: 0; border: 0; border-radius: 0; background: transparent; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-attendance-toggle button { width: calc(var(--s-5) + var(--s-2)); height: calc(var(--s-5) + var(--s-1)); min-height: calc(var(--s-5) + var(--s-1)); padding: 0; margin: 0; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-body); font-weight: 600; flex-shrink: 0; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-attendance-toggle button.is-active.is-present { background: var(--forest); border-color: var(--forest); color: var(--on-brand); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-attendance-toggle button.is-active.is-absent { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger-ink); }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-attendance-toggle button:disabled { opacity: 1; cursor: not-allowed; }
+.evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-attendance-toggle button:hover:not(:disabled):not(.is-active) { background: var(--surface-card); border-color: var(--border); color: var(--text-body); }

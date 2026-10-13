@@ -1,0 +1,7 @@
+﻿.evaluation-row-menu { position: relative; flex-shrink: 0; }
+.evaluation-row-menu summary { list-style: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--text-body); background: var(--surface-card); cursor: pointer; }
+.evaluation-row-menu summary::-webkit-details-marker { display: none; }
+.evaluation-row-menu summary:hover { background: var(--surface-soft); }
+.evaluation-row-menu summary:active { transform: translateY(1px); }
+.evaluation-row-menu summary:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.evaluation-row-menu > div { position: absolute; right: 0; top: 100%; z-index: 6; padding: var(--s-1); min-width: 160px; background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--r-sm); box-shadow: var(--activity-shadow); }
