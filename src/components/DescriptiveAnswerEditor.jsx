@@ -10,7 +10,7 @@ const tools = [['bold', 'Bold', Bold], ['italic', 'Italic', Italic], ['underline
  * onBusyChange(editorId, boolean) lets the exam prevent submission during uploads.
  * Legacy string values are escaped before rendering. disabled locks every edit action.
  */
-export default function DescriptiveAnswerEditor({ value, onChange, disabled = false, 'aria-label': ariaLabel, onBusyChange }) {
+export default function DescriptiveAnswerEditor({ value, onChange, disabled = false, 'aria-label': ariaLabel, onBusyChange, allowPaste = true }) {
   const id = useId()
   const editor = useRef(null)
   const fileInput = useRef(null)
@@ -110,7 +110,7 @@ export default function DescriptiveAnswerEditor({ value, onChange, disabled = fa
     </div>}
     {!disabled && cell && editor.current?.contains(cell) && <div className="descriptive-editor-context" role="group" aria-label="Table controls">{[['row','Add row'],['column','Add column'],['remove-row','Remove row'],['remove-column','Remove column'],['delete','Delete table']].map(([action,label]) => <button type="button" key={action} disabled={locked || (action === 'row' && cell.closest('table').rows.length >= 20) || (action === 'column' && cell.closest('table').rows[0].cells.length >= 8)} onMouseDown={event => event.preventDefault()} onClick={() => editTable(action)}>{label}</button>)}</div>}
     {!disabled && image && editor.current?.contains(image) && <div className="descriptive-editor-context" role="group" aria-label="Image controls">{[25,50,100].map(width => <button key={width} type="button" disabled={locked} onMouseDown={event => event.preventDefault()} onClick={() => { const copy = image.cloneNode(); copy.setAttribute('width', `${width}%`); replaceNode(image, copy.outerHTML) }}>{width}%</button>)}<button type="button" disabled={locked} onClick={() => replaceNode(image, '')}>Remove image</button></div>}
-    <div ref={editor} className="descriptive-editor-content" contentEditable={!disabled} suppressContentEditableWarning role="textbox" aria-multiline="true" aria-label={ariaLabel} aria-readonly={disabled} aria-busy={busy} data-empty={!hasAnswerContent(value)} data-descriptive-answer="true" onInput={emit} onBlur={emit} onClick={event => setImage(event.target.tagName === 'IMG' ? event.target : null)} onPaste={event => { event.preventDefault(); command('insertText', event.clipboardData.getData('text/plain')) }} onDrop={event => event.preventDefault()} />
+    <div ref={editor} className="descriptive-editor-content" contentEditable={!disabled} suppressContentEditableWarning role="textbox" aria-multiline="true" aria-label={ariaLabel} aria-readonly={disabled} aria-busy={busy} data-empty={!hasAnswerContent(value)} data-descriptive-answer="true" onInput={emit} onBlur={emit} onClick={event => setImage(event.target.tagName === 'IMG' ? event.target : null)} onPaste={event => { event.preventDefault(); if (allowPaste) command('insertText', event.clipboardData.getData('text/plain')) }} onDrop={event => event.preventDefault()} />
     {busy && <span role="status" className="descriptive-editor-note">Saving image… Please wait before submitting.</span>}
     {error && <span role="alert" className="descriptive-editor-error">{error}</span>}
   </div>

@@ -1,0 +1,166 @@
+@import '../styles/medsy/question-sort-tokens.css';
+@import '../styles/activity-visual-tokens.css';
+
+/* Learn Practice card, metric and toolbar styling, scoped to My Assessment. */
+.my-assessment-theme.my-assessment-theme.my-assessment-theme.my-assessment-theme {
+  --text-strong: var(--activity-text-strong);
+  --text-body: var(--activity-text-body);
+  --text-muted: var(--activity-text-muted);
+  --text-brand: var(--activity-chart);
+  --surface-soft: color-mix(in srgb,var(--activity-chart) 6%,var(--activity-surface));
+  --surface: var(--activity-surface);
+  --surface-card: var(--activity-surface);
+  --border: var(--activity-line);
+  --f-code: ui-monospace,SFMono-Regular,Consolas,monospace;
+  height: auto; min-height: 0; overflow: visible;
+  padding: var(--s-4);
+  color: var(--text-body);
+  font: 400 13px/1.5 var(--font-family-base);
+}
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-page-shell { width: 100%; max-width: none; margin: 0; display: grid; gap: var(--s-3); min-width: 0; align-content: start; flex: none; }
+.my-assessment-theme .my-assessment-intro { display: grid; gap: var(--s-2); position: relative; overflow: hidden; padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r); background: radial-gradient(circle at top left,color-mix(in srgb,var(--mint) 12%,transparent),transparent 35%),var(--activity-card-fill); box-shadow: var(--activity-shadow); }
+.my-assessment-theme .my-assessment-kicker { justify-self: start; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-brand); font: 700 11px/1.5 var(--font-family-base); letter-spacing: .08em; text-transform: uppercase; }
+.my-assessment-theme .my-assessment-intro h1 { margin: 0; font-family: var(--font-family-base); font-size: clamp(1.7rem,2vw,2.4rem); line-height: 1.1; font-weight: 700; letter-spacing: -.06em; color: var(--text-strong); }
+.my-assessment-theme .my-assessment-intro p { margin: var(--s-1) 0 0; color: var(--text-muted); font-size: 14px; font-weight: 400; line-height: 1.55; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--s-3); margin: 0; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metric-card { display: flex; align-items: center; gap: var(--s-3); min-width: 0; min-height: 72px; padding: var(--s-4); border: 1px solid var(--border); border-radius: var(--r); background: linear-gradient(120deg,var(--surface-card),color-mix(in srgb,var(--metric-soft) 35%,var(--surface-card))); box-shadow: var(--shadow-sm); color: var(--text-body); text-align: left; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metric-card:is(:hover,.is-active) { background: var(--metric-soft); border-color: var(--metric-ink); box-shadow: var(--shadow-sm); transform: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metric-icon { width: var(--s-6); height: var(--s-6); border-radius: var(--r-sm); background: var(--metric-soft); color: var(--metric-ink); flex-shrink: 0; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metric-copy { display: grid; gap: var(--s-1); min-width: 0; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metric-copy strong { color: var(--text-strong); font: 600 18px/1.2 var(--f-code); font-variant-numeric: tabular-nums; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metric-copy > span { color: var(--text-muted); font-size: var(--fs-micro); font-weight: 500; white-space: normal; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-published-shell { padding: 0; display: grid; gap: var(--s-3); background: transparent; border: 0; border-radius: 0; box-shadow: none; min-width: 0; overflow: visible; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-card-heading { display: grid; grid-template-columns: minmax(0,1fr); align-items: center; gap: var(--s-3); margin: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r); background: var(--activity-card-fill); box-shadow: var(--activity-shadow); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-card-heading h2 { font-size: 16px; color: var(--text-strong); margin: 0; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-toolbar { width: 100%; max-width: none; justify-self: stretch; display: grid; grid-template-columns: auto minmax(180px,1fr) auto auto; gap: var(--s-2); align-items: center; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-search { width: 100%; min-width: 0; min-height: 40px; padding-inline: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-search input { width: 100%; min-width: 0; padding-block: var(--s-2); background: transparent; color: var(--text-body); font: 400 13px/1.5 var(--font-family-base); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-filter-wrap { display: contents; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.assessment-create-published-filter-btn,.assessment-create-published-clear-btn,.assessment-create-published-filter-actions button) { min-height: 40px; padding: var(--s-2) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-body); font: 600 12px/1.5 var(--font-family-base); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-filter-btn.is-active { border-color: var(--forest); background: var(--surface-soft); color: var(--text-brand); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-filter-popover { position: static; grid-column: 1 / -1; order: 3; width: auto; min-width: 0; display: grid; grid-template-columns: repeat(3,minmax(150px,1fr)) max-content; align-items: end; overflow-x: auto; max-width: 100%; scrollbar-width: thin; gap: var(--s-3); padding: var(--s-3) var(--s-1) var(--s-2); border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-filter-popover label { min-width: 0; color: var(--text-body); font-size: 14px; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-filter-popover select { width: 100%; min-height: 40px; padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); font: inherit; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-filter-actions { grid-column: auto; justify-content: flex-end; align-items: center; gap: var(--s-2); padding: 0; white-space: nowrap; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-published-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(100%,300px),1fr)); gap: var(--s-4); align-items: stretch; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-card { display: flex; flex-direction: column; gap: var(--s-2); height: 100%; min-height: 0; min-width: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r); background: var(--activity-card-fill); box-shadow: var(--activity-shadow); color: var(--text-body); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-card:hover { transform: none; border-color: var(--activity-hover-line); box-shadow: var(--activity-shadow); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-card.is-live { border-color: var(--border); background: var(--surface-card); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-head { align-items: flex-start; gap: var(--s-2); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-head > div { min-width: 0; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-head strong { color: var(--text-strong); font-size: 14px; font-weight: 600; letter-spacing: -.015em; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-head small { color: var(--text-muted); font-size: 12px; line-height: 1.5; font-weight: 400; white-space: normal; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.assessment-create-published-status,.assessment-create-published-supervision,.assessment-create-published-schedule-badge,.my-assessment-card-top-status > span) { padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-body); font-size: 11px; font-weight: 600; line-height: 1.5; animation: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-schedule-badge.is-violation { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger-ink); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-schedule-badge.is-live { border-color: var(--forest); color: var(--text-brand); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-details { margin-top: auto; gap: var(--s-2) var(--s-3); padding: var(--s-2) 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; grid-template-columns: repeat(3,minmax(0,1fr)); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-details > span { display: flex; flex-direction: column-reverse; gap: 0; min-width: 0; background: transparent; border: 0; padding: 0; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-details strong { color: var(--text-strong); font: 500 12px/1.5 var(--f-code); font-variant-numeric: tabular-nums; white-space: normal; overflow-wrap: anywhere; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-details > span:last-child strong { font-family: var(--font-family-base); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-details em { color: var(--text-muted); font-size: 11px; font-weight: 400; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-footer { margin-top: 0; padding: var(--s-2) 0 0; border: 0; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-2); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.my-assessment-card-action,.assessment-create-published-filter-actions button.is-primary) { min-height: 36px; padding: var(--s-2) var(--s-3); background: var(--activity-chart); color: var(--on-brand); border: 1px solid var(--activity-chart); border-radius: var(--r-pill); font: 600 12px/1.5 var(--font-family-base); animation: none; box-shadow: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.my-assessment-card-action,.assessment-create-published-filter-actions button.is-primary):hover:not(:disabled) { background: var(--forest-700); color: var(--on-brand); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme button { transition: background-color var(--dur-hover) var(--ease-standard),border-color var(--dur-hover) var(--ease-standard); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme button:disabled { opacity: .55; cursor: not-allowed; animation: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme :is(button,input,select):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-placeholder { grid-column: 1 / -1; padding: var(--s-5); border: 1px dashed var(--border); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-muted); text-align: center; }
+
+.my-assessment-theme .my-assessment-metric-card.is-total { --metric-ink: var(--warn-ink); --metric-soft: var(--activity-amber-soft); }
+.my-assessment-theme .my-assessment-metric-card.is-live { --metric-ink: var(--text-brand); --metric-soft: var(--activity-green-soft); }
+.my-assessment-theme .my-assessment-metric-card.is-upcoming { --metric-ink: var(--activity-violet); --metric-soft: var(--activity-violet-soft); }
+.my-assessment-theme .my-assessment-metric-card.is-completed { --metric-ink: var(--text-brand); --metric-soft: var(--surface-soft); }
+:is(.theme-dark,[data-theme="dark"],[data-theme="oled"]) .my-assessment-theme .my-assessment-metric-card { --metric-soft: color-mix(in srgb,var(--metric-ink) 14%,var(--surface-card)); }
+
+/* Logbook and Learn Practice accents retain semantic text colours in both themes. */
+.my-assessment-theme .assessment-create-published-card { --card-accent: var(--activity-chart); --card-soft: var(--surface-soft); }
+.my-assessment-theme .assessment-create-published-card[data-assessment-status="upcoming"] { --card-accent: var(--activity-violet); --card-soft: var(--activity-violet-soft); }
+.my-assessment-theme .assessment-create-published-card[data-assessment-status="violation"] { --card-accent: var(--danger-ink); --card-soft: var(--danger-soft); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-head { display: grid; grid-template-columns: 40px minmax(0,1fr); align-items: start; gap: var(--s-3); }
+.my-assessment-theme .my-assessment-subject-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-sm); color: var(--card-accent); background: var(--card-soft); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-card-top-status { align-self: center; margin: 0; min-width: 0; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-card-top-status > span { background: var(--card-soft); color: var(--text-body); border-color: color-mix(in srgb,var(--card-accent) 25%,var(--border)); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-supervision.is-proctored { background: var(--activity-violet-soft); color: var(--text-body); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-supervision.is-practice { background: var(--activity-amber-soft); color: var(--text-body); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-search input::placeholder { color: var(--text-muted); font-weight: 400; opacity: 1; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-head small { display: block; margin-top: var(--s-1); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-card-heading h2 { font-weight: 600; letter-spacing: -.03em; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-details { background: transparent; }
+:is(.theme-dark,[data-theme="dark"],[data-theme="oled"]) .my-assessment-theme .assessment-create-published-card { --card-soft: color-mix(in srgb,var(--card-accent) 14%,var(--surface-card)); }
+:is(.theme-dark,[data-theme="dark"],[data-theme="oled"]) .my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-supervision { background: var(--surface-soft); }
+
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-status-row { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: var(--s-2); margin: 0; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-card { transition: border-color var(--dur-hover) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-head strong { display: block; font-size: 14px; font-weight: 600; line-height: 1.4; }
+
+.my-assessment-theme .my-assessment-overview { display: grid; grid-template-columns: minmax(0,3fr) minmax(0,2fr); gap: var(--s-4); }
+.my-assessment-theme .my-assessment-overview .my-assessment-intro { align-content: center; padding: var(--s-4); }
+.my-assessment-theme .my-assessment-status-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.my-assessment-theme .my-assessment-status-filters button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); min-height: 36px; padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-body); font: 600 12px/1.5 var(--font-family-base); cursor: pointer; }
+.my-assessment-theme .my-assessment-status-filters button span { font: 500 var(--fs-micro)/1.5 var(--f-code); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-status-filters button:hover:not(:disabled) { border-color: var(--forest); background: var(--surface-soft); color: var(--text-body); box-shadow: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-status-filters button[aria-pressed="true"] { border-color: var(--forest); background: var(--forest); color: var(--on-brand); }
+@media(max-width:1279px) {
+ .my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-toolbar { grid-template-columns: minmax(0,1fr) auto auto; }
+ .my-assessment-theme .my-assessment-status-filters { grid-column: 1/-1; }
+}
+@media(max-width:1023px) { .my-assessment-theme .my-assessment-overview { grid-template-columns: minmax(0,1fr); } }
+@media(max-width:1023px) { .my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-published-grid { grid-template-columns: 1fr; } }
+@media(max-width:767px) {
+  .my-assessment-theme.my-assessment-theme.my-assessment-theme.my-assessment-theme { padding: var(--s-3); }
+  .my-assessment-theme .my-assessment-intro { padding: var(--s-4); gap: var(--s-3); }
+  .my-assessment-theme .my-assessment-intro h1 { font-size: 27px; }
+  .my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metric-card { padding: var(--s-3); gap: var(--s-2); }
+  .my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-toolbar { grid-template-columns: 1fr auto; }
+  .my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-search { grid-column: 1 / -1; }
+
+  .my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-details { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-head { flex-wrap: wrap; }
+  .my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-card-action { width: auto; flex-shrink: 0; }
+}
+@media(prefers-reduced-motion:reduce) { .my-assessment-theme.my-assessment-theme.my-assessment-theme * { animation: none; transition: none; } }
+
+/* Focus belongs to the rounded search control, not its inner text field. */
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-search input:is(:focus,:focus-visible) { outline: none; border: 0; box-shadow: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-search:focus-within { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+/* Countdown emphasis and consistent, readable status colours. */
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-details .my-assessment-remaining { padding: 0; margin: 0; border-radius: 0; background: transparent; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-remaining em { color: var(--text-muted); white-space: normal; overflow: visible; text-overflow: clip; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-remaining strong { color: var(--warn-ink); font-weight: 600; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-status.is-online { background: var(--surface-soft); color: var(--text-body); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-supervision.is-practice { border-color: color-mix(in srgb,var(--warn-ink) 25%,var(--border)); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-supervision.is-proctored { border-color: color-mix(in srgb,var(--activity-violet) 25%,var(--border)); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-card-top-status .is-live { background: var(--activity-green-soft); border-color: color-mix(in srgb,var(--forest) 35%,var(--border)); color: var(--text-body); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-card-top-status .is-completed { background: var(--activity-blue-soft); border-color: color-mix(in srgb,var(--activity-blue) 25%,var(--border)); color: var(--text-body); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-card-top-status .is-violation { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger-ink); }
+:is(.theme-dark,[data-theme="dark"],[data-theme="oled"]) .my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-supervision.is-practice { background: color-mix(in srgb,var(--activity-amber) 15%,var(--surface-card)); }
+:is(.theme-dark,[data-theme="dark"],[data-theme="oled"]) .my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-supervision.is-proctored { background: color-mix(in srgb,var(--activity-violet) 15%,var(--surface-card)); }
+:is(.theme-dark,[data-theme="dark"],[data-theme="oled"]) .my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-card-top-status .is-live { background: color-mix(in srgb,var(--activity-green) 15%,var(--surface-card)); }
+:is(.theme-dark,[data-theme="dark"],[data-theme="oled"]) .my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-card-top-status .is-completed { background: color-mix(in srgb,var(--activity-blue) 15%,var(--surface-card)); }
+
+/* Cards lift on pointer hover and settle immediately when an action is pressed. */
+.my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.my-assessment-metric-card,.assessment-create-published-card) { transition: transform var(--dur-hover) var(--ease-standard),box-shadow var(--dur-hover) var(--ease-standard),border-color var(--dur-hover) var(--ease-standard); animation: my-assessment-card-enter var(--dur-entrance) var(--ease-standard); }
+@keyframes my-assessment-card-enter { from { opacity: 0; transform: translateY(var(--s-2)); } to { opacity: 1; transform: translateY(0); } }
+@media(hover:hover) and (pointer:fine) {
+ .my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.my-assessment-metric-card,.assessment-create-published-card):hover { transform: translateY(calc(-1 * var(--s-1))); box-shadow: var(--activity-hover-shadow); border-color: var(--activity-hover-line); }
+}
+.my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.assessment-create-published-card):focus-within { border-color: var(--forest); box-shadow: var(--activity-hover-shadow); }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.assessment-create-published-card):has(button:active:not(:disabled)),
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-metric-card:active { transform: translateY(1px) scale(.98); transition: none; }
+@media(prefers-reduced-motion:reduce) {
+ .my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.my-assessment-metric-card,.assessment-create-published-card),
+ .my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.my-assessment-metric-card,.assessment-create-published-card):is(:hover,:active),
+ .my-assessment-theme.my-assessment-theme.my-assessment-theme :is(.assessment-create-published-card):has(button:active) { animation: none; transition: none; transform: none; }
+ .my-assessment-theme .assessment-featured-dots button span { transition: none; }
+}
+
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-card { cursor: pointer; }
+:is(.theme-dark,[data-theme="dark"],[data-theme="oled"]) .my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-remaining strong { color: var(--text-body); }
+
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-select-control { position: relative; display: block; min-width: 0; font: 400 13px/1.5 var(--font-family-base); letter-spacing: normal; text-transform: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-select-control select { appearance: none; height: 40px; padding: var(--s-2) var(--s-6) var(--s-2) var(--s-3); cursor: pointer; text-overflow: ellipsis; }
+.my-assessment-theme .my-assessment-select-control > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .assessment-create-published-filter-actions button { height: 40px; min-height: 40px; }
+
+.my-assessment-theme.my-assessment-theme.my-assessment-theme .my-assessment-status-filters button[aria-pressed="true"]:hover:not(:disabled) { background: var(--forest-700); border-color: var(--forest-700); color: var(--on-brand); box-shadow: none; }

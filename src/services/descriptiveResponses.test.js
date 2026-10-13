@@ -27,6 +27,18 @@ test('legacy migration never duplicates an ambiguous response', () => {
   assert.equal(normalized[descriptiveResponseKey(questions[1], 1, 0)], undefined)
 })
 const textarea = { tagName: 'TEXTAREA', dataset: { descriptiveAnswer: 'true' }, disabled: false, readOnly: false }
+test('proctoring permits rich answer descendants without unlocking clipboard or other inputs', () => {
+  const editor = { tagName: 'DIV', dataset: { descriptiveAnswer: 'true' }, isContentEditable: true, getAttribute: () => 'false' }
+  const target = { closest: () => editor }
+  assert.equal(allowsDescriptiveTyping({ target, key: 'a' }, true), true)
+  assert.equal(allowsDescriptiveTyping({ target, type: 'beforeinput', inputType: 'formatBold' }, true), true)
+  assert.equal(allowsDescriptiveTyping({ target, key: 'v', ctrlKey: true }, true), false)
+  assert.equal(allowsDescriptiveTyping({ target, type: 'beforeinput', inputType: 'insertFromPaste' }, true), false)
+  assert.equal(allowsDescriptiveTyping({ target, type: 'beforeinput', inputType: 'insertFromDrop' }, true), false)
+  assert.equal(allowsDescriptiveTyping({ target: { isContentEditable: true }, key: 'a' }, true), false)
+  editor.getAttribute = () => 'true'
+  assert.equal(allowsDescriptiveTyping({ target, key: 'a' }, true), false)
+})
 test('proctoring permits typing, editing and composition only in enabled answer fields', () => {
   for (const key of ['a', 'A', 'Enter', 'Backspace', 'ArrowLeft']) assert.ok(allowsDescriptiveTyping({ target: textarea, key }, true))
   assert.ok(allowsDescriptiveTyping({ target: textarea, type: 'compositionupdate' }, true))

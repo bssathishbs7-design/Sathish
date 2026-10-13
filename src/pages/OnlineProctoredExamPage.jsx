@@ -1,3 +1,4 @@
+import DescriptiveAnswerEditor from '../components/DescriptiveAnswerEditor'
 import useExamAttemptPersistence from '../services/useExamAttemptPersistence'
 import ExamSaveError from '../components/ExamSaveError'
 import { descriptiveResponseKey, descriptiveProgress, persistAssessmentAttempt, normalizeDescriptiveResponses, allowsDescriptiveTyping } from '../services/descriptiveResponses'
@@ -6,6 +7,7 @@ import { AlertTriangle, ArrowLeft, Award, Ban, BatteryCharging, BellOff, Calenda
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
 import './OnlineExamAlignment.css'
+import './OnlineProctoredTheme.css'
 
 const ONLINE_PROCTORED_EXAM_STORAGE_KEY = 'vx-online-proctored-exam-assessment'
 const ASSESSMENT_PUBLISHED_STORAGE_KEY = 'vx-assessment-published'
@@ -715,6 +717,15 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [isAssessmentSubmitted, setIsAssessmentSubmitted] = useState(Boolean(initialAttempt.isAssessmentSubmitted))
   const [appliedResetVersion, setAppliedResetVersion] = useState(Number(initialAttempt.appliedResetVersion || 0))
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
+  const [imageUploads, setImageUploads] = useState({})
+  const hasPendingImages = Object.values(imageUploads).some(Boolean)
+  const handleImageBusy = (id, busy) => setImageUploads(current => {
+    if (Boolean(current[id]) === busy) return current
+    const next = { ...current }
+    if (busy) next[id] = true
+    else delete next[id]
+    return next
+  })
   const [isTimeLimitModalOpen, setIsTimeLimitModalOpen] = useState(false)
   const [sequenceAutoNotice, setSequenceAutoNotice] = useState('')
   const [sequenceTransitionModal, setSequenceTransitionModal] = useState(null)
@@ -1017,6 +1028,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
       }
 
   const switchSection = (section) => {
+    if (hasPendingImages) return
     if (shouldBlockProctoringActions) return
     if (!isSectionAccessibleInSequence(section)) return
     if (section === 'mcq' && isMcqSubmitted) return
@@ -1141,6 +1153,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const openSubmitModal = (section) => {
+    if (hasPendingImages) return
     if (shouldBlockProctoringActions) return
     if (section === 'final') {
       setSubmitModal({ section: 'final', isFinal: true, phase: 'confirm' })
@@ -1157,6 +1170,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   const confirmSubmit = () => {
+    if (hasPendingImages) return
     if (shouldBlockProctoringActions) return
     if (!saveAttempt({ isMcqSubmitted: isMcqSubmitted || submitModal?.section === 'mcq' || Boolean(submitModal?.isFinal), isDescriptiveSubmitted: isDescriptiveSubmitted || submitModal?.section === 'descriptive' || Boolean(submitModal?.isFinal), isAssessmentSubmitted: Boolean(submitModal?.isFinal) })) return
     if (submitModal?.isFinal) setIsAssessmentSubmitted(true)
@@ -2207,7 +2221,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
   if (!assessment) {
     return (
-      <main className="online-practice-exam-page is-proctored-exam">
+      <main className="online-practice-exam-page is-proctored-exam proctored-exam-theme logbook-scope">
         <section className="online-practice-empty">
           <h1>Assessment not found</h1>
           <p>Please return to My Assessment and start the assessment again.</p>
@@ -2222,7 +2236,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
   if (!isProctoredFlowAssessment) {
     return (
-      <main className="online-practice-exam-page is-proctored-exam">
+      <main className="online-practice-exam-page is-proctored-exam proctored-exam-theme logbook-scope">
         <section className="online-practice-empty">
           <h1>Proctored exam only</h1>
           <p>This page is available only for Online Proctored Exam assessments.</p>
@@ -2237,7 +2251,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
   return (
     <main
-      className={`online-practice-exam-page is-proctored-exam ${hasStarted ? 'has-fixed-header' : 'is-before-start'} ${
+      className={`online-practice-exam-page is-proctored-exam proctored-exam-theme logbook-scope ${hasStarted ? 'has-fixed-header' : 'is-before-start'} ${
         shouldBlockProctoringActions ? 'is-proctor-locked' : ''
       } ${isProctorViolationActive ? 'is-proctor-restricted' : ''}`.trim()}
     >
@@ -2475,17 +2489,19 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                           ) : null}
                                         </p>
                                         {descriptiveAllowsAnswerInput && !(section.children ?? []).length ? (
-                                          <label className="online-practice-descriptive-answer">
+                                          <div className="online-practice-descriptive-answer">
                                             <span>Your answer</span>
-                                              <textarea
+                                              <DescriptiveAnswerEditor
+                                                allowPaste={false}
+                                                onBusyChange={handleImageBusy}
                                                 data-descriptive-answer="true"
                                                 disabled={isDescriptiveLocked || isExamActionLocked || (shouldShowRemainingTime && remainingDurationSeconds <= 0) || (shouldShowSequenceTimer && activeSequenceRemainingSeconds <= 0)}
                                                 aria-label={`Your answer for question ${displayNumber}, section ${index + 1}`}
                                                 value={descriptiveAnswers[descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index)] ?? ''}
-                                                onChange={(event) => updateDescriptiveAnswer(descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index), event.target.value)}
+                                                onChange={(value) => updateDescriptiveAnswer(descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index), value)}
                                                 placeholder="Type your answer..."
                                             />
-                                          </label>
+                                          </div>
                                         ) : null}
                                         {Array.isArray(section.children) && section.children.length ? (
                                           section.children.map((child, childIndex) => (
@@ -2496,17 +2512,19 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                                 {hasVisibleMarks(child.marks) ? <b>{child.marks} Marks</b> : null}
                                               </p>
                                               {descriptiveAllowsAnswerInput ? (
-                                                <label className="online-practice-descriptive-answer is-nested">
+                                                <div className="online-practice-descriptive-answer is-nested">
                                                   <span>Your answer</span>
-                                                  <textarea
+                                                  <DescriptiveAnswerEditor
+                                                allowPaste={false}
+                                                onBusyChange={handleImageBusy}
                                                 data-descriptive-answer="true"
                                                     disabled={isDescriptiveLocked || isExamActionLocked || (shouldShowRemainingTime && remainingDurationSeconds <= 0) || (shouldShowSequenceTimer && activeSequenceRemainingSeconds <= 0)}
                                                     aria-label={`Your answer for question ${displayNumber}, section ${index + 1}, part ${childIndex + 1}`}
                                                 value={descriptiveAnswers[descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index, childIndex)] ?? ''}
-                                                    onChange={(event) => updateDescriptiveAnswer(descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index, childIndex), event.target.value)}
+                                                    onChange={(value) => updateDescriptiveAnswer(descriptiveResponseKey(question, descriptiveQuestions.indexOf(question), index, childIndex), value)}
                                                     placeholder="Type your answer..."
                                                   />
-                                                </label>
+                                                </div>
                                               ) : null}
                                             </div>
                                           ))
@@ -2514,17 +2532,19 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                                       </div>
                                     ))
                                   ) : descriptiveAllowsAnswerInput ? (
-                                    <label className="online-practice-descriptive-answer">
+                                    <div className="online-practice-descriptive-answer">
                                       <span>Your answer</span>
-                                      <textarea
+                                      <DescriptiveAnswerEditor
+                                                allowPaste={false}
+                                                onBusyChange={handleImageBusy}
                                                 data-descriptive-answer="true"
                                         disabled={isDescriptiveLocked || isExamActionLocked || (shouldShowRemainingTime && remainingDurationSeconds <= 0) || (shouldShowSequenceTimer && activeSequenceRemainingSeconds <= 0)}
                                         aria-label={`Your answer for question ${displayNumber}`}
                                                 value={descriptiveAnswers[descriptiveResponseKey(question, descriptiveQuestions.indexOf(question))] ?? ''}
-                                        onChange={(event) => updateDescriptiveAnswer(descriptiveResponseKey(question, descriptiveQuestions.indexOf(question)), event.target.value)}
+                                        onChange={(value) => updateDescriptiveAnswer(descriptiveResponseKey(question, descriptiveQuestions.indexOf(question)), value)}
                                         placeholder="Type your answer..."
                                       />
-                                    </label>
+                                    </div>
                                   ) : null}
                                 </div>
                               )
@@ -2660,7 +2680,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                       type="button"
                       className={`${activeSection === 'mcq' ? 'is-active' : ''} ${isMcqSubmitted ? 'is-completed' : ''}`.trim()}
                       onClick={() => switchSection('mcq')}
-                      disabled={isMcqSubmitted || isExamActionLocked}
+                      disabled={hasPendingImages || isMcqSubmitted || isExamActionLocked}
                     >
                       {isMcqSubmitted ? 'MCQ Completed' : 'MCQ'}
                     </button>
@@ -2670,7 +2690,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                       type="button"
                       className={`${activeSection === 'descriptive' ? 'is-active' : ''} ${isDescriptiveSubmitted ? 'is-completed' : ''}`.trim()}
                       onClick={() => switchSection('descriptive')}
-                      disabled={isDescriptiveSubmitted || isExamActionLocked}
+                      disabled={hasPendingImages || isDescriptiveSubmitted || isExamActionLocked}
                     >
                       {isDescriptiveSubmitted ? 'Descriptive Completed' : 'Descriptive'}
                     </button>
@@ -2738,7 +2758,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                           type="button"
                           className="online-practice-submit-mcq-btn"
                           onClick={() => openSubmitModal('mcq')}
-                          disabled={isMcqSubmitted || isAssessmentSubmitted || isExamActionLocked}
+                          disabled={hasPendingImages || isMcqSubmitted || isAssessmentSubmitted || isExamActionLocked}
                         >
                           {isMcqSubmitted ? 'MCQ Assessment Submitted' : splitSectionSubmitLabel('mcq')}
                         </button>
@@ -2779,7 +2799,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                   type="button"
                   className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn"
                   onClick={() => openSubmitModal('mcq')}
-                  disabled={isMcqSubmitted || isAssessmentSubmitted || isExamActionLocked}
+                  disabled={hasPendingImages || isMcqSubmitted || isAssessmentSubmitted || isExamActionLocked}
                 >
                   {isMcqSubmitted ? 'MCQ Assessment Submitted' : splitSectionSubmitLabel('mcq')}
                 </button>
@@ -2790,7 +2810,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                   type="button"
                   className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn"
                   onClick={() => openSubmitModal('descriptive')}
-                  disabled={isDescriptiveSubmitted || isAssessmentSubmitted || isExamActionLocked}
+                  disabled={hasPendingImages || isDescriptiveSubmitted || isAssessmentSubmitted || isExamActionLocked}
                 >
                   {isAssessmentSubmitted ? 'Assessment Submitted' : isDescriptiveSubmitted ? 'Descriptive Assessment Submitted' : splitSectionSubmitLabel('descriptive')}
                 </button>
@@ -2801,7 +2821,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                   type="button"
                   className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn"
                   onClick={() => openSubmitModal('final')}
-                  disabled={isAssessmentSubmitted || hasPendingSections || isExamActionLocked}
+                  disabled={hasPendingImages || isAssessmentSubmitted || hasPendingSections || isExamActionLocked}
                 >
                   Submit Assessment
                 </button>
@@ -2930,7 +2950,7 @@ function OnlineProctoredExamPage({ onExit, theme = 'light', onToggleTheme }) {
                   <button type="button" className="is-secondary" onClick={closeSubmitModal}>
                     Cancel
                   </button>
-                  <button type="button" onClick={confirmSubmit}>
+                  <button type="button" onClick={confirmSubmit} disabled={hasPendingImages}>
                     Confirm Submit
                   </button>
                 </div>

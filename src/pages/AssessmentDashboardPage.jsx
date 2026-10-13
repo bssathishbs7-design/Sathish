@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, BadgeCheck, CalendarClock, ChartColumnBig, ClipboardList, EyeOff, ListFilter, Monitor, Search, ShieldCheck, X } from 'lucide-react'
+import { Activity, BadgeCheck, CalendarClock, ChartColumnBig, ChevronDown, ClipboardList, EyeOff, ListFilter, Monitor, Search, ShieldCheck, X } from 'lucide-react'
+import AssessmentFeaturedCard from '../components/AssessmentFeaturedCard'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
+import './MyAssessmentTheme.css'
 
 const dashboardCards = [
   {
@@ -420,6 +422,19 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
       tone: 'completed',
     },
   ]
+  // Prefer an unlocked live exam, otherwise the next scheduled exam. Published results are excluded.
+  const featuredCandidates = sortAssessmentsByStatusPriority(studentOnlineAssessments, scheduleNow)
+    .filter((assessment) => {
+      if (hasPublishedAssessmentResult(assessment)) return false
+      const status = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type
+      if (status !== 'live' && status !== 'upcoming') return false
+      return !String(assessment.supervisionType || '').toLowerCase().includes('proctored')
+        || !getStudentAssessmentLockState(assessment, CURRENT_STUDENT_ID, scheduleNow)?.isLocked
+    })
+  const featuredItems = featuredCandidates.map(assessment => {
+    const isLive = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'live'
+    return { assessment, isLive, scheduleLabel: isLive ? 'Available now' : `${formatDisplayDate(assessment.startDate)} at ${assessment.startTime || 'Time to be confirmed'}` }
+  })
   const activeMyAssessmentFilterCount = Object.values(myAssessmentFilters).filter((value) => value !== 'all').length
   const hasMyAssessmentFilter = activeMyAssessmentFilterCount > 0
   const hasMyAssessmentSearch = Boolean(myAssessmentSearchValue.trim())
@@ -540,12 +555,22 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   }, [isMyAssessment])
 
   return (
-    <section className={`vx-content assessment-page ${isMyAssessment ? 'is-my-assessment' : ''}`.trim()}>
+    <section className={`vx-content assessment-page ${isMyAssessment ? 'is-my-assessment my-assessment-theme logbook-scope' : ''}`.trim()}>
       <div className="assessment-page-shell">
         <PageNavigationHeader items={navigationItems} />
 
         {isMyAssessment ? (
           <>
+            <div className="my-assessment-overview">
+            <header className="my-assessment-intro">
+              <span className="my-assessment-kicker">My learning</span>
+              <div><h1>My assessments</h1><p>Find your assigned exams, check their status and view your results.</p></div>
+            </header>
+            <AssessmentFeaturedCard
+              items={featuredItems}
+              onStart={handleStartAssessment}
+            />
+            </div>
             <section className="my-assessment-metrics" aria-label="My assessment metrics">
               {myAssessmentMetrics.map((metric) => {
                 const Icon = metric.icon
@@ -578,15 +603,21 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
 
             <section className="assessment-create-draft-shell assessment-create-published-shell my-assessment-published-shell" aria-label="My online assessments">
               <div className="assessment-create-card-heading">
-                <h2>Assessment Status</h2>
+
                 {studentOnlineAssessments.length ? (
                 <div className="assessment-create-published-toolbar my-assessment-toolbar">
+                  <div className="my-assessment-status-filters" role="group" aria-label="Filter assessments by status">
+                    {myAssessmentMetrics.map(({ key, count, icon: StatusIcon }) => <button key={key} type="button" aria-pressed={myAssessmentFilters.status === key} onClick={() => setMyAssessmentFilters(current => ({ ...current, status: key }))}>
+                      <StatusIcon size={15} aria-hidden="true" />{{ all: 'All', live: 'Live', upcoming: 'Upcoming', completed: 'Completed' }[key]}<span>{count}</span>
+                    </button>)}
+                  </div>
                   <label className="assessment-create-published-search">
                     <Search size={15} strokeWidth={2.2} aria-hidden="true" />
                     <input
                       type="search"
                       value={myAssessmentSearchValue}
                       placeholder="Search my assessments..."
+                      aria-label="Search my assessments"
                       onChange={(event) => setMyAssessmentSearchValue(event.target.value)}
                     />
                   </label>
@@ -606,6 +637,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         {MY_ASSESSMENT_FILTER_GROUPS.map((group) => (
                           <label key={group.key}>
                             <span>{group.label}</span>
+                            <span className="my-assessment-select-control">
                             <select
                               value={myAssessmentFilters[group.key]}
                               onChange={(event) => {
@@ -617,6 +649,8 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                                 <option key={option.value} value={option.value}>{option.label}</option>
                               ))}
                             </select>
+                            <ChevronDown size={16} aria-hidden="true" />
+                            </span>
                           </label>
                         ))}
                         <span className="assessment-create-published-filter-actions">
@@ -677,23 +711,15 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                     <article
                       key={assessment.id}
                       className={`assessment-create-draft-card assessment-create-published-card ${cardStatus?.type === 'live' ? 'is-live' : ''}`.trim()}
+                      data-assessment-status={cardStatus?.type || 'upcoming'}
                     >
                       <div className="assessment-create-published-head">
+                        <span className="my-assessment-subject-icon" aria-hidden="true"><SupervisionIcon size={20} /></span>
                         <div>
                           <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong>
                           <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
                         </div>
-                        <span className="my-assessment-card-top-status">
-                          {cardStatus ? (
-                            cardStatus.type === 'upcoming' ? (
-                              <span>{cardStatus.label}</span>
-                            ) : (
-                              <span className={`assessment-create-published-schedule-badge is-${cardStatus.type}`}>
-                                {cardStatus.label}
-                              </span>
-                            )
-                          ) : null}
-                        </span>
+
                       </div>
                       <span className="assessment-create-published-status-row">
                         <span className="assessment-create-published-status is-online">
@@ -707,13 +733,23 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                       <div className="assessment-create-published-details" aria-label="Published assessment details">
                         <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em>Start Date</em></span>
                         <span><strong>{assessment.startTime || '-'}</strong><em>Start Time</em></span>
-                        <span><strong>{durationValue}</strong><em>{durationLabel}</em></span>
+                        <span className={scheduleStatus?.type === 'live' ? 'my-assessment-remaining' : undefined}><strong>{durationValue}</strong><em>{durationLabel}</em></span>
                         <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em>End Date</em></span>
                         <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
                         <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                       </div>
                       <div className="assessment-create-draft-footer assessment-create-published-footer">
-                        <span className="assessment-create-published-footer-status" />
+                        <span className="my-assessment-card-top-status">
+                          {cardStatus ? (
+                            cardStatus.type === 'upcoming' ? (
+                              <span>{cardStatus.label}</span>
+                            ) : (
+                              <span className={`assessment-create-published-schedule-badge is-${cardStatus.type}`}>
+                                {cardStatus.label}
+                              </span>
+                            )
+                          ) : null}
+                        </span>
                         <button
                           type="button"
                           className={`my-assessment-card-action is-${actionClass} ${cardStatus?.type === 'live' ? 'is-live' : ''}`}

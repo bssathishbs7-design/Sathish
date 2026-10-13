@@ -45,7 +45,10 @@ export function normalizeDescriptiveResponses(questions, answers = {}) {
 
 /** Only ordinary typing/navigation in the enabled answer field is allowed. */
 export function allowsDescriptiveTyping(event, enabled) {
-  if (!enabled || event.target?.tagName !== 'TEXTAREA' || event.target?.dataset?.descriptiveAnswer !== 'true' || event.target.disabled || event.target.readOnly) return false
+  const target = event.target
+  const field = target?.closest?.('[data-descriptive-answer="true"]') || target
+  const editable = field?.tagName === 'TEXTAREA' || field?.isContentEditable
+  if (!enabled || !editable || field?.dataset?.descriptiveAnswer !== 'true' || field.disabled || field.readOnly || field.getAttribute?.('aria-readonly') === 'true') return false
   if (event.ctrlKey || event.metaKey || event.altKey || /^(F\d{1,2}|Escape|PrintScreen|Tab)$/.test(event.key || '')) return false
   if (event.type === 'beforeinput' && /paste|drop/i.test(event.inputType || '')) return false
   return true

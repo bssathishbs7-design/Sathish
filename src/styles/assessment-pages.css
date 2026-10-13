@@ -14058,6 +14058,12 @@
   font-weight: 500;
 }
 
+.assessment-create-evaluation-statuses {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-1, var(--space-1));
+}
+
 .assessment-create-exam-controls-btn {
   display: inline-flex;
   align-items: center;
@@ -14300,8 +14306,10 @@
 }
 
 .assessment-create-published-schedule-badge.is-completed {
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--surface-mist, var(--app-surface));
+  color: var(--text-body, var(--app-text));
+  border: 1px solid var(--color-border);
+  font-size: var(--fs-micro, 11px);
 }
 
 .assessment-create-published-schedule-badge.is-yet-to-start {
@@ -39541,11 +39549,6 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   background: rgba(22, 163, 74, 0.22);
   color: #86efac;
   box-shadow: 0 0 0 0 rgba(134, 239, 172, 0.28);
-}
-
-.theme-dark .assessment-create-published-schedule-badge.is-completed {
-  background: rgba(100, 116, 139, 0.24);
-  color: #cbd5e1;
 }
 
 .theme-dark .assessment-create-published-schedule-badge.is-yet-to-start {

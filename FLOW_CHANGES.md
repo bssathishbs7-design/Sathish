@@ -677,3 +677,31 @@
 - Pending image uploads block manual submission, exit and section switching. Submitted responses remain locked and faculty review displays sanitised rich content.
 - Images use the asynchronous mock upload service (PNG, JPEG or WebP, up to 512 KB and three per answer) and persist inside the saved response. The upload function is the backend API integration point.
 
+
+### 2026-10-13 - Retain completed exams in Published
+- Published keeps every published assessment visible after the exam ends and after results are published, using the same stored assessment record.
+- Completed cards show an "Exam completed" badge and total duration. Evaluation and Results retain their existing actions and progression.
+- Schedule transitions refresh while Published, Evaluation or Results is open; counts and the Completed filter include retained cards.
+
+### 2026-10-13 - Separate assessment stages across tabs
+- Supersedes the earlier retention flow: Published shows upcoming/live exams, Evaluation shows completed exams awaiting result publication, and Results shows published results.
+- Each assessment appears in one tab only, so tab counts no longer overlap. Evaluation cards show Exam completed alongside their existing evaluation status and action.
+- Automatic schedule updates remain enabled across all three tabs.
+
+### 2026-10-13 - Rich descriptive answers in proctored exams
+- Reused the practice exam rich-text editor for every descriptive answer, with formatting, tables and image insertion, retaining scoped saved responses and submitted faculty rendering.
+- Restricted typing and formatting to enabled answer editors; clipboard paste and drop remain blocked. Manual submission and section switching wait for image processing. Existing fullscreen, focus-loss, timeout and violation enforcement remain active.
+
+
+### 2026-10-13 - My Assessment filters
+- Student assessment filters now expand inline beneath the search controls, following Student Management's filter-panel pattern. Existing search, status selection, apply/reset and assessment navigation remain unchanged.
+
+
+### 2026-10-13 - My Assessment featured entry and quick filters
+- Added a featured assessment entry point that uses the existing exam-start flow for unlocked live exams; upcoming exams show their schedule and completed exams are excluded.
+- Added visible status chips alongside search, sharing the existing filter state and reset behaviour.
+
+
+### 2026-10-13 - Featured assessment carousel
+- Featured assessments now support previous/next navigation and automatic rotation, pausing on focus, hover, hidden tabs and reduced motion. Each slide retains the existing start action for its own eligible live assessment.
+

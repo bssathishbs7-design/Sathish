@@ -1009,7 +1009,7 @@ const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
   const endDate = parseAssessmentDate(assessment?.endDate)
   const dateEndAt = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null
   const endAt = [durationEndAt, dateEndAt].filter(Boolean).sort((a, b) => a - b)[0] || startAt
-  if (now > endAt) return { type: 'completed', label: 'Completed' }
+  if (now > endAt) return { type: 'completed', label: 'Exam completed' }
   if (now >= startAt) return { type: 'live', label: 'Assessment Live', remainingMs: endAt.getTime() - now.getTime() }
 
   const diffMs = startAt.getTime() - now.getTime()
@@ -1030,6 +1030,7 @@ const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
   return { type: 'upcoming', label: `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} to go` }
 }
 
+// Each assessment appears in exactly one tab for its current workflow stage.
 const splitPublishedAssessmentRows = (rows = [], now = new Date()) => {
   const published = []
   const evaluation = []
@@ -1269,7 +1270,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
   )
 
   useEffect(() => {
-    if (activeAssessmentTab !== 'published') return undefined
+    if (!['published', 'evaluation', 'results'].includes(activeAssessmentTab)) return undefined
 
     const intervalId = window.setInterval(() => setScheduleNow(new Date()), 1000)
     return () => window.clearInterval(intervalId)
@@ -1802,7 +1803,8 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                         </div>
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
-                          <span className="assessment-create-published-footer-status">
+                          <span className="assessment-create-published-footer-status assessment-create-evaluation-statuses">
+                            <span className="assessment-create-published-schedule-badge is-completed">Exam completed</span>
                             <span className={`assessment-create-published-schedule-badge ${evaluationStatus === 'In Progress' ? 'is-in-progress' : 'is-yet-to-start'}`}>
                               {evaluationStatus}
                             </span>
