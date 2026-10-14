@@ -1,3 +1,0 @@
-﻿.blueprint-cognition-badge { display: inline-flex; align-items: center; justify-content: center; width: fit-content; min-width: var(--s-6); padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-mist); color: var(--text-body); font: 600 var(--fs-xs, .75rem) var(--f-body); line-height: 1; white-space: nowrap; }
-.blueprint-cognition-badge.is-hot { background: var(--question-grid-hot-soft, var(--surface-mist)); color: var(--question-grid-hot, var(--text-body)); border-color: currentColor; }
-.blueprint-cognition-badge.is-lot { background: var(--question-grid-lot-soft, var(--surface-mist)); color: var(--question-grid-lot, var(--text-body)); border-color: currentColor; }

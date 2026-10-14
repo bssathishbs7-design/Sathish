@@ -730,3 +730,11 @@
 ### 2026-10-14 - Continue unfinished student evaluations
 - Next student skips completed and absent students and wraps to earlier unfinished evaluations. Returns to the evaluation table only when no eligible students remain.
 
+
+### 2026-10-14 - Restore direct blueprint breakdown editing
+- Restored the 9 October editable Question type breakdown and its original calculations. Create question split opens this table directly, without separate Question type setup and Create breakdown steps.
+- Removed suggestion and preview cards. Marks, cognition counts, and LAQ parts are edited in the original breakdown before creating the competency matrix.
+
+### 2026-10-14 - Use the blueprint behaviour available on 2 October
+- Changed the restored table baseline to commit 4f3b204 (1 October, the latest snapshot available by 2 October). SAQs use their original defaults, and changing cognition retains marks and recalculates counts immediately without a row-reset confirmation.
+- The single editable breakdown remains; no setup, suggestions, or preview step is introduced.

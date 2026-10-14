@@ -2,9 +2,9 @@
 import assert from 'node:assert/strict'
 import { getSaqCognitionMode } from './saqCognition.js'
 
-test('new SAQ rows have no selected thinking level', () => {
+test('new SAQ rows default to Both', () => {
   for (const type of ['Direct', 'Reasoning', 'Aetcom', 'Application']) {
-    assert.equal(getSaqCognitionMode(`SAQs (${type})`, {}), null)
+    assert.equal(getSaqCognitionMode(`SAQs (${type})`, {}), 'both')
   }
 })
 test('explicit selections persist even in empty rows', () => {

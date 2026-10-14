@@ -1,32 +1,97 @@
-.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-question-cards { gap: var(--s-3); }
-.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-question-card { padding: var(--s-3); gap: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); }
-.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--s-3); min-height: 32px; padding-bottom: var(--s-2); margin: 0; }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-question-card { padding: var(--s-2) 0; gap: var(--s-2); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3) var(--s-5); min-height: 32px; padding-bottom: var(--s-2); margin: 0; }
 .create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-list { gap: var(--s-2); }
 .create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-item { grid-template-columns: 96px 144px minmax(200px, 1fr); align-items: center; gap: var(--s-4); min-height: 40px; padding: var(--s-1) var(--s-3); }
 .create-assessment-blueprint-panel .is-type-summary :is(.create-assessment-blueprint-laq-part-marks, .create-assessment-blueprint-laq-cognition-field) { gap: var(--s-2); margin: 0; }
-.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-part-marks > input { box-sizing: border-box; width: 64px; height: 28px; min-height: 28px; padding: var(--s-1) var(--s-2); }
-.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-editor { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.create-assessment-blueprint-panel .is-type-summary :is(.create-assessment-blueprint-laq-part-marks > input, .create-assessment-blueprint-laq-split-head input) { box-sizing: border-box; width: 64px; height: 28px; min-height: 28px; padding: var(--s-1) var(--s-2); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle { display: inline-grid; grid-template-columns: repeat(2, 56px); width: auto; padding: var(--s-1); gap: var(--s-1); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle button { width: 100%; min-width: 0; height: 28px; min-height: 28px; padding: 0; cursor: pointer; border: 1px solid currentColor; font-weight: 700; transition: background var(--dur-hover) var(--ease-standard), border-color var(--dur-hover) var(--ease-standard); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle button:not(.is-selected) { background: var(--surface-card); color: var(--text-body); border-color: var(--text-muted); box-shadow: var(--shadow-xs); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle button:not(.is-selected):hover { background: var(--surface-soft); color: var(--text-brand); border-color: var(--forest); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle button:active { transform: translateY(1px) scale(.97); transition: none; }
+@media (prefers-reduced-motion: reduce) { .create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle button { transition: none; } }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-allocation-summary { gap: var(--s-3); min-height: 24px; padding: 0; flex-wrap: wrap; }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-editor { padding: var(--s-2) var(--s-3); }
+@media (max-width: 1023px) {
+  .create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-head { flex-wrap: wrap; }
+  .create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-allocation-summary { flex: 1 1 60%; justify-content: flex-start; }
+  .create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-status { margin-left: auto; }
+}
 
-.blueprint-laq-part-count { color: var(--text-muted); font-size: var(--fs-xs, .75rem); white-space: nowrap; }
-.blueprint-laq-part-count strong { font-family: var(--f-code); font-variant-numeric: tabular-nums; color: var(--text-strong); }
-.blueprint-edit-setup-btn { margin-right: auto; flex-shrink: 0; }
-
-.create-assessment-blueprint-panel .is-type-summary .blueprint-laq-marks-badge { background: var(--mint-100); color: var(--text-brand); }
-
-.blueprint-laq-header-details { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--s-3); margin-left: auto; }
-
-.create-assessment-blueprint-cognition-marks-summary { height: auto; min-height: 48px; padding: var(--s-2) 0; }
-.create-assessment-blueprint-cognition-marks-summary > .blueprint-cognition-count-label { flex-direction: column; gap: var(--s-1); min-width: 0; height: 100%; padding-inline: var(--s-2); box-sizing: border-box; text-align: center; line-height: 1.25; white-space: normal; }
-.blueprint-cognition-count-label > small { font-size: var(--fs-micro); font-weight: 500; color: var(--text-muted); font-family: var(--f-code); font-variant-numeric: tabular-nums; }
-
-.create-assessment-blueprint-cognition-stage-row > .create-assessment-blueprint-cognition-percentage-group { height: auto; min-height: 48px; align-self: stretch; }
-.create-assessment-blueprint-cognition-stage-row .create-assessment-blueprint-cognition-percentage-group > .create-assessment-blueprint-cognition-entry { height: auto; min-height: 46px; }
-
-.create-assessment-blueprint-cognition-percentage-group .create-assessment-blueprint-cognition-entry > strong { flex: 1; text-align: center; }
-
-.blueprint-laq-validation, .blueprint-breakdown-validation > p { margin: 0; color: var(--danger-ink); font-size: var(--fs-xs); line-height: 1.5; }
-.blueprint-breakdown-validation { display: grid; gap: var(--s-1); }
-.blueprint-breakdown-validation:empty { display: none; }
-
-.create-assessment-blueprint-laq-question-title:has(.blueprint-laq-validation) { flex-wrap: wrap; min-width: 0; gap: var(--s-3); }
-.create-assessment-blueprint-laq-question-title > .blueprint-laq-validation { font-weight: 400; }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-question-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-right: auto;
+  color: var(--text-strong);
+}
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-editor,
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-question-card {
+  background: var(--surface-card);
+  color: var(--text-body);
+  border-color: var(--border);
+}
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-item {
+  background: var(--surface-soft);
+  color: var(--text-strong);
+  border-color: var(--border);
+}
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-item:hover { background: var(--surface-mist); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-head > label,
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-allocation-summary,
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-status {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin: 0;
+  font-size: var(--fs-xs, .75rem);
+  color: var(--text-body);
+}
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-allocation-summary > span,
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-head > label { white-space: nowrap; }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-status { margin-left: auto; gap: var(--s-1); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-status.is-valid { color: var(--text-brand); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-split-status.is-invalid { color: var(--danger-ink); }
+.create-assessment-blueprint-panel .is-type-summary :is(.create-assessment-blueprint-laq-part-marks, .create-assessment-blueprint-laq-cognition-field) {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--text-muted);
+  font-size: var(--fs-micro, .6875rem);
+}
+.create-assessment-blueprint-panel .is-type-summary :is(.create-assessment-blueprint-laq-part-marks > input, .create-assessment-blueprint-laq-split-head input) {
+  height: var(--s-6);
+  min-height: var(--s-6);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-card);
+  color: var(--text-strong);
+  font-family: var(--f-code);
+  font-size: var(--fs-xs, .75rem);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle {
+  flex-shrink: 0;
+  grid-template-columns: repeat(2, var(--s-7));
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface-soft);
+}
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle button {
+  height: var(--s-5);
+  min-height: var(--s-5);
+  border: 0;
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: none;
+}
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle button.is-selected { background: var(--forest); color: var(--on-brand); }
+.create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-level-toggle button:disabled { cursor: not-allowed; }
+.create-assessment-blueprint-panel .is-type-summary :is(.create-assessment-blueprint-laq-level-toggle button, .create-assessment-blueprint-laq-split-head input, .create-assessment-blueprint-laq-part-marks input):focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); box-shadow: 0 0 0 5px var(--focus-ring); }
+@media (max-width: 1023px) {
+  .create-assessment-blueprint-panel .is-type-summary .create-assessment-blueprint-laq-cognition-field { grid-column: auto; flex-wrap: wrap; }
+}
