@@ -1,0 +1,9 @@
+.blueprint-cognition-count-field { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); max-width: 100%; vertical-align: middle; }
+.blueprint-cognition-count-field > input.create-assessment-blueprint-spec-number { min-width: 0; flex: 0 1 auto; }
+.create-assessment-blueprint-panel .create-assessment-blueprint-spec-card.is-type-summary .blueprint-cognition-count-field.has-applied-change > input.create-assessment-blueprint-spec-number.is-calculated {
+  border-color: var(--forest);
+  background: var(--surface-soft);
+  color: var(--text-strong);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+.blueprint-cognition-count-delta { flex-shrink: 0; background: var(--surface-card); color: var(--text-brand); font-family: var(--f-code); font-size: var(--fs-micro, .6875rem); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.25; }

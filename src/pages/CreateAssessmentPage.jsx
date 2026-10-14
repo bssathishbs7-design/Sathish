@@ -1,3 +1,6 @@
+import BlueprintCognitionCountInput from '../components/BlueprintCognitionCountInput'
+import BlueprintCognitionSuggestions from '../components/BlueprintCognitionSuggestions'
+import { getCognitionSuggestions, applyCognitionSuggestion } from '../utils/blueprintCognitionSuggestions'
 import './PreviewQuestionActions.css'
 import SaveChangesDialog from '../components/SaveChangesDialog'
 import BlueprintTemplateDialog from '../components/BlueprintTemplateDialog'
@@ -22,7 +25,6 @@ import {
   calculateComplementaryQuestionSplit,
   calculateCognitionMarks,
   calculateQuestionTotal,
-  roundHalfUp,
   summarizeQuestionTypeRows,
 } from '../utils/blueprintCalculations'
 import {
@@ -1583,6 +1585,9 @@ function OptionalTagTextInput({ label, values, onChange }) {
 
 export default function CreateAssessmentPage({ onNavigate, onSendToApproval, theme = 'light', onToggleTheme, currentUser }) {
   const blueprintEditHighlights = useBlueprintEditHighlights()
+  const blueprintBreakdownRef = useRef(null)
+  const [appliedCognitionDraft, setAppliedCognitionDraft] = useState(null)
+  const [appliedCognitionChanges, setAppliedCognitionChanges] = useState({})
   const [setup, setSetup] = useState(() => ({
     ...CREATE_ASSESSMENT_DEFAULT_SETUP,
     ...readCreateAssessmentSetup(),
@@ -2063,112 +2068,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const blueprintLaqDerivedLotQuestions = blueprintLaqSplitIsValid
     ? blueprintLaqQuestionCards.reduce((total, card) => total + card.lotQuestions, 0)
     : 0
-  const blueprintQuestionTypeEnteredMarksTotal = blueprintQuestionTypeLabels.reduce(
-    (total, label) => total + (Number(blueprintQuestionTypeDraft[label]?.totalMarks) || 0),
-    0,
-  )
-  const blueprintManualHotMarksTotal = blueprintQuestionTypeLabels.reduce((total, label) => {
-    const draft = blueprintQuestionTypeDraft[label] || {}
-    if (label === 'LAQs' && blueprintLaqHasRequiredValues && blueprintLaqSplitIsValid) {
-      return total + blueprintLaqDerivedHotMarks
-    }
-    const saqMode = getSaqCognitionMode(label, draft)
-    if (saqMode && saqMode !== 'both') return total + (saqMode === 'hot' ? Number(draft.totalMarks) || 0 : 0)
-    const hasManualQuestionSplit = Object.prototype.hasOwnProperty.call(draft, 'hotQuestions')
-      || Object.prototype.hasOwnProperty.call(draft, 'lotQuestions')
-    const manualHotMarks = (Number(draft.hotQuestions) || 0) * (Number(draft.perQuestionMarks) || 0)
-    return total + (hasManualQuestionSplit ? manualHotMarks : 0)
-  }, 0)
-  const blueprintAutomaticMarksRows = blueprintQuestionTypeLabels
-    .map((label) => {
-      const draft = blueprintQuestionTypeDraft[label] || {}
-      const saqMode = getSaqCognitionMode(label, draft)
-      const hasManualMarksSplit = (saqMode && saqMode !== 'both') || (label === 'LAQs' && blueprintLaqHasRequiredValues && blueprintLaqSplitIsValid)
-        || Object.prototype.hasOwnProperty.call(draft, 'hotQuestions')
-        || Object.prototype.hasOwnProperty.call(draft, 'lotQuestions')
-      return {
-        label,
-        totalMarks: Number(draft.totalMarks) || 0,
-        perQuestionMarks: Number(draft.perQuestionMarks) || 0,
-        totalQuestions: Number(draft.perQuestionMarks) > 0
-          ? (Number(draft.totalMarks) || 0) / Number(draft.perQuestionMarks)
-          : 0,
-        hasManualMarksSplit,
-      }
-    })
-    .filter((row) => !row.hasManualMarksSplit && row.totalMarks > 0)
-  const blueprintAutomaticMarksTotal = blueprintAutomaticMarksRows.reduce((total, row) => total + row.totalMarks, 0)
-  const blueprintTargetHotMarksTotal = roundHalfUp(
-    ((blueprintRoundedTotalMark || blueprintQuestionTypeEnteredMarksTotal) * blueprintCognitionHotPercent) / 100,
-  )
-  const blueprintAutomaticHotMarksTarget = Math.min(
-    Math.max(blueprintTargetHotMarksTotal - blueprintManualHotMarksTotal, 0),
-    blueprintAutomaticMarksTotal,
-  )
-  const blueprintAutomaticQuestionRows = blueprintAutomaticMarksRows.filter((row) => (
-    row.perQuestionMarks > 0
-    && Number.isInteger(row.totalQuestions)
-    && row.totalQuestions > 0
-  ))
-  const allocateBlueprintHotQuestions = (rows, targetMarks, hotPercent) => {
-    let states = new Map([[0, { allocations: [], deviation: 0 }]])
-
-    rows.forEach((row) => {
-      const markUnits = Math.round(row.perQuestionMarks * 100)
-      const expectedHotQuestions = (row.totalQuestions * hotPercent) / 100
-      const nextStates = new Map()
-
-      states.forEach((state, currentMarks) => {
-        for (let hotQuestions = 0; hotQuestions <= row.totalQuestions; hotQuestions += 1) {
-          const nextMarks = currentMarks + (hotQuestions * markUnits)
-          const candidate = {
-            allocations: [...state.allocations, hotQuestions],
-            deviation: state.deviation + Math.abs(hotQuestions - expectedHotQuestions),
-          }
-          const existing = nextStates.get(nextMarks)
-          if (!existing || candidate.deviation < existing.deviation) {
-            nextStates.set(nextMarks, candidate)
-          }
-        }
-      })
-
-      states = nextStates
-    })
-
-    const targetUnits = Math.round(targetMarks * 100)
-    let bestMarks = 0
-    let bestState = null
-    states.forEach((state, marks) => {
-      if (!bestState) {
-        bestMarks = marks
-        bestState = state
-        return
-      }
-      const difference = Math.abs(marks - targetUnits)
-      const bestDifference = Math.abs(bestMarks - targetUnits)
-      if (
-        difference < bestDifference
-        || (difference === bestDifference && state.deviation < bestState.deviation)
-        || (difference === bestDifference && state.deviation === bestState.deviation && marks > bestMarks)
-      ) {
-        bestMarks = marks
-        bestState = state
-      }
-    })
-
-    return Object.fromEntries(rows.map((row, index) => {
-      const hotQuestions = bestState?.allocations[index] || 0
-      return [row.label, {
-        hotQuestions,
-        hotMarks: hotQuestions * row.perQuestionMarks,
-      }]
-    }))
-  }
-  const blueprintAutomaticHotAllocationByLabel = allocateBlueprintHotQuestions(
-    blueprintAutomaticQuestionRows,
-    blueprintAutomaticHotMarksTarget,
-    blueprintCognitionHotPercent,
-  )
   const blueprintQuestionTypeRows = blueprintQuestionTypeLabels.map((label) => {
     const draft = blueprintQuestionTypeDraft[label] || {}
     const cognitionMode = getSaqCognitionMode(label, draft)
@@ -2194,10 +2093,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const totalQuestionsValue = hasValidQuestionTotal ? formatBlueprintSplitNumber(totalQuestions) : ''
     const usesLaqSplit = label === 'LAQs' && hasRequiredValues && blueprintLaqSplitIsValid
     const hasIncompleteLaqSplit = label === 'LAQs' && hasRequiredValues && !blueprintLaqSplitIsValid
-    const automaticAllocation = blueprintAutomaticHotAllocationByLabel[label]
     const automaticHotQuestions = hasValidQuestionTotal
-      ? automaticAllocation?.hotQuestions
-        ?? Math.round((totalQuestions * blueprintCognitionHotPercent) / 100)
+      ? Math.round((totalQuestions * blueprintCognitionHotPercent) / 100)
       : 0
     const automaticLotQuestions = hasValidQuestionTotal ? totalQuestions - automaticHotQuestions : 0
     let hotQuestionsValue = usesLaqSplit
@@ -2831,6 +2728,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
   const selectedBreakdownTemplate = blueprintTemplates.find(item => item.id === blueprintDraft.template)
     || (blueprintDraft.templateSnapshot?.id === blueprintDraft.template ? blueprintDraft.templateSnapshot : null)
+  const blueprintCognitionSuggestions = !selectedBreakdownTemplate && hasBlueprintCognitionPercentages && !blueprintQuestionTypeHasInvalidRows
+    ? getCognitionSuggestions(blueprintQuestionTypeRows, { totalMarks: blueprintRoundedTotalMark, hotMarks: blueprintCognitionHotMarks }) : null
   const templateMarksMismatch = selectedBreakdownTemplate && Number(blueprintDraft.totalMark) > 0
     && blueprintQuestionTypeTotal !== Number(blueprintDraft.totalMark)
   useEffect(() => {
@@ -3193,6 +3092,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintRebalanceMetadata({})
     setBlueprintChangedSpecificationCells([])
     setBlueprintAutoFillIteration(0)
+  }
+  const applyBlueprintCognitionSuggestion = id => {
+    if (selectedBreakdownTemplate || !hasBlueprintCognitionPercentages || blueprintQuestionTypeHasInvalidRows) return
+    const next = applyCognitionSuggestion(blueprintQuestionTypeDraft, blueprintQuestionTypeRows,
+      { totalMarks: blueprintRoundedTotalMark, hotMarks: blueprintCognitionHotMarks }, id)
+    if (!next) return
+    invalidateBlueprintAllocations()
+    setBlueprintQuestionTypeDraft(next)
+    setAppliedCognitionDraft(next)
+    setAppliedCognitionChanges(Object.fromEntries(blueprintQuestionTypeRows.filter(row => row.label !== 'LAQs').map(row => [row.label, Number(next[row.label]?.hotQuestions || 0) - row.hotQuestions])))
+    requestAnimationFrame(() => blueprintBreakdownRef.current?.focus({ preventScroll: true }))
   }
   const updateBlueprintSaqCognition = (label, cognitionMode) => {
     if (blueprintQuestionTypeByLabel[label]?.cognitionMode === cognitionMode) return
@@ -7422,7 +7332,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                 <div className={`create-assessment-blueprint-specifications ${isBlueprintQuestionSplitCreated ? 'has-question-split' : 'is-cognition-only'} ${isBlueprintCompetencyMatrixCreated ? `is-competency-matrix is-${blueprintCompetencyViewMode}-view` : ''}`}>
                   <div className="create-assessment-blueprint-spec-left-stack" ref={blueprintSpecLeftStackRef}>
                     {isBlueprintQuestionSplitCreated ? (
-                      <section className="create-assessment-blueprint-spec-card is-type-summary" aria-label="Question Type Breakdown">
+                      <section ref={blueprintBreakdownRef} tabIndex={-1} className="create-assessment-blueprint-spec-card is-type-summary" aria-label="Question Type Breakdown">
+                        <div className="blueprint-breakdown-with-suggestions">
                         <div className="create-assessment-blueprint-spec-table-wrap create-assessment-blueprint-spec-table-wrap-type">
                           <div className="create-assessment-blueprint-test-grid-title-row">
                             <h3>
@@ -7504,7 +7415,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   </span>
                                 </td>
                                 <td>
-                                  <input
+                                  <BlueprintCognitionCountInput
+                                    delta={appliedCognitionDraft === blueprintQuestionTypeDraft ? (appliedCognitionChanges[row.label] || 0) * 1 : 0}
                                     className={`create-assessment-blueprint-spec-number is-calculated ${row.isHotQuestionsAuto ? 'is-auto' : 'is-edited'}`}
                                     type="text"
                                     inputMode="numeric"
@@ -7526,7 +7438,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   </span>
                                 </td>
                                 <td>
-                                  <input
+                                  <BlueprintCognitionCountInput
+                                    delta={appliedCognitionDraft === blueprintQuestionTypeDraft ? (appliedCognitionChanges[row.label] || 0) * -1 : 0}
                                     className={`create-assessment-blueprint-spec-number is-calculated ${row.isLotQuestionsAuto ? 'is-auto' : 'is-edited'}`}
                                     type="text"
                                     inputMode="numeric"
@@ -7722,7 +7635,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 </span>
                               </td>
                               <td>
-                                <input
+                                <BlueprintCognitionCountInput
+                                    delta={appliedCognitionDraft === blueprintQuestionTypeDraft ? (appliedCognitionChanges[row.label] || 0) * 1 : 0}
                                   className={`create-assessment-blueprint-spec-number is-calculated ${row.isHotQuestionsAuto ? 'is-auto' : 'is-edited'}`}
                                   type="text"
                                   inputMode="numeric"
@@ -7745,7 +7659,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                 </span>
                               </td>
                               <td>
-                                <input
+                                <BlueprintCognitionCountInput
+                                    delta={appliedCognitionDraft === blueprintQuestionTypeDraft ? (appliedCognitionChanges[row.label] || 0) * -1 : 0}
                                   className={`create-assessment-blueprint-spec-number is-calculated ${row.isLotQuestionsAuto ? 'is-auto' : 'is-edited'}`}
                                   type="text"
                                   inputMode="numeric"
@@ -7801,6 +7716,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             </tbody>
                           </table>
                         </div>
+                        <BlueprintCognitionSuggestions suggestions={blueprintCognitionSuggestions} onApply={applyBlueprintCognitionSuggestion} />
+                        </div>
+                        <p className="blueprint-cognition-applied" role="status">{appliedCognitionDraft === blueprintQuestionTypeDraft ? 'Suggested changes applied. HoT and LoT targets match.' : ''}</p>
                       </section>
                     ) : null}
 

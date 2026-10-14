@@ -738,3 +738,13 @@
 ### 2026-10-14 - Use the blueprint behaviour available on 2 October
 - Changed the restored table baseline to commit 4f3b204 (1 October, the latest snapshot available by 2 October). SAQs use their original defaults, and changing cognition retains marks and recalculates counts immediately without a row-reset confirmation.
 - The single editable breakdown remains; no setup, suggestions, or preview step is introduced.
+
+### 2026-10-14 - Optional final cognition suggestions
+- When total marks match but HoT/LoT targets differ, the breakdown offers exact single-row and combined question transfers beneath the total row. Apply updates the selected changes together and returns focus to the breakdown.
+- Suggestions use existing editable MCQ/SAQ questions, retain LAQ parts and single-level selections, and disappear when targets match.
+
+### 2026-10-14 - Show applied cognition adjustments inline
+- Applying a suggestion highlights only changed HoT/LoT counts and displays signed question deltas until the next table edit. Affected SAQ selections reflect the result: HoT-only, LoT-only, or Both.
+
+### 2026-10-14 - Include single-level SAQs in cognition suggestions
+- Suggestion cards can now propose transfers for LoT-only and HoT-only SAQ rows. Applying a card updates the affected thinking-level selection; generating suggestions leaves current selections unchanged.
