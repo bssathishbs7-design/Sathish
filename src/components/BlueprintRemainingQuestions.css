@@ -1,0 +1,10 @@
+.blueprint-remaining-questions { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); font-size: var(--fs-micro, 11px); }
+.blueprint-remaining-questions > header { display: flex; flex-direction: column; gap: var(--s-1); padding: var(--s-3) var(--s-2); overflow: hidden; scrollbar-gutter: stable both-edges; border-bottom: 1px solid var(--border); }
+.blueprint-remaining-questions h4 { margin: 0; font-size: var(--fs-xs, 12px); color: var(--text-strong); }
+.blueprint-remaining-questions > header span { color: var(--text-muted); }
+.blueprint-remaining-body { padding: var(--s-2); max-height: 65vh; overflow-y: auto; scrollbar-gutter: stable both-edges; }
+.blueprint-remaining-questions .blueprint-unit-group { display: grid; gap: var(--s-2); }
+.blueprint-remaining-questions .blueprint-unit-group + .blueprint-unit-group { margin-top: var(--s-3); }
+.blueprint-unit-group > strong { color: var(--text-strong); }
+.blueprint-remaining-questions .blueprint-unit-cards { grid-template-columns: minmax(0, 1fr); }
+.create-assessment-blueprint-panel .blueprint-unit-summary { font-size: var(--fs-micro, 11px); margin: var(--s-2) 0 0; color: var(--text-muted); }

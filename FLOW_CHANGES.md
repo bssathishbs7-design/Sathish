@@ -748,3 +748,27 @@
 
 ### 2026-10-14 - Include single-level SAQs in cognition suggestions
 - Suggestion cards can now propose transfers for LoT-only and HoT-only SAQ rows. Applying a card updates the affected thinking-level selection; generating suggestions leaves current selections unchanged.
+
+### 2026-10-14 - Navigate to blueprint allocation mismatches
+- Added Go to first mismatch beside the competency status. It scrolls to the first unmatched competency and focuses its first editable count, retaining the existing allocation workflow.
+
+### 2026-10-14 - Allocate individual blueprint questions from remaining cards
+- Added LAQ-part and SAQ-category Add controls that allocate one identified unit to a suggested competency with enough remaining marks. Counts, marks, remaining cards, and information breakdowns update together. Retained unit identities are included in planner/draft persistence.
+
+### 2026-10-14 - Field-specific blueprint allocation suggestions
+- Focusing or clicking a count opens matching remaining units for that competency, question type, and thinking level. Add allocates directly to the active field. Manual entry remains available after AutoFill and rejects unavailable or over-capacity increases without changing other competencies. Popups support keyboard entry, Escape, outside dismissal, and viewport-aware placement.
+
+### 2026-10-14 - Preserve manual blueprint allocations during AutoFill
+- Manual typing and Add mark a populated field as manual. AutoFill and Reshuffle reserve those fields and exact unit identities, filling only the remaining allocation. Impossible fills leave the draft unchanged with an explanation. Clearing releases a manual field; source metadata persists in saved planners and drafts.
+
+### 2026-10-14 - Retain partial blueprint AutoFill progress
+- AutoFill and Reshuffle now apply allocations that fit around manual fields even when a complete allocation is unavailable. Unplaceable questions remain available for manual allocation, with an inline remaining-count notice instead of blocking all progress.
+
+### 2026-10-14 - Remove blueprint mismatch navigation
+- Removed the competency-attention footer and Go to first mismatch action from the assessment blueprint.
+
+### 2026-10-14 - Preview saved blueprint templates before selection
+- Each saved template now has a separate preview action. Hover or focus opens its read-only breakdown, clicking keeps it open, and Escape or outside click dismisses it without loading the template.
+
+### 2026-10-14 - Open template previews only on click
+- Removed hover and focus opening. Clicking the eye toggles the preview; Escape, close, and outside click still dismiss it.

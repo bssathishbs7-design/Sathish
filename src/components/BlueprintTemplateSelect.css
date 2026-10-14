@@ -43,3 +43,6 @@
 .blueprint-template-delete-dialog .save-changes-actions button { min-height: 36px; padding: var(--s-2) var(--s-3); font-size: var(--fs-xs, .75rem); line-height: 1.4; }
 .blueprint-template-delete-dialog .save-changes-error { font-size: var(--fs-xs, .75rem); line-height: 1.5; }
 .blueprint-template-list-heading { margin: var(--s-1) 0 0; padding: var(--s-1) var(--s-2); color: var(--text-muted); font-size: var(--fs-micro, 11px); font-weight: 600; line-height: 1.4; }
+
+.blueprint-template-view { display: grid; place-items: center; flex: 0 0 var(--s-6); height: var(--s-6); padding: 0; border: 1px solid transparent; border-radius: var(--r-pill); background: transparent; color: var(--text-brand); cursor: pointer; }
+.blueprint-template-view:hover, .blueprint-template-view[aria-expanded="true"] { background: var(--surface-soft); border-color: var(--border); }

@@ -1,4 +1,9 @@
+import { fillAroundManualCells } from '../utils/blueprintLockedAllocation'
 import BlueprintCognitionCountInput from '../components/BlueprintCognitionCountInput'
+import BlueprintFieldSuggestions from '../components/BlueprintFieldSuggestions'
+import BlueprintRemainingQuestions from '../components/BlueprintRemainingQuestions'
+import { resolveBlueprintUnits, suggestBlueprintCompetency, changeBlueprintUnitCount } from '../utils/blueprintRemainingUnits'
+import './BlueprintAllocationLayout.css'
 import BlueprintCognitionSuggestions from '../components/BlueprintCognitionSuggestions'
 import { getCognitionSuggestions, applyCognitionSuggestion } from '../utils/blueprintCognitionSuggestions'
 import './PreviewQuestionActions.css'
@@ -13,7 +18,7 @@ import './BlueprintConfirmationDialog.css'
 import { buildBlueprintPickerRows, getBlueprintPickerProgress, matchesBlueprintPickerRow, orderBlueprintRequirements } from '../utils/blueprintPicker'
 import { getLaqSplitBreakdowns } from '../utils/blueprintLaqBreakdown'
 import './BlueprintLaqLayout.css'
-import { createElement, Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { createElement, Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import useBlueprintEditHighlights from '../hooks/useBlueprintEditHighlights'
 import { redistributeLaqLevels } from '../utils/blueprintEditing'
@@ -1694,6 +1699,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [isBlueprintLaqSplitOpen, setIsBlueprintLaqSplitOpen] = useState(true)
   const [blueprintTestSpecificationCountDraft, setBlueprintTestSpecificationCountDraft] = useState(initialBlueprintPlanner?.blueprintTestSpecificationCountDraft ?? {})
   const [blueprintTestSpecificationMarkDraft, setBlueprintTestSpecificationMarkDraft] = useState(initialBlueprintPlanner?.blueprintTestSpecificationMarkDraft ?? {})
+  const [blueprintActiveField, setBlueprintActiveField] = useState(null)
+  const [blueprintFieldError, setBlueprintFieldError] = useState(null)
+  const closeBlueprintFieldSuggestions = useCallback(() => setBlueprintActiveField(null), [])
+  const [blueprintManualCells, setBlueprintManualCells] = useState(() => initialBlueprintPlanner?.blueprintManualCells ?? Object.fromEntries(
+    Object.entries(initialBlueprintPlanner?.blueprintTestSpecificationCountDraft || {}).map(([key, fields]) => [key,
+      Object.fromEntries(Object.entries(fields).filter(([, value]) => Number(value) > 0).map(([field]) => [field, true])),
+    ]),
+  ))
+  const [blueprintAllocationNotice, setBlueprintAllocationNotice] = useState('')
+  const [blueprintUnitAssignments, setBlueprintUnitAssignments] = useState(initialBlueprintPlanner?.blueprintUnitAssignments ?? {})
   const [blueprintAutoFillIteration, setBlueprintAutoFillIteration] = useState(0)
   const [blueprintRebalanceMetadata, setBlueprintRebalanceMetadata] = useState(initialBlueprintPlanner?.blueprintRebalanceMetadata ?? {})
   const [blueprintChangedSpecificationCells, setBlueprintChangedSpecificationCells] = useState([])
@@ -2395,7 +2410,36 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const getBlueprintTestSpecificationNumber = (rowKey, fieldKey) => (
     getBlueprintTestSpecificationCellCountData(rowKey, fieldKey).calculatedMarks
   )
+  const blueprintIndividualUnits = Object.fromEntries(['mcqLot', 'mcqHot', 'laqLot', 'laqHot', 'saqLot', 'saqHot'].map(fieldKey => {
+    const level = fieldKey.endsWith('Lot') ? 'lot' : 'hot'
+    const units = fieldKey.startsWith('mcq')
+      ? blueprintTestSpecificationQuestionMarkUnits[fieldKey].map((marks, index) => ({ id: fieldKey + ':' + index, marks, label: 'MCQ', category: 'MCQ', group: 'MCQ', fieldKey, level }))
+      : fieldKey.startsWith('laq')
+      ? (blueprintLaqSplitIsValid ? blueprintLaqQuestionCards.flatMap(card => card.splits.flatMap((split, index) => split.level === level
+        ? [{ id: fieldKey + ':' + card.questionIndex + ':' + index, question: card.questionIndex + 1, part: index + 1, marks: Number(split.marks), label: String(card.questionIndex + 1) + String.fromCharCode(97 + index), group: 'LAQ', fieldKey, level }] : [])) : [])
+      : blueprintSaqQuestionTypeRows.flatMap(row => Array.from({ length: level === 'lot' ? row.lotQuestions : row.hotQuestions }, (_, index) => {
+        const category = getQuestionCategorySectionLabel(row.label.replace(/^SAQs\s*\(|\)$/g, ''))
+        return { id: fieldKey + ':' + category + ':' + index, category, marks: Number(row.perQuestionMarks), label: ({ Direct: 'D', Reasoning: 'R', Aetcom: 'C', AETCOM: 'C', Application: 'A' })[category] || category, group: 'SAQ', fieldKey, level }
+      }))
+    return [fieldKey, units]
+  }))
+  const blueprintResolvedAssignments = Object.fromEntries(Object.entries(blueprintIndividualUnits).map(([fieldKey, units]) => [fieldKey,
+    resolveBlueprintUnits({ units, saved: blueprintUnitAssignments[fieldKey], cells: blueprintSpecificationRows.map(row => ({
+      key: row.key, count: getBlueprintTestSpecificationCountNumber(row.key, fieldKey), marks: getBlueprintTestSpecificationNumber(row.key, fieldKey),
+    })) }),
+  ]))
   const blueprintSaqCategoryBreakdowns = Object.fromEntries(['saqLot', 'saqHot'].map((fieldKey) => {
+    const assignments = blueprintResolvedAssignments[fieldKey]
+    if (assignments) return [fieldKey, Object.fromEntries(blueprintSpecificationRows.map(row => {
+      const categories = new Map()
+      blueprintIndividualUnits[fieldKey].filter(unit => assignments[unit.id] === row.key).forEach(unit => {
+        const entry = categories.get(unit.category) || { category: unit.category, count: 0, perQuestionMarks: unit.marks, totalMarks: 0 }
+        entry.count += 1
+        entry.totalMarks = Number((entry.totalMarks + unit.marks).toFixed(2))
+        categories.set(unit.category, entry)
+      })
+      return [row.key, [...categories.values()]]
+    }))]
     const categories = blueprintSaqQuestionTypeRows.flatMap((row) => (
       Array.from({ length: fieldKey === 'saqLot' ? row.lotQuestions : row.hotQuestions },
         () => getQuestionCategorySectionLabel(row.label.replace(/^SAQs\s*\(|\)$/g, '')))
@@ -2412,7 +2456,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     })]
   }))
   const blueprintLaqSplitBreakdowns = Object.fromEntries(['laqLot', 'laqHot'].map(fieldKey => [fieldKey,
-    blueprintLaqSplitIsValid ? getLaqSplitBreakdowns({
+    blueprintResolvedAssignments[fieldKey] ? Object.fromEntries(blueprintSpecificationRows.map(row => [row.key,
+      blueprintIndividualUnits[fieldKey].filter(unit => blueprintResolvedAssignments[fieldKey][unit.id] === row.key).map(({ question, part, marks }) => ({ question, part, marks })),
+    ])) : blueprintLaqSplitIsValid ? getLaqSplitBreakdowns({
       parts: blueprintLaqQuestionCards.flatMap(card => card.splits.flatMap((split, index) =>
         split.level === (fieldKey === 'laqLot' ? 'lot' : 'hot')
           ? [{ question: card.questionIndex + 1, part: index + 1, marks: Number(split.marks) }] : [])),
@@ -2721,6 +2767,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
     setIsBlueprintPlannerSaved(false)
     setIsBlueprintCompetencyMatrixCreated(false)
+    setBlueprintManualCells({})
+    setBlueprintAllocationNotice('')
     setBlueprintTestSpecificationCountDraft({})
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintChangedSpecificationCells([])
@@ -2743,6 +2791,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintQuestionTypeDraft({})
     setBlueprintLaqQuestionSplits([])
     setBlueprintCognitionWeightage({ lot: '', hot: '' })
+    setBlueprintManualCells({})
+    setBlueprintAllocationNotice('')
     setBlueprintTestSpecificationCountDraft({})
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintRebalanceMetadata({})
@@ -2784,6 +2834,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         : { ...current, totalMark }
     ))
     setBlueprintDistributionDraft({})
+    setBlueprintManualCells({})
+    setBlueprintAllocationNotice('')
     setBlueprintTestSpecificationCountDraft({})
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintRebalanceMetadata({})
@@ -2813,56 +2865,61 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     })
   }
   const updateBlueprintTestSpecificationDraft = (rowKey, fieldKey, value) => {
-    if (!/^\d*$/.test(value)) return
-    setBlueprintChangedSpecificationCells([])
-    setBlueprintTestSpecificationMarkDraft((current) => Object.fromEntries(
-      Object.entries(current).map(([currentRowKey, rowValues]) => {
-        const nextRowValues = { ...rowValues }
-        delete nextRowValues[fieldKey]
-        return [currentRowKey, nextRowValues]
-      }),
-    ))
-    const availableCount = blueprintTestSpecificationQuestionCounts[fieldKey] || 0
-    const requestedCount = value === ''
-      ? 0
-      : Math.min(Number(value) || 0, availableCount)
-
-    setBlueprintTestSpecificationCountDraft((current) => {
-      const next = Object.fromEntries(
-        Object.entries(current).map(([key, rowDraft]) => [key, { ...rowDraft }]),
-      )
-
-      next[rowKey] = {
-        ...(next[rowKey] || {}),
-        [fieldKey]: requestedCount > 0 ? String(requestedCount) : '',
-      }
-
-      const otherRowsCount = blueprintSpecificationRows.reduce((total, row) => {
-        if (row.key === rowKey) return total
-        return total + (Number(next[row.key]?.[fieldKey]) || 0)
-      }, 0)
-      let overflowCount = Math.max(0, requestedCount + otherRowsCount - availableCount)
-
-      if (overflowCount > 0) {
-        blueprintSpecificationRows.forEach((row) => {
-          if (row.key === rowKey || overflowCount <= 0) return
-          const currentCount = Number(next[row.key]?.[fieldKey]) || 0
-          if (currentCount <= 0) return
-
-          const countToRemove = Math.min(currentCount, overflowCount)
-          const remainingCount = currentCount - countToRemove
-          next[row.key] = {
-            ...(next[row.key] || {}),
-            [fieldKey]: remainingCount > 0 ? String(remainingCount) : '',
-          }
-          overflowCount -= countToRemove
-        })
-      }
-
-      return next
+    if (isBlueprintPlannerSaved && !isBlueprintPlannerEditing) return
+    const result = changeBlueprintUnitCount({ units: blueprintIndividualUnits[fieldKey] || [],
+      assignments: blueprintResolvedAssignments[fieldKey], rowKey, count: /^\d*$/.test(value) ? Number(value) : NaN,
+      capacity: getBlueprintTestSpecificationRowData(rowKey).target - getBlueprintTestSpecificationRowTotal(rowKey) + getBlueprintTestSpecificationNumber(rowKey, fieldKey),
     })
+    if (result.error) { setBlueprintFieldError({ rowKey, fieldKey, message: result.error }); return }
+    setBlueprintFieldError(null)
+    setBlueprintAllocationNotice('')
+    setBlueprintManualCells(current => ({ ...current, [rowKey]: { ...current[rowKey], [fieldKey]: Number(value) > 0 } }))
+    const marks = Object.fromEntries(blueprintSpecificationRows.map(row => [row.key, Object.fromEntries(blueprintTestSpecificationColumns.map(column => [column.key, getBlueprintTestSpecificationNumber(row.key, column.key)]))]))
+    marks[rowKey][fieldKey] = result.marks
+    setBlueprintUnitAssignments({ ...blueprintResolvedAssignments, [fieldKey]: result.assignments })
+    setBlueprintTestSpecificationCountDraft(current => ({ ...current, [rowKey]: { ...current[rowKey], [fieldKey]: Number(value) ? String(Number(value)) : '' } }))
+    setBlueprintTestSpecificationMarkDraft(marks)
+    setBlueprintChangedSpecificationCells([])
   }
+  const blueprintUnallocatedUnits = Object.entries(blueprintIndividualUnits).flatMap(([fieldKey, units]) => {
+    const assignments = blueprintResolvedAssignments[fieldKey]
+    if (!assignments) return []
+    return units.filter(unit => !assignments[unit.id]).map(unit => ({ ...unit,
+      suggested: suggestBlueprintCompetency(blueprintSpecificationRows.map(row => ({ ...row, actual: getBlueprintTestSpecificationRowTotal(row.key) })), unit.marks),
+    }))
+  })
+  const addBlueprintUnit = (id, targetRowKey) => {
+    if (isBlueprintPlannerSaved && !isBlueprintPlannerEditing) return
+    const unit = blueprintUnallocatedUnits.find(item => item.id === id)
+    if (!unit) return
+    const target = targetRowKey ? blueprintSpecificationRows.find(row => row.key === targetRowKey) : unit.suggested
+    if (!target || Math.round((Number(target.targetMarks) - getBlueprintTestSpecificationRowTotal(target.key)) * 100) < Math.round(unit.marks * 100)) return
+    const key = target.key
+    setBlueprintFieldError(null)
+    const fieldKey = unit.fieldKey
+    setBlueprintAllocationNotice('')
+    setBlueprintManualCells(current => ({ ...current, [key]: { ...current[key], [fieldKey]: true } }))
+    const counts = Object.fromEntries(blueprintSpecificationRows.map(row => [row.key, { ...blueprintTestSpecificationCountDraft[row.key] }]))
+    const marks = Object.fromEntries(blueprintSpecificationRows.map(row => [row.key, Object.fromEntries(blueprintTestSpecificationColumns.map(column => [column.key, getBlueprintTestSpecificationNumber(row.key, column.key)]))]))
+    counts[key][fieldKey] = String(getBlueprintTestSpecificationCountNumber(key, fieldKey) + 1)
+    marks[key][fieldKey] = Number((marks[key][fieldKey] + unit.marks).toFixed(2))
+    setBlueprintUnitAssignments({ ...blueprintResolvedAssignments, [fieldKey]: { ...blueprintResolvedAssignments[fieldKey], [id]: key } })
+    setBlueprintTestSpecificationCountDraft(counts)
+    setBlueprintTestSpecificationMarkDraft(marks)
+    setBlueprintChangedSpecificationCells([key + ':' + fieldKey])
+    setSaveStatus('Added ' + (unit.group === 'SAQ' ? '1' : '') + unit.label + ' to ' + target.code + '.')
+  }
+  const blueprintActiveRow = blueprintSpecificationRows.find(row => row.key === blueprintActiveField?.rowKey)
+  const blueprintActiveColumn = blueprintTestSpecificationColumns.find(column => column.key === blueprintActiveField?.fieldKey)
+  const blueprintFieldUnits = blueprintActiveRow && blueprintActiveColumn ? blueprintUnallocatedUnits
+    .filter(unit => unit.fieldKey === blueprintActiveColumn.key && Math.round(unit.marks * 100) <= Math.round((Number(blueprintActiveRow.targetMarks) - getBlueprintTestSpecificationRowTotal(blueprintActiveRow.key)) * 100))
+    .map(unit => ({ ...unit, suggested: blueprintActiveRow })) : []
   const clearBlueprintTestSpecificationMatrix = () => {
+    setBlueprintFieldError(null)
+    closeBlueprintFieldSuggestions()
+    setBlueprintUnitAssignments({})
+    setBlueprintManualCells({})
+    setBlueprintAllocationNotice('')
     setBlueprintTestSpecificationCountDraft({})
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintAutoFillIteration(0)
@@ -2905,8 +2962,32 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
   }
   const autoFillBlueprintTestSpecificationMatrix = () => {
+    setBlueprintFieldError(null)
+    closeBlueprintFieldSuggestions()
     if (!blueprintTestSpecificationCanAutoFill) return
 
+    const manual = Object.fromEntries(blueprintSpecificationRows.map(row => [row.key, Object.fromEntries(
+      blueprintTestSpecificationColumns.map(column => [column.key, Boolean(blueprintManualCells[row.key]?.[column.key] && getBlueprintTestSpecificationCountNumber(row.key, column.key) > 0)]),
+    )]))
+    if (Object.values(manual).some(fields => Object.values(fields).some(Boolean))) {
+      const result = fillAroundManualCells({ rows: blueprintSpecificationRows, unitsByField: blueprintIndividualUnits,
+        assignments: blueprintResolvedAssignments, manual, seed: blueprintAutoFillIteration,
+      })
+      if (result.error) { setBlueprintAllocationNotice(result.error); setSaveStatus(result.error); return }
+      setBlueprintTestSpecificationCountDraft(result.counts)
+      setBlueprintTestSpecificationMarkDraft(result.marks)
+      setBlueprintUnitAssignments(result.assignments)
+      setBlueprintManualCells(manual)
+      setBlueprintAutoFillIteration(current => current + 1)
+      setBlueprintChangedSpecificationCells([])
+      setBlueprintAllocationNotice(result.complete
+        ? ''
+        : `Filled the available fields and preserved manual allocations. ${result.unallocated.length} question${result.unallocated.length === 1 ? '' : 's'} / parts remain unallocated; ${result.remainingMarks} marks remain. The remaining items do not fit the available fields.`)
+      if (result.complete) setSaveStatus('AutoFill completed. Manual allocations were preserved.')
+      return
+    }
+    setBlueprintManualCells({})
+    setBlueprintAllocationNotice('')
     const toDraftState = (allocations) => Object.fromEntries(
       blueprintSpecificationRows.map((row) => [
         row.key,
@@ -3055,6 +3136,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         blueprintLaqQuestionSplits,
         blueprintTestSpecificationCountDraft,
         blueprintTestSpecificationMarkDraft,
+        blueprintUnitAssignments: blueprintResolvedAssignments,
+        blueprintManualCells,
         blueprintRebalanceMetadata,
         validationStatus: blueprintTestSpecificationMatrixIsValid ? 'matched' : 'mismatched',
         enabled: true,
@@ -3087,6 +3170,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       return [label, next]
     })))
     setIsBlueprintPlannerSaved(false)
+    setBlueprintManualCells({})
+    setBlueprintAllocationNotice('')
     setBlueprintTestSpecificationCountDraft({})
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintRebalanceMetadata({})
@@ -3283,6 +3368,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ...distributionState.draft,
     }))
     setBlueprintRebalanceMetadata(distributionState.metadata)
+    setBlueprintManualCells({})
+    setBlueprintAllocationNotice('')
     setBlueprintTestSpecificationCountDraft({})
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintChangedSpecificationCells([])
@@ -3305,6 +3392,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setBlueprintQuestionTypeDraft({})
     setBlueprintLaqQuestionSplits([])
     setIsBlueprintLaqSplitOpen(true)
+    setBlueprintManualCells({})
+    setBlueprintAllocationNotice('')
     setBlueprintTestSpecificationCountDraft({})
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintAutoFillIteration(0)
@@ -3371,6 +3460,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       setBlueprintCognitionWeightage({ lot: '', hot: '' })
       setBlueprintQuestionTypeDraft({})
       setBlueprintLaqQuestionSplits([])
+      setBlueprintManualCells({})
+      setBlueprintAllocationNotice('')
       setBlueprintTestSpecificationCountDraft({})
       setBlueprintTestSpecificationMarkDraft({})
       setBlueprintRebalanceMetadata({})
@@ -5161,6 +5252,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           enabled: isBlueprintEnabled, blueprintDraft, blueprintDistributionDraft,
           blueprintCognitionWeightage, blueprintQuestionTypeDraft, blueprintLaqQuestionSplits,
           blueprintTestSpecificationCountDraft, blueprintTestSpecificationMarkDraft,
+          blueprintUnitAssignments: blueprintResolvedAssignments,
+          blueprintManualCells,
           blueprintRebalanceMetadata, pickerRows: savedPickerRows,
         },
       },
@@ -7340,11 +7433,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               <ListChecks size={14} strokeWidth={2.4} />
                               <span>Question Type Breakdown</span>
                             </h3>
+                            <div className="blueprint-breakdown-heading-status">
+                              <p className="blueprint-cognition-applied" role="status">{appliedCognitionDraft === blueprintQuestionTypeDraft ? 'Suggested changes applied. HoT and LoT targets match.' : ''}</p>
                             {blueprintQuestionTypeStatusText ? (
                               <span className={`create-assessment-blueprint-spec-status ${blueprintQuestionTypeDifference === 0 && !blueprintQuestionTypeHasInvalidRows && !blueprintQuestionTypeCognitionMismatch ? 'is-complete' : 'is-warning'}`}>
                                 {blueprintQuestionTypeStatusText}
                               </span>
                             ) : null}
+                            </div>
                           </div>
                           <table className="create-assessment-blueprint-spec-table">
                           <thead>
@@ -7718,7 +7814,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         </div>
                         <BlueprintCognitionSuggestions suggestions={blueprintCognitionSuggestions} onApply={applyBlueprintCognitionSuggestion} />
                         </div>
-                        <p className="blueprint-cognition-applied" role="status">{appliedCognitionDraft === blueprintQuestionTypeDraft ? 'Suggested changes applied. HoT and LoT targets match.' : ''}</p>
                       </section>
                     ) : null}
 
@@ -7879,12 +7974,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     tabIndex={-1}
                     style={blueprintSpecLeftStackHeight ? { '--blueprint-spec-left-height': `${blueprintSpecLeftStackHeight}px` } : undefined}
                   >
+                    <div className="blueprint-allocation-layout">
                     <div className="create-assessment-blueprint-spec-table-wrap create-assessment-blueprint-spec-table-wrap-test">
                       <div className="create-assessment-blueprint-test-grid-title-row">
                         <h3>
                           <FilePenLine size={14} strokeWidth={2.4} />
                           <span>Assessment Blueprint</span>
                         </h3>
+                        <div className="blueprint-allocation-legend" aria-label="Allocation source"><span className="is-manual">Manual</span><span className="is-auto">Auto-filled</span></div>
                         <div className="create-assessment-blueprint-test-grid-title-actions">
                           <span
                             className={`create-assessment-blueprint-spec-status ${blueprintTestSpecificationDisplayStatus}`}
@@ -7932,7 +8029,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           {blueprintSpecificationRows.length ? blueprintSpecificationRows.map((row) => {
                             const rowInfo = getBlueprintTestSpecificationRowData(row.key)
                             return (
-                              <div className="create-assessment-blueprint-test-grid-row" key={row.key} role="row">
+                              <div className="create-assessment-blueprint-test-grid-row" key={row.key} role="row" tabIndex={-1} data-allocation-mismatch={rowInfo.resultClass !== 'complete' || undefined}>
                                 <div className="create-assessment-blueprint-test-grid-cell is-competency" role="cell">
                                   <span
                                     className="create-assessment-blueprint-code-badge"
@@ -7957,7 +8054,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   )
                                   return (
                                   <div
-                                    className={`create-assessment-blueprint-test-grid-cell is-count-entry ${isActive ? '' : 'is-disabled'} ${hasCountValue ? (countData.isValid ? 'is-valid' : 'is-invalid') : ''} ${isChanged ? 'is-reshuffled' : ''}`}
+                                    className={`create-assessment-blueprint-test-grid-cell is-count-entry ${isActive ? '' : 'is-disabled'} ${hasCountValue ? (countData.isValid ? 'is-valid' : 'is-invalid') : ''} ${isChanged ? 'is-reshuffled' : ''} ${hasCountValue ? (blueprintManualCells[row.key]?.[column.key] ? 'is-manual-allocation' : 'is-auto-allocation') : ''}`}
                                     key={`${row.key}-${column.key}`}
                                     role="cell"
                                     title={['SAQ', 'LAQ'].includes(column.group) && countData.count > 0 ? undefined : isActive
@@ -7975,6 +8072,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                         column.key,
                                         event.target.value,
                                       )}
+                                      onFocus={event => setBlueprintActiveField({ rowKey: row.key, fieldKey: column.key, anchor: event.currentTarget })}
+                                      onClick={event => setBlueprintActiveField({ rowKey: row.key, fieldKey: column.key, anchor: event.currentTarget })}
+                                      onKeyDown={event => {
+                                        if (event.key === 'ArrowDown' && blueprintActiveField?.anchor === event.currentTarget) {
+                                          const option = document.querySelector('#blueprint-field-suggestions .blueprint-unit-card button:not(:disabled)')
+                                          if (option) { event.preventDefault(); option.focus() }
+                                        }
+                                      }}
+                                      title={hasCountValue ? (blueprintManualCells[row.key]?.[column.key] ? 'Manual allocation - preserved by AutoFill' : 'Auto-filled allocation - edit to make manual') : 'Enter a count or choose a suggestion'}
+                                      aria-haspopup="dialog"
+                                      aria-expanded={blueprintActiveField?.rowKey === row.key && blueprintActiveField?.fieldKey === column.key}
+                                      aria-controls={blueprintActiveField?.rowKey === row.key && blueprintActiveField?.fieldKey === column.key ? 'blueprint-field-suggestions' : undefined}
+                                      aria-invalid={blueprintFieldError?.rowKey === row.key && blueprintFieldError?.fieldKey === column.key || undefined}
+                                      aria-describedby={blueprintFieldError?.rowKey === row.key && blueprintFieldError?.fieldKey === column.key ? `blueprint-error-${row.code}-${column.key}` : undefined}
                                       aria-label={`${row.code} ${column.group} ${column.label} question count`}
                                       disabled={!isActive || (isBlueprintPlannerSaved && !isBlueprintPlannerEditing)}
                                     />
@@ -7988,10 +8099,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                           : (column.group === 'LAQ' ? blueprintLaqSplitBreakdowns : blueprintSaqCategoryBreakdowns)[column.key]?.[row.key] ?? null}
                                       />
                                     ) : null}
-                                    </span>
                                     {hasCountValue ? (
-                                      <small>{formatBlueprintSplitNumber(countData.calculatedMarks)} Marks</small>
+                                      <small>{formatBlueprintSplitNumber(countData.calculatedMarks)} {countData.calculatedMarks === 1 ? 'mark' : 'marks'}</small>
                                     ) : null}
+                                    </span>
+                                    {blueprintFieldError?.rowKey === row.key && blueprintFieldError?.fieldKey === column.key ? <span className="blueprint-field-validation" id={`blueprint-error-${row.code}-${column.key}`}>{blueprintFieldError.message}</span> : null}
                                   </div>
                                   )
                                 })}
@@ -8046,17 +8158,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             <div className="create-assessment-blueprint-test-grid-cell is-test-spec-target is-footer-target" role="cell">
                               {formatBlueprintSplitNumber(blueprintSpecificationTargetTotal)}
                             </div>
-                            <div className={`create-assessment-blueprint-test-grid-cell is-test-spec-total is-footer-total ${blueprintTestSpecificationMarksAndTargetsResultClass}`} role="cell">
+                            <div className={`create-assessment-blueprint-test-grid-cell is-test-spec-total is-footer-total ${blueprintTestSpecificationMarksAndTargetsResultClass}`} role="cell" aria-label={blueprintTestSpecificationMarksAndTargetsResultClass === 'complete' ? 'Matched' : 'Mismatched'} title={blueprintTestSpecificationMarksAndTargetsResultClass === 'complete' ? 'Matched' : 'Mismatched'}>
                               <span className="create-assessment-blueprint-test-spec-total">
                                 <span className="create-assessment-blueprint-test-spec-total-main">
-                                  {blueprintTestSpecificationMarksAndTargetsResultClass === 'complete' ? 'Matched' : 'Mismatched'}
+                                  {blueprintTestSpecificationMarksAndTargetsResultClass === 'complete'
+                                    ? <Check size={13} strokeWidth={2.8} aria-hidden="true" />
+                                    : <X size={13} strokeWidth={2.8} aria-hidden="true" />}
                                 </span>
                               </span>
                             </div>
                           </div>
                           <div className="create-assessment-blueprint-test-grid-row is-question-count" role="row">
                             <div className="create-assessment-blueprint-test-grid-cell is-competency" role="cell">
-                              Total Question:
+                              Total questions:
                             </div>
                             {blueprintTestSpecificationColumns.map((column) => {
                               const isActive = isBlueprintTestSpecificationColumnActive(column.key)
@@ -8087,6 +8201,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         </div>
                       </div>
                     </div>
+                      <BlueprintRemainingQuestions units={blueprintUnallocatedUnits} onAdd={addBlueprintUnit} disabled={isBlueprintPlannerSaved && !isBlueprintPlannerEditing} items={blueprintTestSpecificationColumns.map(column => ({
+                        key: column.key, group: column.group, label: column.label,
+                        remaining: Math.max(0, (blueprintTestSpecificationQuestionCounts[column.key] || 0) - getBlueprintTestSpecificationColumnCountTotal(column.key)),
+                      }))} />
+                      {blueprintActiveField && blueprintActiveRow && blueprintActiveColumn && !(isBlueprintPlannerSaved && !isBlueprintPlannerEditing) ? <BlueprintFieldSuggestions
+                        anchor={blueprintActiveField.anchor}
+                        heading={blueprintActiveRow.code + ' ' + blueprintActiveColumn.group + ' ' + blueprintActiveColumn.label}
+                        units={blueprintFieldUnits}
+                        error={blueprintFieldError?.rowKey === blueprintActiveRow.key && blueprintFieldError?.fieldKey === blueprintActiveColumn.key ? blueprintFieldError.message : ''}
+                        onAdd={id => addBlueprintUnit(id, blueprintActiveRow.key)}
+                        onClose={closeBlueprintFieldSuggestions}
+                      /> : null}
+                    </div>
+                    {blueprintAllocationNotice ? <p className="blueprint-allocation-notice" role="status">{blueprintAllocationNotice}</p> : null}
                   </section>
 
                   {isBlueprintCompetencyMatrixCreated && blueprintCompetencyViewMode === 'multi' ? (
@@ -8102,6 +8230,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             className="create-assessment-blueprint-header-edit-btn"
                             onClick={() => {
                               setIsBlueprintCompetencyMatrixCreated(false)
+                              setBlueprintManualCells({})
+                              setBlueprintAllocationNotice('')
                               setBlueprintTestSpecificationCountDraft({})
                               setBlueprintTestSpecificationMarkDraft({})
                               setBlueprintAutoFillIteration(0)

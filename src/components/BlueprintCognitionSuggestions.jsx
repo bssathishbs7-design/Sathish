@@ -7,10 +7,10 @@ import './BlueprintCognitionSuggestions.css'
 export default function BlueprintCognitionSuggestions({ suggestions, onApply }) {
   if (!suggestions) return null
   return <section className="blueprint-cognition-suggestions" aria-label="Suggested cognition changes">
-    <h4>Suggested changes — choose one</h4>
+    <div className="blueprint-cognition-suggestions-heading"><h4>Suggested changes</h4><span>Choose one</span></div>
     {suggestions.options.length ? <div className="blueprint-cognition-suggestions-grid">
       {suggestions.options.map((option, index) => <article className="blueprint-cognition-suggestion" key={option.id}>
-        <header><button type="button" onClick={() => onApply(option.id)} aria-label={`Apply suggestion ${index + 1}: ${option.changes.map(item => `${item.label}, ${item.count} ${item.from} to ${item.to}`).join('; ')}`}><Plus size={12} aria-hidden="true" />Apply</button></header>
+        <div className="blueprint-cognition-suggestion-heading"><h5>Option {index + 1}</h5><button type="button" onClick={() => onApply(option.id)} aria-label={`Apply suggestion ${index + 1}: ${option.changes.map(item => `${item.label}, ${item.count} ${item.from} to ${item.to}`).join('; ')}`}><Plus size={12} aria-hidden="true" />Apply</button></div>
         <div className="blueprint-cognition-suggestion-labels" aria-hidden="true"><span>Type</span><span>Count</span><span>Change</span></div>
         <ul>{option.changes.map(item => <li key={item.label}>
           <span>{item.label.startsWith('SAQs (') ? `${item.label.slice(6, -1)} SAQ` : item.label}</span>

@@ -20074,7 +20074,9 @@
   grid-area: questions;
   min-height: 0;
   height: auto;
-  align-self: start;
+  align-self: stretch;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
 }
 
 .create-assessment-blueprint-cognition-sidebar {
@@ -20212,6 +20214,7 @@
 
 .create-assessment-blueprint-specifications.is-multi-view .create-assessment-blueprint-reference-card.is-question-types table {
   min-width: 0;
+  height: 100%;
 }
 
 .create-assessment-blueprint-specifications.is-multi-view .create-assessment-blueprint-reference-card.is-question-types th:first-child,

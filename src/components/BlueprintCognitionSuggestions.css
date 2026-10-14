@@ -2,16 +2,19 @@
 .blueprint-breakdown-with-suggestions { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--s-3); min-width: 0; }
 .create-assessment-blueprint-spec-card.is-type-summary .blueprint-breakdown-with-suggestions > .create-assessment-blueprint-spec-table-wrap-type { min-width: 0; max-width: 100%; overflow-x: auto; }
 .blueprint-cognition-suggestions { min-width: 0; margin: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-body); }
-.blueprint-cognition-suggestions h4 { margin: 0 0 var(--s-2); color: var(--text-strong); font-size: var(--fs-xs, .75rem); }
+.blueprint-cognition-suggestions-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--s-1); margin-bottom: var(--s-2); }
+.blueprint-cognition-suggestions .blueprint-cognition-suggestions-heading h4 { margin: 0; padding: 0; color: var(--text-strong); font-size: var(--fs-xs, .75rem); line-height: 1.4; }
+.blueprint-cognition-suggestions-heading > span { color: var(--text-muted); font-size: var(--fs-micro, .6875rem); }
 .blueprint-cognition-suggestions-grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--s-2); }
 .blueprint-cognition-suggestion { min-width: 0; padding: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); font-size: var(--fs-micro, .6875rem); }
-.blueprint-cognition-suggestions .blueprint-cognition-suggestion > header { display: flex; align-items: center; justify-content: flex-end; min-height: 0; height: auto; padding: 0; margin: 0 0 var(--s-1); border: 0; background: transparent; }
+.blueprint-cognition-suggestion-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-bottom: var(--s-1); }
+.blueprint-cognition-suggestions .blueprint-cognition-suggestion-heading h5 { margin: 0; padding: 0; color: var(--text-strong); font-size: var(--fs-micro, .6875rem); font-weight: 600; line-height: 1.4; }
 .blueprint-cognition-suggestion button { display: inline-flex; align-items: center; gap: var(--s-1); padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-brand); font: inherit; min-height: var(--s-6); cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
 .blueprint-cognition-suggestion button:hover { background: var(--surface-soft); }
-.blueprint-cognition-suggestions .blueprint-cognition-suggestion button { min-height: var(--s-5); }
+.blueprint-cognition-suggestions .blueprint-cognition-suggestion button { min-height: var(--s-5); line-height: 1.2; flex-shrink: 0; }
 .blueprint-cognition-suggestion button:active { transform: translateY(1px) scale(.97); transition: none; }
 .blueprint-cognition-suggestion button:focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); box-shadow: 0 0 0 5px var(--focus-ring); }
-.blueprint-cognition-suggestion-labels, .blueprint-cognition-suggestion li { display: grid; grid-template-columns: minmax(0, 1fr) var(--s-6) calc(var(--s-8) + var(--s-2)); align-items: center; gap: var(--s-1); padding: var(--s-1) 0; }
+.blueprint-cognition-suggestion-labels, .blueprint-cognition-suggestion li { display: grid; grid-template-columns: minmax(0, 1fr) var(--s-6) calc(var(--s-8) + var(--s-2)); align-items: center; column-gap: var(--s-2); padding: var(--s-1) 0; }
 .blueprint-cognition-suggestion-labels { border-bottom: 1px solid var(--border); color: var(--text-strong); font-weight: 600; }
 .blueprint-cognition-suggestion-labels span:nth-child(2), .blueprint-cognition-suggestion-count { text-align: center; }
 .blueprint-cognition-suggestion-count { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
@@ -19,11 +22,16 @@
 .blueprint-cognition-suggestion ul { list-style: none; padding: 0; margin: 0; }
 .blueprint-cognition-suggestions .blueprint-cognition-suggestion li { font-size: var(--fs-micro, .6875rem); line-height: 1.4; }
 .create-assessment-blueprint-spec-card.is-type-summary:has(.blueprint-cognition-applied):focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); box-shadow: 0 0 0 5px var(--focus-ring); }
-.blueprint-cognition-suggestions p, .blueprint-cognition-applied { margin: var(--s-2) var(--s-3); color: var(--text-body); font-size: var(--fs-xs, .75rem); }
-.blueprint-cognition-applied:empty { margin: 0; }
+.blueprint-cognition-suggestions p { margin: var(--s-2) var(--s-3); color: var(--text-body); font-size: var(--fs-xs, .75rem); }
+.blueprint-breakdown-heading-status { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--s-2); margin-left: auto; min-width: 0; }
+.blueprint-breakdown-heading-status .blueprint-cognition-applied { margin: 0; color: var(--text-brand); font-size: var(--fs-micro, .6875rem); line-height: 1.4; }
+.blueprint-cognition-applied:empty { display: none; }
 @container (min-width: 1000px) {
   .blueprint-breakdown-with-suggestions:has(> .blueprint-cognition-suggestions) { grid-template-columns: minmax(0, 1fr) 248px; }
-  .blueprint-breakdown-with-suggestions > .blueprint-cognition-suggestions { contain: size; align-self: stretch; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding: var(--s-2); }
+  .blueprint-breakdown-with-suggestions > .blueprint-cognition-suggestions { display: flex; flex-direction: column; contain: size; align-self: stretch; min-height: 0; overflow: hidden; padding: var(--s-2); }
+  .blueprint-breakdown-with-suggestions .blueprint-cognition-suggestions-heading { flex-shrink: 0; padding-bottom: var(--s-2); border-bottom: 1px solid var(--border); }
+  .blueprint-breakdown-with-suggestions .blueprint-cognition-suggestions-grid { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; align-content: start; padding: var(--s-2); }
+  .blueprint-breakdown-with-suggestions > .blueprint-cognition-suggestions > p { min-height: 0; overflow-y: auto; }
   .create-assessment-blueprint-spec-card.is-type-summary .blueprint-breakdown-with-suggestions:has(> .blueprint-cognition-suggestions) .create-assessment-blueprint-spec-table { width: 100%; min-width: 0; table-layout: fixed; }
   .create-assessment-blueprint-spec-card.is-type-summary .blueprint-breakdown-with-suggestions:has(> .blueprint-cognition-suggestions) .create-assessment-blueprint-spec-table :is(th, td) { padding-left: var(--s-1); padding-right: var(--s-1); }
   .create-assessment-blueprint-spec-card.is-type-summary .blueprint-breakdown-with-suggestions:has(> .blueprint-cognition-suggestions) .create-assessment-blueprint-spec-table :is(th, td):first-child:not([colspan]) { width: 224px; }

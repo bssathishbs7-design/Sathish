@@ -1,0 +1,16 @@
+.blueprint-unit-cards { display: grid; gap: var(--s-2); list-style: none; padding: 0; margin: 0; }
+.blueprint-unit-cards .blueprint-unit-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-3); font-size: var(--fs-micro, 11px); line-height: 1.4; background: var(--surface-card); transition: border-color var(--dur-hover) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard), background var(--dur-hover) var(--ease-standard); }
+.blueprint-unit-cards .blueprint-unit-card:focus-within { border-color: var(--forest); box-shadow: var(--shadow-sm); }
+@media (hover: hover) {
+  .blueprint-unit-cards .blueprint-unit-card:hover { border-color: var(--forest); background: var(--surface-soft); box-shadow: var(--shadow-sm); }
+}
+.blueprint-unit-card > div { min-width: 0; }
+.blueprint-unit-card > div > div { display: flex; flex-direction: column; gap: var(--s-1); }
+.blueprint-unit-cards .blueprint-unit-card span { font-family: inherit; color: var(--text-muted); }
+.blueprint-unit-card small { display: block; font-size: var(--fs-micro, 11px); color: var(--text-muted); }
+.blueprint-unit-card button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); min-height: var(--s-6); padding: var(--s-1) var(--s-3); border: 1px solid var(--forest); border-radius: var(--r-pill); background: var(--forest); color: var(--on-brand); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; transition: box-shadow var(--dur-hover) var(--ease-standard); }
+.blueprint-unit-card button:hover:not(:disabled) { box-shadow: var(--shadow-sm); }
+.blueprint-unit-card button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.blueprint-unit-card button:disabled { opacity: .55; cursor: not-allowed; }
+.blueprint-unit-card button:focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); box-shadow: 0 0 0 5px var(--focus-ring); }
+@media (prefers-reduced-motion: reduce) { .blueprint-unit-cards .blueprint-unit-card, .blueprint-unit-card button { transition: none; } }

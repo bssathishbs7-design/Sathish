@@ -1,0 +1,26 @@
+.blueprint-template-preview { position: fixed; z-index: 1500; width: min(380px, calc(100vw - 16px)); display: flex; flex-direction: column; overflow: visible; border: 1px solid var(--forest); border-radius: var(--r); background: var(--surface-card); color: var(--text-body); box-shadow: var(--shadow-sm); font-size: var(--fs-micro, 11px); }
+.blueprint-template-preview header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s-2); padding: var(--s-2); flex-shrink: 0; border-bottom: 1px solid var(--border); }
+.blueprint-template-preview header small { display: block; color: var(--text-muted); margin-top: var(--s-1); }
+.blueprint-template-preview-scroll { border-radius: 0 0 calc(var(--r) - 1px) calc(var(--r) - 1px); overflow: hidden; }
+.blueprint-template-preview table { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-micro, 11px); line-height: 1.2; }
+.blueprint-template-preview th, .blueprint-template-preview td { padding: var(--s-1) 0; height: auto; font-size: var(--fs-micro, 11px); line-height: 1.2; vertical-align: middle; border-bottom: 1px solid var(--border); text-align: center; }
+.blueprint-template-preview th:first-child { width: 25%; text-align: left; padding-left: var(--s-2); }
+.blueprint-template-preview .is-child th { padding-left: var(--s-4); }
+.blueprint-template-preview td { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.blueprint-template-preview thead, .blueprint-template-preview .is-summary, .blueprint-template-preview tfoot { background: var(--surface-soft); }
+.blueprint-template-preview p { padding: var(--s-3); }
+
+.blueprint-template-preview header strong, .blueprint-template-preview header small { font-size: var(--fs-micro, 11px); line-height: 1.2; }
+
+.blueprint-template-preview header > div { min-width: 0; }
+.blueprint-template-preview header small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+
+
+.blueprint-template-preview-tail { position: absolute; left: calc(var(--arrow-x) - 12px); bottom: -14px; width: 24px; height: 16px; overflow: visible; pointer-events: none; }
+.blueprint-template-preview-tail path { fill: var(--surface-soft); stroke: var(--forest); stroke-width: 1; stroke-linejoin: round; }
+
+.blueprint-template-preview tfoot th, .blueprint-template-preview tfoot td { border-bottom: 0; }
+.blueprint-template-preview-summary { display: grid; gap: var(--s-1); flex-shrink: 0; text-align: right; font-size: var(--fs-micro, 11px); line-height: 1.2; }
+.blueprint-template-preview-summary b { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
