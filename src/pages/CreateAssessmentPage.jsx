@@ -1,4 +1,5 @@
 import { fillAroundManualCells } from '../utils/blueprintLockedAllocation'
+import { withFirstYearCorrelationDefaults } from '../services/firstYearCorrelationDefaults'
 import BlueprintCognitionCountInput from '../components/BlueprintCognitionCountInput'
 import BlueprintFieldSuggestions from '../components/BlueprintFieldSuggestions'
 import BlueprintRemainingQuestions from '../components/BlueprintRemainingQuestions'
@@ -797,13 +798,13 @@ const toggleSelection = (items, value) => (
 const getCorelationRatingRowKey = (row) => `${row.year || '1st Year'}::${row.subject}::${row.topic}::${row.code}::${row.name}`
 
 const readSavedCorelationRatingRows = () => {
-  if (typeof window === 'undefined') return {}
+  if (typeof window === 'undefined') return withFirstYearCorrelationDefaults(corelationRatingRows)
 
   try {
     const parsed = JSON.parse(window.localStorage.getItem(CORELATION_RATING_SAVED_ROWS_KEY) || '{}')
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+    return withFirstYearCorrelationDefaults(corelationRatingRows, parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {})
   } catch {
-    return {}
+    return withFirstYearCorrelationDefaults(corelationRatingRows)
   }
 }
 

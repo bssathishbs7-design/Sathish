@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import CorrelationMetrics from './CorrelationMetrics'
 import { corelationRatingRows } from './corelationRatingData'
+import { withFirstYearCorrelationDefaults } from '../services/firstYearCorrelationDefaults'
 import { getDefaultCorrelationRationale } from '../services/correlationRationale'
 import '../styles/assessment-pages.css'
 import '../styles/medsy/question-sort-tokens.css'
@@ -56,7 +57,7 @@ export default function BlueprintPage() {
   const [isRationaleEnabled, setIsRationaleEnabled] = useState(true)
   const [openRationaleKey, setOpenRationaleKey] = useState('')
   const [editingRationaleKey, setEditingRationaleKey] = useState('')
-  const [savedRows, setSavedRows] = useState(() => readStoredObject(CORELATION_RATING_SAVED_ROWS_KEY))
+  const [savedRows, setSavedRows] = useState(() => withFirstYearCorrelationDefaults(corelationRatingRows, readStoredObject(CORELATION_RATING_SAVED_ROWS_KEY)))
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false)
   const [pendingCollapseGroupKey, setPendingCollapseGroupKey] = useState('')
   const [activeCorrelationTab, setActiveCorrelationTab] = useState('saved')
