@@ -20,33 +20,15 @@
   white-space: nowrap;
 }
 
-.create-assessment-assign-grid > .create-assessment-assign-sent-toggle {
-  grid-template-rows: none;
-}
-
-.create-assessment-assign-sent-toggle .create-assessment-mode-toggle {
-  width: 100%;
-  min-height: 42px;
-  align-items: stretch;
-}
-
-.create-assessment-workspace .create-assessment-assign-select select {
-  padding-right: 36px;
-  text-overflow: ellipsis;
-}
-
 @media (min-width: 1200px) {
-  .create-assessment-workspace .create-assessment-assign-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 1.25fr) max-content;
-  }
 }
 
 .create-assessment-schedule-layout:has(> .create-assessment-timing-panel:only-child) {
   grid-template-columns: minmax(0, 1fr);
 }
 
-@media (min-width: 1024px) {
-  .create-assessment-timing-panel:only-child .create-assessment-schedule-grid.is-practice {
+@container (min-width: 800px) {
+  .configuration-compact .create-assessment-timing-panel .create-assessment-schedule-grid.is-practice {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

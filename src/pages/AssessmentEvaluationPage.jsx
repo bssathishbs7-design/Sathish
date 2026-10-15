@@ -1,3 +1,4 @@
+import { getAssessmentAutomation } from '../services/assessmentAutomation'
 import EvaluationActionBar from '../components/EvaluationActionBar'
 import EvaluationRowActions from '../components/EvaluationRowActions'
 import EvaluationStatus from '../components/EvaluationStatus'
@@ -3321,6 +3322,8 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   useEffect(() => {
     if (isStudentResultView) return
     if (!selectedStudent || isOffline || !mcqQuestions.length) return
+    const automation = getAssessmentAutomation(assessment?.setup || assessment || {}, { hasMcq: true, hasDescriptive: false })
+    if (!automation.rows[0].evaluation) return
     const attempt = readStoredAttempt(assessment, selectedStudent)
     const answers = attempt?.answers || {}
     if (!answers || typeof answers !== 'object') return
@@ -4302,3 +4305,4 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     </section>
   )
 }
+

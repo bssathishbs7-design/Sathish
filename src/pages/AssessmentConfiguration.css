@@ -1,0 +1,212 @@
+/* Reference-aligned configuration styling, scoped away from other assessment pages. */
+.configuration-compact .create-assessment-template-select[hidden],
+.configuration-compact .assessment-create-form-actions > .is-template[hidden] { display: none; }
+.create-assessment-workspace .configuration-compact { --configuration-upload-size: calc((var(--fs-xs, 12px) * 1.4 + var(--s-1) + var(--s-6) + var(--s-1)) * 2 + var(--s-3)); container-type: inline-size; color: var(--text-body); background: var(--surface-card); }
+.configuration-compact *, .configuration-compact *::before, .configuration-compact *::after { box-sizing: border-box; }
+.configuration-compact .create-assessment-configuration-form { gap: var(--s-3); }
+.create-assessment-workspace .configuration-compact .assessment-create-setup-top { display: grid; grid-template-columns: var(--configuration-upload-size) repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto; grid-template-areas: 'logo college category' 'logo name year'; gap: var(--s-3); align-items: start; }
+.configuration-compact .assessment-create-upload { grid-area: logo; }
+.configuration-compact .assessment-create-college-field { grid-area: college; }
+.configuration-compact .assessment-create-name-field { grid-area: name; }
+.configuration-compact .assessment-create-side-fields, .configuration-compact .assessment-create-year-action-row { display: contents; }
+.configuration-compact .assessment-create-exam-category-field { grid-area: category; }
+.configuration-compact .assessment-create-year-field { grid-area: year; }
+
+.create-assessment-workspace .configuration-compact .assessment-create-upload { width: var(--configuration-upload-size); }
+.create-assessment-workspace .configuration-compact .assessment-create-upload strong { width: var(--configuration-upload-size); height: var(--configuration-upload-size); min-width: var(--configuration-upload-size); min-height: var(--configuration-upload-size); aspect-ratio: 1 / 1; background: var(--surface-soft); border-radius: var(--r-sm); }
+.configuration-compact .assessment-create-upload img { max-width: 100%; max-height: var(--s-8); object-fit: contain; }
+.configuration-compact :is(.assessment-create-field, .create-assessment-schedule-field) { min-width: 0; margin: 0; gap: var(--s-1); }
+.configuration-compact :is(.assessment-create-field, .create-assessment-schedule-field) > span:first-child { font-size: var(--fs-micro, 11px); text-transform: uppercase; color: var(--text-muted); }
+.configuration-compact :is(input:not([type='file']), select) { min-height: var(--s-6); font-size: var(--fs-xs, 12px); border-radius: var(--r-sm); }
+.configuration-compact .assessment-create-setup-divider { margin: 0; background: var(--border); }
+.configuration-compact .create-assessment-configuration-summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.configuration-compact .create-assessment-configuration-badge { display: inline-flex; gap: var(--s-1); padding: var(--s-1) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-body); font-size: var(--fs-micro, 11px); }
+.configuration-compact :is(.create-assessment-schedule-block, .create-assessment-threshold-section) { margin: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); box-shadow: none; }
+.configuration-compact .create-assessment-schedule-block { padding: var(--s-3); gap: var(--s-2); }
+.configuration-compact .create-assessment-schedule-head { min-height: var(--s-6); }
+.configuration-compact .create-assessment-schedule-head > strong { font-size: var(--fs-xs, 12px); }
+.configuration-compact .create-assessment-schedule-block > .create-assessment-schedule-head > strong { padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--info-ink); background: var(--surface-soft); }
+.create-assessment-workspace .configuration-compact .create-assessment-schedule-layout { grid-template-columns: 1fr; gap: var(--s-3); }
+.configuration-compact .create-assessment-timing-panel { padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); gap: var(--s-3); }
+.configuration-compact .create-assessment-timing-panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-2); }
+.configuration-compact .create-assessment-timing-panel-head > strong { display: block; }
+.configuration-compact .create-assessment-schedule-grid.is-practice { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.configuration-compact .create-assessment-schedule-grid.is-practice { align-items: start; gap: var(--s-3); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); }
+.configuration-compact .create-assessment-schedule-field { align-content: start; grid-template-rows: auto auto; }
+.configuration-compact :is(.create-assessment-date-input, .create-assessment-time-stepper-trigger) { box-sizing: border-box; width: 100%; height: calc(var(--s-6) + var(--s-1)); min-height: calc(var(--s-6) + var(--s-1)); }
+.configuration-compact .create-assessment-date-input input { height: 100%; min-height: 0; }
+.configuration-compact .create-assessment-threshold-section-head { min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-3); color: var(--info-ink); font-size: var(--fs-xs, 12px); }
+.configuration-compact .create-assessment-threshold-section-body { padding: var(--s-3); }
+.configuration-compact .configuration-edit-action { min-height: var(--s-6); padding: var(--s-1) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-body); font: inherit; font-size: var(--fs-xs, 12px); cursor: pointer; }
+.configuration-compact .configuration-edit-action:hover { border-color: var(--forest); }
+.configuration-compact .configuration-submit-hint { margin: 0; font-size: var(--fs-micro, 11px); color: var(--text-muted); }
+.configuration-compact .assessment-create-form-actions { margin: 0; padding: 0; border: 0; gap: var(--s-2); }
+.configuration-compact .assessment-create-form-actions { flex-wrap: wrap; align-items: center; }
+.configuration-compact .assessment-create-form-actions button { box-sizing: border-box; width: calc(var(--s-9) + var(--s-7)); min-height: calc(var(--s-6) + var(--s-1)); padding: var(--s-2) var(--s-3); border-radius: var(--r-pill); font-size: var(--fs-xs, 12px); font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.configuration-compact button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.configuration-compact button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.configuration-compact .configuration-attainment-labels, .configuration-compact .create-assessment-attainment-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) var(--s-6) var(--s-6); gap: var(--s-2); }
+.configuration-attainment-labels { font-size: var(--fs-micro, 11px); color: var(--text-muted); }
+.configuration-attainment-labels span:last-child { grid-column: span 2; }
+.configuration-compact .create-assessment-attainment-row > span:nth-child(3) { display: none; }
+.configuration-compact .create-assessment-attainment-row > button { width: var(--s-6); height: var(--s-6); }
+.configuration-compact .create-assessment-attainment-row input { min-width: 0; width: 100%; }
+@container (max-width: 650px) {
+ .create-assessment-workspace .configuration-compact .assessment-create-setup-top { grid-template-columns: var(--configuration-upload-size) minmax(0, 1fr); grid-template-areas: 'logo college' 'logo name' 'category category' 'year year'; }
+
+ .configuration-compact .create-assessment-schedule-head { flex-wrap: wrap; gap: var(--s-2); }
+ .configuration-compact .create-assessment-threshold-card-grid { grid-template-columns: 1fr; }
+}
+@container (max-width: 420px) {
+ .create-assessment-workspace .configuration-compact .assessment-create-setup-top { grid-template-columns: 1fr; grid-template-areas: 'logo' 'college' 'category' 'name' 'year'; }
+ .create-assessment-workspace .configuration-compact .assessment-create-upload { width: var(--configuration-upload-size); }
+ .create-assessment-workspace .configuration-compact .create-assessment-assign-grid, .configuration-compact .create-assessment-schedule-grid { grid-template-columns: 1fr; }
+}
+
+/* Shared tracks and intrinsic error rows prevent uneven field baselines. */
+.configuration-compact .assessment-create-field,
+.configuration-compact .assessment-create-field.has-error { grid-template-rows: auto auto; grid-auto-rows: auto; align-content: start; font-family: var(--f-body); }
+.configuration-compact :is(.assessment-create-field, .create-assessment-schedule-field, .create-assessment-schedule-toggle-field) > span:first-child { font-size: var(--fs-micro, 11px); font-weight: 600; line-height: 1.4; letter-spacing: normal; }
+.configuration-compact :is(.assessment-create-field, .create-assessment-schedule-field) :is(input:not([type='file']), select),
+.configuration-compact .create-assessment-time-stepper-trigger { height: calc(var(--s-6) + var(--s-1)); min-height: calc(var(--s-6) + var(--s-1)); font-family: var(--f-body); font-size: var(--fs-xs, 12px); font-weight: 500; line-height: 1.4; }
+.configuration-compact .assessment-create-exam-category-row { align-items: start; height: calc(var(--s-6) + var(--s-1)); grid-template-columns: minmax(0, 1fr) calc(var(--s-6) + var(--s-1)); }
+.configuration-compact .assessment-create-category-add-btn { width: calc(var(--s-6) + var(--s-1)); height: calc(var(--s-6) + var(--s-1)); }
+.configuration-compact .assessment-create-setup-top > .assessment-create-upload { align-self: start; grid-template-rows: auto; }
+
+.configuration-compact .assessment-automation button { font-family: var(--f-body); font-size: var(--fs-xs, 12px); font-weight: 500; }
+
+/* Scheduling controls share the same rhythm as the answer settings below. */
+.configuration-compact .configuration-mode-fields { display: flex; flex-wrap: wrap; align-items: start; gap: var(--s-3) var(--s-6); }
+.configuration-compact .configuration-mode-fields > :is(.create-assessment-schedule-head-toggle, .configuration-supervision) { display: grid; grid-template-columns: max-content max-content; grid-template-rows: auto; align-items: center; justify-items: start; margin: 0; align-self: start; gap: var(--s-1) var(--s-2); }
+.configuration-compact .configuration-mode-fields > :is(.create-assessment-schedule-head-toggle, .configuration-supervision) > small { grid-column: 1 / -1; }
+@container (max-width: 420px) {
+ .configuration-compact .configuration-mode-fields > :is(.create-assessment-schedule-head-toggle, .configuration-supervision) { grid-template-columns: minmax(0, 1fr); }
+}
+.configuration-compact .configuration-mode-fields > :is(.create-assessment-schedule-head-toggle, .configuration-supervision) > span:first-child { display: block; margin: 0; font-size: var(--fs-xs, 12px); font-weight: 600; line-height: 1.4; }
+.configuration-compact .configuration-mode-fields .create-assessment-mode-toggle { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 0; height: calc(var(--s-6) + var(--s-2) + 2px); padding: var(--s-1); }
+.configuration-compact .configuration-mode-fields .create-assessment-mode-toggle button { display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: var(--s-1); box-sizing: border-box; height: var(--s-6); min-height: var(--s-6); line-height: 1; white-space: nowrap; }
+.configuration-compact .configuration-mode-label { font-size: var(--fs-micro, 11px); font-weight: 600; color: var(--text-body); }
+.configuration-compact .configuration-mode-label em { color: var(--danger-ink); font-style: normal; }
+.configuration-compact .configuration-step-context { margin: 0; font-size: var(--fs-micro, 11px); color: var(--text-muted); }
+.configuration-compact .create-assessment-schedule-block { gap: var(--s-3); }
+.configuration-compact .create-assessment-schedule-block > .create-assessment-schedule-head > strong { background: transparent; border: 0; padding: 0; color: var(--text-strong); }
+.configuration-compact .create-assessment-timing-panel { background: var(--surface-card); }
+.configuration-compact .create-assessment-timing-panel-head > strong { font-size: var(--fs-xs, 12px); }
+.configuration-compact .create-assessment-timing-panel .create-assessment-schedule-field > span:first-child,
+.configuration-compact .create-assessment-timing-panel-head .create-assessment-schedule-toggle-field > span:first-child { text-transform: none; font-size: var(--fs-xs, 12px); color: var(--text-body); }
+.configuration-compact .create-assessment-schedule-block .create-assessment-mode-toggle button { min-height: var(--s-6); font-size: var(--fs-xs, 12px); padding-inline: var(--s-3); }
+.configuration-compact .create-assessment-schedule-block .create-assessment-mode-toggle button.is-active { background: var(--forest); border-color: var(--forest); color: var(--on-brand); box-shadow: none; }
+.configuration-compact .create-assessment-schedule-block .create-assessment-mode-toggle { box-shadow: none; }
+.configuration-compact .create-assessment-schedule-head-toggle { align-self: center; }
+.configuration-compact .create-assessment-schedule-head-toggle .create-assessment-mode-toggle { display: inline-flex; flex-flow: row nowrap; width: max-content; }
+.configuration-compact .create-assessment-schedule-head-toggle .create-assessment-mode-toggle button { display: inline-flex; flex-flow: row nowrap; flex: 0 0 auto; white-space: nowrap; align-items: center; justify-content: center; gap: var(--s-1); }
+.configuration-compact .create-assessment-schedule-head-toggle .create-assessment-mode-toggle button svg { flex-shrink: 0; color: currentColor; }
+.configuration-compact .create-assessment-schedule-head-toggle .create-assessment-mode-toggle button.is-online:not(.is-active) { color: var(--text-brand); }
+.configuration-compact .create-assessment-schedule-head-toggle .create-assessment-mode-toggle button.is-offline:not(.is-active) { color: var(--danger-ink); }
+.configuration-compact .create-assessment-schedule-head-toggle .create-assessment-mode-toggle button.is-offline.is-active { background: var(--danger-ink); border-color: var(--danger-ink); color: var(--on-brand); }
+.configuration-compact .create-assessment-schedule-head-toggle .create-assessment-mode-toggle button.is-offline:not(.is-active):hover { background: var(--danger-soft); }
+.configuration-compact .create-assessment-mode-toggle[aria-label='Supervision type'] { display: inline-flex; flex-flow: row nowrap; width: max-content; }
+.configuration-compact .create-assessment-mode-toggle[aria-label='Supervision type'] button { flex-flow: row nowrap; flex: 0 0 auto; gap: var(--s-1); white-space: nowrap; }
+.configuration-compact .create-assessment-mode-toggle[aria-label='Supervision type'] button svg { flex-shrink: 0; color: currentColor; }
+@container (max-width: 600px) {
+ .configuration-compact .create-assessment-timing-panel-head { align-items: start; }
+ .configuration-compact .create-assessment-timing-panel-head .is-inline { flex-wrap: wrap; gap: var(--s-2); }
+}
+
+.configuration-compact .create-assessment-timing-panel-head > strong,
+.configuration-compact .create-assessment-duration-split-head > strong { display: flex; align-items: center; gap: var(--s-2); }
+.configuration-compact .create-assessment-timing-panel-head > strong svg { color: var(--text-brand); }
+.configuration-compact .create-assessment-duration-split-head > strong svg { color: var(--info-ink); }
+.configuration-compact .create-assessment-duration-split-panel { background: var(--surface-card); border-color: var(--border); padding: var(--s-3); }
+.configuration-compact .create-assessment-proctored-split-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--s-6) minmax(0, 1fr); align-items: end; gap: var(--s-3); }
+.configuration-compact .create-assessment-sequence-shift-wrap { align-self: end; padding-bottom: var(--s-1); }
+.configuration-compact .create-assessment-sequence-shift-btn { width: var(--s-6); height: var(--s-6); }
+@container (max-width: 520px) {
+ .configuration-compact .create-assessment-proctored-split-row { grid-template-columns: minmax(0, 1fr); }
+ .configuration-compact .create-assessment-sequence-shift-wrap { justify-self: center; }
+}
+
+.configuration-summary-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.configuration-options-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.configuration-options-actions .configuration-edit-action { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); white-space: nowrap; }
+
+/* One type and control scale across the configuration form. */
+.configuration-compact :is(.configuration-exam-schedule-title, .create-assessment-duration-split-head > strong, .assessment-automation-title strong) { display: inline-flex; align-items: center; gap: var(--s-2); width: fit-content; max-width: 100%; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: color-mix(in srgb, var(--mint-200) 35%, var(--surface-card)); }
+.configuration-compact :is(.configuration-exam-schedule-title, .assessment-automation-title strong, .create-assessment-duration-split-head > strong, .create-assessment-assign-collapse .create-assessment-threshold-section-head > span) { font-family: var(--f-body); font-size: var(--fs-sm, 14px); font-weight: 600; line-height: 1.4; color: var(--text-strong); }
+.configuration-compact :is(.configuration-exam-schedule-title, .assessment-automation-title strong, .create-assessment-duration-split-head > strong, .create-assessment-threshold-section-head > span) > svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-brand); }
+.configuration-compact :is(.assessment-create-field, .create-assessment-schedule-field, .create-assessment-schedule-toggle-field) > span:first-child { font-size: var(--fs-xs, 12px); text-transform: none; color: var(--text-body); }
+.configuration-compact .configuration-mode-label { font-size: var(--fs-xs, 12px); }
+.configuration-compact .assessment-create-form-actions > button { font-size: var(--fs-xs, 12px); }
+.configuration-compact .assessment-create-form-actions .is-primary { background: var(--forest); color: var(--on-brand); }
+
+/* Date overlays and time values use the same readable numeric typography. */
+.configuration-compact .create-assessment-date-input > em,
+.configuration-compact .create-assessment-time-stepper-trigger > span,
+.configuration-compact .create-assessment-time-stepper-column input {
+  font-family: var(--f-code);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  letter-spacing: normal;
+  color: var(--text-body);
+}
+.configuration-compact .create-assessment-date-input { border-radius: var(--r-sm); background: var(--surface-card); }
+.configuration-compact .create-assessment-time-stepper-column strong { font-size: var(--fs-micro, 11px); }
+.configuration-compact .create-assessment-sequence-popover { width: calc(var(--s-9) * 3); max-width: calc(100vw - var(--s-5) * 2); padding: var(--s-4); gap: var(--s-2); bottom: calc(100% + var(--s-3)); border-color: var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); }
+.configuration-compact .create-assessment-sequence-popover::after { background: var(--surface-card); border-color: var(--border); }
+.configuration-compact .create-assessment-sequence-popover > strong { display: flex; align-items: center; gap: var(--s-2); font-family: var(--f-body); font-size: var(--fs-sm, 14px); font-weight: 600; line-height: 1.4; color: var(--text-strong); }
+.configuration-compact .create-assessment-sequence-popover > strong svg { color: var(--text-brand); flex-shrink: 0; }
+.configuration-compact .create-assessment-sequence-popover p { font-family: var(--f-body); font-size: var(--fs-xs, 12px); font-weight: 400; line-height: 1.5; color: var(--text-muted); }
+.configuration-compact .create-assessment-sequence-popover > div { display: flex; gap: var(--s-2); margin-top: var(--s-1); }
+.configuration-compact .create-assessment-sequence-popover button { min-height: var(--s-6); padding: var(--s-1) var(--s-3); border-color: var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-body); font-family: var(--f-body); font-size: var(--fs-xs, 12px); font-weight: 600; }
+.configuration-compact .create-assessment-sequence-popover button.sequence-confirm-primary { order: 1; background: var(--forest); border-color: var(--forest); color: var(--on-brand); }
+.configuration-compact .create-assessment-sequence-popover button:hover { box-shadow: inset 0 0 0 1px var(--forest); }
+.configuration-compact :is(.assessment-create-field, .create-assessment-schedule-field) > span:first-child { font-family: var(--f-body); font-weight: 600; line-height: 1.4; letter-spacing: normal; }
+
+/* Configuration reset confirmation is mounted in the native dialog layer. */
+.save-changes-dialog.assessment-clear-dialog {
+  width: min(440px, calc(100vw - var(--s-5) * 2));
+  padding: var(--s-5);
+  border-radius: var(--r);
+  text-align: left;
+}
+.assessment-clear-dialog[open] { animation: assessment-clear-enter var(--dur-overlay) var(--ease-emphasized) both; }
+.assessment-clear-dialog[open]::backdrop { animation: assessment-clear-backdrop var(--dur-overlay) var(--ease-standard) both; }
+.save-changes-dialog.assessment-clear-dialog h2 {
+  display: flex; align-items: center; gap: var(--s-3);
+  margin: 0 0 var(--s-3);
+  color: var(--text-strong); font-family: var(--f-body);
+  font-size: var(--fs-body, 16px); font-weight: 600; line-height: 1.4;
+}
+.assessment-clear-dialog h2 svg {
+  flex-shrink: 0; box-sizing: content-box; padding: var(--s-2);
+  border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-brand);
+}
+.save-changes-dialog.assessment-clear-dialog > p {
+  margin: 0 0 var(--s-4); color: var(--text-body);
+  font-size: var(--fs-sm, 14px); line-height: 1.6;
+}
+.assessment-clear-dialog .save-changes-actions {
+  display: grid; grid-template-columns: repeat(2, var(--s-9)); justify-content: end;
+  gap: var(--s-2); border-top: 1px solid var(--border); padding-top: var(--s-4);
+}
+.assessment-clear-dialog .save-changes-actions button {
+  min-height: calc(var(--s-6) + var(--s-1)); padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-xs, 12px); font-weight: 600; line-height: 1.4;
+}
+@keyframes assessment-clear-enter {
+  from { opacity: 0; transform: translateY(var(--s-4)) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes assessment-clear-backdrop { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .assessment-clear-dialog[open], .assessment-clear-dialog[open]::backdrop { animation: none; }
+}
+
+.configuration-compact .assessment-create-form-actions button.is-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; background: var(--forest); color: var(--on-brand); }
+
+.configuration-compact :is(.assessment-create-field, .create-assessment-schedule-field) > span:first-child:has(.configuration-inline-error) { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: var(--s-1); row-gap: 0; }
+.configuration-compact :is(.assessment-create-field, .create-assessment-schedule-field) .configuration-inline-error { display: inline; margin: 0 0 0 var(--s-1); padding: 0; color: var(--danger-ink); font-family: var(--f-body); font-size: var(--fs-micro, 11px); font-weight: 600; line-height: 1.4; text-transform: none; }
+
+.configuration-compact > .create-assessment-tab-panel-head > strong { font-size: var(--fs-lg, 18px); line-height: 1.4; }

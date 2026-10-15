@@ -772,3 +772,67 @@
 
 ### 2026-10-14 - Open template previews only on click
 - Removed hover and focus opening. Clicking the eye toggles the preview; Escape, close, and outside click still dismiss it.
+
+### 2026-10-15 - Per-type assessment automation rules
+- Practice and Proctored share independent MCQ/Descriptive evaluation and publishing settings. Read-only disables automatic actions; evaluation No turns publishing off. Hybrid policy requires both types to permit automatic publishing. Existing MCQ automatic marking respects the effective policy.
+
+### 2026-10-15 - Configuration field validation
+- Editing configuration validates touched fields without exposing unrelated missing fields. Publishing validates all active requirements and focuses the first invalid field. Offline scheduling does not require the hidden supervision selector.
+
+### 2026-10-15 - Simplified configuration entry
+- Required assignment controls stay open; saved college/year use an Edit action. Answer mode and automation share one table, and Add instructions opens the editor directly. Unavailable course/group selectors are omitted. Existing evaluation and publishing rules are retained.
+
+### 2026-10-15 - Configuration reading order and empty state
+- Assessment details, exam schedule, and audience/submission are numbered and always visible. College and academic year are directly editable. Optional settings follow required fields. Empty assessments show Add questions and an explanation beside submission.
+
+### 2026-10-15 - Reference configuration section order
+- Restored the reference presentation order: publication details and upload, summary, schedule, instructions/thresholds, assignment, and actions. Existing controls, availability, validation, and publishing rules remain unchanged.
+
+### 2026-10-15 - Common answer and result rules
+- MCQ, Descriptive, and Hybrid use Automatic/Manual evaluation and publishing choices. Manual evaluation forces manual publishing; read-only preserves saved preferences while showing the manual workflow. One derived outcome explains Hybrid publishing. Unsupported descriptive evaluation and automatic publishing are unavailable until their executors are connected.
+
+### 2026-10-15 - Online evaluation prerequisite for publishing
+- Online answer-input MCQ evaluation is always automatic, including previously saved manual choices. Descriptive offers AI or Manual evaluation; Manual turns auto publish off and returning to AI does not enable publishing automatically. Read-only and Offline retain manual workflows.
+- Faculty can save preferences independently of connected executors. Hybrid automatic publishing requires both sections to permit it and complete evaluation. The UI identifies pending integrations; descriptive AI and automatic publishing do not execute until connected. AI descriptive evaluation displays its additional cost to Medsy; changing settings does not execute AI or incur charges.
+
+### 2026-10-15 - Shared Hybrid result publishing
+- Hybrid displays one Auto publish On/Off control below both question-type cards. It saves both existing publishing fields atomically; legacy mixed choices display Off. Manual descriptive evaluation, Read-only in either section, or Offline turns shared publishing Off; returning to eligible settings does not turn it on. Single-type controls remain unchanged.
+
+### 2026-10-15 - Visible scheduling steps
+- Schedule and answer settings follow three visible steps: choose exam mode and supervision, set the schedule, then set answers and results. All applicable fields remain on the same page with existing validation; no Next/Back actions were added. Offline displays its existing schedule fields and a manual-results explanation.
+
+### 2026-10-15 - Progressive scheduling with editable summaries
+- Scheduling opens one step at a time. Continue validates only that step; Done collapses the final answer settings. Completed steps expose Edit and Save changes while preserving draft values. Invalid dependent steps show Needs attention and reopen after saving an earlier step. Offline results are summarised automatically. Final submission requires completed, valid scheduling steps; draft saving is unchanged.
+
+### 2026-10-15 - Single scheduling form and summary
+- Replaced progressive cards with one aligned form. Save settings validates all applicable scheduling fields and collapses the form into a compact labelled summary with one Edit button. Save changes updates the summary; Cancel restores only the saved scheduling fields, preserving unrelated configuration. Offline omits answer controls and summarises manual evaluation and publishing.
+
+### 2026-10-15 - Instructions and thresholds popups
+- Replaced the optional accordion rows with compact summary-toolbar buttons. Instructions and thresholds open the shared native-dialog shell with reduced-motion-aware animation. Save validates the relevant fields; Cancel, close, and Escape restore the opening snapshot. Instructions remains available for Online exams; threshold settings retains existing defaults and controls.
+
+### 2026-10-15 - Restore SGT assignment
+- Restored the optional SGT group/class selector between Student year and Publishing action. It loads and updates the existing assignGroup field used by saved and published assessments, retaining previously saved custom groups.
+
+### 2026-10-15 - Show split option before duration entry
+- Hybrid proctored exams now show Configure split before a duration is entered. The button stays disabled until Total Duration is valid and greater than zero.
+
+### 2026-10-15 - Apply schedule settings directly
+- Removed the separate Save settings, collapsed summary and edit/cancel step. Schedule and answer controls stay editable; publication validates the current draft directly.
+
+### 2026-10-15 - Default descriptive automation selections
+- New/reset assessments default to Enter answers with AI evaluation for Descriptive and Auto Publish On. Both section publish flags default On so Hybrid uses the shared On selection. Existing saved values retain precedence.
+
+### 2026-10-16 - Move configuration options to the bottom
+- Moved Add/Edit instructions and Threshold settings below Assign Information, above the final Clear and publication actions. Existing popup behaviour is unchanged.
+
+### 2026-10-16 - Assignment and approval action dialogs
+- Replaced inline assignment fields and publication toggle with Direct Publish and Send to Approval actions. Required assessment fields are checked before opening either popup.
+- Direct Publish collects required Student Year and optional SGT, then Assign publishes. Approval collects a linked faculty identity and optional note without requiring a year. Cancel leaves draft assignment unchanged; confirmation prevents duplicate submissions.
+
+
+### 2026-10-16 ? Confirm clearing assessment settings
+- Clear now opens a Yes/No confirmation. Yes resets the configuration form; No or Escape keeps the current entries. Selected questions are retained.
+
+
+### 2026-10-16 ? Gate publication actions on valid settings
+- Direct Publish and Send to Approval remain disabled until required configuration, questions, preview sections, and applicable blueprint requirements are valid. Readiness updates with form changes; assignment and reviewer choices remain validated in their respective dialogs.

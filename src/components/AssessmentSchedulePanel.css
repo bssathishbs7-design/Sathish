@@ -1,0 +1,63 @@
+.assessment-schedule-panel { display: grid; gap: var(--s-2); min-width: 0; }
+.assessment-schedule-panel > header { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.assessment-schedule-panel h3 { display: flex; align-items: center; gap: var(--s-2); margin: 0; color: var(--text-strong); font-size: var(--fs-xs, 12px); }
+.assessment-schedule-panel h3 svg { color: var(--text-brand); }
+.assessment-schedule-form { display: grid; gap: var(--s-2); }
+.assessment-schedule-form-section + .assessment-schedule-form-section { border-top: 1px solid var(--border); padding-top: var(--s-2); }
+.configuration-compact .assessment-schedule-form-section > .create-assessment-timing-panel { padding: 0; border: 0; }
+.configuration-compact .assessment-schedule-panel .configuration-mode-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--s-3); }
+.configuration-compact .assessment-schedule-panel .create-assessment-schedule-grid { align-items: start; gap: var(--s-3); }
+.configuration-compact .assessment-schedule-panel .create-assessment-schedule-grid:is(.is-offline, .is-proctored-shared) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.configuration-compact .assessment-schedule-panel .configuration-supervision > span { text-transform: none; }
+.assessment-schedule-panel button:active { transform: translateY(1px) scale(.97); }
+.assessment-schedule-panel h3:focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); }
+.configuration-proctored-panels { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); align-items: stretch; }
+.configuration-proctored-panels:has(> .create-assessment-duration-split-panel) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.configuration-exam-schedule { display: grid; align-content: start; gap: var(--s-3); min-width: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); }
+.configuration-exam-schedule-title { display: flex; align-items: center; min-height: var(--s-6); font-size: var(--fs-xs, 12px); color: var(--text-strong); }
+.configuration-compact .assessment-schedule-panel .configuration-proctored-panels:has(> .create-assessment-duration-split-panel) .is-proctored-shared { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.configuration-proctored-panels:has(> .create-assessment-duration-split-panel) .is-proctored-shared > :first-child { grid-column: 1 / -1; }
+.configuration-compact .configuration-proctored-panels > .create-assessment-duration-split-panel { min-width: 0; margin: 0; display: grid; align-content: start; gap: var(--s-3); padding: var(--s-2) var(--s-3); }
+.configuration-compact .configuration-proctored-panels .create-assessment-duration-split-head { min-height: var(--s-5); flex-wrap: wrap; gap: var(--s-1); }
+.configuration-compact .configuration-proctored-panels .create-assessment-proctored-split-row { grid-template-columns: minmax(0, 1fr) var(--s-6) minmax(0, 1fr); align-items: start; gap: var(--s-2); }
+.configuration-compact .configuration-proctored-panels .create-assessment-sequence-shift-wrap { align-self: end; min-height: 0; height: calc(var(--s-6) + var(--s-1)); padding: 0; }
+.configuration-compact .configuration-proctored-panels .create-assessment-duration-split-footer { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: stretch; gap: var(--s-2); overflow: visible; }
+.configuration-compact .configuration-proctored-panels .create-assessment-duration-split-footer > :is(p, button) { box-sizing: border-box; min-height: calc(var(--s-6) + var(--s-1)); margin: 0; display: flex; align-items: center; }
+.configuration-compact .configuration-proctored-panels .create-assessment-duration-note { white-space: normal; }
+.configuration-compact .configuration-proctored-panels .create-assessment-duration-note svg { flex-shrink: 0; }
+@container (max-width: 900px) {
+ .configuration-proctored-panels:has(> .create-assessment-duration-split-panel) { grid-template-columns: minmax(0, 1fr); }
+}
+@container (max-width: 420px) {
+ .configuration-compact .configuration-proctored-panels .create-assessment-proctored-split-row { grid-template-columns: minmax(0, 1fr); }
+ .configuration-compact .configuration-proctored-panels .create-assessment-duration-split-footer { display: flex; }
+ .configuration-compact .configuration-proctored-panels .create-assessment-duration-note { white-space: normal; }
+}
+@container (max-width: 620px) {
+ .configuration-compact .assessment-schedule-panel .configuration-mode-fields { grid-template-columns: minmax(0, 1fr); }
+ .configuration-compact .assessment-schedule-panel .create-assessment-schedule-grid:is(.is-offline, .is-proctored-shared) { grid-template-columns: minmax(0, 1fr); }
+}
+
+
+.assessment-schedule-panel > header { padding: var(--s-2) var(--s-3); background: var(--surface-soft); border-radius: var(--r-sm); }
+.assessment-schedule-panel h3 { font-size: var(--fs-sm, 14px); font-weight: 600; }
+.configuration-exam-schedule { gap: var(--s-2); padding: var(--s-2) var(--s-3); }
+.configuration-exam-schedule-title { display: flex; align-items: center; gap: var(--s-2); min-height: var(--s-5); color: var(--text-strong); }
+.configuration-compact .assessment-schedule-panel .is-proctored-shared:has(> .create-assessment-duration-split-prompt) { grid-template-columns: repeat(3, minmax(0, 1fr)) max-content; }
+.configuration-compact .is-proctored-shared > .create-assessment-duration-split-prompt { display: inline-flex; align-items: center; align-self: end; justify-self: start; gap: var(--s-2); margin: 0; padding: var(--s-1) var(--s-1) var(--s-1) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); font-family: var(--f-body); font-size: var(--fs-xs, 12px); font-weight: 600; line-height: 1.4; max-width: 100%; }
+.configuration-compact .is-proctored-shared > .create-assessment-duration-split-prompt button { min-height: var(--s-5); padding: var(--s-1) var(--s-3); font-size: var(--fs-xs, 12px); white-space: nowrap; flex-shrink: 0; }
+.configuration-compact .is-proctored-shared > .create-assessment-duration-split-prompt button:not(:disabled) { background: var(--forest); border-color: var(--forest); color: var(--on-brand); }
+.configuration-compact .is-proctored-shared > .create-assessment-duration-split-prompt button:not(:disabled):hover { background: var(--forest-900); border-color: var(--forest-900); }
+.configuration-compact .is-proctored-shared > .create-assessment-duration-split-prompt button:disabled { background: var(--surface-mist); color: var(--text-muted); cursor: not-allowed; box-shadow: none; transform: none; }
+@container (max-width: 800px) {
+ .configuration-compact .assessment-schedule-panel .is-proctored-shared:has(> .create-assessment-duration-split-prompt) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ .configuration-compact .is-proctored-shared > .create-assessment-duration-split-prompt { grid-column: 1 / -1; }
+}
+@container (max-width: 420px) {
+ .configuration-compact .assessment-schedule-panel .is-proctored-shared:has(> .create-assessment-duration-split-prompt) { grid-template-columns: minmax(0, 1fr); }
+}
+.configuration-compact .assessment-schedule-panel .configuration-mode-fields { grid-template-columns: max-content max-content; gap: var(--s-3) var(--s-5); padding: var(--s-1) 0; }
+.configuration-compact .assessment-schedule-panel .create-assessment-timing-panel { gap: var(--s-2); }
+@container (max-width: 720px) {
+ .configuration-compact .assessment-schedule-panel .configuration-mode-fields { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
+}

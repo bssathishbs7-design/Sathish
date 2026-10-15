@@ -1,0 +1,38 @@
+.save-changes-dialog.assessment-publication-dialog { width: min(720px, calc(100vw - var(--s-5))); max-height: calc(100dvh - var(--s-5)); padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); overflow: auto; animation: publication-appear var(--dur-overlay) var(--ease-standard); }
+.assessment-publication-dialog::backdrop { background: color-mix(in srgb, var(--forest-900) 40%, transparent); }
+.save-changes-dialog.assessment-publication-dialog.is-assignment { width: min(600px, calc(100vw - var(--s-5))); }
+.save-changes-dialog.assessment-publication-dialog h2 { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-1); padding-right: var(--s-6); color: var(--text-strong); font-family: var(--f-body); font-size: var(--fs-body, 16px); font-weight: 600; line-height: 1.4; }
+.assessment-publication-dialog h2 svg { box-sizing: content-box; padding: var(--s-2); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-brand); flex-shrink: 0; }
+.save-changes-dialog.assessment-publication-dialog > #save-changes-description { margin: 0 0 var(--s-4); padding: 0 0 var(--s-3); border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: var(--fs-xs, 12px); font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.publication-dialog-close { position: absolute; top: var(--s-4); right: var(--s-4); display: grid; place-items: center; width: var(--s-6); height: var(--s-6); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-body); cursor: pointer; }
+.save-changes-dialog.assessment-publication-dialog h2 { position: relative; min-height: var(--s-5); padding-left: calc(20px + var(--s-4) + var(--s-2)); }
+.assessment-publication-dialog h2 svg { position: absolute; left: 0; top: 0; }
+.save-changes-dialog.assessment-publication-dialog > #save-changes-description { padding-left: calc(20px + var(--s-4) + var(--s-2)); padding-right: var(--s-6); }
+.assessment-publication-dialog .publication-dialog-close { top: var(--s-5); right: var(--s-5); }
+.publication-select { position: relative; display: block; margin-top: var(--s-1); }
+.publication-dialog-fields .publication-select select { appearance: none; margin-top: 0; padding-right: calc(var(--s-6) + var(--s-2)); cursor: pointer; text-overflow: ellipsis; transition: border-color var(--dur-hover) var(--ease-standard); }
+.publication-select > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); color: var(--text-brand); pointer-events: none; }
+.publication-select select:hover:not(:disabled) { border-color: var(--forest); }
+.publication-select select:disabled { cursor: wait; opacity: .6; }
+.publication-dialog-fields { border: 0; padding: 0 0 var(--s-4); margin: 0; display: grid; gap: var(--s-3); min-width: 0; }
+.publication-dialog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+.publication-dialog-grid.is-reviewer { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, 1.2fr); }
+.publication-dialog-fields label { display: block; min-width: 0; font-family: var(--f-body); font-size: var(--fs-xs, 12px); font-weight: 600; line-height: 1.5; }
+.publication-dialog-fields :is(input, select, textarea) { display: block; box-sizing: border-box; width: 100%; min-width: 0; min-height: calc(var(--s-6) + var(--s-2)); margin-top: var(--s-1); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); font-family: var(--f-body); font-size: var(--fs-sm, 14px); font-weight: 400; line-height: 1.4; }
+.publication-dialog-fields :is(input, select) { height: calc(var(--s-6) + var(--s-2)); }
+.publication-dialog-fields input[readonly] { background: var(--surface-soft); }
+.publication-dialog-fields textarea { resize: vertical; }
+.publication-dialog-fields :is(em, small) { color: var(--danger-ink); font-style: normal; }
+.publication-dialog-fields small { display: block; }
+.publication-dialog-fields [aria-invalid=true] { border-color: var(--danger-ink); }
+.assessment-publication-dialog .save-changes-actions { display: flex; justify-content: flex-end; gap: var(--s-2); margin: 0; padding-top: var(--s-3); border-top: 1px solid var(--border); }
+.assessment-publication-dialog .save-changes-actions button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-width: var(--s-9); min-height: calc(var(--s-6) + var(--s-1)); padding: var(--s-2) var(--s-3); border-radius: var(--r-pill); font-size: var(--fs-xs, 12px); font-weight: 600; }
+.assessment-publication-dialog :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.assessment-publication-dialog button:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--forest); }
+.assessment-publication-dialog button:active:not(:disabled) { transform: translateY(1px) scale(.97); }
+.assessment-publication-dialog button:disabled { cursor: wait; opacity: .6; }
+.publication-spinner { animation: publication-spin var(--dur-reveal) linear infinite; }
+@keyframes publication-spin { to { transform: rotate(360deg); } }
+@keyframes publication-appear { from { opacity: 0; transform: translateY(var(--s-2)) scale(.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 600px) { .publication-dialog-grid, .publication-dialog-grid.is-reviewer { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .save-changes-dialog.assessment-publication-dialog, .publication-spinner { animation: none; } }

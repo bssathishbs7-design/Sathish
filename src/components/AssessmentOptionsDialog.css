@@ -1,0 +1,57 @@
+.save-changes-dialog.assessment-options-dialog { width: min(calc(100% - var(--s-6)), 720px); padding: var(--s-4); border-radius: var(--r); max-height: calc(100dvh - var(--s-6)); }
+.save-changes-dialog.assessment-options-dialog.is-thresholds { width: min(calc(100% - var(--s-6)), 880px); }
+.assessment-options-dialog[open] { animation: assessment-options-open var(--dur-overlay) var(--ease-standard); }
+.assessment-options-dialog[open]::backdrop { animation: assessment-options-backdrop var(--dur-overlay) var(--ease-standard); }
+.assessment-options-dialog h2 { padding-right: var(--s-6); font-size: var(--fs-lg, 18px); color: var(--text-strong); }
+.assessment-options-dialog > p { color: var(--text-muted); font-size: var(--fs-xs, 12px); }
+.assessment-options-dialog .assessment-options-close { position: absolute; top: var(--s-3); right: var(--s-3); display: grid; place-items: center; width: var(--s-6); height: var(--s-6); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-body); cursor: pointer; }
+.assessment-options-content { container-type: inline-size; margin-bottom: var(--s-2); }
+.assessment-options-content .create-assessment-threshold-section-body { padding: 0; }
+.assessment-options-content .create-assessment-instructions-inline-body { padding: 0; border: 0; animation: none; }
+.assessment-options-content .create-assessment-instructions-toolbar { flex-wrap: wrap; }
+.assessment-options-content .create-assessment-instructions-surface { min-height: calc(var(--s-9) * 2); max-height: 45dvh; overflow: auto; background: var(--surface-card); color: var(--text-body); }
+.assessment-options-content .create-assessment-threshold-card-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--s-3); }
+.assessment-options-dialog .save-changes-actions { position: sticky; bottom: calc(-1 * var(--s-4)); padding: var(--s-2) 0 0; background: var(--surface-card); border-top: 1px solid var(--border); }
+.assessment-options-dialog .save-changes-actions button { min-height: var(--s-6); font-size: var(--fs-xs, 12px); }
+.assessment-options-close:hover { border-color: var(--forest); }
+.assessment-options-close:active { transform: translateY(1px) scale(.97); }
+.assessment-options-close:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.save-changes-dialog.assessment-options-dialog h2 { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-body, 16px); line-height: 1.4; margin: 0 0 var(--s-1); font-weight: 600; }
+.assessment-options-dialog h2 > svg { box-sizing: content-box; padding: var(--s-2); background: var(--surface-soft); border-radius: var(--r-sm); color: var(--text-brand); flex-shrink: 0; }
+.save-changes-dialog.assessment-options-dialog > p { margin: 0 0 var(--s-3); line-height: 1.4; }
+.assessment-options-dialog .save-changes-actions button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); padding: var(--s-1) var(--s-3); font-weight: 500; }
+.assessment-options-dialog .save-changes-actions .assessment-options-clear { margin-right: auto; background: var(--surface-card); border-color: transparent; color: var(--danger-ink); }
+.assessment-options-dialog .save-changes-actions .assessment-options-clear:hover { background: var(--danger-soft); border-color: var(--danger-line); }
+.assessment-options-content .create-assessment-instructions-inline-body .create-assessment-instructions-editor { grid-template-rows: auto minmax(0, auto); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); }
+.assessment-options-content .create-assessment-instructions-toolbar { gap: var(--s-1); padding: var(--s-2); background: var(--surface-soft); border-color: var(--border); }
+.assessment-options-content .create-assessment-instructions-toolbar :is(button, select) { height: var(--s-6); min-height: var(--s-6); font-size: var(--fs-xs, 12px); font-weight: 500; border-radius: var(--r-sm); border-color: var(--border); background: var(--surface-card); color: var(--text-body); }
+.assessment-options-content .create-assessment-instructions-toolbar button { width: var(--s-6); flex: 0 0 var(--s-6); }
+.assessment-options-content .create-assessment-instructions-toolbar select { min-width: 0; padding: 0 var(--s-2); width: calc(var(--s-9) + var(--s-4)); }
+.assessment-options-content .create-assessment-instructions-toolbar select[aria-label='Font size'] { width: var(--s-8); }
+.assessment-options-content .create-assessment-instructions-surface { min-height: calc(var(--s-9) + var(--s-8)); padding: var(--s-3); font-size: var(--fs-sm, 14px); line-height: 1.5; }
+.assessment-options-content .create-assessment-instructions-surface :is(p, h3, h4, ul, ol) { margin-block: 0 var(--s-2); }
+.assessment-options-content .create-assessment-instructions-surface :is(p, li, ul, ol) { font-size: inherit; line-height: inherit; }
+.assessment-options-content .create-assessment-instructions-surface:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; box-shadow: inset 0 0 0 5px var(--focus-ring); }
+.assessment-options-content .create-assessment-instructions-surface :is(h3, h4) { font-size: var(--fs-sm, 14px); color: var(--text-strong); }
+.assessment-options-content .create-assessment-instructions-surface :is(ul, ol) { padding-left: var(--s-5); }
+.assessment-options-content .create-assessment-threshold-block { padding: var(--s-3); gap: var(--s-2); border-color: var(--border); background: var(--surface-card); }
+.assessment-options-content .create-assessment-threshold-block > .create-assessment-schedule-head { min-height: var(--s-6); padding-bottom: var(--s-2); border-bottom: 1px solid var(--border); gap: var(--s-2); }
+.assessment-options-content .create-assessment-threshold-block > .create-assessment-schedule-head > strong { display: flex; align-items: center; gap: var(--s-1); padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text-strong); font-size: var(--fs-xs, 12px); font-weight: 600; }
+.assessment-options-content .create-assessment-threshold-block > .create-assessment-schedule-head > strong svg { color: var(--text-brand); }
+.assessment-options-content .create-assessment-default-btn { min-height: var(--s-6); padding: var(--s-1) var(--s-2); font-size: var(--fs-xs, 12px); font-weight: 500; border-radius: var(--r-pill); color: var(--text-brand); background: var(--surface-soft); border-color: var(--border); }
+.assessment-options-content .configuration-attainment-labels { padding: var(--s-2); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-strong); font-weight: 600; }
+.assessment-options-content .configuration-attainment-labels, .assessment-options-content .create-assessment-attainment-row { grid-template-columns: minmax(44px, .65fr) repeat(2, minmax(0, 1fr)) var(--s-6) var(--s-6); gap: var(--s-1); }
+.assessment-options-content .create-assessment-attainment-list { gap: var(--s-1); }
+.assessment-options-content .create-assessment-attainment-row input, .assessment-options-content .create-assessment-threshold-fields input { height: calc(var(--s-6) + var(--s-1)); min-height: calc(var(--s-6) + var(--s-1)); padding-inline: var(--s-2); font-size: var(--fs-xs, 12px); font-family: var(--f-code, monospace); font-variant-numeric: tabular-nums; font-weight: 500; color: var(--text-body); background: var(--surface-card); border-color: var(--border); }
+.assessment-options-content .create-assessment-attainment-row input:first-child { background: var(--surface-soft); color: var(--text-strong); font-weight: 600; }
+.assessment-options-content .create-assessment-attainment-row:nth-child(4n + 2) input:first-child { background: color-mix(in srgb, var(--sky) 25%, var(--surface-card)); }
+.assessment-options-content .create-assessment-attainment-row:nth-child(4n + 3) input:first-child { background: color-mix(in srgb, var(--lilac) 25%, var(--surface-card)); }
+.assessment-options-content .create-assessment-attainment-row:nth-child(4n) input:first-child { background: color-mix(in srgb, var(--butter) 25%, var(--surface-card)); }
+.assessment-options-content .create-assessment-threshold-fields { gap: var(--s-2); }
+.assessment-options-content .create-assessment-threshold-mode-toggle { background: var(--surface-soft); border-color: var(--border); }
+.assessment-options-content .create-assessment-threshold-mode-toggle button { min-height: var(--s-6); font-size: var(--fs-xs, 12px); font-weight: 600; color: var(--text-body); }
+.assessment-options-content .create-assessment-threshold-mode-toggle button.is-active { background: var(--forest); color: var(--on-brand); box-shadow: none; }
+@keyframes assessment-options-open { from { opacity: 0; transform: translateY(var(--s-2)) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes assessment-options-backdrop { from { opacity: 0; } to { opacity: 1; } }
+@container (max-width: 650px) { .assessment-options-content .create-assessment-threshold-card-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .assessment-options-dialog[open], .assessment-options-dialog[open]::backdrop { animation: none; } }

@@ -1,3 +1,8 @@
+import AssessmentPublicationDialog from '../components/AssessmentPublicationDialog'
+import AssessmentOptionsDialog from '../components/AssessmentOptionsDialog'
+import AssessmentSchedulePanel from '../components/AssessmentSchedulePanel'
+import AssessmentAutomationSettings from '../components/AssessmentAutomationSettings'
+import { updateAssessmentAutomation } from '../services/assessmentAutomation'
 import { fillAroundManualCells } from '../utils/blueprintLockedAllocation'
 import { withFirstYearCorrelationDefaults } from '../services/firstYearCorrelationDefaults'
 import BlueprintCognitionCountInput from '../components/BlueprintCognitionCountInput'
@@ -44,7 +49,6 @@ import {
   ArrowRight,
   Bold,
   CalendarDays,
-  CalendarClock,
   ChevronDown,
   ChevronUp,
   CheckCircle2,
@@ -80,6 +84,10 @@ import {
   Trash2,
   Underline,
   UsersRound,
+  Wifi,
+  WifiOff,
+  BookOpen,
+  ShieldCheck,
   X,
 } from 'lucide-react'
 import RichMathEditor from '../components/RichMathEditor'
@@ -114,6 +122,7 @@ import {
 } from './corelationRatingData'
 import '../styles/question-bank.css'
 import '../styles/assessment-pages.css'
+import './AssessmentConfiguration.css'
 import './CreateAssessmentPage.css'
 
 const CREATE_ASSESSMENT_SETUP_KEY = 'vx-create-assessment-setup'
@@ -153,6 +162,10 @@ const DEFAULT_BLOOMS_THRESHOLDS = {
   understandThreshold: '60',
   analyzeThreshold: '45',
   evaluateThreshold: '80',
+}
+const CONFIGURATION_OPTION_FIELDS = {
+  instructions: ['provideStudentInstructions', 'studentInstructions'],
+  thresholds: ['attainmentLevels', 'thinkingThresholdMode', 'lotThreshold', 'hotThreshold', ...Object.keys(DEFAULT_BLOOMS_THRESHOLDS)],
 }
 const DEFAULT_STUDENT_INSTRUCTIONS = [
   '<h3>[Header] Mid-Term Market Analysis Quiz</h3>',
@@ -195,8 +208,11 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   descriptiveStartTime: '',
   descriptiveStartPeriod: 'AM',
   mcqDisplayType: 'Answer Input',
-  descriptiveDisplayType: 'Read-Only',
-  mcqAutoPublish: 'Off',
+  descriptiveDisplayType: 'Answer Input',
+  mcqAutoPublish: 'On',
+  mcqAutoEvaluation: 'Yes',
+  descriptiveAutoEvaluation: 'Yes',
+  descriptiveAutoPublish: 'On',
   descriptiveEvaluationRequired: 'Yes',
   proctoredTotalDuration: '',
   splitProctoredDuration: false,
@@ -1034,15 +1050,6 @@ const CONFIGURATION_VALIDATION_STEPS = [
   },
 ]
 
-const CONFIGURATION_FIELD_STEP_INDEX = CONFIGURATION_VALIDATION_STEPS.reduce((fieldMap, step, stepIndex) => {
-  step.fields.forEach((field) => {
-    fieldMap[field] = stepIndex
-  })
-  return fieldMap
-}, {})
-
-const getConfigurationStepIndexForField = (field) => CONFIGURATION_FIELD_STEP_INDEX[field] ?? 0
-
 const filterConfigurationErrorsByStep = (errors = {}, stepIndex = CONFIGURATION_VALIDATION_STEPS.length - 1) => {
   const visibleFields = new Set(
     CONFIGURATION_VALIDATION_STEPS
@@ -1623,24 +1630,18 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [savedTemplates, setSavedTemplates] = useState(readCreateAssessmentTemplates)
   const [isExamCategoryTooltipOpen, setIsExamCategoryTooltipOpen] = useState(false)
   const [examCategoryDraft, setExamCategoryDraft] = useState('')
-  const [isStudentInstructionsOpen, setIsStudentInstructionsOpen] = useState(false)
-  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
+  const [configurationPopup, setConfigurationPopup] = useState(null)
+  const isStudentInstructionsOpen = configurationPopup?.type === 'instructions'
+  const [publicationAction, setPublicationAction] = useState(null)
+  const [isClearSetupDialogOpen, setIsClearSetupDialogOpen] = useState(false)
   const [publishedAssessmentNotice, setPublishedAssessmentNotice] = useState(null)
-  const [approvalDraft, setApprovalDraft] = useState({
-    facultyName: 'Dr. Meera Nair',
-    employeeId: 'EMP1021',
-    designation: 'Professor',
-    note: '',
-  })
   const studentInstructionsEditorRef = useRef(null)
   const [isConfigurationSummaryVisible, setIsConfigurationSummaryVisible] = useState(true)
-  const [isThresholdSectionOpen, setIsThresholdSectionOpen] = useState(false)
-  const [isAssignSectionOpen, setIsAssignSectionOpen] = useState(true)
-  const [isResultPublishSectionOpen, setIsResultPublishSectionOpen] = useState(false)
   const [isConfigurationChecklistOpen, setIsConfigurationChecklistOpen] = useState(false)
   const [isSequenceConfirmOpen, setIsSequenceConfirmOpen] = useState(false)
   const [configurationValidationStep, setConfigurationValidationStep] = useState(-1)
   const [setupErrors, setSetupErrors] = useState({})
+  const [touchedSetupFields, setTouchedSetupFields] = useState([])
   const [question, setQuestion] = useState(setup.draftWorkspace?.question ?? null)
   const assessmentQuestionsStorageKey = getAssessmentQuestionsStorageKey(setup)
   const assessmentSectionTitlesStorageKey = getAssessmentSectionTitlesStorageKey(setup)
@@ -3557,33 +3558,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }, [descriptiveCompetencyDraft])
 
   const revealConfigurationValidationForField = (field) => {
-    setConfigurationValidationStep((current) => Math.max(current, getConfigurationStepIndexForField(field)))
+    setTouchedSetupFields((current) => current.includes(field) ? current : [...current, field])
   }
 
   const updateSetupDraft = (field, value, validationField = field) => {
     revealConfigurationValidationForField(validationField)
-    setSetupDraft((current) => ({ ...current, [field]: value }))
+    setSetupDraft((current) => updateAssessmentAutomation(current, field, value, configurationQuestionSummary))
     setSetupErrors((current) => {
       if (!current[field]) return current
       const { [field]: _removed, ...rest } = current
       return rest
     })
-  }
-
-  const getResultPublishDefaults = (supervisionType) => (
-    supervisionType === 'Practice Exam'
-      ? { mcqAutoPublish: 'On', descriptiveEvaluationRequired: 'No' }
-      : { mcqAutoPublish: 'Off', descriptiveEvaluationRequired: 'Yes' }
-  )
-
-  const normalizeResultPublishSettings = (draft) => {
-    const nextDraft = { ...draft }
-    if (nextDraft.descriptiveDisplayType === 'Answer Input') nextDraft.descriptiveEvaluationRequired = 'Yes'
-    if (isProctoredSupervisionType(nextDraft.supervisionType)) {
-      nextDraft.mcqAutoPublish = 'Off'
-      nextDraft.descriptiveEvaluationRequired = 'Yes'
-    }
-    return nextDraft
   }
 
   const applyPracticeExamTimingDefaults = (draft) => {
@@ -3601,11 +3586,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const updateSupervisionType = (value) => {
     revealConfigurationValidationForField('supervisionType')
-    setSetupDraft((current) => applyPracticeExamTimingDefaults(normalizeResultPublishSettings({
+    setSetupDraft((current) => applyPracticeExamTimingDefaults({
         ...current,
         supervisionType: value,
-        ...getResultPublishDefaults(value),
-      })))
+
+      }))
     setSetupErrors((current) => {
       const {
         examDate: _examDate,
@@ -3629,10 +3614,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const updateDisplayType = (field, value) => {
     revealConfigurationValidationForField(field)
-    setSetupDraft((current) => normalizeResultPublishSettings({
-      ...current,
-      [field]: value,
-    }))
+    setSetupDraft((current) => updateAssessmentAutomation(current, field, value, configurationQuestionSummary))
     setSetupErrors((current) => {
       const next = { ...current }
       delete next[field]
@@ -3781,12 +3763,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const mode = draft.examDeliveryMode || 'Online'
 
     if (!draft.collegeName) errors.collegeName = 'Select college name.'
-    if (!String(draft.assessmentName || '').trim()) errors.assessmentName = 'Enter assessment name.'
-    if (!draft.examCategory) errors.examCategory = 'Select exam category.'
+    if (!String(draft.assessmentName || '').trim()) errors.assessmentName = 'Required'
+    if (!draft.examCategory) errors.examCategory = 'Required'
     if (!draft.academicYear) errors.academicYear = 'Select academic year.'
-    if (!draft.assignYear) errors.assignYear = 'Select year.'
+    // Assignment is validated in the Direct Publish dialog.
     if (!draft.examDeliveryMode) errors.examDeliveryMode = 'Select exam mode.'
-    if (!draft.supervisionType) errors.supervisionType = 'Select supervision type.'
+    if (mode === 'Online' && !draft.supervisionType) errors.supervisionType = 'Select supervision type.'
     if (!draft.approvalFlow) errors.approvalFlow = 'Select send option.'
     const currentAssessmentQuestions = getCurrentAssessmentQuestions()
     const hasMcqQuestions = currentAssessmentQuestions.some((item) => item.type === 'MCQ')
@@ -3801,15 +3783,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         const practiceEndPeriod = draft.practiceEndPeriod || 'PM'
 
         if (practiceStartDate < todayValue) {
-          errors.practiceStartDate = 'Previous dates are not allowed.'
+          errors.practiceStartDate = 'Use today or later'
         }
         if (!START_TIME_PATTERN.test(practiceStartTime || '')) {
-          errors.practiceStartTime = 'Enter start time in HH:MM format.'
+          errors.practiceStartTime = 'Set time'
         }
         if (!draft.practiceEndDate) {
           errors.practiceEndDate = 'Select end date.'
         } else if (draft.practiceEndDate < todayValue) {
-          errors.practiceEndDate = 'Previous dates are not allowed.'
+          errors.practiceEndDate = 'Use today or later'
         }
         if (draft.practiceEndDate && !START_TIME_PATTERN.test(practiceEndTime || '')) {
           errors.practiceEndTime = 'Enter end time in HH:MM format.'
@@ -3817,23 +3799,23 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         const practiceStart = getScheduledStartDate(practiceStartDate, practiceStartTime, practiceStartPeriod)
         const practiceEnd = getScheduledStartDate(draft.practiceEndDate, practiceEndTime, practiceEndPeriod)
         if (practiceStart && practiceEnd && practiceEnd <= practiceStart) {
-          errors.practiceEndTime = 'End time must be after start time.'
+          errors.practiceEndTime = 'Must follow start time'
         }
         if (hasMcqQuestions && !draft.mcqDisplayType) errors.mcqDisplayType = 'Select MCQ display type.'
         if (hasDescriptiveQuestions && !['Answer Input', 'Read-Only'].includes(draft.descriptiveDisplayType)) errors.descriptiveDisplayType = 'Select a descriptive answer mode.'
       } else {
         if (!draft.examDate) {
-          errors.examDate = 'Select exam date.'
+          errors.examDate = 'Required'
         } else if (draft.examDate < todayValue) {
-          errors.examDate = 'Previous dates are not allowed.'
+          errors.examDate = 'Use today or later'
         }
         if (!START_TIME_PATTERN.test(draft.startTime || '')) {
-          errors.startTime = 'Enter start time in HH:MM format.'
+          errors.startTime = 'Set time'
         } else if (isScheduledStartTooSoon(draft.examDate, draft.startTime, draft.startPeriod)) {
-          errors.startTime = 'Start time must be at least 5 minutes from current time.'
+          errors.startTime = 'Allow at least 5 min'
         }
         if (!TIME_LIMIT_PATTERN.test(draft.proctoredTotalDuration || '') || getTimeValueMinutes(draft.proctoredTotalDuration) <= 0) {
-          errors.proctoredTotalDuration = 'Enter total duration as HH:MM.'
+          errors.proctoredTotalDuration = 'Set duration'
         }
         if (hasMcqQuestions) {
           if (String(draft.mcqTimeLimit || '').trim() && !TIME_LIMIT_PATTERN.test(draft.mcqTimeLimit || '')) errors.mcqTimeLimit = 'Enter MCQ time limit as HH:MM.'
@@ -3857,14 +3839,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       }
     } else {
       if (!draft.examDate) {
-        errors.examDate = 'Select exam date.'
+        errors.examDate = 'Required'
       } else if (draft.examDate < todayValue) {
-        errors.examDate = 'Previous dates are not allowed.'
+        errors.examDate = 'Use today or later'
       }
       if (!START_TIME_PATTERN.test(draft.startTime || '')) {
-        errors.startTime = 'Enter start time in HH:MM format.'
+        errors.startTime = 'Set time'
       } else if (isScheduledStartTooSoon(draft.examDate, draft.startTime, draft.startPeriod)) {
-        errors.startTime = 'Start time must be at least 5 minutes from current time.'
+        errors.startTime = 'Allow at least 5 min'
       }
       if (!TIME_LIMIT_PATTERN.test(draft.offlineDuration || '')) {
         errors.offlineDuration = 'Enter duration as HH:MM.'
@@ -3909,9 +3891,40 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   useEffect(() => {
-    if (activeCreateTab !== 'configuration' || configurationValidationStep < 0) return
-    setSetupErrors(filterConfigurationErrorsByStep(validateSetupDraft(setupDraft), configurationValidationStep))
-  }, [activeCreateTab, configurationValidationStep, savedQuestions, setupDraft])
+    if (activeCreateTab !== 'configuration') return
+    const errors = validateSetupDraft(setupDraft)
+    setSetupErrors(configurationValidationStep < 0
+      ? Object.fromEntries(Object.entries(errors).filter(([field]) => touchedSetupFields.includes(field)))
+      : filterConfigurationErrorsByStep(errors, configurationValidationStep))
+  }, [activeCreateTab, configurationValidationStep, savedQuestions, setupDraft, touchedSetupFields])
+
+  const openConfigurationOptions = (type) => {
+    const snapshot = structuredClone(Object.fromEntries(CONFIGURATION_OPTION_FIELDS[type].map(field => [field, setupDraft[field]])))
+    setConfigurationPopup({ type, snapshot })
+  }
+  const cancelConfigurationOptions = () => {
+    if (!configurationPopup) return
+    const fields = CONFIGURATION_OPTION_FIELDS[configurationPopup.type]
+    setSetupDraft(current => ({ ...current, ...configurationPopup.snapshot }))
+    setSetupErrors(current => Object.fromEntries(Object.entries(current).filter(([field]) => !fields.includes(field))))
+    setTouchedSetupFields(current => current.filter(field => !fields.includes(field)))
+    setConfigurationPopup(null)
+  }
+  const saveConfigurationOptions = () => {
+    const fields = CONFIGURATION_OPTION_FIELDS[configurationPopup.type]
+    const errors = Object.fromEntries(Object.entries(validateSetupDraft()).filter(([field]) => fields.includes(field)))
+    setTouchedSetupFields(current => [...new Set([...current, ...fields])])
+    setSetupErrors(current => ({ ...current, ...errors }))
+    if (Object.keys(errors).length) {
+      requestAnimationFrame(() => document.querySelector('.assessment-options-dialog .has-error input')?.focus())
+      return
+    }
+    if (configurationPopup.type === 'instructions') {
+      const instructions = sanitizeRichHtml(studentInstructionsEditorRef.current?.innerHTML ?? setupDraft.studentInstructions ?? '')
+      setSetupDraft(current => ({ ...current, studentInstructions: instructions, provideStudentInstructions: stripHtml(instructions).trim() ? 'Yes' : 'No' }))
+    }
+    setConfigurationPopup(null)
+  }
 
   const clearExamCategoryDraft = () => {
     setExamCategoryDraft('')
@@ -3939,6 +3952,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const clearSetupDraft = () => {
+    setTouchedSetupFields([])
     setSetupDraft({
       ...CREATE_ASSESSMENT_DEFAULT_SETUP,
       assessmentId: setup.assessmentId,
@@ -3970,11 +3984,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }))
   }
 
-  const persistSetupDraft = (nextStatus = 'Configuration saved') => {
+  const persistSetupDraft = (nextStatus = 'Configuration saved', draft = setupDraft) => {
     const nextSetup = {
-      ...setupDraft,
-      assessmentId: setupDraft.assessmentId || setup.assessmentId || `assessment-${Date.now()}`,
-      createdAt: setupDraft.createdAt || setup.createdAt || new Date().toISOString(),
+      ...draft,
+      assessmentId: draft.assessmentId || setup.assessmentId || `assessment-${Date.now()}`,
+      createdAt: draft.createdAt || setup.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
     if (!writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, nextSetup)) {
@@ -4033,6 +4047,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setSetupDraft(nextSetup)
     writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, nextSetup)
 
+    setTouchedSetupFields([])
     setSetupErrors({})
     setConfigurationValidationStep(-1)
     setIsConfigurationSummaryVisible(true)
@@ -4159,13 +4174,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }, 2000)
   }
 
-  const publishAssessmentDirectly = () => {
+  const publishAssessmentDirectly = (draft) => {
     if (pickerEnabled && !getBlueprintPickerProgress(pickerRows, savedQuestionsRef.current).complete) {
       setSaveStatus('Complete all blueprint requirements before continuing.')
       setActiveCreateTab('questionBank')
       return
     }
-    const nextSetup = persistSetupDraft('')
+    const nextSetup = persistSetupDraft('', draft)
     const record = getPublishedAssessmentRecord(nextSetup, getCurrentAssessmentQuestions())
     const publishStorageResult = upsertPublishedAssessment(record)
     if (!publishStorageResult) {
@@ -4177,42 +4192,46 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ...record,
       noticeType: isPublishedEditMode ? 'update' : 'publish',
     })
+    return true
   }
 
-  const openApprovalModal = () => {
+  const openApprovalModal = (action = setupDraft.approvalFlow) => {
+    const selectedAction = typeof action === 'string' ? action : setupDraft.approvalFlow
     if (pickerEnabled && !getBlueprintPickerProgress(pickerRows, savedQuestionsRef.current).complete) {
       setSaveStatus('Complete all blueprint requirements before continuing.')
       setActiveCreateTab('questionBank')
       return
     }
-    const errors = validateSetupDraft()
+    const errors = validateSetupDraft({ ...setupDraft, approvalFlow: selectedAction })
     const currentQuestions = getCurrentAssessmentQuestions()
     setConfigurationValidationStep(CONFIGURATION_VALIDATION_STEPS.length - 1)
     setSetupErrors(errors)
     if (Object.keys(errors).length) {
+      setActiveCreateTab('configuration')
+      if (CONFIGURATION_OPTION_FIELDS.thresholds.some(field => errors[field])) openConfigurationOptions('thresholds')
+      requestAnimationFrame(() => {
+        const field = document.querySelector('.configuration-compact .has-error')
+        field?.scrollIntoView({ block: 'center' })
+        field?.querySelector('input, select, button')?.focus({ preventScroll: true })
+      })
       setSaveStatus(getConfigurationErrorMessage(errors))
       return
     }
     if (!currentQuestions.length || !previewSections.length) {
-      setSaveStatus('Add questions in Preview before sending to approval.')
+      setSaveStatus('Add questions in Preview before continuing.')
       return
     }
 
-    if (setupDraft.approvalFlow === 'Direct Publish') {
-      publishAssessmentDirectly()
-      return
-    }
-
-    setIsApprovalModalOpen(true)
+    setPublicationAction(selectedAction)
   }
 
-  const sendAssessmentToApproval = () => {
+  const sendAssessmentToApproval = async (draft, reviewer) => {
     if (pickerEnabled && !getBlueprintPickerProgress(pickerRows, savedQuestionsRef.current).complete) {
       setSaveStatus('Complete all blueprint requirements before continuing.')
       setActiveCreateTab('questionBank')
       return
     }
-    const nextSetup = persistSetupDraft('Sent to approval')
+    const nextSetup = persistSetupDraft('', draft)
     const currentQuestions = getCurrentAssessmentQuestions()
     const approvalQuestionRows = createStorageLightAssessmentQuestions(currentQuestions)
     const approvalPreviewSections = createStorageLightPreviewSections(previewSections)
@@ -4221,7 +4240,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       || String(nextSetup.assignYear || '').trim()
       || 'Not assigned'
 
-    onSendToApproval?.({
+    await onSendToApproval?.({
       activityId: `assessment-${nextSetup.assessmentId || Date.now()}`,
       activityName: assessmentName,
       activityType: 'Assessment',
@@ -4244,9 +4263,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       questionRows: approvalQuestionRows,
       previewSections: approvalPreviewSections,
       setup: nextSetup,
-      approvalFaculty: approvalDraft,
+      approvalFaculty: reviewer,
     })
-    setIsApprovalModalOpen(false)
+    setSaveStatus('Sent to approval')
+    return true
   }
 
   const currentQuestionText = getRichTextPreview(question?.questionText ?? '')
@@ -4524,8 +4544,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setupDraft.understandThreshold,
   ])
   const primaryPublicationActionLabel = setupDraft.approvalFlow === 'Direct Publish'
-    ? isPublishedEditMode ? 'Update Assessment' : 'Publish Assessment'
-    : 'Send to Approval'
+    ? isPublishedEditMode ? 'Update assessment' : 'Publish assessment'
+    : 'Send to approval'
   const isPublicationHeaderComplete = Boolean(
     setupDraft.collegeName
     && String(setupDraft.assessmentName || '').trim()
@@ -4550,22 +4570,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       label: 'Threshold Settings',
       complete: isThresholdSettingsComplete,
       target: 'assessment-threshold-settings-section',
-      onBeforeScroll: () => setIsThresholdSectionOpen(true),
+      onBeforeScroll: () => openConfigurationOptions('thresholds'),
     },
     {
       id: 'assign',
-      label: 'Assign Information',
-      complete: Boolean(setupDraft.assignYear && setupDraft.approvalFlow),
+      label: 'Publication',
+      complete: isPublicationHeaderComplete && isSchedulingDetailsComplete && isThresholdSettingsComplete,
       target: 'assessment-assign-information-section',
-      onBeforeScroll: () => setIsAssignSectionOpen(true),
     },
   ]), [
     isPublicationHeaderComplete,
     isSchedulingDetailsComplete,
     isThresholdSettingsComplete,
-    setIsAssignSectionOpen,
-    setupDraft.approvalFlow,
-    setupDraft.assignYear,
+    setupDraft,
   ])
   const configurationChecklistCompletedCount = configurationChecklistItems.filter((item) => item.complete).length
   const incompleteChecklistIndex = configurationChecklistItems.findIndex((item) => !item.complete)
@@ -4582,7 +4599,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const renderScheduleDateField = (field, label, errorKey = field, options = {}) => (
     <label className={`create-assessment-schedule-field ${setupErrors[errorKey] ? 'has-error' : ''}`}>
-      <span>{label}{options.required === false ? null : <> <em>*</em></>}</span>
+      <span>{label}{options.required === false ? null : <> <em>*</em></>}{setupErrors[errorKey] && <small className="configuration-inline-error">{setupErrors[errorKey]}</small>}</span>
       <span className={`create-assessment-date-input ${setupDraft[field] ? 'has-value' : ''}`}>
         <input
           type="date"
@@ -4601,20 +4618,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         <em aria-hidden="true">{formatDateInputDisplay(setupDraft[field])}</em>
         <CalendarDays size={16} strokeWidth={2.2} aria-hidden="true" />
       </span>
-      {setupErrors[errorKey] ? <small>{setupErrors[errorKey]}</small> : null}
+      
     </label>
   )
 
   const renderScheduleStartTimeField = (field, periodField, label, errorKey = field, options = {}) => (
     <label className={`create-assessment-schedule-field ${setupErrors[errorKey] ? 'has-error' : ''}`}>
-      <span>{label}{options.required === false ? null : <> <em>*</em></>}</span>
+      <span>{label}{options.required === false ? null : <> <em>*</em></>}{setupErrors[errorKey] && <small className="configuration-inline-error">{setupErrors[errorKey]}</small>}</span>
       <StartTimeSelect
         value={setupDraft[field]}
         period={setupDraft[periodField]}
         onChange={(value) => updateSetupDraft(field, value)}
         onPeriodChange={(value) => updateSetupDraft(periodField, value, field)}
       />
-      {setupErrors[errorKey] ? <small>{setupErrors[errorKey]}</small> : null}
+      
     </label>
   )
 
@@ -4689,7 +4706,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     <label className={`create-assessment-schedule-field ${setupErrors[errorKey] ? 'has-error' : ''} ${options.disabled ? 'is-disabled' : ''}`.trim()}>
       <span>
         {options.htmlLabel ? <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(label) }} /> : label}
-        {options.required === false ? null : <> <em>*</em></>}
+        {options.required === false ? null : <> <em>*</em></>}{setupErrors[errorKey] && <small className="configuration-inline-error">{setupErrors[errorKey]}</small>}
       </span>
       <DurationTimeSelect
         value={setupDraft[field]}
@@ -4697,53 +4714,14 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         disabled={options.disabled}
         emptyLabel={options.emptyLabel}
       />
-      {setupErrors[errorKey] ? <small>{setupErrors[errorKey]}</small> : null}
+      
     </label>
   )
 
   const renderAnswerModePanel = () => {
     if (!configurationQuestionSummary.hasMcq && !configurationQuestionSummary.hasDescriptive) return null
 
-    const rows = [
-      configurationQuestionSummary.hasMcq
-        ? { type: 'MCQ', field: 'mcqDisplayType', badgeClass: '' }
-        : null,
-      configurationQuestionSummary.hasDescriptive
-        ? { type: 'Descriptive', field: 'descriptiveDisplayType', badgeClass: 'is-descriptive' }
-        : null,
-    ].filter(Boolean)
-
-    return (
-      <section className="create-assessment-answer-mode-panel" aria-label="Answer mode">
-        <div className="create-assessment-answer-mode-head">
-          <strong>Answer Mode <em>*</em></strong>
-          <small>Choose how students interact with each question type.</small>
-        </div>
-        <div className="create-assessment-answer-mode-list">
-          {rows.map((row) => {
-            const value = setupDraft[row.field] || ''
-            return (
-              <div className="create-assessment-answer-mode-row" key={row.type}>
-                <span className={`create-assessment-type-badge ${row.badgeClass}`.trim()}>{row.type}</span>
-                <span className="create-assessment-mode-toggle" role="group" aria-label={`${row.type} display type`}>
-                  {['Answer Input', 'Read-Only'].map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className={value === option ? 'is-active' : ''}
-                      onClick={() => updateDisplayType(row.field, option)}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </span>
-                {setupErrors[row.field] ? <small>{setupErrors[row.field]}</small> : null}
-              </div>
-            )
-          })}
-        </div>
-      </section>
-    )
+    return <AssessmentAutomationSettings setup={setupDraft} types={configurationQuestionSummary} errors={setupErrors} onChange={updateSetupDraft} onAnswerChange={updateDisplayType} />
   }
 
   const fullPreviewSectionConfig = useMemo(() => ([
@@ -4771,9 +4749,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       }
     }).filter((section) => section.questions.length || section.isCustom)
   }, [blueprintPreviewMarksByQuestionId, fullPreviewSectionConfig, previewQuestions, previewSectionOrder, previewSectionTitles])
-  const canSendAssessmentForApproval = useMemo(() => (
-    Object.keys(validateSetupDraft(setupDraft)).length === 0 && previewQuestionCount > 0 && previewSections.length > 0
-  ), [previewQuestionCount, previewSections.length, setupDraft])
+  const canSendAssessmentForApproval = previewQuestionCount > 0
+    && previewSections.length > 0
+    && (!pickerEnabled || pickerProgress.complete)
+    && Object.keys(validateSetupDraft({ ...setupDraft, approvalFlow: 'Direct Publish' })).length === 0
   const previewQuestionDisplayNumbers = useMemo(() => {
     let displayNumber = 1
     return previewSections.reduce((numbers, section) => {
@@ -6867,6 +6846,17 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         </div>
       </header>
 
+      {isClearSetupDialogOpen && <SaveChangesDialog
+        className="assessment-clear-dialog qb-sort-scope"
+        theme={theme}
+        title={<><RotateCcw size={20} aria-hidden="true" /><span>Clear Assessment Settings?</span></>}
+        description="Reset this form to its default settings? Your selected questions will be kept."
+        saveLabel="Yes"
+        cancelLabel="No"
+        onCancel={() => setIsClearSetupDialogOpen(false)}
+        onSave={() => { clearSetupDraft(); setIsClearSetupDialogOpen(false) }}
+      />}
+
       {isExitDialogOpen && <SaveChangesDialog
         className="assessment-exit-dialog"
         reference={headerSetup.assessmentCode || headerSetup.assessmentId}
@@ -6890,93 +6880,24 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         </div>
       ) : null}
 
-      {isApprovalModalOpen ? (
-        <div className="create-assessment-approval-backdrop" role="presentation">
-          <section className="create-assessment-approval-modal" role="dialog" aria-modal="true" aria-labelledby="create-assessment-approval-title">
-            <header className="create-assessment-approval-head">
-              <span>
-                <strong id="create-assessment-approval-title">Send to Approval</strong>
-                <em>{selectedAssessmentQuestionCount} selected question will be sent for review</em>
-              </span>
-              <button type="button" aria-label="Close send to approval" onClick={() => setIsApprovalModalOpen(false)}>
-                <X size={17} strokeWidth={2.2} />
-              </button>
-            </header>
-
-            <div className="create-assessment-approval-body">
-              <div className="create-assessment-approval-grid">
-                <label>
-                  <span>Faculty Name</span>
-                  <span className="create-assessment-approval-select">
-                    <UsersRound size={16} strokeWidth={2.2} />
-                    <select
-                      value={approvalDraft.facultyName}
-                      onChange={(event) => setApprovalDraft((current) => ({ ...current, facultyName: event.target.value }))}
-                    >
-                      <option value="Dr. Meera Nair">Dr. Meera Nair</option>
-                      <option value="Dr. Arjun Menon">Dr. Arjun Menon</option>
-                      <option value="Dr. Kavitha Rao">Dr. Kavitha Rao</option>
-                    </select>
-                    <ChevronDown size={15} strokeWidth={2.2} />
-                  </span>
-                </label>
-
-                <label>
-                  <span>Employee ID</span>
-                  <span className="create-assessment-approval-select">
-                    <Database size={16} strokeWidth={2.2} />
-                    <select
-                      value={approvalDraft.employeeId}
-                      onChange={(event) => setApprovalDraft((current) => ({ ...current, employeeId: event.target.value }))}
-                    >
-                      <option value="EMP1021">EMP1021</option>
-                      <option value="EMP1048">EMP1048</option>
-                      <option value="EMP1120">EMP1120</option>
-                    </select>
-                    <ChevronDown size={15} strokeWidth={2.2} />
-                  </span>
-                </label>
-
-                <label>
-                  <span>Designation</span>
-                  <span className="create-assessment-approval-select">
-                    <Settings size={16} strokeWidth={2.2} />
-                    <select
-                      value={approvalDraft.designation}
-                      onChange={(event) => setApprovalDraft((current) => ({ ...current, designation: event.target.value }))}
-                    >
-                      <option value="Professor">Professor</option>
-                      <option value="Associate Professor">Associate Professor</option>
-                      <option value="Assistant Professor">Assistant Professor</option>
-                    </select>
-                    <ChevronDown size={15} strokeWidth={2.2} />
-                  </span>
-                </label>
-              </div>
-
-              <label className="create-assessment-approval-note">
-                <span>Note</span>
-                <textarea
-                  value={approvalDraft.note}
-                  onChange={(event) => setApprovalDraft((current) => ({ ...current, note: event.target.value }))}
-                  placeholder="Add approval note"
-                  rows={5}
-                />
-              </label>
-            </div>
-
-            <footer className="create-assessment-approval-actions">
-              <button type="button" className="is-cancel" onClick={() => setIsApprovalModalOpen(false)}>
-                Cancel
-              </button>
-              <button type="button" className="is-send" onClick={sendAssessmentToApproval}>
-                <ArrowRight size={16} strokeWidth={2.2} />
-                Send
-              </button>
-            </footer>
-          </section>
-        </div>
-      ) : null}
+      {publicationAction && <AssessmentPublicationDialog
+        action={publicationAction} name={setupDraft.assessmentName} theme={theme}
+        year={setupDraft.assignYear} group={setupDraft.assignGroup}
+        years={CREATE_ASSESSMENT_SELECT_OPTIONS.years} groups={CREATE_ASSESSMENT_SELECT_OPTIONS.sgtGroups}
+        onCancel={() => setPublicationAction(null)}
+        onConfirm={async ({ assignYear, assignGroup, reviewer }) => {
+          const draft = { ...setupDraft, approvalFlow: publicationAction,
+            ...(publicationAction === 'Direct Publish' ? { assignYear, assignGroup } : {}) }
+          const errors = validateSetupDraft(draft)
+          if (publicationAction === 'Direct Publish' && !assignYear) errors.assignYear = 'Select year.'
+          if (Object.keys(errors).length) { setSetupErrors(errors); return false }
+          const success = publicationAction === 'Direct Publish'
+            ? publishAssessmentDirectly(draft)
+            : await sendAssessmentToApproval(draft, reviewer)
+          if (success) setPublicationAction(null)
+          return Boolean(success)
+        }}
+      />}
 
       {publishedAssessmentNotice ? (
         <div className="create-assessment-publish-modal" role="status" aria-live="polite">
@@ -9125,13 +9046,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         ) : null}
 
         {activeCreateTab === 'configuration' ? (
-          <section className="create-assessment-tab-panel create-assessment-configuration-panel" aria-label="Assessment configuration">
+          <section className="create-assessment-tab-panel create-assessment-configuration-panel configuration-compact qb-sort-scope" aria-label="Assessment configuration">
             <div className="create-assessment-tab-panel-head">
               <strong>
                 <Settings size={16} strokeWidth={2.2} />
                 Assessment Publication Settings
               </strong>
-              <span className="create-assessment-template-select">
+              <span className="create-assessment-template-select" hidden>
                 <select
                   value=""
                   onChange={(event) => {
@@ -9151,13 +9072,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             </div>
             <div className="create-assessment-configuration-form">
               <div className="assessment-create-setup-top" id="assessment-publication-header-section">
-                <label
+<label
                   className="assessment-create-field assessment-create-upload"
                   data-tooltip="Upload logo in PNG, JPG, or SVG format. Square or 1:1 aspect ratio recommended. Max 2MB."
                 >
-                  <span>Upload</span>
                   <input
                     type="file"
+                    aria-label="Upload assessment logo (optional)"
                     accept="image/*"
                     onChange={(event) => uploadSetupLogo(event.target.files?.[0])}
                   />
@@ -9165,7 +9086,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     {setupDraft.logoPreview ? (
                       <img src={setupDraft.logoPreview} alt={setupDraft.logoName || 'Uploaded logo'} />
                     ) : (
-                      <ImagePlus size={30} strokeWidth={2.1} />
+                      <ImagePlus size={28} strokeWidth={2.1} />
                     )}
                   </strong>
                   {setupDraft.logoPreview ? (
@@ -9175,9 +9096,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   ) : null}
                 </label>
 
+
                 <AssessmentSetupSelectField
                   className="assessment-create-college-field"
-                  label="Select College Name"
+                  label="College"
                   value={setupDraft.collegeName}
                   options={CREATE_ASSESSMENT_SELECT_OPTIONS.colleges}
                   placeholder="Select College Name"
@@ -9187,19 +9109,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                 />
 
                 <label className={`assessment-create-field assessment-create-name-field ${setupErrors.assessmentName ? 'has-error' : ''}`.trim()}>
-                  <span>Assessment Name<em className="assessment-create-required-mark">*</em></span>
+                  <span>Assessment Name<em className="assessment-create-required-mark">*</em>{setupErrors.assessmentName && <small className="configuration-inline-error">{setupErrors.assessmentName}</small>}</span>
                   <input
                     type="text"
                     value={setupDraft.assessmentName}
                     placeholder="Assessment Name"
                     onChange={(event) => updateSetupDraft('assessmentName', toCapitalizedCase(event.target.value))}
                   />
-                  {setupErrors.assessmentName ? <small>{setupErrors.assessmentName}</small> : null}
+                  
                 </label>
 
                 <div className="assessment-create-side-fields">
                   <div className={`assessment-create-field assessment-create-exam-category-field ${setupErrors.examCategory ? 'has-error' : ''}`.trim()}>
-                    <span>Exam Category<em className="assessment-create-required-mark">*</em></span>
+                    <span>Exam Category<em className="assessment-create-required-mark">*</em>{setupErrors.examCategory && <small className="configuration-inline-error">{setupErrors.examCategory}</small>}</span>
                     <span className="assessment-create-exam-category-row">
                       <span className="assessment-create-select-wrap">
                         <select value={setupDraft.examCategory} onChange={(event) => updateSetupDraft('examCategory', event.target.value)}>
@@ -9249,7 +9171,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         ) : null}
                       </span>
                     </span>
-                    {setupErrors.examCategory ? <small>{setupErrors.examCategory}</small> : null}
+                    
                   </div>
 
                   <div className="assessment-create-year-action-row">
@@ -9269,40 +9191,25 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
               <div className="assessment-create-setup-divider" />
 
-              {isConfigurationSummaryVisible ? (
-                <div className="create-assessment-configuration-summary" aria-label="Assessment configuration summary">
-                  <span className="create-assessment-configuration-badge">
-                    <strong>Exam Type :</strong>
-                    <em>{configurationQuestionSummary.examType}</em>
-                  </span>
-                  <span className="create-assessment-configuration-badge">
-                    <strong>Total Marks :</strong>
-                    <em>
-                      {formatSummaryNumber(configurationQuestionSummary.totalMarks)}
-                      {' '}
-                      ({configurationQuestionSummary.totalMarksDetail})
-                    </em>
-                  </span>
-                  <span className="create-assessment-configuration-badge">
-                    <strong>Duration :</strong>
-                    <em>{configurationDurationLabel}</em>
-                  </span>
-                </div>
-              ) : null}
+              <div className="configuration-summary-toolbar">
+              {isConfigurationSummaryVisible ? <div className="create-assessment-configuration-summary" aria-label="Assessment summary"><span className="create-assessment-configuration-badge"><strong>Exam Type:</strong> {configurationQuestionSummary.examType}</span><span className="create-assessment-configuration-badge"><strong>Total Marks:</strong> {formatSummaryNumber(configurationQuestionSummary.totalMarks)} ({configurationQuestionSummary.totalMarksDetail})</span><span className="create-assessment-configuration-badge"><strong>Duration:</strong> {configurationDurationLabel}</span>{!previewQuestionCount && <button type="button" className="configuration-edit-action" onClick={() => setActiveCreateTab('questionBank')}>Add questions</button>}</div> : null}
+
+              </div>
 
               <div className={`create-assessment-schedule-block ${isSchedulingDetailsComplete ? 'is-complete' : ''}`} id="assessment-scheduling-details-section" aria-label="Exam schedule">
-                <div className="create-assessment-schedule-head">
-                  <strong>
-                    {isSchedulingDetailsComplete ? <Check size={14} strokeWidth={2.4} /> : <CalendarClock size={14} strokeWidth={2.2} />}
-                    Assessment Scheduling Details
-                  </strong>
+                <AssessmentSchedulePanel
+                  sections={[
+                    { content: (
+                  <div className="configuration-mode-fields">
                   <div className={`create-assessment-schedule-head-toggle ${setupErrors.examDeliveryMode ? 'has-error' : ''}`}>
+                    <span className="configuration-mode-label">Exam Mode <em>*</em></span>
                     <div className="create-assessment-mode-toggle" role="group" aria-label="Select exam mode">
                       {['Online', 'Offline'].map((mode) => (
                         <button
                           key={mode}
                           type="button"
                           className={`${setupDraft.examDeliveryMode === mode ? 'is-active' : ''} is-${mode.toLowerCase()}`.trim()}
+                          aria-pressed={setupDraft.examDeliveryMode === mode}
                           onClick={() => {
                             revealConfigurationValidationForField('examDeliveryMode')
                             setSetupDraft((current) => applyPracticeExamTimingDefaults({
@@ -9332,22 +9239,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             })
                           }}
                         >
+                          {mode === 'Online' ? <Wifi size={14} aria-hidden="true" /> : <WifiOff size={14} aria-hidden="true" />}
                           {mode}
                         </button>
                       ))}
                     </div>
                     {setupErrors.examDeliveryMode ? <small>{setupErrors.examDeliveryMode}</small> : null}
                   </div>
-                </div>
-
-                {setupDraft.examDeliveryMode === 'Online' ? (
-                  <>
-                    <div className="create-assessment-schedule-layout">
-                      <section className="create-assessment-timing-panel" aria-label="Exam timing">
-                        <div className="create-assessment-timing-panel-head">
-                          <strong>Exam Timing</strong>
-                          <label className={`create-assessment-schedule-toggle-field is-inline ${setupErrors.supervisionType ? 'has-error' : ''}`}>
-                            <span>Supervision Type <em>*</em></span>
+                  {setupDraft.examDeliveryMode === 'Online' && (
+                          <label className={`create-assessment-schedule-toggle-field configuration-supervision ${setupErrors.supervisionType ? 'has-error' : ''}`}>
+                            <span>Supervision <em>*</em></span>
                             <div className="create-assessment-mode-toggle" role="group" aria-label="Supervision type">
                               {['Practice Exam', 'Proctored Exam'].map((option) => (
                                 <button
@@ -9355,15 +9256,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                   type="button"
                                   className={setupDraft.supervisionType === option || (option === 'Proctored Exam' && isProctoredSupervisionType(setupDraft.supervisionType)) ? 'is-active' : ''}
                                   onClick={() => updateSupervisionType(option)}
+                                  aria-pressed={setupDraft.supervisionType === option || (option === 'Proctored Exam' && isProctoredSupervisionType(setupDraft.supervisionType))}
                                 >
-                                  {option}
+                                  {option === 'Practice Exam' ? <BookOpen size={14} aria-hidden="true" /> : <ShieldCheck size={14} aria-hidden="true" />}
+                                  {option === 'Practice Exam' ? 'Practice exam' : 'Proctored exam'}
                                 </button>
                               ))}
                             </div>
                             {setupErrors.supervisionType ? <small>{setupErrors.supervisionType}</small> : null}
                           </label>
-                        </div>
-
+                  )}
+                  </div>
+                    ) },
+                    { content: setupDraft.examDeliveryMode === 'Online' ? (
+                      <section className="create-assessment-timing-panel" aria-label="Exam timing">
                         {setupDraft.supervisionType === 'Practice Exam' ? (
                           <div className="create-assessment-schedule-grid is-practice">
                             {renderScheduleDateField('practiceStartDate', 'Start Date', 'practiceStartDate', { required: false })}
@@ -9386,15 +9292,29 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                             {renderScheduleStartTimeField('practiceEndTime', 'practiceEndPeriod', 'End Time', 'practiceEndTime', { required: false })}
                           </div>
                         ) : isProctoredSupervisionType(setupDraft.supervisionType) ? (
-                          <>
+                          <div className="configuration-proctored-panels">
+                            <section className="configuration-exam-schedule" aria-label="Exam schedule">
+                              <strong className="configuration-exam-schedule-title"><CalendarDays size={16} aria-hidden="true" />Exam Schedule</strong>
                             <div className="create-assessment-schedule-grid is-proctored-shared">
                               {renderScheduleDateField('examDate', 'Exam Date')}
                               {renderScheduleStartTimeField('startTime', 'startPeriod', 'Start Time')}
                               {renderScheduleDurationField('proctoredTotalDuration', 'Total Duration', 'proctoredTotalDuration', {
                                 onChange: updateProctoredTotalDuration,
                               })}
+                              {configurationQuestionSummary.hasMcq && configurationQuestionSummary.hasDescriptive
+                                && !setupDraft.splitProctoredDuration && (
+                                <div className="create-assessment-duration-split-prompt">
+                                  <span>Need separate MCQ &amp; Descriptive time?</span>
+                                  <button type="button"
+                                    disabled={!TIME_LIMIT_PATTERN.test(setupDraft.proctoredTotalDuration || '') || getTimeValueMinutes(setupDraft.proctoredTotalDuration) <= 0}
+                                    onClick={() => updateSplitProctoredDuration(true)}>
+                                    Configure split
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
+                            </section>
                             {configurationQuestionSummary.hasMcq
                             && configurationQuestionSummary.hasDescriptive
                             && TIME_LIMIT_PATTERN.test(setupDraft.proctoredTotalDuration || '')
@@ -9402,7 +9322,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                               setupDraft.splitProctoredDuration ? (
                                 <section className="create-assessment-duration-split-panel" aria-label="Duration split">
                                   <div className="create-assessment-duration-split-head">
-                                    <strong>Duration Split</strong>
+                                    <strong><ArrowLeftRight size={16} aria-hidden="true" /> Section Durations</strong>
                                     <span>Total Duration: {setupDraft.proctoredTotalDuration}</span>
                                   </div>
                                   <div className="create-assessment-proctored-split-row">
@@ -9423,11 +9343,20 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                         <ArrowLeftRight size={15} strokeWidth={2.3} />
                                       </button>
                                       {isSequenceConfirmOpen ? (
-                                        <div className="create-assessment-sequence-popover" role="dialog" aria-label="Confirm sequence change">
-                                          <p>Are you sure you want to change exam sequence of sections?</p>
+                                        <div className="create-assessment-sequence-popover" role="dialog" aria-labelledby="sequence-confirm-title"
+                                          onKeyDown={(event) => {
+                                            if (event.key === 'Escape') {
+                                              event.stopPropagation()
+                                              event.currentTarget.previousElementSibling?.focus()
+                                              setIsSequenceConfirmOpen(false)
+                                            }
+                                          }}>
+                                          <strong id="sequence-confirm-title"><ArrowLeftRight size={16} aria-hidden="true" />Change Section Order?</strong>
+                                          <p>{setupDraft.proctoredSectionSequence === 'descriptive-first' ? 'MCQ will come first, followed by Descriptive.' : 'Descriptive will come first, followed by MCQ.'}</p>
                                           <div>
                                             <button
                                               type="button"
+                                              className="sequence-confirm-primary"
                                               onClick={() => {
                                                 setSetupDraft((current) => ({
                                                   ...current,
@@ -9436,9 +9365,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                                 setIsSequenceConfirmOpen(false)
                                               }}
                                             >
-                                              Yes
+                                              Change order
                                             </button>
-                                            <button type="button" onClick={() => setIsSequenceConfirmOpen(false)}>No</button>
+                                            <button type="button" autoFocus onClick={(event) => {
+                                              event.currentTarget.closest('.create-assessment-sequence-shift-wrap')?.querySelector('.create-assessment-sequence-shift-btn')?.focus()
+                                              setIsSequenceConfirmOpen(false)
+                                            }}>Cancel</button>
                                           </div>
                                         </div>
                                       ) : null}
@@ -9456,143 +9388,33 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                                       Enter one duration; the other fills automatically.
                                     </p>
                                     <button type="button" onClick={() => updateSplitProctoredDuration(false)}>
-                                      Clear Split
+                                      Clear split
                                     </button>
                                   </div>
                                 </section>
-                              ) : (
-                                <div className="create-assessment-duration-split-prompt">
-                                  <span>Need separate MCQ &amp; Descriptive time?</span>
-                                  <button type="button" onClick={() => updateSplitProctoredDuration(true)}>
-                                    Configure Split
-                                  </button>
-                                </div>
-                              )
+                              ) : null
                             ) : null}
-                          </>
+                          </div>
                         ) : (
                           <div className="create-assessment-schedule-empty">Select a supervision type to configure schedule details.</div>
                         )}
                       </section>
-
-                      {renderAnswerModePanel()}
-                    </div>
-
-                  </>
-                ) : (
+                    ) : (
+                    <section className="create-assessment-timing-panel" aria-label="Offline exam timing">
                   <div className="create-assessment-schedule-grid is-offline">
                     {renderScheduleDateField('examDate', 'Exam Date')}
                     {renderScheduleStartTimeField('startTime', 'startPeriod', 'Start Time')}
-                    {renderScheduleDurationField('offlineDuration', 'Set Duration (Max)')}
+                    {renderScheduleDurationField('offlineDuration', 'Duration (HH:MM)')}
                   </div>
-                )}
-
+                    </section>
+                    ) },
+                    { hidden: setupDraft.examDeliveryMode === 'Offline', content: renderAnswerModePanel() || <p className="configuration-step-context">Add questions to configure answers and results.</p> },
+                  ]}
+                />
               </div>
 
-              {(
-                setupDraft.examDeliveryMode === 'Online'
-                && (
-                  (configurationQuestionSummary.hasMcq && setupDraft.mcqDisplayType !== 'Read-Only')
-                  || (configurationQuestionSummary.hasDescriptive && setupDraft.descriptiveDisplayType !== 'Read-Only')
-                )
-              ) ? (
-                <section className={`create-assessment-threshold-section create-assessment-result-publish-collapse ${isResultPublishSectionOpen ? 'is-open' : ''}`} aria-label="Result publish settings">
-                  <button
-                    type="button"
-                    className="create-assessment-threshold-section-head"
-                    onClick={() => setIsResultPublishSectionOpen((current) => !current)}
-                    aria-expanded={isResultPublishSectionOpen}
-                  >
-                    <span>
-                      <Sparkles size={14} strokeWidth={2.2} />
-                      Auto Result Publish
-                    </span>
-                    {isResultPublishSectionOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
-                  </button>
-
-                  {isResultPublishSectionOpen ? (
-                    <div className="create-assessment-threshold-section-body">
-                      <div className="create-assessment-result-publish-options">
-                        {configurationQuestionSummary.hasMcq ? (
-                          <label className="create-assessment-result-publish-option">
-                            <span>MCQ Auto Publish</span>
-                            <span className="create-assessment-yes-no-toggle" role="group" aria-label="MCQ auto publish">
-                              {['On', 'Off'].map((option) => (
-                                <button
-                                  key={option}
-                                  type="button"
-                                  className={(setupDraft.mcqAutoPublish || 'Off') === option ? 'is-active' : ''}
-                                  onClick={() => updateSetupDraft('mcqAutoPublish', option)}
-                                >
-                                  {option}
-                                </button>
-                              ))}
-                            </span>
-                          </label>
-                        ) : null}
-                        {configurationQuestionSummary.hasDescriptive ? (
-                          <label className="create-assessment-result-publish-option">
-                            <span>Descriptive - Evaluation Required</span>
-                            <span className="create-assessment-yes-no-toggle" role="group" aria-label="Descriptive evaluation required">
-                              {['Yes', 'No'].map((option) => (
-                                <button
-                                  key={option}
-                                  type="button"
-                                  className={(setupDraft.descriptiveEvaluationRequired || 'Yes') === option ? 'is-active' : ''}
-                                  disabled={setupDraft.descriptiveDisplayType === 'Answer Input' && option === 'No'}
-                                  title={setupDraft.descriptiveDisplayType === 'Answer Input' ? 'Written answers require evaluation before publishing the combined result.' : undefined}
-                                  onClick={() => updateSetupDraft('descriptiveEvaluationRequired', option)}
-                                >
-                                  {option}
-                                </button>
-                              ))}
-                            </span>
-                          </label>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
-
-              {setupDraft.examDeliveryMode === 'Online' ? (
-                <section className={`create-assessment-threshold-section create-assessment-instructions-section ${isStudentInstructionsOpen ? 'is-open' : ''}`} aria-label="Student instructions and assessment description">
-                  <div className="create-assessment-instructions-section-head">
-                    <button
-                      type="button"
-                      className="create-assessment-threshold-section-head"
-                      onClick={() => setIsStudentInstructionsOpen((current) => !current)}
-                      aria-expanded={isStudentInstructionsOpen}
-                    >
-                      <span>
-                        <Info size={14} strokeWidth={2.2} />
-                        Student Instructions &amp; Assessment Description
-                      </span>
-                    </button>
-                    <span className="create-assessment-yes-no-toggle" role="group" aria-label="Provide student instructions and assessment description">
-                      {['Yes', 'No'].map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          className={(setupDraft.provideStudentInstructions || 'No') === option ? 'is-active' : ''}
-                          onClick={() => {
-                            setSetupDraft((current) => ({
-                              ...current,
-                              provideStudentInstructions: option,
-                              studentInstructions: option === 'Yes' && !stripHtml(current.studentInstructions ?? '').trim()
-                                ? DEFAULT_STUDENT_INSTRUCTIONS
-                                : current.studentInstructions,
-                            }))
-                            setIsStudentInstructionsOpen(option === 'Yes')
-                          }}
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </span>
-                  </div>
-
-                  {isStudentInstructionsOpen ? (
+              {configurationPopup && <AssessmentOptionsDialog type={configurationPopup.type} theme={theme} onSave={saveConfigurationOptions} onCancel={cancelConfigurationOptions} onClear={() => updateSetupDraft('studentInstructions', '')}>
+                {configurationPopup.type === 'instructions' ? (
                     <div className="create-assessment-instructions-inline-body">
                     <div className="create-assessment-instructions-editor">
                       <div className="create-assessment-instructions-toolbar" aria-label="Instruction formatting toolbar">
@@ -9630,7 +9452,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         </select>
                         <select
                           aria-label="Font size"
-                          defaultValue="16"
+                          defaultValue="14"
                           onChange={(event) => {
                             const sizeMap = { 14: '2', 16: '3', 18: '4', 20: '5' }
                             runStudentInstructionCommand('fontSize', sizeMap[event.target.value] ?? '3')
@@ -9673,50 +9495,22 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         placeholder="Students will see these instructions during the assessment."
                       />
                     </div>
-                    <div className="create-assessment-instructions-actions">
-                      <button type="button" className="is-clear" onClick={() => updateSetupDraft('studentInstructions', '')}>
-                        Clear
-                      </button>
-                      <button type="button" className="is-primary" onClick={() => {
-                        updateSetupDraft('provideStudentInstructions', 'Yes')
-                        setIsStudentInstructionsOpen(false)
-                      }}>
-                        Save
-                      </button>
                     </div>
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
-
-              <div className={`create-assessment-threshold-section ${isThresholdSectionOpen ? 'is-open' : ''}`} id="assessment-threshold-settings-section">
-                <button
-                  type="button"
-                  className="create-assessment-threshold-section-head"
-                  onClick={() => setIsThresholdSectionOpen((current) => !current)}
-                  aria-expanded={isThresholdSectionOpen}
-                >
-                  <span>
-                    <SlidersHorizontal size={14} strokeWidth={2.2} />
-                    Attainment Levels &amp; Thinking Level Threshold
-                  </span>
-                  {isThresholdSectionOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
-                </button>
-
-                {isThresholdSectionOpen ? (
+                ) : (
                   <div className="create-assessment-threshold-section-body">
               <div className="create-assessment-threshold-card-grid" aria-label="Threshold configuration">
                 <div className="create-assessment-threshold-block" aria-label="Attainment levels threshold">
                   <div className="create-assessment-schedule-head">
                     <strong>
                       <SlidersHorizontal size={14} strokeWidth={2.2} />
-                      Attainment Levels Threshold
+                      Attainment Levels
                     </strong>
                     <button type="button" className="create-assessment-default-btn" onClick={resetAttainmentLevelsToDefault}>
-                      Set as Default
+                      Reset to default
                     </button>
                   </div>
 
+                  <div className="configuration-attainment-labels" aria-hidden="true"><span>Level</span><span>From %</span><span>To %</span><span>Action</span></div>
                   <div className={`create-assessment-attainment-list ${setupErrors.attainmentLevels ? 'has-error' : ''}`}>
                     {(setupDraft.attainmentLevels ?? DEFAULT_ATTAINMENT_LEVELS).map((row, rowIndex, rows) => (
                       <div className="create-assessment-attainment-row" key={row.id}>
@@ -9768,10 +9562,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   <div className="create-assessment-schedule-head">
                     <strong>
                       <Settings size={14} strokeWidth={2.2} />
-                      Thinking Level Threshold
+                      Thinking Thresholds
                     </strong>
                     <button type="button" className="create-assessment-default-btn" onClick={resetThinkingThresholdsToDefault}>
-                      Set as Default
+                      Reset to default
                     </button>
                   </div>
 
@@ -9838,114 +9632,33 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                 </div>
               </div>
                   </div>
-                ) : null}
-              </div>
 
-              <div className={`create-assessment-threshold-section create-assessment-assign-collapse ${isAssignSectionOpen ? 'is-open' : ''}`} id="assessment-assign-information-section" aria-label="Assign information">
-                <button
-                  type="button"
-                  className="create-assessment-threshold-section-head"
-                  onClick={() => setIsAssignSectionOpen((current) => !current)}
-                  aria-expanded={isAssignSectionOpen}
-                >
-                  <span>
-                    <UsersRound size={14} strokeWidth={2.2} />
-                    Assign Information
-                  </span>
-                  {isAssignSectionOpen ? <ChevronUp size={16} strokeWidth={2.2} /> : <ChevronDown size={16} strokeWidth={2.2} />}
-                </button>
+                )}
+              </AssessmentOptionsDialog>}
 
-                {isAssignSectionOpen ? (
-                  <div className="create-assessment-threshold-section-body">
-                    <div className="create-assessment-assign-grid">
-                      <label className="create-assessment-schedule-field">
-                        <span>Select Course</span>
-                        <span className="create-assessment-assign-select">
-                          <select
-                            value={setupDraft.assignCourse ?? ''}
-                            disabled
-                            onChange={(event) => updateSetupDraft('assignCourse', event.target.value)}
-                          >
-                            <option value="">Select Course</option>
-                            {CREATE_ASSESSMENT_SELECT_OPTIONS.courses.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                          <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-                        </span>
-                      </label>
-
-                      <label className={`create-assessment-schedule-field ${setupErrors.assignYear ? 'has-error' : ''}`}>
-                        <span>Select Year <em>*</em></span>
-                        <span className="create-assessment-assign-select">
-                          <select
-                            value={setupDraft.assignYear ?? ''}
-                            onChange={(event) => updateSetupDraft('assignYear', event.target.value)}
-                          >
-                            <option value="">Select Year</option>
-                            {CREATE_ASSESSMENT_SELECT_OPTIONS.years.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                          <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-                        </span>
-                        {setupErrors.assignYear ? <small>{setupErrors.assignYear}</small> : null}
-                      </label>
-
-                      <label className="create-assessment-schedule-field">
-                        <span>Select SGT Group or Class</span>
-                        <span className="create-assessment-assign-select">
-                          <select
-                            value={setupDraft.assignGroup ?? ''}
-                            disabled
-                            onChange={(event) => updateSetupDraft('assignGroup', event.target.value)}
-                          >
-                            <option value="">Select SGT Group or Class</option>
-                            {CREATE_ASSESSMENT_SELECT_OPTIONS.sgtGroups.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                          <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-                        </span>
-                      </label>
-
-                      <label className={`create-assessment-schedule-field create-assessment-schedule-toggle-field create-assessment-assign-sent-toggle ${setupErrors.approvalFlow ? 'has-error' : ''}`}>
-                        <span>Sent to <em>*</em></span>
-                        <div className="create-assessment-mode-toggle" role="group" aria-label="Send option">
-                          {[
-                            { value: 'Direct Publish', label: 'Direct Publish' },
-                            { value: 'Send to Approval', label: 'Send to Approval' },
-                          ].map((option) => (
-                            <button
-                              key={option.value}
-                              type="button"
-                              className={setupDraft.approvalFlow === option.value ? 'is-active' : ''}
-                              onClick={() => updateSetupDraft('approvalFlow', option.value)}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                        {setupErrors.approvalFlow ? <small>{setupErrors.approvalFlow}</small> : null}
-                      </label>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
+              {(!previewQuestionCount || (pickerEnabled && !pickerProgress.complete) || !previewSections.length) && (
+                <p className="configuration-submit-hint" role="status">{!previewQuestionCount ? 'Add questions before submitting.' : pickerEnabled && !pickerProgress.complete ? 'Complete the blueprint requirements before submitting.' : 'Add a question section in Preview before submitting.'}</p>
+              )}
               <div className="assessment-create-form-actions" id="assessment-configuration-actions-section">
-                <button type="button" className="is-template" onClick={saveAssessmentTemplate}>
+                <button type="button" className="is-template" onClick={saveAssessmentTemplate} hidden>
                   <Save size={15} strokeWidth={2.2} />
-                  Save Template
+                  Save template
                 </button>
-                <span className="assessment-create-form-actions-spacer" aria-hidden="true" />
-                <button type="button" className="is-clear" onClick={clearSetupDraft}>
+                <div className="configuration-options-actions">
+                <button type="button" className="is-clear" aria-haspopup="dialog" onClick={() => setIsClearSetupDialogOpen(true)}>
                   <RotateCcw size={15} strokeWidth={2.2} />
                   Clear
                 </button>
-                <button type="button" className="is-primary" onClick={openApprovalModal} disabled={!canSendAssessmentForApproval || (pickerEnabled && !pickerProgress.complete)}>
-                  <ArrowRight size={15} strokeWidth={2.2} />
-                  {primaryPublicationActionLabel}
+                  {setupDraft.examDeliveryMode === 'Online' && <button type="button" className="configuration-edit-action" aria-haspopup="dialog" onClick={() => openConfigurationOptions('instructions')}><FilePenLine size={14} aria-hidden="true" />{setupDraft.provideStudentInstructions === 'Yes' ? 'Edit instructions' : 'Add instructions'}</button>}
+                  <button type="button" className="configuration-edit-action" id="assessment-threshold-settings-section" aria-haspopup="dialog" onClick={() => openConfigurationOptions('thresholds')}><SlidersHorizontal size={14} aria-hidden="true" />Threshold settings</button>
+                </div>
+                <span className="assessment-create-form-actions-spacer" aria-hidden="true" />
+
+                <button type="button" className="is-primary" id="assessment-assign-information-section" disabled={!canSendAssessmentForApproval} aria-haspopup="dialog" onClick={() => openApprovalModal('Direct Publish')}>
+                  <UsersRound size={15} aria-hidden="true" />Direct Publish
+                </button>
+                <button type="button" className="is-primary" disabled={!canSendAssessmentForApproval} aria-haspopup="dialog" onClick={() => openApprovalModal('Send to Approval')}>
+                  <ArrowRight size={15} aria-hidden="true" />Send to Approval
                 </button>
               </div>
 
@@ -10153,10 +9866,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           <Save size={16} strokeWidth={2.2} />
           <span>Save as Draft</span>
         </button>
-        <button type="button" className="create-assessment-action-btn is-primary" onClick={openApprovalModal} disabled={!canSendAssessmentForApproval}>
+        {activeCreateTab !== 'configuration' && (<button type="button" className="create-assessment-action-btn is-primary" onClick={openApprovalModal} disabled={!canSendAssessmentForApproval}>
           <ArrowRight size={16} strokeWidth={2.2} />
           <span>{primaryPublicationActionLabel}</span>
-        </button>
+        </button>)}
         </div>
       </aside>
       </div>
