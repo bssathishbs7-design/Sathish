@@ -601,20 +601,20 @@
 - Replaced manual Number of parts input with the read-only Parts count derived from visible rows.
 - Valid marks changes create or update remainder parts immediately while typing, preserving the question total and cognition budget. Removed the separate count-entry handler and exclusive input styles.
 
-### 2026-10-10 — Reset question type setup
+### 2026-10-10 ï¿½ Reset question type setup
 - Added Reset Setup beside Next with No / Yes, reset confirmation.
 - Confirmation clears question inputs, cognition selections, LAQ parts and generated breakdown/matrix state, staying on setup. Assessment subject, total and cognition targets are retained.
 - Cancelling preserves values; reset is disabled when setup is empty.
 
-### 2026-10-10 — Question-count suggestions in setup
+### 2026-10-10 ï¿½ Question-count suggestions in setup
 - Focusing or entering a row shows count options based on remaining total and cognition marks. Selecting a card fills only that row's question count; manual input and exact breakdown validation remain available.
 
-### 2026-10-10 — Preserve setup row allocations
+### 2026-10-10 ï¿½ Preserve setup row allocations
 - Added total, HoT and LoT remaining balances and per-card after-selection balances.
 - Editing or selecting a row reserves its cognition marks; later edits release only their own row and cannot rebalance completed rows. Edit Setup preserves existing allocations.
 - Added precise row limits and guidance for remainders that cannot be filled with entered unused row marks. Create Breakdown still requires all targets to match.
 
-### 2026-10-10 — Read-only cognition badges
+### 2026-10-10 ï¿½ Read-only cognition badges
 - SAQ cognition labels and LAQ part thinking levels now display as badges. Removed LAQ thinking-level toggles; part marks remain editable and setup controls the planned allocation.
 
 ### 2026-10-10 â€” Suggestions follow entered setup fields
@@ -836,3 +836,37 @@
 
 ### 2026-10-16 ? Gate publication actions on valid settings
 - Direct Publish and Send to Approval remain disabled until required configuration, questions, preview sections, and applicable blueprint requirements are valid. Readiness updates with form changes; assignment and reviewer choices remain validated in their respective dialogs.
+
+
+### 2026-10-16 ? Clear existing assessment tracker cards
+- Apply the requested one-time browser-local reset of Draft and Published storage (also supplying Evaluation and Results). Keep a local recovery snapshot; retain new assessments on later visits. Sample cards no longer repopulate after reset. Pending, Approved, and Rejected already contain no records.
+
+
+### 2026-10-16 ? Submission countdown and automatic result release
+- After saved exam submission, existing exit flow returns to My Assessment. Eligible cards show a persisted two-minute countdown and open the student result when evaluation is complete.
+- Grade submitted MCQs from stored answer keys and synchronise faculty evaluation marks and per-student publication status. Manual/offline/read-only settings do not auto publish; hybrid waits for all marks.
+- Descriptive AI execution remains pending until a real evaluator is connected. No simulated marks or timer-only publication. Local reconciliation resumes after refresh; server-side execution is required for cross-device/background processing.
+
+
+### 2026-10-16 ? Reuse Practice descriptive grading for assessments
+- Submitted online descriptive responses with automatic evaluation enabled now use the shared Practice keyword-coverage grader, including nested answer parts. Valid scores update faculty and student records and release under the existing two-minute rule.
+- Assessment grading requires usable model answers; missing guidance, image responses and invalid maximum marks remain for faculty review. Manual/offline/read-only modes and existing faculty marks are preserved.
+
+## 2026-10-16 - Reset before editing automatic descriptive marks
+- Faculty must select Reset evaluation before changing automatically evaluated SAQ/LAQ marks, including individual sub-parts.
+- Reset keeps that part pending for manual marking across automatic reconciliation; other parts retain their marks.
+
+## 2026-10-16 - Reset before editing automatic MCQ marks
+- Automatically evaluated MCQ marking actions remain locked until Reset evaluation is selected.
+- Reset and subsequent manual corrections persist without being overwritten by automatic reconciliation.
+
+## 2026-10-16 - Student result answer review
+- Question reviews open by default with submitted MCQ choices and each descriptive sub-part answer, key, marks and automatic-only feedback.
+- Threshold labels show Threshold Meet or Below Threshold alongside correctness; descriptive totals use persisted sub-part marks.
+
+## 2026-10-16 - Retain an accidentally reset evaluation
+- After resetting an evaluated MCQ or descriptive part, its action menu offers Retain evaluation until replacement marks are entered.
+- Retaining restores the saved marks, automatic lock and feedback for that part; the snapshot persists across refresh.
+
+## 2026-10-16 - Edit action for automatically evaluated students
+- Student rows with recorded automatic evaluation show a single Edit action, opening the existing evaluation screen. Manual and absent rows retain their existing actions.

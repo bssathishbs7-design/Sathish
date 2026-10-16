@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import AssessmentResultStatus from '../components/AssessmentResultStatus'
+import { getStudentReleasedResult } from '../services/assessmentResultRelease'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Activity, BadgeCheck, CalendarClock, ChartColumnBig, ChevronDown, ClipboardList, EyeOff, ListFilter, Monitor, Search, ShieldCheck, X } from 'lucide-react'
 import AssessmentFeaturedCard from '../components/AssessmentFeaturedCard'
@@ -107,7 +109,7 @@ const getCurrentStudentForAssessment = (assessment) => {
   const students = getAssessmentStudents(assessment)
   const matchedStudent = students.find((student) => (
     String(student?.id ?? student?.studentId ?? student?.registerId ?? '') === String(CURRENT_STUDENT_ID)
-  )) || students[0]
+  ))
   const rawAttendance = String(matchedStudent?.attendance || matchedStudent?.attendanceStatus || 'P')
   const isAbsent = rawAttendance.toUpperCase() === 'A' || rawAttendance.toLowerCase() === 'absent'
 
@@ -121,8 +123,9 @@ const getCurrentStudentForAssessment = (assessment) => {
 }
 
 const hasPublishedAssessmentResult = (assessment) => (
-  String(assessment?.resultStatus || '').toLowerCase() === 'published'
-  || String(assessment?.evaluationStatus || '').toLowerCase() === 'published'
+  getStudentReleasedResult(assessment, CURRENT_STUDENT_ID)?.status === 'published'
+  || (!assessment?.automatedResultRelease && (String(assessment?.resultStatus || '').toLowerCase() === 'published'
+  || String(assessment?.evaluationStatus || '').toLowerCase() === 'published'))
 )
 
 const readAssessmentControlState = (assessment) => {
@@ -506,13 +509,29 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     startAssessmentNow(assessment)
   }
 
-  const handleViewAssessmentResults = (assessment) => {
+  const handleViewAssessmentResults = useCallback((assessment) => {
     if (!assessment) return
     window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(assessment))
     window.sessionStorage.setItem(ASSESSMENT_EVALUATION_STUDENT_KEY, JSON.stringify(getCurrentStudentForAssessment(assessment)))
     window.sessionStorage.setItem(ASSESSMENT_STUDENT_RESULT_SOURCE_KEY, 'my-assessment')
     onNavigate?.(APP_PAGES.ASSESSMENT_STUDENT_RESULT)
-  }
+  }, [onNavigate])
+
+  const awaitingResults = useRef(new Set())
+  useEffect(() => {
+    if (!isMyAssessment) return
+    for (const assessment of publishedAssessments) {
+      const result = getStudentReleasedResult(assessment, CURRENT_STUDENT_ID)
+      if (!result?.autoPublish) continue
+      const key = getAssessmentId(assessment) + ':' + result.submittedAt
+      if (result.status !== 'published') awaitingResults.current.add(key)
+      else if (awaitingResults.current.has(key) && document.visibilityState === 'visible') {
+        awaitingResults.current.delete(key)
+        handleViewAssessmentResults(assessment)
+        break
+      }
+    }
+  }, [isMyAssessment, publishedAssessments, handleViewAssessmentResults])
 
   const handleRequestAccess = (assessment) => {
     if (!assessment) return
@@ -679,6 +698,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                   const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
                   const isProctoredExam = String(assessment.supervisionType || '').toLowerCase().includes('proctored')
                   const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
+                  const studentResult = getStudentReleasedResult(assessment, CURRENT_STUDENT_ID)
                   const hasPublishedResult = hasPublishedAssessmentResult(assessment)
                   const scheduleStatus = hasPublishedResult
                     ? { type: 'completed', label: 'Completed' }
@@ -689,10 +709,10 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                     ? { type: 'violation', label: 'Violation' }
                     : scheduleStatus
                   const isViolationCard = cardStatus?.type === 'violation'
-                  const isStartDisabled = isViolationCard
+                  const isStartDisabled = (Boolean(studentResult) && !hasPublishedResult) || (scheduleStatus?.type === 'completed' && !hasPublishedResult) || (isViolationCard
                     ? Boolean(lockState?.accessRequested)
-                    : scheduleStatus?.type === 'upcoming'
-                  const actionLabel = cardStatus?.type === 'completed'
+                    : scheduleStatus?.type === 'upcoming')
+                  const actionLabel = !hasPublishedResult && (studentResult || cardStatus?.type === 'completed') ? 'Result Pending' : cardStatus?.type === 'completed'
                     ? 'View Results'
                     : isViolationCard
                       ? lockState?.accessRequested ? 'Request Sent' : 'Request Access'
@@ -738,6 +758,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
                         <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                       </div>
+                      <AssessmentResultStatus result={studentResult} now={scheduleNow.getTime()} />
                       <div className="assessment-create-draft-footer assessment-create-published-footer">
                         <span className="my-assessment-card-top-status">
                           {cardStatus ? (

@@ -1,0 +1,67 @@
+/* Theme-aware question review, scoped to student results. */
+.single-result-question-grid.is-compact-review {
+  --ssr-ink: var(--text-strong);
+  --ssr-muted: var(--text-muted);
+  --ssr-card: var(--surface-card);
+  --ssr-soft: var(--surface-mist);
+  --ssr-line: var(--border);
+  --ssr-teal: var(--text-brand);
+  background: var(--surface-card);
+  color: var(--text-body);
+  gap: var(--s-3);
+  padding: var(--s-4);
+}
+.is-compact-review .single-question-review-section { background: var(--surface-card); }
+.is-compact-review .single-question-review-section > header button,
+.is-compact-review .single-question-review-section.is-descriptive > header button {
+  background: var(--surface-soft);
+  color: var(--text-strong);
+  padding: var(--s-3);
+  border-radius: 0;
+}
+.is-compact-review .single-question-review-section > header span { white-space: normal; font-weight: 600; }
+.is-compact-review .single-question-review-row,
+.is-compact-review .single-question-review-row:hover { background: var(--surface-card); }
+.is-compact-review .single-question-review-columns,
+.is-compact-review .single-question-review-main { grid-template-columns: var(--s-6) minmax(0,1fr) 96px 104px 132px var(--s-5); gap: var(--s-2); padding-inline: var(--s-3); }
+.is-compact-review .single-question-review-columns { font-size: var(--fs-micro); }
+.is-compact-review .single-question-review-title strong { white-space: normal; font-weight: 600; line-height: 1.5; }
+.is-compact-review .single-question-review-title small,
+.is-compact-review .single-question-review-status,
+.is-compact-review .single-question-review-threshold { font-size: var(--fs-micro); font-weight: 600; }
+.is-compact-review .single-question-review-detail { margin: 0 var(--s-3) var(--s-3) calc(var(--s-3) + var(--s-6) + var(--s-2)); padding: var(--s-3); background: var(--surface-mist); border-color: var(--border); color: var(--text-body); }
+.is-compact-review .single-result-response-part-head { display: grid; grid-template-columns: minmax(0,1fr) auto auto; font-size: var(--fs-xs); line-height: 1.5; }
+.is-compact-review .single-result-response-part-head > strong { font-weight: 600; }
+.is-compact-review .assessment-student-written-answer,
+.is-compact-review .single-result-response-key { padding: var(--s-3); background: var(--surface-card); color: var(--text-body); font-size: var(--fs-xs); line-height: 1.5; }
+.is-compact-review .assessment-student-written-answer > strong { font-size: var(--fs-micro); color: var(--text-strong); }
+.is-compact-review .assessment-student-written-answer p { margin: var(--s-2) 0 0; }
+.is-compact-review .single-result-response-key .assessment-answer-key-content { display: grid; gap: var(--s-1); margin: 0; padding: 0; border: 0; background: transparent; color: var(--text-body); font: inherit; }
+.is-compact-review .single-result-response-key .assessment-answer-key-content strong { font-size: var(--fs-micro); color: var(--text-strong); }
+.is-compact-review .single-question-review-status.is-correct,
+.is-compact-review .single-question-review-threshold.is-achieved { background: var(--surface-soft); color: var(--text-brand); border-color: var(--border); }
+.is-compact-review .single-question-review-status.is-incorrect,
+.is-compact-review .single-question-review-threshold.is-not-achieved { background: var(--danger-soft); color: var(--danger-ink); border-color: var(--danger-line); }
+.is-compact-review .assessment-mcq-options > span { background: var(--surface-card); color: var(--text-body); border-color: var(--border); font-size: var(--fs-xs); line-height: 1.5; }
+.is-compact-review .assessment-mcq-options > span.is-student-selected { background: var(--surface-soft); }
+.is-compact-review .assessment-mcq-answer-key { background: var(--surface-card); color: var(--text-body); border-color: var(--border); font-size: var(--fs-xs); }
+@media(max-width:1023px) {
+  .is-compact-review .single-question-review-list { overflow: visible; }
+  .is-compact-review .single-question-review-columns { display: none; }
+  .is-compact-review .single-question-review-main { min-width: 0; grid-template-columns: var(--s-5) minmax(0,1fr) auto; }
+  .is-compact-review .single-question-review-title { grid-column: 2; }
+  .is-compact-review .single-question-review-main > svg { grid-column: 3; grid-row: 1; }
+  .is-compact-review .single-question-review-score { grid-column: 2; }
+  .is-compact-review .single-question-review-status,
+  .is-compact-review .single-question-review-threshold { grid-column: 2; justify-self: start; }
+  .is-compact-review .single-question-review-detail { margin-inline: var(--s-3); }
+  .is-compact-review .single-result-response-part-head { grid-template-columns: minmax(0,1fr) auto; }
+  .is-compact-review .single-result-response-part-head > strong { grid-column: 1 / -1; }
+}
+@media(max-width:767px) {
+  .single-result-question-grid.is-compact-review { padding: var(--s-2); }
+  .is-compact-review .assessment-mcq-options { grid-template-columns: minmax(0,1fr); }
+  .is-compact-review .single-question-review-section > header button { grid-template-columns: minmax(0,1fr) auto; }
+  .is-compact-review .single-question-review-section > header em { grid-column: 1; grid-row: 2; }
+  .is-compact-review .single-question-review-section > header svg { grid-column: 2; grid-row: 1; }
+}

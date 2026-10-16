@@ -1,4 +1,4 @@
-﻿@import '../styles/medsy/question-sort-tokens.css';
+@import '../styles/medsy/question-sort-tokens.css';
 @import '../styles/activity-visual-tokens.css';
 
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme {
@@ -76,7 +76,6 @@
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics i { background: color-mix(in srgb,var(--metric-accent) 14%,var(--surface-card)); }
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-metrics em { font-size: 12px; font-weight: 600; color: var(--text-body); }
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table :is(th,td) { font-size: 13px; }
-.evaluation-table-theme .evaluation-text-value { font-family: var(--font-family-base); color: var(--text-muted); }
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3); }
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-table-footer > .assessment-evaluation-floating-card { margin-left: 0; margin-right: auto; }
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .evaluation-table-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); color: var(--text-muted); font: 400 12px/1.5 var(--font-family-base); }

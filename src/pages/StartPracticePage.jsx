@@ -1,3 +1,5 @@
+import { getDescriptiveFeedbackSections } from '../services/descriptiveFeedback'
+import { evaluateDescriptiveAnswer } from '../services/descriptiveGrading'
 import { practiceSubmissionIdentity } from '../services/practiceSubmissionIdentity'
 import { getPracticeTagSnapshot } from '../services/practiceTagAnalytics'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -318,11 +320,6 @@ const cleanRevealAnswerText = (value = '') => (
   stripHtml(value).replace(/^correct\s+answer\s*:\s*/i, '').trim()
 )
 
-const isPlaceholderAnswerGuidance = (value = '') => (
-  !cleanRevealAnswerText(value)
-  || /^answer guidance will appear here\.?$/i.test(cleanRevealAnswerText(value))
-)
-
 const getQuestionKey = (question = {}, index = 0) => String(question.id ?? question.questionId ?? `practice-question-${index}`)
 
 const getQuestionOptions = (question = {}) => {
@@ -458,135 +455,7 @@ const getReviewStatus = (question = {}, selectedAnswer, options = []) => {
   return selectedIndex >= 0 && selectedIndex === correctIndex ? 'Correct' : 'Wrong'
 }
 
-const REVIEW_STOP_WORDS = new Set([
-  'about',
-  'after',
-  'answer',
-  'because',
-  'between',
-  'clinical',
-  'correct',
-  'describe',
-  'explain',
-  'features',
-  'include',
-  'patient',
-  'question',
-  'relevant',
-  'should',
-  'their',
-  'there',
-  'these',
-  'those',
-  'undergoing',
-  'using',
-  'with',
-  'within',
-])
-
-const getReviewTerms = (value = '') => {
-  const words = stripHtml(value)
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((word) => word.length > 3 && !REVIEW_STOP_WORDS.has(word))
-
-  return [...new Set(words)].slice(0, 18)
-}
-
-const evaluateDescriptiveAnswer = (answer = '', modelAnswer = '', marks = 0) => {
-  const maxMarks = Number(marks) || 0
-  const answerText = stripHtml(answer)
-  if (!answerText) {
-    return { status: 'Wrong', earnedMarks: 0, maxMarks, ratio: 0 }
-  }
-
-  const modelText = stripHtml(modelAnswer)
-  if (!modelText || /^answer guidance will appear here\.?$/i.test(modelText)) {
-    return { status: 'Correct', earnedMarks: maxMarks, maxMarks, ratio: 1 }
-  }
-
-  const modelTerms = getReviewTerms(modelText)
-  if (!modelTerms.length) {
-    return { status: 'Needs review', earnedMarks: Math.max(1, Math.round(maxMarks * 0.5)), maxMarks, ratio: 0.5 }
-  }
-
-  const normalizedAnswer = normalizeAnswerValue(answerText)
-  const matchedTerms = modelTerms.filter((term) => normalizedAnswer.includes(normalizeAnswerValue(term)))
-  const ratio = matchedTerms.length / modelTerms.length
-  const earnedMarks = Math.min(maxMarks, Math.max(0, Math.round(maxMarks * ratio)))
-  const status = ratio >= 0.72 ? 'Correct' : ratio > 0 ? 'Needs review' : 'Wrong'
-
-  return { status, earnedMarks, maxMarks, ratio }
-}
-
 const getReviewClassName = (status = '') => `is-review-${status.toLowerCase().replace(/\s+/g, '-')}`
-
-const getDescriptiveFeedbackSections = ({
-  answer = '',
-  evaluation = {},
-  guidance = '',
-  marks = 0,
-} = {}) => {
-  const status = evaluation.status || 'Needs review'
-  const earnedMarks = Number(evaluation.earnedMarks ?? 0)
-  const maxMarks = Number(evaluation.maxMarks ?? marks ?? 0)
-  const ratio = Number.isFinite(evaluation.ratio) ? evaluation.ratio : (maxMarks ? earnedMarks / maxMarks : 0)
-  const hasAnswer = Boolean(stripHtml(answer))
-  const cleanGuidance = cleanRevealAnswerText(guidance)
-  const hasGuidance = !isPlaceholderAnswerGuidance(cleanGuidance)
-  const roundedScore = `${earnedMarks}/${maxMarks || marks || 0}`
-
-  const assessmentRationale = !hasAnswer
-    ? 'No written response was submitted, so marks could not be awarded for this answer.'
-    : status === 'Correct'
-      ? 'The response covers the expected points closely enough for this practice evaluation.'
-      : status === 'Wrong'
-        ? 'The response does not yet show enough of the expected answer points for this question.'
-        : 'The response shows partial alignment with the expected answer and needs more complete coverage.'
-
-  const strengths = !hasAnswer
-    ? 'No strengths could be identified because an answer was not written.'
-    : ratio >= 0.72
-      ? 'Your answer includes the main expected points and stays relevant to the question.'
-      : ratio > 0
-        ? 'Your answer includes some relevant ideas that can be developed further.'
-        : 'Your answer attempts the question, but the key expected points are still missing.'
-
-  const improvements = !hasAnswer
-    ? 'Write a focused answer before submission so it can be evaluated against the expected points.'
-    : ratio >= 0.72
-      ? 'Add sharper sequencing, supporting details, and any missing keywords to make the answer complete.'
-      : ratio > 0
-        ? 'Expand the answer with the missing core points, clearer reasoning, and direct links to the question stem.'
-        : 'Rebuild the answer around the core concepts asked in the question and avoid unrelated content.'
-
-  return [
-    {
-      heading: 'Evaluation Report',
-      body: roundedScore,
-      status,
-      summary: true,
-    },
-    {
-      heading: 'Assessment Rationale',
-      body: assessmentRationale,
-    },
-    {
-      heading: 'Your Strengths',
-      body: strengths,
-    },
-    {
-      heading: 'Areas for Improvement',
-      body: improvements,
-    },
-    {
-      heading: 'Guidance for a Perfect Answer',
-      body: hasGuidance
-        ? cleanGuidance
-        : 'A perfect answer should directly address every part of the question, include the key expected points, and present them in a clear clinical sequence.',
-    },
-  ]
-}
 
 const evaluateQuestionReview = (question = {}, answer, options = [], marks = 0) => {
   const type = getQuestionType(question)

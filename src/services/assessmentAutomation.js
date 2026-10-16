@@ -1,8 +1,8 @@
 /** Capabilities backed by current execution paths. Enable only after connecting and testing an executor. */
 export const ASSESSMENT_AUTOMATION_CAPABILITIES = Object.freeze({
   mcqEvaluation: true,
-  descriptiveEvaluation: false,
-  resultPublishing: false,
+  descriptiveEvaluation: true,
+  resultPublishing: true,
 })
 
 /** Resolve effective settings without overwriting saved preferences when response modes change.

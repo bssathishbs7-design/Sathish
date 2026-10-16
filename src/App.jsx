@@ -1,3 +1,4 @@
+import useAssessmentResultRelease from './services/useAssessmentResultRelease'
 import { SKILL_SAMPLE_ASSIGNMENTS } from './services/skillLogbookSample'
 import { normaliseSkillAssignment, studentSkillActivities } from './services/skillLogbook'
 import { useEffect, useRef, useState } from 'react'
@@ -692,6 +693,12 @@ function App() {
     const id = `alert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     setAlerts([{ id, tone, message, duration }])
   }
+
+  useAssessmentResultRelease((message, tone = 'success') => {
+    if (tone === 'warning' || (activePage !== APP_PAGES.MY_ASSESSMENT && activePage !== APP_PAGES.ASSESSMENT_STUDENT_RESULT)) {
+      showAlert({ tone, message, duration: 6000 })
+    }
+  })
 
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {

@@ -1,0 +1,13 @@
+.assessment-result-status { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-3); margin-block: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-body); font-size: var(--fs-xs, 12px); }
+.assessment-result-status > svg { flex-shrink: 0; color: var(--text-brand); }
+.assessment-result-status > div { flex: 1; min-width: 0; display: grid; gap: var(--s-1); }
+.assessment-result-status strong { color: var(--text-strong); font-size: inherit; }
+.assessment-result-status small { font-size: var(--fs-micro, 11px); }
+.assessment-result-status time { font-family: var(--f-code); font-variant-numeric: tabular-nums; font-weight: 600; }
+.assessment-result-status progress { width: 100%; height: var(--s-1); appearance: none; border: 0; border-radius: var(--r-pill); overflow: hidden; background: var(--surface-mist); }
+.assessment-result-status progress::-webkit-progress-bar { background: var(--surface-mist); }
+.assessment-result-status progress::-webkit-progress-value { background: var(--forest); transition: width var(--dur-reveal) var(--ease-standard); }
+.assessment-result-status progress::-moz-progress-bar { background: var(--forest); }
+.assessment-result-status.is-preparing > svg { animation: assessment-result-pulse var(--dur-reveal) var(--ease-standard) infinite alternate; }
+@keyframes assessment-result-pulse { from { opacity: .5; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .assessment-result-status.is-preparing > svg { animation: none; } .assessment-result-status progress::-webkit-progress-value { transition: none; } }

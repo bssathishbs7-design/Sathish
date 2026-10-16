@@ -1,5 +1,7 @@
+import AssessmentResultStatus from '../components/AssessmentResultStatus'
 import { useEffect, useRef, useState } from 'react'
 import { reserveAssessmentIdentity } from '../services/assessmentIdentity'
+import { resetAssessmentTrackerOnce } from '../services/assessmentTrackerReset'
 import { createPortal } from 'react-dom'
 import { ArrowRight, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
@@ -368,6 +370,7 @@ const formatYearLabel = (value) => {
 
 const readAssessmentDrafts = () => {
   try {
+    resetAssessmentTrackerOnce(window.localStorage)
     const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_DRAFTS_STORAGE_KEY) || '[]')
     return Array.isArray(parsed) ? parsed : []
   } catch {
@@ -377,10 +380,11 @@ const readAssessmentDrafts = () => {
 
 const readPublishedAssessments = () => {
   try {
+    const resetComplete = resetAssessmentTrackerOnce(window.localStorage)
     const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
-    return mergeMockPublishedAssessments(parsed)
+    return resetComplete ? (Array.isArray(parsed) ? parsed : []) : mergeMockPublishedAssessments(parsed)
   } catch {
-    return getMockPublishedAssessments()
+    return []
   }
 }
 
@@ -1687,6 +1691,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
                           <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                         </div>
+                        <AssessmentResultStatus results={assessment.studentResults} />
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
                           <span className="assessment-create-published-footer-status">
                             {scheduleStatus ? (
@@ -1802,6 +1807,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
                           <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                         </div>
+                        <AssessmentResultStatus results={assessment.studentResults} />
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
                           <span className="assessment-create-published-footer-status assessment-create-evaluation-statuses">
                             <span className="assessment-create-published-schedule-badge is-completed">Exam completed</span>
@@ -1893,6 +1899,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
                           <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                         </div>
+                        <AssessmentResultStatus results={assessment.studentResults} />
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
                           <span className="assessment-create-published-footer-status">
                             <span className="assessment-create-published-schedule-badge is-published">

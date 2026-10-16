@@ -28,16 +28,16 @@ test('evaluation No resets auto publish without changing the other type',()=>{
 })
 test('offline retains manual workflows',()=>{assert.equal(getAssessmentAutomation({examDeliveryMode:'Offline',mcqAutoEvaluation:'Yes',mcqAutoPublish:'On'},{hasMcq:true}).rows[0].enabled,false)})
 
-test('current executors do not advertise unavailable automation', () => {
+test('connected rule-based executors permit configured automatic evaluation', () => {
  const setup={mcqDisplayType:'Answer Input',descriptiveDisplayType:'Answer Input',mcqAutoEvaluation:'Yes',descriptiveAutoEvaluation:'Yes',mcqAutoPublish:'On',descriptiveAutoPublish:'On'}
  const result=resolveAutomation(setup,{hasMcq:true,hasDescriptive:true})
  assert.equal(result.rows[0].evaluation,true)
- assert.equal(result.rows[1].evaluation,false)
- assert.equal(result.canAutoPublishCombined,false)
+ assert.equal(result.rows[1].evaluation,true)
+ assert.equal(result.canAutoPublishCombined,true)
  assert.equal(updateAutomation(setup,'descriptiveAutoEvaluation','Yes').descriptiveAutoEvaluation,'Yes')
  assert.equal(updateAutomation(setup,'mcqAutoPublish','On').mcqAutoPublish,'On')
  assert.match(describeAssessmentAutomation(result),/MCQ answers are evaluated automatically/)
- assert.match(describeAssessmentAutomation(result),/Descriptive answers are evaluated manually/)
+ assert.match(describeAssessmentAutomation(result),/Descriptive answers are evaluated automatically/)
 })
 test('read-only and supervision changes preserve previous valid preferences', () => {
  const original={examDeliveryMode:'Online',mcqDisplayType:'Answer Input',mcqAutoEvaluation:'Yes',mcqAutoPublish:'On'}
@@ -57,11 +57,11 @@ test('mixed Hybrid publishing stays manual; single types use their own policy', 
  assert.match(describeAssessmentAutomation(getAssessmentAutomation(setup,{hasMcq:true,hasDescriptive:true})),/both sections are evaluated/)
 })
 
-test('configuration permits AI preferences without enabling unsupported execution', () => {
+test('configuration and execution permit the connected descriptive grader', () => {
  const setup={examDeliveryMode:'Online',descriptiveDisplayType:'Answer Input',descriptiveAutoEvaluation:'Yes',descriptiveAutoPublish:'On'}
  assert.equal(getAssessmentAutomationConfiguration(setup,{hasDescriptive:true}).canAutoPublishCombined,true)
- assert.equal(resolveAutomation(setup,{hasDescriptive:true}).rows[0].evaluation,false)
- assert.equal(resolveAutomation(setup,{hasDescriptive:true}).canAutoPublishCombined,false)
+ assert.equal(resolveAutomation(setup,{hasDescriptive:true}).rows[0].evaluation,true)
+ assert.equal(resolveAutomation(setup,{hasDescriptive:true}).canAutoPublishCombined,true)
  const manual=updateAutomation(setup,'descriptiveAutoEvaluation','No')
  assert.equal(updateAutomation(manual,'descriptiveAutoEvaluation','Yes').descriptiveAutoPublish,'Off')
 })

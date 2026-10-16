@@ -1,0 +1,8 @@
+.descriptive-evaluation-report { --report-ink: var(--text-brand); --report-accent: var(--mint-200); margin-block: var(--s-2); padding: var(--s-2) var(--s-3); border: 1px solid var(--report-accent); border-radius: var(--r-sm); background: color-mix(in srgb, var(--report-accent) 20%, var(--surface-card)); color: var(--text-body); }
+.descriptive-evaluation-report.is-wrong { --report-ink: var(--danger-ink); --report-accent: var(--danger-line); }
+.descriptive-evaluation-report.is-partial { --report-ink: var(--text-strong); --report-accent: var(--butter); }
+.descriptive-evaluation-report-section { border-top: 1px solid color-mix(in srgb, var(--report-accent) 50%, var(--border)); padding-block: var(--s-2); }
+.descriptive-evaluation-report-section:first-child { border-top: 0; padding-top: 0; }
+.descriptive-evaluation-report-section:last-child { padding-bottom: 0; }
+.descriptive-evaluation-report .descriptive-evaluation-report-section h4 { margin: 0 0 var(--s-1); color: var(--report-ink); font-size: var(--fs-micro, 11px); line-height: 1.4; font-weight: 700; }
+.descriptive-evaluation-report .descriptive-evaluation-report-section p { margin: 0; color: var(--text-body); font-size: var(--fs-xs, 12px); line-height: 1.5; font-weight: 500; overflow-wrap: anywhere; }

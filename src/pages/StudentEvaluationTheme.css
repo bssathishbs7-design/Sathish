@@ -1,4 +1,4 @@
-﻿@import '../styles/medsy/question-sort-tokens.css';
+@import '../styles/medsy/question-sort-tokens.css';
 @import '../styles/activity-visual-tokens.css';
 
 /* Student evaluation only: the same semantic surfaces and controls as My Assessment. */
@@ -209,7 +209,7 @@
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-content-head { grid-template-columns: minmax(0,1fr); }
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { max-width: none; width: 100%; justify-content: flex-end; }
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-details-panel { background: transparent; border: 0; padding: 0; border-radius: 0; }
-.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive > :is(.assessment-student-written-answer,.assessment-question-answer-row,.assessment-question-control-row) { margin-left: calc(24px + var(--s-2)); }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive > :is(.assessment-student-written-answer,.assessment-question-answer-row,.assessment-question-control-row,.descriptive-evaluation-report) { margin-left: calc(24px + var(--s-2)); }
 .student-evaluation-theme .evaluation-mark-maximum { color: var(--text-muted); white-space: nowrap; font: 500 12px/1.5 var(--font-family-base); }
 @media(max-width:1023px) { .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-end-actions { justify-content: flex-start; } }
 /* Compact marking list: full-width question with an aligned control strip. */
@@ -317,7 +317,7 @@
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-tag-item span { color: var(--text-body); font-weight: 500; overflow-wrap: anywhere; }
 @media(max-width:767px) { .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-tag-grid { grid-template-columns: minmax(0,1fr); } }
 @media(min-width:768px) {
- .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive .assessment-question-end-actions { display: grid; grid-template-columns: auto auto calc(var(--s-4) * 9); justify-content: end; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive .assessment-question-end-actions { display: grid; grid-template-columns: auto auto; justify-content: end; }
  .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive .assessment-question-badges { grid-column: 1; grid-row: 1; }
  .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive .is-descriptive-header-actions { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: auto calc(var(--s-4) * 8) calc(var(--s-4) * 2); }
  .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .is-descriptive-header-actions .assessment-mark-field { grid-column: 1; }
@@ -345,13 +345,19 @@
 @media(max-width:1199px) {
  .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row .assessment-question-end-actions { justify-content: start; padding-right: 0; }
 }
-/* MCQ: full-width stem, one review toolbar, then aligned options and key. */
-.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head { grid-template-columns: auto minmax(0,1fr); grid-template-rows: auto auto; gap: var(--s-2); align-items: center; }
-.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > p { grid-column: 1 / -1; grid-row: 1; }
-.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > .evaluation-marking-status { grid-column: 1; grid-row: 2; justify-self: start; align-self: center; margin: 0; }
-.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > .assessment-question-end-actions { grid-column: 2; grid-row: 2; justify-content: end; width: 100%; padding: 0; margin: 0; }
+/* MCQ: question and review controls share one compact header. */
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head { grid-template-columns: minmax(0,1fr) auto auto; grid-template-rows: auto; gap: var(--s-2); align-items: center; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > p { grid-column: 1; grid-row: 1; align-self: center; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > .evaluation-marking-status { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; margin: 0; }
+.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > .assessment-question-end-actions { grid-column: 3; grid-row: 1; justify-content: end; width: auto; padding: 0; margin: 0; }
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-mcq .assessment-mcq-options > span { display: flex; align-items: flex-start; gap: var(--s-2); min-height: 0; }
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-mcq .assessment-mcq-options > span > b { flex-shrink: 0; }
 @media(max-width:1023px) {
- .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > .assessment-question-end-actions { grid-column: 1 / -1; grid-row: 3; justify-content: start; }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-list > .assessment-question-row.is-mcq .assessment-question-content-head > .assessment-question-end-actions { grid-column: 1 / -1; grid-row: 2; justify-content: end; }
+}
+
+/* Keep submitted subpart controls compact when no unanswered action is needed. */
+@media(min-width:768px) {
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row.is-descriptive .is-descriptive-header-actions:not(:has(.is-not-attempted)) { grid-template-columns: auto calc(var(--s-4) * 2); }
+ .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .is-descriptive-header-actions:not(:has(.is-not-attempted)) .evaluation-row-menu { grid-column: 2; }
 }

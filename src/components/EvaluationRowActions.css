@@ -1,4 +1,4 @@
-﻿.evaluation-row-menu { position: relative; flex-shrink: 0; }
+.evaluation-row-menu { position: relative; flex-shrink: 0; }
 .evaluation-row-menu summary { list-style: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--text-body); background: var(--surface-card); cursor: pointer; }
 .evaluation-row-menu summary::-webkit-details-marker { display: none; }
 .evaluation-row-menu summary:hover { background: var(--surface-soft); }

@@ -29,7 +29,7 @@ export default function AssessmentAutomationSettings({ setup, types, onChange, o
         </div>
         <div className="assessment-automation-fields">
           {!row.enabled ? <p className="assessment-automation-manual"><Eye size={16} aria-hidden="true" /><span>{row.readOnly ? 'Read-only questions' : 'Offline assessment'}<br /><small>{row.readOnly ? 'Students can view questions but cannot enter answers. ' : ''}Manual evaluation and publishing.</small></span></p> : [
-            {name:'Evaluation', field:row.key+'AutoEvaluation', active:row.evaluation, fixed:row.key === 'mcq', labels:['AI','Manual'], reason:row.key === 'mcq' ? 'Online MCQ answers are always evaluated automatically.' : row.evaluation ? 'AI evaluation incurs additional costs to Medsy.' : 'Faculty evaluate student responses.', Icon:ClipboardCheck},
+            {name:'Evaluation', field:row.key+'AutoEvaluation', active:row.evaluation, fixed:row.key === 'mcq', labels:['AI','Manual'], reason:row.key === 'mcq' ? 'AI Evaluated Automatically' : row.evaluation ? 'AI Evaluated Automatically' : 'Faculty evaluate student responses.', Icon:ClipboardCheck},
           ].map(({Icon, ...control}) => <div className="assessment-automation-field" key={control.field}>
             <span>{createElement(Icon, { size: 14, 'aria-hidden': true })}{control.name}</span>
             {control.fixed ? <span className="assessment-automation-fixed"><CheckSquare size={14} aria-hidden="true" />Automatic</span> : <div className="assessment-automation-options" role="group" aria-label={row.label+' '+control.name}>

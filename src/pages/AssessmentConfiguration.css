@@ -129,6 +129,10 @@
 .configuration-summary-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); }
 .configuration-options-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .configuration-options-actions .configuration-edit-action { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1); white-space: nowrap; }
+.configuration-compact .configuration-options-actions .configuration-edit-action { background: color-mix(in srgb, var(--sky) 30%, var(--surface-card)); border-color: color-mix(in srgb, var(--sky) 65%, var(--border)); color: var(--info-ink); }
+.configuration-compact .configuration-options-actions .configuration-edit-action:hover:not(:disabled) { background: color-mix(in srgb, var(--sky) 50%, var(--surface-card)); border-color: var(--info-ink); }
+.configuration-compact .configuration-options-actions .configuration-edit-action { padding-inline: var(--s-2); }
+.configuration-compact .configuration-options-actions .configuration-edit-action > svg { flex: 0 0 var(--s-4); width: var(--s-4); height: var(--s-4); stroke-width: 2.2; color: currentColor; }
 
 /* One type and control scale across the configuration form. */
 .configuration-compact :is(.configuration-exam-schedule-title, .create-assessment-duration-split-head > strong, .assessment-automation-title strong) { display: inline-flex; align-items: center; gap: var(--s-2); width: fit-content; max-width: 100%; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: color-mix(in srgb, var(--mint-200) 35%, var(--surface-card)); }
