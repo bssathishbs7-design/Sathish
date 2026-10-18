@@ -1,0 +1,34 @@
+Medsy product film - 90-second marketing edit
+
+Files
+Medsy-Product-Film-90s.mp4: full 1920 x 1080 H.264/AAC film.
+Medsy-Motion-Sample-15s.mp4: opening motion and music sample.
+index.html, film.css, film.js: editable browser composition.
+Narration-script.txt: optional narration script; this export uses music and on-screen copy, without recorded narration.
+
+Coverage
+Skills; My Skill Activity; My Logbook; Admin Logbook; Approval Queue;
+Correlation Rating; My Questions; Question Bank; Assessment;
+My Assessment; My Practice.
+
+Production notes
+Product captures come from the local Medsy application. Demo records were added only
+to an isolated browser profile. No application source or normal user data was changed.
+Moving cards, typing, highlights and workflow stages are illustrative motion graphics
+composited over product captures, not a continuous recording of user interactions.
+Question examples and product figures are demonstration content.
+No November launch claim is made for the overall product.
+
+Music credit - retain when distributing
+"District Four"
+Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600039
+Licence: https://incompetech.com/music/royalty-free/licenses/
+Changes: excerpt starting at 8 seconds, fades, level adjustment and added transition sounds.
+The film also includes this attribution on its closing screen.
+
+Preview
+Serve the project with Vite and open /artifacts/product-film/index.html.
+The Play button starts the film and music. No external account or API is required.

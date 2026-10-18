@@ -1,0 +1,11 @@
+.assessment-card-settings { display: grid; gap: var(--s-1, 4px); margin: var(--s-2, 8px) 0; padding-block: var(--s-2, 8px); border-top: 1px solid var(--border, var(--activity-line)); }
+.assessment-card-settings > div { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3, 12px); }
+.assessment-card-settings dt { color: var(--text-body, var(--activity-text-body)); font-size: 12px; font-weight: 500; }
+.assessment-card-settings dd { margin: 0; min-width: 40px; padding: var(--s-1, 4px) var(--s-2, 8px); border-radius: var(--r-pill, 999px); font-size: 11px; line-height: 1; text-align: center; font-weight: 600; }
+.assessment-card-settings .is-yes { background: var(--surface-soft, var(--activity-mint-soft)); color: var(--text-brand, var(--activity-text-strong)); }
+.assessment-card-settings .is-no { background: var(--surface-mist, var(--activity-surface)); color: var(--text-muted, var(--activity-text-muted)); }
+.assessment-card-identity { display: block; font-family: var(--f-code, monospace); font-size: 11px; color: var(--text-muted, var(--activity-text-muted)); overflow-wrap: anywhere; }
+.assessment-card-info { display: inline-flex; align-items: center; gap: var(--s-1, 4px); align-self: flex-end; border: 1px solid var(--border, var(--activity-line)); border-radius: var(--r-pill, 999px); background: var(--surface-card, var(--activity-surface)); color: var(--text-brand, var(--activity-text-strong)); padding: var(--s-1, 4px) var(--s-2, 8px); cursor: pointer; }
+.assessment-card-info:hover { background: var(--surface-soft, var(--activity-surface)); }
+.assessment-card-info:active { transform: translateY(1px) scale(.97); }
+.assessment-card-info:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }

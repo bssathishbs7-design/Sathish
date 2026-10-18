@@ -5,9 +5,9 @@ import { matchesBlueprintPickerRow } from '../utils/blueprintPicker'
 import './BlueprintSelectionProgress.css'
 
 /** Non-modal Blueprint panel. LAQ counts refer to whole questions, not their parts.
- * @param {{rows:Object[], progress:Object, activeId:string, bankQuestions?:Object[], loadBankQuestions:Function, selectedQuestions:Object[], onSelect:Function, onCreate:Function, onReview:Function}} props
+ * @param {{rows:Object[], progress:Object, blueprintId?:string, activeId:string, bankQuestions?:Object[], loadBankQuestions:Function, selectedQuestions:Object[], onSelect:Function, onCreate:Function, onReview:Function}} props
  */
-export default function BlueprintSelectionProgress({ rows, progress, activeId, bankQuestions, loadBankQuestions, selectedQuestions = [], onSelect, onCreate, onReview }) {
+export default function BlueprintSelectionProgress({ rows, progress, blueprintId, activeId, bankQuestions, loadBankQuestions, selectedQuestions = [], onSelect, onCreate, onReview }) {
   const panel = useRef(null)
   const trigger = useRef(null)
   const headingId = useId()
@@ -79,7 +79,7 @@ export default function BlueprintSelectionProgress({ rows, progress, activeId, b
       <strong>{progress.matched}<span>/{progress.target}</span></strong><small>Blueprint</small>
     </button>
     {open && <section ref={panel} tabIndex={-1} className="blueprint-steps-panel" role="dialog" aria-modal="false" aria-labelledby={headingId}>
-      <header><h2 id={headingId}><FilePenLine size={15} />Blueprint question progress</h2><span className="blueprint-selected-count">Selected: {progress.matched} / {progress.target} questions &middot; {stageLabel}</span><button type="button" className="blueprint-panel-close" onClick={close} aria-label="Close Blueprint progress"><X size={16} /></button></header>
+      <header><h2 id={headingId}><FilePenLine size={15} />Blueprint Question Progress{blueprintId && <span className="blueprint-progress-id" aria-label={`Blueprint ID ${blueprintId}`}>{blueprintId}</span>}</h2><span className="blueprint-selected-count">Selected: {progress.matched} / {progress.target} questions &middot; {stageLabel}</span><button type="button" className="blueprint-panel-close" onClick={close} aria-label="Close Blueprint progress"><X size={16} /></button></header>
       <progress value={progress.matched} max={progress.target || 1} aria-label="Blueprint completion" />
       <nav aria-label="Question type steps">{types.map(value => {
         const sectionRows = rows.filter(row => row.type === value)

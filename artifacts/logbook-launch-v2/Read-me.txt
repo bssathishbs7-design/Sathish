@@ -1,0 +1,17 @@
+Medsy Logbook launch film - revision 2
+
+Output: Medsy-Logbook-November-Launch-v2.mp4
+50 seconds, 1920 x 1080 landscape, H.264 video and AAC stereo audio.
+
+Revision: 13 shorter scenes, layered moving product captures, kinetic titles,
+animated typing and verification callouts, moving workflow indicator,
+mint shutter transitions, and original 120 BPM instrumental with drums,
+bass, stereo arpeggios, transition risers, and a closing fade.
+
+Product screens are local demonstration captures. Animated typing and
+approval callouts are composited illustrations of the workflow.
+Music is synthesised locally; no reference audio or third-party track is used.
+
+Preview: serve this folder through the local Vite server and open index.html.
+Play film starts the animation and music. film.js contains the editable timeline.
+The original revision is preserved in ../logbook-launch/.

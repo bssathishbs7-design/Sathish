@@ -1,3 +1,4 @@
+import BlueprintApprovalReview from '../components/BlueprintApprovalReview'
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { sanitizeRichHtml } from '../utils/sanitizeHtml'
@@ -472,7 +473,7 @@ const InfoTooltipButton = (props) => {
   )
 }
 
-export default function ApprovalViewPage({ approvalRecord, completedEvaluationRows = [], onBack, onAlert, onApprovalAction }) {
+export default function ApprovalViewPage({ approvalRecord, completedEvaluationRows = [], onBack, onAlert, onApprovalAction, theme }) {
   const [activeTooltipId, setActiveTooltipId] = useState('')
   const [reviewRemarks, setReviewRemarks] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
@@ -1225,6 +1226,8 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
     )
   }
 
+  if (approvalRecord?.activityType === 'Blueprint') return <BlueprintApprovalReview theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} />
+
   return (
     <section className="vx-content approval-view-page">
       <div className="approval-view-shell">
@@ -1377,7 +1380,7 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
                       const obtainedMarks = getStudentObtainedMarks(row)
                       const resultStatus = getStudentResult(row)
 
-                      return (
+  return (
                         <tr key={row.id ?? row.studentId ?? row.registerId}>
                           <td>
                             <div className="approval-view-student-cell">

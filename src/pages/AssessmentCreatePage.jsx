@@ -1,12 +1,21 @@
+import { readBlueprintWorkflow } from '../services/blueprintApproval'
+import AssessmentHistoryDialog from '../components/AssessmentHistoryDialog'
+import { assessmentDisplayId } from '../services/assessmentHistory'
+import AssessmentCardSettings from '../components/AssessmentCardSettings'
 import AssessmentResultStatus from '../components/AssessmentResultStatus'
 import { useEffect, useRef, useState } from 'react'
 import { reserveAssessmentIdentity } from '../services/assessmentIdentity'
 import { resetAssessmentTrackerOnce } from '../services/assessmentTrackerReset'
 import { createPortal } from 'react-dom'
-import { ArrowRight, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, ChevronDown, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
+import './MyAssessmentTheme.css'
+import '../styles/my-skills.css'
+import './LogbookPage.css'
+import '../components/logbook/LogbookDashboard.css'
+import './AssessmentCreatePage.css'
 
 const assessmentMetrics = [
   {
@@ -77,7 +86,6 @@ const EXAM_CONTROLS_STATE_KEY = 'vx-exam-controls-state'
 const ASSESSMENT_EVALUATION_SELECTED_KEY = 'vx-assessment-evaluation-selected'
 const ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY = 'vx-assessment-overall-analytics-source'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
-const PUBLISHED_LOG_PAGE_SIZE = 5
 const PUBLISHED_ACTION_VERIFICATION_CODE = '1234'
 const PUBLISHED_FILTER_DEFAULTS = {
   mode: 'all',
@@ -938,16 +946,6 @@ const formatDisplayDate = (value) => {
   return date.toLocaleDateString('en-GB').replace(/\//g, '-')
 }
 
-const formatDisplayDateTime = (value) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return `${date.toLocaleDateString('en-GB').replace(/\//g, '-')} ${date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })}`
-}
-
 const parseAssessmentDate = (value) => {
   if (!value) return null
   const normalized = String(value).trim()
@@ -1108,13 +1106,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const [draftAssessments, setDraftAssessments] = useState(readAssessmentDrafts)
   const [publishedAssessments, setPublishedAssessments] = useState(readPublishedAssessments)
   const [selectedPublishedLogAssessment, setSelectedPublishedLogAssessment] = useState(null)
-  const [publishedLogPage, setPublishedLogPage] = useState(1)
   const [scheduleNow, setScheduleNow] = useState(() => new Date())
   const [publishedSearchValue, setPublishedSearchValue] = useState('')
   const [publishedFilters, setPublishedFilters] = useState(PUBLISHED_FILTER_DEFAULTS)
   const [isPublishedFilterOpen, setIsPublishedFilterOpen] = useState(false)
   const [publishedActionModal, setPublishedActionModal] = useState(null)
-  const [publishedLogActiveTab, setPublishedLogActiveTab] = useState('exam')
   const [activeAssessmentTab, setActiveAssessmentTab] = useState(() => {
     const requestedTab = window.localStorage.getItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
     window.localStorage.removeItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY)
@@ -1127,16 +1123,27 @@ export default function AssessmentCreatePage({ onNavigate }) {
     return rows.length ? 'published' : drafts.length ? 'draft' : 'published'
   })
   const { published: activePublishedAssessments, evaluation: evaluationAssessments, results: resultAssessments } = splitPublishedAssessmentRows(publishedAssessments, scheduleNow)
+  const approvalAssessments = (() => {
+    try {
+      const queue = JSON.parse(localStorage.getItem('vx-approval-queue-rows') || '[]')
+      return queue.filter(record => record.setup?.assessmentId && !publishedAssessments.some(item => item.id === record.setup.assessmentId)
+        && (record.activityType !== 'Blueprint' || (readBlueprintWorkflow(record.setup.assessmentId)?.status !== 'Revision required'
+          && !queue.some(other => other.activityType === 'Assessment' && other.setup?.assessmentId === record.setup.assessmentId))))
+    } catch { return [] }
+  })()
+  const visibleDraftAssessments = draftAssessments.filter(draft => !approvalAssessments.some(record => record.setup.assessmentId === (draft.setup?.assessmentId || draft.id)))
+  const approvalStage = record => record.approvalStatus === 'Approved' ? 'approved' : /reject/i.test(record.approvalStatus || '') ? 'rejected' : 'pending'
+  const activeApprovalAssessments = approvalAssessments.filter(record => approvalStage(record) === activeAssessmentTab && [record.assessmentName, record.activityName, assessmentDisplayId(record)].join(' ').toLowerCase().includes(publishedSearchValue.trim().toLowerCase()))
   const metrics = assessmentMetrics.map((metric) => (
     metric.tone === 'draft'
-      ? { ...metric, count: draftAssessments.length }
+      ? { ...metric, count: visibleDraftAssessments.length }
       : metric.tone === 'published'
         ? { ...metric, count: activePublishedAssessments.length }
         : metric.tone === 'evaluation'
           ? { ...metric, count: evaluationAssessments.length }
           : metric.tone === 'results'
             ? { ...metric, count: resultAssessments.length }
-          : metric
+          : { ...metric, count: approvalAssessments.filter(record => approvalStage(record) === metric.tone).length }
   ))
   const assessmentTabItems = metrics.map((metric) => ({
       key: metric.tone,
@@ -1146,6 +1153,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
       count: metric.count,
       icon: metric.icon,
     }))
+  const totalAssessmentCount = metrics.reduce((total, metric) => total + metric.count, 0)
+  const renderCardStage = () => {
+    const stage = assessmentTabItems.find(item => item.key === activeAssessmentTab)
+    const StageIcon = stage?.icon || ClipboardCheck
+    return <span className={`assessment-stage-badge is-${activeAssessmentTab}`}><StageIcon size={14} aria-hidden="true" />{stage?.key === 'pending' ? 'Pending approval' : stage?.label}</span>
+  }
   const shouldShowDraftAssessments = activeAssessmentTab === 'draft'
   const shouldShowPublishedAssessments = activeAssessmentTab === 'published'
   const shouldShowEvaluationAssessments = activeAssessmentTab === 'evaluation'
@@ -1160,7 +1173,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const activePublishedFilterCount = Object.values(publishedFilters).filter((value) => value !== 'all').length
   const hasPublishedFilter = activePublishedFilterCount > 0
   const hasPublishedSearch = Boolean(publishedSearchValue.trim())
-  const filteredDraftAssessments = draftAssessments.filter((draft) => {
+  const filteredDraftAssessments = visibleDraftAssessments.filter((draft) => {
     const searchText = [
       getDraftValue(draft, 'assessmentName'),
       getDraftValue(draft, 'examCategory'),
@@ -1240,6 +1253,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
             {PUBLISHED_FILTER_GROUPS.map((group) => (
               <label key={group.key}>
                 <span>{group.label}</span>
+                <span className="assessment-filter-select">
                 <select
                   value={publishedFilters[group.key]}
                   onChange={(event) => {
@@ -1251,6 +1265,8 @@ export default function AssessmentCreatePage({ onNavigate }) {
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
+                <ChevronDown size={16} aria-hidden="true" />
+                </span>
               </label>
             ))}
             <span className="assessment-create-published-filter-actions">
@@ -1297,6 +1313,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
     }
   }
 
+  const continueBlueprintAssessment = record => {
+    const draft = draftAssessments.find(item => (item.setup?.assessmentId || item.id) === record.setup.assessmentId)
+    const flow = readBlueprintWorkflow(record.setup.assessmentId)
+    const source = draft || { ...record, id: record.setup.sourceDraftId || record.setup.assessmentId }
+    continueDraftAssessment({ ...source, setup: { ...source.setup, draftWorkspace: { ...source.setup?.draftWorkspace, activeCreateTab: flow?.status === 'Approved' ? 'questionBank' : 'blueprint', isBlueprintPlannerSaved: true, isBlueprintPlannerEditing: flow?.status !== 'Approved', blueprint: flow?.snapshot } } })
+  }
   const continueDraftAssessment = (draft) => {
     if (!draft?.setup) return
     const nextSetup = {
@@ -1466,23 +1488,21 @@ export default function AssessmentCreatePage({ onNavigate }) {
   }
 
   return (
-    <section className="vx-content assessment-page assessment-create-tracker-page">
+    <section className="vx-content assessment-page assessment-create-tracker-page my-assessment-theme logbook-scope lb-page assessment-create-theme" data-stage={activeAssessmentTab}>
       <div className={`assessment-page-shell assessment-create-page-shell ${activeAssessmentTab === 'draft' ? 'is-draft-tab' : ''}`}>
-        <div className="assessment-create-page-header">
-          <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Assessment']} />
-          <div className="assessment-create-header-actions" aria-label="Assessment page actions">
-            <button
-              type="button"
-              className="assessment-create-new-btn"
-              onClick={createAssessment}
-              disabled={isCreatingAssessment}
-              aria-busy={isCreatingAssessment}
-            >
-              <Plus size={17} strokeWidth={2.4} />
-              {isCreatingAssessment ? 'Creating…' : 'Create Assessment'}
-            </button>
+        <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Assessment']} />
+        <header className="my-skills-overview lb-page-head">
+          <div className="my-skills-overview-main">
+            <span className="ospe-kicker">Assessment management</span>
+            <div className="my-skills-overview-copy"><h1>Assessments</h1><p>Plan assessments, follow approvals, and manage evaluation and results.</p></div>
+            <div className="my-skills-overview-inline"><span><strong>{totalAssessmentCount}</strong> assessments</span><span><strong>{metrics.find(item => item.tone === 'pending')?.count || 0}</strong> awaiting approval</span></div>
           </div>
-        </div>
+          <div className="my-skills-live-card lb-create-card">
+            <div className="my-skills-live-card-top"><span className="my-skills-live-indicator"><ClipboardCheck size={15} aria-hidden="true" /> Assessment workspace</span></div>
+            <div className="my-skills-live-card-body"><strong>Plan your next assessment</strong><p>Set up your blueprint, prepare questions, and configure your assessment.</p></div>
+            <button type="button" className="tool-btn my-skills-live-card-cta lb-new-entry-btn" onClick={createAssessment} disabled={isCreatingAssessment} aria-busy={isCreatingAssessment}><Plus size={16} aria-hidden="true" />{isCreatingAssessment ? 'Creating...' : 'Create assessment'}</button>
+          </div>
+        </header>
 
         {creationError && <p role="alert">{creationError}</p>}
 
@@ -1498,12 +1518,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   type="button"
                   role="tab"
                   aria-selected={isActive}
-                  className={`assessment-create-tab ${isActive ? 'is-active' : ''}`.trim()}
+                  className={`assessment-create-tab is-${tab.key} ${isActive ? 'is-active' : ''}`.trim()}
                   onClick={() => handleAssessmentTabChange(tab.key)}
                 >
-                  <Icon size={15} strokeWidth={2.2} aria-hidden="true" />
-                  <span>{tab.label}</span>
-                  <strong>{tab.count}</strong>
+                  <span className="my-skills-metric-card-icon"><Icon size={18} aria-hidden="true" /></span>
+                  <span className="my-skills-metric-card-copy"><strong>{tab.count}</strong><span>{tab.label}</span></span>
                 </button>
               )
             })}
@@ -1516,11 +1535,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
               <h2>Draft Assessment</h2>
               {renderAssessmentSearchToolbar()}
             </div>
-            {draftAssessments.length && filteredDraftAssessments.length ? (
+            {visibleDraftAssessments.length && filteredDraftAssessments.length ? (
               <div className="assessment-create-draft-grid">
                 {filteredDraftAssessments.map((draft) => {
                   const assessmentName = getDraftValue(draft, 'assessmentName') || 'Untitled Assessment'
-                  const assessmentCode = getDraftValue(draft, 'assessmentCode') || 'ID unavailable'
+                  const assessmentCode = assessmentDisplayId(draft)
                   const academicYear = getDraftValue(draft, 'academicYear') || '-'
                   const course = String(getDraftValue(draft, 'course', 'assignCourse') || '-')
                     .replace(/\s*\(NMC Syllabus\)\s*/i, '')
@@ -1533,12 +1552,13 @@ export default function AssessmentCreatePage({ onNavigate }) {
 
                   return (
                     <article key={draft.id} className="assessment-create-draft-card">
+                      {renderCardStage()}
                       <div className="assessment-create-draft-profile">
                         <div>
                         <strong>{assessmentName}</strong>
                         <span className="assessment-create-draft-category is-identity" aria-label={`Assessment ID: ${assessmentCode}`}>{assessmentCode}</span>
-                        <span>{questionCount} Questions | {totalMarks} Marks</span>
                         </div>
+                        <button type="button" className="assessment-card-info" onClick={() => setSelectedPublishedLogAssessment(draft)} aria-label={`View history for ${assessmentName}`}><Info size={15} /></button>
                         <button
                           type="button"
                           className="assessment-create-draft-delete"
@@ -1551,21 +1571,22 @@ export default function AssessmentCreatePage({ onNavigate }) {
                       <div className="assessment-create-draft-stats" aria-label="Draft summary">
                         <span>
                           <strong>{questionCount}</strong>
-                          <em>Questions</em>
+                          <em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em>
                         </span>
                         <span>
                           <strong>{totalMarks}</strong>
-                          <em>Total Marks</em>
+                          <em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em>
                         </span>
                         <span>
                           <strong>{formatYearLabel(year)}</strong>
-                          <em>Year</em>
+                          <em><CalendarDays size={13} aria-hidden="true" /> Year</em>
                         </span>
                       </div>
                       <div className="assessment-create-draft-chips">
                         <span>{academicYear}</span>
                         <span>{course}</span>
                       </div>
+                      <AssessmentCardSettings assessment={draft} />
                       <div className="assessment-create-draft-footer">
                         <span className="assessment-create-saved-timestamp">{formatDraftSavedDate(savedAt)}</span>
                         <button type="button" onClick={() => continueDraftAssessment(draft)}>
@@ -1577,7 +1598,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                   )
                 })}
               </div>
-            ) : draftAssessments.length ? (
+            ) : visibleDraftAssessments.length ? (
               <div className="assessment-create-placeholder">
                 <p>No draft assessments match your search.</p>
               </div>
@@ -1636,10 +1657,20 @@ export default function AssessmentCreatePage({ onNavigate }) {
                         key={assessment.id}
                         className={`assessment-create-draft-card assessment-create-published-card ${scheduleStatus?.type === 'live' ? 'is-live' : ''}`.trim()}
                       >
+                      <div className="assessment-card-current-status"><span className="assessment-create-published-footer-status">
+                            {scheduleStatus ? (
+                              scheduleStatus.type === 'upcoming' ? (
+                                <span>{scheduleStatus.label}</span>
+                              ) : (
+                                <span className={`assessment-create-published-schedule-badge is-${scheduleStatus.type}`}>
+                                  {scheduleStatus.label}
+                                </span>
+                              )
+                            ) : null}
+                          </span></div>
                         <div className="assessment-create-published-head">
                           <div>
-                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong>
-                            <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
+                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong><span className="assessment-card-identity">{assessmentDisplayId(assessment)}</span>
                       </div>
                       <span className="assessment-create-published-actions">
                         {canShowPublishedActions ? (
@@ -1652,8 +1683,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           className="assessment-create-published-info"
                           onClick={() => {
                             setSelectedPublishedLogAssessment(assessment)
-                            setPublishedLogPage(1)
-                            setPublishedLogActiveTab('exam')
                           }}
                           title="Published assessment details"
                           aria-label={`View published log for ${assessment.assessmentName || 'published assessment'}`}
@@ -1668,6 +1697,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                       </span>
                         </div>
                         <span className="assessment-create-published-status-row">
+                          <small className="assessment-card-category">{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
                           <span className={`assessment-create-published-status is-${String(assessment.examMode || '').toLowerCase() === 'offline' ? 'offline' : 'online'}`}>
                             {assessment.examMode || '-'}
                           </span>
@@ -1684,26 +1714,17 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           ) : null}
                         </span>
                         <div className="assessment-create-published-details" aria-label="Published assessment details">
-                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em>Start Date</em></span>
-                          <span><strong>{assessment.startTime || '-'}</strong><em>Start Time</em></span>
+                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> Start date</em></span>
+                          <span><strong>{assessment.startTime || '-'}</strong><em><Clock3 size={13} aria-hidden="true" /> Start time</em></span>
                           <span><strong>{durationValue}</strong><em>{durationLabel}</em></span>
-                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em>End Date</em></span>
-                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
-                          <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
+                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> End date</em></span>
+                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span>
+                          <span><strong>{assessment.examType || '-'}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Exam type</em></span>
                         </div>
                         <AssessmentResultStatus results={assessment.studentResults} />
+                        <AssessmentCardSettings assessment={assessment} />
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
-                          <span className="assessment-create-published-footer-status">
-                            {scheduleStatus ? (
-                              scheduleStatus.type === 'upcoming' ? (
-                                <span>{scheduleStatus.label}</span>
-                              ) : (
-                                <span className={`assessment-create-published-schedule-badge is-${scheduleStatus.type}`}>
-                                  {scheduleStatus.label}
-                                </span>
-                              )
-                            ) : null}
-                          </span>
+                          {renderCardStage()}
                           {canShowExamControls ? (
                             <button type="button" className="assessment-create-exam-controls-btn" onClick={() => openExamControls(assessment)}>
                               <Monitor size={12} strokeWidth={2.4} />
@@ -1753,10 +1774,14 @@ export default function AssessmentCreatePage({ onNavigate }) {
                         key={assessment.id}
                         className="assessment-create-draft-card assessment-create-published-card"
                       >
+                      <div className="assessment-card-current-status"><span className="assessment-create-published-footer-status assessment-create-evaluation-statuses">
+                            <span className={`assessment-create-published-schedule-badge ${evaluationStatus === 'In Progress' ? 'is-in-progress' : 'is-yet-to-start'}`}>
+                              {evaluationStatus}
+                            </span>
+                          </span></div>
                         <div className="assessment-create-published-head">
                           <div>
-                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong>
-                            <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
+                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong><span className="assessment-card-identity">{assessmentDisplayId(assessment)}</span>
                           </div>
                           <span className="assessment-create-published-actions">
                             <button
@@ -1773,8 +1798,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
                               className="assessment-create-published-info"
                               onClick={() => {
                                 setSelectedPublishedLogAssessment(assessment)
-                                setPublishedLogPage(1)
-                                setPublishedLogActiveTab('exam')
                               }}
                               title="Assessment log details"
                               aria-label={`View logs for ${assessment.assessmentName || 'assessment'}`}
@@ -1784,6 +1807,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           </span>
                         </div>
                         <span className="assessment-create-published-status-row">
+                          <small className="assessment-card-category">{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
                           <span className={`assessment-create-published-status is-${isOfflineExam ? 'offline' : 'online'}`}>
                             {assessment.examMode || '-'}
                           </span>
@@ -1800,21 +1824,16 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           ) : null}
                         </span>
                         <div className="assessment-create-published-details" aria-label="Evaluation assessment details">
-                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em>Start Date</em></span>
-                          <span><strong>{assessment.startTime || '-'}</strong><em>Start Time</em></span>
-                          <span><strong>{durationValue}</strong><em>Total Duration</em></span>
-                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em>End Date</em></span>
-                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
-                          <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
+                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> Start date</em></span>
+                          <span><strong>{assessment.startTime || '-'}</strong><em><Clock3 size={13} aria-hidden="true" /> Start time</em></span>
+                          <span><strong>{durationValue}</strong><em><Clock3 size={13} aria-hidden="true" /> Duration</em></span>
+                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> End date</em></span>
+                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span>
+                          <span><strong>{assessment.examType || '-'}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Exam type</em></span>
                         </div>
-                        <AssessmentResultStatus results={assessment.studentResults} />
+                        <AssessmentCardSettings assessment={assessment} />
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
-                          <span className="assessment-create-published-footer-status assessment-create-evaluation-statuses">
-                            <span className="assessment-create-published-schedule-badge is-completed">Exam completed</span>
-                            <span className={`assessment-create-published-schedule-badge ${evaluationStatus === 'In Progress' ? 'is-in-progress' : 'is-yet-to-start'}`}>
-                              {evaluationStatus}
-                            </span>
-                          </span>
+                          {renderCardStage()}
                           <button type="button" className="assessment-create-exam-controls-btn is-start-evaluation" onClick={() => startAssessmentEvaluation(assessment)}>
                             <ClipboardCheck size={12} strokeWidth={2.4} />
                             Start Evaluation
@@ -1859,10 +1878,14 @@ export default function AssessmentCreatePage({ onNavigate }) {
                         key={assessment.id}
                         className="assessment-create-draft-card assessment-create-published-card"
                       >
+                      <div className="assessment-card-current-status"><span className="assessment-create-published-footer-status">
+                            <span className="assessment-create-published-schedule-badge is-published">
+                              Published
+                            </span>
+                          </span></div>
                         <div className="assessment-create-published-head">
                           <div>
-                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong>
-                            <small>{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
+                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong><span className="assessment-card-identity">{assessmentDisplayId(assessment)}</span>
                           </div>
                           <span className="assessment-create-published-actions">
                             <button
@@ -1870,8 +1893,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
                               className="assessment-create-published-info"
                               onClick={() => {
                                 setSelectedPublishedLogAssessment(assessment)
-                                setPublishedLogPage(1)
-                                setPublishedLogActiveTab('exam')
                               }}
                               title="Assessment log details"
                               aria-label={`View logs for ${assessment.assessmentName || 'assessment'}`}
@@ -1881,6 +1902,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           </span>
                         </div>
                         <span className="assessment-create-published-status-row">
+                          <small className="assessment-card-category">{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
                           <span className={`assessment-create-published-status is-${isOfflineExam ? 'offline' : 'online'}`}>
                             {assessment.examMode || '-'}
                           </span>
@@ -1892,20 +1914,17 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           ) : null}
                         </span>
                         <div className="assessment-create-published-details" aria-label="Result assessment details">
-                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em>Start Date</em></span>
-                          <span><strong>{assessment.startTime || '-'}</strong><em>Start Time</em></span>
-                          <span><strong>{durationValue}</strong><em>Total Duration</em></span>
-                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em>End Date</em></span>
-                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
-                          <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
+                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> Start date</em></span>
+                          <span><strong>{assessment.startTime || '-'}</strong><em><Clock3 size={13} aria-hidden="true" /> Start time</em></span>
+                          <span><strong>{durationValue}</strong><em><Clock3 size={13} aria-hidden="true" /> Duration</em></span>
+                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> End date</em></span>
+                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span>
+                          <span><strong>{assessment.examType || '-'}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Exam type</em></span>
                         </div>
                         <AssessmentResultStatus results={assessment.studentResults} />
+                        <AssessmentCardSettings assessment={assessment} />
                         <div className="assessment-create-draft-footer assessment-create-published-footer">
-                          <span className="assessment-create-published-footer-status">
-                            <span className="assessment-create-published-schedule-badge is-published">
-                              Published
-                            </span>
-                          </span>
+                          {renderCardStage()}
                           <button type="button" className="assessment-create-exam-controls-btn is-results" onClick={() => viewPublishedAssessmentResult(assessment)}>
                             <ChartColumnBig size={12} strokeWidth={2.4} />
                             View Result
@@ -1934,11 +1953,17 @@ export default function AssessmentCreatePage({ onNavigate }) {
               <h2>{activeEmptyTab.key === 'evaluation' ? 'Evaluation' : `${activeEmptyTab.label} Assessment`}</h2>
               {renderAssessmentSearchToolbar()}
             </div>
-            <div className="assessment-create-placeholder">
-              <p>
-                No {String(activeEmptyTab.label || 'selected').toLowerCase()} assessments {(hasPublishedSearch || hasPublishedFilter) ? 'match your search.' : 'available.'}
-              </p>
-            </div>
+            {activeApprovalAssessments.length ? <div className="assessment-create-draft-grid">
+              {activeApprovalAssessments.map(record => <article className="assessment-create-draft-card" key={record.activityId || record.setup.assessmentId}>
+                      {renderCardStage()}
+                <div className="assessment-create-draft-profile"><div><strong>{record.assessmentName || record.activityName || record.setup.assessmentName || 'Untitled Assessment'}</strong><span className="assessment-card-identity">{assessmentDisplayId(record)}</span></div>
+                  <button type="button" className="assessment-card-info" onClick={() => setSelectedPublishedLogAssessment(record)} aria-label="View assessment history"><Info size={15} /></button>
+                </div>
+                <div className="assessment-create-draft-stats"><span><strong>{record.questionCount ?? record.questionRows?.length ?? 0}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em></span><span><strong>{record.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span></div>
+                <AssessmentCardSettings assessment={record} />
+                <div className="assessment-create-draft-footer"><span>{record.activityType === 'Blueprint' ? 'Blueprint ' : ''}{record.approvalStatus}</span>{record.activityType === 'Blueprint' && record.approvalStatus !== 'Pending Approval' && <button type="button" onClick={() => continueBlueprintAssessment(record)}>{record.approvalStatus === 'Approved' ? 'Continue to assessment' : 'Edit blueprint'}</button>}</div>
+              </article>)}
+            </div> : <div className="assessment-create-placeholder"><p>No {String(activeEmptyTab.label).toLowerCase()} assessments available.</p></div>}
           </section>
         ) : null}
       </div>
@@ -2026,109 +2051,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
           </section>
         </div>
       ), document.body) : null}
-      {selectedPublishedLogAssessment ? createPortal((() => {
-        const publishedLogRows = getPublishedLogRows(selectedPublishedLogAssessment)
-        const examControlLogRows = readExamControlLogRows(selectedPublishedLogAssessment)
-        const totalPublishedLogPages = Math.max(1, Math.ceil(publishedLogRows.length / PUBLISHED_LOG_PAGE_SIZE))
-        const currentPublishedLogPage = Math.min(publishedLogPage, totalPublishedLogPages)
-        const pagedPublishedLogRows = publishedLogRows.slice(
-          (currentPublishedLogPage - 1) * PUBLISHED_LOG_PAGE_SIZE,
-          currentPublishedLogPage * PUBLISHED_LOG_PAGE_SIZE,
-        )
-
-        return (
-        <div className="assessment-create-log-modal-backdrop" role="presentation" onClick={() => setSelectedPublishedLogAssessment(null)}>
-          <section className="assessment-create-log-modal" role="dialog" aria-modal="true" aria-labelledby="assessment-create-log-title" onClick={(event) => event.stopPropagation()}>
-            <div className="assessment-create-log-modal-head">
-              <div>
-                <h3 id="assessment-create-log-title">Assessment Log Details</h3>
-                <span>{selectedPublishedLogAssessment.assessmentName || 'Untitled Assessment'}</span>
-              </div>
-              <button type="button" className="assessment-create-log-close" onClick={() => setSelectedPublishedLogAssessment(null)} aria-label="Close published log details">
-                <X size={15} strokeWidth={2.3} />
-              </button>
-            </div>
-            <div className="assessment-create-log-tabs" role="tablist" aria-label="Assessment log views">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={publishedLogActiveTab === 'exam'}
-                className={publishedLogActiveTab === 'exam' ? 'is-active' : ''}
-                onClick={() => setPublishedLogActiveTab('exam')}
-              >
-                Exam Controls Log
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={publishedLogActiveTab === 'published'}
-                className={publishedLogActiveTab === 'published' ? 'is-active' : ''}
-                onClick={() => setPublishedLogActiveTab('published')}
-              >
-                Published Log Details
-              </button>
-            </div>
-            <div className="assessment-create-log-table-shell">
-              {publishedLogActiveTab === 'exam' ? (
-                <div className="assessment-create-log-grid is-exam-controls" role="table" aria-label="Exam controls log">
-                  <div className="assessment-create-log-grid-head" role="row">
-                    <span role="columnheader">Student ID</span>
-                    <span role="columnheader">Time</span>
-                    <span role="columnheader">Action</span>
-                    <span role="columnheader">Remarks</span>
-                    <span role="columnheader">Faculty</span>
-                  </div>
-                  {examControlLogRows.length ? examControlLogRows.map((item, index) => (
-                    <div className="assessment-create-log-grid-row" role="row" key={`${item.id || 'exam-log'}-${index}`}>
-                      <span role="cell">{item.studentId || '-'}</span>
-                      <span role="cell">{item.time || '-'}</span>
-                      <span role="cell">{item.action || '-'}</span>
-                      <span role="cell">{item.remarks || '-'}</span>
-                      <span role="cell">{item.faculty || '-'}</span>
-                    </div>
-                  )) : (
-                    <div className="assessment-create-log-empty">No exam controls log available.</div>
-                  )}
-                </div>
-              ) : (
-                <div className="assessment-create-log-grid" role="table" aria-label="Published log details">
-                  <div className="assessment-create-log-grid-head" role="row">
-                    <span role="columnheader">Faculty ID</span>
-                    <span role="columnheader">Faculty Name</span>
-                    <span role="columnheader">Remarks</span>
-                    <span role="columnheader">Date & Time Stamp</span>
-                  </div>
-                  {pagedPublishedLogRows.map((item, index) => (
-                    <div className="assessment-create-log-grid-row" role="row" key={`${item.timestamp || 'log'}-${index}`}>
-                      <span role="cell">{item.facultyId || '-'}</span>
-                      <span role="cell">{item.facultyName || '-'}</span>
-                      <span role="cell">{item.remarks || '-'}</span>
-                      <span role="cell">{formatDisplayDateTime(item.timestamp)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {publishedLogActiveTab === 'published' ? (
-              <div className="assessment-create-log-pagination" aria-label="Published log pagination">
-                <span>
-                  Page {currentPublishedLogPage} of {totalPublishedLogPages}
-                  {' '}| Showing {pagedPublishedLogRows.length} of {publishedLogRows.length}
-                </span>
-                <div>
-                  <button type="button" onClick={() => setPublishedLogPage((page) => Math.max(1, page - 1))} disabled={currentPublishedLogPage <= 1}>
-                    Previous
-                  </button>
-                  <button type="button" onClick={() => setPublishedLogPage((page) => Math.min(totalPublishedLogPages, page + 1))} disabled={currentPublishedLogPage >= totalPublishedLogPages}>
-                    Next
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </section>
-        </div>
-        )
-      })(), document.body) : null}
+      {selectedPublishedLogAssessment && <AssessmentHistoryDialog stage={activeTabLabel} assessment={selectedPublishedLogAssessment} controlLogs={readExamControlLogRows(selectedPublishedLogAssessment)} onClose={() => setSelectedPublishedLogAssessment(null)} />}
     </section>
   )
 }

@@ -1,0 +1,32 @@
+.save-changes-dialog.assessment-history-dialog { width: min(720px, calc(100vw - 24px)); padding: var(--s-3, 12px); border-radius: var(--r-sm); animation: assessment-history-enter var(--dur-overlay) var(--ease-emphasized); }
+.assessment-history-dialog > h2 { font-size: 18px; margin-bottom: var(--s-1, 4px); }
+.assessment-history-dialog > p { margin-block: var(--s-1, 4px) var(--s-2, 8px); font-size: 13px; }
+.assessment-history-table-wrap { max-height: 50vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--r-sm); }
+.assessment-history-table { width: 100%; min-width: 600px; border-collapse: collapse; text-align: left; font-size: 12px; line-height: 1.5; color: var(--text-body); background: var(--surface-card); }
+.assessment-history-table th { position: sticky; top: 0; z-index: 1; background: var(--surface-soft); color: var(--text-strong); font-weight: 600; white-space: nowrap; }
+.assessment-history-table :is(th,td) { padding: var(--s-1, 4px) var(--s-2, 8px); border-bottom: 1px solid var(--border); vertical-align: top; }
+.assessment-history-table tr:last-child td { border-bottom: 0; }
+.assessment-history-table td:first-child { width: 160px; white-space: nowrap; font-family: var(--f-code, monospace); font-size: 11px; }
+.assessment-history-table td:nth-child(2) { min-width: 150px; font-weight: 500; }
+.assessment-history-table td:last-child { max-width: 280px; overflow-wrap: anywhere; }
+.assessment-history-table tbody tr:hover { background: var(--surface-soft); }
+.assessment-history-table-wrap:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.assessment-history-empty { padding: var(--s-3, 12px); font-size: 12px; color: var(--text-muted); }
+.assessment-history-dialog .save-changes-actions { margin-top: var(--s-2, 8px); padding-top: 0; }
+@keyframes assessment-history-enter { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@media(prefers-reduced-motion:reduce) { .assessment-history-dialog { animation: none; } }
+
+.assessment-history-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1, 4px) var(--s-3, 12px); font-size: 12px; color: var(--text-muted); }
+.assessment-history-meta strong { color: var(--text-strong); font-weight: 600; }
+.save-changes-dialog.assessment-history-dialog > h2 { margin: 0 0 var(--s-1, 4px); font-size: 16px; line-height: 1.5; }
+.save-changes-dialog.assessment-history-dialog > p { margin: 0 0 var(--s-2, 8px); line-height: 1.5; }
+.save-changes-dialog.assessment-history-dialog .save-changes-actions button { min-height: 32px; padding: var(--s-1, 4px) var(--s-3, 12px); font-size: 12px; flex: none; }
+.assessment-history-title { display: flex; align-items: center; gap: var(--s-2, 8px); color: var(--text-strong); }
+.assessment-history-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--sky) 35%, var(--surface-card)); color: var(--text-strong); }
+.assessment-history-dialog .assessment-history-table th { background: color-mix(in srgb, var(--sky) 22%, var(--surface-card)); color: var(--text-strong); }
+.assessment-history-dialog .assessment-history-table tbody tr:hover { background: color-mix(in srgb, var(--sky) 12%, var(--surface-card)); }
+
+.save-changes-dialog.assessment-history-dialog { position: fixed; }
+.save-changes-dialog.assessment-history-dialog > h2 { padding-right: var(--s-6, 32px); }
+.save-changes-dialog.assessment-history-dialog .save-changes-actions { position: absolute; top: var(--s-3, 12px); right: var(--s-3, 12px); margin: 0; padding: 0; }
+.save-changes-dialog.assessment-history-dialog .save-changes-actions button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; min-height: 28px; padding: 0; }

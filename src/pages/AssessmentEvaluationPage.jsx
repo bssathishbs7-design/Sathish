@@ -1,3 +1,4 @@
+import { appendAssessmentHistory } from '../services/assessmentHistory'
 import DescriptiveEvaluationReport from '../components/DescriptiveEvaluationReport'
 import { getStudentReleasedResult, RESULT_RELEASE_EVENT } from '../services/assessmentResultRelease'
 import { getAssessmentAutomation } from '../services/assessmentAutomation'
@@ -1232,6 +1233,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             : item
         ))
         window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
+        appendAssessmentHistory(assessment, { action: 'Results published', timestamp: publishedAt })
         window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
       }
     } catch {
@@ -1380,6 +1382,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       if (Array.isArray(publishedAssessments)) {
         const nextPublished = publishedAssessments.map((item) => (item.id === assessment?.id ? mergeAssessmentThresholdConfig(item, nextConfig) : item))
         window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
+        appendAssessmentHistory(assessment, { action: 'Results published', timestamp: publishedAt })
         window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
       }
     } catch {
@@ -1605,9 +1608,16 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
 
   const saveQuestionEvaluationState = (updater) => {
     if (!selectedStudent) return
+    const historyEventId = crypto.randomUUID()
     setQuestionEvaluationState((current) => {
       const nextState = typeof updater === 'function' ? updater(current) : updater
       writeStorageObject(getStudentQuestionEvaluationStorageKey(assessment, selectedStudent), nextState)
+      if (JSON.stringify(current) !== JSON.stringify(nextState)) {
+        const changes = Object.keys({ ...current, ...nextState }).filter(key => JSON.stringify(current[key]) !== JSON.stringify(nextState[key]))
+        const reset = changes.some(key => nextState[key]?.retainedEvaluation)
+        const retained = changes.some(key => current[key]?.retainedEvaluation && nextState[key]?.autoEvaluated)
+        appendAssessmentHistory(assessment, { id: historyEventId, action: reset ? 'Evaluation reset' : retained ? 'Evaluation retained' : 'Evaluation updated', notes: `${selectedStudent.name} (${selectedStudent.id}). ${changes.map(key => `${key}: ${current[key]?.marks ?? '-'} to ${nextState[key]?.marks === '' ? 'pending' : nextState[key]?.marks ?? '-'}`).join('; ')}` })
+      }
       return nextState
     })
   }

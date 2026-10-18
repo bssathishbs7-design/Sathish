@@ -73,7 +73,7 @@ const getActivityMeta = (row) => ({
 })
 
 const isQuestionBankRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'question bank'
-const isAssessmentRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'assessment'
+const isAssessmentRow = (row) => ['assessment', 'blueprint'].includes(String(row.activityType ?? '').trim().toLowerCase())
 const isEvaluationRow = (row) => String(row.activityType ?? '').trim().toLowerCase() === 'evaluation'
 
 const formatCountValue = (value, fallback = 'Not set') => {
@@ -186,7 +186,12 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
 
   if (isAssessmentRow(row)) {
     const assessmentMode = row.assessmentMode ?? 'Not set'
-    const primaryDetails = [
+    const primaryDetails = row.activityType === 'Blueprint' ? [
+      { label: 'Blueprint ID', value: row.blueprintId },
+      { label: 'Assessment ID', value: row.setup?.assessmentCode || row.setup?.assessmentId },
+      { label: 'Subject', value: row.blueprintSnapshot?.blueprintDraft?.subject || '-' },
+      { label: 'Revision', value: row.blueprintRevision },
+    ] : [
       { label: 'Category', value: row.examCategory ?? 'Not set' },
       { label: 'Assign to', value: row.assignTo ?? 'Not assigned' },
       { label: 'Exam Date', value: row.examDate ?? 'Not set' },
@@ -404,6 +409,7 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
     approvalQueueRows.forEach((row) => {
       const activityKey = row.activityId ?? row.id
       const approvalStatus = String(row.approvalStatus ?? row.status ?? row.reviewStatus ?? '').trim().toLowerCase()
+      if (isAssessmentRow(row) && ['approved', 'rejected', 'approval rejected'].includes(approvalStatus)) return
       if (isQuestionBankRow(row) && approvalStatus && approvalStatus !== 'pending approval') return
       if (!activityKey || activityRows.has(activityKey)) return
       activityRows.set(activityKey, row)
@@ -418,7 +424,7 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
 
     if (decision.includes('published')) return 'published'
     if (type.includes('question bank')) return 'questionBank'
-    if (type.includes('assessment')) return 'assessment'
+    if (type.includes('assessment') || type === 'blueprint') return 'assessment'
     if (type.includes('evaluation')) return 'evaluation'
     if (type.includes('skill')) return 'evaluation'
     if (type.includes('interpretation') || type.includes('ospe') || type.includes('osce') || type.includes('activity')) return 'evaluation'

@@ -1,0 +1,15 @@
+.blueprint-approval-summary { padding: var(--s-3, 12px); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); }
+.blueprint-approval-summary header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-2, 8px); color: var(--text-strong); }
+.blueprint-approval-summary p { margin: var(--s-2, 8px) 0; font-size: 13px; }
+.blueprint-approval-table { overflow: auto; }
+.blueprint-approval-table table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: 12px; }
+.blueprint-approval-table :is(th,td) { padding: var(--s-2, 8px); text-align: left; border-bottom: 1px solid var(--border); }
+.blueprint-approval-table th { background: var(--surface-soft); color: var(--text-strong); }
+.blueprint-approval-review { padding: var(--s-4, 16px); display: grid; gap: var(--s-3, 12px); }
+.blueprint-approval-review textarea { width: 100%; min-height: 80px; }
+.blueprint-approval-review-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2, 8px); }
+:is(.blueprint-approval-review > button, .blueprint-approval-review-actions > button) { border: 1px solid var(--border); background: var(--surface-card); color: var(--text-strong); padding: var(--s-2, 8px) var(--s-3, 12px); border-radius: var(--r-pill); cursor: pointer; }
+:is(.blueprint-approval-review > button, .blueprint-approval-review-actions > button):hover { background: var(--surface-soft); }
+:is(.blueprint-approval-review > button, .blueprint-approval-review-actions > button):active { transform: translateY(1px) scale(.97); }
+:is(.blueprint-approval-review > button, .blueprint-approval-review-actions > button):disabled { opacity: .5; cursor: default; }
+:is(.blueprint-approval-review > button, .blueprint-approval-review-actions > button):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }

@@ -1,0 +1,164 @@
+[
+  {
+    "name": "skills",
+    "sourceRatio": 2.58,
+    "displayRatio": 2.58,
+    "error": 0
+  },
+  {
+    "name": "studentSkills",
+    "sourceRatio": 2.6,
+    "displayRatio": 2.6,
+    "error": 0
+  },
+  {
+    "name": "skills",
+    "sourceRatio": 3.1219512195121952,
+    "displayRatio": 3.1219512195121952,
+    "error": 0
+  },
+  {
+    "name": "skills",
+    "sourceRatio": 6.578947368421052,
+    "displayRatio": 6.578947368421052,
+    "error": 0
+  },
+  {
+    "name": "studentSkills",
+    "sourceRatio": 1.8840579710144927,
+    "displayRatio": 1.8840579710144927,
+    "error": 0
+  },
+  {
+    "name": "studentSkills",
+    "sourceRatio": 3.484848484848485,
+    "displayRatio": 3.484848484848485,
+    "error": 0
+  },
+  {
+    "name": "logbook",
+    "sourceRatio": 1.8571428571428572,
+    "displayRatio": 1.857142857142857,
+    "error": 2.220446049250313e-16
+  },
+  {
+    "name": "entry-details",
+    "sourceRatio": 0.8823529411764706,
+    "displayRatio": 0.8823529411764706,
+    "error": 0
+  },
+  {
+    "name": "admin",
+    "sourceRatio": 2,
+    "displayRatio": 2,
+    "error": 0
+  },
+  {
+    "name": "review",
+    "sourceRatio": 2.1403508771929824,
+    "displayRatio": 2.1403508771929824,
+    "error": 0
+  },
+  {
+    "name": "approval",
+    "sourceRatio": 1.3163636363636364,
+    "displayRatio": 1.3163636363636362,
+    "error": 2.220446049250313e-16
+  },
+  {
+    "name": "correlation",
+    "sourceRatio": 1.855072463768116,
+    "displayRatio": 1.855072463768116,
+    "error": 0
+  },
+  {
+    "name": "matrix",
+    "sourceRatio": 2.1333333333333333,
+    "displayRatio": 2.1333333333333333,
+    "error": 0
+  },
+  {
+    "name": "author",
+    "sourceRatio": 1.5294117647058822,
+    "displayRatio": 1.5294117647058822,
+    "error": 0
+  },
+  {
+    "name": "bankList",
+    "sourceRatio": 2,
+    "displayRatio": 2,
+    "error": 0
+  },
+  {
+    "name": "bankList",
+    "sourceRatio": 3.96875,
+    "displayRatio": 3.96875,
+    "error": 0
+  },
+  {
+    "name": "build",
+    "sourceRatio": 2.0256410256410255,
+    "displayRatio": 2.0256410256410255,
+    "error": 0
+  },
+  {
+    "name": "build",
+    "sourceRatio": 0.5833333333333334,
+    "displayRatio": 0.5833333333333334,
+    "error": 0
+  },
+  {
+    "name": "studentAssessment",
+    "sourceRatio": 1.8571428571428572,
+    "displayRatio": 1.8571428571428572,
+    "error": 0
+  },
+  {
+    "name": "studentAssessment",
+    "sourceRatio": 2.125,
+    "displayRatio": 2.125,
+    "error": 0
+  },
+  {
+    "name": "practice",
+    "sourceRatio": 1.8840579710144927,
+    "displayRatio": 1.884057971014493,
+    "error": 2.220446049250313e-16
+  },
+  {
+    "name": "practice",
+    "sourceRatio": 2.9411764705882355,
+    "displayRatio": 2.9411764705882355,
+    "error": 0
+  },
+  {
+    "name": "skills",
+    "sourceRatio": 1.7333333333333334,
+    "displayRatio": 1.7333333333333334,
+    "error": 0
+  },
+  {
+    "name": "logbook",
+    "sourceRatio": 1.7333333333333334,
+    "displayRatio": 1.7333333333333334,
+    "error": 0
+  },
+  {
+    "name": "bankList",
+    "sourceRatio": 1.7333333333333334,
+    "displayRatio": 1.7333333333333334,
+    "error": 0
+  },
+  {
+    "name": "studentAssessment",
+    "sourceRatio": 1.7333333333333334,
+    "displayRatio": 1.7333333333333334,
+    "error": 0
+  },
+  {
+    "name": "practice",
+    "sourceRatio": 1.7333333333333334,
+    "displayRatio": 1.7333333333333334,
+    "error": 0
+  }
+]

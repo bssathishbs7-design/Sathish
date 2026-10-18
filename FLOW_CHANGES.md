@@ -870,3 +870,31 @@
 
 ## 2026-10-16 - Edit action for automatically evaluated students
 - Student rows with recorded automatic evaluation show a single Edit action, opening the existing evaluation screen. Manual and absent rows retain their existing actions.
+
+## 2026-10-17 - Shared assessment lifecycle history
+- Draft, approval-stage, Published, Evaluation and Results cards show the stable assessment identity and open a shared animated history dialog.
+- Pending, Approved and Rejected cards now read the existing assessment approval queue.
+- Draft saves, approval actions, evaluation changes and automatic result transitions append browser-persisted history under the assessment identity. Existing publishing and exam-control logs remain accessible.
+- The dialog supports Escape, focus trapping/restoration, scrolling and reduced motion. Missing legacy activity is not invented.
+
+## 2026-10-17 - Blueprint identity and optional approval gate
+- Saving a valid blueprint offers Continue to assessment or Send to approval. The first confirmed action allocates a persistent ASSTBP sequence ID linked to the unchanged assessment ID.
+- Blueprint submissions use the existing faculty popup and Assessment module in Review-Approve. Reviewers inspect the submitted snapshot and approve or reject with remarks.
+- Pending/rejected/revised blueprints block question preparation and configuration. Approved cards continue to the same assessment; editing an approved planner requires resubmission. Existing questions are retained and checked by the existing blueprint matching logic.
+- Cards and history display the blueprint identity and status; blueprint approval remains separate from final assessment approval.
+
+## 2026-10-17 - Editable blueprint approval
+- Pending blueprint reviews now expose the existing Distribution and Specifications planner tabs. Reviewer edits stay local until Save and approve validates and persists the complete matrix.
+- Approval retains the blueprint ID, increments the revision for changed content, logs reviewer edits, and passes the approved snapshot to the assessment continuation. Rejection preserves the submitted snapshot and requires remarks.
+
+## 2026-10-17 - Read-only blueprint preview while approval is pending
+- Create Assessment now shows the complete saved Distribution and Specifications planner during pending approval, with a status notice and locked downstream assessment steps.
+- Tabs, view switches, information tools and exit remain available; editing, allocation and save controls are disabled until review completes.
+- Approval received while the page is open restores the reviewed snapshot before question preparation continues. Existing rejection and resubmission handling is retained.
+
+## 2026-10-17 - Preserve the original pending blueprint page layout
+- Pending approval now uses the original Create Assessment header, planner and right action rail. Removed the separate preview wrapper and duplicate navigation controls.
+- Existing planner and assessment actions remain disabled while pending; view tabs and tooltips stay available. Exit leaves the read-only page without offering a draft save.
+
+## 2026-10-17 - Remove decided assessment requests from the review queue
+- Assessment and blueprint cards leave Review-Approve immediately after approval or rejection, including the tab count. Stored decisions and assessment history remain available in the assessment workflow.

@@ -1,0 +1,14 @@
+MEDSY LOGBOOK - NOVEMBER LAUNCH VIDEO
+
+Main deliverable: Medsy-Logbook-November-Launch-50s.mp4
+Format: 1920 x 1080 landscape, target 30 frames per second, H.264 video / AAC audio.
+Content: My Logbook, activity entry, student progress, Admin Logbook, faculty review, progress analytics, November launch message.
+Soundtrack: Original instrumental composed and synthesised locally for this film. 108 BPM. No music or audio copied from the supplied reference.
+Visuals: Actual local React Logbook screens using demonstration records in an isolated browser. The reference video informed scene pacing, not copied footage.
+
+Editable source: index.html + film.js + assets folder.
+Preview: Serve this folder over HTTP and open index.html. Press Play film.
+Rendering: render.mjs connects to an isolated Chrome debugging session and exports the film. Paths/port are recorded in the script.
+Launch wording: Coming this November. The planning assumption is November 2026; no exact release day is claimed.
+
+The application's source, user storage, and real records were not modified for video production.

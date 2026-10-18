@@ -1,0 +1,3 @@
+import fs from 'node:fs';
+export async function browser(){const pages=await(await fetch('http://127.0.0.1:9241/json')).json();const ws=new WebSocket(pages.find(p=>p.type==='page').webSocketDebuggerUrl);await new Promise(r=>ws.onopen=r);let id=0;const pending=new Map();ws.onmessage=e=>{const d=JSON.parse(e.data);if(d.id){pending.get(d.id)?.(d.result);pending.delete(d.id)}};const call=(method,params={})=>new Promise(r=>{console.log(method); pending.set(++id,r);ws.send(JSON.stringify({id,method,params}))});const evaluate=async expression=>(await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true}));return {call,evaluate,close:()=>ws.close()};}
+export const pause=ms=>new Promise(r=>setTimeout(r,ms));

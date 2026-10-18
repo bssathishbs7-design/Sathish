@@ -1,3 +1,4 @@
+import { appendAssessmentHistory } from './services/assessmentHistory'
 import useAssessmentResultRelease from './services/useAssessmentResultRelease'
 import { SKILL_SAMPLE_ASSIGNMENTS } from './services/skillLogbookSample'
 import { normaliseSkillAssignment, studentSkillActivities } from './services/skillLogbook'
@@ -1021,6 +1022,7 @@ function App() {
       receivedAt: approvalTimestamp,
     }
 
+    if (payload.setup?.assessmentId) appendAssessmentHistory(payload, { action: 'Sent for approval', timestamp: approvalTimestamp, actor: profileUser.name, notes: payload.approvalFaculty?.note || '' })
     setApprovalQueueRows((current) => [
       approvalRow,
       ...current.filter((item) => item.activityId !== payload.activityId),
@@ -1050,12 +1052,14 @@ function App() {
     setApprovalQueueRows((current) => current.map((item) => (
       item.activityId === reviewedRecord.activityId ? nextReviewedRecord : item
     )))
+    if (nextReviewedRecord.setup?.assessmentId) appendAssessmentHistory(nextReviewedRecord, { action: nextReviewedRecord.approvalStatus || 'Approval reviewed', actor: profileUser.name, notes: nextReviewedRecord.reviewRemarks || '' })
     setSelectedApprovalViewRecord(nextReviewedRecord)
     storeApprovalViewRecord(nextReviewedRecord)
     showAlert({
       tone: nextReviewedRecord.approvalStatus === 'Approved' ? 'secondary' : 'warning',
       message: `${nextReviewedRecord.activityName ?? 'Activity'} ${nextReviewedRecord.approvalStatus === 'Approved' ? 'approved' : 'rejected'}${nextReviewedRecord.reviewRemarks ? ' with remarks' : ''}.`,
     })
+    if (nextReviewedRecord.activityType === 'Blueprint') { navigateToPage(APP_PAGES.REVIEW_APPROVE); return }
     navigateToPage(
       String(nextReviewedRecord.activityType ?? '').trim().toLowerCase() === 'question bank'
         ? APP_PAGES.QUESTION_BANK
@@ -1539,6 +1543,7 @@ function App() {
             />
           ) : activePage === APP_PAGES.APPROVAL_VIEW ? (
             <ApprovalViewPage
+              theme={theme}
               key={(selectedApprovalViewRecord ?? readStoredApprovalViewRecord())?.activityId ?? 'no-approval-record'}
               approvalRecord={selectedApprovalViewRecord ?? readStoredApprovalViewRecord()}
               completedEvaluationRows={completedEvaluationRows}

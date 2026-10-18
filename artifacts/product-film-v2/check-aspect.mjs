@@ -1,0 +1,1 @@
+import fs from 'node:fs';import {browser} from '../logbook-launch/cdp.mjs';const b=await browser();const r=await b.evaluate('window.aspectAudit()');const rows=r.result.value;fs.writeFileSync('artifacts/product-film-v2/aspect-check.json',JSON.stringify(rows,null,2));console.log({draws:rows.length,maxError:Math.max(...rows.map(x=>x.error))});b.close();

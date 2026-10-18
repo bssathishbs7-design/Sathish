@@ -9,7 +9,7 @@
   background: var(--surface-card);
   color: var(--text-body);
   gap: var(--s-3);
-  padding: var(--s-4);
+  padding: var(--s-3);
 }
 .is-compact-review .single-question-review-section { background: var(--surface-card); }
 .is-compact-review .single-question-review-section > header button,
@@ -17,34 +17,35 @@
   background: var(--surface-soft);
   color: var(--text-strong);
   padding: var(--s-3);
+  min-height: 36px;
   border-radius: 0;
 }
 .is-compact-review .single-question-review-section > header span { white-space: normal; font-weight: 600; }
 .is-compact-review .single-question-review-row,
 .is-compact-review .single-question-review-row:hover { background: var(--surface-card); }
 .is-compact-review .single-question-review-columns,
-.is-compact-review .single-question-review-main { grid-template-columns: var(--s-6) minmax(0,1fr) 96px 104px 132px var(--s-5); gap: var(--s-2); padding-inline: var(--s-3); }
-.is-compact-review .single-question-review-columns { font-size: var(--fs-micro); }
+.is-compact-review .single-question-review-main { grid-template-columns: 24px minmax(0,1fr) 64px 88px 120px 20px; gap: var(--s-2); padding-inline: var(--s-3); }
+.is-compact-review .single-question-review-columns { font-size: var(--fs-xs, 12px); }
 .is-compact-review .single-question-review-title strong { white-space: normal; font-weight: 600; line-height: 1.5; }
 .is-compact-review .single-question-review-title small,
 .is-compact-review .single-question-review-status,
-.is-compact-review .single-question-review-threshold { font-size: var(--fs-micro); font-weight: 600; }
-.is-compact-review .single-question-review-detail { margin: 0 var(--s-3) var(--s-3) calc(var(--s-3) + var(--s-6) + var(--s-2)); padding: var(--s-3); background: var(--surface-mist); border-color: var(--border); color: var(--text-body); }
-.is-compact-review .single-result-response-part-head { display: grid; grid-template-columns: minmax(0,1fr) auto auto; font-size: var(--fs-xs); line-height: 1.5; }
+.is-compact-review .single-question-review-threshold { font-size: var(--fs-xs, 12px); font-weight: 600; }
+.is-compact-review .single-question-review-detail { margin: 0 var(--s-3) var(--s-3) 44px; padding: 0; background: transparent; border: 0; color: var(--text-body); }
+.is-compact-review .single-result-response-part-head { display: grid; grid-template-columns: minmax(0,1fr) auto auto; font-size: var(--fs-xs, 12px); line-height: 1.5; }
 .is-compact-review .single-result-response-part-head > strong { font-weight: 600; }
 .is-compact-review .assessment-student-written-answer,
-.is-compact-review .single-result-response-key { padding: var(--s-3); background: var(--surface-card); color: var(--text-body); font-size: var(--fs-xs); line-height: 1.5; }
-.is-compact-review .assessment-student-written-answer > strong { font-size: var(--fs-micro); color: var(--text-strong); }
+.is-compact-review .single-result-response-key { padding: var(--s-3); background: var(--surface-card); color: var(--text-body); font-size: var(--fs-xs, 12px); line-height: 1.5; }
+.is-compact-review .assessment-student-written-answer > strong { font-size: var(--fs-xs, 12px); color: var(--text-strong); }
 .is-compact-review .assessment-student-written-answer p { margin: var(--s-2) 0 0; }
 .is-compact-review .single-result-response-key .assessment-answer-key-content { display: grid; gap: var(--s-1); margin: 0; padding: 0; border: 0; background: transparent; color: var(--text-body); font: inherit; }
-.is-compact-review .single-result-response-key .assessment-answer-key-content strong { font-size: var(--fs-micro); color: var(--text-strong); }
+.is-compact-review .single-result-response-key .assessment-answer-key-content strong { font-size: var(--fs-xs, 12px); color: var(--text-strong); }
 .is-compact-review .single-question-review-status.is-correct,
 .is-compact-review .single-question-review-threshold.is-achieved { background: var(--surface-soft); color: var(--text-brand); border-color: var(--border); }
 .is-compact-review .single-question-review-status.is-incorrect,
 .is-compact-review .single-question-review-threshold.is-not-achieved { background: var(--danger-soft); color: var(--danger-ink); border-color: var(--danger-line); }
-.is-compact-review .assessment-mcq-options > span { background: var(--surface-card); color: var(--text-body); border-color: var(--border); font-size: var(--fs-xs); line-height: 1.5; }
+.is-compact-review .assessment-mcq-options > span { background: var(--surface-card); color: var(--text-body); border-color: var(--border); font-size: var(--fs-xs, 12px); line-height: 1.5; }
 .is-compact-review .assessment-mcq-options > span.is-student-selected { background: var(--surface-soft); }
-.is-compact-review .assessment-mcq-answer-key { background: var(--surface-card); color: var(--text-body); border-color: var(--border); font-size: var(--fs-xs); }
+.is-compact-review .assessment-mcq-answer-key { background: var(--surface-card); color: var(--text-body); border-color: var(--border); font-size: var(--fs-xs, 12px); }
 @media(max-width:1023px) {
   .is-compact-review .single-question-review-list { overflow: visible; }
   .is-compact-review .single-question-review-columns { display: none; }
@@ -65,3 +66,57 @@
   .is-compact-review .single-question-review-section > header em { grid-column: 1; grid-row: 2; }
   .is-compact-review .single-question-review-section > header svg { grid-column: 2; grid-row: 1; }
 }
+
+/* Compact content hierarchy without an extra panel around every answer. */
+.single-result-question-grid.is-compact-review > .assessment-student-result-section-head { min-height: 0; padding: var(--s-2) 0; margin: 0; }
+.is-compact-review .single-question-review-list { padding: var(--s-2); gap: var(--s-2); }
+.is-compact-review .single-question-review-columns { min-height: 24px; letter-spacing: normal; font-weight: 600; text-transform: none; }
+.is-compact-review .single-question-review-main { min-height: 44px; padding-block: var(--s-2); }
+.is-compact-review .single-question-review-title { gap: var(--s-1); }
+.is-compact-review .single-question-review-title strong { font-size: 13px; }
+.is-compact-review .single-question-review-status,
+.is-compact-review .single-question-review-threshold { min-height: 24px; padding-inline: var(--s-2); }
+.is-compact-review .single-question-review-section > header span { font-size: 13px; }
+.is-compact-review .assessment-mcq-options { gap: var(--s-2); margin: 0; }
+.single-result-question-grid.is-compact-review .assessment-mcq-options > span { min-height: 0; display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-2); font-weight: 400; }
+.single-result-question-grid.is-compact-review .assessment-mcq-options > span > span { font-size: 13px; font-weight: 400; line-height: 1.5; }
+.is-compact-review .assessment-mcq-options > span > b { flex-shrink: 0; }
+.single-result-question-grid.is-compact-review .assessment-mcq-answer-key { display: flex; gap: var(--s-2); width: 100%; margin-top: var(--s-2); padding: var(--s-2); font-weight: 400; }
+.is-compact-review .assessment-student-written-answer,
+.is-compact-review .single-result-response-key { padding: var(--s-2); }
+.is-compact-review .single-result-response-key { border: 0; border-left: 2px solid var(--border); border-radius: 0; background: transparent; }
+.is-compact-review .assessment-student-written-answer p { font-size: 13px; font-weight: 400; line-height: 1.5; }
+.is-compact-review .single-result-response-part-head > strong { font-size: 13px; }
+@media(max-width:767px) {
+  .is-compact-review .single-question-review-detail { margin-left: var(--s-3); }
+  .is-compact-review .single-result-response-part-head .single-question-review-status { white-space: normal; text-align: center; }
+}
+/* Explicit semantic ink keeps inherited result-page styles readable. */
+.single-result-question-grid.is-compact-review .single-question-review-title strong,
+.single-result-question-grid.is-compact-review .single-question-review-score,
+.single-result-question-grid.is-compact-review .single-result-response-part-head > strong { color: var(--text-strong); }
+.single-result-question-grid.is-compact-review .single-question-review-columns,
+.single-result-question-grid.is-compact-review .single-question-review-title small,
+.single-result-question-grid.is-compact-review .single-question-review-section > header em { color: var(--text-muted); font-size: 12px; font-weight: 500; }
+.single-result-question-grid.is-compact-review .assessment-mcq-options > span > span,
+.single-result-question-grid.is-compact-review .assessment-student-written-answer p { color: var(--text-body); }
+.single-result-question-grid.is-compact-review .assessment-mcq-options > span > b { color: var(--text-brand); background: var(--surface-soft); font-size: 12px; }
+.single-result-question-grid.is-compact-review .single-question-review-detail > .assessment-question-answer-row,
+.single-result-question-grid.is-compact-review .single-question-review-detail > .assessment-question-meta.is-mcq-answer {
+  display: block; margin: var(--s-2) 0 0; padding: var(--s-2) var(--s-3);
+  background: var(--surface-soft); border: 1px solid var(--border); border-radius: var(--r-sm);
+  color: var(--text-body); font-size: 13px; line-height: 1.5;
+}
+.single-result-question-grid.is-compact-review .single-question-review-detail .assessment-answer-key-content,
+.single-result-question-grid.is-compact-review .single-question-review-detail .assessment-question-meta.is-mcq-answer > span {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-2);
+  margin: 0; padding: 0; border: 0; background: transparent; color: var(--text-body); font-size: 13px; font-weight: 400;
+}
+.single-result-question-grid.is-compact-review .single-question-review-detail .assessment-answer-key-content strong,
+.single-result-question-grid.is-compact-review .single-question-review-detail .assessment-question-meta.is-mcq-answer strong { color: var(--text-strong); font-size: 12px; font-weight: 600; }
+.single-result-question-grid.is-compact-review .single-question-review-detail .assessment-answer-key-content > span,
+.single-result-question-grid.is-compact-review .single-question-review-detail .assessment-question-meta.is-mcq-answer > span > span { color: var(--text-body); font-size: 13px; font-weight: 400; }
+.single-result-question-grid.is-compact-review .descriptive-evaluation-report-section h4 { font-size: 12px; font-weight: 600; }
+.single-result-question-grid.is-compact-review .descriptive-evaluation-report-section p { font-size: 13px; font-weight: 400; line-height: 1.5; }
+.single-result-question-grid.is-compact-review .single-question-review-main:focus-visible,
+.single-result-question-grid.is-compact-review .single-question-review-section > header button:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; }

@@ -1,3 +1,4 @@
+import { appendAssessmentHistory } from './assessmentHistory.js'
 import { getAssessmentAutomationConfiguration } from './assessmentAutomation.js'
 import { descriptiveInputEnabled, descriptiveResponseItems, normalizeDescriptiveResponses, readAssessmentAttempt } from './descriptiveResponses.js'
 import { evaluateDescriptiveAnswer } from './descriptiveGrading.js'
@@ -124,6 +125,11 @@ export function reconcileAssessmentResults(storage = localStorage, now = Date.no
       const prepared = prepareAssessmentResult(assessment, attempt, results[studentId], read(storage, key), now)
       if (!prepared) continue
       processed = true
+      appendAssessmentHistory(assessment, { id: `submit:${studentId}:${attempt.submittedAt}`, action: 'Student submitted', timestamp: attempt.submittedAt, notes: studentId }, storage)
+      if (JSON.stringify(results[studentId]) !== JSON.stringify(prepared.result)) {
+        const status = prepared.result.status
+        appendAssessmentHistory(assessment, { id: `result:${studentId}:${attempt.submittedAt}:${status}:${prepared.result.marks}`, action: status === 'published' ? 'Result published' : status === 'evaluated' ? 'Evaluation completed' : 'Evaluation in progress', timestamp: status === 'published' ? prepared.result.publishedAt : new Date(now).toISOString(), notes: studentId }, storage)
+      }
       results[studentId] = prepared.result
       save(key, prepared.evaluation)
       const completed = prepared.result.status !== 'evaluating'

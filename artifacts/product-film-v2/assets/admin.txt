@@ -1,0 +1,200 @@
+Skills
+Admin Logbook
+Approval Queue
+Correlation Rating
+Assessment Suite
+Query Request
+Student Management
+Faculty
+Student
+DR
+Dr R. Menon
+
+RM
+
+My Pages
+Admin logbook
+Dr R. Menon — General Medicine / Human Anatomy
+Dr A. Sharma — Physiology / Pathology
+Dr P. Kumar — Community Medicine / General Medicine
+Biochemistry faculty — Biochemistry
+Microbiology faculty — Microbiology
+Pharmacology faculty — Pharmacology
+Forensic Medicine and Toxicology faculty — Forensic Medicine and Toxicology
+General Surgery faculty — General Surgery
+Obstetrics and Gynaecology faculty — Obstetrics and Gynaecology
+Paediatrics faculty — Paediatrics
+Ophthalmology faculty — Ophthalmology
+Otorhinolaryngology (ENT) faculty — Otorhinolaryngology (ENT)
+Orthopaedics faculty — Orthopaedics
+Dermatology, Venereology and Leprosy faculty — Dermatology, Venereology and Leprosy
+Psychiatry faculty — Psychiatry
+Anaesthesiology faculty — Anaesthesiology
+Radiology (Radio-diagnosis) faculty — Radiology (Radio-diagnosis)
+Previous head of department
+Anatomy head of department
+Physiology head of department
+Biochemistry head of department
+Pathology head of department
+Microbiology head of department
+Pharmacology head of department
+Forensic Medicine and Toxicology head of department
+Community Medicine head of department
+General Medicine head of department
+General Surgery head of department
+Obstetrics and Gynaecology head of department
+Paediatrics head of department
+Ophthalmology head of department
+Otorhinolaryngology (ENT) head of department
+Orthopaedics head of department
+Dermatology, Venereology and Leprosy head of department
+Psychiatry head of department
+Anaesthesiology head of department
+Radiology (Radio-diagnosis) head of department
+Dean
+Director
+FACULTY LOGBOOK
+Admin logbook
+
+Dr R. Menon · General Medicine / Human Anatomy
+
+Review learning experiences and guide students towards completion.
+
+FACULTY REVIEW
+Guide the next learning experience
+
+Assign an activity and support students through verification.
+
+Assign logbook entry
+Dashboard
+Queue
+3
+Students
+Subjects
+Categories
+Skills
+History
+Sign-offs
+Search
+Search all logbooks
+Filters
+3
+Waiting for you
+2 students / Longest wait 31 days
+3
+Overdue
+2 students affected
+1
+Awaiting remedial
+1 students need follow-up
+0
+Skill attempts approved · last 7 days
+1 approved attempts in total
+0
+Awaiting your signature
+Final subject approval
+3
+Assigned to do
+0 assignments past due
+Logbook progress
+
+Current entry status across your departments. Select a bar to view entries.
+
+All subjects
+General Medicine
+Human Anatomy
+Focus a chart item for details. Use arrow keys to move between items.
+Entry workflow
+11 entries
+
+36% approved / Drafts excluded
+
+To do
+3
+Awaiting review
+3
+Returned
+1
+Approved
+4
+Submission activity
+Last 7 days
+
+0 entries by latest submission date
+
+0
+Tue
+13 Oct
+0
+Wed
+14 Oct
+0
+Thu
+15 Oct
+0
+Fri
+16 Oct
+0
+Sat
+17 Oct
+0
+Sun
+18 Oct
+0
+Mon
+19 Oct
+Subject breakdown
+Entry counts
+To do
+Awaiting review
+Returned
+Approved
+General Medicine
+4
+To do: 0, Awaiting review: 3, Returned: 1, Approved: 0
+Human Anatomy
+7
+To do: 3, Awaiting review: 0, Returned: 0, Approved: 4
+Final sign-offs
+View all
+
+Subject logbooks / separate from individual entry approval
+
+0
+Ready to submit
+0
+With approvers
+0
+Returned
+0
+Completed
+
+Approve entries, confirm subject readiness, then complete the sign-off chain.
+
+Longest waiting
+View all
+IM1.1 · Take a clinical history
+Ananya Rao / General Medicine / Certifiable skill
+31 days waiting · Overdue · Needs grade
+Pending
+18 Sept 2026
+Respiratory case discussion · 34 / F
+Karthik Subramanian / General Medicine / Case presentation
+30 days waiting · Overdue
+Pending
+19 Sept 2026
+Respiratory case discussion · 34 / F
+Ananya Rao / General Medicine / Case presentation
+30 days waiting · Overdue
+Pending
+19 Sept 2026
+Students needing attention
+View all
+Karthik Subramanian
+0/6 logged category targets met | 1 returned
+Ananya Rao
+0/6 logged category targets met | 0 returned
+Arjun Patel
+0/6 logged category targets met | 0 returned
+
+0 assigned tasks past due

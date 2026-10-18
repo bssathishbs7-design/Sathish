@@ -1,0 +1,209 @@
+.blueprint-approval-review > label { display: grid; gap: var(--s-2, 8px); color: var(--text-strong); }
+.blueprint-approval-review [role="alert"] { color: var(--danger-ink); }
+.blueprint-approval-review { width: min(100%, 1180px); margin-inline: auto; background: var(--surface-card); color: var(--text-body); }
+
+.blueprint-approval-review > p { margin: 0; font-size: 13px; }
+.blueprint-approval-review textarea { padding: var(--s-3, 12px); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); font: inherit; resize: vertical; }
+.blueprint-approval-review textarea:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.blueprint-approval-review button.is-primary { background: var(--forest); color: var(--on-brand); }
+.blueprint-approval-review button.is-primary:hover { background: var(--forest-700); }
+.blueprint-approval-review, .blueprint-approval-review * { box-sizing: border-box; }
+.blueprint-approval-review > *, .blueprint-approval-summary, .blueprint-approval-table { min-width: 0; max-width: 100%; }
+.blueprint-approval-review-actions button { min-height: 36px; }
+
+.blueprint-approval-review .blueprint-review-planner { padding: 0; min-width: 0; background: var(--surface-card); }
+.blueprint-review-planner .create-assessment-blueprint-floating-actions { position: static; margin-top: var(--s-3); flex-wrap: wrap; }
+.blueprint-approval-review > label textarea { min-height: 64px; }
+
+:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) .blueprint-approval-review .blueprint-review-planner .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-question-type-row > td {
+  background: var(--surface-card);
+  color: var(--text-body);
+  border-color: var(--border);
+}
+:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) .blueprint-approval-review .blueprint-review-planner .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-question-type-row.is-saq-summary > td {
+  background: var(--surface-mist);
+  color: var(--text-strong);
+}
+:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) .blueprint-approval-review .blueprint-review-planner .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number {
+  background: var(--surface-card);
+  color: var(--text-strong);
+  border-color: var(--border);
+}
+:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) .blueprint-approval-review .blueprint-review-planner .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-spec-number:disabled {
+  background: var(--surface-mist);
+  color: var(--text-muted);
+}
+
+:is(.theme-dark, [data-theme="dark"], [data-theme="oled"]) .blueprint-approval-review .blueprint-review-planner .create-assessment-blueprint-spec-card.is-type-summary .create-assessment-blueprint-readonly-number {
+ color: var(--text-strong);
+}
+
+/* The reviewer embeds the planner in the page flow, not the full-screen author workspace. */
+.vx-content.blueprint-approval-page {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s-4);
+  background: var(--bg);
+}
+.blueprint-approval-page > .blueprint-approval-review {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  align-content: start;
+}
+.blueprint-approval-review .create-assessment-workspace.blueprint-review-planner {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  flex: none;
+  padding: 0;
+}
+.blueprint-review-planner .create-assessment-blueprint-head {
+  align-items: end;
+  padding: 0;
+  gap: var(--s-3);
+}
+.blueprint-review-planner .create-assessment-blueprint-subject {
+  margin: 0 0 var(--s-2);
+}
+.blueprint-review-planner .create-assessment-blueprint-table-card {
+  padding: var(--s-3);
+}
+.blueprint-approval-review > .blueprint-approval-review-actions {
+  position: static;
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 767px) {
+  .vx-content.blueprint-approval-page,
+  .blueprint-approval-page > .blueprint-approval-review { padding: var(--s-3); }
+  .blueprint-review-planner .create-assessment-blueprint-head { row-gap: var(--s-2); }
+}
+@media (max-width: 900px) {
+  .blueprint-review-planner .create-assessment-blueprint-specifications.is-multi-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "intro" "questions" "cognition" "test" "actions";
+  }
+  .blueprint-review-planner .create-assessment-blueprint-specifications.is-multi-view .create-assessment-blueprint-spec-table-wrap-test {
+    overflow-x: auto;
+  }
+}
+@media (max-width: 900px) {
+  .blueprint-review-planner .create-assessment-blueprint-reference-table-wrap { overflow-x: auto; }
+  .blueprint-review-planner .create-assessment-blueprint-specifications.is-multi-view .create-assessment-blueprint-reference-card.is-question-types table { min-width: 640px; }
+}
+
+.blueprint-approval-review .blueprint-approval-floating-bar {
+  position: sticky;
+  bottom: var(--s-3);
+  z-index: 10;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  gap: var(--s-2);
+  width: max-content;
+  max-width: 100%;
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  overflow-x: auto;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-md);
+}
+.blueprint-approval-floating-bar .blueprint-review-secondary {
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface-card);
+  color: var(--text-strong);
+  font: inherit;
+  cursor: pointer;
+}
+.blueprint-approval-floating-bar .blueprint-review-secondary:hover { background: var(--surface-mist); }
+.blueprint-approval-floating-bar .blueprint-review-secondary:active { transform: translateY(1px) scale(.97); }
+.blueprint-approval-floating-bar .blueprint-review-secondary:disabled { opacity: .5; cursor: default; }
+.blueprint-approval-floating-bar .blueprint-review-secondary:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+@media (max-width: 767px) {
+  .blueprint-approval-review .blueprint-approval-floating-bar { justify-content: flex-start; }
+}
+
+.blueprint-approval-review .blueprint-approval-floating-bar > button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  height: 36px;
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  border-radius: var(--r-pill);
+  font-family: inherit;
+  font-size: var(--fs-micro, 11px);
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+
+
+.blueprint-review-header {
+  display: grid;
+  grid-template-columns: auto minmax(140px, 1fr) auto auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--mint-100) 45%, var(--surface-card));
+}
+.blueprint-review-title, .blueprint-review-submission { display: grid; gap: var(--s-1); min-width: 0; }
+.blueprint-review-header h2 { margin: 0; color: var(--text-strong); font-size: 18px; line-height: 1.3; }
+.blueprint-review-name { font-size: 13px; color: var(--text-body); overflow-wrap: anywhere; }
+.blueprint-review-badges { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.blueprint-review-badge { padding: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); font-size: 12px; font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+.blueprint-review-badge.is-assessment { background: color-mix(in srgb, var(--sky) 65%, var(--surface-card)); }
+.blueprint-review-badge.is-blueprint { background: color-mix(in srgb, var(--mint-200) 65%, var(--surface-card)); }
+.blueprint-review-badge.is-revision { background: color-mix(in srgb, var(--lilac) 65%, var(--surface-card)); }
+.blueprint-review-submission { padding-left: var(--s-3); border-left: 1px solid var(--border); }
+.blueprint-review-sender, .blueprint-review-time { font-size: 12px; color: var(--text-body); line-height: 1.5; }
+.blueprint-review-notes { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; align-items: center; gap: var(--s-3); padding-inline: var(--s-3); }
+.blueprint-review-notes label { margin: 0; color: var(--text-strong); font-size: 13px; font-weight: 600; line-height: 1.5; }
+.blueprint-approval-review .blueprint-review-notes textarea { display: block; width: 100%; min-width: 0; min-height: 40px; height: 40px; margin: 0; padding: var(--s-2) var(--s-3); font-size: 13px; line-height: 1.5; resize: vertical; }
+.blueprint-review-notes small { margin: 0; color: var(--text-body); font-size: 12px; line-height: 1.5; }
+@media (max-width: 1023px) {
+  .blueprint-review-header { grid-template-columns: auto minmax(0, 1fr); }
+  .blueprint-review-badges, .blueprint-review-submission { grid-column: 2; }
+  .blueprint-review-submission { padding: 0; border: 0; display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .blueprint-review-notes { grid-template-columns: max-content minmax(0, 1fr); row-gap: var(--s-1); }
+  .blueprint-review-notes small { grid-column: 2; }
+}
+.blueprint-review-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface-card);
+  color: var(--text-strong);
+  font: inherit;
+  cursor: pointer;
+}
+.blueprint-review-back:hover { background: var(--surface-mist); }
+.blueprint-review-back:active { transform: translateY(1px) scale(.97); }
+.blueprint-review-back:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.blueprint-review-back:disabled { opacity: .5; cursor: default; }
+
+@media (max-width: 600px) {
+  .blueprint-review-notes { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
+  .blueprint-review-notes small { grid-column: 1; }
+}

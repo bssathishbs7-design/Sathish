@@ -167,3 +167,6 @@
   .blueprint-laq-requirement header { font-size: var(--fs-micro, 11px); }
   .blueprint-laq-status { margin-left: 0; }
 }
+
+.blueprint-steps-panel h2 { flex-wrap: wrap; }
+.blueprint-steps-panel .blueprint-progress-id { display: inline-flex; align-items: center; padding: var(--s-1, 4px) var(--s-2, 8px); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-brand); font-family: var(--f-code, monospace); font-size: 11px; font-weight: 500; white-space: nowrap; }
