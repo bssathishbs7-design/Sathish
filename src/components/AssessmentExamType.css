@@ -1,0 +1,27 @@
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-exam-type { display: inline-flex; flex-direction: row; align-items: center; gap: var(--s-1); padding: 0 var(--s-2); width: auto; min-height: var(--s-5); box-sizing: border-box; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-brand); white-space: nowrap; }
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-exam-type-info { display: inline-flex; align-items: center; justify-content: center; width: calc(var(--s-4) + var(--s-1)); height: calc(var(--s-4) + var(--s-1)); min-height: 0; padding: var(--s-1); border: 0; border-radius: var(--r-pill); background: transparent; color: var(--text-brand); cursor: pointer; }
+.assessment-exam-type-info:hover { background: var(--surface-soft); }
+.assessment-exam-type-info:focus-visible { outline: 2px solid var(--text-brand); outline-offset: var(--s-1); }
+
+.floating-tooltip:has(.assessment-exam-type-details) { width: max-content; max-width: calc(100vw - var(--s-4)); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); box-shadow: var(--shadow-soft); }
+.assessment-exam-type-details { min-width: 240px; }
+.assessment-exam-type-details header { display: flex; align-items: center; gap: var(--s-2); padding-bottom: var(--s-2); border-bottom: 1px solid var(--border); color: var(--text-brand); }
+.assessment-exam-type-details header b { color: var(--text-strong); font-size: .8125rem; }
+.assessment-exam-type-details header > span { margin-left: auto; padding: var(--s-1) var(--s-2); border-radius: var(--r-pill); background: var(--surface-soft); font-size: var(--fs-micro); font-weight: 600; }
+.assessment-exam-type-details dl { display: grid; gap: var(--s-2); margin: var(--s-3) 0 0; }
+.assessment-exam-type-details dl > div { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); }
+.assessment-exam-type-details dt { font-weight: 600; color: var(--text-strong); }
+.assessment-exam-type-details dd { display: inline-flex; align-items: center; gap: var(--s-1); margin: 0; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); font-weight: 600; }
+.assessment-exam-type-details dd.is-read-only { background: color-mix(in srgb,var(--butter) 45%,var(--surface-card)); color: var(--text-strong); }
+.assessment-exam-type-details dd.is-answer-input { background: var(--surface-soft); color: var(--text-brand); }
+.assessment-exam-type-details dd.is-offline { background: color-mix(in srgb,var(--sky) 30%,var(--surface-card)); color: var(--text-strong); }
+
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-exam-type > strong { color: var(--text-brand); font: 600 .75rem/1.5 var(--font-family-base); }
+
+/* Stable type colours shared by every tracker tab. */
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-tracker-card {
+  .assessment-exam-type[data-exam-type="MCQ"] { background: color-mix(in srgb, var(--sky) 60%, var(--surface-card)); }
+  .assessment-exam-type[data-exam-type="Descriptive"] { background: color-mix(in srgb, var(--lilac) 60%, var(--surface-card)); }
+  .assessment-exam-type[data-exam-type="Hybrid"] { background: color-mix(in srgb, var(--mint) 25%, var(--surface-card)); }
+  .assessment-exam-type > strong { color: var(--text-strong); }
+}

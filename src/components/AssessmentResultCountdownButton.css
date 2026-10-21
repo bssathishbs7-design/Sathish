@@ -1,0 +1,9 @@
+.assessment-page.is-my-assessment .my-assessment-card-action.assessment-result-countdown:disabled {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  background: var(--text-brand); color: var(--on-brand); opacity: 1;
+  cursor: progress; border-color: var(--text-brand); flex-wrap: wrap;
+}
+.assessment-result-countdown time { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+.assessment-result-countdown svg { flex-shrink: 0; animation: assessment-result-button-spin var(--dur-reveal) linear infinite; }
+@keyframes assessment-result-button-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .assessment-result-countdown svg { animation: none; } }

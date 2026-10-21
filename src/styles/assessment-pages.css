@@ -13303,55 +13303,9 @@
   min-width: 0;
 }
 
-.assessment-create-live-count-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 28px;
-  padding: 0 10px;
-  border: 1px solid #b7ebd0;
-  border-radius: 999px;
-  background: #edfff5;
-  color: #087a4a;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 850;
-  white-space: nowrap;
-  cursor: pointer;
-}
 
-.assessment-create-live-count-btn > span {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: #0aa86b;
-  box-shadow: 0 0 0 0 rgba(10, 168, 107, 0.36);
-  animation: assessment-create-live-count-pulse 1.35s ease-in-out infinite;
-}
 
-.assessment-create-live-count-btn strong {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: #c9f8df;
-  color: #05643d;
-  font-size: 0.68rem;
-  font-weight: 950;
-}
 
-.assessment-create-live-count-btn:hover,
-.assessment-create-live-count-btn:focus-visible,
-.assessment-create-live-count-btn.is-active {
-  border-color: #18c77d;
-  background: #dffff0;
-  color: #05643d;
-  outline: none;
-}
 
 @keyframes assessment-create-live-count-pulse {
   0% {
@@ -15549,12 +15503,18 @@
   text-transform: uppercase;
 }
 
+
+
 .exam-controls-header-status.is-live {
   position: relative;
   box-shadow: 0 0 0 0 rgba(16, 185, 168, 0.34);
   animation: exam-controls-live-badge-pulse 1.35s ease-in-out infinite;
 }
-
+@keyframes exam-controls-live-badge-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 168, 0.34); }
+  70% { box-shadow: 0 0 0 7px rgba(16, 185, 168, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 168, 0); }
+}
 .exam-controls-header-status.is-live::before {
   width: 7px;
   height: 7px;
@@ -15569,17 +15529,6 @@
   color: #475569;
 }
 
-@keyframes exam-controls-live-badge-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 168, 0.34);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(16, 185, 168, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 168, 0);
-  }
-}
 
 
 
@@ -25442,55 +25391,6 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
   border-color: #be123c;
   background: #be123c;
   outline: none;
-}
-
-.create-assessment-publish-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 160;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(15, 23, 42, 0.56);
-}
-
-.create-assessment-publish-card {
-  display: grid;
-  justify-items: center;
-  gap: 9px;
-  width: min(430px, calc(100vw - 40px));
-  padding: 24px;
-  border: 1px solid #bdebdc;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #12313d;
-  text-align: center;
-  box-shadow: 0 24px 58px rgba(15, 23, 42, 0.22);
-}
-
-.create-assessment-publish-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  background: #dcfce7;
-  color: #047857;
-}
-
-.create-assessment-publish-card strong {
-  font-size: 1rem;
-  font-weight: 900;
-  line-height: 1.35;
-}
-
-.create-assessment-publish-card p,
-.create-assessment-publish-card small {
-  margin: 0;
-  color: #607380;
-  font-size: 0.8rem;
-  font-weight: 650;
 }
 
 .create-assessment-instructions-editor {
@@ -38029,24 +37929,8 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   background: #101827;
 }
 
-.theme-dark .assessment-create-live-count-btn {
-  border-color: rgba(74, 222, 128, 0.42);
-  background: rgba(22, 163, 74, 0.14);
-  color: #9af5b7;
-}
 
-.theme-dark .assessment-create-live-count-btn strong {
-  background: rgba(34, 197, 94, 0.18);
-  color: #bbf7d0;
-}
 
-.theme-dark .assessment-create-live-count-btn:hover,
-.theme-dark .assessment-create-live-count-btn:focus-visible,
-.theme-dark .assessment-create-live-count-btn.is-active {
-  border-color: rgba(74, 222, 128, 0.68);
-  background: rgba(22, 163, 74, 0.22);
-  color: #dcfce7;
-}
 
 .theme-dark .assessment-page.is-my-assessment .my-assessment-live-count-badge {
   border-color: rgba(74, 222, 128, 0.42);
@@ -39333,27 +39217,6 @@ button.assessment-page-descriptive-more-tags:focus-visible {
 
 .theme-dark .assessment-create-field small {
   color: #fca5a5;
-}
-
-.theme-dark .create-assessment-publish-modal {
-  background: rgba(2, 8, 23, 0.72);
-}
-
-.theme-dark .create-assessment-publish-card {
-  border-color: rgba(45, 212, 191, 0.32);
-  background: #101827;
-  color: #eef6ff;
-  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.46);
-}
-
-.theme-dark .create-assessment-publish-icon {
-  background: rgba(22, 163, 74, 0.22);
-  color: #86efac;
-}
-
-.theme-dark .create-assessment-publish-card p,
-.theme-dark .create-assessment-publish-card small {
-  color: #9fb0c8;
 }
 
 .theme-dark .assessment-create-summary-row strong {
@@ -49375,10 +49238,6 @@ body > .assessment-page-filter-menu {
     align-items: stretch;
   }
 
-  .assessment-create-tracker-page .assessment-create-live-count-btn {
-    width: max-content;
-    max-width: 100%;
-  }
 
   .assessment-create-tracker-page .assessment-create-published-toolbar {
     grid-template-columns: 1fr;

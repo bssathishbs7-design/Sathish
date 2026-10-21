@@ -1,6 +1,7 @@
+import AssessmentResultCountdownButton from '../components/AssessmentResultCountdownButton'
 import AssessmentResultStatus from '../components/AssessmentResultStatus'
 import { getStudentReleasedResult } from '../services/assessmentResultRelease'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Activity, BadgeCheck, CalendarClock, ChartColumnBig, ChevronDown, ClipboardList, EyeOff, ListFilter, Monitor, Search, ShieldCheck, X } from 'lucide-react'
 import AssessmentFeaturedCard from '../components/AssessmentFeaturedCard'
@@ -122,11 +123,14 @@ const getCurrentStudentForAssessment = (assessment) => {
   }
 }
 
-const hasPublishedAssessmentResult = (assessment) => (
-  getStudentReleasedResult(assessment, CURRENT_STUDENT_ID)?.status === 'published'
-  || (!assessment?.automatedResultRelease && (String(assessment?.resultStatus || '').toLowerCase() === 'published'
-  || String(assessment?.evaluationStatus || '').toLowerCase() === 'published'))
-)
+const hasPublishedAssessmentResult = (assessment) => {
+  const result = getStudentReleasedResult(assessment, CURRENT_STUDENT_ID)
+  if (result) return result.status === 'published'
+  return !assessment?.automatedResultRelease && (
+    String(assessment?.resultStatus || '').toLowerCase() === 'published'
+    || String(assessment?.evaluationStatus || '').toLowerCase() === 'published'
+  )
+}
 
 const readAssessmentControlState = (assessment) => {
   try {
@@ -517,21 +521,20 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
     onNavigate?.(APP_PAGES.ASSESSMENT_STUDENT_RESULT)
   }, [onNavigate])
 
-  const awaitingResults = useRef(new Set())
   useEffect(() => {
     if (!isMyAssessment) return
     for (const assessment of publishedAssessments) {
       const result = getStudentReleasedResult(assessment, CURRENT_STUDENT_ID)
       if (!result?.autoPublish) continue
-      const key = getAssessmentId(assessment) + ':' + result.submittedAt
-      if (result.status !== 'published') awaitingResults.current.add(key)
-      else if (awaitingResults.current.has(key) && document.visibilityState === 'visible') {
-        awaitingResults.current.delete(key)
+      const key = 'vx-result-auto-open:' + getAssessmentId(assessment) + ':' + result.submittedAt
+      if (result.status !== 'published') sessionStorage.setItem(key, 'waiting')
+      else if (sessionStorage.getItem(key) === 'waiting' && document.visibilityState === 'visible') {
+        sessionStorage.setItem(key, 'opened')
         handleViewAssessmentResults(assessment)
         break
       }
     }
-  }, [isMyAssessment, publishedAssessments, handleViewAssessmentResults])
+  }, [isMyAssessment, publishedAssessments, scheduleNow, handleViewAssessmentResults])
 
   const handleRequestAccess = (assessment) => {
     if (!assessment) return
@@ -758,7 +761,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
                         <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                       </div>
-                      <AssessmentResultStatus result={studentResult} now={scheduleNow.getTime()} />
+                      {!studentResult?.autoPublish && studentResult?.status !== 'published' && <AssessmentResultStatus result={studentResult} />}
                       <div className="assessment-create-draft-footer assessment-create-published-footer">
                         <span className="my-assessment-card-top-status">
                           {cardStatus ? (
@@ -771,6 +774,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                             )
                           ) : null}
                         </span>
+                        {studentResult?.autoPublish && studentResult.status !== 'published' ? <AssessmentResultCountdownButton result={studentResult} now={scheduleNow.getTime()} /> : (
                         <button
                           type="button"
                           className={`my-assessment-card-action is-${actionClass} ${cardStatus?.type === 'live' ? 'is-live' : ''}`}
@@ -788,7 +792,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                           }}
                         >
                           {actionLabel}
-                        </button>
+                        </button>)}
                       </div>
                     </article>
                   )

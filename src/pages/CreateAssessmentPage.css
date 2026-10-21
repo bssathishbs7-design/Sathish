@@ -119,3 +119,5 @@
   font-weight: 700;
   white-space: nowrap;
 }
+
+.assessment-configuration-fields { display: contents; border: 0; margin: 0; padding: 0; min-width: 0; }

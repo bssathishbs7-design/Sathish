@@ -1,0 +1,50 @@
+.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border);
+  border-radius: var(--r-pill); background: var(--surface-soft); color: #000;
+  font: 600 .875rem/1.5 var(--f-body); white-space: nowrap;
+}
+.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown.is-imminent { background: color-mix(in srgb, var(--butter) 60%, var(--surface-card)); }
+.assessment-start-countdown.is-imminent span { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+
+
+.assessment-create-theme.assessment-create-theme .assessment-start-countdown > :is(span, svg) { color: inherit; opacity: 1; }
+.theme-dark .assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown,
+[data-theme="dark"] .assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown,
+[data-theme="oled"] .assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown { color: var(--text-strong); }
+
+/* Keep the badge and label steady; only the small live indicator blinks. */
+.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown.is-live {
+  --live-badge-fill: var(--danger-soft);
+  --live-badge-ink: var(--danger-ink);
+  color: var(--live-badge-ink);
+  background: var(--live-badge-fill);
+  border-color: var(--danger-line, var(--danger-ink));
+  animation: assessment-live-red-halo calc(var(--dur-reveal) * 2) var(--ease-standard) infinite;
+
+
+}
+.assessment-create-theme.assessment-create-theme .assessment-start-countdown > .assessment-live-dot {
+  display: inline-block;
+  flex: 0 0 var(--s-2);
+  width: var(--s-2);
+  height: var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--live-badge-ink);
+  animation: assessment-live-dot-blink calc(var(--dur-reveal) * 2) steps(1, end) infinite !important;
+
+}
+@keyframes assessment-live-dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+
+
+@keyframes assessment-live-red-halo {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger-ink) 25%, transparent); }
+  70% { box-shadow: 0 0 0 var(--s-2) transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown.is-live { animation: none; }
+}

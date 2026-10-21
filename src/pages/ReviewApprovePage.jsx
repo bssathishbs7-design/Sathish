@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { TriangleAlert } from 'lucide-react'
+import { isPendingAssessmentExpired } from '../services/assessmentScheduleExpiry'
+import { useEffect, useMemo, useState } from 'react'
 import {
   BadgeCheck,
   Eye,
@@ -395,7 +397,12 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
   )
 }
 
-export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onViewApproval }) {
+export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onViewApproval, onReschedule }) {
+  const [scheduleNow, setScheduleNow] = useState(() => new Date())
+  useEffect(() => {
+    const timer = window.setInterval(() => setScheduleNow(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
   const [activeModuleTab, setActiveModuleTab] = useState('assessment')
   const [searchQuery, setSearchQuery] = useState('')
   const [isReviewFilterOpen, setIsReviewFilterOpen] = useState(false)
@@ -565,6 +572,7 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
   }
 
   const handleViewApproval = (row) => {
+    if (isPendingAssessmentExpired(row)) { onReschedule?.(row); return }
     onViewApproval?.(row)
     onAlert?.({
       tone: 'secondary',
@@ -689,7 +697,8 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
             <section className="review-approve-content">
             <div className="review-approve-compact-card-grid" role="list">
               {sortedRows.map((row) => {
-                const decision = getDisplayDecision(row)
+                const expired = isPendingAssessmentExpired(row, scheduleNow)
+                const decision = expired ? 'Expired' : getDisplayDecision(row)
                 const receivedAt = formatReceivedDateTime(row.receivedAt ?? row.sentAt ?? row.submittedAt)
                 const sender = getSenderDetails(row)
                 const meta = getActivityMeta(row)
@@ -697,7 +706,9 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
                 const cardDetails = getCompactCardDetails(row, { receivedAt, sender, meta })
 
                 return (
-                  <article key={row.id} className="review-approve-compact-card" role="listitem">
+                  <article key={row.id} className={`review-approve-compact-card ${expired ? 'is-expired' : ''}`} role="listitem" onClick={event => {
+                    if (row.activityType === 'Assessment' && !event.target.closest('button, a, input')) handleViewApproval(row)
+                  }}>
                     <div className="review-approve-compact-card-top">
                       <div className="review-approve-compact-title">
                         <strong>{getCompactRowTitle(row)}</strong>
@@ -710,6 +721,7 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
                       <span className={`review-approve-status-pill ${getDecisionTone(decision)}`}>{decision}</span>
                     </div>
 
+                    {expired && <p className="assessment-expiry-message" role="status"><TriangleAlert size={16} aria-hidden="true" /><span>Approval Pending. <strong>The scheduled start time has passed. Reschedule this assessment to continue.</strong></span></p>}
                     <div className="review-approve-compact-card-details">
                       {cardDetails.map((item) => (
                         <span key={`${item.label}-${item.value}`}>
@@ -723,7 +735,7 @@ export default function ReviewApprovePage({ approvalQueueRows = [], onAlert, onV
                     <div className="review-approve-compact-card-footer">
                       <button type="button" className="tool-btn eval-view-btn review-approve-table-btn" onClick={() => handleViewApproval(row)}>
                         <Eye size={13} strokeWidth={2} />
-                        View
+                        {expired ? 'Reschedule' : 'View'}
                       </button>
                     </div>
                   </article>

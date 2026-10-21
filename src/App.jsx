@@ -1,3 +1,9 @@
+import { commitAssessmentApprovalSubmission } from './services/assessmentApprovalSubmission'
+import AssessmentPublishedConfirmation from './components/AssessmentPublishedConfirmation'
+import {buildApprovedPublication, commitApprovedPublication} from './services/assessmentApprovalPublication'
+import AssessmentRescheduleDialog from './components/AssessmentRescheduleDialog'
+import { rescheduleAssessment } from './services/assessmentReschedule'
+import { clearAssessmentCards, resetAssessmentTrackerOnce } from './services/assessmentTrackerReset'
 import { appendAssessmentHistory } from './services/assessmentHistory'
 import useAssessmentResultRelease from './services/useAssessmentResultRelease'
 import { SKILL_SAMPLE_ASSIGNMENTS } from './services/skillLogbookSample'
@@ -481,7 +487,9 @@ function App() {
   const [selectedEvaluationStudentId, setSelectedEvaluationStudentId] = useState('')
   const [selectedCompletedEvaluationActivityId, setSelectedCompletedEvaluationActivityId] = useState(null)
   const [completedEvaluationRows, setCompletedEvaluationRows] = useState(() => readStoredRows(COMPLETED_EVALUATIONS_STORAGE_KEY))
-  const [approvalQueueRows, setApprovalQueueRows] = useState(() => readStoredRows(APPROVAL_QUEUE_STORAGE_KEY))
+  const [approvalPublication, setApprovalPublication] = useState(null)
+  const [rescheduleRecord, setRescheduleRecord] = useState(null)
+  const [approvalQueueRows, setApprovalQueueRows] = useState(() => { resetAssessmentTrackerOnce(window.localStorage, window.sessionStorage); return readStoredRows(APPROVAL_QUEUE_STORAGE_KEY) })
   const [selectedApprovalViewRecord, setSelectedApprovalViewRecord] = useState(() => readStoredApprovalViewRecord())
   const [selectedProgressResultRecord, setSelectedProgressResultRecord] = useState(() => readStoredProgressResultRecord())
   const [selectedActivityResultRecord, setSelectedActivityResultRecord] = useState(() => readStoredActivityResultRecord())
@@ -496,7 +504,8 @@ function App() {
   const isExamMode = activePage === APP_PAGES.STUDENT_EXAM
     || activePage === APP_PAGES.ONLINE_PRACTICE_EXAM
     || activePage === APP_PAGES.ONLINE_PROCTORED_EXAM
-  const isPlainAssessmentMode = activePage === APP_PAGES.CREATE_ASSESSMENT
+  const isPlainAssessmentMode = (activePage === APP_PAGES.APPROVAL_VIEW && ['Assessment', 'Blueprint'].includes((selectedApprovalViewRecord ?? readStoredApprovalViewRecord())?.activityType))
+    || activePage === APP_PAGES.CREATE_ASSESSMENT
     || activePage === APP_PAGES.ASSESSMENT_EVALUATION
     || activePage === APP_PAGES.ASSESSMENT_STUDENT_EVALUATION
     || activePage === APP_PAGES.ASSESSMENT_STUDENT_RESULT
@@ -1008,12 +1017,32 @@ function App() {
     })
   }
 
+  const handleReworkDraftSaved = draft => {
+    const assessmentId = draft.setup.assessmentId
+    const nextRows = approvalQueueRows.map(row => row.setup?.assessmentId === assessmentId && /reject/i.test(row.approvalStatus || '')
+      ? { ...row, reworkStatus: 'Draft', reworkSavedAt: draft.updatedAt } : row)
+    window.sessionStorage.setItem(APPROVAL_QUEUE_STORAGE_KEY, JSON.stringify(nextRows))
+    setApprovalQueueRows(nextRows)
+    showAlert({ tone: 'secondary', message: 'Saved as draft.' })
+  }
+
   const handleSendToApproval = (payload) => {
     if (!payload?.activityId) return
     const approvalTimestamp = new Date().toISOString()
 
+    const sameSubmission = item => item.activityId === payload.activityId || (
+      ['Assessment', 'Blueprint'].includes(payload.activityType)
+      && item.activityType === payload.activityType
+      && payload.setup?.assessmentId
+      && item.setup?.assessmentId === payload.setup.assessmentId
+    )
+    const previous = approvalQueueRows.find(sameSubmission)
+    const { reworkReview, ...submittedSetup } = payload.setup || {}
+    const { previousSubmissions = [], ...previousSnapshot } = previous || {}
     const approvalRow = {
       ...payload,
+      ...(payload.setup ? { setup: submittedSetup } : {}),
+      previousSubmissions: previous ? [...previousSubmissions, previousSnapshot] : [],
       id: `approval-${payload.activityId}`,
       senderName: profileUser.name,
       senderId: profileUser.registerId,
@@ -1022,12 +1051,38 @@ function App() {
       receivedAt: approvalTimestamp,
     }
 
+    const nextRows = [approvalRow, ...approvalQueueRows.filter(item => !sameSubmission(item))]
+    commitAssessmentApprovalSubmission(payload, nextRows, window.localStorage, window.sessionStorage)
+    if (payload.activityType === 'Assessment') window.dispatchEvent(new CustomEvent('vx-assessment-published-changed'))
+    setApprovalQueueRows(nextRows)
     if (payload.setup?.assessmentId) appendAssessmentHistory(payload, { action: 'Sent for approval', timestamp: approvalTimestamp, actor: profileUser.name, notes: payload.approvalFaculty?.note || '' })
-    setApprovalQueueRows((current) => [
-      approvalRow,
-      ...current.filter((item) => item.activityId !== payload.activityId),
-    ])
-    showAlert({ tone: 'secondary', message: `${payload.activityName ?? 'Activity'} sent to approval.` })
+    showAlert({ tone: 'secondary', message: `${payload.activityName ?? 'Activity'} sent to ${payload.approvalFaculty?.facultyName || 'the reviewer'} for approval.` })
+    return true
+  }
+
+  const saveRescheduledAssessment = async values => {
+    const current = approvalQueueRows.find(row => row.activityId === rescheduleRecord.activityId && row.id === rescheduleRecord.id)
+    if (!current) throw new Error('This assessment is no longer available. Return to the assessment list.')
+    const updated = rescheduleAssessment(current, values)
+    const nextRows = approvalQueueRows.map(row => row === current ? updated : row)
+    const queueBefore = sessionStorage.getItem(APPROVAL_QUEUE_STORAGE_KEY)
+    const draftsBefore = localStorage.getItem('vx-assessment-drafts')
+    const drafts = JSON.parse(draftsBefore || '[]')
+    const assessmentId = updated.setup.assessmentId
+    const nextDrafts = drafts.map(draft => (draft.setup?.assessmentId || draft.id) === assessmentId
+      ? {...draft, setup: {...draft.setup, ...updated.setup}, updatedAt: updated.updatedAt, startDate: updated.startDate, startTime: updated.startTime, examDate: updated.examDate, totalDuration: updated.totalDuration || updated.setup.totalDuration, ...(updated.endDate ? {endDate: updated.endDate, endTime: updated.endTime} : {})}
+      : draft)
+    try {
+      localStorage.setItem('vx-assessment-drafts', JSON.stringify(nextDrafts))
+      sessionStorage.setItem(APPROVAL_QUEUE_STORAGE_KEY, JSON.stringify(nextRows))
+    } catch {
+      if (draftsBefore === null) localStorage.removeItem('vx-assessment-drafts'); else localStorage.setItem('vx-assessment-drafts', draftsBefore)
+      if (queueBefore === null) sessionStorage.removeItem(APPROVAL_QUEUE_STORAGE_KEY); else sessionStorage.setItem(APPROVAL_QUEUE_STORAGE_KEY, queueBefore)
+      throw new Error('Unable to save the new schedule. Please try again.')
+    }
+    setApprovalQueueRows(nextRows)
+    setRescheduleRecord(null)
+    showAlert({tone: 'secondary', message: 'Assessment rescheduled. It remains pending approval.'})
   }
 
   const handleOpenApprovalView = (record) => {
@@ -1037,6 +1092,16 @@ function App() {
     navigateToPage(APP_PAGES.APPROVAL_VIEW)
   }
 
+  const finishApprovalPublication = () => {
+    setApprovalPublication(null)
+    navigateToPage(APP_PAGES.ASSESSMENT_CREATE)
+  }
+  useEffect(() => {
+    if (!approvalPublication) return undefined
+    const timer = window.setTimeout(finishApprovalPublication, 2000)
+    return () => window.clearTimeout(timer)
+  }, [approvalPublication])
+
   const handleApprovalReviewAction = (reviewedRecord) => {
     if (!reviewedRecord?.activityId) return
 
@@ -1044,14 +1109,24 @@ function App() {
     const nextReviewedRecord = {
       ...(existingApprovalRow ?? {}),
       ...reviewedRecord,
+      reviewedBy: profileUser.name,
       attemptCount: existingApprovalRow?.attemptCount ?? reviewedRecord.attemptCount,
       attemptNumber: existingApprovalRow?.attemptNumber ?? reviewedRecord.attemptNumber,
       attemptLabel: existingApprovalRow?.attemptLabel ?? reviewedRecord.attemptLabel,
     }
 
-    setApprovalQueueRows((current) => current.map((item) => (
-      item.activityId === reviewedRecord.activityId ? nextReviewedRecord : item
-    )))
+    if (nextReviewedRecord.activityType === 'Assessment' && existingApprovalRow?.approvalStatus !== 'Pending Approval') throw new Error('This assessment has already been reviewed. Return to the approval queue.')
+    const nextRows = approvalQueueRows.map(item => item.activityId === reviewedRecord.activityId ? nextReviewedRecord : item)
+    if (nextReviewedRecord.activityType === 'Assessment' && nextReviewedRecord.approvalStatus === 'Approved') {
+      const published = buildApprovedPublication(nextReviewedRecord, profileUser.name)
+      commitApprovedPublication(published, nextRows)
+      setApprovalQueueRows(nextRows)
+      setSelectedApprovalViewRecord(nextReviewedRecord)
+      setApprovalPublication(published)
+      return
+    }
+    window.sessionStorage.setItem(APPROVAL_QUEUE_STORAGE_KEY, JSON.stringify(nextRows))
+    setApprovalQueueRows(nextRows)
     if (nextReviewedRecord.setup?.assessmentId) appendAssessmentHistory(nextReviewedRecord, { action: nextReviewedRecord.approvalStatus || 'Approval reviewed', actor: profileUser.name, notes: nextReviewedRecord.reviewRemarks || '' })
     setSelectedApprovalViewRecord(nextReviewedRecord)
     storeApprovalViewRecord(nextReviewedRecord)
@@ -1059,7 +1134,7 @@ function App() {
       tone: nextReviewedRecord.approvalStatus === 'Approved' ? 'secondary' : 'warning',
       message: `${nextReviewedRecord.activityName ?? 'Activity'} ${nextReviewedRecord.approvalStatus === 'Approved' ? 'approved' : 'rejected'}${nextReviewedRecord.reviewRemarks ? ' with remarks' : ''}.`,
     })
-    if (nextReviewedRecord.activityType === 'Blueprint') { navigateToPage(APP_PAGES.REVIEW_APPROVE); return }
+    if (['Blueprint', 'Assessment'].includes(nextReviewedRecord.activityType)) { navigateToPage(APP_PAGES.REVIEW_APPROVE); return }
     navigateToPage(
       String(nextReviewedRecord.activityType ?? '').trim().toLowerCase() === 'question bank'
         ? APP_PAGES.QUESTION_BANK
@@ -1442,9 +1517,10 @@ function App() {
               onClearAttemptSchedule={handleClearPublishedAttemptSchedule}
             />
           ) : activePage === APP_PAGES.ASSESSMENT_CREATE ? (
-            <AssessmentCreatePage onNavigate={navigateToPage} onAlert={showAlert} />
+            <AssessmentCreatePage onReschedule={setRescheduleRecord} onClearAll={() => { const remaining = clearAssessmentCards(); setApprovalQueueRows(remaining); showAlert({ tone: 'secondary', message: 'All assessment cards cleared.' }) }} onNavigate={navigateToPage} onAlert={showAlert} approvalQueueRows={approvalQueueRows} onViewSubmission={record => handleOpenApprovalView({ ...record, submissionReadOnly: true })} />
           ) : activePage === APP_PAGES.CREATE_ASSESSMENT ? (
             <CreateAssessmentPage
+              onReworkDraftSaved={handleReworkDraftSaved}
               currentUser={profileUser}
               onNavigate={navigateToPage}
               onAlert={showAlert}
@@ -1540,14 +1616,21 @@ function App() {
               completedEvaluationRows={completedEvaluationRows}
               onAlert={showAlert}
               onViewApproval={handleOpenApprovalView}
+              onReschedule={setRescheduleRecord}
             />
           ) : activePage === APP_PAGES.APPROVAL_VIEW ? (
             <ApprovalViewPage
+              onToggleTheme={() => setTheme(current => current === 'light' ? 'dark' : 'light')}
               theme={theme}
               key={(selectedApprovalViewRecord ?? readStoredApprovalViewRecord())?.activityId ?? 'no-approval-record'}
               approvalRecord={selectedApprovalViewRecord ?? readStoredApprovalViewRecord()}
               completedEvaluationRows={completedEvaluationRows}
-              onBack={() => navigateToPage(APP_PAGES.REVIEW_APPROVE)}
+              onBack={() => {
+                if ((selectedApprovalViewRecord ?? readStoredApprovalViewRecord())?.submissionReadOnly) {
+                  localStorage.setItem('vx-assessment-create-initial-tab', 'pending')
+                  navigateToPage(APP_PAGES.ASSESSMENT_CREATE)
+                } else navigateToPage(APP_PAGES.REVIEW_APPROVE)
+              }}
               onAlert={showAlert}
               onApprovalAction={handleApprovalReviewAction}
             />
@@ -1738,6 +1821,8 @@ function App() {
         </div>
 
       </main>
+      {approvalPublication && <AssessmentPublishedConfirmation theme={theme} title="Assessment approved and published" message="Ready for the scheduled exam." onContinue={finishApprovalPublication} />}
+      {rescheduleRecord && <AssessmentRescheduleDialog record={rescheduleRecord} theme={theme} onCancel={() => setRescheduleRecord(null)} onSave={saveRescheduledAssessment} />}
     </div>
   )
 }

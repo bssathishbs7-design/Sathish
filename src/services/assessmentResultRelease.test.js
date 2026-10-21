@@ -9,11 +9,11 @@ const assessment = { id: 'exam', setup: { examDeliveryMode: 'Online', supervisio
 const attempt = { isAssessmentSubmitted: true, submittedAt, answers: { q1: 0 }, descriptiveAnswers: { '["descriptive","d1"]': 'Written response' }, appliedResetVersion: 0 }
 const storage = entries => { const data = new Map(Object.entries(entries)); return { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) } }
 
-test('real MCQ key scores immediately but releases only at two minutes', () => {
-  const early = prepareAssessmentResult(assessment, attempt, {}, {}, start + 119999)
+test('real MCQ key scores immediately but releases only at one minute', () => {
+  const early = prepareAssessmentResult(assessment, attempt, {}, {}, start + 59999)
   assert.equal(early.result.marks, 2)
   assert.equal(early.result.status, 'evaluated')
-  assert.equal(prepareAssessmentResult(assessment, attempt, early.result, early.evaluation, start + 120000).result.status, 'published')
+  assert.equal(prepareAssessmentResult(assessment, attempt, early.result, early.evaluation, start + 60000).result.status, 'published')
 })
 test('unanswered and incorrect MCQs score zero; missing answer keys remain pending', () => {
   assert.equal(prepareAssessmentResult(assessment, { ...attempt, answers: {} }, {}, {}, start).evaluation.q1.status, 'not-attempted')
@@ -83,4 +83,70 @@ test('MCQ manual reset and corrected marks survive automatic reconciliation', ()
   const saved = prepareAssessmentResult(assessment, attempt, pending.result, { q1: edited }, start + 200000)
   assert.deepEqual(saved.evaluation.q1, edited)
   assert.equal(saved.result.marks, 0)
+})
+
+test('after exam end every present student is evaluated; absent students stay excluded', () => {
+ const end = new Date(2026, 9, 22, 11, 0).getTime()
+ const row = { ...assessment, startDate:'2026-10-22', startTime:'10:00 AM', totalDuration:'01:00',
+ students:[{id:'one',attendance:'P'},{id:'two',attendance:'P'},{id:'three',attendance:'P'},{id:'absent',attendance:'A'}] }
+ const store = storage({'vx-assessment-published':JSON.stringify([row]),'vx-online-practice-exam-attempts':JSON.stringify({exam:{one:{answers:{q1:0},appliedResetVersion:0}}})})
+ reconcileAssessmentResults(store,end-1)
+ assert.equal(JSON.parse(store.getItem('vx-assessment-published'))[0].studentResults,undefined)
+ reconcileAssessmentResults(store,end)
+ const evaluated = JSON.parse(store.getItem('vx-assessment-published'))[0].studentResults
+ assert.equal(evaluated.one.marks,2)
+ assert.equal(evaluated.two.marks,0)
+ assert.equal(evaluated.three.marks,0)
+ assert.equal(evaluated.absent,undefined)
+ assert.equal(evaluated.two.status,'evaluated')
+ reconcileAssessmentResults(store,end+60000)
+ assert.equal(JSON.parse(store.getItem('vx-assessment-published'))[0].resultStatus,'Published')
+ assert.equal(reconcileAssessmentResults(store,end+61000),false)
+})
+test('extensions and manual evaluation defer automatic completion', () => {
+ const end=new Date(2026,9,22,11,0).getTime()
+ const row={...assessment,startDate:'2026-10-22',startTime:'10:00 AM',totalDuration:'01:00',students:[{id:'one',attendance:'P'}]}
+ const store=storage({'vx-assessment-published':JSON.stringify([row]),'vx-student-exam-time-extensions':JSON.stringify({exam:{one:{extensionMinutes:10}}})})
+ reconcileAssessmentResults(store,end+60000)
+ assert.equal(JSON.parse(store.getItem('vx-assessment-published'))[0].studentResults,undefined)
+ reconcileAssessmentResults(store,end+600000)
+ assert.equal(JSON.parse(store.getItem('vx-assessment-published'))[0].studentResults.one.marks,0)
+ const manual={...row,questionRows:[{id:'d',type:'Descriptive Question',marks:3}],setup:{...row.setup,descriptiveAutoEvaluation:'No'}}
+ const manualStore=storage({'vx-assessment-published':JSON.stringify([manual])})
+ reconcileAssessmentResults(manualStore,end+600000)
+ assert.equal(JSON.parse(manualStore.getItem('vx-assessment-published'))[0].studentResults,undefined)
+})
+
+test('expired written exams evaluate saved text and give zero to blank present students', () => {
+ const end = new Date(2026,9,22,11,0).getTime()
+ const written = {id:'d1',type:'Descriptive Question',marks:5,modelAnswer:'The heart pumps blood throughout the body.'}
+ const key = JSON.stringify(['descriptive','d1'])
+ const row = {...assessment,startDate:'2026-10-22',startTime:'10:00 AM',totalDuration:'01:00',
+   setup:{...assessment.setup,descriptiveDisplayType:'Answer Input',descriptiveAutoEvaluation:'Yes',descriptiveAutoPublish:'Off'},
+   questionRows:[written], students:[{id:'writer',attendance:'P'},{id:'blank',attendance:'P'},{id:'absent',attendance:'A'}]}
+ const store=storage({'vx-assessment-published':JSON.stringify([row]),'vx-online-practice-exam-attempts':JSON.stringify({exam:{writer:{descriptiveAnswers:{[key]:written.modelAnswer},appliedResetVersion:0}}})})
+ store.setItem(automatedEvaluationKey(row,'blank',{}),JSON.stringify({[key]:{status:'pending',marks:''}}))
+ reconcileAssessmentResults(store,end)
+ const results=JSON.parse(store.getItem('vx-assessment-published'))[0].studentResults
+ assert.equal(results.writer.status,'evaluated')
+ assert.equal(results.writer.marks,5)
+ assert.equal(results.blank.status,'evaluated')
+ assert.equal(results.blank.marks,0)
+ assert.equal(results.absent,undefined)
+ const blank=JSON.parse(store.getItem(automatedEvaluationKey(row,'blank',{})))[key]
+ assert.equal(blank.status,'not-attempted')
+ assert.equal(blank.marks,0)
+})
+test('ended assessments evaluate the shared fallback roster shown by the table', () => {
+ const end = new Date(2026,9,22,11,0).getTime()
+ const row = {...assessment,startDate:'2026-10-22',startTime:'10:00 AM',totalDuration:'01:00'}
+ const store = storage({'vx-assessment-published':JSON.stringify([row])})
+ reconcileAssessmentResults(store,end)
+ const saved = JSON.parse(store.getItem('vx-assessment-published'))[0]
+ for (const id of ['MV1253','MV1254','MV1255']) {
+   assert.equal(saved.studentResults[id].marks,0)
+   assert.equal(saved.studentResults[id].status,'evaluated')
+   assert.ok(saved.students.some(student => student.id === id))
+ }
+ assert.equal(saved.studentResults.MV1256,undefined)
 })

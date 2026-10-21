@@ -9,3 +9,5 @@
 .assessment-card-info:hover { background: var(--surface-soft, var(--activity-surface)); }
 .assessment-card-info:active { transform: translateY(1px) scale(.97); }
 .assessment-card-info:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+
+.assessment-card-settings .assessment-card-blueprint-id { padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text-muted); font-family: var(--f-code); font-variant-numeric: tabular-nums; white-space: nowrap; }

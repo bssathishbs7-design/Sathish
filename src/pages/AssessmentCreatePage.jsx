@@ -1,3 +1,10 @@
+import AssessmentStartCountdown from '../components/AssessmentStartCountdown'
+import AssessmentPublicationBadge from '../components/AssessmentPublicationBadge'
+import { getAssessmentPublicationMethod } from '../services/assessmentPublicationMethod'
+import { isAssessmentScheduleExpired, isPendingAssessmentExpired } from '../services/assessmentScheduleExpiry'
+import AssessmentExamType from '../components/AssessmentExamType'
+import AssessmentTrackerCard from '../components/AssessmentTrackerCard'
+import CopyIdBadge from '../components/CopyIdBadge'
 import { readBlueprintWorkflow } from '../services/blueprintApproval'
 import AssessmentHistoryDialog from '../components/AssessmentHistoryDialog'
 import { assessmentDisplayId } from '../services/assessmentHistory'
@@ -346,9 +353,6 @@ const mergeMockPublishedAssessments = (rows = []) => {
   return [...missingMockRows, ...existingRows]
 }
 
-const formatSupervisionTypeLabel = (value) => (
-  value === 'Proctored Exams' ? 'Proctored Exam' : value
-)
 
 const isDescriptiveQuestionType = (type) => (
   type === 'Descriptive Question'
@@ -440,6 +444,8 @@ const getAssessmentQuestionsStorageKey = (setup = {}) => (
 )
 
 const readDraftQuestions = (draft) => {
+  // A saved empty array is intentional, including deletion of the last question.
+  if (Array.isArray(draft?.questionRows)) return draft.questionRows
   try {
     const storedRows = JSON.parse(window.localStorage.getItem(getAssessmentQuestionsStorageKey(draft?.setup ?? draft)) || '[]')
     if (Array.isArray(storedRows) && storedRows.length) return storedRows
@@ -450,7 +456,7 @@ const readDraftQuestions = (draft) => {
 }
 
 const restoreAssessmentQuestionsForCreate = (setup = {}, questionRows = []) => {
-  if (!setup || !Array.isArray(questionRows) || !questionRows.length) return
+  if (!setup || !Array.isArray(questionRows)) return
 
   try {
     window.localStorage.setItem(getAssessmentQuestionsStorageKey(setup), JSON.stringify(questionRows))
@@ -465,6 +471,58 @@ const getDraftValue = (draft, ...keys) => {
     if (value !== undefined && value !== null && String(value).trim() !== '') return value
   }
   return ''
+}
+
+const renderAssessmentAssignment = record => {
+  const year = getDraftValue(record, 'assignYear', 'year')
+  const group = getDraftValue(record, 'assignGroup', 'sgt')
+  return [year, group].filter(value => value && !['Not set', 'Not assigned', '-'].includes(value)).join(' / ') || 'Year not assigned'
+}
+
+const renderAssessmentIdentity = (record, title) => {
+  const academicYear = getDraftValue(record, 'academicYear') || 'Academic year not set'
+  const examCategory = getDraftValue(record, 'examCategory') || 'Category not set'
+  return <span className="assessment-draft-identity-row"><strong>{title}</strong><span>{examCategory} / {academicYear}</span></span>
+}
+
+const renderAssessmentModeBadges = record => {
+  const mode = String(getDraftValue(record, 'examDeliveryMode', 'examMode', 'assessmentMode')).toLowerCase()
+  const supervision = String(getDraftValue(record, 'supervisionType')).toLowerCase()
+  const practice = supervision.includes('practice')
+  const SupervisionIcon = practice ? EyeOff : Monitor
+  return <>
+    {mode === 'online' && (practice || supervision.includes('proctored')) && <span className={`assessment-stage-badge assessment-create-published-supervision ${practice ? 'is-practice' : 'is-proctored'}`}><SupervisionIcon size={13} aria-hidden="true" />{practice ? 'Practice' : 'Proctored'}</span>}
+    {['online', 'offline'].includes(mode) && <span className={`assessment-create-published-status is-${mode}`}>{mode === 'online' ? 'Online' : 'Offline'}</span>}
+  </>
+}
+
+const renderAssessmentSummary = record => <div className="assessment-create-draft-stats" aria-label="Assessment summary"><span><strong>{record.questionCount ?? getPublishedQuestionRows(record).length}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em></span><span><strong>{record.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span></div>
+
+/** Keep schedule KPIs in the same order on every lifecycle card. */
+const renderConfiguredSchedule = (record, scheduleStatus, questions, unpublishedNow) => {
+  const savedDraft = Boolean(record?.setup?.sourceDraftId)
+  const practice = savedDraft && getDraftValue(record, 'supervisionType') === 'Practice Exam' && getDraftValue(record, 'examDeliveryMode', 'examMode') !== 'Offline'
+  const date = practice ? getDraftValue(record, 'practiceStartDate') : getDraftValue(record, 'examDate', 'startDate')
+  const time = getDraftValue(record, practice ? 'practiceStartTime' : 'startTime')
+  const period = getDraftValue(record, practice ? 'practiceStartPeriod' : 'startPeriod')
+  const duration = getDraftValue(record, 'totalDuration', 'duration', getDraftValue(record, 'examDeliveryMode', 'examMode') === 'Offline' ? 'offlineDuration' : 'proctoredTotalDuration')
+  const end = getDraftValue(record, practice ? 'practiceEndDate' : 'endDate')
+  const live = scheduleStatus?.type === 'live'
+  const expired = unpublishedNow && isAssessmentScheduleExpired({date, time, period}, unpublishedNow)
+  const fields = [
+    ['Start date', date ? formatDisplayDate(date) : '-', CalendarDays],
+    ['Start time', time ? [time, /am|pm/i.test(time) ? '' : period].filter(Boolean).join(' ') : '-', Clock3],
+    [live ? 'Remaining time' : 'Duration', live ? formatAssessmentRemainingTime(scheduleStatus.remainingMs) : duration || '-', Clock3],
+    ['End date', end ? formatDisplayDate(end) : '-', CalendarDays],
+    ['Exam type', <AssessmentExamType assessment={record} questions={questions} />, ClipboardCheck],
+  ]
+  return <div className="assessment-create-published-details" aria-label="Assessment schedule">{fields.map(([label, value, FieldIcon]) => <span key={label}>{label === 'Exam type' ? value : label === 'Start time' && expired ? <span className="assessment-schedule-expired">Expired</span> : <strong>{value}</strong>}<em><FieldIcon size={13} aria-hidden="true" /> {label}</em></span>)}</div>
+}
+
+const renderAssessmentTimestamp = (record, stage) => {
+  const stageKeys = { draft: ['updatedAt', 'savedAt'], pending: ['sentAt'], approved: ['reviewedAt'], rejected: ['reviewedAt'], published: ['publishedAt'], evaluation: ['evaluatedAt', 'updatedAt', 'publishedAt'], results: ['resultsPublishedAt', 'publishedAt'] }
+  const value = getDraftValue(record, ...(stageKeys[stage] || []), 'updatedAt', 'savedAt', 'createdAt')
+  return <span className="assessment-create-saved-timestamp">{value ? formatDraftSavedDate(value) : 'Date not available'}</span>
 }
 
 const parseMarksValue = (value) => {
@@ -919,7 +977,7 @@ const downloadQuestionPaperPdf = async (assessment) => {
 
 const getDraftSummary = (draft) => {
   const questions = readDraftQuestions(draft)
-  if (questions.length) {
+  if (Array.isArray(draft?.questionRows) || questions.length) {
     return {
       questionCount: questions.length,
       totalMarks: questions.reduce((total, item) => total + getQuestionMarksTotal(item), 0),
@@ -1021,15 +1079,15 @@ const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
   const calendarDays = Math.round((startDay.getTime() - currentDay.getTime()) / (24 * 60 * 60 * 1000))
 
   if (calendarDays >= 1) {
-    return { type: 'upcoming', label: `${calendarDays} ${calendarDays === 1 ? 'day' : 'days'} to go` }
+    return { type: 'upcoming', startsInMs: diffMs, label: `${calendarDays} ${calendarDays === 1 ? 'day' : 'days'} to go` }
   }
 
   if (minutes > 5 && minutes >= 60) {
     const hours = Math.max(1, Math.floor(minutes / 60))
-    return { type: 'upcoming', label: `${hours} ${hours === 1 ? 'hour' : 'hours'} to go` }
+    return { type: 'upcoming', startsInMs: diffMs, label: `${hours} ${hours === 1 ? 'hour' : 'hours'} to go` }
   }
 
-  return { type: 'upcoming', label: `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} to go` }
+  return { type: 'upcoming', startsInMs: diffMs, label: `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} to go` }
 }
 
 // Each assessment appears in exactly one tab for its current workflow stage.
@@ -1099,12 +1157,39 @@ const readExamControlLogRows = (assessment) => {
   }
 }
 
-export default function AssessmentCreatePage({ onNavigate }) {
+export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [], onViewSubmission, onClearAll, onReschedule }) {
   const creatingAssessmentRef = useRef(false)
   const [isCreatingAssessment, setIsCreatingAssessment] = useState(false)
   const [creationError, setCreationError] = useState('')
+  const [isClearingCards, setIsClearingCards] = useState(false)
+  const clearingCardsRef = useRef(false)
+  const [highlightedAssessment, setHighlightedAssessment] = useState(() => sessionStorage.getItem('vx-assessment-highlight'))
+  useEffect(() => {
+    if (!highlightedAssessment) return undefined
+    sessionStorage.removeItem('vx-assessment-highlight')
+    document.querySelector('.assessment-tracker-card.is-just-published')?.scrollIntoView({block:'nearest'})
+    const timer = window.setTimeout(() => setHighlightedAssessment(null), 6000)
+    return () => window.clearTimeout(timer)
+  }, [highlightedAssessment])
   const [draftAssessments, setDraftAssessments] = useState(readAssessmentDrafts)
   const [publishedAssessments, setPublishedAssessments] = useState(readPublishedAssessments)
+  useEffect(() => {
+    const refreshSavedCards = () => {
+      setDraftAssessments(readAssessmentDrafts())
+      setPublishedAssessments(readPublishedAssessments())
+    }
+    const onStorage = event => {
+      if (!event.key || [ASSESSMENT_DRAFTS_STORAGE_KEY, ASSESSMENT_PUBLISHED_STORAGE_KEY].includes(event.key)) refreshSavedCards()
+    }
+    window.addEventListener(ASSESSMENT_PUBLISHED_CHANGED_EVENT, refreshSavedCards)
+    window.addEventListener('focus', refreshSavedCards)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener(ASSESSMENT_PUBLISHED_CHANGED_EVENT, refreshSavedCards)
+      window.removeEventListener('focus', refreshSavedCards)
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [])
   const [selectedPublishedLogAssessment, setSelectedPublishedLogAssessment] = useState(null)
   const [scheduleNow, setScheduleNow] = useState(() => new Date())
   const [publishedSearchValue, setPublishedSearchValue] = useState('')
@@ -1118,6 +1203,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
     const drafts = readAssessmentDrafts()
     if (requestedTab === 'evaluation') return 'evaluation'
     if (requestedTab === 'draft') return 'draft'
+    if (requestedTab === 'pending') return 'pending'
     if (requestedTab === 'results') return 'results'
     if (requestedTab === 'published') return 'published'
     return rows.length ? 'published' : drafts.length ? 'draft' : 'published'
@@ -1125,12 +1211,13 @@ export default function AssessmentCreatePage({ onNavigate }) {
   const { published: activePublishedAssessments, evaluation: evaluationAssessments, results: resultAssessments } = splitPublishedAssessmentRows(publishedAssessments, scheduleNow)
   const approvalAssessments = (() => {
     try {
-      const queue = JSON.parse(localStorage.getItem('vx-approval-queue-rows') || '[]')
-      return queue.filter(record => record.setup?.assessmentId && !publishedAssessments.some(item => item.id === record.setup.assessmentId)
+      const queue = approvalQueueRows
+      return queue.filter(record => record.reworkStatus !== 'Draft' && record.setup?.assessmentId && !publishedAssessments.some(item => item.id === record.setup.assessmentId)
         && (record.activityType !== 'Blueprint' || (readBlueprintWorkflow(record.setup.assessmentId)?.status !== 'Revision required'
           && !queue.some(other => other.activityType === 'Assessment' && other.setup?.assessmentId === record.setup.assessmentId))))
     } catch { return [] }
   })()
+  const isPendingAssessment = record => record.activityType === 'Assessment' && record.approvalStatus === 'Pending Approval'
   const visibleDraftAssessments = draftAssessments.filter(draft => !approvalAssessments.some(record => record.setup.assessmentId === (draft.setup?.assessmentId || draft.id)))
   const approvalStage = record => record.approvalStatus === 'Approved' ? 'approved' : /reject/i.test(record.approvalStatus || '') ? 'rejected' : 'pending'
   const activeApprovalAssessments = approvalAssessments.filter(record => approvalStage(record) === activeAssessmentTab && [record.assessmentName, record.activityName, assessmentDisplayId(record)].join(' ').toLowerCase().includes(publishedSearchValue.trim().toLowerCase()))
@@ -1154,11 +1241,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
       icon: metric.icon,
     }))
   const totalAssessmentCount = metrics.reduce((total, metric) => total + metric.count, 0)
-  const renderCardStage = () => {
-    const stage = assessmentTabItems.find(item => item.key === activeAssessmentTab)
-    const StageIcon = stage?.icon || ClipboardCheck
-    return <span className={`assessment-stage-badge is-${activeAssessmentTab}`}><StageIcon size={14} aria-hidden="true" />{stage?.key === 'pending' ? 'Pending approval' : stage?.label}</span>
-  }
   const shouldShowDraftAssessments = activeAssessmentTab === 'draft'
   const shouldShowPublishedAssessments = activeAssessmentTab === 'published'
   const shouldShowEvaluationAssessments = activeAssessmentTab === 'evaluation'
@@ -1167,9 +1249,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
     ? assessmentTabItems.find((item) => item.key === activeAssessmentTab)
     : null
   const activeTabLabel = assessmentTabItems.find((item) => item.key === activeAssessmentTab)?.label || 'Assessment'
-  const livePublishedAssessmentCount = activePublishedAssessments.filter((assessment) => (
-    getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'live'
-  )).length
   const activePublishedFilterCount = Object.values(publishedFilters).filter((value) => value !== 'all').length
   const hasPublishedFilter = activePublishedFilterCount > 0
   const hasPublishedSearch = Boolean(publishedSearchValue.trim())
@@ -1212,7 +1291,10 @@ export default function AssessmentCreatePage({ onNavigate }) {
       && (publishedFilters.examType === 'all' || examType === publishedFilters.examType)
     )
   })
-  const filteredPublishedAssessments = filterAssessmentCards(activePublishedAssessments)
+  const filteredPublishedAssessments = filterAssessmentCards(activePublishedAssessments).sort((a, b) => (
+    Number(getPublishedAssessmentScheduleStatus(b, scheduleNow)?.type === 'live')
+    - Number(getPublishedAssessmentScheduleStatus(a, scheduleNow)?.type === 'live')
+  ))
   const filteredEvaluationAssessments = filterAssessmentCards(evaluationAssessments)
   const filteredResultAssessments = filterAssessmentCards(resultAssessments)
 
@@ -1290,11 +1372,33 @@ export default function AssessmentCreatePage({ onNavigate }) {
   )
 
   useEffect(() => {
-    if (!['published', 'evaluation', 'results'].includes(activeAssessmentTab)) return undefined
+    // Keep unpublished expiry and published countdowns current while this page is open.
 
     const intervalId = window.setInterval(() => setScheduleNow(new Date()), 1000)
     return () => window.clearInterval(intervalId)
   }, [activeAssessmentTab])
+
+  const clearAllCards = async () => {
+    if (clearingCardsRef.current) return
+    clearingCardsRef.current = true
+    setIsClearingCards(true)
+    setCreationError('')
+    try {
+      if (!onClearAll) throw new Error('Unable to clear assessments.')
+      await onClearAll()
+      setDraftAssessments([])
+      setPublishedAssessments([])
+      setSelectedPublishedLogAssessment(null)
+      setPublishedActionModal(null)
+      setPublishedSearchValue('')
+      setPublishedFilters(PUBLISHED_FILTER_DEFAULTS)
+    } catch {
+      setCreationError('Unable to clear assessment cards. Please try again.')
+    } finally {
+      clearingCardsRef.current = false
+      setIsClearingCards(false)
+    }
+  }
 
   const createAssessment = async () => {
     if (creatingAssessmentRef.current) return
@@ -1317,7 +1421,36 @@ export default function AssessmentCreatePage({ onNavigate }) {
     const draft = draftAssessments.find(item => (item.setup?.assessmentId || item.id) === record.setup.assessmentId)
     const flow = readBlueprintWorkflow(record.setup.assessmentId)
     const source = draft || { ...record, id: record.setup.sourceDraftId || record.setup.assessmentId }
-    continueDraftAssessment({ ...source, setup: { ...source.setup, draftWorkspace: { ...source.setup?.draftWorkspace, activeCreateTab: flow?.status === 'Approved' ? 'questionBank' : 'blueprint', isBlueprintPlannerSaved: true, isBlueprintPlannerEditing: flow?.status !== 'Approved', blueprint: flow?.snapshot } } })
+    continueDraftAssessment({ ...source, setup: { ...source.setup, reworkReview: null, draftWorkspace: { ...source.setup?.draftWorkspace, activeCreateTab: flow?.status === 'Approved' ? 'questionBank' : 'blueprint', isBlueprintPlannerSaved: true, isBlueprintPlannerEditing: flow?.status !== 'Approved', blueprint: flow?.snapshot } } })
+  }
+  const continueRejectedAssessment = record => {
+    try {
+      const existing = draftAssessments.find(draft => (draft.setup?.assessmentId || draft.id) === record.setup.assessmentId)
+      const resumed = existing?.setup?.reworkReview?.reviewedAt === record.reviewedAt ? existing : null
+      const sections = record.previewSections || []
+      const setup = {
+        ...(resumed?.setup || record.setup),
+        sourceDraftId: resumed?.id || record.setup.sourceDraftId || record.setup.assessmentId,
+        reworkReview: { activityType: record.activityType, remarks: record.reviewRemarks || 'No rejection remarks were recorded.', reviewer: record.reviewedBy || record.approvalFaculty?.facultyName || 'Reviewer', reviewedAt: record.reviewedAt },
+        draftWorkspace: {
+          ...(resumed?.setup?.draftWorkspace || {}),
+          activeCreateTab: record.activityType === 'Blueprint' ? 'blueprint' : 'preview',
+          ...(resumed ? {} : { blueprint: record.blueprintSnapshot, isBlueprintPlannerSaved: Boolean(record.blueprintSnapshot), isBlueprintPlannerEditing: record.activityType === 'Blueprint' }),
+        },
+      }
+      if (!resumed) {
+        const suffix = getAssessmentStorageSuffix(setup)
+        window.localStorage.setItem(getAssessmentQuestionsStorageKey(setup), JSON.stringify(record.questionRows || sections.flatMap(section => section.questions || [])))
+        window.localStorage.setItem('vx-create-assessment-section-titles:' + suffix, JSON.stringify(Object.fromEntries(sections.map(section => [section.key, section.title]))))
+        window.localStorage.setItem('vx-create-assessment-section-order:' + suffix, JSON.stringify(sections.map(section => section.key)))
+        window.localStorage.setItem('vx-create-assessment-custom-sections:' + suffix, JSON.stringify(sections.filter(section => section.isCustom).map(({ questions, ...section }) => section)))
+      }
+      window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(setup))
+      window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, record.activityType === 'Blueprint' ? 'blueprint' : 'preview')
+      onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
+    } catch {
+      setCreationError('Unable to open the rejected assessment. Free browser storage and try again.')
+    }
   }
   const continueDraftAssessment = (draft) => {
     if (!draft?.setup) return
@@ -1365,6 +1498,7 @@ export default function AssessmentCreatePage({ onNavigate }) {
     })
     const nextSetup = {
       ...assessment.setup,
+      publicationMethod: getAssessmentPublicationMethod(assessment),
       sourcePublishedId: assessment.id,
       sourcePublishedName: assessment.assessmentName || assessment.setup?.assessmentName || 'Untitled Assessment',
       isPublishedEdit: true,
@@ -1490,12 +1624,12 @@ export default function AssessmentCreatePage({ onNavigate }) {
   return (
     <section className="vx-content assessment-page assessment-create-tracker-page my-assessment-theme logbook-scope lb-page assessment-create-theme" data-stage={activeAssessmentTab}>
       <div className={`assessment-page-shell assessment-create-page-shell ${activeAssessmentTab === 'draft' ? 'is-draft-tab' : ''}`}>
-        <PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Assessment']} />
+        <div className="assessment-tracker-navigation"><PageNavigationHeader items={['My Pages', 'Assessment Suite', 'Assessment']} /><button type="button" className="assessment-clear-all" onClick={clearAllCards} disabled={isClearingCards || totalAssessmentCount === 0} aria-busy={isClearingCards}><Trash2 size={15} aria-hidden="true" />{isClearingCards ? 'Clearing...' : 'Clear all'}</button></div>
         <header className="my-skills-overview lb-page-head">
           <div className="my-skills-overview-main">
             <span className="ospe-kicker">Assessment management</span>
             <div className="my-skills-overview-copy"><h1>Assessments</h1><p>Plan assessments, follow approvals, and manage evaluation and results.</p></div>
-            <div className="my-skills-overview-inline"><span><strong>{totalAssessmentCount}</strong> assessments</span><span><strong>{metrics.find(item => item.tone === 'pending')?.count || 0}</strong> awaiting approval</span></div>
+            <div className="my-skills-overview-inline"><span><strong>{totalAssessmentCount}</strong> Assessments</span><span><strong>{metrics.find(item => item.tone === 'pending')?.count || 0}</strong> Awaiting Approval</span></div>
           </div>
           <div className="my-skills-live-card lb-create-card">
             <div className="my-skills-live-card-top"><span className="my-skills-live-indicator"><ClipboardCheck size={15} aria-hidden="true" /> Assessment workspace</span></div>
@@ -1539,24 +1673,29 @@ export default function AssessmentCreatePage({ onNavigate }) {
               <div className="assessment-create-draft-grid">
                 {filteredDraftAssessments.map((draft) => {
                   const assessmentName = getDraftValue(draft, 'assessmentName') || 'Untitled Assessment'
-                  const assessmentCode = assessmentDisplayId(draft)
-                  const academicYear = getDraftValue(draft, 'academicYear') || '-'
+                  const examMode = String(getDraftValue(draft, 'examDeliveryMode', 'examMode') || '').toLowerCase()
+                  const supervision = String(getDraftValue(draft, 'supervisionType') || '').toLowerCase()
+                  const isPractice = supervision.includes('practice')
+                  const hasSupervision = isPractice || supervision.includes('proctored')
+                  const SupervisionIcon = isPractice ? EyeOff : Monitor
                   const course = String(getDraftValue(draft, 'course', 'assignCourse') || '-')
                     .replace(/\s*\(NMC Syllabus\)\s*/i, '')
                     .trim() || '-'
                   const year = getDraftValue(draft, 'year', 'assignYear')
-                  const savedAt = getDraftValue(draft, 'updatedAt', 'savedAt', 'createdAt')
+
                   const draftSummary = getDraftSummary(draft)
                   const questionCount = draftSummary.questionCount
                   const totalMarks = draftSummary.totalMarks
 
                   return (
-                    <article key={draft.id} className="assessment-create-draft-card">
-                      {renderCardStage()}
+                    <AssessmentTrackerCard key={draft.id} 
+                        identity={<><div className="assessment-draft-top-badges">
+                      {examMode === 'online' && hasSupervision ? <span className={`assessment-stage-badge assessment-create-published-supervision ${isPractice ? 'is-practice' : 'is-proctored'}`}><SupervisionIcon size={13} strokeWidth={2.3} aria-hidden="true" />{isPractice ? 'Practice' : 'Proctored'}</span> : null}
+                        {['online', 'offline'].includes(examMode) && <span className={`assessment-create-published-status is-${examMode}`} aria-label={`Exam mode: ${examMode}`}>{examMode === 'online' ? 'Online' : 'Offline'}</span>}
+                      </div>
                       <div className="assessment-create-draft-profile">
                         <div>
-                        <strong>{assessmentName}</strong>
-                        <span className="assessment-create-draft-category is-identity" aria-label={`Assessment ID: ${assessmentCode}`}>{assessmentCode}</span>
+                        {renderAssessmentIdentity(draft, assessmentName)}
                         </div>
                         <button type="button" className="assessment-card-info" onClick={() => setSelectedPublishedLogAssessment(draft)} aria-label={`View history for ${assessmentName}`}><Info size={15} /></button>
                         <button
@@ -1568,7 +1707,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <Trash2 size={15} strokeWidth={2.1} />
                         </button>
                       </div>
-                      <div className="assessment-create-draft-stats" aria-label="Draft summary">
+{(formatYearLabel(year) !== '-' || course !== '-') && <div className="assessment-create-draft-metadata">
+                        {formatYearLabel(year) !== '-' && <span>{formatYearLabel(year)}</span>}
+                        {course !== '-' && <span>{course}</span>}
+                      </div>}</>}
+                        summary={<><div className="assessment-create-draft-stats" aria-label="Draft summary">
                         <span>
                           <strong>{questionCount}</strong>
                           <em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em>
@@ -1577,21 +1720,14 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <strong>{totalMarks}</strong>
                           <em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em>
                         </span>
-                      </div>
-                      <div className="assessment-create-draft-metadata">
-                        <span><CalendarDays size={13} aria-hidden="true" />{academicYear === '-' ? 'Academic year not set' : academicYear}</span>
-                        {formatYearLabel(year) !== '-' && <span>{formatYearLabel(year)}</span>}
-                        {course !== '-' && <span>{course}</span>}
-                      </div>
-                      <AssessmentCardSettings assessment={draft} />
-                      <div className="assessment-create-draft-footer">
-                        <span className="assessment-create-saved-timestamp">{formatDraftSavedDate(savedAt)}</span>
-                        <button type="button" onClick={() => continueDraftAssessment(draft)}>
+                      </div>{renderConfiguredSchedule(draft, undefined, readDraftQuestions(draft), scheduleNow)}</>}
+                        settings={<><CopyIdBadge value={assessmentDisplayId(draft)} /><AssessmentCardSettings assessment={draft} /></>}
+                        timestamp={renderAssessmentTimestamp(draft, activeAssessmentTab)}
+                        actions={<><button type="button" onClick={() => continueDraftAssessment(draft)}>
                           Continue
                           <ArrowRight size={14} strokeWidth={2.3} />
-                        </button>
-                      </div>
-                    </article>
+                        </button></>}
+                      />
                   )
                 })}
               </div>
@@ -1612,23 +1748,6 @@ export default function AssessmentCreatePage({ onNavigate }) {
             <div className="assessment-create-card-heading">
               <div className="assessment-create-published-title">
                 <h2>Published Assessment</h2>
-                {activePublishedAssessments.length ? (
-                  <button
-                    type="button"
-                    className={`assessment-create-live-count-btn ${publishedFilters.status === 'live' ? 'is-active' : ''}`.trim()}
-                    onClick={() => {
-                      setPublishedFilters((current) => ({
-                        ...current,
-                        status: current.status === 'live' ? 'all' : 'live',
-                      }))
-                    }}
-                    aria-pressed={publishedFilters.status === 'live'}
-                  >
-                    <span aria-hidden="true" />
-                    Live Assessment
-                    <strong>{livePublishedAssessmentCount}</strong>
-                  </button>
-                ) : null}
               </div>
               {renderAssessmentSearchToolbar()}
             </div>
@@ -1637,37 +1756,21 @@ export default function AssessmentCreatePage({ onNavigate }) {
                 {filteredPublishedAssessments.length ? (
               <div className="assessment-create-draft-grid">
                 {filteredPublishedAssessments.map((assessment) => {
-                  const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
+
                   const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
-                  const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
+
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                   const canShowExamControls = !isOfflineExam && ['live', 'completed'].includes(scheduleStatus?.type)
                   const canShowPublishedActions = !isPublishedAssessmentActionLocked(assessment, scheduleNow)
                   const publishedQuestionRows = getPublishedQuestionRows(assessment)
-                  const durationValue = scheduleStatus?.type === 'live'
-                    ? formatAssessmentRemainingTime(scheduleStatus.remainingMs)
-                    : assessment.totalDuration || '-'
-                  const durationLabel = scheduleStatus?.type === 'live' ? 'Remaining Time' : 'Total Duration'
 
                   return (
-                      <article
-                        key={assessment.id}
-                        className={`assessment-create-draft-card assessment-create-published-card ${scheduleStatus?.type === 'live' ? 'is-live' : ''}`.trim()}
-                      >
-                      <div className="assessment-card-current-status"><span className="assessment-create-published-footer-status">
-                            {scheduleStatus ? (
-                              scheduleStatus.type === 'upcoming' ? (
-                                <span>{scheduleStatus.label}</span>
-                              ) : (
-                                <span className={`assessment-create-published-schedule-badge is-${scheduleStatus.type}`}>
-                                  {scheduleStatus.label}
-                                </span>
-                              )
-                            ) : null}
-                          </span></div>
+                      <AssessmentTrackerCard key={assessment.id} className={[scheduleStatus?.type === 'live' ? 'is-live' : '', assessment.id === highlightedAssessment ? 'is-just-published' : ''].filter(Boolean).join(' ')}
+                        identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(assessment)}<AssessmentPublicationBadge assessment={assessment} /></div>
+
                         <div className="assessment-create-published-head">
                           <div>
-                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong><span className="assessment-card-identity">{assessmentDisplayId(assessment)}</span>
+                            {renderAssessmentIdentity(assessment, assessment.assessmentName || 'Untitled Assessment')}
                       </div>
                       <span className="assessment-create-published-actions">
                         {canShowPublishedActions ? (
@@ -1694,42 +1797,26 @@ export default function AssessmentCreatePage({ onNavigate }) {
                       </span>
                         </div>
                         <span className="assessment-create-published-status-row">
-                          <small className="assessment-card-category">{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
-                          <span className={`assessment-create-published-status is-${String(assessment.examMode || '').toLowerCase() === 'offline' ? 'offline' : 'online'}`}>
-                            {assessment.examMode || '-'}
-                          </span>
-                          {!isOfflineExam ? (
-                            <span className={`assessment-create-published-supervision ${isPracticeExam ? 'is-practice' : 'is-proctored'}`}>
-                              <SupervisionIcon size={13} strokeWidth={2.3} />
-                              {formatSupervisionTypeLabel(assessment.supervisionType) || '-'}
-                            </span>
-                          ) : publishedQuestionRows.length ? (
+                          <small className="assessment-card-category">{renderAssessmentAssignment(assessment)}</small>
+                          
+                          {isOfflineExam && publishedQuestionRows.length ? (
                             <button type="button" className="assessment-create-published-download-btn" onClick={() => downloadQuestionPaperPdf(assessment)}>
                               <Download size={12} strokeWidth={2.4} />
                               Download PDF
                             </button>
                           ) : null}
-                        </span>
-                        <div className="assessment-create-published-details" aria-label="Published assessment details">
-                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> Start date</em></span>
-                          <span><strong>{assessment.startTime || '-'}</strong><em><Clock3 size={13} aria-hidden="true" /> Start time</em></span>
-                          <span><strong>{durationValue}</strong><em>{durationLabel}</em></span>
-                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> End date</em></span>
-                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span>
-                          <span><strong>{assessment.examType || '-'}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Exam type</em></span>
-                        </div>
-                        <AssessmentResultStatus results={assessment.studentResults} />
-                        <AssessmentCardSettings assessment={assessment} />
-                        <div className="assessment-create-draft-footer assessment-create-published-footer">
-                          {renderCardStage()}
-                          {canShowExamControls ? (
+                        </span></>}
+                        summary={<>{renderAssessmentSummary(assessment)}
+{renderConfiguredSchedule(assessment, scheduleStatus)}
+                        <AssessmentResultStatus results={assessment.studentResults} /></>}
+                        settings={<><CopyIdBadge value={assessmentDisplayId(assessment)} /><AssessmentCardSettings assessment={assessment} /></>}
+                        actions={<><AssessmentStartCountdown status={scheduleStatus} />{canShowExamControls ? (
                             <button type="button" className="assessment-create-exam-controls-btn" onClick={() => openExamControls(assessment)}>
                               <Monitor size={12} strokeWidth={2.4} />
                               Exam Controls
                             </button>
-                          ) : null}
-                        </div>
-                      </article>
+                          ) : null}</>}
+                      />
                     )
                 })}
               </div>
@@ -1759,26 +1846,24 @@ export default function AssessmentCreatePage({ onNavigate }) {
               filteredEvaluationAssessments.length ? (
                 <div className="assessment-create-draft-grid">
                   {filteredEvaluationAssessments.map((assessment) => {
-                    const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
+
                     const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
-                    const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
+
                     const publishedQuestionRows = getPublishedQuestionRows(assessment)
-                    const durationValue = assessment.totalDuration || '-'
+
                     const evaluationStatus = assessment.evaluationStatus === 'In Progress' ? 'In Progress' : 'Yet to Start'
 
                     return (
-                      <article
-                        key={assessment.id}
-                        className="assessment-create-draft-card assessment-create-published-card"
-                      >
-                      <div className="assessment-card-current-status"><span className="assessment-create-published-footer-status assessment-create-evaluation-statuses">
+                      <AssessmentTrackerCard key={assessment.id} 
+                        identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(assessment)}<AssessmentPublicationBadge assessment={assessment} /></div>
+<div className="assessment-card-current-status"><span className="assessment-create-published-footer-status assessment-create-evaluation-statuses">
                             <span className={`assessment-create-published-schedule-badge ${evaluationStatus === 'In Progress' ? 'is-in-progress' : 'is-yet-to-start'}`}>
                               {evaluationStatus}
                             </span>
                           </span></div>
                         <div className="assessment-create-published-head">
                           <div>
-                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong><span className="assessment-card-identity">{assessmentDisplayId(assessment)}</span>
+                            {renderAssessmentIdentity(assessment, assessment.assessmentName || 'Untitled Assessment')}
                           </div>
                           <span className="assessment-create-published-actions">
                             <button
@@ -1804,39 +1889,24 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           </span>
                         </div>
                         <span className="assessment-create-published-status-row">
-                          <small className="assessment-card-category">{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
-                          <span className={`assessment-create-published-status is-${isOfflineExam ? 'offline' : 'online'}`}>
-                            {assessment.examMode || '-'}
-                          </span>
-                          {!isOfflineExam ? (
-                            <span className={`assessment-create-published-supervision ${isPracticeExam ? 'is-practice' : 'is-proctored'}`}>
-                              <SupervisionIcon size={13} strokeWidth={2.3} />
-                              {formatSupervisionTypeLabel(assessment.supervisionType) || '-'}
-                            </span>
-                          ) : publishedQuestionRows.length ? (
+                          <small className="assessment-card-category">{renderAssessmentAssignment(assessment)}</small>
+                          
+                          {isOfflineExam && publishedQuestionRows.length ? (
                             <button type="button" className="assessment-create-published-download-btn" onClick={() => downloadQuestionPaperPdf(assessment)}>
                               <Download size={12} strokeWidth={2.4} />
                               Download PDF
                             </button>
                           ) : null}
-                        </span>
-                        <div className="assessment-create-published-details" aria-label="Evaluation assessment details">
-                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> Start date</em></span>
-                          <span><strong>{assessment.startTime || '-'}</strong><em><Clock3 size={13} aria-hidden="true" /> Start time</em></span>
-                          <span><strong>{durationValue}</strong><em><Clock3 size={13} aria-hidden="true" /> Duration</em></span>
-                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> End date</em></span>
-                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span>
-                          <span><strong>{assessment.examType || '-'}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Exam type</em></span>
-                        </div>
-                        <AssessmentCardSettings assessment={assessment} />
-                        <div className="assessment-create-draft-footer assessment-create-published-footer">
-                          {renderCardStage()}
-                          <button type="button" className="assessment-create-exam-controls-btn is-start-evaluation" onClick={() => startAssessmentEvaluation(assessment)}>
+                        </span></>}
+                        summary={<>{renderAssessmentSummary(assessment)}
+{renderConfiguredSchedule(assessment)}<AssessmentResultStatus results={assessment.studentResults} /></>}
+                        settings={<><CopyIdBadge value={assessmentDisplayId(assessment)} /><AssessmentCardSettings assessment={assessment} /></>}
+                        timestamp={renderAssessmentTimestamp(assessment, activeAssessmentTab)}
+                        actions={<><button type="button" className="assessment-create-exam-controls-btn is-start-evaluation" onClick={() => startAssessmentEvaluation(assessment)}>
                             <ClipboardCheck size={12} strokeWidth={2.4} />
-                            Start Evaluation
-                          </button>
-                        </div>
-                      </article>
+                            {evaluationStatus === 'In Progress' ? 'Continue evaluation' : 'Start evaluation'}
+                          </button></>}
+                      />
                     )
                   })}
                 </div>
@@ -1865,24 +1935,19 @@ export default function AssessmentCreatePage({ onNavigate }) {
               filteredResultAssessments.length ? (
                 <div className="assessment-create-draft-grid">
                   {filteredResultAssessments.map((assessment) => {
-                    const isPracticeExam = String(assessment.supervisionType || '').toLowerCase().includes('practice')
-                    const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
-                    const SupervisionIcon = isPracticeExam ? EyeOff : Monitor
-                    const durationValue = assessment.totalDuration || '-'
+
 
                     return (
-                      <article
-                        key={assessment.id}
-                        className="assessment-create-draft-card assessment-create-published-card"
-                      >
-                      <div className="assessment-card-current-status"><span className="assessment-create-published-footer-status">
+                      <AssessmentTrackerCard key={assessment.id} 
+                        identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(assessment)}<AssessmentPublicationBadge assessment={assessment} /></div>
+<div className="assessment-card-current-status"><span className="assessment-create-published-footer-status">
                             <span className="assessment-create-published-schedule-badge is-published">
                               Published
                             </span>
                           </span></div>
                         <div className="assessment-create-published-head">
                           <div>
-                            <strong>{assessment.assessmentName || 'Untitled Assessment'}</strong><span className="assessment-card-identity">{assessmentDisplayId(assessment)}</span>
+                            {renderAssessmentIdentity(assessment, assessment.assessmentName || 'Untitled Assessment')}
                           </div>
                           <span className="assessment-create-published-actions">
                             <button
@@ -1899,35 +1964,20 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           </span>
                         </div>
                         <span className="assessment-create-published-status-row">
-                          <small className="assessment-card-category">{assessment.examCategory || '-'} / {assessment.assignTo || '-'}</small>
-                          <span className={`assessment-create-published-status is-${isOfflineExam ? 'offline' : 'online'}`}>
-                            {assessment.examMode || '-'}
-                          </span>
-                          {!isOfflineExam ? (
-                            <span className={`assessment-create-published-supervision ${isPracticeExam ? 'is-practice' : 'is-proctored'}`}>
-                              <SupervisionIcon size={13} strokeWidth={2.3} />
-                              {formatSupervisionTypeLabel(assessment.supervisionType) || '-'}
-                            </span>
-                          ) : null}
-                        </span>
-                        <div className="assessment-create-published-details" aria-label="Result assessment details">
-                          <span><strong>{formatDisplayDate(assessment.startDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> Start date</em></span>
-                          <span><strong>{assessment.startTime || '-'}</strong><em><Clock3 size={13} aria-hidden="true" /> Start time</em></span>
-                          <span><strong>{durationValue}</strong><em><Clock3 size={13} aria-hidden="true" /> Duration</em></span>
-                          <span><strong>{formatDisplayDate(assessment.endDate)}</strong><em><CalendarDays size={13} aria-hidden="true" /> End date</em></span>
-                          <span><strong>{assessment.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span>
-                          <span><strong>{assessment.examType || '-'}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Exam type</em></span>
-                        </div>
-                        <AssessmentResultStatus results={assessment.studentResults} />
-                        <AssessmentCardSettings assessment={assessment} />
-                        <div className="assessment-create-draft-footer assessment-create-published-footer">
-                          {renderCardStage()}
-                          <button type="button" className="assessment-create-exam-controls-btn is-results" onClick={() => viewPublishedAssessmentResult(assessment)}>
+                          <small className="assessment-card-category">{renderAssessmentAssignment(assessment)}</small>
+                          
+                          
+                        </span></>}
+                        summary={<>{renderAssessmentSummary(assessment)}
+{renderConfiguredSchedule(assessment)}
+                        <AssessmentResultStatus results={assessment.studentResults} /></>}
+                        settings={<><CopyIdBadge value={assessmentDisplayId(assessment)} /><AssessmentCardSettings assessment={assessment} /></>}
+                        timestamp={renderAssessmentTimestamp(assessment, activeAssessmentTab)}
+                        actions={<><button type="button" className="assessment-create-exam-controls-btn is-results" onClick={() => viewPublishedAssessmentResult(assessment)}>
                             <ChartColumnBig size={12} strokeWidth={2.4} />
-                            View Result
-                          </button>
-                        </div>
-                      </article>
+                            View results
+                          </button></>}
+                      />
                     )
                   })}
                 </div>
@@ -1951,15 +2001,16 @@ export default function AssessmentCreatePage({ onNavigate }) {
               {renderAssessmentSearchToolbar()}
             </div>
             {activeApprovalAssessments.length ? <div className="assessment-create-draft-grid">
-              {activeApprovalAssessments.map(record => <article className="assessment-create-draft-card" key={record.activityId || record.setup.assessmentId}>
-                      {renderCardStage()}
-                <div className="assessment-create-draft-profile"><div><strong>{record.assessmentName || record.activityName || record.setup.assessmentName || 'Untitled Assessment'}</strong><span className="assessment-card-identity">{assessmentDisplayId(record)}</span></div>
+              {activeApprovalAssessments.map(record => <AssessmentTrackerCard expired={isPendingAssessmentExpired(record, scheduleNow)} key={record.activityId || record.setup.assessmentId} 
+                        identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(record)}</div>
+                <div className="assessment-create-draft-profile"><div>{renderAssessmentIdentity(record, record.assessmentName || record.activityName || record.setup.assessmentName || 'Untitled Assessment')}</div>
                   <button type="button" className="assessment-card-info" onClick={() => setSelectedPublishedLogAssessment(record)} aria-label="View assessment history"><Info size={15} /></button>
-                </div>
-                <div className="assessment-create-draft-stats"><span><strong>{record.questionCount ?? record.questionRows?.length ?? 0}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em></span><span><strong>{record.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span></div>
-                <AssessmentCardSettings assessment={record} />
-                <div className="assessment-create-draft-footer"><span>{record.activityType === 'Blueprint' ? 'Blueprint ' : ''}{record.approvalStatus}</span>{record.activityType === 'Blueprint' && record.approvalStatus !== 'Pending Approval' && <button type="button" onClick={() => continueBlueprintAssessment(record)}>{record.approvalStatus === 'Approved' ? 'Continue to assessment' : 'Edit blueprint'}</button>}</div>
-              </article>)}
+                </div></>}
+                        summary={<><div className="assessment-create-draft-stats"><span><strong>{record.questionCount ?? record.questionRows?.length ?? 0}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em></span><span><strong>{record.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span></div>{renderConfiguredSchedule(record, undefined, undefined, scheduleNow)}</>}
+                        settings={<><CopyIdBadge value={assessmentDisplayId(record)} /><AssessmentCardSettings assessment={record} /></>}
+                        timestamp={renderAssessmentTimestamp(record, activeAssessmentTab)}
+                        actions={<>{isPendingAssessment(record) ? <button type="button" onClick={() => isPendingAssessmentExpired(record, scheduleNow) ? onReschedule?.(record) : onViewSubmission?.(record)}>{isPendingAssessmentExpired(record, scheduleNow) ? 'Reschedule' : 'View'}<ArrowRight size={14} aria-hidden="true" /></button> : /reject/i.test(record.approvalStatus || '') ? <button type="button" onClick={() => continueRejectedAssessment(record)}>Continue<ArrowRight size={14} aria-hidden="true" /></button> : record.activityType === 'Blueprint' && record.approvalStatus !== 'Pending Approval' && <button type="button" onClick={() => continueBlueprintAssessment(record)}>{record.approvalStatus === 'Approved' ? 'Continue' : 'Edit blueprint'}</button>}</>}
+                      />)}
             </div> : <div className="assessment-create-placeholder"><p>No {String(activeEmptyTab.label).toLowerCase()} assessments available.</p></div>}
           </section>
         ) : null}

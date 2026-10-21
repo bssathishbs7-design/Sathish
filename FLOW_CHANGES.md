@@ -898,3 +898,78 @@
 
 ## 2026-10-17 - Remove decided assessment requests from the review queue
 - Assessment and blueprint cards leave Review-Approve immediately after approval or rejection, including the tab count. Stored decisions and assessment history remain available in the assessment workflow.
+
+## 2026-10-21 - Allow configuration before blueprint question selection is complete
+- Configuration is available during question preparation and preview, including a partially filled blueprint.
+- Pending blueprint approval remains read-only. Existing blueprint completeness checks still apply when submitting for approval or publishing.
+
+## 2026-10-21 - Make blueprint fulfilment optional for assessment submission
+- Direct Publish and Send to Approval no longer require selected questions to fulfil every blueprint target, including their confirmation handlers.
+- Blueprint progress remains informational. Required configuration, non-empty questions and preview sections, and blueprint approval locks remain enforced.
+
+## 2026-10-21 - Submit assessments to a read-only review
+- Send saves the draft and submitted blueprint/question snapshot, confirms the selected reviewer, and returns to Draft. Pending submissions appear once in Draft with a read-only View action.
+- Review-Approve opens assessment submissions with Blueprint (Distribution and Specifications) and Preview questions available; authoring tabs are disabled. The separate editable blueprint-approval flow is unchanged.
+- Approval and rejection return to Review-Approve and remove the decided card; rejection requires remarks. Blueprint question targets remain optional.
+
+## 2026-10-21 - Reuse assessment workspace in approval view
+- Assessment review now presents the original Blueprint, Preview and Configuration panels and right action rail. Configuration is viewable with all fields disabled; authoring and publication remain locked.
+
+## 2026-10-21 - Open approval cards in the original full assessment workspace
+- Assessment and blueprint View actions open without the app sidebar/navbar, using the original assessment header, panels and action rail. Exit returns to the source queue (or Draft for author viewing).
+- Blueprint decisions now approve/reject the submitted snapshot without editing it. Future blueprint submissions capture any existing questions for read-only preview. Reviewer remarks and decision buttons are in the right rail.
+
+## 2026-10-21 - Edit only the blueprint in blueprint-only approval
+- Blueprint-only approval enables Distribution and Specifications editing, Clear and AutoFill while all other workspace tabs and publication actions stay disabled.
+- The compact floating card uses Save and approve to validate and persist the edited matrix; rejected or abandoned edits do not change the submitted snapshot. Assessment approval remains read-only.
+
+## 2026-10-21 - Edit assessment submissions during approval
+- Pending assessment reviews allow Blueprint, Create new question, Question bank, Preview and Configuration editing; Assessment history, Save as Draft and Send to approval remain disabled.
+- Review changes stay local until Save and approve validates configuration and saves the edited submitted snapshot. Rejection retains the original submission; Exit confirms discarding unsaved review changes. Blueprint-only approval remains limited to Blueprint.
+
+## 2026-10-21 - Rework rejected assessments
+- Rejected cards offer Continue to reopen the submitted questions, sections and setup. A rejection-reason dialog names the reviewer and date before rework; remarks remain accessible from the header.
+- Rejected blueprint submissions stay in Blueprint editing. Resubmission replaces the active queue entry while retaining previous submissions and review remarks in its history; existing send confirmation and return-to-Draft flow are retained for assessments.
+
+## 2026-10-21 - Save rejected rework into Draft
+- Explicit Save as Draft moves a rejected rework card into Draft and returns to that tab, retaining the same assessment ID/code. The rejected submission remains archived in the queue data with its remarks, but is excluded from active status cards/counts.
+- Internal draft saves during submission do not trigger this transition. Failed saves retain the rejected stage and open edits.
+
+## 2026-10-21 - Submitted assessments move to Pending
+- Sending an assessment for approval now opens Pending; the submitted assessment is excluded from Draft cards and counts and appears once in Pending with a read-only View action. Existing IDs and rejection/rework history remain unchanged.
+
+- Expired pending assessment submissions show an expiry message and disable opening from the assessment tracker and approval queue. Draft editing and published exam workflows are unchanged.
+
+- Replaced the expired pending-card lock with Reschedule in both tracker and approval queue. A shared dialog validates a future start (and a later practice end), updates the existing submission and linked draft, and retains Pending approval and the same assessment ID.
+
+- Save and approve for assessment reviews now validates a future schedule, saves the reviewed assessment as Published, removes its draft duplicate and shows a shared animated confirmation. It then opens Published and highlights the same assessment ID. Blueprint approval and rejection remain separate.
+
+- Assessment Send to Approval now requires Assign to Year and SGT before sending. Changing Year clears SGT; both selections persist through draft saving, review and publication. Direct Publish retains optional SGT, and blueprint reviewer submission keeps its existing fields.
+
+- Assessment Send to Approval is now a two-step popup: required Year/SGT enable Next, then explicit faculty selection enables Send. Back preserves selections and note; changing Year resets SGT. Direct Publish and blueprint approval remain single-step.
+
+- SGT is now optional in assessment Send to Approval. Year alone enables Next; faculty selection still enables Send.
+
+### 2026-10-22 ? Published assessment resubmission
+- Editing an approval-published assessment requires resubmission; Direct Publish is disabled. Direct-published assessments can use either route.
+- Successful submission atomically withdraws the published card and draft and places the same assessment in Pending. Cancelling edit leaves publication unchanged; approval republishes the same ID.
+
+### 2026-10-22 ? Hide draft actions during published editing
+- Published assessment editing hides the assessment Save as Draft action and the exit-dialog draft action for both publication methods. New and draft assessments retain their save actions.
+
+### 2026-10-22 ? One-minute student result preparation
+- Successful exam submission returns to the student card. Eligible auto-published results show a persisted one-minute sand timer and release only after evaluation completes.
+- Result readiness reveals the score and View Results action on the card instead of automatically navigating away. Manual publication remains pending without a timer.
+
+### 2026-10-22 ? Compact result countdown and automatic reveal
+- Auto-published student attempts display preparation and the remaining minute inside the action button. When evaluation and the countdown finish, open the student result page once per submitted attempt.
+
+### 2026-10-22 ? Automatic evaluation for present students after exam end
+- When all applicable sections have automatic evaluation enabled, close present students' unsubmitted attempts at the scheduled end (including saved time extensions). Preserve saved answers and evaluate blanks as zero; exclude absent students.
+- Auto publication remains governed by its existing configuration and evaluation completion.
+
+### 2026-10-22 ? Automatic result publication controls
+- Disable manual result publishing when Auto Publish is enabled or results are already published. Tracker cards and counts refresh immediately on automatic publication, placing the assessment exclusively in Results after all present students are published.
+
+### 2026-10-22 ? Shared mock evaluation roster
+- The evaluation table and automatic evaluator now resolve the same roster, including the local sample roster when no explicit assignment is stored. Persist the resolved roster with evaluated results so present students cannot remain display-only rows.

@@ -1,0 +1,40 @@
+.assessment-review-decision-card { position: relative; z-index: 30; flex: 0 0 auto; align-self: center; margin: var(--s-2) auto max(var(--s-4), env(safe-area-inset-bottom)); width: min(800px, calc(100% - var(--s-6))); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); box-shadow: var(--shadow-md); }
+.assessment-review-decision-card .assessment-review-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s-2) var(--s-3); width: 100%; }
+.assessment-review-actions label { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: var(--s-2); color: var(--text-strong); font-size: var(--font-size-small); }
+.assessment-review-actions textarea { width: 100%; height: calc(var(--s-6) + var(--s-2)); min-height: calc(var(--s-6) + var(--s-2)); max-height: calc(var(--s-6) + var(--s-2)); resize: none; padding: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); font: inherit; }
+.assessment-review-actions > div { display: flex; align-items: center; gap: var(--s-2); grid-column: 2; grid-row: 1; min-height: calc(var(--s-6) + var(--s-2)); }
+.assessment-review-actions button { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-body); font: inherit; font-size: var(--font-size-small); min-height: calc(var(--s-6) + var(--s-2)); white-space: nowrap; cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
+.assessment-review-actions button:hover:not(:disabled) { background: var(--surface-mist); }
+.assessment-review-actions button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.assessment-review-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.assessment-review-actions .assessment-review-approve { background: var(--forest); color: var(--on-brand); }
+.assessment-review-actions .assessment-review-approve:hover:not(:disabled) { background: var(--forest-700); }
+.assessment-review-actions :is(button, textarea):focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); box-shadow: 0 0 0 5px var(--mint-200); }
+.assessment-review-actions [role="alert"] { margin: 0; color: var(--danger-ink); grid-column: 1 / -1; }
+.assessment-review-workspace:has(.assessment-review-decision-card) { height: 100svh; min-height: 0; overflow: hidden; }
+.assessment-review-workspace:has(.assessment-review-decision-card) > .create-assessment-workspace-body { flex: 1 1 0; min-height: 0; }
+@media (min-width: 992px) {
+  .assessment-review-workspace:has(.assessment-review-decision-card) .create-assessment-right-rail {
+    position: static;
+    align-self: stretch;
+    align-content: start;
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+  }
+}
+@media (max-width: 991px) {
+  .assessment-review-workspace:has(.assessment-review-decision-card) > .create-assessment-workspace-header { flex-shrink: 0; }
+  .assessment-review-workspace:has(.assessment-review-decision-card) > .create-assessment-workspace-body { overflow: auto; align-content: start; }
+}
+@media (max-width: 767px) {
+  .assessment-review-actions label { grid-template-columns: minmax(0, 1fr); }
+  .assessment-review-decision-card .assessment-review-actions { grid-template-columns: minmax(0, 1fr); }
+  .assessment-review-actions > div { grid-column: 1; grid-row: auto; justify-content: flex-end; flex-wrap: wrap; }
+}
+.assessment-review-workspace .create-assessment-blueprint-switch { pointer-events: none; }
+.assessment-review-workspace .create-assessment-title-copy .create-assessment-header-details { max-width: none; }
+.assessment-review-workspace .create-assessment-blueprint-reference-table-wrap { overflow-x: auto; }
+.assessment-review-workspace .create-assessment-blueprint-reference-table-wrap table { min-width: 640px; }
+.assessment-review-workspace .create-assessment-blueprint-spec-table-wrap-test { overflow-x: auto; }
+@media (prefers-reduced-motion: reduce) { .assessment-review-actions button { transition: none; } .assessment-review-actions button:active:not(:disabled) { transform: none; } }

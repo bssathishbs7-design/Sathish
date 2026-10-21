@@ -1,4 +1,5 @@
 import BlueprintApprovalReview from '../components/BlueprintApprovalReview'
+import AssessmentApprovalReview from '../components/AssessmentApprovalReview'
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { sanitizeRichHtml } from '../utils/sanitizeHtml'
@@ -473,7 +474,7 @@ const InfoTooltipButton = (props) => {
   )
 }
 
-export default function ApprovalViewPage({ approvalRecord, completedEvaluationRows = [], onBack, onAlert, onApprovalAction, theme }) {
+export default function ApprovalViewPage({ approvalRecord, completedEvaluationRows = [], onBack, onAlert, onApprovalAction, theme, onToggleTheme }) {
   const [activeTooltipId, setActiveTooltipId] = useState('')
   const [reviewRemarks, setReviewRemarks] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
@@ -1226,7 +1227,8 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
     )
   }
 
-  if (approvalRecord?.activityType === 'Blueprint') return <BlueprintApprovalReview theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} />
+  if (approvalRecord?.activityType === 'Assessment') return <AssessmentApprovalReview onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} readOnly={approvalRecord.submissionReadOnly} />
+  if (approvalRecord?.activityType === 'Blueprint') return <BlueprintApprovalReview onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} />
 
   return (
     <section className="vx-content approval-view-page">

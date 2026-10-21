@@ -1,0 +1,3 @@
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-publication-badge { color: var(--text-strong); border: 1px solid var(--border); }
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-publication-badge.is-direct { background: color-mix(in srgb, var(--sky) 60%, var(--surface-card)); }
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-publication-badge.is-approval { background: color-mix(in srgb, var(--peach) 60%, var(--surface-card)); }

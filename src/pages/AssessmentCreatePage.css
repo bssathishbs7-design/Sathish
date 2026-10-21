@@ -118,11 +118,7 @@
   .assessment-card-settings { grid-template-columns: minmax(0,1fr); gap: var(--s-1); background: var(--surface-card); }
   .assessment-card-settings > div:has(dd) { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--s-2); }
   .assessment-card-settings > div:has(dd) dt { white-space: nowrap; }
-  .assessment-card-settings > .assessment-card-blueprint-summary { padding-bottom: var(--s-2); margin-bottom: var(--s-1); border-bottom: 1px solid var(--border); }
-  .assessment-card-settings > .assessment-card-blueprint-summary dt { display: flex; flex-direction: column; gap: var(--s-1); }
-  .assessment-card-blueprint-summary .mono { font-size: 11px; color: var(--text-muted); }
   .assessment-card-settings dd { box-sizing: border-box; min-width: calc(var(--s-2) * 4); padding: var(--s-1) var(--s-2); font-size: 11px; }
-  .assessment-card-settings .assessment-card-blueprint-status { max-width: 60%; line-height: 1.4; }
   .assessment-create-draft-footer { padding-top: var(--s-2); }
   :is(.assessment-create-published-head,.assessment-create-draft-profile) strong { font-size: 15px; }
   .assessment-create-draft-card:is(:hover,:focus-within) { background: linear-gradient(135deg,var(--surface-card),color-mix(in srgb,var(--mint-100) 70%,var(--surface-card))); border-color: var(--text-brand); }
@@ -151,3 +147,56 @@
 }
 @media(max-width:479px) { .assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-published-filter-popover { grid-template-columns: minmax(0,1fr); } }
 .assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-tab .my-skills-metric-card-copy > span { text-transform: none; letter-spacing: normal; }
+
+.assessment-create-draft-delete:disabled { opacity: .45; cursor: not-allowed; }
+
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-published-status.is-online {
+  color: var(--text-brand);
+  background: var(--mint-100);
+  border: 1px solid var(--line-mint);
+}
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-published-status.is-offline {
+  color: var(--danger-ink);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+}
+
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-draft-top-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+  min-height: 28px;
+  padding-right: 112px;
+}
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-draft-top-badges .assessment-stage-badge { margin: 0; }
+
+.assessment-create-theme :is(.assessment-create-draft-profile, .assessment-create-published-head) .assessment-draft-identity-row { display: flex; align-items: center; flex-wrap: nowrap; gap: var(--s-2); overflow: visible; white-space: nowrap; color: var(--text-muted); font-size: var(--fs-micro); }
+.assessment-create-theme :is(.assessment-create-draft-profile, .assessment-create-published-head) .assessment-draft-identity-row span { display: inline; overflow: visible; -webkit-line-clamp: unset; white-space: nowrap; }
+.assessment-create-theme :is(.assessment-create-draft-profile, .assessment-create-published-head) .assessment-draft-identity-row :is(.copy-id-badge-wrap, .copy-id-badge) { display: inline-flex; flex-shrink: 0; }
+.assessment-create-theme :is(.assessment-create-draft-profile, .assessment-create-published-head) .assessment-draft-identity-row .copy-id-badge { color: var(--text-brand); }
+.assessment-create-theme :is(.assessment-create-draft-profile, .assessment-create-published-head) .assessment-draft-identity-row .copy-id-badge > span { color: inherit; font: inherit; }
+
+
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-draft-card:not(:has(.assessment-create-draft-delete)) .assessment-draft-top-badges { padding-right: calc(var(--s-6) + var(--s-2)); }
+
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-card-settings dd.assessment-card-blueprint-id { padding: 0; border: 0; background: transparent; }
+
+.assessment-create-theme .assessment-create-draft-card { cursor: pointer; }
+
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-published-supervision {
+  --supervision-accent: var(--activity-violet);
+  color: var(--text-strong);
+  background: color-mix(in srgb, var(--supervision-accent) 12%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--supervision-accent) 35%, var(--border));
+}
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-published-supervision.is-practice { --supervision-accent: var(--activity-amber); }
+
+.assessment-tracker-navigation { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.assessment-tracker-navigation .page-navigation-header { margin: 0; }
+.assessment-clear-all { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); padding: var(--s-2) var(--s-3); border: 1px solid var(--danger-line); border-radius: var(--r-pill); background: var(--danger-soft); color: var(--danger-ink); font: inherit; font-size: var(--font-size-small); cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
+.assessment-clear-all:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 15%, var(--surface-card)); }
+.assessment-clear-all:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.assessment-clear-all:disabled { opacity: .5; cursor: not-allowed; }
+.assessment-clear-all:focus-visible { outline: 2px solid var(--text-brand); outline-offset: var(--s-1); box-shadow: 0 0 0 5px var(--mint-200); }
+@media (prefers-reduced-motion: reduce) { .assessment-clear-all { transition: none; } .assessment-clear-all:active:not(:disabled) { transform: none; } }

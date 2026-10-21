@@ -1,3 +1,5 @@
+import { assessmentRoster, closeExpiredPresentAttempts } from './assessmentAutoClose.js'
+import { normalizeEvaluationAttendance } from './evaluationAttendance.js'
 import { appendAssessmentHistory } from './assessmentHistory.js'
 import { getAssessmentAutomationConfiguration } from './assessmentAutomation.js'
 import { descriptiveInputEnabled, descriptiveResponseItems, normalizeDescriptiveResponses, readAssessmentAttempt } from './descriptiveResponses.js'
@@ -5,7 +7,7 @@ import { evaluateDescriptiveAnswer } from './descriptiveGrading.js'
 import { hasAnswerContent } from './richAnswers.js'
 import { submittedOption } from './evaluationProgress.js'
 
-export const RESULT_PREPARATION_MS = 120000
+export const RESULT_PREPARATION_MS = 60000
 export const RESULT_RELEASE_EVENT = 'vx-assessment-result-release-changed'
 const PUBLISHED_KEY = 'vx-assessment-published'
 const read = (storage, key, fallback = {}) => {
@@ -48,8 +50,8 @@ export function prepareAssessmentResult(assessment, attempt, previous = {}, eval
     const options = (question.options || []).filter(option => String(option.label ?? option.text ?? option.value ?? option.title ?? '').replace(/<[^>]*>/g, '').trim())
     const correct = options.map((option, i) => (question.correctOptionIds || []).map(String).includes(String(option.id)) ? i : -1).filter(i => i >= 0)
     const maxMarks = marksOf(question)
-    if (policy.rows.find(row => row.key === 'mcq')?.evaluation && correct.length && !next[key]?.manualOverride) {
-      const selected = submittedOption(attempt, String(question.id ?? `mcq-${index}`), options.length)
+    const selected = submittedOption(attempt, String(question.id ?? `mcq-${index}`), options.length)
+    if (policy.rows.find(row => row.key === 'mcq')?.evaluation && (correct.length || selected === null) && !next[key]?.manualOverride) {
       next[key] = { status: selected === null ? 'not-attempted' : correct.includes(selected) ? 'correct' : 'wrong', marks: selected !== null && correct.includes(selected) ? maxMarks : 0, autoEvaluated: true }
     }
     items.push({ key, maxMarks, section: 'mcq' })
@@ -60,7 +62,8 @@ export function prepareAssessmentResult(assessment, attempt, previous = {}, eval
     const maxMarks = marksOf(item)
     items.push({ key, maxMarks, section: 'descriptive' })
     // Never replace faculty marks or a manual validation error during reconciliation.
-    if (!gradeDescriptive || (next[key] && (!next[key].reviewRequired || ['evaluated', 'not-attempted'].includes(next[key].status)))) return
+    const existing = next[key]
+    if (!gradeDescriptive || existing?.manualOverride || existing?.error || ['evaluated', 'not-attempted', 'correct', 'wrong'].includes(existing?.status)) return
     const grade = evaluateDescriptiveAnswer(responses[key] ?? '', item.answerKey || item.modelAnswer || item.rationale || item.explanation || '', maxMarks, { strict: true })
     next[key] = {
       status: grade.reviewRequired ? 'pending' : !hasAnswerContent(responses[key] ?? '') ? 'not-attempted' : 'evaluated',
@@ -111,12 +114,18 @@ export function reconcileAssessmentResults(storage = localStorage, now = Date.no
   const updated = assessments.map(assessment => {
     const setup = { ...assessment, ...assessment.setup }
     const attemptKey = /practice/i.test(setup.supervisionType || '') ? 'vx-online-practice-exam-attempts' : 'vx-online-proctored-exam-attempts'
-    const attempts = read(storage, attemptKey)[idOf(assessment)] || {}
+    const storedAttempts = read(storage, attemptKey)
+    const attempts = closeExpiredPresentAttempts(assessment, storedAttempts[idOf(assessment)] || {}, storage, now)
+    if (JSON.stringify(attempts) !== JSON.stringify(storedAttempts[idOf(assessment)] || {})) save(attemptKey, { ...storedAttempts, [idOf(assessment)]: attempts })
+    const roster = assessmentRoster(assessment)
+    const absentIds = new Set(roster.filter(student => normalizeEvaluationAttendance(student.attendance || student.attendanceStatus) === 'A').map(student => String(student.id || student.studentId || student.registerId)))
+
     const results = { ...assessment.studentResults }
     const statusKey = `vx-assessment-student-evaluation-status:${idOf(assessment)}`
     const statuses = read(storage, statusKey)
     let processed = false
     for (const [studentId, attempt] of Object.entries(attempts)) {
+      if (absentIds.has(studentId)) continue
       if (!attempt.isAssessmentSubmitted) {
         if (results[studentId]) { delete results[studentId]; delete statuses[studentId]; processed = true }
         continue
@@ -138,10 +147,9 @@ export function reconcileAssessmentResults(storage = localStorage, now = Date.no
     if (!processed) return assessment
     save(statusKey, statuses)
     // A student's release must never publish another student's incomplete result.
-    const roster = assessment.students || assessment.assignedStudents || assessment.studentRows || setup.students || setup.assignedStudents || []
-    const rosterIds = roster.map(student => student.id || student.studentId || student.registerId).filter(Boolean).map(String)
+    const rosterIds = roster.filter(student => !absentIds.has(String(student.id || student.studentId || student.registerId))).map(student => student.id || student.studentId || student.registerId).filter(Boolean).map(String)
     const allPublished = rosterIds.length > 0 && rosterIds.every(id => results[id]?.status === 'published')
-    return { ...assessment, studentResults: results, evaluationStatus: allPublished ? 'Published' : assessment.evaluationStatus === 'Published' && !assessment.automatedResultRelease ? 'Published' : 'In Progress',
+    return { ...assessment, students: roster, studentResults: results, evaluationStatus: allPublished ? 'Published' : assessment.evaluationStatus === 'Published' && !assessment.automatedResultRelease ? 'Published' : 'In Progress',
       ...(allPublished ? { automatedResultRelease: true, resultStatus: 'Published', resultsPublishedAt: assessment.resultsPublishedAt || new Date(now).toISOString() }
         : assessment.automatedResultRelease ? { resultStatus: 'Pending', resultsPublishedAt: null } : {}) }
   })

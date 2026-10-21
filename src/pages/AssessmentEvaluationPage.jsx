@@ -1,3 +1,4 @@
+import { MOCK_EVALUATION_STUDENTS, assessmentRoster } from '../services/assessmentRoster'
 import { appendAssessmentHistory } from '../services/assessmentHistory'
 import DescriptiveEvaluationReport from '../components/DescriptiveEvaluationReport'
 import { getStudentReleasedResult, RESULT_RELEASE_EVENT } from '../services/assessmentResultRelease'
@@ -135,61 +136,7 @@ const MOCK_EVALUATION_QUESTIONS = [
     competencies: ['Endocrinology'],
   },
 ]
-const MOCK_EVALUATION_STUDENTS = [
-  {
-    id: 'MV1253',
-    name: 'Aarav Menon',
-    attendance: 'P',
-    evaluationStatus: 'Completed',
-    mockEvaluationState: {
-      'mock-eval-mcq-1': { status: 'correct', marks: 1 },
-      'mock-eval-mcq-2': { status: 'wrong', marks: 0 },
-      'mock-eval-mcq-3': { status: 'correct', marks: 1 },
-      'mock-eval-desc-1': { status: 'evaluated', marks: 7 },
-      'mock-eval-desc-2': { status: 'evaluated', marks: 6 },
-    },
-  },
-  {
-    id: 'MV1254',
-    name: 'Meera Krishnan',
-    attendance: 'P',
-    evaluationStatus: 'Completed',
-    mockEvaluationState: {
-      'mock-eval-mcq-1': { status: 'correct', marks: 1 },
-      'mock-eval-mcq-2': { status: 'correct', marks: 1 },
-      'mock-eval-mcq-3': { status: 'wrong', marks: 0 },
-      'mock-eval-desc-1': { status: 'evaluated', marks: 5 },
-      'mock-eval-desc-2': { status: 'evaluated', marks: 4 },
-    },
-  },
-  {
-    id: 'MV1255',
-    name: 'Rohit Sharma',
-    attendance: 'P',
-    evaluationStatus: 'Yet to Start',
-    mockEvaluationState: {},
-  },
-  {
-    id: 'MV1256',
-    name: 'Sara Joseph',
-    attendance: 'A',
-    evaluationStatus: 'Absent',
-    mockEvaluationState: {},
-  },
-  {
-    id: 'MC2568',
-    name: 'Karthik Subramanian',
-    attendance: 'P',
-    evaluationStatus: 'Completed',
-    mockEvaluationState: {
-      'mock-eval-mcq-1': { status: 'correct', marks: 1 },
-      'mock-eval-mcq-2': { status: 'correct', marks: 1 },
-      'mock-eval-mcq-3': { status: 'correct', marks: 1 },
-      'mock-eval-desc-1': { status: 'evaluated', marks: 8 },
-      'mock-eval-desc-2': { status: 'evaluated', marks: 7 },
-    },
-  },
-]
+
 const MOCK_EVALUATION_ASSESSMENT = {
   id: 'mock-assessment-evaluation-hybrid',
   assessmentName: 'Mock hybrid evaluation exam',
@@ -238,25 +185,19 @@ const normalizeSelectedAssessmentForMockFlow = (assessment) => {
     assessment.setup?.selectedQuestions,
     assessment.setup?.questionRows,
   ].some((items) => Array.isArray(items) && items.length)
-  const hasStudents = [
-    assessment.students,
-    assessment.assignedStudents,
-    assessment.studentRows,
-    assessment.setup?.students,
-    assessment.setup?.assignedStudents,
-  ].some((items) => Array.isArray(items) && items.length)
+
 
   return {
     ...assessment,
     questions: hasQuestions ? assessment.questions : MOCK_EVALUATION_QUESTIONS,
     questionRows: hasQuestions ? assessment.questionRows : MOCK_EVALUATION_QUESTIONS,
-    students: hasStudents ? assessment.students : MOCK_EVALUATION_STUDENTS,
+    students: assessmentRoster(assessment),
     setup: {
       ...MOCK_EVALUATION_ASSESSMENT.setup,
       ...(assessment.setup || {}),
       questions: hasQuestions ? (assessment.setup?.questions || assessment.questions || assessment.questionRows) : MOCK_EVALUATION_QUESTIONS,
       questionRows: hasQuestions ? (assessment.setup?.questionRows || assessment.questionRows || assessment.questions) : MOCK_EVALUATION_QUESTIONS,
-      students: hasStudents ? (assessment.setup?.students || assessment.students || assessment.studentRows) : MOCK_EVALUATION_STUDENTS,
+      students: assessmentRoster(assessment),
     },
   }
 }
@@ -264,7 +205,11 @@ const normalizeSelectedAssessmentForMockFlow = (assessment) => {
 const readSelectedAssessment = () => {
   try {
     const storedAssessment = window.sessionStorage.getItem(ASSESSMENT_EVALUATION_SELECTED_KEY)
-    return storedAssessment ? normalizeSelectedAssessmentForMockFlow(JSON.parse(storedAssessment)) : MOCK_EVALUATION_ASSESSMENT
+    if (!storedAssessment) return MOCK_EVALUATION_ASSESSMENT
+    const selected = JSON.parse(storedAssessment)
+    const published = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
+    const latest = Array.isArray(published) ? published.find(row => getAssessmentControlId(row) === getAssessmentControlId(selected)) : null
+    return normalizeSelectedAssessmentForMockFlow(latest || selected)
   } catch {
     return MOCK_EVALUATION_ASSESSMENT
   }
@@ -1197,17 +1142,27 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     onNavigate?.(APP_PAGES.ASSESSMENT_OVERALL_ANALYTICS)
   }
 
+  const isResultAutoPublishEnabled = getAssessmentAutomation(
+    { ...assessment, ...assessment.setup, examDeliveryMode: assessment.setup?.examDeliveryMode || assessment.examMode },
+    { hasMcq: mcqQuestions.length > 0, hasDescriptive: descriptiveQuestions.length > 0 },
+  ).canAutoPublishCombined
+  const isResultAlreadyPublished = String(assessment.resultStatus || assessment.evaluationStatus || '').toLowerCase() === 'published'
+  const isManualResultPublishDisabled = isResultAutoPublishEnabled || isResultAlreadyPublished
+
   const sendEvaluationToApproval = () => {
+    if (isManualResultPublishDisabled) return
     if (descriptiveInputEnabled(assessment) && pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
     onAlert?.({ tone: 'primary', message: 'Evaluation result sent to approval.' })
   }
 
   const directPublishEvaluationResult = () => {
+    if (isManualResultPublishDisabled) return
     if (descriptiveInputEnabled(assessment) && pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
     setIsDirectPublishConfirmOpen(true)
   }
 
   const confirmDirectPublishEvaluationResult = () => {
+    if (isManualResultPublishDisabled) return
     if (descriptiveInputEnabled(assessment) && pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
     const publishedAt = new Date().toISOString()
     const nextAssessment = {
@@ -3289,13 +3244,16 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const refreshResults = () => {
       const rows = readStorageObject(ASSESSMENT_PUBLISHED_STORAGE_KEY)
       const latest = Array.isArray(rows) ? rows.find(row => getAssessmentControlId(row) === getAssessmentControlId(assessment)) : null
-      if (latest) setAssessment(latest)
-      setStudentEvaluationStatuses(readStorageObject(getStudentEvaluationStatusStorageKey(assessment)))
-      if (selectedStudent) setQuestionEvaluationState(readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, selectedStudent)))
+      if (latest) setAssessment(current => JSON.stringify(current) === JSON.stringify(latest) ? current : latest)
+      const currentAssessment = latest || assessment
+      setStudentEvaluationStatuses(readStorageObject(getStudentEvaluationStatusStorageKey(currentAssessment)))
+      if (selectedStudent) setQuestionEvaluationState(readStorageObject(getStudentQuestionEvaluationStorageKey(currentAssessment, selectedStudent)))
     }
     const onStorage = event => { if (event.key === ASSESSMENT_PUBLISHED_STORAGE_KEY) refreshResults() }
     window.addEventListener(RESULT_RELEASE_EVENT, refreshResults)
     window.addEventListener('storage', onStorage)
+    // Reconciliation may finish before this page subscribes; always read persisted completion on entry.
+    refreshResults()
     return () => { window.removeEventListener(RESULT_RELEASE_EVENT, refreshResults); window.removeEventListener('storage', onStorage) }
   }, [assessment, selectedStudent])
 
@@ -4185,7 +4143,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             <Check size={15} strokeWidth={2.4} />
             Send to Approval
           </button>
-          <button type="button" className="assessment-evaluation-floating-btn is-publish" onClick={directPublishEvaluationResult}>
+          <button type="button" className="assessment-evaluation-floating-btn is-publish" onClick={directPublishEvaluationResult} disabled={isManualResultPublishDisabled} title={isResultAutoPublishEnabled ? 'Auto Publish is enabled. Results publish automatically after evaluation.' : isResultAlreadyPublished ? 'Results are already published.' : undefined}>
             <Award size={15} strokeWidth={2.4} />
             Direct Publish Result
           </button>

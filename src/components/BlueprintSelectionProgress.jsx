@@ -7,7 +7,7 @@ import './BlueprintSelectionProgress.css'
 /** Non-modal Blueprint panel. LAQ counts refer to whole questions, not their parts.
  * @param {{rows:Object[], progress:Object, blueprintId?:string, activeId:string, bankQuestions?:Object[], loadBankQuestions:Function, selectedQuestions:Object[], onSelect:Function, onCreate:Function, onReview:Function}} props
  */
-export default function BlueprintSelectionProgress({ rows, progress, blueprintId, activeId, bankQuestions, loadBankQuestions, selectedQuestions = [], onSelect, onCreate, onReview }) {
+export default function BlueprintSelectionProgress({ rows, progress, blueprintId, activeId, bankQuestions, loadBankQuestions, selectedQuestions = [], onSelect, onCreate, onReview, readOnly = false }) {
   const panel = useRef(null)
   const trigger = useRef(null)
   const headingId = useId()
@@ -46,7 +46,7 @@ export default function BlueprintSelectionProgress({ rows, progress, blueprintId
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape) }
   }, [open])
   const close = () => { setOpen(false); trigger.current?.focus() }
-  const act = (handler, row) => { close(); handler(row) }
+  const act = (handler, row) => { if (readOnly) return; close(); handler(row) }
   const toggle = () => {
     if (open) { close(); return }
     if (!bankQuestions) setLoadedBank(loadBankQuestions())
@@ -66,8 +66,8 @@ export default function BlueprintSelectionProgress({ rows, progress, blueprintId
     if (picked(row) >= row.count) return <button type="button" onClick={() => act(onReview, row)}>Review</button>
     const available = availability[row.id]?.remaining
     return <>
-      {(available > 0 || row.type === 'laq') && <button type="button" onClick={() => act(onSelect, row)}>{row.type === 'laq' ? 'View LAQs' : 'Apply filter'}</button>}
-      {(available === undefined || available < row.count - picked(row)) && <button type="button" onClick={() => act(onCreate, row)}>Create question</button>}
+      {(available > 0 || row.type === 'laq') && <button type="button" disabled={readOnly} onClick={() => act(onSelect, row)}>{row.type === 'laq' ? 'View LAQs' : 'Apply filter'}</button>}
+      {(available === undefined || available < row.count - picked(row)) && <button type="button" disabled={readOnly} onClick={() => act(onCreate, row)}>Create question</button>}
     </>
   }
   const nextType = types[types.indexOf(type) + 1]

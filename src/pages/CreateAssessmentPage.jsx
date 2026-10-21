@@ -1,6 +1,11 @@
+import { getAssessmentPublicationMethod } from '../services/assessmentPublicationMethod'
+import AssessmentPublishedConfirmation from '../components/AssessmentPublishedConfirmation'
+import { DEFAULT_ATTAINMENT_LEVELS, DEFAULT_BLOOMS_THRESHOLDS, DEFAULT_THINKING_THRESHOLDS } from '../services/assessmentConfigurationStatus'
+import { archiveAssessmentRecoveryBackups } from '../services/assessmentRecoveryStorage'
 import { readBlueprintWorkflow, saveBlueprintWorkflow, blueprintApprovalLocked, reviseBlueprintWorkflow, BLUEPRINT_WORKFLOW_EVENT } from '../services/blueprintApproval'
 import { appendAssessmentHistory } from '../services/assessmentHistory'
 import AssessmentPublicationDialog from '../components/AssessmentPublicationDialog'
+import AssessmentApprovalReview from '../components/AssessmentApprovalReview'
 import AssessmentOptionsDialog from '../components/AssessmentOptionsDialog'
 import AssessmentSchedulePanel from '../components/AssessmentSchedulePanel'
 import AssessmentAutomationSettings from '../components/AssessmentAutomationSettings'
@@ -26,7 +31,7 @@ import './BlueprintConfirmationDialog.css'
 import { buildBlueprintPickerRows, getBlueprintPickerProgress, matchesBlueprintPickerRow, orderBlueprintRequirements } from '../utils/blueprintPicker'
 import { getLaqSplitBreakdowns } from '../utils/blueprintLaqBreakdown'
 import './BlueprintLaqLayout.css'
-import { createElement, Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createElement, Fragment, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import useBlueprintEditHighlights from '../hooks/useBlueprintEditHighlights'
 import { redistributeLaqLevels } from '../utils/blueprintEditing'
@@ -145,12 +150,7 @@ const SUBJECT_DIRECTORY = createAssessmentSubjectDirectory
 const YEAR_OPTIONS = createAssessmentYearOptions
 const DEFAULT_EXAM_CATEGORIES = ['Internal', 'Midterm', 'Final', 'Viva']
 const DEFAULT_COLLEGE_NAME = 'Sri Manakula Vinayagar Medical College and Hospital'
-const DEFAULT_ATTAINMENT_LEVELS = [
-  { id: 'attainment-0', minPercentage: '0', maxPercentage: '30', level: '0' },
-  { id: 'attainment-1', minPercentage: '31', maxPercentage: '49', level: '1' },
-  { id: 'attainment-2', minPercentage: '50', maxPercentage: '70', level: '2' },
-  { id: 'attainment-3', minPercentage: '71', maxPercentage: '100', level: '3' },
-]
+
 const BLOOMS_THRESHOLD_FIELDS = [
   { key: 'applyThreshold', label: 'Apply' },
   { key: 'rememberThreshold', label: 'Remember' },
@@ -158,13 +158,7 @@ const BLOOMS_THRESHOLD_FIELDS = [
   { key: 'analyzeThreshold', label: 'Analyze' },
   { key: 'evaluateThreshold', label: 'Evaluate' },
 ]
-const DEFAULT_BLOOMS_THRESHOLDS = {
-  applyThreshold: '55',
-  rememberThreshold: '75',
-  understandThreshold: '60',
-  analyzeThreshold: '45',
-  evaluateThreshold: '80',
-}
+
 const CONFIGURATION_OPTION_FIELDS = {
   instructions: ['provideStudentInstructions', 'studentInstructions'],
   thresholds: ['attainmentLevels', 'thinkingThresholdMode', 'lotThreshold', 'hotThreshold', ...Object.keys(DEFAULT_BLOOMS_THRESHOLDS)],
@@ -224,10 +218,7 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   offlineDuration: '',
   provideStudentInstructions: 'No',
   studentInstructions: DEFAULT_STUDENT_INSTRUCTIONS,
-  thinkingThresholdMode: 'hotlot',
-  lotThreshold: '70',
-  hotThreshold: '60',
-  ...DEFAULT_BLOOMS_THRESHOLDS,
+  ...DEFAULT_THINKING_THRESHOLDS,
   attainmentLevels: DEFAULT_ATTAINMENT_LEVELS,
   assignCourse: '',
   assignYear: '',
@@ -748,6 +739,7 @@ const createStorageLightPublishedRecord = (record = {}) => ({
 
 const createPublishedSummaryRecord = (record = {}) => ({
   id: record.id,
+  publicationMethod: record.publicationMethod,
   assessmentName: record.assessmentName,
   examMode: record.examMode,
   assignTo: record.assignTo,
@@ -1599,26 +1591,50 @@ function OptionalTagTextInput({ label, values, onChange }) {
 }
 
 /** blueprintReview optionally embeds only the validated planner; onApprove receives the complete edited snapshot. */
-export default function CreateAssessmentPage({ onNavigate, onSendToApproval, theme = 'light', onToggleTheme, currentUser, blueprintReview }) {
+/** Pending assessment submissions use their frozen snapshot, even on direct workspace navigation. */
+export default function CreateAssessmentPage(props) {
+  let pendingSubmission
+  if (!props.blueprintReview) {
+    try {
+      const savedSetup = JSON.parse(localStorage.getItem(CREATE_ASSESSMENT_SETUP_KEY) || '{}')
+      const queue = JSON.parse(sessionStorage.getItem('vx-approval-queue-rows') || '[]')
+      pendingSubmission = queue.find(row => row.activityType === 'Assessment' && row.approvalStatus === 'Pending Approval' && row.setup?.assessmentId === savedSetup.assessmentId)
+    } catch { /* The author workspace handles unavailable draft storage. */ }
+  }
+  if (pendingSubmission) return <AssessmentApprovalReview record={pendingSubmission} theme={props.theme} onToggleTheme={props.onToggleTheme} readOnly onBack={() => {
+    localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'pending')
+    props.onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
+  }} />
+  return <AssessmentAuthorWorkspace {...props} />
+}
+
+export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme = 'light', onToggleTheme, currentUser, blueprintReview, assessmentReview, onReviewExit, reviewBusy = false, reviewActions, blueprintEditorRef, assessmentEditable = false, assessmentEditorRef, onReworkDraftSaved }) {
   const blueprintEditHighlights = useBlueprintEditHighlights()
   const blueprintBreakdownRef = useRef(null)
+  const reviewReadOnly = Boolean(assessmentReview) && !assessmentEditable;
+  // Review edits stay in React state until the approval coordinator commits the snapshot.
+  const writeReviewSafeJson = (key, value) => assessmentReview ? true : writeLocalStorageJson(key, value);
+  const writeReviewSafeQuestions = (key, rows) => assessmentReview ? 'full' : writeAssessmentQuestionsStorage(key, rows);
   const [appliedCognitionDraft, setAppliedCognitionDraft] = useState(null)
   const [appliedCognitionChanges, setAppliedCognitionChanges] = useState({})
   const [setup, setSetup] = useState(() => ({
     ...CREATE_ASSESSMENT_DEFAULT_SETUP,
-    ...(blueprintReview?.record.setup || readCreateAssessmentSetup()),
+    ...(assessmentReview?.setup || blueprintReview?.record.setup || readCreateAssessmentSetup()),
   }))
   const [setupDraft, setSetupDraft] = useState(() => ({
     ...CREATE_ASSESSMENT_DEFAULT_SETUP,
-    ...(blueprintReview?.record.setup || readCreateAssessmentSetup()),
+    ...(assessmentReview?.setup || blueprintReview?.record.setup || readCreateAssessmentSetup()),
   }))
+  const [isRejectionReasonOpen, setIsRejectionReasonOpen] = useState(!assessmentReview && Boolean(setup.reworkReview))
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false)
   const [isSavingExit, setIsSavingExit] = useState(false)
   const [exitError, setExitError] = useState('')
   const exitBusyRef = useRef(false)
+  const draftSaveLock = useRef(false)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
   const checkpointKey = `vx-assessment-exit-checkpoint:${getAssessmentStorageSuffix(setup)}`
   const [initialCheckpoint] = useState(() => {
-    if (blueprintReview) return {}
+    if (blueprintReview || assessmentReview) return {}
     const keys = [CREATE_ASSESSMENT_SETUP_KEY, getAssessmentQuestionsStorageKey(setup), getAssessmentSectionTitlesStorageKey(setup), getAssessmentSectionOrderStorageKey(setup), getAssessmentCustomSectionsStorageKey(setup), getBlueprintPlannerStorageKey(setup)]
     const values = captureAssessmentStorage(keys)
     if (!setup.sourceDraftId && !setup.sourcePublishedId) Object.keys(values).forEach(key => { values[key] = null })
@@ -1646,12 +1662,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [configurationValidationStep, setConfigurationValidationStep] = useState(-1)
   const [setupErrors, setSetupErrors] = useState({})
   const [touchedSetupFields, setTouchedSetupFields] = useState([])
-  const [question, setQuestion] = useState(setup.draftWorkspace?.question ?? null)
+  const [question, setQuestion] = useState(assessmentReview ? null : setup.draftWorkspace?.question ?? null)
   const assessmentQuestionsStorageKey = getAssessmentQuestionsStorageKey(setup)
   const assessmentSectionTitlesStorageKey = getAssessmentSectionTitlesStorageKey(setup)
   const assessmentSectionOrderStorageKey = getAssessmentSectionOrderStorageKey(setup)
   const assessmentCustomSectionsStorageKey = getAssessmentCustomSectionsStorageKey(setup)
-  const [savedQuestions, setSavedQuestions] = useState(() => blueprintReview ? [] : readSavedAssessmentQuestions(setup))
+  const [savedQuestions, setSavedQuestions] = useState(() => assessmentReview ? assessmentReview.questionRows || assessmentReview.previewSections?.flatMap(section => section.questions || []) || [] : blueprintReview ? [] : readSavedAssessmentQuestions(setup))
   const savedQuestionsRef = useRef(savedQuestions)
   const getCurrentAssessmentQuestions = () => (
     (savedQuestionsRef.current.length ? savedQuestionsRef.current : savedQuestions)
@@ -1663,18 +1679,22 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const nextOrderKey = getAssessmentSectionOrderStorageKey(nextSetup)
     const nextCustomSectionsKey = getAssessmentCustomSectionsStorageKey(nextSetup)
 
-    writeAssessmentQuestionsStorage(nextQuestionsKey, questions)
-    writeLocalStorageJson(nextTitlesKey, previewSectionTitles)
-    writeLocalStorageJson(nextOrderKey, previewSectionOrder)
-    writeLocalStorageJson(nextCustomSectionsKey, customPreviewSections)
+    writeReviewSafeQuestions(nextQuestionsKey, questions)
+    writeReviewSafeJson(nextTitlesKey, previewSectionTitles)
+    writeReviewSafeJson(nextOrderKey, previewSectionOrder)
+    writeReviewSafeJson(nextCustomSectionsKey, customPreviewSections)
   }
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
-  const [initialBlueprintPlanner] = useState(() => blueprintReview?.record.blueprintSnapshot ?? readBlueprintWorkflow(setup.assessmentId)?.snapshot ?? setup.draftWorkspace?.blueprint ?? readSavedBlueprintPlanner(setup))
-  const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(Boolean(initialBlueprintPlanner) && initialBlueprintPlanner.enabled !== false)
+  const [initialBlueprintPlanner] = useState(() => assessmentReview ? assessmentReview.blueprintSnapshot || assessmentReview.setup?.draftWorkspace?.blueprint || null : blueprintReview?.record.blueprintSnapshot ?? readBlueprintWorkflow(setup.assessmentId)?.snapshot ?? setup.draftWorkspace?.blueprint ?? readSavedBlueprintPlanner(setup))
+  // A Blueprint submission reviews its snapshot, even if the authoring setup has a stale disabled flag.
+  const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(Boolean(initialBlueprintPlanner) && (
+    assessmentReview?.activityType === 'Blueprint' || Boolean(blueprintReview)
+    || initialBlueprintPlanner.enabled !== false && assessmentReview?.setup?.blueprintEnabled !== false
+  ))
   const [activeBlueprintTab, setActiveBlueprintTab] = useState(blueprintReview ? 'questionSpecifications' : setup.draftWorkspace?.activeBlueprintTab ?? (initialBlueprintPlanner ? 'questionSpecifications' : 'distribution'))
-  const [isBlueprintMatrixCreated, setIsBlueprintMatrixCreated] = useState(blueprintReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintMatrixCreated ?? Boolean(initialBlueprintPlanner))
-  const [isBlueprintQuestionSplitCreated, setIsBlueprintQuestionSplitCreated] = useState(blueprintReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintQuestionSplitCreated ?? Boolean(initialBlueprintPlanner))
-  const [isBlueprintCompetencyMatrixCreated, setIsBlueprintCompetencyMatrixCreated] = useState(blueprintReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintCompetencyMatrixCreated ?? Boolean(initialBlueprintPlanner))
+  const [isBlueprintMatrixCreated, setIsBlueprintMatrixCreated] = useState(blueprintReview || assessmentReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintMatrixCreated ?? Boolean(initialBlueprintPlanner))
+  const [isBlueprintQuestionSplitCreated, setIsBlueprintQuestionSplitCreated] = useState(blueprintReview || assessmentReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintQuestionSplitCreated ?? Boolean(initialBlueprintPlanner))
+  const [isBlueprintCompetencyMatrixCreated, setIsBlueprintCompetencyMatrixCreated] = useState(blueprintReview || assessmentReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintCompetencyMatrixCreated ?? Boolean(initialBlueprintPlanner))
   const [blueprintTemplates, setBlueprintTemplates] = useState(() => {
     try { return readBlueprintTemplates() } catch { return [] }
   })
@@ -1691,7 +1711,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [pickerNavigationRequest, setPickerNavigationRequest] = useState(0)
   const [replacingPickerQuestion, setReplacingPickerQuestion] = useState(null)
   const [isBlueprintPlannerSaved, setIsBlueprintPlannerSaved] = useState(readBlueprintWorkflow(setup.assessmentId)?.snapshot ? true : setup.draftWorkspace?.isBlueprintPlannerSaved ?? Boolean(initialBlueprintPlanner))
-  const [isBlueprintPlannerEditing, setIsBlueprintPlannerEditing] = useState(Boolean(blueprintReview) || (setup.draftWorkspace?.isBlueprintPlannerEditing ?? false))
+  const [isBlueprintPlannerEditing, setIsBlueprintPlannerEditing] = useState(Boolean(blueprintReview) || assessmentEditable || (setup.draftWorkspace?.isBlueprintPlannerEditing ?? false))
   const [blueprintCompetencyViewMode, setBlueprintCompetencyViewMode] = useState('multi')
   const [blueprintDraft, setBlueprintDraft] = useState(initialBlueprintPlanner?.blueprintDraft ?? {
     subject: '',
@@ -1740,24 +1760,29 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const [openPreviewCardIds, setOpenPreviewCardIds] = useState([])
   const [saveStatus, setSaveStatus] = useState('')
   const [requestedCreateTab, setActiveCreateTabState] = useState(() => {
+    if (assessmentReview) return isBlueprintEnabled ? 'blueprint' : 'preview'
     if (blueprintReview) return 'blueprint'
     const initialTab = readCreateAssessmentInitialTab()
     if (setup.draftWorkspace?.activeCreateTab) return setup.draftWorkspace.activeCreateTab
     return initialTab === 'create' && initialBlueprintPlanner && initialBlueprintPlanner.enabled !== false ? 'questionBank' : initialTab
   })
-  const [blueprintFlow, setBlueprintFlow] = useState(() => readBlueprintWorkflow(setup.assessmentId))
+  const [blueprintFlow, setBlueprintFlow] = useState(() => assessmentReview ? { blueprintId: assessmentReview.blueprintId, status: assessmentReview.approvalStatus, snapshot: initialBlueprintPlanner } : readBlueprintWorkflow(setup.assessmentId))
   const [blueprintApprovalOpen, setBlueprintApprovalOpen] = useState(false)
   const [blueprintSaveBusy, setBlueprintSaveBusy] = useState(false)
   const blueprintSaveLock = useRef(false)
-  const isBlueprintReadOnly = !blueprintReview && blueprintFlow?.status === 'Pending Approval'
-  const blueprintLocked = !blueprintReview && blueprintApprovalLocked(blueprintFlow)
+  const isBlueprintReadOnly = reviewBusy || Boolean(reviewReadOnly && !blueprintReview) || !assessmentReview && !blueprintReview && blueprintFlow?.status === 'Pending Approval'
+  const isBlueprintOnlyRework = !assessmentReview && setup.reworkReview?.activityType === 'Blueprint'
+  const blueprintLocked = !assessmentReview && !blueprintReview && (blueprintApprovalLocked(blueprintFlow) || setup.reworkReview?.activityType === 'Blueprint')
   const activeCreateTab = blueprintReview || blueprintLocked ? 'blueprint' : requestedCreateTab
   const setActiveCreateTab = tab => {
+    if (blueprintReview && tab !== 'blueprint') return
+    if (reviewReadOnly && !['blueprint', 'preview', 'configuration'].includes(tab)) return
     if (blueprintLocked && tab !== 'blueprint') { setSaveStatus('Blueprint approval is required before question preparation and configuration.'); return }
     setActiveCreateTabState(tab)
   }
   const blueprintLastStatus = useRef(blueprintFlow?.status)
   useEffect(() => {
+    if (assessmentReview) return
     const refresh = () => {
       const next = readBlueprintWorkflow(setup.assessmentId)
       if (blueprintLastStatus.current === 'Pending Approval' && next?.status === 'Approved' && next.snapshot) {
@@ -1789,14 +1814,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }, [setup.assessmentId])
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(setup.draftWorkspace?.hasSelectedCreateTab ?? false)
   const isPublishedEditMode = Boolean(setupDraft.isPublishedEdit || setupDraft.sourcePublishedId || setup.isPublishedEdit || setup.sourcePublishedId)
+  const requiresPublicationApproval = getAssessmentPublicationMethod({ setup: setupDraft }) === 'approval'
   const isDescriptiveFirstSequence = setupDraft.proctoredSectionSequence === 'descriptive-first'
   const mcqSequenceLabel = `MCQ Duration | <span class="create-assessment-sequence-label is-${isDescriptiveFirstSequence ? 'second' : 'first'}">Sequence ${isDescriptiveFirstSequence ? '2' : '1'}</span>`
   const descriptiveSequenceLabel = `Descriptive Duration | <span class="create-assessment-sequence-label is-${isDescriptiveFirstSequence ? 'first' : 'second'}">Sequence ${isDescriptiveFirstSequence ? '1' : '2'}</span>`
   const [selectedCreateQuestionTypeLabel, setSelectedCreateQuestionTypeLabel] = useState(setup.draftWorkspace?.selectedCreateQuestionTypeLabel || '')
   const [editingPreviewQuestionId, setEditingPreviewQuestionId] = useState(setup.draftWorkspace?.editingPreviewQuestionId ?? null)
-  const [previewSectionTitles, setPreviewSectionTitles] = useState(() => readCreateAssessmentSectionTitles(setup))
-  const [previewSectionOrder, setPreviewSectionOrder] = useState(() => readCreateAssessmentSectionOrder(setup))
-  const [customPreviewSections, setCustomPreviewSections] = useState(() => readCreateAssessmentCustomSections(setup))
+  const [previewSectionTitles, setPreviewSectionTitles] = useState(() => assessmentReview ? Object.fromEntries((assessmentReview.previewSections || []).map(section => [section.key, section.title])) : readCreateAssessmentSectionTitles(setup))
+  const [previewSectionOrder, setPreviewSectionOrder] = useState(() => assessmentReview ? (assessmentReview.previewSections || []).map(section => section.key) : readCreateAssessmentSectionOrder(setup))
+  const [customPreviewSections, setCustomPreviewSections] = useState(() => assessmentReview ? (assessmentReview.previewSections || []).filter(section => !PREVIEW_SECTION_CONFIG.some(base => base.key === section.key)).map(({ questions, ...section }) => section) : readCreateAssessmentCustomSections(setup))
   const [editingPreviewSectionKey, setEditingPreviewSectionKey] = useState(null)
   const [previewSectionTitleDraft, setPreviewSectionTitleDraft] = useState('')
   const [draggedPreviewQuestionId, setDraggedPreviewQuestionId] = useState(null)
@@ -1969,6 +1995,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       }))
   }, [blueprintDraft.subject, blueprintDraft.topics])
   const selectedBlueprintRows = useMemo(() => {
+    if (reviewReadOnly && !blueprintReview && assessmentReview?.blueprintSnapshot?.distributionRows) return assessmentReview.blueprintSnapshot.distributionRows
     const selectedSet = new Set(blueprintDraft.competencies)
     return blueprintCompetencyOptions
       .filter((option) => selectedSet.has(option.value))
@@ -2572,6 +2599,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     blueprintTestSpecificationAllocatedTotal,
   )
   useEffect(() => {
+    if (reviewReadOnly && !blueprintReview) return
     const inactiveColumnKeys = blueprintTestSpecificationColumns
       .filter((column) => !isBlueprintTestSpecificationColumnActive(column.key))
       .map((column) => column.key)
@@ -3163,6 +3191,32 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setIsBlueprintSaveConfirmOpen(true)
   }
 
+  const buildBlueprintReviewSnapshot = () => ({
+        assessmentId: setup.assessmentId,
+        blueprintDraft,
+        blueprintDistributionDraft,
+        blueprintCognitionWeightage,
+        blueprintQuestionTypeDraft,
+        blueprintLaqQuestionSplits,
+        blueprintTestSpecificationCountDraft,
+        blueprintTestSpecificationMarkDraft,
+        blueprintUnitAssignments: blueprintResolvedAssignments,
+        blueprintManualCells,
+        blueprintRebalanceMetadata,
+        validationStatus: blueprintTestSpecificationMatrixIsValid ? 'matched' : 'mismatched',
+        enabled: true,
+        pickerRows: pickerDraftRows,
+        schemaVersion: 3,
+      })
+  useImperativeHandle(blueprintEditorRef, () => ({
+    getSnapshot() {
+      if (!blueprintTestSpecificationMatrixIsValid || !pickerDraftRows.length || pickerDraftRows.reduce((sum, row) => sum + row.count * row.marks, 0) !== blueprintRoundedTotalMark) {
+        throw new Error('Complete a valid blueprint matrix before approving.')
+      }
+      return buildBlueprintReviewSnapshot()
+    },
+  }))
+
   const confirmSaveBlueprintPlanner = async (action = 'continue', reviewer) => {
     if (blueprintSaveLock.current) return false
     if (action === 'approval' && typeof onSendToApproval !== 'function') { setSaveStatus('Approval service is unavailable. Try again later.'); return false }
@@ -3181,35 +3235,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     try {
       blueprintSaveLock.current = true
       setBlueprintSaveBusy(true)
-      const snapshot = {
-        assessmentId: setup.assessmentId,
-        blueprintDraft,
-        blueprintDistributionDraft,
-        blueprintCognitionWeightage,
-        blueprintQuestionTypeDraft,
-        blueprintLaqQuestionSplits,
-        blueprintTestSpecificationCountDraft,
-        blueprintTestSpecificationMarkDraft,
-        blueprintUnitAssignments: blueprintResolvedAssignments,
-        blueprintManualCells,
-        blueprintRebalanceMetadata,
-        validationStatus: blueprintTestSpecificationMatrixIsValid ? 'matched' : 'mismatched',
-        enabled: true,
-        pickerRows: pickerDraftRows,
-        schemaVersion: 3,
-      }
+      const snapshot = buildBlueprintReviewSnapshot()
       if (blueprintReview) {
         await blueprintReview.onApprove(snapshot)
         return true
       }
-      if (!saveAssessmentDraft()) throw new Error('Unable to save the assessment draft.')
+      if (!await saveAssessmentDraft()) throw new Error('Unable to save the assessment draft.')
       const flow = await saveBlueprintWorkflow({ ...setupDraft, assessmentId: setup.assessmentId }, snapshot, action, reviewer)
       window.localStorage.setItem(getBlueprintPlannerStorageKey(setup), JSON.stringify({ ...snapshot, savedAt: new Date().toISOString() }))
       setBlueprintFlow(flow)
       setSetup(current => ({ ...current, blueprintId: flow.blueprintId }))
       setSetupDraft(current => ({ ...current, blueprintId: flow.blueprintId }))
       if (action === 'approval') {
-        await onSendToApproval?.({ activityId: `blueprint-${setup.assessmentId}`, activityType: 'Blueprint', activityName: setupDraft.assessmentName || 'Untitled Assessment', assessmentName: setupDraft.assessmentName || 'Untitled Assessment', approvalStatus: 'Pending Approval', status: 'Pending Approval', blueprintId: flow.blueprintId, blueprintRevision: flow.revision, blueprintSnapshot: snapshot, setup: { ...setupDraft, assessmentId: setup.assessmentId, blueprintId: flow.blueprintId }, approvalFaculty: reviewer, questionCount: pickerDraftRows.reduce((total,row) => total + Number(row.count),0), totalMarks: blueprintRoundedTotalMark })
+        await onSendToApproval?.({ activityId: `blueprint-${setup.assessmentId}`, activityType: 'Blueprint', activityName: setupDraft.assessmentName || 'Untitled Assessment', assessmentName: setupDraft.assessmentName || 'Untitled Assessment', approvalStatus: 'Pending Approval', status: 'Pending Approval', blueprintId: flow.blueprintId, blueprintRevision: flow.revision, blueprintSnapshot: snapshot, questionRows: getCurrentAssessmentQuestions(), previewSections, setup: { ...setupDraft, assessmentId: setup.assessmentId, blueprintId: flow.blueprintId }, approvalFaculty: reviewer, questionCount: pickerDraftRows.reduce((total,row) => total + Number(row.count),0), totalMarks: blueprintRoundedTotalMark })
       }
       setSavedPickerRows(pickerDraftRows)
       setActivePickerId(pickerDraftRows[0]?.id || '')
@@ -3448,10 +3486,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     return true
   }
   const confirmBlueprintMatrixReset = () => {
-    if (!blueprintReview && blueprintFlow?.approvalRequired) setBlueprintFlow(reviseBlueprintWorkflow(setup.assessmentId))
+    if (!assessmentReview && !blueprintReview && blueprintFlow?.approvalRequired) setBlueprintFlow(reviseBlueprintWorkflow(setup.assessmentId))
     if (selectedBreakdownTemplate) return
     try {
-      if (!blueprintReview) window.localStorage.removeItem(getBlueprintPlannerStorageKey(setup))
+      if (!assessmentReview && !blueprintReview) window.localStorage.removeItem(getBlueprintPlannerStorageKey(setup))
     } catch {
       // The in-memory reset still succeeds if browser storage is unavailable.
     }
@@ -3497,7 +3535,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setActiveBlueprintTab('questionSpecifications')
   }
   const confirmBlueprintDistributionEdit = () => {
-    if (!blueprintReview && blueprintFlow?.approvalRequired) setBlueprintFlow(reviseBlueprintWorkflow(setup.assessmentId))
+    if (!assessmentReview && !blueprintReview && blueprintFlow?.approvalRequired) setBlueprintFlow(reviseBlueprintWorkflow(setup.assessmentId))
     setIsBlueprintPlannerEditing(true)
     setIsBlueprintEditConfirmOpen(false)
     setIsBlueprintMatrixCreated(false)
@@ -3514,6 +3552,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setIsDescriptiveTypePickerOpen(false)
   }
   const persistBlueprintEnabled = enabled => {
+    if (assessmentReview) return
     try {
       const saved = readSavedBlueprintPlanner(setup)
       if (saved) window.localStorage.setItem(getBlueprintPlannerStorageKey(setup), JSON.stringify({ ...saved, enabled }))
@@ -3696,6 +3735,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
 
   useEffect(() => {
+    if (assessmentReview) return
     if ((setupDraft.examDeliveryMode || 'Online') !== 'Online' || setupDraft.supervisionType !== 'Practice Exam') return
     if (setupDraft.practiceStartDate && setupDraft.practiceStartTime) return
     setSetupDraft((current) => applyPracticeExamTimingDefaults(current))
@@ -3809,10 +3849,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   const resetThinkingThresholdsToDefault = () => {
     setSetupDraft((current) => ({
       ...current,
-      thinkingThresholdMode: 'hotlot',
-      lotThreshold: '70',
-      hotThreshold: '60',
-      ...DEFAULT_BLOOMS_THRESHOLDS,
+      ...DEFAULT_THINKING_THRESHOLDS,
     }))
     setSetupErrors((current) => {
       const {
@@ -4013,7 +4050,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
     if (!alreadyExists) {
       setCustomExamCategories(nextCustomCategories)
-      window.localStorage.setItem(CREATE_ASSESSMENT_CUSTOM_EXAM_CATEGORIES_KEY, JSON.stringify(nextCustomCategories))
+      if (!assessmentReview) window.localStorage.setItem(CREATE_ASSESSMENT_CUSTOM_EXAM_CATEGORIES_KEY, JSON.stringify(nextCustomCategories))
     }
 
     updateSetupDraft('examCategory', alreadyExists
@@ -4063,8 +4100,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       createdAt: draft.createdAt || setup.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
-    if (!writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, nextSetup)) {
-      writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, {
+    if (!writeReviewSafeJson(CREATE_ASSESSMENT_SETUP_KEY, nextSetup)) {
+      writeReviewSafeJson(CREATE_ASSESSMENT_SETUP_KEY, {
         ...nextSetup,
         logoPreview: '',
       })
@@ -4099,7 +4136,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       template,
       ...savedTemplates.filter((item) => item.id !== templateId),
     ]
-    writeLocalStorageJson(CREATE_ASSESSMENT_TEMPLATES_KEY, nextTemplates)
+    writeReviewSafeJson(CREATE_ASSESSMENT_TEMPLATES_KEY, nextTemplates)
     setSavedTemplates(nextTemplates)
   }
 
@@ -4117,7 +4154,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
     setSetup(nextSetup)
     setSetupDraft(nextSetup)
-    writeLocalStorageJson(CREATE_ASSESSMENT_SETUP_KEY, nextSetup)
+    writeReviewSafeJson(CREATE_ASSESSMENT_SETUP_KEY, nextSetup)
 
     setTouchedSetupFields([])
     setSetupErrors({})
@@ -4140,6 +4177,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const practiceEndPeriod = nextSetup.practiceEndPeriod || 'PM'
 
     return {
+      publicationMethod: isPublishedEditMode ? nextSetup.publicationMethod || '' : 'direct',
       id: nextSetup.assessmentId || `assessment-${Date.now()}`,
       assessmentName,
       examMode: nextSetup.examDeliveryMode || 'Online',
@@ -4207,6 +4245,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       const changeRemarks = getPublishedAssessmentChangeRemarks(existingRecord, record)
       const nextRecord = {
         ...record,
+        publicationMethod: existingRecord ? getAssessmentPublicationMethod(existingRecord) : record.publicationMethod,
         publishedLog: [
           ...nextLog.map((item) => ({
             ...item,
@@ -4221,15 +4260,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ]
       const lightRows = nextRows.map(createStorageLightPublishedRecord)
       const summaryRows = nextRows.map(createPublishedSummaryRecord)
-      if (writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, nextRows)) return 'full'
-      if (writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, lightRows)) return 'light'
-      return writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, summaryRows) ? 'summary' : ''
+      if (writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, nextRows)) return 'full'
+      if (writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, lightRows)) return 'light'
+      return writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, summaryRows) ? 'summary' : ''
     } catch {
       const lightRecord = createStorageLightPublishedRecord(record)
       const summaryRecord = createPublishedSummaryRecord(record)
-      if (writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [record])) return 'full'
-      if (writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [lightRecord])) return 'light'
-      return writeLocalStorageJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [summaryRecord]) ? 'summary' : ''
+      if (writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [record])) return 'full'
+      if (writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [lightRecord])) return 'light'
+      return writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [summaryRecord]) ? 'summary' : ''
     }
   }
 
@@ -4247,12 +4286,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const publishAssessmentDirectly = (draft) => {
+    if (requiresPublicationApproval) { setSaveStatus('Changes to this assessment require approval.'); return false }
     if (blueprintApprovalLocked(readBlueprintWorkflow(setup.assessmentId))) { setSaveStatus('Approve the blueprint before publishing.'); return false }
-    if (pickerEnabled && !getBlueprintPickerProgress(pickerRows, savedQuestionsRef.current).complete) {
-      setSaveStatus('Complete all blueprint requirements before continuing.')
-      setActiveCreateTab('questionBank')
-      return
-    }
     const nextSetup = persistSetupDraft('', draft)
     const record = getPublishedAssessmentRecord(nextSetup, getCurrentAssessmentQuestions())
     const publishStorageResult = upsertPublishedAssessment(record)
@@ -4268,14 +4303,11 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     return true
   }
 
-  const openApprovalModal = (action = setupDraft.approvalFlow) => {
+  const openApprovalModal = (action) => {
+    if (assessmentReview) return
     if (blueprintApprovalLocked(readBlueprintWorkflow(setup.assessmentId))) { setSaveStatus('Approve the blueprint before continuing.'); return }
-    const selectedAction = typeof action === 'string' ? action : setupDraft.approvalFlow
-    if (pickerEnabled && !getBlueprintPickerProgress(pickerRows, savedQuestionsRef.current).complete) {
-      setSaveStatus('Complete all blueprint requirements before continuing.')
-      setActiveCreateTab('questionBank')
-      return
-    }
+    const selectedAction = typeof action === 'string' ? action : requiresPublicationApproval ? 'Send to Approval' : setupDraft.approvalFlow
+    if (requiresPublicationApproval && selectedAction === 'Direct Publish') { setSaveStatus('Changes to this assessment require approval.'); return }
     const errors = validateSetupDraft({ ...setupDraft, approvalFlow: selectedAction })
     const currentQuestions = getCurrentAssessmentQuestions()
     setConfigurationValidationStep(CONFIGURATION_VALIDATION_STEPS.length - 1)
@@ -4301,24 +4333,27 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
   const sendAssessmentToApproval = async (draft, reviewer) => {
     if (blueprintApprovalLocked(readBlueprintWorkflow(setup.assessmentId))) { setSaveStatus('Approve the blueprint before submitting the assessment.'); return false }
-    if (pickerEnabled && !getBlueprintPickerProgress(pickerRows, savedQuestionsRef.current).complete) {
-      setSaveStatus('Complete all blueprint requirements before continuing.')
-      setActiveCreateTab('questionBank')
-      return
-    }
     const nextSetup = persistSetupDraft('', draft)
     const currentQuestions = getCurrentAssessmentQuestions()
-    const approvalQuestionRows = createStorageLightAssessmentQuestions(currentQuestions)
-    const approvalPreviewSections = createStorageLightPreviewSections(previewSections)
+    if (!onSendToApproval || !await saveAssessmentDraft({ setupOverride: nextSetup })) return false
+    const approvalQuestionRows = currentQuestions
+    const approvalPreviewSections = previewSections
+    const blueprintSnapshot = isBlueprintEnabled ? {
+      ...JSON.parse(localStorage.getItem(CREATE_ASSESSMENT_SETUP_KEY) || '{}').draftWorkspace?.blueprint,
+      distributionRows: blueprintTableRows, questionTypeRows: blueprintQuestionTypeRows,
+    } : null
     const assessmentName = String(nextSetup.assessmentName || '').trim() || 'Untitled Assessment'
     const assignmentTarget = String(nextSetup.assignGroup || '').trim()
       || String(nextSetup.assignYear || '').trim()
       || 'Not assigned'
 
-    await onSendToApproval?.({
+    const sent = await onSendToApproval({
       activityId: `assessment-${nextSetup.assessmentId || Date.now()}`,
       activityName: assessmentName,
       activityType: 'Assessment',
+      blueprintSnapshot,
+      blueprintId: readBlueprintWorkflow(nextSetup.assessmentId)?.blueprintId || nextSetup.blueprintId,
+      blueprintRevision: readBlueprintWorkflow(nextSetup.assessmentId)?.revision || 1,
       approvalStatus: 'Pending Approval',
       status: 'Pending Approval',
       assessmentName,
@@ -4340,7 +4375,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       setup: { ...nextSetup, blueprintEnabled: isBlueprintEnabled },
       approvalFaculty: reviewer,
     })
+    if (sent === false) return false
     setSaveStatus('Sent to approval')
+    localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'pending')
+    leaveAssessment()
     return true
   }
 
@@ -4618,7 +4656,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     setupDraft.thinkingThresholdMode,
     setupDraft.understandThreshold,
   ])
-  const primaryPublicationActionLabel = setupDraft.approvalFlow === 'Direct Publish'
+  const primaryPublicationActionLabel = !requiresPublicationApproval && setupDraft.approvalFlow === 'Direct Publish'
     ? isPublishedEditMode ? 'Update assessment' : 'Publish assessment'
     : 'Send to approval'
   const isPublicationHeaderComplete = Boolean(
@@ -4804,6 +4842,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     ...customPreviewSections,
   ]), [customPreviewSections])
   const previewSections = useMemo(() => {
+    if (reviewReadOnly && assessmentReview?.previewSections?.length) return assessmentReview.previewSections
     const sectionOrder = [
       ...previewSectionOrder.filter((sectionKey) => fullPreviewSectionConfig.some((section) => section.key === sectionKey)),
       ...fullPreviewSectionConfig.map((section) => section.key).filter((sectionKey) => !previewSectionOrder.includes(sectionKey)),
@@ -4826,7 +4865,6 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }, [blueprintPreviewMarksByQuestionId, fullPreviewSectionConfig, previewQuestions, previewSectionOrder, previewSectionTitles])
   const canSendAssessmentForApproval = previewQuestionCount > 0
     && previewSections.length > 0
-    && (!pickerEnabled || pickerProgress.complete)
     && Object.keys(validateSetupDraft({ ...setupDraft, approvalFlow: 'Direct Publish' })).length === 0
   const previewQuestionDisplayNumbers = useMemo(() => {
     let displayNumber = 1
@@ -5042,7 +5080,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const nextQuestions = isEditingPreviewQuestion
       ? currentQuestions.map((item) => (item.id === targetEditingPreviewQuestionId ? nextQuestion : item))
       : [nextQuestion, ...currentQuestions.filter((item) => item.id !== questionOverride.id && item.id !== replacingPickerQuestion?.id)]
-    const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
+    const storageResult = writeReviewSafeQuestions(assessmentQuestionsStorageKey, nextQuestions)
     savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
     if (options.resetEditor !== false) {
@@ -5208,7 +5246,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         (questionItem.id ?? questionItem.originalQuestionId) === (item.originalQuestionId ?? item.id)
       ))),
     ]
-    const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
+    const storageResult = writeReviewSafeQuestions(assessmentQuestionsStorageKey, nextQuestions)
     savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
     if (pickerEnabled) {
@@ -5236,7 +5274,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     }
 
     const nextQuestions = getCurrentAssessmentQuestions().filter((savedItem) => savedItem.id !== item.id)
-    if (!writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)) {
+    if (!writeReviewSafeQuestions(assessmentQuestionsStorageKey, nextQuestions)) {
       setSaveStatus('Unable to remove question.')
       return
     }
@@ -5273,7 +5311,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const persistSavedQuestions = (nextQuestions, message = '') => {
-    const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
+    const storageResult = writeReviewSafeQuestions(assessmentQuestionsStorageKey, nextQuestions)
     const didPersistQuestions = Boolean(storageResult)
     savedQuestionsRef.current = nextQuestions
     setSavedQuestions(nextQuestions)
@@ -5289,15 +5327,19 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     return didPersistQuestions
   }
 
-  const saveAssessmentDraft = () => {
+  const saveAssessmentDraft = async ({ moveReworkToDraft = false, setupOverride = setupDraft } = {}) => {
+    if (assessmentReview || draftSaveLock.current) return false
+    draftSaveLock.current = true
+    setIsSavingDraft(true)
     const currentQuestions = getCurrentAssessmentQuestions()
-    const assessmentId = setupDraft.assessmentId || setup.assessmentId || 'assessment-' + crypto.randomUUID()
-    const draftId = setupDraft.sourceDraftId || setup.sourceDraftId || assessmentId
-    const assessmentName = String(setupDraft.assessmentName || '').trim() || 'Untitled Assessment'
+    const assessmentId = setupOverride.assessmentId || setup.assessmentId || 'assessment-' + crypto.randomUUID()
+    const draftId = setupOverride.sourceDraftId || setup.sourceDraftId || assessmentId
+    const assessmentName = String(setupOverride.assessmentName || '').trim() || 'Untitled Assessment'
     const nextSetup = {
-      ...setupDraft, assessmentId, assessmentName, blueprintEnabled: isBlueprintEnabled, blueprintId: readBlueprintWorkflow(assessmentId)?.blueprintId || setupDraft.blueprintId,
+      ...setupOverride, assessmentId, assessmentName, blueprintEnabled: isBlueprintEnabled, blueprintId: readBlueprintWorkflow(assessmentId)?.blueprintId || setupOverride.blueprintId,
       sourceDraftId: draftId, sourceDraftName: assessmentName,
-      createdAt: setupDraft.createdAt || setup.createdAt || new Date().toISOString(),
+      totalDuration: configurationDurationLabel,
+      createdAt: setupOverride.createdAt || setup.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       draftWorkspace: {
         question, editingPreviewQuestionId, selectedCreateQuestionTypeLabel, activeCreateTab,
@@ -5320,29 +5362,49 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       examMode: nextSetup.examDeliveryMode || '', questionCount: currentQuestions.length,
       questionRows: currentQuestions, totalMarks: assessmentSummary.totalMarks, updatedAt: nextSetup.updatedAt,
     }
+    let rollback = null
     try {
+      // Recovery copies from Clear all can consume the remaining browser quota.
+      // Archival is lossless; if unavailable, still attempt the normal save.
+      try { await archiveAssessmentRecoveryBackups() } catch { /* Original recovery copies remain intact. */ }
       const rows = JSON.parse(localStorage.getItem(ASSESSMENT_DRAFTS_STORAGE_KEY) || '[]')
       if (!Array.isArray(rows)) throw new Error('Saved drafts could not be read.')
-      commitAssessmentStorage({
+      const writes = {
+        ...(moveReworkToDraft && setup.reworkReview ? { [ASSESSMENT_CREATE_INITIAL_TAB_KEY]: 'draft' } : {}),
         [CREATE_ASSESSMENT_SETUP_KEY]: JSON.stringify(nextSetup),
         [getAssessmentQuestionsStorageKey(nextSetup)]: JSON.stringify(currentQuestions),
         [getAssessmentSectionTitlesStorageKey(nextSetup)]: JSON.stringify(previewSectionTitles),
         [getAssessmentSectionOrderStorageKey(nextSetup)]: JSON.stringify(previewSectionOrder),
         [getAssessmentCustomSectionsStorageKey(nextSetup)]: JSON.stringify(customPreviewSections),
         [ASSESSMENT_DRAFTS_STORAGE_KEY]: JSON.stringify(upsertAssessmentDraft(rows, draftRow, draftId)),
-      })
+      }
+      rollback = captureAssessmentStorage([...Object.keys(writes), `vx-assessment-history:${assessmentId}`])
+      commitAssessmentStorage(writes)
       appendAssessmentHistory(draftRow, { action: 'Draft saved' })
+      if (moveReworkToDraft && setup.reworkReview) {
+        if (!onReworkDraftSaved) throw new Error('Unable to update the rejected assessment.')
+        onReworkDraftSaved(draftRow)
+      }
       setSetup(nextSetup)
       setSetupDraft(nextSetup)
       exitCheckpointRef.current = captureAssessmentStorage(Object.keys(exitCheckpointRef.current))
       try { sessionStorage.setItem(checkpointKey, JSON.stringify(exitCheckpointRef.current)) } catch { /* Retain the in-memory checkpoint. */ }
       setSaveStatus('Assessment draft saved.')
+      if (moveReworkToDraft && setup.reworkReview) {
+        leaveAssessment()
+      }
       return true
-    } catch {
-      const message = 'Unable to save draft. Your work is still open. Free browser storage and try again.'
+    } catch (error) {
+      if (rollback) { try { commitAssessmentStorage(rollback) } catch { /* Keep the open editor available if storage remains unavailable. */ } }
+      const message = error?.name === 'QuotaExceededError'
+        ? 'Browser storage is full. Your work is still open; the draft has not been saved.'
+        : 'Unable to save draft. Your work is still open. Please try again.'
       setSaveStatus(message)
       setExitError(message)
       return false
+    } finally {
+      draftSaveLock.current = false
+      setIsSavingDraft(false)
     }
   }
 
@@ -5362,12 +5424,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
   }
 
   const saveDraftAndExit = async () => {
-    if (exitBusyRef.current) return
+    if (exitBusyRef.current || isPublishedEditMode) return
     exitBusyRef.current = true
     setIsSavingExit(true)
     setExitError('')
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)))
-    if (saveAssessmentDraft()) {
+    if (await saveAssessmentDraft({ moveReworkToDraft: true })) {
       try { localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'draft') } catch { /* The saved draft remains available. */ }
       leaveAssessment()
     }
@@ -5387,7 +5449,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ...previewSectionTitles,
       [editingPreviewSectionKey]: previewSectionTitleDraft.trim() || fallbackTitle,
     }
-    writeLocalStorageJson(assessmentSectionTitlesStorageKey, nextTitles)
+    writeReviewSafeJson(assessmentSectionTitlesStorageKey, nextTitles)
     setPreviewSectionTitles(nextTitles)
     setEditingPreviewSectionKey(null)
     setPreviewSectionTitleDraft('')
@@ -5409,9 +5471,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       [sectionKey]: nextSection.title,
     }
 
-    writeLocalStorageJson(assessmentCustomSectionsStorageKey, nextCustomSections)
-    writeLocalStorageJson(assessmentSectionOrderStorageKey, nextOrder)
-    writeLocalStorageJson(assessmentSectionTitlesStorageKey, nextTitles)
+    writeReviewSafeJson(assessmentCustomSectionsStorageKey, nextCustomSections)
+    writeReviewSafeJson(assessmentSectionOrderStorageKey, nextOrder)
+    writeReviewSafeJson(assessmentSectionTitlesStorageKey, nextTitles)
     setCustomPreviewSections(nextCustomSections)
     setPreviewSectionOrder(nextOrder)
     setPreviewSectionTitles(nextTitles)
@@ -5433,10 +5495,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         : item
     ))
 
-    writeLocalStorageJson(assessmentCustomSectionsStorageKey, nextCustomSections)
-    writeLocalStorageJson(assessmentSectionOrderStorageKey, nextOrder)
-    writeLocalStorageJson(assessmentSectionTitlesStorageKey, nextTitles)
-    if (!writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)) {
+    writeReviewSafeJson(assessmentCustomSectionsStorageKey, nextCustomSections)
+    writeReviewSafeJson(assessmentSectionOrderStorageKey, nextOrder)
+    writeReviewSafeJson(assessmentSectionTitlesStorageKey, nextTitles)
+    if (!writeReviewSafeQuestions(assessmentQuestionsStorageKey, nextQuestions)) {
       setSaveStatus('Unable to delete section. Please remove large images and try again.')
       return
     }
@@ -5463,10 +5525,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       previewSectionKey: getSummaryTypeLabel(item.type),
     }))
 
-    writeLocalStorageJson(assessmentCustomSectionsStorageKey, [])
-    writeLocalStorageJson(assessmentSectionOrderStorageKey, defaultOrder)
-    writeLocalStorageJson(assessmentSectionTitlesStorageKey, defaultTitles)
-    if (!writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)) {
+    writeReviewSafeJson(assessmentCustomSectionsStorageKey, [])
+    writeReviewSafeJson(assessmentSectionOrderStorageKey, defaultOrder)
+    writeReviewSafeJson(assessmentSectionTitlesStorageKey, defaultTitles)
+    if (!writeReviewSafeQuestions(assessmentQuestionsStorageKey, nextQuestions)) {
       setSaveStatus('Unable to reset sections. Please remove large images and try again.')
       return
     }
@@ -5537,10 +5599,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         : item
     })
 
-    writeLocalStorageJson(assessmentCustomSectionsStorageKey, nextCustomSections)
-    writeLocalStorageJson(assessmentSectionOrderStorageKey, nextOrder)
-    writeLocalStorageJson(assessmentSectionTitlesStorageKey, nextTitles)
-    const storageResult = writeAssessmentQuestionsStorage(assessmentQuestionsStorageKey, nextQuestions)
+    writeReviewSafeJson(assessmentCustomSectionsStorageKey, nextCustomSections)
+    writeReviewSafeJson(assessmentSectionOrderStorageKey, nextOrder)
+    writeReviewSafeJson(assessmentSectionTitlesStorageKey, nextTitles)
+    const storageResult = writeReviewSafeQuestions(assessmentQuestionsStorageKey, nextQuestions)
     setCustomPreviewSections(nextCustomSections)
     setPreviewSectionOrder(nextOrder)
     setPreviewSectionTitles(nextTitles)
@@ -5615,7 +5677,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     const nextOrder = previewSectionOrder.filter((key) => key !== sectionKey)
     const targetIndex = nextOrder.findIndex((key) => key === targetSectionKey)
     nextOrder.splice(targetIndex < 0 ? nextOrder.length : targetIndex, 0, sectionKey)
-    writeLocalStorageJson(assessmentSectionOrderStorageKey, nextOrder)
+    writeReviewSafeJson(assessmentSectionOrderStorageKey, nextOrder)
     setPreviewSectionOrder(nextOrder)
     setSaveStatus('Section order updated.')
   }
@@ -6903,7 +6965,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           : <Sparkles size={14} strokeWidth={2.3} />}
                         <span>{blueprintAutoFillIteration > 0 ? 'Reshuffle AutoFill' : 'AutoFill'}</span>
                       </button>
-                      <button
+                      {!assessmentReview && <button
                         type="button"
                         className="create-assessment-blueprint-reference-action-btn is-save"
                         onClick={saveBlueprintPlanner}
@@ -6911,7 +6973,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                       >
                         <Save size={14} strokeWidth={2.3} />
                         <span>{blueprintReview ? (blueprintSaveBusy ? 'Saving...' : 'Save and approve') : isBlueprintPlannerSaved ? 'Update Blueprint Planner' : 'Save Blueprint Planner'}</span>
-                      </button>
+                      </button>}
   </>
   const blueprintPanel = isBlueprintEnabled && activeCreateTab === 'blueprint' ? (
           <section {...blueprintEditHighlights} className="create-assessment-blueprint-panel qb-sort-scope" aria-label="Blueprint configuration">
@@ -8122,7 +8184,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     </div>
                   ) : null}
 
-                  {isBlueprintCompetencyMatrixCreated && !blueprintReview ? (
+                  {isBlueprintCompetencyMatrixCreated && (!blueprintReview || assessmentReview) ? (
                     <div
                       className="create-assessment-blueprint-floating-actions"
                       role="group"
@@ -8151,7 +8213,36 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             </div>
           </section>
   ) : null
-  if (blueprintReview) return <div className="create-assessment-workspace blueprint-review-planner">
+  const reviewState = assessmentEditable ? JSON.stringify({ setupDraft, savedQuestions, question, previewSectionTitles, previewSectionOrder, customPreviewSections, blueprint: buildBlueprintReviewSnapshot() }) : null;
+  const initialReviewState = useRef(reviewState);
+  useImperativeHandle(assessmentEditorRef, () => ({
+    hasChanges: () => initialReviewState.current !== reviewState,
+    getSnapshot() {
+      const errors = validateSetupDraft();
+      setSetupErrors(errors);
+      if (Object.keys(errors).length) {
+        setActiveCreateTab('configuration');
+        setConfigurationValidationStep(CONFIGURATION_VALIDATION_STEPS.length - 1);
+        throw new Error(getConfigurationErrorMessage(errors));
+      }
+      const questionRows = getCurrentAssessmentQuestions();
+      if (!questionRows.length || !previewSections.length) throw new Error('Add questions in Preview before approving.');
+      const assessmentName = String(setupDraft.assessmentName || '').trim() || 'Untitled Assessment';
+      return {
+        setup: { ...setupDraft, blueprintEnabled: isBlueprintEnabled },
+        assessmentName, activityName: assessmentName, questionRows, previewSections,
+        questionCount: questionRows.length, totalMarks: assessmentSummary.totalMarks,
+        examType: configurationQuestionSummary.examType, totalMarksDetail: configurationQuestionSummary.totalMarksDetail,
+        assessmentMode: setupDraft.examDeliveryMode, examCategory: setupDraft.examCategory,
+        academicYear: setupDraft.academicYear, examDate: setupDraft.examDate,
+        startTime: [setupDraft.startTime, setupDraft.startPeriod].filter(Boolean).join(' '),
+        duration: configurationDurationLabel,
+        blueprintSnapshot: isBlueprintEnabled ? { ...buildBlueprintReviewSnapshot(), distributionRows: blueprintTableRows, questionTypeRows: blueprintQuestionTypeRows } : null,
+      };
+    },
+  }));
+
+  if (blueprintReview && !assessmentReview) return <div className="create-assessment-workspace blueprint-review-planner">
     {saveStatus && <p role="status">{saveStatus}</p>}
     {blueprintPanel}
     <div className="blueprint-approval-floating-bar" role="group" aria-label="Blueprint review actions">
@@ -8162,7 +8253,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
     {isBlueprintResetConfirmOpen && <SaveChangesDialog theme={theme} title="Reset matrix" description="Clear cognition, question breakdown and competency allocations?" onCancel={() => setIsBlueprintResetConfirmOpen(false)} onSave={confirmBlueprintMatrixReset} saveLabel="Reset matrix" />}
   </div>
   return (
-    <section className="create-assessment-workspace">
+    <section className={`create-assessment-workspace ${assessmentReview ? 'assessment-review-workspace' : ''}`}>
       <header className="create-assessment-workspace-header">
         <div className={`create-assessment-title-row ${headerSetup.logoPreview ? 'has-logo' : 'has-no-logo'}`}>
           {headerSetup.logoPreview ? (
@@ -8171,9 +8262,10 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
           <div className="create-assessment-title-copy">
             <h1>{headerSetup.assessmentName || 'Untitled Assessment'}</h1>
-            {detailItems.length || headerSetup.assessmentCode ? (
+            {detailItems.length || headerSetup.assessmentCode || assessmentReview ? (
               <p className="create-assessment-header-details">
                 {detailItems.length > 0 && <span>{detailItems.join(' / ')}</span>}
+                {assessmentReview && <span className="qb-sort-scope create-assessment-header-code">{assessmentReview.blueprintId ? `${assessmentReview.blueprintId} / ` : ''}{blueprintReview ? 'Blueprint review' : assessmentEditable ? 'Assessment review' : 'Read-only'}</span>}
                 {headerSetup.assessmentCode && <span className="qb-sort-scope create-assessment-header-code" aria-label={`Assessment ID ${headerSetup.assessmentCode}`}>{headerSetup.assessmentCode}</span>}
               </p>
             ) : null}
@@ -8181,6 +8273,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         </div>
 
         <div className="create-assessment-header-actions">
+          {!assessmentReview && setup.reworkReview && <button type="button" onClick={() => setIsRejectionReasonOpen(true)}>Rejection reason</button>}
           <button
             type="button"
             className="create-assessment-theme-btn"
@@ -8194,7 +8287,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
               <Moon size={15} strokeWidth={2.2} />
             )}
           </button>
-          <button type="button" onClick={() => { if (isBlueprintReadOnly) { onNavigate?.(APP_PAGES.ASSESSMENT_CREATE); return } setExitError(''); setIsExitDialogOpen(true) }}>
+          <button type="button" disabled={reviewBusy} onClick={() => { if (assessmentReview) { if (assessmentEditable && assessmentEditorRef?.current?.hasChanges()) setIsExitDialogOpen(true); else onReviewExit?.(); return } if (isBlueprintReadOnly) { onNavigate?.(APP_PAGES.ASSESSMENT_CREATE); return } setExitError(''); setIsExitDialogOpen(true) }}>
             <LogOut size={15} strokeWidth={2.2} />
             Exit
           </button>
@@ -8212,6 +8305,16 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         onSave={() => { clearSetupDraft(); setIsClearSetupDialogOpen(false) }}
       />}
 
+      {isRejectionReasonOpen && <SaveChangesDialog
+        theme={theme}
+        title="Rejection reason"
+        description={setup.reworkReview.remarks}
+        reference={headerSetup.assessmentCode || headerSetup.assessmentId}
+        saveLabel={setup.reworkReview.activityType === 'Blueprint' ? 'Rework blueprint' : 'Rework assessment'}
+        cancelLabel="Back"
+        onCancel={() => onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)}
+        onSave={() => setIsRejectionReasonOpen(false)}
+      ><p>{setup.reworkReview.reviewer}{setup.reworkReview.reviewedAt ? ' / ' + new Date(setup.reworkReview.reviewedAt).toLocaleString('en-GB') : ''}</p></SaveChangesDialog>}
       {isExitDialogOpen && <SaveChangesDialog
         className="assessment-exit-dialog"
         reference={headerSetup.assessmentCode || headerSetup.assessmentId}
@@ -8219,8 +8322,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         busy={isSavingExit}
         error={exitError}
         onCancel={() => { if (!exitBusyRef.current) setIsExitDialogOpen(false) }}
-        onDiscard={discardAndExit}
-        onSave={saveDraftAndExit}
+        description={assessmentEditable ? "Discard your review changes and return to the approval queue?" : isPublishedEditMode ? "Discard your unsaved changes and return to Published assessments?" : undefined}
+        onDiscard={assessmentEditable ? onReviewExit : discardAndExit}
+        onSave={assessmentEditable || isPublishedEditMode ? undefined : saveDraftAndExit}
       />}
 
       {saveStatus ? (
@@ -8236,15 +8340,15 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       ) : null}
 
       {publicationAction && <AssessmentPublicationDialog
-        action={publicationAction} name={setupDraft.assessmentName} theme={theme}
+        requireAssignment={publicationAction !== 'Direct Publish'} action={publicationAction} name={setupDraft.assessmentName} theme={theme}
         year={setupDraft.assignYear} group={setupDraft.assignGroup}
         years={CREATE_ASSESSMENT_SELECT_OPTIONS.years} groups={CREATE_ASSESSMENT_SELECT_OPTIONS.sgtGroups}
         onCancel={() => setPublicationAction(null)}
         onConfirm={async ({ assignYear, assignGroup, reviewer }) => {
           const draft = { ...setupDraft, approvalFlow: publicationAction,
-            ...(publicationAction === 'Direct Publish' ? { assignYear, assignGroup } : {}) }
+            assignYear, assignGroup }
           const errors = validateSetupDraft(draft)
-          if (publicationAction === 'Direct Publish' && !assignYear) errors.assignYear = 'Select year.'
+          if (!assignYear) errors.assignYear = 'Select year.'
           if (Object.keys(errors).length) { setSetupErrors(errors); return false }
           const success = publicationAction === 'Direct Publish'
             ? publishAssessmentDirectly(draft)
@@ -8254,22 +8358,12 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
         }}
       />}
 
-      {publishedAssessmentNotice ? (
-        <div className="create-assessment-publish-modal" role="status" aria-live="polite">
-          <section className="create-assessment-publish-card">
-            <span className="create-assessment-publish-icon" aria-hidden="true">
-              <Check size={22} strokeWidth={2.5} />
-            </span>
-            <strong>
-              {publishedAssessmentNotice.noticeType === 'update'
-                ? `Your changes to ${publishedAssessmentNotice.assessmentName} have been successfully saved and published.`
-                : `${publishedAssessmentNotice.assessmentName} has been successfully published.`}
-            </strong>
-            {publishedAssessmentNotice.noticeType === 'update' ? null : <p>Students have been notified.</p>}
-            <small>Redirecting to Published Assessment in 2 sec.</small>
-          </section>
-        </div>
-      ) : null}
+      {publishedAssessmentNotice && <AssessmentPublishedConfirmation theme={theme} title={publishedAssessmentNotice.noticeType === 'update' ? 'Assessment updated' : 'Assessment published'} message={publishedAssessmentNotice.assessmentName + ' is ready for the scheduled exam.'} onContinue={() => {
+        window.clearTimeout(publishNoticeTimerRef.current)
+        setPublishedAssessmentNotice(null)
+        window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'published')
+        onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
+      }} />}
 
       {isBlueprintResetConfirmOpen ? (
         <div className="create-assessment-blueprint-reset-backdrop" role="presentation">
@@ -8414,13 +8508,13 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
       <main className="create-assessment-workspace-main">
         {isBlueprintEnabled && activeCreateTab === 'blueprint' ? blueprintPanel : null}
 
-        <BlueprintCompletionToast enabled={pickerEnabled} complete={pickerProgress.complete} />
+        <BlueprintCompletionToast enabled={!assessmentReview && pickerEnabled} complete={pickerProgress.complete} />
         {activeCreateTab === 'questionBank' ? (
           <section ref={pickerBankRef} tabIndex={-1} className="create-assessment-question-bank-panel" aria-label="Question bank view">
             <QuestionBankNonCreatePage
               key={pickerEnabled ? filterRequirementId + ':' + pickerNavigationRequest : 'bank'}
               blueprintRequirements={pickerEnabled ? pickerRows.map(row => ({ id: row.id, picked: pickerProgress.used[row.id].length, count: row.count, label: [row.competency, row.type.toUpperCase(), row.category, row.level === 'split' ? 'By part' : row.level === 'hot' ? 'HoT' : 'LoT', row.marks + ' marks'].filter(Boolean).join(' / ') })) : undefined}
-              renderBlueprintProgress={pickerEnabled ? bankQuestions => <BlueprintSelectionProgress blueprintId={blueprintFlow?.blueprintId || setupDraft.blueprintId} loadBankQuestions={readBlueprintBankQuestions} rows={pickerRows} progress={pickerProgress} activeId={activePickerRow?.id} bankQuestions={bankQuestions} selectedQuestions={savedQuestions} onSelect={row => { setReplacingPickerQuestion(null); pickBlueprintRow(row) }} onCreate={row => { setActivePickerId(row.id); createPickerQuestion(row) }} onReview={() => setActiveCreateTab('preview')} /> : undefined}
+              renderBlueprintProgress={pickerEnabled ? bankQuestions => <BlueprintSelectionProgress readOnly={reviewReadOnly || reviewBusy} blueprintId={blueprintFlow?.blueprintId || setupDraft.blueprintId} loadBankQuestions={readBlueprintBankQuestions} rows={pickerRows} progress={pickerProgress} activeId={activePickerRow?.id} bankQuestions={bankQuestions} selectedQuestions={savedQuestions} onSelect={row => { setReplacingPickerQuestion(null); pickBlueprintRow(row) }} onCreate={row => { setActivePickerId(row.id); createPickerQuestion(row) }} onReview={() => setActiveCreateTab('preview')} /> : undefined}
               activeRequirementId={activePickerRow?.id}
               onNextRequirement={pickerEnabled && nextPickerRow ? () => pickBlueprintRow(nextPickerRow) : undefined}
               onRequirementChange={id => { setReplacingPickerQuestion(null); pickBlueprintRow(pickerRows.find(row => row.id === id)) }}
@@ -8446,7 +8540,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             <div className="create-assessment-tab-panel-head">
               <span className="create-assessment-preview-head-copy">
                 <strong>Preview</strong>
-                {pickerEnabled && <BlueprintSelectionProgress blueprintId={blueprintFlow?.blueprintId || setupDraft.blueprintId} loadBankQuestions={readBlueprintBankQuestions} rows={pickerRows} progress={pickerProgress} activeId={activePickerRow?.id} selectedQuestions={savedQuestions} onSelect={row => { setReplacingPickerQuestion(null); pickBlueprintRow(row) }} onCreate={row => { setActivePickerId(row.id); createPickerQuestion(row) }} onReview={() => setActiveCreateTab('preview')} />}
+                {pickerEnabled && <BlueprintSelectionProgress readOnly={reviewReadOnly || reviewBusy} blueprintId={blueprintFlow?.blueprintId || setupDraft.blueprintId} loadBankQuestions={readBlueprintBankQuestions} rows={pickerRows} progress={pickerProgress} activeId={activePickerRow?.id} selectedQuestions={savedQuestions} onSelect={row => { setReplacingPickerQuestion(null); pickBlueprintRow(row) }} onCreate={row => { setActivePickerId(row.id); createPickerQuestion(row) }} onReview={() => setActiveCreateTab('preview')} />}
               </span>
               <span className="create-assessment-preview-section-actions">
                 <button
@@ -8463,7 +8557,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   type="button"
                   className="create-assessment-preview-reset-section"
                   onClick={resetPreviewSections}
-                  disabled={!previewQuestionCount && !customPreviewSections.length}
+                  disabled={reviewReadOnly || reviewBusy || !previewQuestionCount && !customPreviewSections.length}
                 >
                   <RotateCcw size={14} strokeWidth={2.2} />
                   <span>Reset Sections</span>
@@ -8471,6 +8565,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                 <button
                   type="button"
                   className="create-assessment-preview-add-section"
+                          disabled={reviewReadOnly || reviewBusy}
                   onClick={createPreviewSection}
                 >
                   <Plus size={14} strokeWidth={2.2} />
@@ -8501,7 +8596,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   >
                     <div
                       className="create-assessment-preview-section-head"
-                      draggable
+                      draggable={!reviewReadOnly && !reviewBusy}
                       onDragStart={(event) => {
                         if (event.target.closest?.('button, input')) {
                           event.preventDefault()
@@ -8533,6 +8628,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         <button
                           type="button"
                           className="create-assessment-preview-section-edit"
+                          disabled={reviewReadOnly || reviewBusy}
                           onClick={() => startEditPreviewSectionTitle(section)}
                           aria-label={`Edit ${section.title} title`}
                           title="Edit title"
@@ -8557,6 +8653,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                           <button
                             type="button"
                             className="create-assessment-preview-section-delete"
+                          disabled={reviewReadOnly || reviewBusy}
                             onClick={() => deletePreviewSection(section)}
                             aria-label={`Delete ${section.title} section`}
                             title="Delete section"
@@ -8688,7 +8785,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     <article
                       key={item.id}
                       className={`create-assessment-preview-card ${isPreviewCardOpen ? 'is-open' : ''} ${!isDescriptive ? 'is-mcq-preview' : ''} ${usesLaqQuestionFormat ? 'is-laq-preview' : ''} ${isSaqSinglePreview ? 'is-saq-single-preview' : ''}`}
-                      draggable
+                      draggable={!reviewReadOnly && !reviewBusy}
                       onDragStart={() => setDraggedPreviewQuestionId(item.id)}
                       onDragOver={(event) => event.preventDefault()}
                       onDrop={(event) => {
@@ -9054,6 +9151,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         <button
                           type="button"
                           className="create-assessment-preview-edit"
+                          disabled={reviewReadOnly || reviewBusy}
                           onClick={() => editPreviewQuestion(item)}
                           aria-label={`Edit question ${displayNumber}`}
                           title="Edit question"
@@ -9063,6 +9161,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                         <button
                           type="button"
                           className="create-assessment-preview-delete"
+                          disabled={reviewReadOnly || reviewBusy}
                           onClick={() => deletePreviewQuestion(item)}
                           aria-label={`Delete question ${displayNumber} from preview`}
                           title="Delete question"
@@ -9112,6 +9211,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
 
         {activeCreateTab === 'configuration' ? (
           <section className="create-assessment-tab-panel create-assessment-configuration-panel configuration-compact qb-sort-scope" aria-label="Assessment configuration">
+            <fieldset className="assessment-configuration-fields" disabled={reviewReadOnly || reviewBusy}>
             <div className="create-assessment-tab-panel-head">
               <strong>
                 <Settings size={16} strokeWidth={2.2} />
@@ -9701,8 +9801,8 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                 )}
               </AssessmentOptionsDialog>}
 
-              {(!previewQuestionCount || (pickerEnabled && !pickerProgress.complete) || !previewSections.length) && (
-                <p className="configuration-submit-hint" role="status">{!previewQuestionCount ? 'Add questions before submitting.' : pickerEnabled && !pickerProgress.complete ? 'Complete the blueprint requirements before submitting.' : 'Add a question section in Preview before submitting.'}</p>
+              {(!previewQuestionCount || !previewSections.length) && (
+                <p className="configuration-submit-hint" role="status">{!previewQuestionCount ? 'Add questions before submitting.' : 'Add a question section in Preview before submitting.'}</p>
               )}
               <div className="assessment-create-form-actions" id="assessment-configuration-actions-section">
                 <button type="button" className="is-template" onClick={saveAssessmentTemplate} hidden>
@@ -9717,17 +9817,18 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                   {setupDraft.examDeliveryMode === 'Online' && <button type="button" className="configuration-edit-action" aria-haspopup="dialog" onClick={() => openConfigurationOptions('instructions')}><FilePenLine size={14} aria-hidden="true" />{setupDraft.provideStudentInstructions === 'Yes' ? 'Edit instructions' : 'Add instructions'}</button>}
                   <button type="button" className="configuration-edit-action" id="assessment-threshold-settings-section" aria-haspopup="dialog" onClick={() => openConfigurationOptions('thresholds')}><SlidersHorizontal size={14} aria-hidden="true" />Threshold settings</button>
                 </div>
+                {requiresPublicationApproval && <span role="note">Changes to this assessment require approval.</span>}
                 <span className="assessment-create-form-actions-spacer" aria-hidden="true" />
 
-                <button type="button" className="is-primary" id="assessment-assign-information-section" disabled={!canSendAssessmentForApproval} aria-haspopup="dialog" onClick={() => openApprovalModal('Direct Publish')}>
+                <button type="button" className="is-primary" id="assessment-assign-information-section" disabled={requiresPublicationApproval || Boolean(assessmentReview) || !canSendAssessmentForApproval} aria-haspopup="dialog" onClick={() => openApprovalModal('Direct Publish')}>
                   <UsersRound size={15} aria-hidden="true" />Direct Publish
                 </button>
-                <button type="button" className="is-primary" disabled={!canSendAssessmentForApproval} aria-haspopup="dialog" onClick={() => openApprovalModal('Send to Approval')}>
+                <button type="button" className="is-primary" disabled={Boolean(assessmentReview) || !canSendAssessmentForApproval} aria-haspopup="dialog" onClick={() => openApprovalModal('Send to Approval')}>
                   <ArrowRight size={15} aria-hidden="true" />Send to Approval
                 </button>
               </div>
 
-              <aside className={`create-assessment-process-checklist ${isConfigurationChecklistOpen ? 'is-open' : 'is-collapsed'}`} aria-label="Process checklist">
+              {!isBlueprintReadOnly && <aside className={`create-assessment-process-checklist ${isConfigurationChecklistOpen ? 'is-open' : 'is-collapsed'}`} aria-label="Process checklist">
                 <button
                   type="button"
                   className="create-assessment-process-checklist-trigger"
@@ -9761,8 +9862,9 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
                     </div>
                   </div>
                 ) : null}
-              </aside>
+              </aside>}
             </div>
+            </fieldset>
           </section>
         ) : null}
 
@@ -9823,25 +9925,27 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
           type="button"
           className={`create-assessment-action-btn create-assessment-blueprint-btn ${isBlueprintEnabled ? 'is-enabled' : 'is-disabled'}`}
           onClick={(event) => {
+            if (assessmentReview) { setActiveCreateTab('blueprint'); return }
             if (event.target.closest('[data-blueprint-toggle]')) {
               requestBlueprintToggle()
               return
             }
             openBlueprintPlanner()
           }}
-          disabled={isBlueprintReadOnly}
+          disabled={assessmentReview ? !isBlueprintEnabled : isBlueprintReadOnly}
           aria-pressed={isBlueprintEnabled}
           aria-label={`${isBlueprintEnabled ? 'Open' : 'Enable'} Blueprint Planner`}
         >
           <SlidersHorizontal size={16} strokeWidth={2.2} />
           <span>Blueprint</span>
           <em className={`create-assessment-blueprint-badge ${isBlueprintEnabled ? 'is-enabled' : 'is-disabled'}`}>
-            {isBlueprintReadOnly ? 'Pending approval' : isBlueprintEnabled ? 'Enabled' : 'Disabled'}
+            {assessmentReview ? (isBlueprintEnabled ? 'Enabled' : 'Disabled') : isBlueprintReadOnly ? 'Pending approval' : isBlueprintEnabled ? 'Enabled' : 'Disabled'}
           </em>
           <span
             className="create-assessment-blueprint-switch"
             data-blueprint-toggle
             role="switch"
+            aria-disabled={reviewReadOnly || reviewBusy}
             aria-checked={isBlueprintEnabled}
             aria-label={`${isBlueprintEnabled ? 'Disable' : 'Enable'} Blueprint`}
             title={`${isBlueprintEnabled ? 'Disable' : 'Enable'} Blueprint`}
@@ -9864,7 +9968,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             setIsOptionalTagsOpen(false)
             setEditingPreviewQuestionId(null)
           }}
-          disabled={isBlueprintReadOnly}
+          disabled={Boolean(blueprintReview) || isBlueprintOnlyRework || isBlueprintReadOnly}
           aria-pressed={hasSelectedCreateTab && activeCreateTab === 'create'}
         >
           <FilePenLine size={16} strokeWidth={2.2} />
@@ -9879,7 +9983,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             setIsDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
-          disabled={isBlueprintReadOnly}
+          disabled={Boolean(blueprintReview) || isBlueprintOnlyRework || isBlueprintReadOnly}
           aria-pressed={activeCreateTab === 'questionBank'}
         >
           <Database size={16} strokeWidth={2.2} />
@@ -9902,7 +10006,7 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             setIsDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
-          disabled={isBlueprintReadOnly || !selectedAssessmentQuestionCount && !pickerEnabled}
+          disabled={Boolean(blueprintReview) || isBlueprintOnlyRework || (assessmentReview ? !selectedAssessmentQuestionCount : isBlueprintReadOnly || !selectedAssessmentQuestionCount && !pickerEnabled)}
           aria-pressed={activeCreateTab === 'preview'}
         >
           <Eye size={16} strokeWidth={2.2} />
@@ -9918,29 +10022,30 @@ export default function CreateAssessmentPage({ onNavigate, onSendToApproval, the
             setIsDescriptiveTypePickerOpen(false)
             setSelectedCreateQuestionTypeLabel('')
           }}
-          disabled={isBlueprintReadOnly || pickerEnabled && !pickerProgress.complete}
+          disabled={Boolean(blueprintReview) || isBlueprintOnlyRework || !assessmentReview && isBlueprintReadOnly}
           aria-pressed={activeCreateTab === 'configuration'}
         >
           <Settings size={16} strokeWidth={2.2} />
           <span>Configuration</span>
         </button>
-        <button
+        {!isPublishedEditMode && <button
           type="button"
           className="create-assessment-action-btn is-draft"
-          onClick={saveAssessmentDraft}
-          disabled={isBlueprintReadOnly || isSaveAssessmentDraftDisabled}
-          aria-disabled={isBlueprintReadOnly || isSaveAssessmentDraftDisabled}
+          onClick={() => saveAssessmentDraft({ moveReworkToDraft: true })}
+          disabled={isSavingDraft || Boolean(assessmentReview) || isBlueprintReadOnly || isSaveAssessmentDraftDisabled}
+          aria-disabled={Boolean(assessmentReview) || isBlueprintReadOnly || isSaveAssessmentDraftDisabled}
         >
           <Save size={16} strokeWidth={2.2} />
-          <span>Save as Draft</span>
-        </button>
-        {activeCreateTab !== 'configuration' && (<button type="button" className="create-assessment-action-btn is-primary" onClick={openApprovalModal} disabled={isBlueprintReadOnly || !canSendAssessmentForApproval}>
+          <span>{isSavingDraft ? 'Saving...' : 'Save as Draft'}</span>
+        </button>}
+        {activeCreateTab !== 'configuration' && (<button type="button" className="create-assessment-action-btn is-primary" onClick={openApprovalModal} disabled={Boolean(assessmentReview) || isBlueprintReadOnly || !canSendAssessmentForApproval}>
           <ArrowRight size={16} strokeWidth={2.2} />
           <span>{primaryPublicationActionLabel}</span>
         </button>)}
         </div>
       </aside>
       </div>
+      {reviewActions && !['create', 'questionBank'].includes(activeCreateTab) && <div className="assessment-review-decision-card qb-sort-scope" aria-label="Review decision">{reviewActions}</div>}
 
     </section>
   )
