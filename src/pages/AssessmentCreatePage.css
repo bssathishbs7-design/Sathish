@@ -56,11 +56,8 @@
   :is(.assessment-create-published-details,.assessment-create-draft-stats) em { display: flex; align-items: center; gap: var(--s-1); font: 400 12px/1.4 var(--font-family-base); color: var(--text-body); }
   :is(.assessment-create-published-details,.assessment-create-draft-stats) strong { font: 500 13px/1.5 var(--f-code); color: var(--text-strong); }
   .assessment-create-draft-stats strong { font-size: 18px; }
-  .assessment-create-draft-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-  .assessment-create-draft-chips span { padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--text-body); background: var(--surface-soft); font-size: 12px; }
   .assessment-card-settings { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--s-2); margin: 0; padding: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); }
   .assessment-card-settings > div { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); min-width: 0; padding: 0; }
-  .assessment-card-settings > div:not(:has(dd)) { grid-column: 1 / -1; padding-bottom: var(--s-2); border-bottom: 1px solid var(--border); }
   .assessment-card-settings dt { font: 500 12px/1.4 var(--font-family-base); color: var(--text-body); }
   .assessment-card-settings dd { min-width: 0; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); color: var(--text-strong); font-size: 12px; }
   .assessment-card-settings dd.is-yes { background: color-mix(in srgb,var(--activity-green) 14%,var(--surface-card)); }
@@ -113,12 +110,19 @@
   .assessment-create-draft-profile:has(.assessment-create-draft-delete) > .assessment-card-info { right: calc(var(--s-3) + 36px); }
   :is(.assessment-create-published-details,.assessment-create-draft-stats) { padding-block: var(--s-2); gap: var(--s-2); }
   :is(.assessment-create-published-details,.assessment-create-draft-stats) > span { gap: 0; }
-  .assessment-create-draft-stats strong { font-size: 16px; }
-  .assessment-card-settings > div:has(dd) { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--s-1); }
-  .assessment-card-settings > div:not(:has(dd)) { padding-bottom: var(--s-1); }
-  .assessment-card-settings > div:not(:has(dd)) br { display: none; }
-  .assessment-card-settings > div:not(:has(dd)) .mono { margin-right: var(--s-2); }
-  .assessment-card-settings dd { padding: var(--s-1); font-size: 11px; }
+  .assessment-create-draft-stats { grid-template-columns: repeat(2,minmax(0,1fr)); border: 0; padding: 0; }
+  .assessment-create-draft-stats > span { flex-direction: column; gap: var(--s-1); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); }
+  .assessment-create-draft-stats strong { font-size: 20px; font-weight: 600; }
+  .assessment-create-draft-metadata { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-3); color: var(--text-muted); font-size: 12px; }
+  .assessment-create-draft-metadata > span { display: inline-flex; align-items: center; gap: var(--s-1); }
+  .assessment-card-settings { grid-template-columns: minmax(0,1fr); gap: var(--s-1); background: var(--surface-card); }
+  .assessment-card-settings > div:has(dd) { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--s-2); }
+  .assessment-card-settings > div:has(dd) dt { white-space: nowrap; }
+  .assessment-card-settings > .assessment-card-blueprint-summary { padding-bottom: var(--s-2); margin-bottom: var(--s-1); border-bottom: 1px solid var(--border); }
+  .assessment-card-settings > .assessment-card-blueprint-summary dt { display: flex; flex-direction: column; gap: var(--s-1); }
+  .assessment-card-blueprint-summary .mono { font-size: 11px; color: var(--text-muted); }
+  .assessment-card-settings dd { box-sizing: border-box; min-width: calc(var(--s-2) * 4); padding: var(--s-1) var(--s-2); font-size: 11px; }
+  .assessment-card-settings .assessment-card-blueprint-status { max-width: 60%; line-height: 1.4; }
   .assessment-create-draft-footer { padding-top: var(--s-2); }
   :is(.assessment-create-published-head,.assessment-create-draft-profile) strong { font-size: 15px; }
   .assessment-create-draft-card:is(:hover,:focus-within) { background: linear-gradient(135deg,var(--surface-card),color-mix(in srgb,var(--mint-100) 70%,var(--surface-card))); border-color: var(--text-brand); }

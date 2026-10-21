@@ -1577,14 +1577,11 @@ export default function AssessmentCreatePage({ onNavigate }) {
                           <strong>{totalMarks}</strong>
                           <em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em>
                         </span>
-                        <span>
-                          <strong>{formatYearLabel(year)}</strong>
-                          <em><CalendarDays size={13} aria-hidden="true" /> Year</em>
-                        </span>
                       </div>
-                      <div className="assessment-create-draft-chips">
-                        <span>{academicYear}</span>
-                        <span>{course}</span>
+                      <div className="assessment-create-draft-metadata">
+                        <span><CalendarDays size={13} aria-hidden="true" />{academicYear === '-' ? 'Academic year not set' : academicYear}</span>
+                        {formatYearLabel(year) !== '-' && <span>{formatYearLabel(year)}</span>}
+                        {course !== '-' && <span>{course}</span>}
                       </div>
                       <AssessmentCardSettings assessment={draft} />
                       <div className="assessment-create-draft-footer">

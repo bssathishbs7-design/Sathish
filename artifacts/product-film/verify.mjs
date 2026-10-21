@@ -1,8 +1,0 @@
-import fs from 'node:fs';
-import {browser} from '../logbook-launch/cdp.mjs';
-const b=await browser();
-const result=await b.evaluate(`(async()=>{const v=document.createElement('video');v.muted=true;v.src='./Medsy-Product-Film-90s.mp4';await new Promise((r,j)=>{v.onloadedmetadata=r;v.onerror=()=>j(v.error.message)});window.checkVideo=v;const ac=new AudioContext();const a=await ac.decodeAudioData(await(await fetch(v.src)).arrayBuffer());let peak=0,sum=0;const data=a.getChannelData(0);for(let i=0;i<data.length;i++){peak=Math.max(peak,Math.abs(data[i]));sum+=data[i]*data[i]}await ac.close();return {duration:v.duration,width:v.videoWidth,height:v.videoHeight,audio:{channels:a.numberOfChannels,sampleRate:a.sampleRate,peak,rms:Math.sqrt(sum/data.length)}}})()`);
-if(!result.result?.value)throw Error(JSON.stringify(result));
-fs.writeFileSync('artifacts/product-film/verification.json',JSON.stringify(result.result.value,null,2));console.log(result.result.value);
-const frames=await b.evaluate(`(async()=>{const c=document.createElement('canvas');c.width=1440;c.height=1000;const x=c.getContext('2d'),v=window.checkVideo;for(const [i,t] of [4.5,15,20,26,31,38,47,52,58,64,77,88].entries()){await new Promise(r=>{v.onseeked=r;v.currentTime=t});const a=i%3*480,y=Math.floor(i/3)*250;x.drawImage(v,a,y,480,230);x.fillStyle='#08281e';x.fillRect(a,y+230,480,20);x.fillStyle='#fff';x.font='15px Arial';x.fillText(t+' seconds',a+8,y+247)}return c.toDataURL('image/png').split(',')[1]})()`);
-fs.writeFileSync('artifacts/product-film/encoded-frames.png',Buffer.from(frames.result.value,'base64'));b.close();

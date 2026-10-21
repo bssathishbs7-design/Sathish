@@ -20,7 +20,7 @@ export default function AssessmentCardSettings({ assessment }) {
     ['Auto Publish', policy.canAutoPublishCombined],
   ]
   return <dl className="assessment-card-settings" aria-label="Assessment settings">
-    {blueprintFlow && <div><dt><span className="mono">{blueprintFlow.blueprintId}</span><br />Blueprint {blueprintFlow.status === 'Not required' ? 'saved' : blueprintFlow.status.toLowerCase()}</dt></div>}
+    {blueprintFlow && <div className="assessment-card-blueprint-summary"><dt><span>Blueprint</span><span className="mono">{blueprintFlow.blueprintId}</span></dt><dd className={`assessment-card-blueprint-status ${blueprintFlow.status === 'Approved' ? 'is-yes' : 'is-no'}`}>{blueprintFlow.status === 'Not required' ? 'Saved' : blueprintFlow.status === 'Pending Approval' ? 'Awaiting approval' : blueprintFlow.status}</dd></div>}
     {settings.map(([label, enabled]) => <div key={label}><dt>{label}</dt><dd className={enabled ? 'is-yes' : 'is-no'}>{enabled ? 'Yes' : 'No'}</dd></div>)}
   </dl>
 }
