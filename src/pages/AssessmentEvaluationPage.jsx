@@ -22,6 +22,7 @@ import './AssessmentEvaluationThinking.css'
 import './AssessmentSingleStudentResult.css'
 import './AssessmentQuestionReview.css'
 import './StudentEvaluationTheme.css'
+import './AssessmentMcqAnswerReview.css'
 import './EvaluationTableTheme.css'
 import './EvaluationThresholdTheme.css'
 
@@ -1827,12 +1828,12 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
         {options.map((option, optionIndex) => {
           const optionLabel = String.fromCharCode(65 + optionIndex)
           const isSelected = optionIndex === selectedIndex
+          const isCorrect = correctIndexes.includes(optionIndex)
           const isWrongSelection = isSelected && correctIndexes.length > 0 && !correctIndexes.includes(optionIndex)
           return (
-            <span key={option?.id || `${optionLabel}-${optionIndex}`} className={isSelected ? `is-student-selected${isWrongSelection ? ' is-selected-wrong' : ''}` : undefined}>
+            <span key={option?.id || `${optionLabel}-${optionIndex}`} className={[isSelected && 'is-student-selected', isWrongSelection && 'is-selected-wrong', isCorrect && 'is-correct-answer'].filter(Boolean).join(' ')}>
               <b>{optionLabel}</b>
-              <span>{getOptionText(option, `Option ${optionLabel}`)}</span>
-              {isSelected && <span className="evaluation-selection-icon" role="img" aria-label={isWrongSelection ? 'Student selected: incorrect' : 'Student selected'} title={isWrongSelection ? 'Student selected: incorrect' : 'Student selected'}>{isWrongSelection ? <X size={14} aria-hidden="true" /> : <Check size={14} aria-hidden="true" />}</span>}
+              <span className="assessment-option-review-copy">{getOptionText(option, `Option ${optionLabel}`)}{(isSelected || isCorrect) && <small className="assessment-option-review-label" aria-label={isSelected ? isCorrect ? 'Student selected the correct answer' : 'Student selected this answer' : undefined}>{isCorrect ? <Check size={13} aria-hidden="true" /> : isWrongSelection ? <X size={13} aria-hidden="true" /> : null}{isCorrect ? 'Correct answer' : null}</small>}</span>
             </span>
           )
         })}

@@ -20,11 +20,9 @@
   .assessment-create-page-shell { display: grid; grid-template-rows: none; gap: var(--s-4); width: 100%; height: auto; min-height: 0; max-height: none; overflow: visible; padding: 0; }
   .assessment-create-tabbar { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; overflow: visible; }
   .assessment-create-tabbar + .assessment-create-draft-shell { margin-top: 0; }
-  .assessment-create-tabs { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: var(--s-2); width: 100%; margin: 0; padding: 0; }
+  .assessment-create-tabs { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: var(--s-2); width: 100%; margin: 0; padding: 0; }
   .assessment-create-tab { --tab-accent: var(--activity-blue); display: flex; align-items: center; gap: var(--s-2); min-width: 0; min-height: 72px; padding: var(--s-3); border: 1px solid var(--activity-line); border-radius: var(--r); background: var(--activity-card-fill); color: var(--text-body); text-align: left; box-shadow: var(--activity-shadow); }
-  .assessment-create-tab.is-pending { --tab-accent: var(--activity-amber); }
-  .assessment-create-tab.is-approved { --tab-accent: var(--activity-green); }
-  .assessment-create-tab.is-rejected { --tab-accent: var(--coral); }
+  .assessment-create-tab.is-approval-queue { --tab-accent: var(--activity-amber); }
   .assessment-create-tab.is-published { --tab-accent: var(--activity-chart); }
   .assessment-create-tab.is-evaluation { --tab-accent: var(--activity-violet); }
   .assessment-create-tab.is-results { --tab-accent: var(--mint); }

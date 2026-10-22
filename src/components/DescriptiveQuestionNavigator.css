@@ -1,0 +1,56 @@
+.descriptive-question-navigator { display:grid; gap:var(--s-3); }
+.descriptive-view-switch { display:flex; gap:var(--s-2); }
+.descriptive-question-navigator button { border:1px solid var(--border); background:var(--surface-card); color:var(--text-body); border-radius:var(--r-pill); cursor:pointer; font:600 .75rem/1.4 var(--f-body); transition:background var(--dur-hover) var(--ease-standard); }
+.descriptive-view-switch button { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:var(--s-1); padding:var(--s-2); white-space:nowrap; }
+.descriptive-view-switch button svg { flex-shrink:0; }
+.descriptive-question-navigator button[aria-pressed="true"] { background:var(--forest); color:var(--on-brand); }
+.descriptive-question-map summary { cursor:pointer; color:var(--text-strong); font-size:.8125rem; font-weight:600; padding-bottom:var(--s-2); }
+.descriptive-nav-progress { float:right; color:var(--text-muted); font-size:var(--fs-micro); font-weight:400; }
+.practice-exam-theme.practice-exam-theme .descriptive-question-buttons button { width:32px; min-height:32px; padding:0; border-radius:var(--r-sm); font-family:var(--f-code); }
+.descriptive-question-navigator button:hover:not(:disabled) { border-color:var(--text-brand); }
+.descriptive-question-navigator button:active:not(:disabled) { transform:translateY(1px) scale(.97); transition:none; }
+.descriptive-question-navigator button:focus-visible,.descriptive-question-map summary:focus-visible { outline:2px solid var(--text-brand); outline-offset:var(--s-1); }
+.descriptive-question-navigator button:disabled { opacity:.6; cursor:not-allowed; }
+.online-practice-descriptive-section[hidden],.online-practice-descriptive-paper-question[hidden] { display:none !important; }
+.descriptive-question-pager { display:flex; align-items:center; justify-content:space-between; gap:var(--s-2); margin-block:var(--s-3); }
+.descriptive-question-pager span { font-size:.75rem; color:var(--text-muted); }
+.descriptive-question-pager button { padding:var(--s-2) var(--s-3); }
+@media(prefers-reduced-motion:reduce) { .descriptive-question-navigator button { transition:none; } }
+.online-practice-descriptive-paper-question { scroll-margin-top:calc(var(--s-9) + var(--s-5)); }
+@media(max-width:767px) {
+  .online-practice-exam-layout:has(.descriptive-question-navigator) { display:flex; flex-direction:column; }
+  .online-practice-exam-layout:has(.descriptive-question-navigator) > .online-practice-side-nav { order:-1; width:100%; }
+}
+/* Keep view selection distinct from hover, without lifting or resizing the pills. */
+.practice-exam-theme.practice-exam-theme .descriptive-view-switch button {
+  border-color:var(--border); background:var(--surface-card); color:var(--text-body);
+  box-shadow:none;
+  transition:background-color var(--dur-hover) var(--ease-standard), border-color var(--dur-hover) var(--ease-standard), color var(--dur-hover) var(--ease-standard);
+}
+.practice-exam-theme.practice-exam-theme .descriptive-view-switch button[aria-pressed="true"] {
+  background:var(--forest); border-color:var(--forest); color:var(--on-brand);
+}
+.practice-exam-theme.practice-exam-theme .descriptive-view-switch button:hover:not(:disabled) {
+  background:var(--surface-soft); border-color:var(--text-brand); color:var(--text-strong); transform:none; box-shadow:none;
+}
+.practice-exam-theme.practice-exam-theme .descriptive-view-switch button[aria-pressed="true"]:hover:not(:disabled) {
+  background:var(--forest-700); border-color:var(--forest-700); color:var(--on-brand);
+}
+.practice-exam-theme.practice-exam-theme .descriptive-view-switch button:active:not(:disabled) { transform:translateY(1px) scale(.97); transition:none; }
+.practice-exam-theme.practice-exam-theme .descriptive-view-switch button:focus-visible { outline:2px solid var(--text-brand); outline-offset:var(--s-1); box-shadow:0 0 0 5px var(--mint-200); }
+@media(prefers-reduced-motion:reduce) { .practice-exam-theme.practice-exam-theme .descriptive-view-switch button { transition:none; } }
+
+.practice-exam-theme.practice-exam-theme .descriptive-question-buttons button:focus-visible { outline:2px solid var(--text-brand); outline-offset:var(--s-1); }
+
+.descriptive-section-scroll { max-height:320px; overflow-y:auto; overscroll-behavior:contain; padding:var(--s-1); }
+.descriptive-nav-section { border-bottom:1px solid var(--border); padding-block:var(--s-2); }
+.descriptive-question-map .descriptive-nav-section summary { display:flex; align-items:center; gap:var(--s-2); padding:var(--s-1) 0; font-size:.75rem; font-weight:500; }
+.descriptive-nav-section summary > svg { flex-shrink:0; }
+.descriptive-nav-section[open] summary > svg { transform:rotate(90deg); }
+.descriptive-nav-section summary span { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.descriptive-nav-section summary small { font-family:var(--f-code); color:var(--text-muted); font-size:var(--fs-micro); }
+.practice-exam-theme.practice-exam-theme .descriptive-question-buttons { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--s-2); padding-block:var(--s-2); }
+.practice-exam-theme.practice-exam-theme .descriptive-question-buttons button { width:100%; min-height:36px; border-radius:var(--r-sm); }
+.practice-exam-theme.practice-exam-theme .descriptive-question-buttons button[aria-current] { outline:2px solid var(--text-brand); outline-offset:2px; font-weight:700; }
+.descriptive-question-map .online-practice-question-status-legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s-2); margin-top:var(--s-3); }
+.descriptive-question-pager { flex-wrap:wrap; }

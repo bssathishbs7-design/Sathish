@@ -1,0 +1,12 @@
+.create-assessment-blueprint-panel .blueprint-quick-guide { padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-body); font-size: var(--fs-micro, 11px); }
+.create-assessment-blueprint-panel .blueprint-quick-guide h4 { margin: 0 0 var(--s-2); color: var(--text-brand); font-size: var(--fs-micro, 11px); font-weight: 700; }
+.create-assessment-blueprint-panel .blueprint-quick-guide-laq { padding: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); }
+.create-assessment-blueprint-panel .blueprint-quick-guide-laq strong, .create-assessment-blueprint-panel .blueprint-quick-guide-label { color: var(--text-strong); }
+.create-assessment-blueprint-panel .blueprint-quick-guide-laq p { margin: var(--s-1) 0 0; font-size: inherit; line-height: 1.4; }
+.create-assessment-blueprint-panel .blueprint-quick-guide-label { display: block; margin-block: var(--s-2); }
+.create-assessment-blueprint-panel .blueprint-quick-guide ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+.create-assessment-blueprint-panel .blueprint-quick-guide li { font-size: var(--fs-micro, 11px); line-height: 1.4; display: flex; align-items: center; gap: var(--s-1); min-width: 0; padding: var(--s-1); background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--s-1); }
+.create-assessment-blueprint-panel .blueprint-quick-guide li span { font-size: inherit; display: grid; place-items: center; flex-shrink: 0; width: var(--s-4); height: var(--s-4); border-radius: var(--s-1); color: var(--text-strong); background: var(--sky); font-weight: 700; }
+.create-assessment-blueprint-panel .blueprint-quick-guide .is-R { background: var(--peach); }
+.create-assessment-blueprint-panel .blueprint-quick-guide .is-C { background: var(--lilac); }
+.create-assessment-blueprint-panel .blueprint-quick-guide .is-A { background: var(--mint); }

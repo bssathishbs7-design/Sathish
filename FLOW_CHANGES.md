@@ -973,3 +973,23 @@
 
 ### 2026-10-22 ? Shared mock evaluation roster
 - The evaluation table and automatic evaluator now resolve the same roster, including the local sample roster when no explicit assignment is stored. Persist the resolved roster with evaluated results so present students cannot remain display-only rows.
+### 2026-10-22 — Review published results from Evaluation
+- Keep published-result assessments visible in both Evaluation and Results using one stored record. Evaluation shows Results published and Review evaluation, preserving publication when opening corrections.
+- Existing mark correction history and result reconciliation remain shared with the Results view.
+### 2026-10-22 — Combined Approval Queue
+- Replace Pending, Approved and Rejected tracker tabs with Approval Queue, showing a unique combined count and per-card status.
+- Add All/Pending/Approved/Rejected filtering; preserve existing actions and redirect legacy stage entry points to the queue.
+### 2026-10-22 — Compact practice descriptive question navigation
+- Default to one descriptive question with all its subquestions. Offer View all questions and section-grouped numbered navigation with answer progress.
+- Previous/Next navigate across sections; mounted editors retain answers when changing view. Mobile navigation appears above the questions and can collapse.
+### 2026-10-22 — Expandable descriptive question groups
+- Show five numbered questions per row in expandable sections, with a scrollable navigator.
+- Persist Viewed and Try Later flags per question, retain MCQ-style status colours, and add Try Later/Clear Try Later alongside descriptive navigation.
+### 2026-10-22 — Shared practice/proctored exam presentation
+- Apply the practice design system to the proctored workspace and reuse the section-based descriptive question navigator.
+- Add single/all views, question grids, Previous/Next, and persisted Viewed/Try Later statuses to proctored descriptive questions. New actions respect exam locks; fullscreen, violations, sequence timers and submission remain controlled by the proctored page.
+
+### 2026-10-22 - Local assessment handoff fixtures
+- Seed connected faculty and student assessment examples once before app mount in development; preserve existing user records and edits.
+- Add local demo shortcuts and an explicit demo-only refresh for current schedules. Persist demo approval rows across browser sessions.
+- Retire the destructive automatic tracker reset. Exam controls use the assigned assessment roster when available.

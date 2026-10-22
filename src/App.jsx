@@ -1,3 +1,4 @@
+import { persistAssessmentDemoQueue } from './services/assessmentDemoSession'
 import { commitAssessmentApprovalSubmission } from './services/assessmentApprovalSubmission'
 import AssessmentPublishedConfirmation from './components/AssessmentPublishedConfirmation'
 import {buildApprovedPublication, commitApprovedPublication} from './services/assessmentApprovalPublication'
@@ -630,6 +631,7 @@ function App() {
 
   useEffect(() => {
     storeRows(APPROVAL_QUEUE_STORAGE_KEY, approvalQueueRows)
+    persistAssessmentDemoQueue(approvalQueueRows)
   }, [approvalQueueRows])
 
   useEffect(() => {

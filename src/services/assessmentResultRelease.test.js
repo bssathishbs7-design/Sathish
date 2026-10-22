@@ -150,3 +150,15 @@ test('ended assessments evaluate the shared fallback roster shown by the table',
  }
  assert.equal(saved.studentResults.MV1256,undefined)
 })
+test('published results update corrected marks without creating another record', () => {
+ const row = {...assessment,students:[{id:'one',attendance:'P'}]}
+ const store = storage({'vx-assessment-published':JSON.stringify([row]),'vx-online-practice-exam-attempts':JSON.stringify({exam:{one:attempt}})})
+ reconcileAssessmentResults(store,start+200000)
+ store.setItem(automatedEvaluationKey(row,'one',attempt),JSON.stringify({q1:{status:'wrong',marks:0,manualOverride:true}}))
+ reconcileAssessmentResults(store,start+210000)
+ const rows=JSON.parse(store.getItem('vx-assessment-published'))
+ assert.equal(rows.length,1)
+ assert.equal(rows[0].studentResults.one.marks,0)
+ assert.equal(rows[0].studentResults.one.status,'published')
+ assert.equal(rows[0].resultStatus,'Published')
+})

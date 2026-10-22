@@ -1,0 +1,11 @@
+/* Shared answer feedback in faculty evaluation and student results. */
+.assessment-evaluation-workspace.assessment-evaluation-workspace.assessment-evaluation-workspace.assessment-evaluation-workspace .assessment-mcq-options > .is-correct-answer {
+  border-color:var(--text-brand); background:color-mix(in srgb,var(--forest) 10%,var(--surface-card)); color:var(--text-brand);
+}
+.assessment-evaluation-workspace.assessment-evaluation-workspace.assessment-evaluation-workspace.assessment-evaluation-workspace .assessment-mcq-options > .is-selected-wrong {
+  border-color:var(--danger-ink); background:var(--danger-soft); color:var(--danger-ink);
+}
+.assessment-evaluation-workspace .assessment-option-review-copy { min-width:0; flex:1; }
+.assessment-evaluation-workspace .assessment-option-review-label { display:flex; align-items:center; gap:var(--s-1); margin-top:var(--s-1); font-size:var(--fs-micro); font-weight:600; color:inherit; }
+.assessment-evaluation-workspace .assessment-option-review-label svg { flex-shrink:0; }
+.assessment-evaluation-workspace.assessment-evaluation-workspace.assessment-evaluation-workspace.assessment-evaluation-workspace .assessment-mcq-options > :is(.is-correct-answer,.is-selected-wrong) > b { background:transparent; color:inherit; }

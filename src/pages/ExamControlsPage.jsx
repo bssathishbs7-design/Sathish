@@ -427,7 +427,8 @@ function ExamControlsPage({ onNavigate }) {
     ? ['descriptive', 'mcq']
     : ['mcq', 'descriptive']
 
-  const students = useMemo(() => CONTROL_STUDENTS.map((student) => {
+  const assignedStudents = assessment?.students?.length ? assessment.students : CONTROL_STUDENTS
+  const students = useMemo(() => assignedStudents.map((student) => {
     const state = controlState[student.id] || {}
     const storedExtension = studentTimeExtensions?.[assessmentId]?.[student.id] || {}
     const storedSectionExtensions = storedExtension.sectionExtensions || {}
@@ -506,11 +507,11 @@ function ExamControlsPage({ onNavigate }) {
       overallStatus,
       logs: state.logs || buildDefaultLogs(student, assessment, schedule),
     }
-  }), [assessment, assessmentId, controlState, now, schedule, studentSessions, studentTimeExtensions, submissionStatuses])
+  }), [assessment, assignedStudents, assessmentId, controlState, now, schedule, studentSessions, studentTimeExtensions, submissionStatuses])
 
   const classResetTargets = useMemo(() => {
     const seen = new Map()
-    CONTROL_STUDENTS.forEach((student) => {
+    assignedStudents.forEach((student) => {
       if (!student?.id) return
       seen.set(student.id, {
         id: student.id,
@@ -540,7 +541,7 @@ function ExamControlsPage({ onNavigate }) {
     })
 
     return Array.from(seen.values())
-  }, [assessmentId, controlState, studentSessions, submissionStatuses])
+  }, [assignedStudents, assessmentId, controlState, studentSessions, submissionStatuses])
 
   const isStudentViolationActive = (student) => (
     isProctored

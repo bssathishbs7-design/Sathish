@@ -1,0 +1,13 @@
+.assessment-demo-launcher { position:fixed; bottom:var(--s-2); left:var(--s-2); z-index:100; display:inline-flex; align-items:center; gap:var(--s-1); padding:var(--s-2) var(--s-3); border:1px solid var(--border); border-radius:var(--r-pill); background:var(--surface-card); color:var(--text-strong); box-shadow:var(--shadow-sm); font-size:.75rem; cursor:pointer; }
+.assessment-demo-dialog .assessment-demo-links { display:flex; flex-wrap:wrap; gap:var(--s-2); margin-block:var(--s-3); }
+.assessment-demo-links :is(a,button),.assessment-demo-refresh { display:inline-flex; align-items:center; gap:var(--s-2); border:1px solid var(--border); border-radius:var(--r-pill); padding:var(--s-2) var(--s-3); background:var(--surface-soft); color:var(--text-brand); text-decoration:none; font-size:.8125rem; cursor:pointer; }
+.assessment-demo-select { display:grid; gap:var(--s-2); font-size:.8125rem; }
+.assessment-demo-select select { width:100%; min-width:0; padding:var(--s-2); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); color:var(--text-body); }
+.assessment-demo-dialog .assessment-demo-help { font-size:.8125rem; color:var(--text-muted); }
+.assessment-demo-links button:disabled,.assessment-demo-refresh:disabled { opacity:.5; cursor:not-allowed; }
+.assessment-demo-links :is(a,button):hover:not(:disabled),.assessment-demo-launcher:hover,.assessment-demo-refresh:hover:not(:disabled) { background:var(--surface-mist); border-color:var(--text-brand); }
+.assessment-demo-links :is(a,button):active:not(:disabled),.assessment-demo-launcher:active,.assessment-demo-refresh:active:not(:disabled) { transform:translateY(1px) scale(.97); }
+.assessment-demo-links :is(a,button):focus-visible,.assessment-demo-launcher:focus-visible,.assessment-demo-refresh:focus-visible,.assessment-demo-select select:focus-visible { outline:2px solid var(--text-brand); outline-offset:var(--s-1); }
+
+/* Also hide during client-side exam navigation without remounting the app root. */
+body:has(.online-practice-exam-page) .assessment-demo-launcher { display:none; }

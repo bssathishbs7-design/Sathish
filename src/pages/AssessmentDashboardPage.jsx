@@ -1,5 +1,4 @@
 import AssessmentResultCountdownButton from '../components/AssessmentResultCountdownButton'
-import AssessmentResultStatus from '../components/AssessmentResultStatus'
 import { getStudentReleasedResult } from '../services/assessmentResultRelease'
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -761,7 +760,6 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
                         <span><strong>{assessment.totalMarks ?? '-'}</strong><em>Total Marks</em></span>
                         <span><strong>{assessment.examType || '-'}</strong><em>Exam Type</em></span>
                       </div>
-                      {!studentResult?.autoPublish && studentResult?.status !== 'published' && <AssessmentResultStatus result={studentResult} />}
                       <div className="assessment-create-draft-footer assessment-create-published-footer">
                         <span className="my-assessment-card-top-status">
                           {cardStatus ? (

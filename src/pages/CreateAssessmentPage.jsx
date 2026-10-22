@@ -1,3 +1,4 @@
+import BlueprintQuickGuide from '../components/BlueprintQuickGuide'
 import { getAssessmentPublicationMethod } from '../services/assessmentPublicationMethod'
 import AssessmentPublishedConfirmation from '../components/AssessmentPublishedConfirmation'
 import { DEFAULT_ATTAINMENT_LEVELS, DEFAULT_BLOOMS_THRESHOLDS, DEFAULT_THINKING_THRESHOLDS } from '../services/assessmentConfigurationStatus'
@@ -8015,10 +8016,13 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         </div>
                       </div>
                     </div>
+                      <aside className="blueprint-allocation-sidebar" aria-label="Allocation guide and unallocated questions">
+                      <BlueprintQuickGuide />
                       <BlueprintRemainingQuestions units={blueprintUnallocatedUnits} onAdd={addBlueprintUnit} disabled={isBlueprintReadOnly || isBlueprintPlannerSaved && !isBlueprintPlannerEditing} items={blueprintTestSpecificationColumns.map(column => ({
                         key: column.key, group: column.group, label: column.label,
                         remaining: Math.max(0, (blueprintTestSpecificationQuestionCounts[column.key] || 0) - getBlueprintTestSpecificationColumnCountTotal(column.key)),
                       }))} />
+                      </aside>
                       {!isBlueprintReadOnly && blueprintActiveField && blueprintActiveRow && blueprintActiveColumn && !(isBlueprintPlannerSaved && !isBlueprintPlannerEditing) ? <BlueprintFieldSuggestions
                         anchor={blueprintActiveField.anchor}
                         heading={blueprintActiveRow.code + ' ' + blueprintActiveColumn.group + ' ' + blueprintActiveColumn.label}

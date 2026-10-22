@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from 'react'
 import { reserveAssessmentIdentity } from '../services/assessmentIdentity'
 import { resetAssessmentTrackerOnce } from '../services/assessmentTrackerReset'
 import { createPortal } from 'react-dom'
-import { ArrowRight, CalendarDays, ChevronDown, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, EyeOff, FileWarning, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, ChevronDown, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, EyeOff, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -32,22 +32,10 @@ const assessmentMetrics = [
     tone: 'draft',
   },
   {
-    label: 'Pending Approval',
+    label: 'Approval Queue',
     count: 0,
     icon: Clock3,
-    tone: 'pending',
-  },
-  {
-    label: 'Approved Assessment',
-    count: 0,
-    icon: BadgeCheck,
-    tone: 'approved',
-  },
-  {
-    label: 'Approval Rejected',
-    count: 0,
-    icon: FileWarning,
-    tone: 'rejected',
+    tone: 'approval-queue',
   },
   {
     label: 'Published Assessment',
@@ -1090,15 +1078,18 @@ const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
   return { type: 'upcoming', startsInMs: diffMs, label: `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} to go` }
 }
 
-// Each assessment appears in exactly one tab for its current workflow stage.
+// Published results remain available in Evaluation for corrections using the same record.
+const hasPublishedResults = assessment => [assessment?.resultStatus, assessment?.evaluationStatus]
+  .some(status => String(status || '').toLowerCase() === 'published')
 const splitPublishedAssessmentRows = (rows = [], now = new Date()) => {
   const published = []
   const evaluation = []
   const results = []
 
   rows.forEach((assessment) => {
-    if (String(assessment?.resultStatus || '').toLowerCase() === 'published' || String(assessment?.evaluationStatus || '').toLowerCase() === 'published') {
+    if (hasPublishedResults(assessment)) {
       results.push(assessment)
+      evaluation.push(assessment)
     } else if (getPublishedAssessmentScheduleStatus(assessment, now)?.type === 'completed') {
       evaluation.push(assessment)
     } else {
@@ -1203,7 +1194,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
     const drafts = readAssessmentDrafts()
     if (requestedTab === 'evaluation') return 'evaluation'
     if (requestedTab === 'draft') return 'draft'
-    if (requestedTab === 'pending') return 'pending'
+    if (['pending', 'approved', 'rejected', 'approval-queue'].includes(requestedTab)) return 'approval-queue'
     if (requestedTab === 'results') return 'results'
     if (requestedTab === 'published') return 'published'
     return rows.length ? 'published' : drafts.length ? 'draft' : 'published'
@@ -1212,7 +1203,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
   const approvalAssessments = (() => {
     try {
       const queue = approvalQueueRows
-      return queue.filter(record => record.reworkStatus !== 'Draft' && record.setup?.assessmentId && !publishedAssessments.some(item => item.id === record.setup.assessmentId)
+      return queue.filter((record, index) => queue.findIndex(other => other.setup?.assessmentId === record.setup?.assessmentId && other.activityType === record.activityType) === index).filter(record => record.reworkStatus !== 'Draft' && record.setup?.assessmentId && !publishedAssessments.some(item => item.id === record.setup.assessmentId)
         && (record.activityType !== 'Blueprint' || (readBlueprintWorkflow(record.setup.assessmentId)?.status !== 'Revision required'
           && !queue.some(other => other.activityType === 'Assessment' && other.setup?.assessmentId === record.setup.assessmentId))))
     } catch { return [] }
@@ -1220,7 +1211,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
   const isPendingAssessment = record => record.activityType === 'Assessment' && record.approvalStatus === 'Pending Approval'
   const visibleDraftAssessments = draftAssessments.filter(draft => !approvalAssessments.some(record => record.setup.assessmentId === (draft.setup?.assessmentId || draft.id)))
   const approvalStage = record => record.approvalStatus === 'Approved' ? 'approved' : /reject/i.test(record.approvalStatus || '') ? 'rejected' : 'pending'
-  const activeApprovalAssessments = approvalAssessments.filter(record => approvalStage(record) === activeAssessmentTab && [record.assessmentName, record.activityName, assessmentDisplayId(record)].join(' ').toLowerCase().includes(publishedSearchValue.trim().toLowerCase()))
+  const activeApprovalAssessments = approvalAssessments.filter(record => (publishedFilters.status === 'all' || approvalStage(record) === publishedFilters.status) && [record.assessmentName, record.activityName, assessmentDisplayId(record)].join(' ').toLowerCase().includes(publishedSearchValue.trim().toLowerCase()))
   const metrics = assessmentMetrics.map((metric) => (
     metric.tone === 'draft'
       ? { ...metric, count: visibleDraftAssessments.length }
@@ -1230,17 +1221,15 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
           ? { ...metric, count: evaluationAssessments.length }
           : metric.tone === 'results'
             ? { ...metric, count: resultAssessments.length }
-          : { ...metric, count: approvalAssessments.filter(record => approvalStage(record) === metric.tone).length }
+          : { ...metric, count: approvalAssessments.length }
   ))
   const assessmentTabItems = metrics.map((metric) => ({
       key: metric.tone,
-      label: metric.tone === 'pending'
-        ? 'Pending'
-        : metric.label.replace(' Assessment', '').replace('Approval ', ''),
+      label: metric.tone === 'approval-queue' ? 'Approval Queue' : metric.label.replace(' Assessment', ''),
       count: metric.count,
       icon: metric.icon,
     }))
-  const totalAssessmentCount = metrics.reduce((total, metric) => total + metric.count, 0)
+  const totalAssessmentCount = visibleDraftAssessments.length + approvalAssessments.length + publishedAssessments.length
   const shouldShowDraftAssessments = activeAssessmentTab === 'draft'
   const shouldShowPublishedAssessments = activeAssessmentTab === 'published'
   const shouldShowEvaluationAssessments = activeAssessmentTab === 'evaluation'
@@ -1306,6 +1295,8 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
 
   const handleAssessmentTabChange = (tabKey) => {
     setActiveAssessmentTab(tabKey)
+    setPublishedFilters(PUBLISHED_FILTER_DEFAULTS)
+    setIsPublishedFilterOpen(false)
   }
 
   const renderAssessmentSearchToolbar = () => (
@@ -1332,7 +1323,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
         </button>
         {isPublishedFilterOpen ? (
           <span className="assessment-create-published-filter-popover" role="dialog" aria-label="Assessment filters">
-            {PUBLISHED_FILTER_GROUPS.map((group) => (
+            {(activeAssessmentTab === 'approval-queue' ? [{ key: 'status', label: 'Status', options: [{value:'all',label:'All'}, {value:'pending',label:'Pending'}, {value:'approved',label:'Approved'}, {value:'rejected',label:'Rejected'}] }] : PUBLISHED_FILTER_GROUPS).map((group) => (
               <label key={group.key}>
                 <span>{group.label}</span>
                 <span className="assessment-filter-select">
@@ -1599,7 +1590,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
   const startAssessmentEvaluation = (assessment) => {
     const nextAssessment = {
       ...assessment,
-      evaluationStatus: 'In Progress',
+      evaluationStatus: hasPublishedResults(assessment) ? assessment.evaluationStatus : 'In Progress',
       evaluationStartedAt: assessment.evaluationStartedAt ?? new Date().toISOString(),
     }
 
@@ -1629,7 +1620,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
           <div className="my-skills-overview-main">
             <span className="ospe-kicker">Assessment management</span>
             <div className="my-skills-overview-copy"><h1>Assessments</h1><p>Plan assessments, follow approvals, and manage evaluation and results.</p></div>
-            <div className="my-skills-overview-inline"><span><strong>{totalAssessmentCount}</strong> Assessments</span><span><strong>{metrics.find(item => item.tone === 'pending')?.count || 0}</strong> Awaiting Approval</span></div>
+            <div className="my-skills-overview-inline"><span><strong>{totalAssessmentCount}</strong> Assessments</span><span><strong>{approvalAssessments.filter(record => approvalStage(record) === 'pending').length}</strong> Awaiting Approval</span></div>
           </div>
           <div className="my-skills-live-card lb-create-card">
             <div className="my-skills-live-card-top"><span className="my-skills-live-indicator"><ClipboardCheck size={15} aria-hidden="true" /> Assessment workspace</span></div>
@@ -1851,16 +1842,17 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
 
                     const publishedQuestionRows = getPublishedQuestionRows(assessment)
 
-                    const evaluationStatus = assessment.evaluationStatus === 'In Progress' ? 'In Progress' : 'Yet to Start'
+                    const resultsPublished = hasPublishedResults(assessment)
+                    const evaluationStatus = resultsPublished ? 'Results published' : assessment.evaluationStatus === 'In Progress' ? 'In Progress' : 'Yet to Start'
 
                     return (
                       <AssessmentTrackerCard key={assessment.id} 
-                        identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(assessment)}<AssessmentPublicationBadge assessment={assessment} /></div>
-<div className="assessment-card-current-status"><span className="assessment-create-published-footer-status assessment-create-evaluation-statuses">
-                            <span className={`assessment-create-published-schedule-badge ${evaluationStatus === 'In Progress' ? 'is-in-progress' : 'is-yet-to-start'}`}>
+                        identity={<><div className="assessment-draft-top-badges">{resultsPublished && <span className="assessment-create-published-schedule-badge is-published">Results published</span>}{renderAssessmentModeBadges(assessment)}</div>
+{!resultsPublished && <div className="assessment-card-current-status"><span className="assessment-create-published-footer-status assessment-create-evaluation-statuses">
+                            <span className={`assessment-create-published-schedule-badge ${resultsPublished ? 'is-published' : evaluationStatus === 'In Progress' ? 'is-in-progress' : 'is-yet-to-start'}`}>
                               {evaluationStatus}
                             </span>
-                          </span></div>
+                          </span></div>}
                         <div className="assessment-create-published-head">
                           <div>
                             {renderAssessmentIdentity(assessment, assessment.assessmentName || 'Untitled Assessment')}
@@ -1904,7 +1896,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                         timestamp={renderAssessmentTimestamp(assessment, activeAssessmentTab)}
                         actions={<><button type="button" className="assessment-create-exam-controls-btn is-start-evaluation" onClick={() => startAssessmentEvaluation(assessment)}>
                             <ClipboardCheck size={12} strokeWidth={2.4} />
-                            {evaluationStatus === 'In Progress' ? 'Continue evaluation' : 'Start evaluation'}
+                            {resultsPublished ? 'Review evaluation' : evaluationStatus === 'In Progress' ? 'Continue evaluation' : 'Start evaluation'}
                           </button></>}
                       />
                     )
@@ -1939,12 +1931,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
 
                     return (
                       <AssessmentTrackerCard key={assessment.id} 
-                        identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(assessment)}<AssessmentPublicationBadge assessment={assessment} /></div>
-<div className="assessment-card-current-status"><span className="assessment-create-published-footer-status">
-                            <span className="assessment-create-published-schedule-badge is-published">
-                              Published
-                            </span>
-                          </span></div>
+                        identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(assessment)}</div>
                         <div className="assessment-create-published-head">
                           <div>
                             {renderAssessmentIdentity(assessment, assessment.assessmentName || 'Untitled Assessment')}
@@ -1970,7 +1957,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                         </span></>}
                         summary={<>{renderAssessmentSummary(assessment)}
 {renderConfiguredSchedule(assessment)}
-                        <AssessmentResultStatus results={assessment.studentResults} /></>}
+                        </>}
                         settings={<><CopyIdBadge value={assessmentDisplayId(assessment)} /><AssessmentCardSettings assessment={assessment} /></>}
                         timestamp={renderAssessmentTimestamp(assessment, activeAssessmentTab)}
                         actions={<><button type="button" className="assessment-create-exam-controls-btn is-results" onClick={() => viewPublishedAssessmentResult(assessment)}>
@@ -1997,21 +1984,21 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
         {activeEmptyTab ? (
           <section className="assessment-create-draft-shell" aria-label={`${activeEmptyTab.label} assessments`}>
             <div className="assessment-create-card-heading">
-              <h2>{activeEmptyTab.key === 'evaluation' ? 'Evaluation' : `${activeEmptyTab.label} Assessment`}</h2>
+              <h2>{activeEmptyTab.label}</h2>
               {renderAssessmentSearchToolbar()}
             </div>
             {activeApprovalAssessments.length ? <div className="assessment-create-draft-grid">
               {activeApprovalAssessments.map(record => <AssessmentTrackerCard expired={isPendingAssessmentExpired(record, scheduleNow)} key={record.activityId || record.setup.assessmentId} 
-                        identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(record)}</div>
+                        identity={<><div className="assessment-draft-top-badges"><span className={`assessment-create-published-schedule-badge approval-queue-status is-${approvalStage(record)}`}>{approvalStage(record) === 'approved' ? 'Approved' : approvalStage(record) === 'rejected' ? 'Rejected' : 'Pending approval'}</span>{renderAssessmentModeBadges(record)}</div>
                 <div className="assessment-create-draft-profile"><div>{renderAssessmentIdentity(record, record.assessmentName || record.activityName || record.setup.assessmentName || 'Untitled Assessment')}</div>
                   <button type="button" className="assessment-card-info" onClick={() => setSelectedPublishedLogAssessment(record)} aria-label="View assessment history"><Info size={15} /></button>
                 </div></>}
                         summary={<><div className="assessment-create-draft-stats"><span><strong>{record.questionCount ?? record.questionRows?.length ?? 0}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em></span><span><strong>{record.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span></div>{renderConfiguredSchedule(record, undefined, undefined, scheduleNow)}</>}
                         settings={<><CopyIdBadge value={assessmentDisplayId(record)} /><AssessmentCardSettings assessment={record} /></>}
-                        timestamp={renderAssessmentTimestamp(record, activeAssessmentTab)}
+                        timestamp={renderAssessmentTimestamp(record, approvalStage(record))}
                         actions={<>{isPendingAssessment(record) ? <button type="button" onClick={() => isPendingAssessmentExpired(record, scheduleNow) ? onReschedule?.(record) : onViewSubmission?.(record)}>{isPendingAssessmentExpired(record, scheduleNow) ? 'Reschedule' : 'View'}<ArrowRight size={14} aria-hidden="true" /></button> : /reject/i.test(record.approvalStatus || '') ? <button type="button" onClick={() => continueRejectedAssessment(record)}>Continue<ArrowRight size={14} aria-hidden="true" /></button> : record.activityType === 'Blueprint' && record.approvalStatus !== 'Pending Approval' && <button type="button" onClick={() => continueBlueprintAssessment(record)}>{record.approvalStatus === 'Approved' ? 'Continue' : 'Edit blueprint'}</button>}</>}
                       />)}
-            </div> : <div className="assessment-create-placeholder"><p>No {String(activeEmptyTab.label).toLowerCase()} assessments available.</p></div>}
+            </div> : <div className="assessment-create-placeholder"><p>No assessments in the Approval Queue{hasPublishedSearch || hasPublishedFilter ? ' match your filters' : ''}.</p></div>}
           </section>
         ) : null}
       </div>

@@ -1,3 +1,4 @@
+import DescriptiveQuestionNavigator from '../components/DescriptiveQuestionNavigator'
 import DescriptiveAnswerEditor from '../components/DescriptiveAnswerEditor'
 import useExamAttemptPersistence from '../services/useExamAttemptPersistence'
 import ExamSaveError from '../components/ExamSaveError'
@@ -459,6 +460,9 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   const [examStartedAt, setExamStartedAt] = useState(initialAttempt.examStartedAt || null)
   const [timerNow, setTimerNow] = useState(Date.now())
   const [activeSection, setActiveSection] = useState(initialAttempt.activeSection || 'mcq')
+  const [descriptiveView, setDescriptiveView] = useState('single')
+  const [descriptiveIndex, setDescriptiveIndex] = useState(initialAttempt.descriptiveIndex || 0)
+  const [descriptiveNavigationStatuses,setDescriptiveNavigationStatuses] = useState(initialAttempt.descriptiveNavigationStatuses || {})
   const [activeDescriptiveGroupKey, setActiveDescriptiveGroupKey] = useState(initialAttempt.activeDescriptiveGroupKey || '')
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(Number(initialAttempt.activeQuestionIndex || 0))
   const [answers, setAnswers] = useState(initialAttempt.answers || {})
@@ -492,6 +496,8 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
       answers,
       mcqQuestionStatuses,
       descriptiveAnswers,
+      descriptiveNavigationStatuses,
+      descriptiveIndex,
       isMcqSubmitted,
       isDescriptiveSubmitted,
       isAssessmentSubmitted,
@@ -502,6 +508,8 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     activeSection,
     answers,
     descriptiveAnswers,
+    descriptiveNavigationStatuses,
+    descriptiveIndex,
     examStartedAt,
     hasStarted,
     appliedResetVersion,
@@ -825,21 +833,31 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     })
   }
 
-  const showDescriptiveSection = (groupKey) => {
-    setActiveSection('descriptive')
-    setActiveDescriptiveGroupKey(groupKey)
-    window.requestAnimationFrame(() => {
-      const target = document.getElementById(getDescriptiveSectionDomId(groupKey))
-      const header = document.querySelector('.online-practice-header')
-      if (!target) return
-
-      const headerOffset = (header?.getBoundingClientRect().height ?? 84) + 14
-      window.scrollTo({
-        top: target.getBoundingClientRect().top + window.scrollY - headerOffset,
-        behavior: 'smooth',
+  const descriptiveOrder = descriptiveGroups.flatMap(group => group.questions)
+  const selectedDescriptive = descriptiveOrder[Math.min(descriptiveIndex, descriptiveOrder.length - 1)]
+  const descriptiveNumber = question => previewQuestionDisplayNumbers[question.id ?? `${getPreviewSectionKey(question)}-${questionRows.indexOf(question)}`] ?? descriptiveOrder.indexOf(question) + 1
+  useEffect(() => {
+    if (!hasStarted || activeSection !== 'descriptive') return
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(entry=>entry.isIntersecting).map(entry=>entry.target.dataset.navigationKey)
+      if (!visible.length) return
+      setDescriptiveNavigationStatuses(current=>{
+        const next={...current};let changed=false
+        visible.forEach(key=>{if(!next[key]){next[key]='viewed';changed=true}})
+        return changed?next:current
       })
-    })
+    }, {threshold:0})
+    document.querySelectorAll('[data-navigation-key]').forEach(element=>observer.observe(element))
+    return ()=>observer.disconnect()
+  }, [hasStarted,activeSection,descriptiveView,descriptiveIndex])
+  const selectDescriptiveQuestion = index => {
+    const question = descriptiveOrder[index]
+    if (!question) return
+    setDescriptiveIndex(index)
+    setActiveDescriptiveGroupKey(getPreviewSectionKey(question))
+    requestAnimationFrame(() => document.getElementById('practice-description-' + index)?.scrollIntoView({block:'start', behavior:'instant'}))
   }
+
 
   useEffect(() => {
     const timerId = window.setInterval(() => {
@@ -873,10 +891,14 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
         setAnswers({})
         setMcqQuestionStatuses({})
         setDescriptiveAnswers({})
+        setDescriptiveNavigationStatuses({})
+        setDescriptiveIndex(0)
         writeStoredAttempt(assessment, { appliedResetVersion: reset.version })
         return
       }
 
+      setDescriptiveNavigationStatuses(storedAttempt.descriptiveNavigationStatuses || {})
+      setDescriptiveIndex(storedAttempt.descriptiveIndex || 0)
       setActiveSection(storedAttempt.activeSection || 'mcq')
       setActiveDescriptiveGroupKey(storedAttempt.activeDescriptiveGroupKey || '')
       setAnswers(storedAttempt.answers || {})
@@ -1245,6 +1267,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                     <div className="online-practice-descriptive-readonly" aria-label={descriptiveAllowsAnswerInput ? "Descriptive questions and answers" : "Read-only descriptive questions"}>
                       {descriptiveGroups.map((group) => (
                         <section
+                          hidden={descriptiveView === 'single' && !group.questions.includes(selectedDescriptive)}
                           className={`online-practice-descriptive-section ${group.toneClass}`}
                           id={getDescriptiveSectionDomId(group.key)}
                           key={group.title}
@@ -1259,7 +1282,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                               const displayNumber = previewQuestionDisplayNumbers[question.id ?? `${group.key}-${questionRows.indexOf(question)}`] ?? questionIndex + 1
 
                               return (
-                                <div className="online-practice-descriptive-paper-question start-practice-answer-question" key={question.id ?? questionIndex}>
+                                <div data-navigation-key={question.id ?? descriptiveQuestions.indexOf(question)} hidden={descriptiveView === 'single' && question !== selectedDescriptive} id={'practice-description-' + descriptiveOrder.indexOf(question)} className="online-practice-descriptive-paper-question start-practice-answer-question" key={question.id ?? questionIndex}>
                                   <p className="online-practice-descriptive-main">
                                     <strong>{displayNumber}.</strong>
                                     <span>{getQuestionText(question)}</span>
@@ -1409,6 +1432,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                 )}
               </article>
 
+              {activeSection === 'descriptive' && descriptiveOrder.length > 0 && <footer className="online-practice-question-nav descriptive-question-pager"><button type="button" disabled={hasPendingImages || isDescriptiveLocked} onClick={()=>{const key=selectedDescriptive.id ?? descriptiveQuestions.indexOf(selectedDescriptive);setDescriptiveNavigationStatuses(current=>({...current,[key]:current[key]==='try-later'?'viewed':'try-later'}))}}>{descriptiveNavigationStatuses[selectedDescriptive.id ?? descriptiveQuestions.indexOf(selectedDescriptive)]==='try-later'?'Clear Try Later':'Try Later'}</button><button type="button" disabled={descriptiveIndex <= 0 || hasPendingImages} onClick={()=>selectDescriptiveQuestion(descriptiveIndex-1)}>Previous</button><span>Question {descriptiveIndex+1} of {descriptiveOrder.length}</span><button type="button" disabled={descriptiveIndex >= descriptiveOrder.length-1 || hasPendingImages} onClick={()=>selectDescriptiveQuestion(descriptiveIndex+1)}>Next</button></footer>}
               {activeSection === 'mcq' && mcqAllowsAnswerInput ? (
                 <footer className="online-practice-question-nav">
                   <button type="button" className="online-practice-try-later-btn" onClick={markTryLater} disabled={!currentQuestion || isMcqLocked}>
@@ -1494,30 +1518,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                   </div>
                 ) : null
               ) : (
-                <div className="online-practice-section-nav" aria-label="Descriptive sections">
-                  {descriptiveGroups.map((group, index) => {
-                    const isActive = activeDescriptiveGroupKey ? activeDescriptiveGroupKey === group.key : index === 0
-
-                    return (
-                      <button
-                        type="button"
-                        key={group.key}
-                        className={isActive ? 'is-active' : ''}
-                        onClick={() => showDescriptiveSection(group.key)}
-                      >
-                        <span>{group.roman}</span>
-                        <strong>{group.title}</strong>
-                        <em>
-                          {String(group.totalMarks).padStart(2, '0')} Marks
-                          {' '}
-                          &bull;
-                          {' '}
-                          {group.questions.length} Questions
-                        </em>
-                      </button>
-                    )
-                  })}
-                </div>
+                <DescriptiveQuestionNavigator groups={descriptiveGroups} questions={descriptiveQuestions} answers={descriptiveAnswers} navigationStatuses={descriptiveNavigationStatuses} activeIndex={descriptiveQuestions.indexOf(selectedDescriptive)} mode={descriptiveView} onMode={setDescriptiveView} onSelect={index=>selectDescriptiveQuestion(descriptiveOrder.indexOf(descriptiveQuestions[index]))} numberFor={descriptiveNumber} disabled={hasPendingImages} />
               )}
 
               {shouldShowMcqSubmit && !mcqAllowsAnswerInput ? (

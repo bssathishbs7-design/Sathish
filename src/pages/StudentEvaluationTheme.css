@@ -194,10 +194,8 @@
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > span { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: start; gap: var(--s-2); }
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > .is-student-selected { border-color: var(--border); background: color-mix(in srgb,var(--forest) 8%,var(--surface-card)); box-shadow: none; }
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > .is-student-selected > b { background: var(--forest); color: var(--on-brand); }
-.student-evaluation-theme .evaluation-selection-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--text-brand); }
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > .is-student-selected.is-selected-wrong { border-color: var(--danger-line); background: var(--danger-soft); }
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-mcq-options > .is-selected-wrong > b { background: var(--danger-soft); color: var(--danger-ink); }
-.student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .is-selected-wrong .evaluation-selection-icon { color: var(--danger-ink); }
 /* Marking progress is separate from selected-answer correctness. */
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row[data-evaluation] { border-left: 2px solid var(--border); padding-left: var(--s-3); margin: var(--s-2) 0; background: var(--surface-card); }
 .student-evaluation-theme.student-evaluation-theme.student-evaluation-theme .assessment-question-row[data-evaluation="pending"] { border-left-color: var(--activity-amber); }
