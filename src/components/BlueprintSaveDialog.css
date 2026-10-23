@@ -1,0 +1,78 @@
+/* Scoped to blueprint saving; other shared confirmation dialogs retain their layout. */
+.save-changes-dialog.blueprint-save-dialog {
+  width: min(calc(100% - var(--s-5)), 560px);
+  margin: auto;
+  padding: var(--s-5);
+  text-align: left;
+}
+.save-changes-dialog.blueprint-save-dialog > h2#save-changes-title {
+  padding-right: calc(var(--s-5) + var(--s-3));
+  margin: 0 0 var(--s-2);
+  font-family: var(--f-body);
+  font-size: var(--font-size-h3);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-strong);
+}
+.save-changes-dialog.blueprint-save-dialog > p {
+  margin: 0 0 var(--s-5);
+  font-size: var(--font-size-body);
+  line-height: 1.6;
+  color: var(--text-body);
+}
+.blueprint-save-dialog .save-changes-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--s-2);
+}
+.blueprint-save-dialog .save-changes-actions button {
+  min-height: 40px;
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  font-family: var(--f-body);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.blueprint-save-dialog .save-changes-actions button:not(.is-save):not(:disabled):hover {
+  background: var(--surface-mist);
+  border-color: var(--text-brand);
+}
+.blueprint-save-dialog[open] { animation: blueprint-save-enter var(--dur-overlay) var(--ease-emphasized) both; }
+.blueprint-save-dialog[open]::backdrop { animation: blueprint-save-backdrop var(--dur-overlay) var(--ease-standard) both; }
+@keyframes blueprint-save-enter {
+  from { opacity: 0; transform: translateY(var(--s-3)) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes blueprint-save-backdrop { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 479px) {
+  .blueprint-save-dialog .save-changes-actions { grid-template-columns: 1fr; }
+  .blueprint-save-dialog .save-changes-actions button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blueprint-save-dialog[open], .blueprint-save-dialog[open]::backdrop { animation: none; }
+}
+
+.blueprint-save-dialog .save-changes-close {
+  position: absolute;
+  top: var(--s-4);
+  right: var(--s-4);
+  display: grid;
+  place-items: center;
+  width: var(--s-6);
+  height: var(--s-6);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface-card);
+  color: var(--text-body);
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-standard), border-color var(--dur-hover) var(--ease-standard);
+}
+.blueprint-save-dialog .save-changes-close:not(:disabled):hover { background: var(--surface-mist); border-color: var(--text-brand); }
+.blueprint-save-dialog .save-changes-close:not(:disabled):active { transform: translateY(1px) scale(.96); transition: none; }
+.blueprint-save-dialog .save-changes-close:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
+.blueprint-save-dialog .save-changes-close:disabled { opacity: .6; cursor: wait; }
+@media (prefers-reduced-motion: reduce) { .blueprint-save-dialog .save-changes-close { transition: none; } }

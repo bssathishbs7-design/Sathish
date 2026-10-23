@@ -1,0 +1,20 @@
+import {browser,pause} from './cdp.mjs';import fs from 'node:fs';import assert from 'node:assert/strict';const b=await browser();const ev=async s=>{const r=await b.evaluate(s);if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value};
+const backup=await ev('JSON.stringify({local:{...localStorage},session:{...sessionStorage}})');
+try{await ev(`(async()=>{const {corelationRatingRows}=await import('/src/pages/corelationRatingData.js');const r=corelationRatingRows.find(r=>r.subject==='Human Anatomy');const key=[r.year||'1st Year',r.subject,r.topic,r.code,r.name].join('::');const blueprint={assessmentId:'continue-qa',validationStatus:'matched',blueprintDraft:{subject:r.subject,topics:[r.topic],competencies:[key],totalMark:'10'},blueprintDistributionDraft:{[key]:'10'},blueprintCognitionWeightage:{lot:'50',hot:'50'},blueprintQuestionTypeDraft:{MCQs:{perQuestionMarks:'1',totalMarks:'10',lotMarks:'5',hotMarks:'5'}},blueprintTestSpecificationCountDraft:{[key]:{mcqLot:'0',mcqHot:'0'}}};localStorage.setItem('vx-create-assessment-setup',JSON.stringify({assessmentId:'continue-qa',assessmentName:'Continue check',examType:'MCQ',blueprintEnabled:true,draftWorkspace:{isBlueprintPlannerEditing:true,activeCreateTab:'blueprint',activeBlueprintTab:'questionSpecifications',isBlueprintMatrixCreated:true,isBlueprintQuestionSplitCreated:true,isBlueprintCompetencyMatrixCreated:true,blueprint}}))})()`);
+await b.call('Page.navigate',{url:'http://127.0.0.1:5199/createassessment'});await pause(1400);
+
+await b.call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+await ev("document.querySelector('.blueprint-checklist-trigger').click()");await pause(300);
+assert.equal(await ev("document.querySelectorAll('.blueprint-allocation-sidebar').length"),0);
+console.log('Before add',await ev("document.querySelector('.blueprint-checklist-ring').getAttribute('aria-label')"));
+await ev("document.querySelector('.blueprint-checklist .blueprint-unit-card button').click()");await pause(250);
+console.log('After add',await ev("document.querySelector('.blueprint-checklist-ring').getAttribute('aria-label')"));
+assert.match(await ev("document.querySelector('.blueprint-checklist-ring').getAttribute('aria-label')"),/1 of 10/);
+assert.equal(await ev("document.querySelectorAll('.blueprint-checklist .blueprint-quick-guide').length"),0);
+assert.equal(await ev("document.querySelector('.blueprint-quick-guide').nextElementSibling.getAttribute('role')"),'table');
+await ev("document.querySelector('.blueprint-quick-guide').scrollIntoView({block:'center'})");await pause(150);
+fs.writeFileSync('tmp/blueprint-checklist-desktop.png',Buffer.from((await b.call('Page.captureScreenshot',{format:'png'})).data,'base64'));
+for(const width of [390,768,1024,1440]){await b.call('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<768});await pause(100);const box=await ev("(()=>{const r=document.querySelector('.blueprint-checklist-panel').getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth}})()");console.log(width,box);assert.ok(box.left>=0&&box.right<=box.width&&box.top>=0&&box.bottom<=900);}
+await b.call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});assert.equal(await ev("getComputedStyle(document.querySelector('.blueprint-checklist-panel')).animationName"),'none');await b.call('Emulation.setEmulatedMedia',{features:[]});
+await ev("document.querySelector('.blueprint-checklist-panel button').click()");assert.equal(await ev("document.activeElement.className"),'blueprint-checklist-trigger');
+}finally{await ev(`(()=>{const b=${backup};localStorage.clear();sessionStorage.clear();for(const [k,v] of Object.entries(b.local))localStorage.setItem(k,v);for(const [k,v] of Object.entries(b.session))sessionStorage.setItem(k,v)})()`);await b.call('Page.navigate',{url:'http://127.0.0.1:5199/assessment/create'});b.close()}

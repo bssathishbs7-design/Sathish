@@ -23,19 +23,11 @@ export default function AssessmentCardSettings({ assessment, compact = false, ti
   const policy = getAssessmentAutomationConfiguration(setup, types)
   const configurationStatus = getAssessmentConfigurationStatus(setup)
   const blueprint = setup.blueprintEnabled ?? setup.draftWorkspace?.blueprint?.enabled ?? Boolean(blueprintFlow?.snapshot || setup.blueprintId)
-  // Blueprint queue records describe a submitted blueprint; stale authoring flags
-  // must not hide its approval status or approved ID.
+  // Submitted blueprint records retain their ID regardless of approval stage.
   const blueprintEnabled = assessment?.activityType === 'Blueprint' || blueprint === true || blueprint === 'Yes'
-  const blueprintStatus = blueprintFlow?.status || (assessment?.activityType === 'Blueprint' ? assessment.approvalStatus : setup.blueprintStatus) || 'Draft'
   const blueprintId = blueprintFlow?.blueprintId || setup.blueprintId || assessment?.blueprintId
-  const showBlueprintId = blueprintEnabled && blueprintStatus === 'Approved' && Boolean(blueprintId)
-  const blueprintLabel = !blueprintEnabled ? 'No' : showBlueprintId ? blueprintId : ({
-    Draft: 'In progress',
-    'Pending Approval': 'Pending approval',
-    'Approval Rejected': 'Rejected',
-    'Revision required': 'Revision required',
-    'Not required': 'Saved',
-  }[blueprintStatus] || blueprintStatus)
+  const showBlueprintId = blueprintEnabled && Boolean(blueprintId)
+  const blueprintLabel = !blueprintEnabled ? 'No' : blueprintId || '-'
   const settings = [
     ['Blueprint', blueprintEnabled, LayoutTemplate],
     ['Evaluation', policy.rows.length > 0 && policy.rows.every(row => row.evaluation), ClipboardCheck],

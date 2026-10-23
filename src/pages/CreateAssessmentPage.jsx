@@ -1,5 +1,8 @@
+import { readBlueprintPlanner, saveBlueprintPlannerReference, compactDuplicateBlueprintPlanners } from '../services/blueprintPlannerStorage'
+import '../components/BlueprintSaveDialog.css'
 import BlueprintModifiedBadge from '../components/BlueprintModifiedBadge'
 import { blueprintTableSignatures, blueprintTableModifications } from '../services/blueprintTableModifications'
+import BlueprintChecklist from '../components/BlueprintChecklist'
 import BlueprintQuickGuide from '../components/BlueprintQuickGuide'
 import { getAssessmentPublicationMethod } from '../services/assessmentPublicationMethod'
 import AssessmentPublishedConfirmation from '../components/AssessmentPublishedConfirmation'
@@ -17,7 +20,6 @@ import { fillAroundManualCells } from '../utils/blueprintLockedAllocation'
 import { withFirstYearCorrelationDefaults } from '../services/firstYearCorrelationDefaults'
 import BlueprintCognitionCountInput from '../components/BlueprintCognitionCountInput'
 import BlueprintFieldSuggestions from '../components/BlueprintFieldSuggestions'
-import BlueprintRemainingQuestions from '../components/BlueprintRemainingQuestions'
 import { resolveBlueprintUnits, suggestBlueprintCompetency, changeBlueprintUnitCount } from '../utils/blueprintRemainingUnits'
 import './BlueprintAllocationLayout.css'
 import BlueprintCognitionSuggestions from '../components/BlueprintCognitionSuggestions'
@@ -825,18 +827,7 @@ const getBlueprintPlannerStorageKey = (setup = {}) => (
   `${BLUEPRINT_PLANNER_STORAGE_KEY}:${getAssessmentStorageSuffix(setup)}`
 )
 
-const readSavedBlueprintPlanner = (setup = {}) => {
-  try {
-    const planner = JSON.parse(window.localStorage.getItem(getBlueprintPlannerStorageKey(setup)) || 'null')
-    return planner && typeof planner === 'object' && planner.validationStatus === 'matched'
-      ? planner
-      : null
-  } catch {
-    return null
-  }
-}
-
-
+const readSavedBlueprintPlanner = (setup = {}) => readBlueprintPlanner(getBlueprintPlannerStorageKey(setup), setup.assessmentId)
 
 const getBlueprintMarkRangeLabel = (value) => {
   const numericValue = Number(value)
@@ -1688,7 +1679,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     writeReviewSafeJson(nextCustomSectionsKey, customPreviewSections)
   }
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
-  const [initialBlueprintPlanner] = useState(() => assessmentReview ? assessmentReview.blueprintSnapshot || assessmentReview.setup?.draftWorkspace?.blueprint || null : blueprintReview?.record.blueprintSnapshot ?? readBlueprintWorkflow(setup.assessmentId)?.snapshot ?? setup.draftWorkspace?.blueprint ?? readSavedBlueprintPlanner(setup))
+  const [initialBlueprintPlanner] = useState(() => assessmentReview ? assessmentReview.blueprintSnapshot || assessmentReview.setup?.draftWorkspace?.blueprint || null : blueprintReview?.record.blueprintSnapshot ?? readSavedBlueprintPlanner(setup) ?? readBlueprintWorkflow(setup.assessmentId)?.snapshot ?? setup.draftWorkspace?.blueprint)
   // A Blueprint submission reviews its snapshot, even if the authoring setup has a stale disabled flag.
   const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(Boolean(initialBlueprintPlanner) && (
     assessmentReview?.activityType === 'Blueprint' || Boolean(blueprintReview)
@@ -1772,6 +1763,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const [blueprintFlow, setBlueprintFlow] = useState(() => assessmentReview ? { blueprintId: assessmentReview.blueprintId, status: assessmentReview.approvalStatus, snapshot: initialBlueprintPlanner } : readBlueprintWorkflow(setup.assessmentId))
   const [blueprintApprovalOpen, setBlueprintApprovalOpen] = useState(false)
   const [blueprintSaveBusy, setBlueprintSaveBusy] = useState(false)
+  const [blueprintSaveError, setBlueprintSaveError] = useState('')
   const blueprintSaveLock = useRef(false)
   const isBlueprintReadOnly = reviewBusy || Boolean(reviewReadOnly && !blueprintReview) || !assessmentReview && !blueprintReview && blueprintFlow?.status === 'Pending Approval'
   const isBlueprintOnlyRework = !assessmentReview && setup.reworkReview?.activityType === 'Blueprint'
@@ -1830,6 +1822,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const [previewSectionTitleDraft, setPreviewSectionTitleDraft] = useState('')
   const [draggedPreviewQuestionId, setDraggedPreviewQuestionId] = useState(null)
   const [draggedPreviewSectionKey, setDraggedPreviewSectionKey] = useState(null)
+  const [blueprintSuggestionsOpen, setBlueprintSuggestionsOpen] = useState(false)
   const [generationJobs, setGenerationJobs] = useState([])
   const [generationTick, setGenerationTick] = useState(Date.now())
   const [descriptiveCompetencyDraft, setDescriptiveCompetencyDraft] = useState(null)
@@ -3191,6 +3184,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     if (!blueprintTestSpecificationMatrixIsValid) return
 
     if (blueprintReview) { confirmSaveBlueprintPlanner('review'); return }
+    setBlueprintSaveError('')
     setIsBlueprintSaveConfirmOpen(true)
   }
 
@@ -3237,6 +3231,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
 
   const confirmSaveBlueprintPlanner = async (action = 'continue', reviewer) => {
     if (blueprintSaveLock.current) return false
+    setBlueprintSaveError('')
     if (action === 'approval' && typeof onSendToApproval !== 'function') { setSaveStatus('Approval service is unavailable. Try again later.'); return false }
     if (!blueprintTestSpecificationMatrixIsValid) {
       setIsBlueprintSaveConfirmOpen(false)
@@ -3258,9 +3253,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         await blueprintReview.onApprove(snapshot)
         return true
       }
-      if (!await saveAssessmentDraft()) throw new Error('Unable to save the assessment draft.')
+      compactDuplicateBlueprintPlanners()
+      if (!await saveAssessmentDraft({ throwOnError: true })) throw new Error('The draft is still saving. Please try again in a moment.')
       const flow = await saveBlueprintWorkflow({ ...setupDraft, assessmentId: setup.assessmentId }, snapshot, action, reviewer)
-      window.localStorage.setItem(getBlueprintPlannerStorageKey(setup), JSON.stringify({ ...snapshot, savedAt: new Date().toISOString() }))
+      saveBlueprintPlannerReference(getBlueprintPlannerStorageKey(setup), setup.assessmentId)
       setBlueprintFlow(flow)
       setSetup(current => ({ ...current, blueprintId: flow.blueprintId }))
       setSetupDraft(current => ({ ...current, blueprintId: flow.blueprintId }))
@@ -3282,7 +3278,9 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         : 'Blueprint planner saved. Select or create questions to complete the blueprint.')
       return true
     } catch (error) {
-      setSaveStatus(error.message || 'Unable to save the blueprint planner.')
+      const message = error?.name === 'QuotaExceededError' ? 'Browser storage is full. Your work is still open; the blueprint could not be saved.' : error.message || 'Unable to save the blueprint planner. Please try again.'
+      setBlueprintSaveError(message)
+      setSaveStatus(message)
       return false
     } finally { blueprintSaveLock.current = false; setBlueprintSaveBusy(false) }
   }
@@ -3573,7 +3571,11 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     if (assessmentReview) return
     try {
       const saved = readSavedBlueprintPlanner(setup)
-      if (saved) window.localStorage.setItem(getBlueprintPlannerStorageKey(setup), JSON.stringify({ ...saved, enabled }))
+      if (saved) {
+        if (readBlueprintWorkflow(setup.assessmentId)?.snapshot) {
+          if (!saveBlueprintPlannerReference(getBlueprintPlannerStorageKey(setup), setup.assessmentId, localStorage, enabled)) throw new Error('Storage full')
+        } else window.localStorage.setItem(getBlueprintPlannerStorageKey(setup), JSON.stringify({ ...saved, enabled }))
+      }
     } catch {
       setSaveStatus('Blueprint mode changed for this session only; browser storage is unavailable.')
     }
@@ -5345,7 +5347,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     return didPersistQuestions
   }
 
-  const saveAssessmentDraft = async ({ moveReworkToDraft = false, setupOverride = setupDraft } = {}) => {
+  const saveAssessmentDraft = async ({ moveReworkToDraft = false, setupOverride = setupDraft, throwOnError = false } = {}) => {
     if (assessmentReview || draftSaveLock.current) return false
     draftSaveLock.current = true
     setIsSavingDraft(true)
@@ -5419,6 +5421,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         : 'Unable to save draft. Your work is still open. Please try again.'
       setSaveStatus(message)
       setExitError(message)
+      if (throwOnError) throw new Error(message)
       return false
     } finally {
       draftSaveLock.current = false
@@ -7816,7 +7819,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                           <span>Assessment Blueprint</span>
                           <BlueprintModifiedBadge modification={tableModifications.matrix} />
                         </h3>
-                        <div className="blueprint-allocation-legend" aria-label="Allocation source"><span className="is-manual">Manual</span><span className="is-auto">Auto-filled</span></div>
                         <div className="create-assessment-blueprint-test-grid-title-actions">
                           <span
                             className={`create-assessment-blueprint-spec-status ${blueprintTestSpecificationDisplayStatus}`}
@@ -7828,6 +7830,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                           </span>
                         </div>
                       </div>
+                      <BlueprintQuickGuide onSuggestions={() => setBlueprintSuggestionsOpen(true)} suggestionsOpen={blueprintSuggestionsOpen} />
                       <div className="create-assessment-blueprint-test-grid" role="table" aria-label="Assessment Blueprint">
                         <div className="create-assessment-blueprint-test-grid-head" role="rowgroup">
                           <div className="create-assessment-blueprint-test-grid-row is-group" role="row">
@@ -8036,13 +8039,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         </div>
                       </div>
                     </div>
-                      <aside className="blueprint-allocation-sidebar" aria-label="Allocation guide and unallocated questions">
-                      <BlueprintQuickGuide />
-                      <BlueprintRemainingQuestions units={blueprintUnallocatedUnits} onAdd={addBlueprintUnit} disabled={isBlueprintReadOnly || isBlueprintPlannerSaved && !isBlueprintPlannerEditing} items={blueprintTestSpecificationColumns.map(column => ({
+                      <BlueprintChecklist open={blueprintSuggestionsOpen} onOpenChange={setBlueprintSuggestionsOpen} theme={theme} total={Object.values(blueprintIndividualUnits).reduce((sum, units) => sum + units.length, 0)} units={blueprintUnallocatedUnits} onAdd={addBlueprintUnit} disabled={isBlueprintReadOnly || isBlueprintPlannerSaved && !isBlueprintPlannerEditing} items={blueprintTestSpecificationColumns.map(column => ({
                         key: column.key, group: column.group, label: column.label,
                         remaining: Math.max(0, (blueprintTestSpecificationQuestionCounts[column.key] || 0) - getBlueprintTestSpecificationColumnCountTotal(column.key)),
                       }))} />
-                      </aside>
                       {!isBlueprintReadOnly && blueprintActiveField && blueprintActiveRow && blueprintActiveColumn && !(isBlueprintPlannerSaved && !isBlueprintPlannerEditing) ? <BlueprintFieldSuggestions
                         anchor={blueprintActiveField.anchor}
                         heading={blueprintActiveRow.code + ' ' + blueprintActiveColumn.group + ' ' + blueprintActiveColumn.label}
@@ -8446,10 +8446,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         </div>
       ) : null}
 
-      {isBlueprintSaveConfirmOpen && <SaveChangesDialog theme={theme} title="Save blueprint planner" description="Continue directly or submit this blueprint for faculty approval." busy={blueprintSaveBusy}
+      {isBlueprintSaveConfirmOpen && <SaveChangesDialog showClose showCancel={false} className="blueprint-save-dialog" theme={theme} title="Save blueprint planner" description="Continue directly or submit this blueprint for faculty approval." error={blueprintSaveError} busy={blueprintSaveBusy}
         onCancel={() => setIsBlueprintSaveConfirmOpen(false)} cancelLabel="Cancel"
         onSave={() => { setIsBlueprintSaveConfirmOpen(false); setBlueprintApprovalOpen(true) }} saveLabel="Send to approval"
-        footerStart={<button type="button" disabled={blueprintSaveBusy || Boolean(blueprintFlow?.approvalRequired)} onClick={() => confirmSaveBlueprintPlanner('continue')}>Continue to assessment</button>} />}
+        footerStart={<button type="button" disabled={blueprintSaveBusy} onClick={() => confirmSaveBlueprintPlanner('continue')}>{blueprintSaveBusy ? 'Saving blueprint...' : 'Continue to assessment'}</button>} />}
       {blueprintApprovalOpen && <AssessmentPublicationDialog action="Send to Approval" name={`${setupDraft.assessmentName || 'Untitled Assessment'}${blueprintFlow?.blueprintId ? ' / ' + blueprintFlow.blueprintId : ''}`} theme={theme}
         onCancel={() => setBlueprintApprovalOpen(false)} onConfirm={({ reviewer }) => confirmSaveBlueprintPlanner('approval', reviewer)} />}
       {isBlueprintDisableConfirmOpen ? (

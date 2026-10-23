@@ -1,3 +1,5 @@
+import { createBlueprintTemplateSamples } from './blueprintTemplateSamples.js'
+
 /** Browser-backed template adapter. Replace these functions with API calls at integration. */
 export const BLUEPRINT_TEMPLATES_KEY = 'vx-blueprint-breakdown-templates-v1'
 /** Restore saved percentages, or recover older templates from complete mark allocations.
@@ -43,7 +45,9 @@ export function resolveTemplateCognition(template) {
 }
 /** @typedef {{id:string,name:string,createdAt:string,createdBy?:string,cognition?:{lot:string,hot:string},breakdown:Object,laqParts:Array,totalMarks:number}} BlueprintTemplate */
 export function readBlueprintTemplates(storage = localStorage) {
-  const rows = JSON.parse(storage.getItem(BLUEPRINT_TEMPLATES_KEY) || '[]')
+  const saved = storage.getItem(BLUEPRINT_TEMPLATES_KEY)
+  if (saved === null) return createBlueprintTemplateSamples()
+  const rows = JSON.parse(saved)
   if (!Array.isArray(rows)) throw new Error('Unable to read saved templates.')
   return rows
 }

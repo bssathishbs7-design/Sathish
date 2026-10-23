@@ -1,0 +1,54 @@
+.blueprint-checklist {
+  position: fixed;
+  right: var(--s-5);
+  bottom: var(--s-9);
+  z-index: 90;
+  color: var(--text-body);
+}
+.blueprint-checklist button { font: inherit; cursor: pointer; }
+.blueprint-checklist-panel {
+  position: absolute; right: 0; bottom: calc(100% + var(--s-2)); width: min(260px, calc(100vw - var(--s-5) * 2));
+  max-height: min(480px, calc(100dvh - var(--s-9) - 88px)); display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); box-shadow: var(--shadow-lg);
+  animation: blueprint-checklist-enter var(--dur-overlay) var(--ease-emphasized) both;
+}
+.blueprint-checklist-panel > header { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); padding: var(--s-2) var(--s-3); flex-shrink: 0; border-bottom: 1px solid var(--border); }
+.blueprint-checklist-panel > header button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-body); }
+.blueprint-checklist-body { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.blueprint-checklist-content { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.blueprint-checklist .is-complete { background: color-mix(in srgb, var(--mint) 18%, var(--surface-card)); }
+.blueprint-checklist .blueprint-remaining-questions { border: 0; border-radius: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.blueprint-checklist .blueprint-remaining-questions > header { display: none; }
+.blueprint-checklist .blueprint-remaining-body { max-height: none; overflow: visible; }
+.blueprint-checklist-empty { margin: 0; padding: var(--s-3); color: var(--text-muted); }
+.blueprint-checklist button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
+.blueprint-checklist button { transition: background var(--dur-hover) var(--ease-standard); }
+.blueprint-checklist-panel > header button:not(:disabled):hover { background: var(--surface-soft); }
+.blueprint-checklist button:not(:disabled):active { transform: translateY(1px) scale(.97); transition: none; }
+.blueprint-checklist button:disabled { cursor: not-allowed; opacity: .6; }
+@keyframes blueprint-checklist-enter { from { opacity: 0; transform: translateY(var(--s-2)) scale(.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 767px) { .blueprint-checklist { right: var(--s-3); } .blueprint-checklist-panel { width: min(260px, calc(100vw - var(--s-3) * 2)); } }
+@media (prefers-reduced-motion: reduce) { .blueprint-checklist-panel { animation: none; } .blueprint-checklist button { transition: none; } }
+
+.blueprint-checklist .blueprint-unit-cards { gap: var(--s-1); }
+.blueprint-checklist .blueprint-unit-card { padding: var(--s-2); gap: var(--s-2); }
+.blueprint-checklist .blueprint-unit-card > div > div { gap: 0; }
+.blueprint-checklist .blueprint-unit-card button { min-height: 28px; padding: var(--s-1) var(--s-2); }
+
+.blueprint-checklist-title { display: inline-flex; align-items: center; gap: var(--s-2); color: var(--text-strong); }
+.blueprint-checklist-title svg { flex-shrink: 0; }
+
+
+.blueprint-checklist-panel > header { background: var(--surface-card); }
+.blueprint-checklist .blueprint-remaining-questions { background: transparent; }
+.blueprint-checklist .blueprint-unit-group.is-collapsible > summary { background: var(--surface-card); box-shadow: inset var(--s-1) 0 0 var(--suggestion-category-accent, var(--sky)); }
+.blueprint-checklist .blueprint-unit-group.is-collapsible > summary:hover { background: color-mix(in srgb, var(--suggestion-category-accent, var(--sky)) 10%, var(--surface-card)); }
+.blueprint-checklist .blueprint-unit-group.is-collapsible > summary:active { background: color-mix(in srgb, var(--suggestion-category-accent, var(--sky)) 18%, var(--surface-card)); }
+
+.blueprint-checklist [data-group="MCQ"] { --suggestion-category-accent: var(--sky); }
+.blueprint-checklist [data-group="LAQ"] { --suggestion-category-accent: var(--peach); }
+.blueprint-checklist [data-group="SAQ"] { --suggestion-category-accent: var(--mint); }
+
+.blueprint-checklist-panel > header { cursor: grab; touch-action: none; user-select: none; }
+.blueprint-checklist-panel > header.is-dragging { cursor: grabbing; }
+.blueprint-checklist-panel > header:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; }

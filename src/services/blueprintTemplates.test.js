@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { deleteBlueprintTemplate, readBlueprintTemplates, resolveTemplateCognition, saveBlueprintTemplate, snapshotBlueprintBreakdown } from './blueprintTemplates.js'
-const memory = () => { const data = new Map(); return {getItem:key=>data.get(key) ?? null,setItem:(key,value)=>data.set(key,value)} }
+import { BLUEPRINT_TEMPLATES_KEY, deleteBlueprintTemplate, readBlueprintTemplates, resolveTemplateCognition, saveBlueprintTemplate, snapshotBlueprintBreakdown } from './blueprintTemplates.js'
+const memory = () => { const data = new Map([[BLUEPRINT_TEMPLATES_KEY, '[]']]); return {getItem:key=>data.get(key) ?? null,setItem:(key,value)=>data.set(key,value)} }
 const snapshot = () => snapshotBlueprintBreakdown([{label:'MCQs',perQuestionMarks:'1',totalMarks:'20',hotQuestionsValue:'8',lotQuestionsValue:'12',subject:'must not save'}], [{splitCount:'1',splits:[{marks:'10',level:'hot'}]}], {lot:'60',hot:'40',distribution:'must not save'})
 test('stores only cognition and breakdown data and keeps an independent copy of LAQ parts', async()=>{
  const storage=memory();const input=snapshot();const saved=await saveBlueprintTemplate('  Anatomy mix  ',input,storage)
@@ -53,4 +53,26 @@ test('delete failure leaves templates available',async()=>{
  const failing={getItem:storage.getItem,setItem:()=>{throw Error('quota')}}
  await assert.rejects(deleteBlueprintTemplate(readBlueprintTemplates(storage)[0].id,failing),/Unable to delete/)
  assert.equal(readBlueprintTemplates(storage).length,1)
+})
+
+
+test('fresh storage receives four coherent samples without persisting on read', () => {
+ const storage = { getItem: () => null }
+ const samples = readBlueprintTemplates(storage)
+ assert.equal(samples.length, 4)
+ assert.deepEqual(samples.map(row => [row.totalMarks, row.cognition.lot]), [[100, '30'], [100, '40'], [100, '25'], [70, '60']])
+ for (const sample of samples) {
+   assert.equal(Object.values(sample.breakdown).reduce((sum, row) => sum + Number(row.totalMarks), 0), sample.totalMarks)
+   assert.deepEqual(resolveTemplateCognition({ ...sample, cognition: undefined }), sample.cognition)
+ }
+ samples[0].name = 'Changed'
+ assert.notEqual(readBlueprintTemplates(storage)[0].name, 'Changed')
+})
+test('saved data and intentionally empty lists take precedence over samples', async () => {
+ const storage = memory()
+ assert.deepEqual(readBlueprintTemplates(storage), [])
+ const sample = readBlueprintTemplates({ getItem: () => null })[0]
+ storage.setItem(BLUEPRINT_TEMPLATES_KEY, JSON.stringify([sample]))
+ await deleteBlueprintTemplate(sample.id, storage)
+ assert.deepEqual(readBlueprintTemplates(storage), [])
 })

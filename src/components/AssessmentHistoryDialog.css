@@ -16,10 +16,10 @@
 @keyframes assessment-history-enter { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 @media(prefers-reduced-motion:reduce) { .assessment-history-dialog { animation: none; } }
 
-.assessment-history-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1, 4px) var(--s-3, 12px); font-size: 12px; color: var(--text-muted); }
+.assessment-history-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font-size: 12px; color: var(--text-muted); }
 .assessment-history-meta strong { color: var(--text-strong); font-weight: 600; }
-.save-changes-dialog.assessment-history-dialog > h2 { margin: 0 0 var(--s-1, 4px); font-size: 16px; line-height: 1.5; }
-.save-changes-dialog.assessment-history-dialog > p { margin: 0 0 var(--s-2, 8px); line-height: 1.5; }
+.save-changes-dialog.assessment-history-dialog > h2 { margin: 0 0 var(--s-3); padding: var(--s-2) var(--s-3); background: color-mix(in srgb, var(--mint) 16%, var(--surface-card)); border-radius: var(--r-sm); font-size: 16px; line-height: 1.5; }
+.save-changes-dialog.assessment-history-dialog > p { margin: 0 0 var(--s-3); padding-inline: var(--s-1); line-height: 1.5; }
 .save-changes-dialog.assessment-history-dialog .save-changes-actions button { min-height: 32px; padding: var(--s-1, 4px) var(--s-3, 12px); font-size: 12px; flex: none; }
 .assessment-history-title { display: flex; align-items: center; gap: var(--s-2, 8px); color: var(--text-strong); }
 .assessment-history-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--sky) 35%, var(--surface-card)); color: var(--text-strong); }
@@ -27,6 +27,35 @@
 .assessment-history-dialog .assessment-history-table tbody tr:hover { background: color-mix(in srgb, var(--sky) 12%, var(--surface-card)); }
 
 .save-changes-dialog.assessment-history-dialog { position: fixed; }
-.save-changes-dialog.assessment-history-dialog > h2 { padding-right: var(--s-6, 32px); }
-.save-changes-dialog.assessment-history-dialog .save-changes-actions { position: absolute; top: var(--s-3, 12px); right: var(--s-3, 12px); margin: 0; padding: 0; }
+.save-changes-dialog.assessment-history-dialog > h2 { padding-right: calc(var(--s-6) + var(--s-3)); }
+.save-changes-dialog.assessment-history-dialog .save-changes-actions { position: absolute; top: var(--s-5); right: var(--s-5); margin: 0; padding: 0; }
 .save-changes-dialog.assessment-history-dialog .save-changes-actions button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; min-height: 28px; padding: 0; }
+
+.assessment-history-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0;
+  border: 0;
+  border-radius: var(--s-1);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur-hover) var(--ease-standard);
+}
+.assessment-history-sort:hover { color: var(--text-brand); }
+.assessment-history-sort:active { transform: translateY(1px); transition: none; }
+.assessment-history-sort:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
+@media (prefers-reduced-motion: reduce) { .assessment-history-sort { transition: none; } }
+
+.assessment-history-chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--text-body); font-size: var(--fs-micro); white-space: nowrap; }
+.assessment-history-chip.is-id { background: color-mix(in srgb, var(--mint) 14%, var(--surface-card)); }
+.assessment-history-chip.is-stage { background: color-mix(in srgb, var(--lilac) 35%, var(--surface-card)); }
+.assessment-history-chip.is-blueprint { background: color-mix(in srgb, var(--sky) 32%, var(--surface-card)); }
+.assessment-history-count { margin-left: auto; color: var(--text-muted); white-space: nowrap; }
+@media (max-width: 479px) {
+  .assessment-history-meta strong { flex-basis: 100%; }
+  .assessment-history-count { margin-left: 0; }
+}

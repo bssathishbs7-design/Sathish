@@ -19,7 +19,7 @@
 .blueprint-field-validation { font-size: var(--fs-micro, 11px); line-height: 1.4; color: var(--danger-ink); overflow-wrap: anywhere; }
 .create-assessment-blueprint-panel .blueprint-allocation-layout .create-assessment-blueprint-test-grid-cell.is-manual-allocation input.create-assessment-blueprint-spec-small-number { border-color: var(--blueprint-manual-accent); background: color-mix(in srgb, var(--blueprint-manual-accent) 14%, var(--surface-card)); color: var(--text-strong); box-shadow: 0 0 0 1px var(--blueprint-manual-accent); }
 .create-assessment-blueprint-panel .blueprint-allocation-layout .create-assessment-blueprint-test-grid-cell.is-auto-allocation input.create-assessment-blueprint-spec-small-number { border-color: var(--blueprint-auto-accent); background: color-mix(in srgb, var(--blueprint-auto-accent) 14%, var(--surface-card)); color: var(--text-strong); box-shadow: 0 0 0 1px var(--blueprint-auto-accent); }
-.blueprint-allocation-legend { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-left: auto; font-size: var(--fs-micro, 11px); color: var(--text-body); }
+.blueprint-allocation-legend { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-left: 0; font-size: var(--fs-micro, 11px); color: var(--text-body); }
 .blueprint-allocation-legend span { display: inline-flex; align-items: center; gap: var(--s-1); }
 .blueprint-allocation-legend span::before { content: ''; width: var(--s-2); height: var(--s-2); border-radius: var(--r-pill); background: var(--blueprint-auto-accent); }
 .blueprint-allocation-legend .is-manual::before { background: var(--blueprint-manual-accent); }
@@ -40,28 +40,10 @@
 .create-assessment-blueprint-panel .blueprint-allocation-layout :is(.create-assessment-blueprint-test-grid-head, .create-assessment-blueprint-test-grid-foot) .create-assessment-blueprint-test-grid-cell:is(.is-total-head, .is-total-target-head, .is-total-actual-head, .is-test-spec-target, .is-test-spec-total, .is-question-count-total) {
   background: var(--surface-soft);
 }
-.blueprint-allocation-sidebar > .blueprint-remaining-questions {
-  width: 100%;
-  min-width: 0;
-}
-.blueprint-allocation-sidebar > .blueprint-remaining-questions > .blueprint-remaining-body {
-  max-height: 65vh;
-}
-
-/* Keep unallocated questions beside the matrix when the workspace has room. */
-@container (min-width: 900px) {
-  .blueprint-allocation-layout:has(> .blueprint-allocation-sidebar) {
-    grid-template-columns: minmax(0, 1fr) minmax(calc(var(--s-9) * 2 + var(--s-7)), 28%);
-  }
-  .blueprint-allocation-sidebar > .blueprint-remaining-questions {
-    align-self: start;
-  }
-}
-
 .create-assessment-blueprint-panel .blueprint-allocation-layout .create-assessment-blueprint-test-grid-title-row { flex-wrap: wrap; }
 .create-assessment-blueprint-panel .blueprint-allocation-layout .create-assessment-blueprint-test-grid-cell.is-competency { white-space: normal; overflow-wrap: anywhere; }
 
-.blueprint-allocation-sidebar { display: grid; gap: var(--s-3); min-width: 0; align-self: start; }
+
 
 
 /* Share column proportions and gutter between both rows of the multi-view layout. */
@@ -70,8 +52,7 @@
   column-gap: var(--s-3);
 }
 @media (min-width: 901px) {
-  .create-assessment-blueprint-panel .create-assessment-blueprint-specifications.is-multi-view,
-  .create-assessment-blueprint-panel .create-assessment-blueprint-specifications.is-multi-view .blueprint-allocation-layout {
+  .create-assessment-blueprint-panel .create-assessment-blueprint-specifications.is-multi-view {
     grid-template-columns: var(--blueprint-shared-columns);
   }
 }

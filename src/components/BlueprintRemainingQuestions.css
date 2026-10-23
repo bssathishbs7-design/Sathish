@@ -8,3 +8,12 @@
 .blueprint-unit-group > strong { color: var(--text-strong); }
 .blueprint-remaining-questions .blueprint-unit-cards { grid-template-columns: minmax(0, 1fr); }
 .create-assessment-blueprint-panel .blueprint-unit-summary { font-size: var(--fs-micro, 11px); margin: var(--s-2) 0 0; color: var(--text-muted); }
+
+.blueprint-remaining-questions .blueprint-unit-group.is-collapsible { display: block; border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; background: var(--surface-card); }
+.blueprint-unit-group.is-collapsible > summary { padding: var(--s-2); color: var(--text-strong); font-weight: 700; cursor: pointer; background: var(--surface-soft); transition: background var(--dur-hover) var(--ease-standard); }
+.blueprint-unit-group.is-collapsible > summary:hover { background: var(--surface-soft); }
+.blueprint-unit-group.is-collapsible > summary:active { background: color-mix(in srgb, var(--mint) 20%, var(--surface-card)); }
+.blueprint-unit-group.is-collapsible > summary:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.blueprint-unit-group.is-collapsible[open] > summary { border-bottom: 1px solid var(--border); }
+.blueprint-unit-group.is-collapsible > .blueprint-unit-cards { padding: var(--s-2); }
+@media (prefers-reduced-motion: reduce) { .blueprint-unit-group.is-collapsible > summary { transition: none; } }

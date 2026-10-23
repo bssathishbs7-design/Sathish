@@ -15,7 +15,7 @@ export default function BlueprintUnitCards({ units, onAdd, disabled = false }) {
   })
   const cards = [...grouped.values()]
   return <ul className="blueprint-unit-cards">{cards.map(card => <li key={card.id} className="blueprint-unit-card">
-          <div><div><strong>{card.group === 'SAQ' ? card.count + ' ' : ''}{card.label}</strong><span>{card.level === 'lot' ? 'LoT' : 'HoT'} {'\u00b7'} {card.marks} {card.marks === 1 ? 'mark' : 'marks'}{card.group === 'SAQ' ? ' each' : ''}</span></div>
+          <div><div><strong>{card.group !== 'LAQ' ? card.count + ' ' : ''}{card.label}</strong><span>{card.level === 'lot' ? 'LoT' : 'HoT'} {'\u00b7'} {card.marks} {card.marks === 1 ? 'mark' : 'marks'}{card.group === 'SAQ' ? ' each' : ''}</span></div>
             <small>{card.suggested ? 'Suggested: ' + card.suggested.code : 'No competency has enough marks remaining.'}</small></div>
           <button type="button" disabled={disabled || !card.suggested} onClick={() => onAdd(card.id)} aria-label={'Add ' + (card.group === 'LAQ' ? card.label : 'one ' + card.category + ' question') + (card.suggested ? ' to ' + card.suggested.code : '')}>
             <Plus size={14} strokeWidth={2} aria-hidden="true" />Add

@@ -1028,3 +1028,13 @@
 ## 2026-10-23 - Live evaluation monitoring access
 - Continue evaluation remains enabled for live assessment cards before submissions arrive. The existing evaluation table refreshes attempts, session progress and configured evaluation/publication outcomes without resetting search, filters or pagination.
 - Unsubmitted input sections stay pending and cannot produce completed results; manual cohort publication waits for all present students to complete evaluation.
+
+
+## 2026-10-23 - Floating blueprint checklist
+- Replaced the permanent allocation guide sidebar with a floating checklist containing live allocation progress, expandable remaining questions and the quick guide. The allocation table uses the available width; Add retains the existing allocation behaviour.
+
+## 2026-10-23 - Quick guide suggestions shortcut
+- Added a Suggestions button in the Quick Guide row that opens the existing unallocated-question checklist.
+
+## 2026-10-23 - Suggestions access
+- Removed the floating Blueprint checklist launcher; the Quick Guide Suggestions button opens the panel.
