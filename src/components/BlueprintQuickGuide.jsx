@@ -2,7 +2,7 @@ import { BookOpen, Lightbulb } from 'lucide-react'
 import './BlueprintQuickGuide.css'
 
 /** Reference for question notation, allocation sources and matrix values. */
-export default function BlueprintQuickGuide({ onSuggestions, suggestionsOpen = false }) {
+export default function BlueprintQuickGuide({ onSuggestions, suggestionsOpen = false, showSuggestions = true }) {
   return <section className="blueprint-quick-guide" aria-label="Blueprint quick guide">
     <header className="blueprint-quick-guide-header">
       <h4><BookOpen size={22} aria-hidden="true" /><span>Quick Guide</span></h4>
@@ -23,6 +23,6 @@ export default function BlueprintQuickGuide({ onSuggestions, suggestionsOpen = f
         <div className="blueprint-allocation-legend" aria-label="Allocation Source"><span className="is-manual">Manual: Allocated By You</span><span className="is-auto">Auto-Filled: Allocated Automatically</span></div>
       </div>
     </div>
-    <button type="button" className="blueprint-guide-suggestions" onClick={onSuggestions} aria-expanded={suggestionsOpen}><Lightbulb size={18} aria-hidden="true" />Suggestions</button>
+    {showSuggestions && <button type="button" className="blueprint-guide-suggestions" onClick={onSuggestions} aria-expanded={suggestionsOpen}><Lightbulb size={18} aria-hidden="true" />Suggestions</button>}
   </section>
 }

@@ -1822,7 +1822,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const [previewSectionTitleDraft, setPreviewSectionTitleDraft] = useState('')
   const [draggedPreviewQuestionId, setDraggedPreviewQuestionId] = useState(null)
   const [draggedPreviewSectionKey, setDraggedPreviewSectionKey] = useState(null)
-  const [blueprintSuggestionsOpen, setBlueprintSuggestionsOpen] = useState(false)
+  const [blueprintSuggestionsOpen, setBlueprintSuggestionsOpen] = useState(true)
   const [generationJobs, setGenerationJobs] = useState([])
   const [generationTick, setGenerationTick] = useState(Date.now())
   const [descriptiveCompetencyDraft, setDescriptiveCompetencyDraft] = useState(null)
@@ -7830,7 +7830,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                           </span>
                         </div>
                       </div>
-                      <BlueprintQuickGuide onSuggestions={() => setBlueprintSuggestionsOpen(true)} suggestionsOpen={blueprintSuggestionsOpen} />
+                      <BlueprintQuickGuide showSuggestions={!blueprintTestSpecificationMatrixIsValid} onSuggestions={() => setBlueprintSuggestionsOpen(true)} suggestionsOpen={blueprintSuggestionsOpen} />
                       <div className="create-assessment-blueprint-test-grid" role="table" aria-label="Assessment Blueprint">
                         <div className="create-assessment-blueprint-test-grid-head" role="rowgroup">
                           <div className="create-assessment-blueprint-test-grid-row is-group" role="row">
@@ -8039,7 +8039,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         </div>
                       </div>
                     </div>
-                      <BlueprintChecklist open={blueprintSuggestionsOpen} onOpenChange={setBlueprintSuggestionsOpen} theme={theme} total={Object.values(blueprintIndividualUnits).reduce((sum, units) => sum + units.length, 0)} units={blueprintUnallocatedUnits} onAdd={addBlueprintUnit} disabled={isBlueprintReadOnly || isBlueprintPlannerSaved && !isBlueprintPlannerEditing} items={blueprintTestSpecificationColumns.map(column => ({
+                      <BlueprintChecklist open={blueprintSuggestionsOpen && !blueprintTestSpecificationMatrixIsValid} onOpenChange={setBlueprintSuggestionsOpen} theme={theme} total={Object.values(blueprintIndividualUnits).reduce((sum, units) => sum + units.length, 0)} units={blueprintUnallocatedUnits} onAdd={addBlueprintUnit} disabled={isBlueprintReadOnly || isBlueprintPlannerSaved && !isBlueprintPlannerEditing} items={blueprintTestSpecificationColumns.map(column => ({
                         key: column.key, group: column.group, label: column.label,
                         remaining: Math.max(0, (blueprintTestSpecificationQuestionCounts[column.key] || 0) - getBlueprintTestSpecificationColumnCountTotal(column.key)),
                       }))} />

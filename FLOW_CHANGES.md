@@ -1038,3 +1038,6 @@
 
 ## 2026-10-23 - Suggestions access
 - Removed the floating Blueprint checklist launcher; the Quick Guide Suggestions button opens the panel.
+
+## 2026-10-23 - Completion-aware suggestions
+- Suggestions starts open for an incomplete blueprint matrix. Both the panel and launcher hide when marks, question counts and competency targets are complete.
