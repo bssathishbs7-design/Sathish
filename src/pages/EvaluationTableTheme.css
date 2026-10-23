@@ -108,3 +108,5 @@
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-attendance-toggle button.is-active.is-absent { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger-ink); }
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-attendance-toggle button:disabled { opacity: 1; cursor: not-allowed; }
 .evaluation-table-theme.evaluation-table-theme.evaluation-table-theme .assessment-evaluation-attendance-toggle button:hover:not(:disabled):not(.is-active) { background: var(--surface-card); border-color: var(--border); color: var(--text-body); }
+
+.evaluation-publication-status { display: block; margin-top: var(--s-1); font-size: var(--fs-micro); color: var(--text-muted); }

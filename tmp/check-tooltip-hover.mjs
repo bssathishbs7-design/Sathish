@@ -1,0 +1,15 @@
+import {browser,pause} from './cdp.mjs';
+const b=await browser();const ev=async s=>(await b.evaluate(s)).result.value;
+await b.call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+await ev("[...document.querySelectorAll('.assessment-create-tab')].find(b=>b.textContent.endsWith('Draft')).click()");
+await ev("document.querySelector('.assessment-settings-trigger').scrollIntoView({block:'center'})");await pause(200);
+const rect=await ev("(()=>{const r=document.querySelector('.assessment-settings-trigger').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()");
+await b.call('Input.dispatchMouseEvent',{type:'mouseMoved',...rect});await pause(250);
+const tip=await ev("(()=>{const e=document.querySelector('.assessment-settings-tooltip')?.closest('[role=tooltip]');if(!e)return null;const r=e.getBoundingClientRect();return {id:e.id,x:r.x+r.width/2,y:r.y+r.height/2}})()");
+if(!tip)throw Error('Tooltip did not open');
+await b.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:tip.x,y:tip.y});await pause(1200);
+const stable=await ev(`document.querySelector('[role=tooltip]')?.id===${JSON.stringify(tip.id)}`);
+await b.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:10,y:10});await pause(400);
+const closed=await ev("!document.querySelector('[role=tooltip]')");
+console.log({stableWhileHoveringTooltip:stable,closedAfterLeaving:closed});if(!stable||!closed)throw Error('Tooltip hover failure');
+b.close();

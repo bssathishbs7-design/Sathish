@@ -1,0 +1,13 @@
+﻿import fs from 'node:fs';
+const file='src/components/AssessmentViewMenu.jsx';let s=fs.readFileSync(file,'utf8');
+const a=s.indexOf('export const ASSESSMENT_VIEWS'),b=s.indexOf('/** @param');
+fs.writeFileSync('src/config/assessmentViews.js',"import { Grid2X2, Grid3X3, LayoutGrid, List, Monitor, Table2 } from 'lucide-react'\n\n"+s.slice(a,b));
+s=s.slice(0,a)+s.slice(b);s=s.replace("import { Check, ChevronDown, Grid2X2, Grid3X3, LayoutGrid, List, Monitor, Table2 }", "import { Check, ChevronDown, List }");
+s=s.replace("import './AssessmentViewMenu.css'", "import { ASSESSMENT_VIEWS } from '../config/assessmentViews'\nimport './AssessmentViewMenu.css'");
+s=s.replace("import { useEffect", "import { createElement, useEffect").replace('<ViewIcon size={17} aria-hidden="true" />',"{createElement(ViewIcon, { size: 17, 'aria-hidden': true })}");fs.writeFileSync(file,s);
+const page='src/pages/AssessmentCreatePage.jsx';s=fs.readFileSync(page,'utf8');s=s.replace("import AssessmentViewMenu, { readAssessmentView } from '../components/AssessmentViewMenu'", "import AssessmentViewMenu from '../components/AssessmentViewMenu'\nimport { readAssessmentView } from '../config/assessmentViews'");
+s=s.replace('import { useEffect, useRef, useState }','import { createElement, useEffect, useRef, useState }').replace('<FieldIcon size={13} aria-hidden="true" />',"{createElement(FieldIcon, { size: 13, 'aria-hidden': true })}");
+s=s.replace('.map(({ questions, ...section }) => section)',".map(section => { const metadata = { ...section }; delete metadata.questions; return metadata })");
+s=s.replace('{renderConfiguredSchedule(assessment)}\n                        </>}', '{renderConfiguredSchedule(assessment)}<AssessmentResultStatus results={assessment.studentResults} />\n                        </>}');fs.writeFileSync(page,s);
+const settings='src/components/AssessmentCardSettings.jsx';s=fs.readFileSync(settings,'utf8');s="import { createElement } from 'react'\n"+s;s=s.replace('<SettingIcon size={13} aria-hidden="true" />',"{createElement(SettingIcon, { size: 13, 'aria-hidden': true })}");fs.writeFileSync(settings,s);
+fs.appendFileSync('FLOW_CHANGES.md','\n## 2026-10-23 - Assessment presentation selector\n\n- Added View beside Filter in Draft, Approval Queue, Published, Evaluation and Results. Six layouts share a saved selection across tabs and reloads.\n- Compact layouts retain KPIs and primary actions; secondary settings open on hover, keyboard focus or tap. Existing assessment stages and action destinations are unchanged.\n');

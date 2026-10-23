@@ -474,7 +474,7 @@ const InfoTooltipButton = (props) => {
   )
 }
 
-export default function ApprovalViewPage({ approvalRecord, completedEvaluationRows = [], onBack, onAlert, onApprovalAction, theme, onToggleTheme }) {
+export default function ApprovalViewPage({ currentUser, approvalRecord, completedEvaluationRows = [], onBack, onAlert, onApprovalAction, theme, onToggleTheme }) {
   const [activeTooltipId, setActiveTooltipId] = useState('')
   const [reviewRemarks, setReviewRemarks] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
@@ -1227,8 +1227,8 @@ export default function ApprovalViewPage({ approvalRecord, completedEvaluationRo
     )
   }
 
-  if (approvalRecord?.activityType === 'Assessment') return <AssessmentApprovalReview onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} readOnly={approvalRecord.submissionReadOnly} />
-  if (approvalRecord?.activityType === 'Blueprint') return <BlueprintApprovalReview onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} />
+  if (approvalRecord?.activityType === 'Assessment') return <AssessmentApprovalReview currentUser={currentUser} onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} readOnly={approvalRecord.submissionReadOnly} />
+  if (approvalRecord?.activityType === 'Blueprint') return <BlueprintApprovalReview currentUser={currentUser} onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} />
 
   return (
     <section className="vx-content approval-view-page">

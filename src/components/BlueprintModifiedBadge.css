@@ -1,0 +1,17 @@
+.blueprint-modified-badge {
+  display: inline-block;
+  max-width: 220px;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--surface-mist);
+  color: var(--text-body);
+  font-family: var(--f-body);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.blueprint-modified-badge:focus-visible { outline: 2px solid var(--forest-900); outline-offset: var(--s-1); }

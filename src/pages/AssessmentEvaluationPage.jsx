@@ -1,3 +1,5 @@
+import { liveEvaluationProgress } from '../services/liveEvaluationProgress'
+import { getPublishedAssessmentScheduleStatus, hasSubmittedResponses } from '../services/assessmentTrackerLifecycle'
 import { MOCK_EVALUATION_STUDENTS, assessmentRoster } from '../services/assessmentRoster'
 import { appendAssessmentHistory } from '../services/assessmentHistory'
 import DescriptiveEvaluationReport from '../components/DescriptiveEvaluationReport'
@@ -843,7 +845,8 @@ const readEvaluationStudents = (assessment, studentSessions = {}, submissionStat
     const id = student.id || student.studentId || student.registerId || `ST${String(index + 1).padStart(4, '0')}`
     const session = studentSessions?.[assessmentId]?.[id] || null
     const submission = submissionStatuses?.[assessmentId]?.[id] || null
-    const isPresent = hasValidDateValue(session?.loginTime) || Boolean(submission?.status)
+    const attempt = readAssessmentAttempt(assessment, id)
+    const isPresent = hasValidDateValue(session?.loginTime) || Boolean(submission?.status) || attempt.hasStarted || attempt.isAssessmentSubmitted || attempt.isMcqSubmitted || attempt.isDescriptiveSubmitted
     const savedAttendance = normalizeEvaluationAttendance(manualAttendance[id])
     const attachedAttendance = normalizeEvaluationAttendance(student.attendance) || normalizeEvaluationAttendance(student.attendanceStatus)
 
@@ -852,7 +855,8 @@ const readEvaluationStudents = (assessment, studentSessions = {}, submissionStat
       name: student.name || student.studentName || `Student ${index + 1}`,
       attendance: isOffline
         ? (savedAttendance || (hasAttachedStudents ? attachedAttendance : '') || 'P')
-        : (isPresent || (hasAttachedStudents && attachedAttendance === 'P') ? 'P' : 'A'),
+        : (attachedAttendance === 'A' ? 'A' : isPresent || (hasAttachedStudents && attachedAttendance === 'P') ? 'P' : getPublishedAssessmentScheduleStatus(assessment)?.type === 'live' ? '-' : 'A'),
+      sessionStarted: hasValidDateValue(session?.loginTime),
       evaluationStatus: student.evaluationStatus || student.status || '',
       mockEvaluationState: student.mockEvaluationState || {},
     }
@@ -905,7 +909,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [questionEvaluationState, setQuestionEvaluationState] = useState(() => (
     Object.keys(readStorageObject(getStudentQuestionEvaluationStorageKey(readSelectedAssessment(), readSelectedStudent()))).length
       ? readStorageObject(getStudentQuestionEvaluationStorageKey(readSelectedAssessment(), readSelectedStudent()))
-      : readSelectedStudent()?.mockEvaluationState || {}
+      : isOfflineAssessment(readSelectedAssessment()) ? readSelectedStudent()?.mockEvaluationState || {} : {}
   ))
 
   const assessmentName = getAssessmentValue(assessment, 'assessmentName', 'Start Student Evaluation')
@@ -991,14 +995,17 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const savedEvaluation = studentEvaluationStatuses[row.id] || {}
     const savedStatus = savedEvaluation.status || row.evaluationStatus
     const storedQuestionState = readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, row))
-    const savedQuestionState = Object.keys(storedQuestionState).length ? storedQuestionState : row.mockEvaluationState
+    const attempt = readStoredAttempt(assessment, row)
+    const progress = liveEvaluationProgress(assessment, attempt, { hasMcq: mcqScoringItems.length > 0, hasDescriptive: descriptiveScoringItems.length > 0 }, row.sessionStarted)
+    const sourceState = Object.keys(storedQuestionState).length ? storedQuestionState : isOffline ? row.mockEvaluationState : {}
+    const savedQuestionState = Object.fromEntries(Object.entries(sourceState || {}).filter(([key]) => progress.canScore(mcqScoringItems.some(item => item.key === key) ? 'mcq' : 'descriptive')))
     const descriptiveComplete = !descriptiveInputEnabled(assessment) || descriptiveEvaluationComplete(descriptiveScoringItems, savedQuestionState)
     const rowMcqSummary = getScoringSummary(mcqScoringItems, savedQuestionState)
     const rowDescriptiveSummary = getScoringSummary(descriptiveScoringItems, savedQuestionState)
     const evaluatedCount = rowMcqSummary.evaluated + rowDescriptiveSummary.evaluated
     const questionCount = rowMcqSummary.total + rowDescriptiveSummary.total
     const allEvaluated = questionCount > 0 && evaluatedCount === questionCount
-    const evalStatus = isAbsent ? 'Absent' : allEvaluated || (savedStatus === 'Completed' && descriptiveComplete) ? 'Completed' : evaluatedCount > 0 ? 'In Progress' : 'Yet to Start'
+    const evalStatus = isAbsent ? 'Absent' : progress.waiting ? progress.status : allEvaluated || (isOffline && savedStatus === 'Completed' && descriptiveComplete) ? 'Completed' : evaluatedCount > 0 ? 'Pending evaluation' : progress.status
     const rowSummary = {
       attempted: rowMcqSummary.attempted + rowDescriptiveSummary.attempted,
       total: rowMcqSummary.total + rowDescriptiveSummary.total,
@@ -1008,13 +1015,14 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const rowPercentage = rowSummary.maxMarks
       ? Math.round((rowSummary.obtainedMarks / rowSummary.maxMarks) * 100)
       : 0
-    const shouldFillScores = !isAbsent && (evaluatedCount > 0 || evalStatus === 'Completed')
+    const shouldFillScores = !isAbsent && !progress.waiting && (evaluatedCount > 0 || evalStatus === 'Completed')
 
     return {
       ...row,
       isAbsent,
       evalStatus,
-      markedEvaluated: Boolean(savedEvaluation.markedEvaluated),
+      publicationStatus: assessment.studentResults?.[row.id]?.status === 'published' ? 'Published' : evalStatus === 'Completed' ? 'Awaiting publication' : '',
+      markedEvaluated: !progress.waiting && Boolean(savedEvaluation.markedEvaluated),
       hasAutomaticEvaluation: !isAbsent && (Boolean(savedEvaluation.autoEvaluated) || Object.values(savedQuestionState || {}).some(result => result?.autoEvaluated || result?.retainedEvaluation?.autoEvaluated)),
       mcq: !isAbsent && rowMcqSummary.evaluated > 0 && shouldShowMcqObtained ? formatTwoDigit(rowMcqSummary.obtainedMarks) : '-',
       descriptive: !isAbsent && rowDescriptiveSummary.evaluated > 0 && shouldShowDescriptiveObtained ? formatTwoDigit(rowDescriptiveSummary.obtainedMarks) : '-',
@@ -1025,7 +1033,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       resultOutcome: !isAbsent && evalStatus === 'Completed' ? getAttainmentResult(rowPercentage, attainmentThreshold) : null,
       scoringSummary: rowSummary,
     }
-  }), [assessment, attainmentThreshold, descriptiveScoringItems, evaluationRows, getScoringSummary, maxMark, mcqScoringItems, shouldShowDescriptiveObtained, shouldShowMcqObtained, studentEvaluationStatuses])
+  }), [assessment, attainmentThreshold, descriptiveScoringItems, evaluationRows, getScoringSummary, isOffline, maxMark, mcqScoringItems, shouldShowDescriptiveObtained, shouldShowMcqObtained, studentEvaluationStatuses])
   const absentCount = normalizedRows.filter((row) => row.isAbsent).length
   const pendingCount = normalizedRows.filter((row) => !row.isAbsent && row.evalStatus !== 'Completed').length
   const completedScoreRows = normalizedRows.filter((row) => !row.isAbsent && row.evalStatus === 'Completed')
@@ -1148,23 +1156,23 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     { hasMcq: mcqQuestions.length > 0, hasDescriptive: descriptiveQuestions.length > 0 },
   ).canAutoPublishCombined
   const isResultAlreadyPublished = String(assessment.resultStatus || assessment.evaluationStatus || '').toLowerCase() === 'published'
-  const isManualResultPublishDisabled = isResultAutoPublishEnabled || isResultAlreadyPublished
+  const isManualResultPublishDisabled = isResultAutoPublishEnabled || isResultAlreadyPublished || pendingCount > 0 || completedScoreRows.length === 0
 
   const sendEvaluationToApproval = () => {
     if (isManualResultPublishDisabled) return
-    if (descriptiveInputEnabled(assessment) && pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
+    if (pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
     onAlert?.({ tone: 'primary', message: 'Evaluation result sent to approval.' })
   }
 
   const directPublishEvaluationResult = () => {
     if (isManualResultPublishDisabled) return
-    if (descriptiveInputEnabled(assessment) && pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
+    if (pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
     setIsDirectPublishConfirmOpen(true)
   }
 
   const confirmDirectPublishEvaluationResult = () => {
     if (isManualResultPublishDisabled) return
-    if (descriptiveInputEnabled(assessment) && pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
+    if (pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
     const publishedAt = new Date().toISOString()
     const nextAssessment = {
       ...assessment,
@@ -1369,6 +1377,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const openStudentEvaluation = (row) => {
+    if (!isOffline && getPublishedAssessmentScheduleStatus(assessment)?.type === 'live' && !hasSubmittedResponses(assessment, row.id) && liveEvaluationProgress(assessment, readStoredAttempt(assessment, row), { hasMcq: mcqQuestions.length > 0, hasDescriptive: descriptiveQuestions.length > 0 }).waiting) {
+      onAlert?.({ tone: 'warning', message: 'Awaiting this student’s submission.' })
+      return
+    }
     if (row.isAbsent) {
       onAlert?.({ tone: 'warning', message: 'Absent student cannot be evaluated.' })
       return
@@ -1543,7 +1555,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const activeQuestionEvaluationState = resultStudent && selectedStudent?.id !== resultStudent.id
     ? (() => {
         const storedQuestionState = readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, resultStudent))
-        return Object.keys(storedQuestionState).length ? storedQuestionState : resultStudent.mockEvaluationState || {}
+        return Object.keys(storedQuestionState).length ? storedQuestionState : isOffline ? resultStudent.mockEvaluationState || {} : {}
       })()
     : questionEvaluationState
 
@@ -2142,7 +2154,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const mcqSubmitted = Boolean(mcqAttempt.isMcqSubmitted || mcqAttempt.isAssessmentSubmitted)
     const mcqAnswered = submittedOption(mcqAttempt, getOnlineMcqQuestionKey(question, index), getQuestionOptions(question).length) !== null
     const mcqCompleted = ['correct', 'wrong', 'not-attempted'].includes(result)
-    const mcqActionControls = isReadOnlyQuestionView ? null : (
+    const mcqActionControls = isReadOnlyQuestionView || (onlineMcqInput && getPublishedAssessmentScheduleStatus(assessment)?.type === 'live' && !mcqSubmitted) ? null : (
       <div className="assessment-question-actions is-mcq-header-actions">
         <button
           type="button"
@@ -2235,7 +2247,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const hasValidMarks = result.status === 'evaluated' && !result.error && String(result.marks ?? '').trim() !== ''
     const hasInvalidMarks = Boolean(result.error)
     const shouldPromptMarks = !hasValidMarks && !hasInvalidMarks && result.status !== 'not-attempted'
-    const descriptiveActionControls = isReadOnlyQuestionView || (showWrittenAnswer && !submitted) ? null : (
+    const descriptiveActionControls = isReadOnlyQuestionView || (showWrittenAnswer && getPublishedAssessmentScheduleStatus(assessment)?.type === 'live' && !submitted) || (showWrittenAnswer && !submitted) ? null : (
       <div className="assessment-question-actions is-descriptive-header-actions">
         <label className="assessment-mark-field assessment-compact-mark-control">
           {view === 'student' && <span className="student-evaluation-mark-label">Marks</span>}
@@ -3248,14 +3260,17 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       if (latest) setAssessment(current => JSON.stringify(current) === JSON.stringify(latest) ? current : latest)
       const currentAssessment = latest || assessment
       setStudentEvaluationStatuses(readStorageObject(getStudentEvaluationStatusStorageKey(currentAssessment)))
+      setStudentSessions(readStorageObject(STUDENT_EXAM_SESSION_KEY))
+      setSubmissionStatuses(readStorageObject(STUDENT_EXAM_SUBMISSION_STATUS_KEY))
       if (selectedStudent) setQuestionEvaluationState(readStorageObject(getStudentQuestionEvaluationStorageKey(currentAssessment, selectedStudent)))
     }
-    const onStorage = event => { if (event.key === ASSESSMENT_PUBLISHED_STORAGE_KEY) refreshResults() }
+    const onStorage = () => refreshResults()
     window.addEventListener(RESULT_RELEASE_EVENT, refreshResults)
     window.addEventListener('storage', onStorage)
     // Reconciliation may finish before this page subscribes; always read persisted completion on entry.
     refreshResults()
-    return () => { window.removeEventListener(RESULT_RELEASE_EVENT, refreshResults); window.removeEventListener('storage', onStorage) }
+    const timer = window.setInterval(refreshResults, 1000)
+    return () => { window.clearInterval(timer); window.removeEventListener(RESULT_RELEASE_EVENT, refreshResults); window.removeEventListener('storage', onStorage) }
   }, [assessment, selectedStudent])
 
   useEffect(() => {
@@ -3301,7 +3316,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
 
   useEffect(() => {
     const storedQuestionState = readStorageObject(getStudentQuestionEvaluationStorageKey(assessment, selectedStudent))
-    setQuestionEvaluationState(Object.keys(storedQuestionState).length ? storedQuestionState : selectedStudent?.mockEvaluationState || {})
+    setQuestionEvaluationState(Object.keys(storedQuestionState).length ? storedQuestionState : isOfflineAssessment(assessment) ? selectedStudent?.mockEvaluationState || {} : {})
   }, [assessment, selectedStudent])
 
   useEffect(() => {
@@ -3358,6 +3373,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     const automation = getAssessmentAutomation(assessment?.setup || assessment || {}, { hasMcq: true, hasDescriptive: false })
     if (!automation.rows[0].evaluation) return
     const attempt = readStoredAttempt(assessment, selectedStudent)
+    if (!attempt.isMcqSubmitted && !attempt.isAssessmentSubmitted) return
     const answers = attempt?.answers || {}
     if (!answers || typeof answers !== 'object') return
 
@@ -3367,6 +3383,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       if (questionEvaluationState[questionKey]) return
 
       const storedAnswer = answers[getOnlineMcqQuestionKey(question, index)]
+      if (storedAnswer === null || storedAnswer === undefined || storedAnswer === '') return
       const selectedOptionIndex = Number(storedAnswer)
       if (!Number.isInteger(selectedOptionIndex)) return
 
@@ -4002,7 +4019,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                     <span>Status</span>
                     <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                       <option value="all">All</option>
-                      <option value="Yet to Start">Yet to Start</option>
+                      <option value="Not started">Not started</option><option value="In progress">In progress</option><option value="Submitted">Submitted</option><option value="Pending evaluation">Pending evaluation</option>
                       <option value="Completed">Completed</option>
                       <option value="Absent">Absent</option>
                     </select>
@@ -4079,7 +4096,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
                       )}
                     </td>
                     <td>{row.name}</td>
-                    <td><span className={`assessment-evaluation-status ${isAbsent ? 'is-absent' : evalStatus === 'Completed' ? 'is-completed' : 'is-yet-to-start'}`}>{evalStatus}</span></td>
+                    <td><span className={`assessment-evaluation-status ${isAbsent ? 'is-absent' : evalStatus === 'Completed' ? 'is-completed' : 'is-yet-to-start'}`}>{evalStatus}</span>{row.publicationStatus && <small className="evaluation-publication-status">{row.publicationStatus}</small>}</td>
                     <td>{row.mcq}</td>
                     <td>{row.descriptive}</td>
                     <td>{row.attemptedQuestions}</td>

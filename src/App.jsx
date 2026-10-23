@@ -1622,6 +1622,7 @@ function App() {
             />
           ) : activePage === APP_PAGES.APPROVAL_VIEW ? (
             <ApprovalViewPage
+              currentUser={profileUser}
               onToggleTheme={() => setTheme(current => current === 'light' ? 'dark' : 'light')}
               theme={theme}
               key={(selectedApprovalViewRecord ?? readStoredApprovalViewRecord())?.activityId ?? 'no-approval-record'}

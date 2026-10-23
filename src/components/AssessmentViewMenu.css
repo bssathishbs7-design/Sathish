@@ -1,0 +1,11 @@
+.assessment-view-menu { position: relative; flex: 0 0 auto; }
+.assessment-create-theme .assessment-view-trigger { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--text-strong); background: var(--surface-card); font: 600 .8125rem/1.4 var(--font-family-base); cursor: pointer; }
+.assessment-create-theme .assessment-view-options { position: absolute; top: calc(100% + var(--s-2)); right: 0; z-index: 30; width: 224px; max-width: calc(100vw - var(--s-6)); padding: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); box-shadow: var(--shadow-soft); }
+.assessment-create-theme .assessment-view-options button { display: flex; align-items: center; gap: var(--s-3); width: 100%; padding: var(--s-3); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-body); text-align: left; font: 500 .875rem/1.4 var(--font-family-base); cursor: pointer; }
+.assessment-view-options button span { flex: 1; }
+.assessment-view-options .is-unselected { visibility: hidden; }
+.assessment-create-theme .assessment-view-options button[aria-checked="true"] { background: var(--surface-soft); color: var(--text-brand); font-weight: 600; }
+.assessment-create-theme :is(.assessment-view-trigger,.assessment-view-options button):hover { background: var(--surface-soft); }
+.assessment-create-theme :is(.assessment-view-trigger,.assessment-view-options button):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint); }
+.assessment-create-theme :is(.assessment-view-trigger,.assessment-view-options button):active { transform: translateY(1px) scale(.97); transition: none; }
+@media (prefers-reduced-motion: reduce) { .assessment-create-theme :is(.assessment-view-trigger,.assessment-view-options button):active { transform: none; } }

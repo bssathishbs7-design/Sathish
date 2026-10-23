@@ -9,8 +9,8 @@ export default function AssessmentAutomationSettings({ setup, types, onChange, o
   const hybrid = policy.rows.length === 2
   const publishEligible = policy.rows.length > 0 && policy.rows.every(row => row.evaluation)
   const publishHelp = hybrid
-    ? publishEligible ? 'Publish the combined result automatically after both sections are evaluated.' : 'Requires Enter answers for both sections and AI evaluation for Descriptive in an online exam.'
-    : publishEligible ? 'Publish results automatically after evaluation.' : 'Requires Enter answers and automatic evaluation in an online exam.'
+    ? publishEligible ? 'Publish the combined result automatically after both sections are evaluated.' : 'Requires Online Response for both sections and AI evaluation for Descriptive in an online exam.'
+    : publishEligible ? 'Publish results automatically after evaluation.' : 'Requires Online Response and automatic evaluation in an online exam.'
   return <div className={'assessment-automation qb-sort-scope' + (hybrid ? ' is-hybrid' : '')}>
     <section className="assessment-automation-answers" aria-label="Answers and results">
     <header className="assessment-automation-title"><strong><ClipboardCheck size={16} aria-hidden="true" /> Answers &amp; Results</strong></header>
@@ -22,7 +22,7 @@ export default function AssessmentAutomationSettings({ setup, types, onChange, o
           <div className="assessment-automation-field">
             <span><PenLine size={14} aria-hidden="true" /> Student Response <em>*</em></span>
             <div className="assessment-automation-options" role="group" aria-label={row.label + ' answer mode'}>
-              {['Answer Input', 'Read-Only'].map(option => <button type="button" key={option} aria-pressed={setup[row.key + 'DisplayType'] === option} onClick={() => onAnswerChange(row.key + 'DisplayType', option)}>{option === 'Answer Input' ? 'Enter answers' : 'Read-only'}</button>)}
+              {['Answer Input', 'Read-Only'].map(option => <button type="button" key={option} aria-pressed={setup[row.key + 'DisplayType'] === option} onClick={() => onAnswerChange(row.key + 'DisplayType', option)}>{option === 'Answer Input' ? 'Online Response' : 'Read-only'}</button>)}
             </div>
             {errors[row.key + 'DisplayType'] && <small className="assessment-automation-error" role="alert">{errors[row.key + 'DisplayType']}</small>}
           </div>

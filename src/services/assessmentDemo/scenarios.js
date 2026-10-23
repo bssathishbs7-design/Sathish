@@ -11,9 +11,9 @@ const period = date => date.getHours()>=12?'PM':'AM'
  * @property {string} demoScenario Fixture identity; never interpreted as a workflow status.
  */
 export const DEMO_SCENARIOS = [
- ['draft-mcq','Draft: physiology MCQ','draft','MCQ','Practice Exam'],
- ['draft-hybrid','Draft: hybrid with nested questions','draft','Hybrid','Proctored Exam'],
- ['draft-descriptive','Draft: descriptive assessment','draft','Descriptive','Practice Exam'],
+ ['draft-mcq','Physiology MCQ','draft','MCQ','Practice Exam'],
+ ['draft-hybrid','Hybrid with nested questions','draft','Hybrid','Proctored Exam'],
+ ['draft-descriptive','Descriptive assessment','draft','Descriptive','Practice Exam'],
  ['pending','Pending approval: hybrid','pending','Hybrid','Proctored Exam'],
  ['expired','Expired: reschedule practice','expired','Hybrid','Practice Exam'],
  ['approved','Approved: descriptive review','approved','Descriptive','Proctored Exam'],

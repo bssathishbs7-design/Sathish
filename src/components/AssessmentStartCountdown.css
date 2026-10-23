@@ -1,20 +1,20 @@
-.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown {
+.assessment-create-theme.assessment-create-theme .assessment-tracker-card :is(.assessment-create-draft-footer,.assessment-tracker-card-top,.assessment-draft-top-badges) > .assessment-start-countdown {
   display: inline-flex; align-items: center; gap: var(--s-2);
   padding: var(--s-2) var(--s-3); border: 1px solid var(--border);
   border-radius: var(--r-pill); background: var(--surface-soft); color: #000;
   font: 600 .875rem/1.5 var(--f-body); white-space: nowrap;
 }
-.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown.is-imminent { background: color-mix(in srgb, var(--butter) 60%, var(--surface-card)); }
+.assessment-create-theme.assessment-create-theme .assessment-tracker-card :is(.assessment-create-draft-footer,.assessment-tracker-card-top,.assessment-draft-top-badges) > .assessment-start-countdown.is-imminent { background: color-mix(in srgb, var(--butter) 60%, var(--surface-card)); }
 .assessment-start-countdown.is-imminent span { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
 
 
 .assessment-create-theme.assessment-create-theme .assessment-start-countdown > :is(span, svg) { color: inherit; opacity: 1; }
-.theme-dark .assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown,
-[data-theme="dark"] .assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown,
-[data-theme="oled"] .assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown { color: var(--text-strong); }
+.theme-dark .assessment-create-theme .assessment-tracker-card :is(.assessment-create-draft-footer,.assessment-tracker-card-top,.assessment-draft-top-badges) > .assessment-start-countdown,
+[data-theme="dark"] .assessment-create-theme .assessment-tracker-card :is(.assessment-create-draft-footer,.assessment-tracker-card-top,.assessment-draft-top-badges) > .assessment-start-countdown,
+[data-theme="oled"] .assessment-create-theme .assessment-tracker-card :is(.assessment-create-draft-footer,.assessment-tracker-card-top,.assessment-draft-top-badges) > .assessment-start-countdown { color: var(--text-strong); }
 
 /* Keep the badge and label steady; only the small live indicator blinks. */
-.assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown.is-live {
+.assessment-create-theme.assessment-create-theme .assessment-tracker-card :is(.assessment-create-draft-footer,.assessment-tracker-card-top,.assessment-draft-top-badges) > .assessment-start-countdown.is-live {
   --live-badge-fill: var(--danger-soft);
   --live-badge-ink: var(--danger-ink);
   color: var(--live-badge-ink);
@@ -46,5 +46,5 @@
   70% { box-shadow: 0 0 0 var(--s-2) transparent; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .assessment-create-theme.assessment-create-theme .assessment-tracker-card .assessment-create-draft-footer > .assessment-start-countdown.is-live { animation: none; }
+  .assessment-create-theme.assessment-create-theme .assessment-tracker-card :is(.assessment-create-draft-footer,.assessment-tracker-card-top,.assessment-draft-top-badges) > .assessment-start-countdown.is-live { animation: none; }
 }

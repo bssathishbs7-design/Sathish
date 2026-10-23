@@ -1,0 +1,20 @@
+import {browser,pause} from './cdp.mjs';import fs from 'node:fs';import assert from 'node:assert/strict';
+const b=await browser();const ev=async s=>{const r=await b.evaluate(s);if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value};
+await b.call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+const backup=await ev("sessionStorage.getItem('vx-approval-view-record')");
+try{
+await ev(`(async()=>{const {corelationRatingRows}=await import('/src/pages/corelationRatingData.js');const row=corelationRatingRows.find(r=>r.subject==='Human Anatomy');const key=[row.year||'1st Year',row.subject,row.topic,row.code,row.name].join('::');const snapshot={assessmentId:'badge-qa',blueprintDraft:{subject:row.subject,topics:[row.topic],competencies:[key],totalMark:'10'},blueprintDistributionDraft:{[key]:'10'},blueprintCognitionWeightage:{lot:'50',hot:'50'},blueprintQuestionTypeDraft:{MCQs:{perQuestionMarks:'1',totalMarks:'10',lotMarks:'5',hotMarks:'5'}},blueprintTestSpecificationCountDraft:{[key]:{mcqLot:'5',mcqHot:'5'}}};sessionStorage.setItem('vx-approval-view-record',JSON.stringify({activityId:'badge-qa',activityType:'Blueprint',approvalStatus:'Pending Approval',blueprintSnapshot:snapshot,setup:{assessmentId:'badge-qa',assessmentName:'Blueprint attribution check',examType:'MCQ'}}))})()`);
+await b.call('Page.navigate',{url:'http://127.0.0.1:5199/skills/approvalview'});await pause(1500);
+console.log('Initial badges',await ev("[...document.querySelectorAll('.blueprint-modified-badge')].map(e=>e.textContent)"));
+assert.equal(await ev("document.querySelectorAll('.blueprint-modified-badge').length"),0);
+console.log('Inputs',await ev("[...document.querySelectorAll('input')].map(e=>({label:e.getAttribute('aria-label'),value:e.value,readonly:e.readOnly})).filter(x=>x.label).slice(0,15)"));
+await ev(`(()=>{const el=document.querySelector('input[aria-label="MCQs per question marks"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'2');el.dispatchEvent(new Event('input',{bubbles:true}))})()`);await pause(300);
+console.log('Changed badges',await ev("[...document.querySelectorAll('.blueprint-modified-badge')].map(e=>e.textContent)"));assert.equal(await ev("document.querySelectorAll('.blueprint-modified-badge').length"),2);
+await ev("document.querySelector('.blueprint-modified-badge').scrollIntoView({block:'center'})");await pause(100);fs.writeFileSync('tmp/blueprint-modified-badge.png',Buffer.from((await b.call('Page.captureScreenshot',{format:'png'})).data,'base64'));
+await ev(`(()=>{const el=document.querySelector('input[aria-label="MCQs per question marks"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'1');el.dispatchEvent(new Event('input',{bubbles:true}))})()`);await pause(300);console.log('Dependent allocation changes remain marked',await ev("document.querySelectorAll('.blueprint-modified-badge').length"));
+await b.call('Page.reload');await pause(1200);
+const label=await ev("[...document.querySelectorAll('input')].find(e=>e.getAttribute('aria-label')?.includes('question count') && e.value==='5')?.getAttribute('aria-label')");
+console.log('Matrix label',label);
+for(const value of ['4','5']){await ev(`(()=>{const el=[...document.querySelectorAll('input')].find(e=>e.getAttribute('aria-label')===${JSON.stringify(label)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'${value}');el.dispatchEvent(new Event('input',{bubbles:true}))})()`);await pause(250);console.log('Matrix',value,await ev("[...document.querySelectorAll('.blueprint-modified-badge')].map(e=>e.textContent)"));}
+assert.equal(await ev("document.querySelectorAll('.blueprint-modified-badge').length"),0);console.log('Reverted matrix badge removed');
+}finally{await ev(backup===null?"sessionStorage.removeItem('vx-approval-view-record')":`sessionStorage.setItem('vx-approval-view-record',${JSON.stringify(backup)})`);await b.call('Page.navigate',{url:'http://127.0.0.1:5199/assessment/create'});b.close()}

@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-motion-foundation
 *.local
 
 # Editor directories and files

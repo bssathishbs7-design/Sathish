@@ -993,3 +993,38 @@
 - Seed connected faculty and student assessment examples once before app mount in development; preserve existing user records and edits.
 - Add local demo shortcuts and an explicit demo-only refresh for current schedules. Persist demo approval rows across browser sessions.
 - Retire the destructive automatic tracker reset. Exam controls use the assigned assessment roster when available.
+
+## 2026-10-23 - Assessment presentation selector
+
+- Added View beside Filter in Draft, Approval Queue, Published, Evaluation and Results. Six layouts share a saved selection across tabs and reloads.
+- Compact layouts retain KPIs and primary actions; secondary settings open on hover, keyboard focus or tap. Existing assessment stages and action destinations are unchanged.
+
+## 2026-10-23 - Remove extra large assessment view
+
+- Removed Extra large cards from the shared View menu. Previously saved selections fall back to List; the other five views remain available.
+
+
+## 2026-10-23 - Simplify assessment view choices
+
+- Removed Small cards and Details from the shared View menu across assessment tabs. Saved selections for these views fall back to List. Large cards, Medium cards and List remain available.
+
+
+## 2026-10-23 - Default assessment presentation
+
+- Assessment tabs now default to Medium cards when no valid saved view exists. Explicit view preferences continue to persist.
+
+
+## 2026-10-23 - Online question paper downloads
+
+- Published and Evaluation cards now offer Download PDF for online Practice and Proctored assessments, using the existing offline questions-only export. Downloads show a preparing state and report failures through the existing page error message.
+
+
+## 2026-10-23 - Live assessments available in Evaluation
+- Live assessments appear in Published and Evaluation as projections of one saved record. Tab counts include their visible cards; the overall count remains unique.
+- Published keeps Exam Controls. Evaluation shows the live timer and enables evaluation when a roster member submits a section; unfinished sections remain unavailable for marking.
+- Completed assessments leave Published and remain in Evaluation; released results remain available for review.
+
+
+## 2026-10-23 - Live evaluation monitoring access
+- Continue evaluation remains enabled for live assessment cards before submissions arrive. The existing evaluation table refreshes attempts, session progress and configured evaluation/publication outcomes without resetting search, filters or pagination.
+- Unsubmitted input sections stay pending and cannot produce completed results; manual cohort publication waits for all present students to complete evaluation.

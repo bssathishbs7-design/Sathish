@@ -5,5 +5,5 @@ import './AssessmentResultStatus.css'
 export default function AssessmentResultStatus({ results }) {
   const rows = Object.values(results || {})
   if (!rows.length) return null
-  return <div className="assessment-result-status" role="status"><CheckCircle2 size={16} aria-hidden="true" /><span>{rows.filter(row => row.status !== 'evaluating').length}/{rows.length} Evaluated / {rows.filter(row => row.status === 'published').length} Results Published</span></div>
+  return <div className="assessment-result-status" role="status"><CheckCircle2 size={16} aria-hidden="true" /><span>{rows.filter(row => row.status !== 'evaluating').length}/{rows.length} evaluated &middot; {rows.filter(row => row.status === 'published').length} published</span></div>
 }

@@ -1,0 +1,1 @@
+import {browser} from './cdp.mjs';const b=await browser();console.log((await b.evaluate(`JSON.parse(sessionStorage.getItem('vx-approval-queue-rows')||'[]').map(x=>({id:x.activityId,type:x.activityType,snapshot:!!x.blueprintSnapshot,keys:Object.keys(x.blueprintSnapshot||{})}))`)).result.value);b.close();

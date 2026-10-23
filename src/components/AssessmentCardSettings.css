@@ -11,3 +11,19 @@
 .assessment-card-info:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
 
 .assessment-card-settings .assessment-card-blueprint-id { padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text-muted); font-family: var(--f-code); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.assessment-create-theme .assessment-settings-trigger { display: inline-flex; align-items: center; gap: var(--s-1); padding: var(--s-2); min-height: var(--s-6); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-body); font: 500 .75rem/1.4 var(--font-family-base); cursor: pointer; }
+.assessment-create-theme .assessment-settings-trigger:hover { background: var(--surface-soft); }
+.assessment-create-theme .assessment-settings-trigger:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.assessment-settings-tooltip { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: var(--s-2) var(--s-3); margin: 0; width: calc(var(--s-6) * 10); max-width: 100%; }
+.assessment-settings-tooltip > div { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center; min-height: var(--s-5); }
+.assessment-settings-tooltip dt { color: var(--text-body); font-weight: 400; }
+.assessment-settings-tooltip dd { margin: 0; min-width: 0; color: var(--text-strong); font-weight: 600; overflow-wrap: anywhere; text-align: right; }
+
+.floating-tooltip:has(.assessment-settings-tooltip) { padding: var(--s-3); pointer-events: auto; }
+.assessment-settings-tooltip .copy-id-badge-wrap { max-width: 100%; vertical-align: middle; }
+.assessment-settings-tooltip .copy-id-badge { min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text-strong); }
+.assessment-settings-tooltip .copy-id-badge > span { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.assessment-settings-tooltip .copy-id-badge button { flex-shrink: 0; color: var(--text-brand); }
+
+.assessment-settings-date dd { font: 500 var(--fs-micro)/1.5 var(--f-code); font-variant-numeric: tabular-nums; }
+.assessment-settings-date .assessment-create-saved-timestamp { font: inherit; color: inherit; white-space: normal; }

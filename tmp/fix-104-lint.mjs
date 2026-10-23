@@ -1,0 +1,1 @@
+﻿import fs from 'node:fs';for(const f of ['stage.js','scenes.js']){const p='docs/video/medsy-film-104/'+f;let s=fs.readFileSync(p,'utf8').replaceAll('\uFEFF','');if(f==='scenes.js')s=s.replace('{ease,mix,clamp}','{ease,mix}');fs.writeFileSync(p,s)}

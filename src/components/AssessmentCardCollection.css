@@ -1,0 +1,80 @@
+.assessment-card-collection { container: assessmentViews / inline-size; min-width: 0; }
+/* Scoped above the existing tracker cascade; this affects presentation only. */
+.assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme {
+  .assessment-create-draft-grid[data-card-view] { display: grid; grid-template-columns: minmax(0,1fr); align-items: stretch; gap: var(--s-4); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card { min-width: 0; align-content: start; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card { grid-row: auto; grid-template-rows: auto 1fr auto; align-self: stretch; gap: var(--s-2); min-height: 0; }
+  .assessment-create-draft-grid[data-card-view] .assessment-expiry-message { grid-column: 1 / -1; display: grid; grid-template-columns: var(--s-4) minmax(0,1fr); align-items: start; gap: var(--s-2); padding: var(--s-2); font: 500 .75rem/1.5 var(--font-family-base); text-align: left; }
+  .assessment-create-draft-grid[data-card-view] .assessment-expiry-message > svg { width: var(--s-4); height: var(--s-4); margin-top: var(--s-1); }
+  .assessment-create-draft-grid[data-card-view] .assessment-expiry-message strong { font: inherit; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card-identity { grid-template-columns: minmax(0,1fr); align-content: start; align-items: start; row-gap: var(--s-1); padding-right: 0; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) :is(.assessment-create-draft-profile,.assessment-create-published-head) { grid-column: 1; grid-row: 1; padding-right: var(--assessment-card-action-space, calc(var(--s-6) * 3)); }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card-identity > .assessment-draft-top-badges { grid-column: 1; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; gap: var(--s-1); margin-top: var(--s-1); }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card-identity > :is(.assessment-create-published-status-row,.assessment-create-draft-metadata) { grid-row: 2; margin: 0; padding: 0; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card-identity:has(> :is(.assessment-create-published-status-row,.assessment-create-draft-metadata)) > .assessment-draft-top-badges { grid-row: 3; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--s-2); padding-block: var(--s-2); border-bottom: 0; align-self: start; align-items: start; align-content: start; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) :is(.assessment-create-draft-stats,.assessment-create-published-details) > span { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); white-space: normal; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) :is(.assessment-create-draft-stats,.assessment-create-published-details) em { white-space: normal; font-size: .75rem; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) :is(.assessment-create-draft-stats,.assessment-create-published-details) em::after { content: none; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) :is(.assessment-create-draft-stats,.assessment-create-published-details) strong { font-size: .8125rem; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-exam-type { min-width: 0; max-width: 100%; gap: var(--s-1); padding-inline: var(--s-1); }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-exam-type strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75rem; font-weight: 500; }
+  .assessment-create-draft-grid[data-card-view] .assessment-result-status { grid-column: 1 / -1; min-width: 0; white-space: normal; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card-controls { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--s-2); align-self: start; align-items: center; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-result-status { margin-block: 0; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card-summary > .assessment-result-status { grid-column: 2 / -1; align-self: center; padding: var(--s-1) var(--s-2); gap: var(--s-1); font: 400 var(--fs-micro)/1.5 var(--font-family-base); }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-draft-identity-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card .assessment-create-draft-footer { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card :is(.assessment-create-draft-footer button,.assessment-settings-trigger) { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: var(--s-6); min-height: var(--s-6); padding: var(--s-1) var(--s-3); gap: var(--s-1); border: 1px solid transparent; cursor: pointer; transition: background-color var(--dur-hover) var(--ease-standard), border-color var(--dur-hover) var(--ease-standard), box-shadow var(--dur-hover) var(--ease-standard), transform var(--dur-hover) var(--ease-standard); font: 600 .75rem/1.5 var(--font-family-base); border-radius: var(--r-pill); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card .assessment-create-draft-footer button { min-width: 0; background: var(--forest); color: var(--on-brand); box-shadow: var(--shadow-sm); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card .assessment-create-draft-footer button:hover:not(:disabled) { background: var(--forest-900); border-color: var(--forest-900); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card button.assessment-settings-trigger { background: var(--surface-card); border-color: var(--border); color: var(--text-body); box-shadow: none; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card .assessment-settings-trigger:hover:not(:disabled) { background: var(--surface-soft); border-color: var(--forest); color: var(--text-strong); box-shadow: var(--shadow-sm); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card :is(.assessment-create-draft-footer button,.assessment-settings-trigger):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card :is(.assessment-create-draft-footer button,.assessment-settings-trigger):active:not(:disabled) { transform: translateY(1px) scale(.97); box-shadow: none; transition: none; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card :is(.assessment-create-draft-footer button,.assessment-settings-trigger):disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card :is(.assessment-create-draft-footer button,.assessment-settings-trigger) > svg { flex-shrink: 0; width: var(--s-3); height: var(--s-3); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card :is(.assessment-stage-badge,.assessment-create-published-status,.assessment-create-published-schedule-badge,.assessment-exam-type,.assessment-schedule-expired,.assessment-start-countdown,.copy-id-badge) { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: var(--s-5); min-height: var(--s-5); padding: 0 var(--s-2); margin: 0; gap: var(--s-1); font: 500 .75rem/1.5 var(--font-family-base); white-space: nowrap; vertical-align: middle; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card :is(.assessment-stage-badge,.assessment-create-published-status,.assessment-create-published-schedule-badge,.assessment-exam-type,.assessment-schedule-expired,.assessment-start-countdown,.copy-id-badge) > svg { width: var(--s-3); height: var(--s-3); flex-shrink: 0; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card-identity > .assessment-draft-top-badges { align-items: center; gap: var(--s-1); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card .assessment-exam-type > strong { font: 500 .75rem/1.5 var(--font-family-base); }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card .copy-id-badge { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card-bottom { display: grid; gap: var(--s-2); align-self: end; min-width: 0; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card-bottom .assessment-result-status { margin: 0; font: 400 .75rem/1.5 var(--font-family-base); }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card-controls { border-top: 1px solid var(--border); padding-top: var(--s-2); }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-tracker-card:has(> .assessment-tracker-card-top) { grid-template-rows: auto auto 1fr auto; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card-top { display: flex; align-items: center; justify-content: flex-start; }
+  /* Shared identity typography and spacing across lifecycle cards. */
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card-identity :is(.assessment-card-title,.assessment-card-category,.assessment-draft-identity-row > span) { margin-block: 0; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card :is(.assessment-card-category,.assessment-create-draft-metadata) { font: 600 .75rem/1.5 var(--font-family-base); color: var(--text-body); }
+  .assessment-create-draft-grid[data-card-view] .assessment-create-draft-metadata > span { font: inherit; color: inherit; }
+  .assessment-create-draft-grid[data-card-view] .assessment-tracker-card .assessment-draft-identity-row > span { font: 500 var(--fs-micro)/1.5 var(--font-family-base); color: var(--text-muted); }
+  .assessment-create-draft-grid[data-card-view] .assessment-card-title { display: block; min-width: 0; max-width: 100%; }
+  .assessment-create-draft-grid[data-card-view] .assessment-card-title-text { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: inherit; color: inherit; }
+  .assessment-create-draft-grid[data-card-view] .assessment-card-title-text:focus-visible { outline: 2px solid var(--text-brand); outline-offset: var(--s-1); }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-settings-trigger { grid-column: 1; grid-row: 1; justify-self: start; }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) :is(.assessment-create-draft-profile,.assessment-create-published-head) > div { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); }
+  .assessment-create-draft-grid[data-card-view]:not([data-card-view="list"]) .assessment-create-draft-footer { grid-column: 2; grid-row: 1; min-width: 0; width: auto; flex-wrap: wrap; margin: 0; justify-content: flex-end; }
+}
+@container assessmentViews (min-width: 620px) {
+  .assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-draft-grid[data-card-view="medium"] { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@container assessmentViews (min-width: 960px) {
+  .assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-draft-grid[data-card-view="large"] { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-draft-grid[data-card-view="medium"] { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (max-width: 767px) {
+  .assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-card-heading:has(.assessment-view-menu) {
+    grid-template-columns: minmax(0,1fr) auto auto;
+    .assessment-create-tracker-toolbar { display: contents; }
+    .assessment-create-published-search { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
+    .assessment-create-published-filter-btn { grid-column: 2; grid-row: 3; }
+    .assessment-view-menu { grid-column: 3; grid-row: 3; }
+    .assessment-create-published-clear-btn { grid-column: 1; grid-row: 3; }
+    .assessment-create-published-filter-popover { grid-column: 1 / -1; grid-row: 4; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-create-draft-grid[data-card-view] .assessment-tracker-card :is(.assessment-create-draft-footer button,.assessment-settings-trigger) { transition: none !important; transform: none !important; }
+}

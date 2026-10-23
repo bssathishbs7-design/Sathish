@@ -1,20 +1,26 @@
+import { parseAssessmentDate, applyAssessmentTime, formatAssessmentRemainingTime, getPublishedAssessmentScheduleStatus, hasPublishedResults, splitPublishedAssessmentRows, canStartLiveEvaluation } from '../services/assessmentTrackerLifecycle'
+import { createQuestionPaperExporter } from '../utils/assessmentQuestionPaper'
+import FloatingTooltip from '../components/FloatingTooltip'
 import AssessmentStartCountdown from '../components/AssessmentStartCountdown'
 import AssessmentPublicationBadge from '../components/AssessmentPublicationBadge'
 import { getAssessmentPublicationMethod } from '../services/assessmentPublicationMethod'
 import { isAssessmentScheduleExpired, isPendingAssessmentExpired } from '../services/assessmentScheduleExpiry'
 import AssessmentExamType from '../components/AssessmentExamType'
 import AssessmentTrackerCard from '../components/AssessmentTrackerCard'
+import AssessmentViewMenu from '../components/AssessmentViewMenu'
+import { readAssessmentView } from '../config/assessmentViews'
+import AssessmentCardCollection from '../components/AssessmentCardCollection'
 import CopyIdBadge from '../components/CopyIdBadge'
 import { readBlueprintWorkflow } from '../services/blueprintApproval'
 import AssessmentHistoryDialog from '../components/AssessmentHistoryDialog'
 import { assessmentDisplayId } from '../services/assessmentHistory'
 import AssessmentCardSettings from '../components/AssessmentCardSettings'
 import AssessmentResultStatus from '../components/AssessmentResultStatus'
-import { useEffect, useRef, useState } from 'react'
+import { createElement, useEffect, useRef, useState } from 'react'
 import { reserveAssessmentIdentity } from '../services/assessmentIdentity'
 import { resetAssessmentTrackerOnce } from '../services/assessmentTrackerReset'
 import { createPortal } from 'react-dom'
-import { ArrowRight, CalendarDays, ChevronDown, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, EyeOff, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, ChevronDown, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, LoaderCircle, EyeOff, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { APP_PAGES } from '../config/appPages'
 import '../styles/assessment-pages.css'
@@ -470,7 +476,7 @@ const renderAssessmentAssignment = record => {
 const renderAssessmentIdentity = (record, title) => {
   const academicYear = getDraftValue(record, 'academicYear') || 'Academic year not set'
   const examCategory = getDraftValue(record, 'examCategory') || 'Category not set'
-  return <span className="assessment-draft-identity-row"><strong>{title}</strong><span>{examCategory} / {academicYear}</span></span>
+  return <span className="assessment-draft-identity-row"><strong className="assessment-card-title"><FloatingTooltip className="assessment-card-title-text" content={title}>{title}</FloatingTooltip></strong><span>{examCategory} / {academicYear}</span></span>
 }
 
 const renderAssessmentModeBadges = record => {
@@ -487,7 +493,7 @@ const renderAssessmentModeBadges = record => {
 const renderAssessmentSummary = record => <div className="assessment-create-draft-stats" aria-label="Assessment summary"><span><strong>{record.questionCount ?? getPublishedQuestionRows(record).length}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em></span><span><strong>{record.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span></div>
 
 /** Keep schedule KPIs in the same order on every lifecycle card. */
-const renderConfiguredSchedule = (record, scheduleStatus, questions, unpublishedNow) => {
+const renderConfiguredSchedule = (record, scheduleStatus, questions, unpublishedNow, hideSchedule = false) => {
   const savedDraft = Boolean(record?.setup?.sourceDraftId)
   const practice = savedDraft && getDraftValue(record, 'supervisionType') === 'Practice Exam' && getDraftValue(record, 'examDeliveryMode', 'examMode') !== 'Offline'
   const date = practice ? getDraftValue(record, 'practiceStartDate') : getDraftValue(record, 'examDate', 'startDate')
@@ -498,13 +504,13 @@ const renderConfiguredSchedule = (record, scheduleStatus, questions, unpublished
   const live = scheduleStatus?.type === 'live'
   const expired = unpublishedNow && isAssessmentScheduleExpired({date, time, period}, unpublishedNow)
   const fields = [
+    ['Exam type', <AssessmentExamType assessment={record} questions={questions} />, ClipboardCheck],
     ['Start date', date ? formatDisplayDate(date) : '-', CalendarDays],
     ['Start time', time ? [time, /am|pm/i.test(time) ? '' : period].filter(Boolean).join(' ') : '-', Clock3],
-    [live ? 'Remaining time' : 'Duration', live ? formatAssessmentRemainingTime(scheduleStatus.remainingMs) : duration || '-', Clock3],
+    [live ? 'Time left' : 'Duration', live ? formatAssessmentRemainingTime(scheduleStatus.remainingMs) : duration || '-', Clock3],
     ['End date', end ? formatDisplayDate(end) : '-', CalendarDays],
-    ['Exam type', <AssessmentExamType assessment={record} questions={questions} />, ClipboardCheck],
   ]
-  return <div className="assessment-create-published-details" aria-label="Assessment schedule">{fields.map(([label, value, FieldIcon]) => <span key={label}>{label === 'Exam type' ? value : label === 'Start time' && expired ? <span className="assessment-schedule-expired">Expired</span> : <strong>{value}</strong>}<em><FieldIcon size={13} aria-hidden="true" /> {label}</em></span>)}</div>
+  return <div className="assessment-create-published-details" aria-label="Assessment schedule">{fields.filter(([label]) => !hideSchedule || label === 'Exam type').map(([label, value, FieldIcon]) => <span key={label}>{label === 'Exam type' ? value : label === 'Start time' && expired ? <span className="assessment-schedule-expired">Expired</span> : <strong>{value}</strong>}<em>{createElement(FieldIcon, { size: 13, 'aria-hidden': true })} {label}</em></span>)}</div>
 }
 
 const renderAssessmentTimestamp = (record, stage) => {
@@ -535,433 +541,11 @@ const getQuestionMarksTotal = (item) => {
   return parseMarksValue(item?.marks)
 }
 
-const normalizePdfText = (value) => String(value ?? '')
-  .normalize('NFKD')
-  .replace(/[^\x20-\x7E]/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim()
-
-const escapePdfText = (value) => normalizePdfText(value)
-  .replace(/\\/g, '\\\\')
-  .replace(/\(/g, '\\(')
-  .replace(/\)/g, '\\)')
-
-const sanitizeFileName = (value) => normalizePdfText(value)
-  .replace(/[^a-z0-9]+/gi, '-')
-  .replace(/^-+|-+$/g, '')
-  .toLowerCase()
-  || 'question-paper'
-
-const wrapPdfText = (value, maxLength = 88) => {
-  const words = normalizePdfText(value).split(' ').filter(Boolean)
-  const lines = []
-
-  words.forEach((word) => {
-    const currentLine = lines[lines.length - 1] ?? ''
-    const nextLine = currentLine ? `${currentLine} ${word}` : word
-
-    if (nextLine.length <= maxLength) {
-      if (lines.length) lines[lines.length - 1] = nextLine
-      else lines.push(nextLine)
-      return
-    }
-
-    if (word.length > maxLength) {
-      lines.push(`${word.slice(0, maxLength - 1)}-`)
-      return
-    }
-
-    lines.push(word)
-  })
-
-  return lines.length ? lines : ['-']
-}
-
-const getPdfSectionKey = (item) => {
-  if (item?.previewSectionKey) return item.previewSectionKey
-  if (!isDescriptiveQuestionType(item?.type)) return 'MCQ'
-  if (String(item?.type).includes('MEQs')) return 'MEQs'
-  if (String(item?.type).includes('LAQs')) return 'LAQs'
-  if (String(item?.type).toLowerCase().includes('reasoning')) return 'Reasoning'
-  return 'SAQs'
-}
-
-const getPdfSectionTitle = (key) => {
-  const map = {
-    MCQ: 'Multiple Choice Question',
-    SAQs: 'Short Answer Questions',
-    MEQs: 'Essay Questions',
-    LAQs: 'Long Answer Questions',
-    Reasoning: 'Reasoning Answer Questions',
-  }
-  if (map[key]) return map[key]
-
-  const readableKey = String(key ?? '')
-    .replace(/^custom-section-/i, '')
-    .replace(/^nmc-/i, '')
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, (character) => character.toUpperCase())
-    .replace(/\bSaqs\b/g, 'SAQs')
-    .replace(/\bMeqs\b/g, 'MEQs')
-    .replace(/\bLaqs\b/g, 'LAQs')
-    .replace(/\bSAQs\s+/g, '')
-    .replace(/\bMEQs\b/g, 'Essay')
-    .replace(/\bModified Essay\b/g, 'Essay')
-    .trim()
-
-  return readableKey ? `${readableKey} Questions` : 'Questions'
-}
-
-const PDF_SECTION_ORDER = ['MCQ', 'SAQs', 'MEQs', 'LAQs', 'Reasoning']
-const PDF_ROMAN_NUMERALS = ['I.', 'II.', 'III.', 'IV.', 'V.', 'VI.', 'VII.', 'VIII.', 'IX.', 'X.']
-
-const loadPdfImage = (imageUrl) => new Promise((resolve) => {
-  if (!imageUrl) {
-    resolve(null)
-    return
-  }
-
-  const image = new Image()
-  image.onload = () => {
-    const canvas = document.createElement('canvas')
-    const maxSize = 180
-    const scale = Math.min(maxSize / image.naturalWidth, maxSize / image.naturalHeight, 1)
-    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
-    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
-    const context = canvas.getContext('2d')
-
-    if (!context) {
-      resolve(null)
-      return
-    }
-
-    context.fillStyle = '#ffffff'
-    context.fillRect(0, 0, canvas.width, canvas.height)
-    context.drawImage(image, 0, 0, canvas.width, canvas.height)
-    const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92)
-    const base64 = jpegDataUrl.split(',')[1]
-    resolve({
-      data: atob(base64),
-      width: canvas.width,
-      height: canvas.height,
-    })
-  }
-  image.onerror = () => resolve(null)
-  image.src = imageUrl
-})
-
 const getPublishedQuestionRows = (assessment) => (
   Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
 )
 
-const getPdfQuestionText = (item) => (
-  stripHtml(item?.questionText)
-  || item?.title
-  || item?.question
-  || 'Untitled question'
-)
-
-const getPdfOptionText = (option) => stripHtml(option?.label ?? option?.content ?? option)
-
-const getPdfMarksSummary = (questions) => {
-  const mcqMarks = questions
-    .filter((item) => !isDescriptiveQuestionType(item?.type))
-    .reduce((total, item) => total + getQuestionMarksTotal(item), 0)
-  const descriptiveMarks = questions
-    .filter((item) => isDescriptiveQuestionType(item?.type))
-    .reduce((total, item) => total + getQuestionMarksTotal(item), 0)
-  return {
-    mcqMarks,
-    descriptiveMarks,
-    totalMarks: mcqMarks + descriptiveMarks,
-  }
-}
-
-const buildQuestionPaperPdf = async (assessment) => {
-  const questions = getPublishedQuestionRows(assessment)
-  const setup = assessment?.setup ?? {}
-  const logoImage = await loadPdfImage(setup.logoPreview)
-  const questionImages = await Promise.all(questions.map(async (question) => {
-    const images = Array.isArray(question?.images) ? question.images : []
-    const loadedImages = await Promise.all(images.map((image) => loadPdfImage(image?.url)))
-    return loadedImages.filter(Boolean).slice(0, 4)
-  }))
-  const questionImageMap = new Map(questions.map((question, index) => [question, questionImages[index] || []]))
-  const marksSummary = getPdfMarksSummary(questions)
-  const pageWidth = 595.28
-  const pageHeight = 841.89
-  const margin = 28
-  const contentWidth = pageWidth - (margin * 2)
-  const pages = []
-  const pdfImages = []
-  let commands = []
-  let y = pageHeight - 30
-
-  const approximateTextWidth = (text, size) => normalizePdfText(text).length * size * 0.47
-  const addCommand = (command) => commands.push(command)
-  const addText = ({ text, x, y: textY, size = 12, font = 'F1' }) => {
-    addCommand(`BT /${font} ${size} Tf ${x.toFixed(2)} ${textY.toFixed(2)} Td (${escapePdfText(text)}) Tj ET`)
-  }
-  const addCenteredTextInBox = ({ text, centerX, y: textY, size = 12, font = 'F1' }) => {
-    addText({ text, x: centerX - (approximateTextWidth(text, size) / 2), y: textY, size, font })
-  }
-  const addRightText = ({ text, x, y: textY, size = 12, font = 'F1' }) => {
-    addText({ text, x: x - approximateTextWidth(text, size), y: textY, size, font })
-  }
-  const addLine = (x1, y1, x2, y2) => addCommand(`0 0 0 RG ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`)
-  const getImageDrawSize = (image, maxWidth, maxHeight) => {
-    const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1)
-    return {
-      width: image.width * scale,
-      height: image.height * scale,
-    }
-  }
-  const addQuestionImages = (item) => {
-    const images = questionImageMap.get(item) || []
-    if (!images.length) return
-
-    y -= 2
-    const imageGap = 8
-    const columns = images.length
-    const availableWidth = contentWidth - 64
-    const imageBoxWidth = Math.max(72, (availableWidth - (imageGap * (columns - 1))) / columns)
-    const imageBoxHeight = Math.min(112, imageBoxWidth * 0.75)
-    ensureSpace(imageBoxHeight + 10)
-    images.forEach((image, index) => {
-      const imageX = margin + 32 + (index * (imageBoxWidth + imageGap))
-      const name = `Im${pdfImages.length + 1}`
-      pdfImages.push({ ...image, name })
-      addCommand(`q ${imageBoxWidth.toFixed(2)} 0 0 ${imageBoxHeight.toFixed(2)} ${imageX.toFixed(2)} ${(y - imageBoxHeight).toFixed(2)} cm /${name} Do Q`)
-    })
-    y -= imageBoxHeight + 10
-  }
-  const finishPage = () => {
-    pages.push(commands.join('\n'))
-    commands = []
-    y = pageHeight - 42
-  }
-  const ensureSpace = (height) => {
-    if (y - height > margin) return
-    finishPage()
-  }
-  const addWrappedText = ({ text, x, maxLength, size = 12, font = 'F1', lineHeight = 15, indent = 0 }) => {
-    const lines = wrapPdfText(text, maxLength)
-    lines.forEach((line, index) => {
-      ensureSpace(lineHeight + 6)
-      addText({ text: line, x: x + (index ? indent : 0), y, size, font })
-      y -= lineHeight
-    })
-  }
-  const addMarksLine = (marks) => {
-    ensureSpace(14)
-    y -= 1
-    addRightText({ text: `[${String(marks).padStart(2, '0')} Marks]`, x: pageWidth - margin - 12, y, size: 12 })
-    y -= 12
-  }
-  const getWrappedTextHeight = (text, maxLength, lineHeight) => wrapPdfText(text, maxLength).length * lineHeight
-  const getQuestionBlockHeight = (item, displayNumber) => {
-    const isDescriptive = isDescriptiveQuestionType(item?.type)
-    const questionHeight = getWrappedTextHeight(`${displayNumber}. ${getPdfQuestionText(item)}`, 103, 13)
-    const imageHeight = (questionImageMap.get(item) || []).length ? 130 : 0
-
-    if (!isDescriptive) {
-      const options = (item.options ?? []).map(getPdfOptionText).filter(Boolean)
-      const optionHeight = options.reduce((total, option, optionIndex) => {
-        if (optionIndex % 2 !== 0) return total
-        const leftLines = wrapPdfText(`${String.fromCharCode(65 + optionIndex)}. ${option}`, 42).length
-        const rightOption = options[optionIndex + 1]
-        const rightLines = rightOption ? wrapPdfText(`${String.fromCharCode(66 + optionIndex)}. ${rightOption}`, 42).length : 1
-        return total + (Math.max(leftLines, rightLines) * 13) + 4
-      }, 0)
-      return questionHeight + imageHeight + 4 + optionHeight + 8
-    }
-
-    const sections = Array.isArray(item.descriptiveSections) ? item.descriptiveSections : []
-    const sectionHeight = sections.reduce((total, section, sectionIndex) => {
-      const sectionLabel = `${PDF_ROMAN_NUMERALS[sectionIndex]?.replace('.', '').toLowerCase() || sectionIndex + 1}.`
-      const ownHeight = getWrappedTextHeight(`${sectionLabel} ${stripHtml(section.questionText) || 'Sub question'}`, 88, 13)
-      const childHeight = (section.children ?? []).reduce((childTotal, child, childIndex) => (
-        childTotal
-        + getWrappedTextHeight(`${String.fromCharCode(97 + childIndex)}. ${stripHtml(child.questionText) || 'Inside question'}`, 84, 13)
-        + (parseMarksValue(child.marks) ? 13 : 0)
-      ), 0)
-      return total + ownHeight + childHeight + (!(section.children ?? []).length && parseMarksValue(section.marks) ? 13 : 0)
-    }, 0)
-
-    return questionHeight + imageHeight + 5 + sectionHeight + (sections.length * 3) + (!sections.length && getQuestionMarksTotal(item) ? 13 : 0) + 10
-  }
-
-  const logoBoxX = margin + 6
-  const logoBoxY = pageHeight - 94
-  const logoMaxSize = 56
-  const headerCenterX = pageWidth / 2
-
-  if (logoImage) {
-    const logoSize = getImageDrawSize(logoImage, logoMaxSize, logoMaxSize)
-    const logoName = `Im${pdfImages.length + 1}`
-    pdfImages.push({ ...logoImage, name: logoName })
-    addCommand(`q ${logoSize.width.toFixed(2)} 0 0 ${logoSize.height.toFixed(2)} ${logoBoxX.toFixed(2)} ${(logoBoxY + ((logoMaxSize - logoSize.height) / 2)).toFixed(2)} cm /${logoName} Do Q`)
-  }
-  addCenteredTextInBox({ text: setup.collegeName || '[Select College Name]', centerX: headerCenterX, y: pageHeight - 48, size: 15, font: 'F2' })
-  addCenteredTextInBox({ text: `Academic Year ${String(setup.academicYear || '2025 - 2026').replace(/\s*-\s*/g, '-')}`, centerX: headerCenterX, y: pageHeight - 68, size: 12, font: 'F3' })
-  addCenteredTextInBox({ text: assessment?.assessmentName || '[Assessment Name]', centerX: headerCenterX, y: pageHeight - 90, size: 15, font: 'F2' })
-  addCenteredTextInBox({ text: `${assessment?.examCategory || '[Exam Category]'} / ${assessment?.assignTo || setup.assignYear || setup.year || '[Year]'}`, centerX: headerCenterX, y: pageHeight - 109, size: 12, font: 'F2' })
-  y = pageHeight - 124
-  addLine(margin, y, pageWidth - margin, y)
-  y -= 18
-  const totalMarksText = `Total Marks : ${marksSummary.totalMarks} (${marksSummary.mcqMarks} MCQ + ${String(marksSummary.descriptiveMarks).padStart(2, '0')} Descriptive)`
-  const durationLabel = 'Duration : '
-  const durationValue = assessment?.totalDuration || 'HH:MM'
-  const durationStartX = pageWidth - margin - 12 - approximateTextWidth(`${durationLabel}${durationValue}`, 12)
-  addText({
-    text: totalMarksText,
-    x: margin + 12,
-    y,
-    size: 12,
-    font: 'F2',
-  })
-  addText({ text: durationLabel, x: durationStartX, y, size: 12 })
-  addText({ text: durationValue, x: durationStartX + approximateTextWidth(durationLabel, 12), y, size: 12, font: 'F2' })
-  y -= 13
-  addLine(margin, y, pageWidth - margin, y)
-  y -= 20
-
-  const groupedQuestions = questions.reduce((groups, item) => {
-    const key = getPdfSectionKey(item)
-    return { ...groups, [key]: [...(groups[key] || []), item] }
-  }, {})
-  const orderedKeys = [
-    ...PDF_SECTION_ORDER.filter((key) => groupedQuestions[key]?.length),
-    ...Object.keys(groupedQuestions).filter((key) => !PDF_SECTION_ORDER.includes(key)),
-  ]
-  let sectionNumber = 0
-  let questionNumber = 1
-
-  orderedKeys.forEach((sectionKey) => {
-    const sectionQuestions = groupedQuestions[sectionKey] || []
-    const sectionMarks = sectionQuestions.reduce((total, item) => total + getQuestionMarksTotal(item), 0)
-    const firstQuestionHeight = sectionQuestions.length ? getQuestionBlockHeight(sectionQuestions[0], questionNumber) : 0
-    ensureSpace(34 + firstQuestionHeight)
-    const roman = PDF_ROMAN_NUMERALS[sectionNumber] || `${sectionNumber + 1}.`
-    addText({ text: `${roman}${getPdfSectionTitle(sectionKey)}`, x: margin + 4, y, size: 13, font: 'F2' })
-    addRightText({ text: `${String(sectionMarks).padStart(2, '0')} Marks`, x: pageWidth - margin - 12, y, size: 13, font: 'F2' })
-    y -= 22
-    sectionNumber += 1
-
-    sectionQuestions.forEach((item) => {
-      const isDescriptive = isDescriptiveQuestionType(item?.type)
-      const questionMarks = getQuestionMarksTotal(item)
-      const questionText = `${questionNumber}. ${getPdfQuestionText(item)}`
-      ensureSpace(getQuestionBlockHeight(item, questionNumber))
-      addWrappedText({ text: questionText, x: margin + 4, maxLength: 103, size: 12, lineHeight: 13, indent: 16 })
-      addQuestionImages(item)
-      questionNumber += 1
-
-      if (!isDescriptive) {
-        y -= 4
-        const options = (item.options ?? []).map(getPdfOptionText).filter(Boolean)
-        for (let optionIndex = 0; optionIndex < options.length; optionIndex += 2) {
-          const leftOption = `${String.fromCharCode(65 + optionIndex)}. ${options[optionIndex]}`
-          const rightOption = options[optionIndex + 1] ? `${String.fromCharCode(66 + optionIndex)}. ${options[optionIndex + 1]}` : ''
-          const leftLines = wrapPdfText(leftOption, 42)
-          const rightLines = rightOption ? wrapPdfText(rightOption, 42) : []
-          const rowLineCount = Math.max(leftLines.length, rightLines.length, 1)
-          ensureSpace((rowLineCount * 13) + 4)
-          leftLines.forEach((line, lineIndex) => {
-            addText({ text: line, x: margin + 32 + (lineIndex ? 12 : 0), y: y - (lineIndex * 13), size: 12 })
-          })
-          rightLines.forEach((line, lineIndex) => {
-            addText({ text: line, x: margin + 286 + (lineIndex ? 12 : 0), y: y - (lineIndex * 13), size: 12 })
-          })
-          y -= (rowLineCount * 13) + 4
-        }
-      } else {
-        const sections = Array.isArray(item.descriptiveSections) ? item.descriptiveSections : []
-        y -= sections.length ? 5 : 0
-        sections.forEach((section, sectionIndex) => {
-          const sectionLabel = `${PDF_ROMAN_NUMERALS[sectionIndex]?.replace('.', '').toLowerCase() || sectionIndex + 1}.`
-          addWrappedText({ text: `${sectionLabel} ${stripHtml(section.questionText) || 'Sub question'}`, x: margin + 28, maxLength: 88, size: 12, lineHeight: 13, indent: 16 })
-          y -= (section.children ?? []).length ? 3 : 0
-          ;(section.children ?? []).forEach((child, childIndex) => {
-            addWrappedText({ text: `${String.fromCharCode(97 + childIndex)}. ${stripHtml(child.questionText) || 'Inside question'}`, x: margin + 42, maxLength: 84, size: 12, lineHeight: 13, indent: 16 })
-            if (parseMarksValue(child.marks)) {
-              addMarksLine(child.marks)
-            }
-          })
-          if (!(section.children ?? []).length && parseMarksValue(section.marks)) {
-            addMarksLine(section.marks)
-          }
-        })
-        if (!sections.length && questionMarks) {
-          addMarksLine(questionMarks)
-        }
-      }
-      y -= isDescriptive ? 10 : 8
-    })
-  })
-
-  if (!orderedKeys.length) {
-    addText({ text: 'No questions available.', x: margin + 4, y, size: 12 })
-  }
-
-  finishPage()
-
-  const objects = [
-    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-    `2 0 obj\n<< /Type /Pages /Kids [${pages.map((_, index) => `${3 + index * 2} 0 R`).join(' ')}] /Count ${pages.length} >>\nendobj\n`,
-  ]
-
-  const fontStartObjectNumber = 3 + pages.length * 2
-  const imageStartObjectNumber = fontStartObjectNumber + 3
-  const imageResource = pdfImages.length
-    ? ` /XObject << ${pdfImages.map((image, index) => `/${image.name} ${imageStartObjectNumber + index} 0 R`).join(' ')} >>`
-    : ''
-
-  const pageNumberSize = 10
-
-  pages.forEach((pageContent, index) => {
-    const pageObjectNumber = 3 + index * 2
-    const streamObjectNumber = pageObjectNumber + 1
-    const pageNumberText = `Page ${index + 1} of ${pages.length}`
-    const pageNumberContent = `BT /F1 ${pageNumberSize} Tf ${(pageWidth - margin - approximateTextWidth(pageNumberText, pageNumberSize)).toFixed(2)} 18.00 Td (${escapePdfText(pageNumberText)}) Tj ET`
-    const fullPageContent = `${pageContent}\n${pageNumberContent}`
-    objects.push(`${pageObjectNumber} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontStartObjectNumber} 0 R /F2 ${fontStartObjectNumber + 1} 0 R /F3 ${fontStartObjectNumber + 2} 0 R >>${imageResource} >> /Contents ${streamObjectNumber} 0 R >>\nendobj\n`)
-    objects.push(`${streamObjectNumber} 0 obj\n<< /Length ${fullPageContent.length} >>\nstream\n${fullPageContent}\nendstream\nendobj\n`)
-  })
-  objects.push(`${fontStartObjectNumber} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>\nendobj\n`)
-  objects.push(`${fontStartObjectNumber + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold >>\nendobj\n`)
-  objects.push(`${fontStartObjectNumber + 2} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Italic >>\nendobj\n`)
-  pdfImages.forEach((image, index) => {
-    objects.push(`${imageStartObjectNumber + index} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.data.length} >>\nstream\n${image.data}\nendstream\nendobj\n`)
-  })
-
-  const header = '%PDF-1.4\n'
-  const offsets = []
-  let body = header
-  objects.forEach((object) => {
-    offsets.push(body.length)
-    body += object
-  })
-  const xrefOffset = body.length
-  const xrefRows = offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n `).join('\n')
-
-  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${xrefRows}\ntrailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
-  return Uint8Array.from(body, (character) => character.charCodeAt(0) & 0xff)
-}
-
-const downloadQuestionPaperPdf = async (assessment) => {
-  const pdf = await buildQuestionPaperPdf(assessment)
-  const blob = new Blob([pdf], { type: 'application/pdf' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-
-  link.href = url
-  link.download = `${sanitizeFileName(`${assessment?.assessmentName || 'Assessment'} Question Paper`)}.pdf`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
+const downloadQuestionPaperPdf = createQuestionPaperExporter({ stripHtml, isDescriptiveQuestionType, getQuestionMarksTotal, parseMarksValue, getPublishedQuestionRows })
 
 const getDraftSummary = (draft) => {
   const questions = readDraftQuestions(draft)
@@ -990,114 +574,6 @@ const formatDisplayDate = (value) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString('en-GB').replace(/\//g, '-')
-}
-
-const parseAssessmentDate = (value) => {
-  if (!value) return null
-  const normalized = String(value).trim()
-  const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  const displayMatch = normalized.match(/^(\d{2})-(\d{2})-(\d{4})$/)
-
-  if (isoMatch) return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]))
-  if (displayMatch) return new Date(Number(displayMatch[3]), Number(displayMatch[2]) - 1, Number(displayMatch[1]))
-
-  const parsed = new Date(normalized)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-const applyAssessmentTime = (date, value) => {
-  if (!date) return null
-  const nextDate = new Date(date)
-  const match = String(value || '').trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i)
-
-  if (!match) {
-    nextDate.setHours(0, 0, 0, 0)
-    return nextDate
-  }
-
-  let hours = Number(match[1])
-  const minutes = Number(match[2] || 0)
-  const period = String(match[3] || '').toUpperCase()
-
-  if (period === 'PM' && hours < 12) hours += 12
-  if (period === 'AM' && hours === 12) hours = 0
-
-  nextDate.setHours(hours, minutes, 0, 0)
-  return nextDate
-}
-
-const parseAssessmentDurationMs = (value) => {
-  const match = String(value || '').trim().match(/^(\d+)(?::(\d{2}))?$/)
-  if (!match) return 0
-  const hours = Number(match[1] || 0)
-  const minutes = Number(match[2] || 0)
-  return ((hours * 60) + minutes) * 60 * 1000
-}
-
-const formatAssessmentRemainingTime = (value) => {
-  const totalSeconds = Math.max(0, Math.floor((value || 0) / 1000))
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  const pad = (item) => String(item).padStart(2, '0')
-
-  if (hours > 0) return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
-  return `${pad(minutes)}:${pad(seconds)}`
-}
-
-const getDayStart = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
-
-const getPublishedAssessmentScheduleStatus = (assessment, now = new Date()) => {
-  const startDate = parseAssessmentDate(assessment?.startDate)
-  if (!startDate) return null
-
-  const startAt = applyAssessmentTime(startDate, assessment?.startTime)
-  const durationMs = parseAssessmentDurationMs(assessment?.totalDuration)
-  const durationEndAt = durationMs ? new Date(startAt.getTime() + durationMs) : null
-  const endDate = parseAssessmentDate(assessment?.endDate)
-  const dateEndAt = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null
-  const endAt = [durationEndAt, dateEndAt].filter(Boolean).sort((a, b) => a - b)[0] || startAt
-  if (now > endAt) return { type: 'completed', label: 'Exam completed' }
-  if (now >= startAt) return { type: 'live', label: 'Assessment Live', remainingMs: endAt.getTime() - now.getTime() }
-
-  const diffMs = startAt.getTime() - now.getTime()
-  const minutes = Math.max(1, Math.ceil(diffMs / (60 * 1000)))
-  const startDay = getDayStart(startAt)
-  const currentDay = getDayStart(now)
-  const calendarDays = Math.round((startDay.getTime() - currentDay.getTime()) / (24 * 60 * 60 * 1000))
-
-  if (calendarDays >= 1) {
-    return { type: 'upcoming', startsInMs: diffMs, label: `${calendarDays} ${calendarDays === 1 ? 'day' : 'days'} to go` }
-  }
-
-  if (minutes > 5 && minutes >= 60) {
-    const hours = Math.max(1, Math.floor(minutes / 60))
-    return { type: 'upcoming', startsInMs: diffMs, label: `${hours} ${hours === 1 ? 'hour' : 'hours'} to go` }
-  }
-
-  return { type: 'upcoming', startsInMs: diffMs, label: `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} to go` }
-}
-
-// Published results remain available in Evaluation for corrections using the same record.
-const hasPublishedResults = assessment => [assessment?.resultStatus, assessment?.evaluationStatus]
-  .some(status => String(status || '').toLowerCase() === 'published')
-const splitPublishedAssessmentRows = (rows = [], now = new Date()) => {
-  const published = []
-  const evaluation = []
-  const results = []
-
-  rows.forEach((assessment) => {
-    if (hasPublishedResults(assessment)) {
-      results.push(assessment)
-      evaluation.push(assessment)
-    } else if (getPublishedAssessmentScheduleStatus(assessment, now)?.type === 'completed') {
-      evaluation.push(assessment)
-    } else {
-      published.push(assessment)
-    }
-  })
-
-  return { published, evaluation, results }
 }
 
 const isPublishedAssessmentActionLocked = (assessment, now = new Date()) => {
@@ -1150,8 +626,23 @@ const readExamControlLogRows = (assessment) => {
 
 export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [], onViewSubmission, onClearAll, onReschedule }) {
   const creatingAssessmentRef = useRef(false)
+  const [cardView, setCardView] = useState(readAssessmentView)
+  const compactCards = cardView !== 'list'
   const [isCreatingAssessment, setIsCreatingAssessment] = useState(false)
   const [creationError, setCreationError] = useState('')
+  const [downloadingPaperId, setDownloadingPaperId] = useState(null)
+  const downloadPaper = async assessment => {
+    if (downloadingPaperId) return
+    setDownloadingPaperId(assessmentDisplayId(assessment))
+    setCreationError('')
+    try {
+      await downloadQuestionPaperPdf(assessment)
+    } catch {
+      setCreationError('Unable to download the question paper. Please try again.')
+    } finally {
+      setDownloadingPaperId(null)
+    }
+  }
   const [isClearingCards, setIsClearingCards] = useState(false)
   const clearingCardsRef = useRef(false)
   const [highlightedAssessment, setHighlightedAssessment] = useState(() => sessionStorage.getItem('vx-assessment-highlight'))
@@ -1353,6 +844,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
           </span>
         ) : null}
       </span>
+      <AssessmentViewMenu value={cardView} onChange={setCardView} />
       {(hasPublishedSearch || hasPublishedFilter) ? (
         <button type="button" className="assessment-create-published-clear-btn" onClick={clearPublishedSearchFilters}>
           <X size={14} strokeWidth={2.3} />
@@ -1434,7 +926,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
         window.localStorage.setItem(getAssessmentQuestionsStorageKey(setup), JSON.stringify(record.questionRows || sections.flatMap(section => section.questions || [])))
         window.localStorage.setItem('vx-create-assessment-section-titles:' + suffix, JSON.stringify(Object.fromEntries(sections.map(section => [section.key, section.title]))))
         window.localStorage.setItem('vx-create-assessment-section-order:' + suffix, JSON.stringify(sections.map(section => section.key)))
-        window.localStorage.setItem('vx-create-assessment-custom-sections:' + suffix, JSON.stringify(sections.filter(section => section.isCustom).map(({ questions, ...section }) => section)))
+        window.localStorage.setItem('vx-create-assessment-custom-sections:' + suffix, JSON.stringify(sections.filter(section => section.isCustom).map(section => { const metadata = { ...section }; delete metadata.questions; return metadata })))
       }
       window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(setup))
       window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, record.activityType === 'Blueprint' ? 'blueprint' : 'preview')
@@ -1661,9 +1153,9 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
               {renderAssessmentSearchToolbar()}
             </div>
             {visibleDraftAssessments.length && filteredDraftAssessments.length ? (
-              <div className="assessment-create-draft-grid">
+              <AssessmentCardCollection view={cardView}>
                 {filteredDraftAssessments.map((draft) => {
-                  const assessmentName = getDraftValue(draft, 'assessmentName') || 'Untitled Assessment'
+                  const assessmentName = String(getDraftValue(draft, 'assessmentName') || '').replace(/^Draft:\s*/i, '').trim() || 'Untitled Assessment'
                   const examMode = String(getDraftValue(draft, 'examDeliveryMode', 'examMode') || '').toLowerCase()
                   const supervision = String(getDraftValue(draft, 'supervisionType') || '').toLowerCase()
                   const isPractice = supervision.includes('practice')
@@ -1679,7 +1171,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                   const totalMarks = draftSummary.totalMarks
 
                   return (
-                    <AssessmentTrackerCard key={draft.id} 
+                    <AssessmentTrackerCard key={draft.id}
                         identity={<><div className="assessment-draft-top-badges">
                       {examMode === 'online' && hasSupervision ? <span className={`assessment-stage-badge assessment-create-published-supervision ${isPractice ? 'is-practice' : 'is-proctored'}`}><SupervisionIcon size={13} strokeWidth={2.3} aria-hidden="true" />{isPractice ? 'Practice' : 'Proctored'}</span> : null}
                         {['online', 'offline'].includes(examMode) && <span className={`assessment-create-published-status is-${examMode}`} aria-label={`Exam mode: ${examMode}`}>{examMode === 'online' ? 'Online' : 'Offline'}</span>}
@@ -1712,8 +1204,8 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                           <em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em>
                         </span>
                       </div>{renderConfiguredSchedule(draft, undefined, readDraftQuestions(draft), scheduleNow)}</>}
-                        settings={<><CopyIdBadge value={assessmentDisplayId(draft)} /><AssessmentCardSettings assessment={draft} /></>}
-                        timestamp={renderAssessmentTimestamp(draft, activeAssessmentTab)}
+                        settings={<>{!compactCards && <CopyIdBadge value={assessmentDisplayId(draft)} />}<AssessmentCardSettings compact={compactCards} assessment={draft} timestamp={renderAssessmentTimestamp(draft, activeAssessmentTab)} /></>}
+                        timestamp={compactCards ? null : renderAssessmentTimestamp(draft, activeAssessmentTab)}
                         actions={<><button type="button" onClick={() => continueDraftAssessment(draft)}>
                           Continue
                           <ArrowRight size={14} strokeWidth={2.3} />
@@ -1721,7 +1213,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                       />
                   )
                 })}
-              </div>
+              </AssessmentCardCollection>
             ) : visibleDraftAssessments.length ? (
               <div className="assessment-create-placeholder">
                 <p>No draft assessments match your search.</p>
@@ -1745,7 +1237,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
             {activePublishedAssessments.length ? (
               <>
                 {filteredPublishedAssessments.length ? (
-              <div className="assessment-create-draft-grid">
+              <AssessmentCardCollection view={cardView}>
                 {filteredPublishedAssessments.map((assessment) => {
 
                   const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
@@ -1757,7 +1249,13 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
 
                   return (
                       <AssessmentTrackerCard key={assessment.id} className={[scheduleStatus?.type === 'live' ? 'is-live' : '', assessment.id === highlightedAssessment ? 'is-just-published' : ''].filter(Boolean).join(' ')}
-                        identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(assessment)}<AssessmentPublicationBadge assessment={assessment} /></div>
+                        topBadge={compactCards && scheduleStatus?.type === 'live' && <AssessmentStartCountdown status={scheduleStatus} />}
+                        identity={<><div className="assessment-draft-top-badges">{!compactCards && scheduleStatus?.type === 'live' && <AssessmentStartCountdown status={scheduleStatus} />}{renderAssessmentModeBadges(assessment)}{!compactCards && <AssessmentPublicationBadge assessment={assessment} />}{publishedQuestionRows.length ? (
+                            <button type="button" className="assessment-create-published-download-btn" disabled={Boolean(downloadingPaperId)} aria-busy={downloadingPaperId === assessmentDisplayId(assessment)} onClick={() => downloadPaper(assessment)}>
+                              {downloadingPaperId === assessmentDisplayId(assessment) ? <LoaderCircle className="assessment-pdf-spinner" size={12} aria-hidden="true" /> : <Download size={12} strokeWidth={2.4} aria-hidden="true" />}
+                              {downloadingPaperId === assessmentDisplayId(assessment) ? 'Preparing PDF' : 'Download PDF'}
+                            </button>
+                          ) : null}</div>
 
                         <div className="assessment-create-published-head">
                           <div>
@@ -1790,18 +1288,15 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                         <span className="assessment-create-published-status-row">
                           <small className="assessment-card-category">{renderAssessmentAssignment(assessment)}</small>
                           
-                          {isOfflineExam && publishedQuestionRows.length ? (
-                            <button type="button" className="assessment-create-published-download-btn" onClick={() => downloadQuestionPaperPdf(assessment)}>
-                              <Download size={12} strokeWidth={2.4} />
-                              Download PDF
-                            </button>
-                          ) : null}
+                          
                         </span></>}
                         summary={<>{renderAssessmentSummary(assessment)}
 {renderConfiguredSchedule(assessment, scheduleStatus)}
-                        <AssessmentResultStatus results={assessment.studentResults} /></>}
-                        settings={<><CopyIdBadge value={assessmentDisplayId(assessment)} /><AssessmentCardSettings assessment={assessment} /></>}
-                        actions={<><AssessmentStartCountdown status={scheduleStatus} />{canShowExamControls ? (
+                        </>}
+                        resultPlacement="schedule"
+                        resultSummary={<AssessmentResultStatus results={assessment.studentResults} />}
+                        settings={<>{!compactCards && <CopyIdBadge value={assessmentDisplayId(assessment)} />}<AssessmentCardSettings compact={compactCards} assessment={assessment} timestamp={renderAssessmentTimestamp(assessment, activeAssessmentTab)} /></>}
+                        actions={<>{scheduleStatus?.type !== 'live' && <AssessmentStartCountdown status={scheduleStatus} />}{canShowExamControls ? (
                             <button type="button" className="assessment-create-exam-controls-btn" onClick={() => openExamControls(assessment)}>
                               <Monitor size={12} strokeWidth={2.4} />
                               Exam Controls
@@ -1810,7 +1305,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                       />
                     )
                 })}
-              </div>
+              </AssessmentCardCollection>
                 ) : (
                   <div className="assessment-create-placeholder">
                     <p>No published assessments match your search.</p>
@@ -1835,24 +1330,29 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
             </div>
             {evaluationAssessments.length ? (
               filteredEvaluationAssessments.length ? (
-                <div className="assessment-create-draft-grid">
+                <AssessmentCardCollection view={cardView}>
                   {filteredEvaluationAssessments.map((assessment) => {
 
-                    const isOfflineExam = String(assessment.examMode || '').toLowerCase() === 'offline'
+
 
                     const publishedQuestionRows = getPublishedQuestionRows(assessment)
 
+                    const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
+                    const isLive = scheduleStatus?.type === 'live'
+                    const awaitingSubmissions = isLive && !canStartLiveEvaluation(assessment)
                     const resultsPublished = hasPublishedResults(assessment)
                     const evaluationStatus = resultsPublished ? 'Results published' : assessment.evaluationStatus === 'In Progress' ? 'In Progress' : 'Yet to Start'
+                    const evaluationBadge = isLive ? <AssessmentStartCountdown status={scheduleStatus} /> : <span className={'assessment-create-published-schedule-badge ' + (resultsPublished ? 'is-published' : evaluationStatus === 'In Progress' ? 'is-in-progress' : 'is-yet-to-start')}>{resultsPublished ? 'Results published' : evaluationStatus === 'In Progress' ? 'In progress' : 'Yet to start'}</span>
 
                     return (
-                      <AssessmentTrackerCard key={assessment.id} 
-                        identity={<><div className="assessment-draft-top-badges">{resultsPublished && <span className="assessment-create-published-schedule-badge is-published">Results published</span>}{renderAssessmentModeBadges(assessment)}</div>
-{!resultsPublished && <div className="assessment-card-current-status"><span className="assessment-create-published-footer-status assessment-create-evaluation-statuses">
-                            <span className={`assessment-create-published-schedule-badge ${resultsPublished ? 'is-published' : evaluationStatus === 'In Progress' ? 'is-in-progress' : 'is-yet-to-start'}`}>
-                              {evaluationStatus}
-                            </span>
-                          </span></div>}
+                      <AssessmentTrackerCard key={assessment.id} className={isLive ? 'is-live' : ''}
+                        topBadge={compactCards && evaluationBadge}
+                        identity={<><div className="assessment-draft-top-badges">{!compactCards && evaluationBadge}{renderAssessmentModeBadges(assessment)}{publishedQuestionRows.length ? (
+                            <button type="button" className="assessment-create-published-download-btn" disabled={Boolean(downloadingPaperId)} aria-busy={downloadingPaperId === assessmentDisplayId(assessment)} onClick={() => downloadPaper(assessment)}>
+                              {downloadingPaperId === assessmentDisplayId(assessment) ? <LoaderCircle className="assessment-pdf-spinner" size={12} aria-hidden="true" /> : <Download size={12} strokeWidth={2.4} aria-hidden="true" />}
+                              {downloadingPaperId === assessmentDisplayId(assessment) ? 'Preparing PDF' : 'Download PDF'}
+                            </button>
+                          ) : null}</div>
                         <div className="assessment-create-published-head">
                           <div>
                             {renderAssessmentIdentity(assessment, assessment.assessmentName || 'Untitled Assessment')}
@@ -1862,6 +1362,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                               type="button"
                               className="assessment-create-published-icon-btn is-edit"
                               onClick={() => openPublishedActionModal('result-edit', assessment)}
+                              disabled={awaitingSubmissions}
                               title="Edit published result"
                               aria-label={`Edit published result for ${assessment.assessmentName || 'assessment'}`}
                             >
@@ -1883,25 +1384,22 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                         <span className="assessment-create-published-status-row">
                           <small className="assessment-card-category">{renderAssessmentAssignment(assessment)}</small>
                           
-                          {isOfflineExam && publishedQuestionRows.length ? (
-                            <button type="button" className="assessment-create-published-download-btn" onClick={() => downloadQuestionPaperPdf(assessment)}>
-                              <Download size={12} strokeWidth={2.4} />
-                              Download PDF
-                            </button>
-                          ) : null}
+                          
                         </span></>}
                         summary={<>{renderAssessmentSummary(assessment)}
-{renderConfiguredSchedule(assessment)}<AssessmentResultStatus results={assessment.studentResults} /></>}
-                        settings={<><CopyIdBadge value={assessmentDisplayId(assessment)} /><AssessmentCardSettings assessment={assessment} /></>}
-                        timestamp={renderAssessmentTimestamp(assessment, activeAssessmentTab)}
+{renderConfiguredSchedule(assessment, scheduleStatus)}</>}
+                        resultPlacement="schedule"
+                        resultSummary={<AssessmentResultStatus results={assessment.studentResults} />}
+                        settings={<>{!compactCards && <CopyIdBadge value={assessmentDisplayId(assessment)} />}<AssessmentCardSettings compact={compactCards} assessment={assessment} timestamp={renderAssessmentTimestamp(assessment, activeAssessmentTab)} /></>}
+                        timestamp={compactCards ? null : renderAssessmentTimestamp(assessment, activeAssessmentTab)}
                         actions={<><button type="button" className="assessment-create-exam-controls-btn is-start-evaluation" onClick={() => startAssessmentEvaluation(assessment)}>
                             <ClipboardCheck size={12} strokeWidth={2.4} />
-                            {resultsPublished ? 'Review evaluation' : evaluationStatus === 'In Progress' ? 'Continue evaluation' : 'Start evaluation'}
+                            {isLive ? 'Continue evaluation' : resultsPublished ? 'Review evaluation' : evaluationStatus === 'In Progress' ? 'Continue evaluation' : 'Start evaluation'}
                           </button></>}
                       />
                     )
                   })}
-                </div>
+                </AssessmentCardCollection>
               ) : (
                 <div className="assessment-create-placeholder">
                   <p>No evaluation assessments match your search.</p>
@@ -1925,12 +1423,12 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
             </div>
             {resultAssessments.length ? (
               filteredResultAssessments.length ? (
-                <div className="assessment-create-draft-grid">
+                <AssessmentCardCollection view={cardView}>
                   {filteredResultAssessments.map((assessment) => {
 
 
                     return (
-                      <AssessmentTrackerCard key={assessment.id} 
+                      <AssessmentTrackerCard key={assessment.id}
                         identity={<><div className="assessment-draft-top-badges">{renderAssessmentModeBadges(assessment)}</div>
                         <div className="assessment-create-published-head">
                           <div>
@@ -1958,8 +1456,9 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                         summary={<>{renderAssessmentSummary(assessment)}
 {renderConfiguredSchedule(assessment)}
                         </>}
-                        settings={<><CopyIdBadge value={assessmentDisplayId(assessment)} /><AssessmentCardSettings assessment={assessment} /></>}
-                        timestamp={renderAssessmentTimestamp(assessment, activeAssessmentTab)}
+                        resultSummary={<AssessmentResultStatus results={assessment.studentResults} />}
+                        settings={<>{!compactCards && <CopyIdBadge value={assessmentDisplayId(assessment)} />}<AssessmentCardSettings compact={compactCards} assessment={assessment} timestamp={renderAssessmentTimestamp(assessment, activeAssessmentTab)} /></>}
+                        timestamp={compactCards ? null : renderAssessmentTimestamp(assessment, activeAssessmentTab)}
                         actions={<><button type="button" className="assessment-create-exam-controls-btn is-results" onClick={() => viewPublishedAssessmentResult(assessment)}>
                             <ChartColumnBig size={12} strokeWidth={2.4} />
                             View results
@@ -1967,7 +1466,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                       />
                     )
                   })}
-                </div>
+                </AssessmentCardCollection>
               ) : (
                 <div className="assessment-create-placeholder">
                   <p>No result assessments match your search.</p>
@@ -1987,18 +1486,18 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
               <h2>{activeEmptyTab.label}</h2>
               {renderAssessmentSearchToolbar()}
             </div>
-            {activeApprovalAssessments.length ? <div className="assessment-create-draft-grid">
-              {activeApprovalAssessments.map(record => <AssessmentTrackerCard expired={isPendingAssessmentExpired(record, scheduleNow)} key={record.activityId || record.setup.assessmentId} 
+            {activeApprovalAssessments.length ? <AssessmentCardCollection view={cardView}>
+              {activeApprovalAssessments.map(record => <AssessmentTrackerCard expired={isPendingAssessmentExpired(record, scheduleNow)} key={record.activityId || record.setup.assessmentId}
                         identity={<><div className="assessment-draft-top-badges"><span className={`assessment-create-published-schedule-badge approval-queue-status is-${approvalStage(record)}`}>{approvalStage(record) === 'approved' ? 'Approved' : approvalStage(record) === 'rejected' ? 'Rejected' : 'Pending approval'}</span>{renderAssessmentModeBadges(record)}</div>
                 <div className="assessment-create-draft-profile"><div>{renderAssessmentIdentity(record, record.assessmentName || record.activityName || record.setup.assessmentName || 'Untitled Assessment')}</div>
                   <button type="button" className="assessment-card-info" onClick={() => setSelectedPublishedLogAssessment(record)} aria-label="View assessment history"><Info size={15} /></button>
                 </div></>}
-                        summary={<><div className="assessment-create-draft-stats"><span><strong>{record.questionCount ?? record.questionRows?.length ?? 0}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em></span><span><strong>{record.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span></div>{renderConfiguredSchedule(record, undefined, undefined, scheduleNow)}</>}
-                        settings={<><CopyIdBadge value={assessmentDisplayId(record)} /><AssessmentCardSettings assessment={record} /></>}
-                        timestamp={renderAssessmentTimestamp(record, approvalStage(record))}
-                        actions={<>{isPendingAssessment(record) ? <button type="button" onClick={() => isPendingAssessmentExpired(record, scheduleNow) ? onReschedule?.(record) : onViewSubmission?.(record)}>{isPendingAssessmentExpired(record, scheduleNow) ? 'Reschedule' : 'View'}<ArrowRight size={14} aria-hidden="true" /></button> : /reject/i.test(record.approvalStatus || '') ? <button type="button" onClick={() => continueRejectedAssessment(record)}>Continue<ArrowRight size={14} aria-hidden="true" /></button> : record.activityType === 'Blueprint' && record.approvalStatus !== 'Pending Approval' && <button type="button" onClick={() => continueBlueprintAssessment(record)}>{record.approvalStatus === 'Approved' ? 'Continue' : 'Edit blueprint'}</button>}</>}
+                        summary={<><div className="assessment-create-draft-stats"><span><strong>{record.questionCount ?? record.questionRows?.length ?? 0}</strong><em><ClipboardCheck size={13} aria-hidden="true" /> Questions</em></span><span><strong>{record.totalMarks ?? '-'}</strong><em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em></span></div>{renderConfiguredSchedule(record, undefined, undefined, scheduleNow, isPendingAssessmentExpired(record, scheduleNow))}</>}
+                        settings={<>{!compactCards && <CopyIdBadge value={assessmentDisplayId(record)} />}<AssessmentCardSettings compact={compactCards} assessment={record} timestamp={renderAssessmentTimestamp(record, approvalStage(record))} /></>}
+                        timestamp={compactCards ? null : renderAssessmentTimestamp(record, approvalStage(record))}
+                        actions={<>{isPendingAssessment(record) ? <button type="button" onClick={() => isPendingAssessmentExpired(record, scheduleNow) ? onReschedule?.(record) : onViewSubmission?.(record)}>{isPendingAssessmentExpired(record, scheduleNow) ? 'Reschedule' : 'View'}<ArrowRight size={14} aria-hidden="true" /></button> : /reject/i.test(record.approvalStatus || '') ? <button type="button" onClick={() => continueRejectedAssessment(record)}>Continue<ArrowRight size={14} aria-hidden="true" /></button> : record.activityType === 'Blueprint' && record.approvalStatus !== 'Pending Approval' && <button type="button" onClick={() => continueBlueprintAssessment(record)}>{record.approvalStatus === 'Approved' ? 'Continue' : 'Edit blueprint'}<ArrowRight size={14} aria-hidden="true" /></button>}</>}
                       />)}
-            </div> : <div className="assessment-create-placeholder"><p>No assessments in the Approval Queue{hasPublishedSearch || hasPublishedFilter ? ' match your filters' : ''}.</p></div>}
+            </AssessmentCardCollection> : <div className="assessment-create-placeholder"><p>No assessments in the Approval Queue{hasPublishedSearch || hasPublishedFilter ? ' match your filters' : ''}.</p></div>}
           </section>
         ) : null}
       </div>

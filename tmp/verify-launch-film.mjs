@@ -1,0 +1,10 @@
+import {browser,pause} from './cdp.mjs';
+import {writeFileSync} from 'node:fs';
+const b=await browser();
+const metadata=await b.evaluate(`(async()=>{const v=document.createElement('video');v.muted=true;v.preload='auto';v.src='/docs/video/medsy-launch/medsy-product-introduction.mp4';document.body.append(v);await new Promise((r,j)=>{v.onloadedmetadata=r;v.onerror=()=>j(Error(v.error.message))});const meta={duration:v.duration,width:v.videoWidth,height:v.videoHeight};v.currentTime=55;await new Promise(r=>v.onseeked=r);await v.play();await new Promise(r=>setTimeout(r,200));meta.decoded=v.getVideoPlaybackQuality().totalVideoFrames;meta.tracks=v.captureStream().getTracks().map(t=>t.kind);v.pause();v.remove();return meta})()`);
+console.log(JSON.stringify(metadata));
+await b.evaluate('window.seekFilm(90)');
+const poster=(await b.evaluate(`document.querySelector('canvas').toDataURL('image/png').split(',')[1]`)).result.value;
+writeFileSync('docs/video/medsy-launch/thumbnail.png',Buffer.from(poster,'base64'));
+const checks=await b.evaluate(`(async()=>{const bytes=await fetch('/docs/video/medsy-launch/medsy-product-introduction.mp4').then(r=>r.arrayBuffer());const audio=new AudioContext();try{const decoded=await audio.decodeAudioData(bytes);const samples=decoded.getChannelData(0);let sum=0,peak=0;for(let i=0;i<samples.length;i+=100){sum+=samples[i]*samples[i];peak=Math.max(peak,Math.abs(samples[i]))}return {audioDuration:decoded.duration,channels:decoded.numberOfChannels,peak,rms:Math.sqrt(sum/(samples.length/100))}}finally{await audio.close()}})()`);
+console.log(JSON.stringify(checks));b.close();

@@ -1,0 +1,1 @@
+import {browser} from './cdp.mjs';const b=await browser();console.log(await b.evaluate('({audio:window.teaserAudio?.state,time:window.teaserAudio?.currentTime,visible:document.visibilityState})'));b.close();

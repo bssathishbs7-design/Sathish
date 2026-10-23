@@ -1,3 +1,5 @@
+import BlueprintModifiedBadge from '../components/BlueprintModifiedBadge'
+import { blueprintTableSignatures, blueprintTableModifications } from '../services/blueprintTableModifications'
 import BlueprintQuickGuide from '../components/BlueprintQuickGuide'
 import { getAssessmentPublicationMethod } from '../services/assessmentPublicationMethod'
 import AssessmentPublishedConfirmation from '../components/AssessmentPublishedConfirmation'
@@ -3192,7 +3194,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     setIsBlueprintSaveConfirmOpen(true)
   }
 
-  const buildBlueprintReviewSnapshot = () => ({
+  const buildBlueprintTableSnapshot = () => ({
         assessmentId: setup.assessmentId,
         blueprintDraft,
         blueprintDistributionDraft,
@@ -3209,6 +3211,21 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         pickerRows: pickerDraftRows,
         schemaVersion: 3,
       })
+  // Compare rendered values: adding an explicit override equal to its computed value is not an edit.
+  const reviewTableSignatures = blueprintTableSignatures({
+    ...buildBlueprintTableSnapshot(),
+    blueprintDistributionDraft: Object.fromEntries(blueprintTableRows.map(row => [row.key, Number(row.distributionLabel) || 0])),
+    blueprintQuestionTypeDraft: blueprintQuestionTypeRows.map(row => ({ label: row.label, perQuestionMarks: row.perQuestionMarks, totalMarks: row.totalMarks, hotQuestions: row.hotQuestions, lotQuestions: row.lotQuestions, hotMarks: row.hotMarks, lotMarks: row.lotMarks })),
+    blueprintTestSpecificationCountDraft: Object.fromEntries(blueprintSpecificationRows.map(row => [row.key, Object.fromEntries(blueprintTestSpecificationColumns.map(column => [column.key, getBlueprintTestSpecificationCountNumber(row.key, column.key)]))])),
+    blueprintTestSpecificationMarkDraft: Object.fromEntries(blueprintSpecificationRows.map(row => [row.key, Object.fromEntries(blueprintTestSpecificationColumns.map(column => [column.key, getBlueprintTestSpecificationNumber(row.key, column.key)]))])),
+  })
+  const submittedTableBaseline = useRef(reviewTableSignatures)
+  const previousTableModifications = useRef({})
+  const tableModifications = blueprintReview
+    ? blueprintTableModifications(submittedTableBaseline.current, reviewTableSignatures, currentUser, previousTableModifications.current)
+    : initialBlueprintPlanner?.tableModifications || {}
+  previousTableModifications.current = tableModifications
+  const buildBlueprintReviewSnapshot = () => ({ ...buildBlueprintTableSnapshot(), ...(Object.keys(tableModifications).length ? { tableModifications } : {}) })
   useImperativeHandle(blueprintEditorRef, () => ({
     getSnapshot() {
       if (!blueprintTestSpecificationMatrixIsValid || !pickerDraftRows.length || pickerDraftRows.reduce((sum, row) => sum + row.count * row.marks, 0) !== blueprintRoundedTotalMark) {
@@ -7083,6 +7100,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                     <div className="create-assessment-blueprint-section-label">
                       <ListChecks size={14} strokeWidth={2.3} />
                       <span>Marks &amp; Weightage</span>
+                      <BlueprintModifiedBadge modification={tableModifications.distribution} />
                     </div>
                     {blueprintTableRows.length && blueprintTotalMarkNumber ? (
                       <div className={`create-assessment-blueprint-validation ${blueprintDistributionStatusClass}`}>
@@ -7247,6 +7265,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                             <h3>
                               <ListChecks size={14} strokeWidth={2.4} />
                               <span>Question Type Breakdown</span>
+                              <BlueprintModifiedBadge modification={tableModifications.specifications} />
                             </h3>
                             <div className="blueprint-breakdown-heading-status">
                               <p className="blueprint-cognition-applied" role="status">{appliedCognitionDraft === blueprintQuestionTypeDraft ? 'Suggested changes applied. HoT and LoT targets match.' : ''}</p>
@@ -7795,6 +7814,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         <h3>
                           <FilePenLine size={14} strokeWidth={2.4} />
                           <span>Assessment Blueprint</span>
+                          <BlueprintModifiedBadge modification={tableModifications.matrix} />
                         </h3>
                         <div className="blueprint-allocation-legend" aria-label="Allocation source"><span className="is-manual">Manual</span><span className="is-auto">Auto-filled</span></div>
                         <div className="create-assessment-blueprint-test-grid-title-actions">
@@ -8041,6 +8061,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         <header>
                           <ListChecks size={14} strokeWidth={2.3} />
                           <strong>Question Type Breakdown</strong>
+                          <BlueprintModifiedBadge modification={tableModifications.specifications} />
                           <span>Read-only</span>
                           {!selectedBreakdownTemplate && (
                           <button

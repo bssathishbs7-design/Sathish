@@ -1,0 +1,4 @@
+import {browser} from './cdp.mjs';const b=await browser();const out=[];
+for(const tab of ['Draft','Approval Queue','Published','Evaluation','Results']){
+await b.evaluate(`[...document.querySelectorAll('.assessment-create-tab')].find(b=>b.textContent.endsWith('${tab}')).click()`);
+out.push({tab,data:(await b.evaluate(`(()=>{const c=document.querySelector('.assessment-tracker-card');return Object.fromEntries(['.assessment-card-title','.assessment-draft-identity-row > span','.assessment-card-category','.assessment-create-draft-metadata','.assessment-create-draft-stats em','.assessment-create-draft-stats strong','.assessment-stage-badge','.assessment-create-draft-footer button'].map(q=>{const e=c?.querySelector(q),s=e&&getComputedStyle(e);return[q,s&&[s.fontSize,s.fontWeight,s.fontFamily,s.color]]}))})()`)).result.value});}console.log(JSON.stringify(out));b.close();

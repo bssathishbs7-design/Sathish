@@ -1,8 +1,11 @@
-import fs from 'node:fs';import {browser,pause} from '../artifacts/logbook-launch/cdp.mjs';
-const b=await browser();await b.call('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});await b.call('Page.navigate',{url:'http://127.0.0.1:5198/assessment/create'});await pause(3000);
-const backup=(await b.evaluate('JSON.stringify({...localStorage})')).result.value;
-try{
-await b.evaluate(`(()=>{const rows=[0,1].map(i=>({id:'alignment-demo-'+i,setup:{assessmentId:'alignment-demo-'+i,assessmentCode:'ASST101700'+(2+i),assessmentName:'Untitled Assessment',academicYear:'2025 - 2026',blueprintEnabled:true},savedAt:'2026-10-17T16:00:00Z',questionRows:[]}));localStorage.setItem('vx-assessment-drafts',JSON.stringify(rows));rows.forEach((r,i)=>localStorage.setItem('vx-assessment-blueprint-workflow:'+r.id,JSON.stringify({blueprintId:'ASSTBP00'+(i+1),status:i?'Pending Approval':'Approved',snapshot:{}})));})()`);
-await b.call('Page.reload',{});await pause(2000);await b.evaluate(`[...document.querySelectorAll('button')].find(e=>e.classList.contains('assessment-create-tab')&&e.textContent.includes('Draft'))?.click()`);await pause(500);
-for(const width of [1280,768,390]){await b.call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<768});await pause(300);console.log(width,(await b.evaluate(`(()=>{const cards=[...document.querySelectorAll('.assessment-create-draft-card')];cards[0]?.scrollIntoView({block:'center'});return cards.map(card=>({width:card.getBoundingClientRect().width,labels:[...card.querySelectorAll('.assessment-card-settings>div:has(dd) dt')].map(e=>({text:e.textContent,y:e.getBoundingClientRect().y,height:e.getBoundingClientRect().height,overflow:e.scrollWidth>e.clientWidth})),badges:[...card.querySelectorAll('.assessment-card-settings dd')].map(e=>({y:e.getBoundingClientRect().y,width:e.getBoundingClientRect().width}))}))})()`)).result.value);const r=await b.call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('tmp/card-alignment-'+width+'.png',Buffer.from(r.data,'base64'));}
-}finally{await b.evaluate(`(()=>{localStorage.clear();for(const [k,v] of Object.entries(${backup}))localStorage.setItem(k,v)})()`);b.close();}
+import {browser,pause} from './cdp.mjs';import fs from 'node:fs';
+const b=await browser();const ev=async s=>(await b.evaluate(s)).result.value;
+await b.call('Emulation.setDeviceMetricsOverride',{width:1440,height:1050,deviceScaleFactor:1,mobile:false});
+await ev("[...document.querySelectorAll('.assessment-create-tab')].find(b=>b.textContent.endsWith('Draft')).click()");
+await ev("document.querySelector('.assessment-view-trigger').click()");
+await ev("[...document.querySelectorAll('.assessment-view-options button')].find(b=>b.textContent==='Medium cards').click()");
+await pause(250);
+await ev("document.querySelector('.assessment-create-draft-shell').scrollIntoView({block:'start'})");
+fs.writeFileSync('tmp/card-alignment.png',Buffer.from((await b.call('Page.captureScreenshot',{format:'png'})).data,'base64'));
+console.log(await ev("[...document.querySelectorAll('.assessment-tracker-card')].map(c=>({height:c.clientHeight,summary:c.querySelector('.assessment-tracker-card-summary').getBoundingClientRect().top,footer:c.querySelector('.assessment-tracker-card-controls').getBoundingClientRect().top,overflow:c.scrollWidth>c.clientWidth+2}))"));
+b.close();

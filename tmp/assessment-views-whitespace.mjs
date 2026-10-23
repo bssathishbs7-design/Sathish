@@ -1,0 +1,1 @@
+﻿import fs from 'node:fs';const f='src/pages/AssessmentCreatePage.jsx';const s=fs.readFileSync(f,'utf8');fs.writeFileSync(f,s.split('\n').map(line=>line.includes('<AssessmentTrackerCard ')?line.trimEnd():line).join('\n'));

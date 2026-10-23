@@ -14,6 +14,6 @@ export function getAssessmentResponseSummary(record = {}, questions) {
     hasDescriptive = /descriptive|hybrid|saq|laq|meq/i.test(setup.examType || '')
   }
   const offline = String(setup.examDeliveryMode || setup.examMode || '').toLowerCase() === 'offline'
-  const details = [['mcq','MCQ',hasMcq],['descriptive','Descriptive',hasDescriptive]].filter(([, ,included])=>included).map(([key,label])=>({label, response: offline ? 'Answers provided offline' : setup[key+'DisplayType'] === 'Read-Only' ? 'Read-only' : 'Enter answers'}))
+  const details = [['mcq','MCQ',hasMcq],['descriptive','Descriptive',hasDescriptive]].filter(([, ,included])=>included).map(([key,label])=>({label, response: offline ? 'Answers provided offline' : setup[key+'DisplayType'] === 'Read-Only' ? 'Read-only' : 'Online Response'}))
   return {type: hasMcq && hasDescriptive ? 'Hybrid' : hasMcq ? 'MCQ' : hasDescriptive ? 'Descriptive' : 'Not set', details}
 }

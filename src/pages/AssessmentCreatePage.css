@@ -198,3 +198,7 @@
 .assessment-clear-all:disabled { opacity: .5; cursor: not-allowed; }
 .assessment-clear-all:focus-visible { outline: 2px solid var(--text-brand); outline-offset: var(--s-1); box-shadow: 0 0 0 5px var(--mint-200); }
 @media (prefers-reduced-motion: reduce) { .assessment-clear-all { transition: none; } .assessment-clear-all:active:not(:disabled) { transform: none; } }
+
+.assessment-pdf-spinner { animation: assessment-pdf-spin calc(var(--dur-reveal) * 2) var(--ease-standard) infinite; }
+@keyframes assessment-pdf-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .assessment-pdf-spinner { animation: none; } }

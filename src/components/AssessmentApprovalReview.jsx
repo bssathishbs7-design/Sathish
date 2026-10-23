@@ -7,7 +7,7 @@ import './AssessmentApprovalReview.css'
  * Pending reviews edit a local submitted snapshot; author views stay read-only.
  * @param {{record: {activityId:string, setup:Object, blueprintSnapshot?:Object, previewSections?:Array, questionRows?:Array}, onBack:Function, onDecision:Function, readOnly?:boolean}} props
  */
-export default function AssessmentApprovalReview({ record, onBack, onDecision, readOnly = false, theme = 'light', onToggleTheme }) {
+export default function AssessmentApprovalReview({ currentUser, record, onBack, onDecision, readOnly = false, theme = 'light', onToggleTheme }) {
   const [remarks, setRemarks] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -45,6 +45,6 @@ export default function AssessmentApprovalReview({ record, onBack, onDecision, r
       </footer>}
       {!actionable && record.reviewRemarks && <p><strong>Review remarks:</strong> {record.reviewRemarks}</p>}
     </>
-  return <AssessmentAuthorWorkspace assessmentReview={record} assessmentEditable={actionable && !isBlueprint} assessmentEditorRef={assessmentEditorRef} blueprintReview={editableBlueprint ? { record } : undefined} blueprintEditorRef={blueprintEditorRef} theme={theme} onToggleTheme={onToggleTheme}
+  return <AssessmentAuthorWorkspace currentUser={currentUser} assessmentReview={record} assessmentEditable={actionable && !isBlueprint} assessmentEditorRef={assessmentEditorRef} blueprintReview={editableBlueprint ? { record } : undefined} blueprintEditorRef={blueprintEditorRef} theme={theme} onToggleTheme={onToggleTheme}
     onReviewExit={onBack} reviewBusy={busy} reviewActions={actionable || record.reviewRemarks ? reviewActions : null} />
 }
