@@ -115,7 +115,8 @@ const PATH_ALIASES = {
   '/assessment-suite/blueprint': APP_PAGES.BLUEPRINT,
 }
 
-const getPageFromPath = (pathname) => PATH_PAGES[pathname] ?? PATH_ALIASES[pathname] ?? APP_PAGES.DASHBOARD
+const studentPath = pathname => /^(?:\/[^/]+)?\/student-management(?:\/record\/([^/]+))?\/?$/.exec(pathname)
+const getPageFromPath = (pathname) => studentPath(pathname) ? APP_PAGES.STUDENT_MANAGEMENT : PATH_PAGES[pathname] ?? PATH_ALIASES[pathname] ?? APP_PAGES.DASHBOARD
 
 const PHONE_UNSUPPORTED_PAGES = new Set([
   APP_PAGES.CONFIGURATION,
@@ -457,6 +458,7 @@ function App() {
   const useCompactLogo = sidebarCollapsed
   const [preferredNavigationMode, setPreferredNavigationMode] = useState(() => { try { return localStorage.getItem('medsy-navigation-mode') === 'student' ? 'student' : 'faculty' } catch { return 'faculty' } })
   const editedForms = useRef(new WeakSet())
+  const [studentRecordId, setStudentRecordId] = useState(() => studentPath(window.location.pathname)?.[1] || null)
   const [activePage, setActivePage] = useState(() => getPageFromPath(window.location.pathname))
   const navigationMode = getNavigationMode(activePage) || preferredNavigationMode
   useEffect(() => {
@@ -651,12 +653,13 @@ function App() {
 
   useEffect(() => {
     const resolvedPage = getPageFromPath(window.location.pathname)
-    if (!PATH_PAGES[window.location.pathname]) {
+    if (!PATH_PAGES[window.location.pathname] && !studentPath(window.location.pathname)) {
       window.history.replaceState({ page: resolvedPage }, '', PAGE_PATHS[resolvedPage])
     }
 
     const handlePopState = (event) => {
       const nextPage = getPageFromPath(window.location.pathname)
+      setStudentRecordId(studentPath(window.location.pathname)?.[1] || null)
       setActivePage(nextPage)
       setQuestionBankMode(nextPage === APP_PAGES.QUESTION_BANK ? event.state?.questionBankMode ?? 'editable' : 'editable')
       setMobileSidebarOpen(false)
@@ -723,10 +726,12 @@ function App() {
   const navigateToPage = (page, options = {}) => {
     if (page === APP_PAGES.LOGBOOK) navigateLogbook({ name: options.logbookReview ? 'search' : 'home', ...(options.logbookReview ? { status: 'Pending' } : {}) })
     const { replace = false, questionBankMode: nextQuestionBankMode = 'editable' } = options
-    const nextPath = PAGE_PATHS[page] ?? PAGE_PATHS[APP_PAGES.DASHBOARD]
+    const studentBase = studentPath(window.location.pathname) ? window.location.pathname.split('/record/')[0].replace(/\/$/, '') : '/student-management'
+    const nextPath = page === APP_PAGES.STUDENT_MANAGEMENT ? studentBase + (options.studentRecordId ? '/record/' + encodeURIComponent(options.studentRecordId) : '') : PAGE_PATHS[page] ?? PAGE_PATHS[APP_PAGES.DASHBOARD]
     const historyMethod = replace ? 'replaceState' : 'pushState'
     const nextHistoryState = {
       page,
+      ...(page === APP_PAGES.STUDENT_MANAGEMENT ? { studentWorkspace: options.studentWorkspace || options.studentRecordId && window.history.state?.studentWorkspace || { batchId: '', year: 'First Year', view: 'batches', highlight: null } } : {}),
       ...(page === APP_PAGES.QUESTION_BANK ? { questionBankMode: nextQuestionBankMode } : {}),
     }
 
@@ -734,6 +739,7 @@ function App() {
       window.history[historyMethod](nextHistoryState, '', nextPath)
     }
 
+    setStudentRecordId(page === APP_PAGES.STUDENT_MANAGEMENT ? options.studentRecordId || null : null)
     setActivePage(page)
     setQuestionBankMode(page === APP_PAGES.QUESTION_BANK ? nextQuestionBankMode : 'editable')
     setMobileSidebarOpen(false)
@@ -1759,7 +1765,12 @@ function App() {
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
             <FacultyManagementPageV2 onAlert={showAlert} />
           ) : activePage === APP_PAGES.STUDENT_MANAGEMENT ? (
-            <StudentManagementPage theme={theme} canEdit={profileUser.role === 'Admin'} />
+            <StudentManagementPage onNavigateWorkspace={studentWorkspace => {
+              const current = window.history.state || {}
+              if (JSON.stringify(current.studentWorkspace) === JSON.stringify(studentWorkspace)) return
+              if (!current.studentWorkspace) window.history.replaceState({ ...current, studentWorkspace: { batchId: '', year: 'First Year', view: 'batches', highlight: null } }, '')
+              window.history.pushState({ ...current, studentWorkspace }, '', '/student-management')
+            }} theme={theme} canEdit={profileUser.role === 'Admin' || profileUser.permissions?.includes('student_management.edit')} recordId={studentRecordId} onOpenRecord={id => navigateToPage(APP_PAGES.STUDENT_MANAGEMENT, { studentRecordId: id })} onCloseRecord={studentWorkspace => navigateToPage(APP_PAGES.STUDENT_MANAGEMENT, { studentWorkspace })} />
           ) : activePage === APP_PAGES.DASHBOARD_SUMMARY ? (
             <DashboardSummaryPage
               onBackToAssessment={() => navigateToPage(APP_PAGES.EVALUATION)}

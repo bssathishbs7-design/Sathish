@@ -1,5 +1,6 @@
-import { createElement, useEffect, useMemo, useState } from 'react'
-import { Search, UserPlus, Upload, Users, BadgeCheck, BookOpen, SlidersHorizontal, Plus, History, Layers, GraduationCap, ChevronRight, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { ArrowLeft, History, ChevronDown, UserPlus, Upload, Trash2 } from 'lucide-react'
+import FeedbackToast from '../components/FeedbackToast'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import LogbookBoundary from '../components/logbook/LogbookBoundary'
 import StudentEditor from '../components/students/StudentEditor'
@@ -7,7 +8,12 @@ import StudentImport from '../components/students/StudentImport'
 import StudentRecord from '../components/students/StudentRecord'
 import StudentDirectory from '../components/students/StudentDirectory'
 import StudentHistory from '../components/students/StudentHistory'
-import { DIRECTORY_KEY, DIRECTORY_EVENT, YEARS, getStudentDirectory, saveStudentCommand } from '../services/studentManagement'
+import StudentManagementHeader from '../components/students/StudentManagementHeader'
+import StudentBatches from '../components/students/StudentBatches'
+import StudentSearch from '../components/students/StudentSearch'
+import StudentSubjects from '../components/students/StudentSubjects'
+import { canUndo } from '../services/studentModel'
+import { DIRECTORY_KEY, DIRECTORY_EVENT, YEARS, getStudentDirectory, saveStudentCommand, deleteStudents } from '../services/studentManagement'
 import '../styles/medsy/question-sort-tokens.css'
 import '../styles/ospe-activity.css'
 import '../styles/my-skills.css'
@@ -18,54 +24,91 @@ import '../components/logbook/LogbookPolish.css'
 import '../components/logbook/LogbookReadability.css'
 import './StudentManagementPage.css'
 
-/** Student workflow uses the Admin Logbook shell and a replaceable asynchronous service.
- * @param {{theme?:string,canEdit?:boolean}} props Permission must also be enforced by the backend.
- */
-export default function StudentManagementPage(props) {
-  return <LogbookBoundary title="Student management could not be displayed"><StudentManagementContent {...props} /></LogbookBoundary>
-}
-
-function StudentManagementContent({ theme, canEdit = true }) {
-  const [data, setData] = useState(null), [error, setError] = useState(''), [notice, setNotice] = useState(''), [reload, setReload] = useState(0)
-  const [view, setView] = useState('Directory'), [query, setQuery] = useState(''), [batch, setBatch] = useState(''), [year, setYear] = useState(''), [status, setStatus] = useState('')
-  const [showFilters, setShowFilters] = useState(false), [mode, setMode] = useState(null), [recordId, setRecordId] = useState(null), [selectionVersion, setSelectionVersion] = useState(0)
+/** App owns route changes. Permissions default to read-only. Local adapter is replaceable by institution-scoped APIs. */
+export default function StudentManagementPage(props) { return <LogbookBoundary title="Student management could not be displayed"><StudentManagementContent {...props} /></LogbookBoundary> }
+function StudentManagementContent({ theme, canEdit = false, recordId, onOpenRecord, onCloseRecord, onNavigateWorkspace }) {
+  const [data, setData] = useState(null), [error, setError] = useState(''), [notice, setNoticeState] = useState(null), [reload, setReload] = useState(0)
+  const setNotice = message => setNoticeState({ message, id: crypto.randomUUID() })
+  const closeNotice = useCallback(() => setNoticeState(null), [])
+  const [batchId, setBatchId] = useState(() => window.history.state?.studentWorkspace?.batchId || ''), [year, setYear] = useState(() => window.history.state?.studentWorkspace?.year || 'First Year'), [remembered, setRemembered] = useState({}), [view, setView] = useState(() => window.history.state?.studentWorkspace?.view || 'batches')
+  const [mode, setMode] = useState(null), [highlight, setHighlight] = useState(null), [selection, setSelection] = useState(0), [version, setVersion] = useState(0)
   useEffect(() => {
-    let active = true
-    const refresh = async () => { try { const next = await getStudentDirectory(); if (active) { setData(next); setError('') } } catch (failure) { if (active) setError(failure.message) } }
+    let alive = true
+    const refresh = async () => { try { const next = await getStudentDirectory(); if (alive) { setData(next); setError('') } } catch (failure) { if (alive) setError(failure.message) } }
     const storage = event => { if (!event.key || event.key === DIRECTORY_KEY) void refresh() }
     void refresh(); window.addEventListener(DIRECTORY_EVENT, refresh); window.addEventListener('storage', storage)
-    return () => { active = false; window.removeEventListener(DIRECTORY_EVENT, refresh); window.removeEventListener('storage', storage) }
+    return () => { alive = false; window.removeEventListener(DIRECTORY_EVENT, refresh); window.removeEventListener('storage', storage) }
   }, [reload])
-  const rows = useMemo(() => (data?.students || []).filter(student => (!query.trim() || `${student.name} ${student.registrationId} ${student.email} ${student.subject}`.toLowerCase().includes(query.trim().toLowerCase())) && (!batch || student.batch === batch) && (!year || student.year === year) && (!status || student.status === status) && (view === 'Graduated' ? student.year === 'Graduated' : view === 'Needs setup' ? !student.tracked : true)).sort((a, b) => a.name.localeCompare(b.name)), [data, query, batch, year, status, view])
-  const record = data?.students.find(student => student.id === recordId)
-  const selectedBatch = data?.batches.find(item => item.id === batch)
-  const clearFilters = () => { setQuery(''); setBatch(''); setYear(''); setStatus('') }
-  const navigate = next => { setView(next); clearFilters() }
-  const open = next => { setRecordId(null); setMode(next) }
-  const save = async command => { const next = await saveStudentCommand(command, { canEdit }); setData(next); setSelectionVersion(value => value + 1); setNotice(command.type === 'import' ? `${command.rows.length} students imported.` : 'Changes saved.'); if (command.type === 'deleteBatch') { setBatch(''); setView('Batches') } }
-  return <section className="vx-content ospe-page my-skills-page logbook-scope lb-page admin-logbook-page student-management-page">
-    <div className="ospe-shell my-skills-shell lb-shell student-management-shell">
-      <PageNavigationHeader items={['My Pages', 'Student Management']} />
-      <header className="my-skills-overview lb-page-head admin-page-head student-management-header">
-        <div className="my-skills-overview-main"><span className="ospe-kicker">Student administration</span><div className="my-skills-overview-copy"><h1>Student Management</h1><p>Manage enrolment, review batches and follow each student’s academic journey.</p></div></div>
-        <div className="my-skills-live-card lb-create-card admin-action-card student-management-action-card"><div className="my-skills-live-card-top"><span className="my-skills-live-indicator"><Users size={15} />Student directory</span></div><div className="my-skills-live-card-body"><strong>Manage your student community</strong><p>{canEdit ? 'Add students individually or preview an Excel import.' : 'You have read-only access to student records.'}</p></div><div className="student-management-card-actions"><button className="tool-btn my-skills-live-card-cta lb-new-entry-btn" disabled={!canEdit || !data?.batches.length} onClick={() => open({ type: 'save', batch })}><UserPlus size={16} />Add student</button><button className="tool-btn my-skills-live-card-cta lb-new-entry-btn" disabled={!canEdit || !data?.batches.length} onClick={() => open({ type: 'import', batch })}><Upload size={16} />Upload</button></div></div>
-      </header>
-      {error && <div className="lb-alert sm-error" role="alert">{error}<button className="lb-btn" onClick={() => setReload(value => value + 1)}>Retry</button></div>}
-      {notice && <div className="lb-alert sm-notice" role="status"><BadgeCheck size={18} /><span>{notice}</span><button className="lb-btn" onClick={() => setNotice('')}>Dismiss</button></div>}
-      {!data ? !error && <div className="lb-card" role="status">Loading student records…</div> : <>
-        <section className="lb-summary-strip student-management-stats" aria-label="Student summary">{[[Users, data.students.length, 'Total students'], [BadgeCheck, data.students.filter(student => student.status === 'Active').length, 'Active students'], [BookOpen, data.batches.length, 'Batches']].map(([MetricIcon, count, label]) => <article key={label} className="lb-summary-item my-skills-metric-card is-assigned"><span className="my-skills-metric-card-icon">{createElement(MetricIcon, { size: 18 })}</span><span className="my-skills-metric-card-copy"><strong>{count}</strong><span>{label}</span></span></article>)}</section>
-        <nav className="lb-navigation admin-tabs" aria-label="Student management views">{[[Users, 'Directory'], [Layers, 'Batches'], [GraduationCap, 'Graduated'], [History, 'History'], [SlidersHorizontal, 'Needs setup']].map(([TabIcon, label]) => <button key={label} className={view === label ? 'is-active' : ''} aria-current={view === label ? 'page' : undefined} onClick={() => navigate(label)}>{createElement(TabIcon, { size: 16 })}{label}{label === 'Needs setup' && <span>{data.students.filter(student => !student.tracked).length}</span>}</button>)}</nav>
-        {view === 'Batches' ? <section className="lb-card sm-batches"><div className="sm-section-head"><div><h2>Batches</h2><p>Select a batch to manage students by year.</p></div>{canEdit && <button className="lb-btn lb-primary" onClick={() => open({ type: 'batch' })}><Plus size={16} />Add batch</button>}</div><div className="admin-card-grid">{[...data.batches].sort((a, b) => b.id.localeCompare(a.id)).map(item => <button className="admin-tile" key={item.id} onClick={() => { setBatch(item.id); setView('Directory') }}><strong>Batch {item.id}</strong><small>{item.course} · {item.syllabus}</small><span>{data.students.filter(student => student.batch === item.id).length} students</span><ChevronRight size={18} /></button>)}</div>{!data.batches.length && <p>No batches yet. Add a batch before enrolling students.</p>}</section> : <>
-          <section className="lb-card student-management-toolbar" aria-label="Search and filter students"><div className="student-management-toolbar-topbar"><label className="student-management-search"><Search size={16} /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, student ID, email or subject" aria-label="Search students" /></label><button className={`lb-btn student-management-filter-toggle ${showFilters ? 'is-active' : ''}`} onClick={() => setShowFilters(value => !value)} aria-expanded={showFilters} aria-controls="student-management-filter-panel"><SlidersHorizontal size={16} />Filters</button></div>
-            {showFilters && <div id="student-management-filter-panel" className="student-management-filter-panel"><div className="student-management-filter-grid"><label className="lb-field"><span>Batch</span><select value={batch} onChange={event => setBatch(event.target.value)}><option value="">All batches</option>{data.batches.map(item => <option key={item.id} value={item.id}>Batch {item.id}</option>)}</select></label><label className="lb-field"><span>Year</span><select value={year} onChange={event => setYear(event.target.value)}><option value="">All years</option>{[...YEARS, 'Graduated'].map(item => <option key={item}>{item}</option>)}</select></label><label className="lb-field"><span>Status</span><select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{['Active', 'Inactive', 'Graduated'].map(item => <option key={item}>{item}</option>)}</select></label></div><div className="sm-actions"><button className="lb-btn" onClick={clearFilters}>Clear filters</button><button className="lb-btn lb-primary" onClick={() => setShowFilters(false)}>Done</button></div></div>}
-            {(batch || year || status) && <p className="sm-help">{[batch && `Batch ${batch}`, year, status].filter(Boolean).join(' · ')} <button className="lb-btn" onClick={clearFilters}>Clear</button></p>}
-          </section>
-          {selectedBatch && view !== 'History' && <section className="lb-card sm-batch-detail"><div className="sm-section-head"><div><h2>Batch {batch}</h2><p>{selectedBatch.course} · {selectedBatch.syllabus} · Started {selectedBatch.startsOn}</p></div>{canEdit && <div className="sm-actions"><button className="lb-btn" onClick={() => open({ type: 'syllabus', batch })}>Syllabus</button><button className="lb-btn" onClick={() => open({ type: 'deleteBatch', batch })}><Trash2 size={15} />Delete batch</button></div>}</div><div className="sm-actions" aria-label="Batch year filters">{['', ...YEARS, 'Graduated'].map(item => <button key={item} className={`lb-btn ${year === item ? 'lb-primary' : ''}`} aria-pressed={year === item} onClick={() => setYear(item)}>{item || 'All years'} <span className="sm-number">{data.students.filter(student => student.batch === batch && (!item || student.year === item)).length}</span></button>)}</div></section>}
-          {view === 'History' ? <StudentHistory data={data} batch={batch} year={year} status={status} query={query} canEdit={canEdit} onOpen={setRecordId} onAction={open} /> : <>{view === 'Needs setup' && <p className="lb-alert">Open a student to complete year setup before promotion.</p>}<StudentDirectory key={[view, query, batch, year, status, selectionVersion].join('|')} rows={rows} canEdit={canEdit} onOpen={setRecordId} onAction={open} onClear={clearFilters} title={view === 'Directory' ? 'Student directory' : view === 'Graduated' ? 'Graduated students' : 'Students needing year setup'} /></>}
+  useEffect(() => {
+    const restore = event => {
+      const state = event.state?.studentWorkspace
+      setBatchId(state?.batchId || ''); setYear(state?.year || 'First Year'); setView(state?.view || 'batches')
+      setHighlight(state?.highlight || null); setSelection(0); setMode(null); setVersion(value => value + 1)
+    }
+    window.addEventListener('popstate', restore)
+    return () => window.removeEventListener('popstate', restore)
+  }, [])
+  const navigateWorkspace = next => {
+    const state = { batchId, year, view, highlight, ...next }
+    onNavigateWorkspace(state)
+    setBatchId(state.batchId); setYear(state.year); setView(state.view); setHighlight(state.highlight); setSelection(0)
+  }
+  const selectYear = next => { setRemembered(previous => ({ ...previous, [batchId]: next })); navigateWorkspace({ year: next, view: 'batch', highlight: null }) }
+  const selectBatch = id => {
+    if (!id) { navigateWorkspace({ batchId: '', year: 'First Year', view: 'batches', highlight: null }); return }
+    const untracked = data.students.filter(student => student.batch === id && !student.tracked)
+    if (untracked.length && !data.students.some(student => student.batch === id && student.tracked)) { navigateWorkspace({ batchId: id, year: untracked[0].year, view: 'setup', highlight: null }); return }
+    const stages = [...YEARS, 'Graduated']
+    const largest = [...stages].sort((a, b) => data.students.filter(s => s.batch === id && s.tracked && s.year === b).length - data.students.filter(s => s.batch === id && s.tracked && s.year === a).length)[0]
+    navigateWorkspace({ batchId: id, year: remembered[id] || largest, view: 'batch', highlight: null })
+  }
+  const openRecord = id => onOpenRecord(id)
+  const openAction = next => {
+    if (next.type === 'move') next = { ...next, expectedAcademicRevisions: Object.fromEntries(next.ids.map(id => [id, data.students.find(s => s.id === id)?.academicRevision])) }
+    setMode(next)
+  }
+  const save = async command => {
+    if (command.type === 'delete') {
+      const result = await deleteStudents(command.ids, { canEdit })
+      const next = await getStudentDirectory(); setData(next); setSelection(0); setVersion(v => v + 1)
+      setNotice(`${result.deleted.length} deleted.${result.failed.length ? ' Failed: ' + result.failed.map(f => `${f.id}: ${f.message}`).join('; ') : ''}`)
+      if (result.failed.length) throw new Error('Some deletions failed. Close this form, review the result message and retry the remaining students.')
+      return next
+    }
+    const next = await saveStudentCommand(command, { canEdit }); setData(next); setSelection(0); setVersion(v => v + 1)
+    const created = command.type === 'save' && !command.draft.id ? next.students.find(s => !data.students.some(old => old.id === s.id)) : null
+    setNotice(created ? `Student created: ${created.trackingId}` : command.type === 'import' ? `${command.rows.length} students imported.` : command.type === 'deleteBatch' ? `Batch ${command.batch} deleted.` : 'Changes saved.')
+    if (command.type === 'batch') { navigateWorkspace({ batchId: command.batch.id, year: 'First Year', view: 'batch', highlight: null }) }
+    if (command.type === 'deleteBatch') { navigateWorkspace({ batchId: '', year: 'First Year', view: 'batches', highlight: null }) }
+    return next
+  }
+  const selectedBatch = data?.batches.find(b => b.id === batchId), record = data?.students.find(s => s.id === recordId)
+  const returnToStudentList = () => {
+    const target = record ? { batchId: record.batch, year: record.year, view: record.tracked ? 'batch' : 'setup', highlight: null } : { batchId: '', year: 'First Year', view: 'batches', highlight: null }
+    setBatchId(target.batchId); setYear(target.year); setView(target.view); setHighlight(null); setSelection(0)
+    onCloseRecord(target)
+  }
+  const batchIsEmpty = Boolean(selectedBatch) && !data.students.some(student => student.batch === batchId)
+  const legacy = data?.students.filter(s => !s.tracked && s.batch === batchId) || []
+  const lastChange = data?.moves.find(move => move.batch === batchId)
+  const undoIds = lastChange?.students.filter(member => canUndo(data.students.find(s => s.id === member.before.id), member, lastChange)).map(member => member.before.id) || []
+  const rows = (data?.students || []).filter(s => view === 'setup' ? !s.tracked && s.batch === batchId : s.tracked && s.batch === batchId && s.year === year).sort((a, b) => a.name.localeCompare(b.name))
+  const directoryFilters = data && <><StudentSearch students={data.students} onSelect={student => navigateWorkspace({ batchId: student.batch, year: student.year, view: student.tracked ? 'batch' : 'setup', highlight: student.id })} /></>
+  return <section className="vx-content ospe-page my-skills-page logbook-scope lb-page admin-logbook-page student-management-page"><div className="ospe-shell my-skills-shell lb-shell student-management-shell">
+    <div className="sm-page-heading"><PageNavigationHeader items={['My Pages', 'Student Management', ...(recordId ? ['Student Record'] : [])]} />{!recordId && data && view === 'batches' && <div className="sm-page-batch-picker"><label className="lb-field"><span className="sm-select-control"><select aria-label="Select your batch" value={batchId} onChange={event => selectBatch(event.target.value)}><option value="">Select Your Batch</option>{data.batches.map(b => <option key={b.id} value={b.id}>Batch {b.id}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span></label></div>}{recordId && <button type="button" className="lb-btn" onClick={returnToStudentList}><ArrowLeft size={16} aria-hidden="true" />Back to batches</button>}{!recordId && data && view !== 'batches' && <div className="sm-page-actions">{<button type="button" className="lb-btn" onClick={() => selectBatch('')} aria-label={`Batch ${batchId}, back to admission batches`} title="Back to admission batches"><ArrowLeft size={16} aria-hidden="true" />Batch {batchId}</button>}{canEdit && view === 'setup' && legacy.length > 0 && <button className="lb-btn" onClick={() => setMode({ type: 'bulkSetup', batch: batchId, year: legacy[0].year })}>Set up year group</button>}{selectedBatch && view !== 'setup' && <div className="sm-actions">{canEdit && view === 'batch' && year === 'First Year' && selection === 0 && <><button className="lb-btn" onClick={() => setMode({ type: 'save', batch: batchId })}><UserPlus size={16}/>Add Student</button><button className="lb-btn" onClick={() => setMode({ type: 'import', batch: batchId })}><Upload size={16}/>Upload Excel</button></>}{view !== 'history' && <button type="button" className="lb-icon-btn" aria-label="All changes" title="All changes" onClick={() => navigateWorkspace({ view: 'history' })}><History size={16} aria-hidden="true" /></button>}{canEdit && batchIsEmpty && <button type="button" className="lb-icon-btn" aria-label="Delete batch" title="Delete batch" onClick={() => setMode({ type: 'deleteBatch', batch: batchId, emptyOnly: true })}><Trash2 size={16} aria-hidden="true" /></button>}</div>}</div>}</div>
+    {!recordId && view === 'batches' && <StudentManagementHeader data={data} canEdit={canEdit} onAddBatch={() => setMode({ type: 'batch' })} onAddStudent={() => setMode({ type: 'save', batch: [...data.batches].sort((a,b) => b.id.localeCompare(a.id))[0]?.id })} />}
+    {error && <div className="lb-alert sm-error" role="alert">{error}<button className="lb-btn" onClick={() => setReload(v => v + 1)}>Retry</button></div>}
+    {notice && <FeedbackToast placement="top-right" key={notice.id} message={notice.message} onClose={closeNotice} />}
+    {!data ? !error && <p role="status">Loading student records...</p> : recordId ? record ? <StudentRecord student={record} data={data} theme={theme} canEdit={canEdit} onAction={openAction} /> : <div className="lb-card"><p>Student not found.</p><button className="lb-btn" onClick={returnToStudentList}>Back to batches</button></div> : <>
+
+      {view === 'batches' ? <StudentBatches toolbar={directoryFilters} data={data} onSelect={selectBatch} canEdit={canEdit} onDelete={batch => setMode({ type: 'deleteBatch', batch, emptyOnly: true })} /> : <div className="sm-batch-workspace">
+        {selectedBatch && <nav className="sm-year-tabs" aria-label="Academic stages">{[...YEARS, 'Graduated'].map(stage => <button key={stage} className={view !== 'setup' && year === stage ? 'is-active' : ''} aria-current={view !== 'setup' && year === stage ? 'page' : undefined} onClick={() => selectYear(stage)}>{stage} ({data.students.filter(s => s.batch === batchId && s.tracked && s.year === stage).length})</button>)}{legacy.length > 0 && <button className={view === 'setup' ? 'is-active' : ''} aria-current={view === 'setup' ? 'page' : undefined} onClick={() => navigateWorkspace({ view: 'setup', highlight: null })}>Needs setup ({legacy.length})</button>}</nav>}
+        {view === 'batch' && selectedBatch && year !== 'Graduated' && <StudentSubjects key={batchId + year} batch={selectedBatch} year={year} students={data.students} canEdit={canEdit} onSave={async command => { const next = await saveStudentCommand(command, { canEdit }); setData(next); setNotice(command.subjects[0] + ' syllabus updated.'); }} />}
+        {view === 'history' ? <StudentHistory onUndoLast={canEdit && undoIds.length > 0 ? () => setMode({ type: 'undo', moveId: lastChange.id, ids: undoIds }) : undefined} data={data} batch={batchId} canEdit={canEdit} onOpen={openRecord} onAction={openAction} /> : <>
+          <StudentDirectory key={[view, batchId, year, version].join(':')} rows={rows} canEdit={canEdit} onOpen={openRecord} onAction={openAction} onClear={() => { setHighlight(null); setSelection(0) }} onClearHighlight={() => setHighlight(null)} onSelectionChange={setSelection} highlightId={highlight} graduated={view !== 'setup' && year === 'Graduated'} title={view === 'setup' ? 'Students needing setup' : `${year} students`} />
         </>}
-      </>}
-    </div>
-    {mode && data && (mode.type === 'import' ? <StudentImport data={data} batch={mode.batch} theme={theme} onClose={() => setMode(null)} onSave={save} /> : <StudentEditor key={`${mode.type}-${mode.student?.id || ''}`} mode={mode} data={data} theme={theme} onClose={() => setMode(null)} onSave={save} />)}
-    {record && <StudentRecord student={record} data={data} theme={theme} canEdit={canEdit} onClose={() => setRecordId(null)} onAction={open} />}
-  </section>
+      </div>}
+    </>}
+    {mode && data && (mode.type === 'import' ? <StudentImport data={data} batch={mode.batch} onClose={() => { setMode(null); setSelection(0) }} onSave={save} /> : <StudentEditor key={`${mode.type}-${mode.student?.id || mode.entry?.id || ''}`} mode={mode} data={data} onClose={() => { setMode(null); setSelection(0) }} onSave={save} />)}
+  </div></section>
 }

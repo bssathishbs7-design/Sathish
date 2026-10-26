@@ -2,8 +2,8 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom'
 import './FloatingTooltip.css'
 
-/** @param {{content: import('react').ReactNode, className?: string, children: import('react').ReactNode, interactive?:boolean, label?:string}} props */
-export default function FloatingTooltip({ content, className, children, interactive = false, label }) {
+/** @param {{content: import('react').ReactNode, className?: string, children: import('react').ReactNode, interactive?:boolean, label?:string, clickOnly?:boolean}} props */
+export default function FloatingTooltip({ content, className, children, interactive = false, label, clickOnly = false }) {
   const id = useId()
   const trigger = useRef(null)
   const tip = useRef(null)
@@ -67,7 +67,7 @@ export default function FloatingTooltip({ content, className, children, interact
   return <>
     <Trigger ref={trigger} type={interactive ? 'button' : undefined} aria-label={label} className={className} tabIndex={0} aria-describedby={open ? id : undefined}
       onClick={interactive ? event => { event.stopPropagation(); if (pinned.current) dismiss(); else { pinned.current = true; show() } } : undefined}
-      onMouseEnter={show} onMouseLeave={leave} onFocus={show} onBlur={onBlur}>
+      onMouseEnter={clickOnly ? undefined : show} onMouseLeave={leave} onFocus={clickOnly ? undefined : show} onBlur={onBlur}>
       {children}
     </Trigger>
     {open && createPortal(<div ref={tip} id={id} role="tooltip" className={`floating-tooltip${interactive ? ' is-interactive' : ''}`}

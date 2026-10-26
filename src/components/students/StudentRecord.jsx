@@ -1,17 +1,24 @@
-import { Pencil, History, BookOpen, BadgeCheck } from 'lucide-react'
-import LogbookDrawer from '../logbook/LogbookDrawer'
+import { UserRound, Pencil, Camera } from 'lucide-react'
+import CopyIdBadge from '../CopyIdBadge'
+import { SUBJECTS, canUndo, effectiveSyllabus } from '../../services/studentModel'
 import './StudentRecord.css'
 
-/** Read-only profile and append-only audit history; edits open the shared form. */
-export default function StudentRecord({ student, data, theme, canEdit, onClose, onAction }) {
-  const batch = data.batches.find(item => item.id === student.batch)
-  return <LogbookDrawer title={student.name} subtitle={student.registrationId} eyebrow="Student record" theme={theme} onClose={onClose}>
-    <div className="lb-drawer-body sm-record">
-      <span className={`student-management-status is-${student.status.toLowerCase()}`}>{student.status}</span>
-      <dl>{Object.entries({ Email: student.email, Phone: student.phone, Batch: student.batch, Year: student.year, 'Academic year': student.academicYear, Section: student.section, 'Subject / department': student.subject, 'Joined on': student.joinedOn, 'Year started': student.startedAt, Syllabus: student.syllabus || `${batch?.syllabus || 'Not assigned'} (batch default)` }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not recorded'}</dd></div>)}</dl>
-      {!student.tracked && <p className="lb-alert">Year tracking is not set up. This student cannot be promoted until setup is complete.</p>}
-      {canEdit && <div className="sm-actions"><button className="lb-btn" onClick={() => onAction({ type: 'save', student })}><Pencil size={15} />Edit details</button>{student.year !== 'Graduated' && <><button className="lb-btn" onClick={() => onAction({ type: 'status', student })}><BadgeCheck size={15} />{student.status === 'Active' ? 'Deactivate' : 'Activate'}</button><button className="lb-btn" onClick={() => onAction({ type: student.tracked ? 'correct' : 'setup', student })}><History size={15} />{student.tracked ? 'Correct year' : 'Set up year'}</button></>}<button className="lb-btn" onClick={() => onAction({ type: 'syllabus', student })}><BookOpen size={15} />Assign syllabus</button></div>}
-      <section><h3>Year and change history</h3>{!student.history.length ? <p>No year history yet.</p> : <ol className="sm-timeline">{[...student.history].reverse().map(event => <li key={event.id}><strong>{event.action}</strong><span>{event.year} · {event.academicYear}</span><time>{event.date}</time>{event.note && <p>{event.note}</p>}</li>)}</ol>}</section>
-    </div>
-  </LogbookDrawer>
+const displayDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value || '') ? new Date(value + 'T00:00:00').toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : value || 'Not recorded'
+
+/** Full record view. Editor actions open the shared modal above this page. */
+export default function StudentRecord({ student, data, canEdit, onAction }) {
+  const previous = student.entries.at(-2), latestMove = data.moves.find(move => move.students.some(member => member.before.id === student.id && canUndo(student, member, move)))
+  const groups = [
+    { title:'Personal details', fields:[['Email', <CopyIdBadge compactFeedback value={student.email || ''} label="email address" />], ['Phone', <CopyIdBadge compactFeedback value={[student.code, student.phone].filter(Boolean).join(' ')} label="phone number" />], ['Joined on', displayDate(student.joinedOn)], ...(student.completedOn ? [['Completed on', displayDate(student.completedOn)]] : [])] },
+    { title:'Academic details', fields:[['Course', student.course], ['Department', student.department || 'N/A'], ['Admission batch', student.batch], ['Current year', student.year], ['Academic year', student.academicYear || 'Needs setup'], ['SGT', student.section || 'N/A']] },
+  ]
+  return <section className="lb-card sm-record">
+    <header className="sm-record-header"><div className="sm-record-profile">{student.photo ? <img className="sm-record-photo" src={student.photo} alt={student.name + ' profile'} /> : <span className="sm-record-avatar"><UserRound size={28} aria-hidden="true" /></span>}<div><div className="sm-record-title-row"><h1>{student.name}</h1><span className={`student-management-status is-${student.status.toLowerCase()}`}>{student.status}</span></div><div className="sm-record-identifiers"><span>Student ID <strong>{student.registrationId}</strong></span><span>Tracking ID <strong>{student.trackingId}</strong></span></div></div></div><div className="sm-record-header-actions">{canEdit && <div className="sm-actions"><button className="lb-btn" onClick={() => onAction({ type: 'save', student })}><Pencil size={14} aria-hidden="true" />Edit details</button><button className="lb-btn" onClick={() => onAction({ type: 'photo', student })}><Camera size={14} aria-hidden="true" />Change photo</button>{student.status !== 'Discharged' && <button className="lb-btn" onClick={() => onAction({ type: 'status', student })}>{student.status === 'Active' ? 'Deactivate' : 'Activate'}</button>}{!student.tracked && <button className="lb-btn" onClick={() => onAction({ type: 'setup', student })}>Set up year record</button>}{latestMove && <button className="lb-btn" onClick={() => onAction({ type: 'undo', moveId: latestMove.id, ids: [student.id] })}>Undo latest change</button>}</div>}</div></header>
+    {student.migrationNote && <p className="lb-alert">{student.migrationNote}</p>}
+    <div className="sm-record-details">{groups.map(group => <section className="sm-record-detail-card" key={group.title}><h2>{group.title}</h2><dl>{group.fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not recorded'}</dd></div>)}</dl></section>)}</div>
+
+    <section className="sm-record-section"><div className="sm-section-head"><h2>Subjects this year</h2>{canEdit && !student.graduated && <button className="lb-btn" onClick={() => onAction({ type: 'syllabus', student })}>Set subject syllabus</button>}</div><div className="sm-record-subjects">{(SUBJECTS[student.year] || []).map(subject => <article className="sm-record-subject" key={subject}><h3>{subject}</h3><strong>{effectiveSyllabus(data, student, subject)}</strong><span>{student.subjectSyllabuses?.[`${student.year}:${subject}`] ? 'Student-specific syllabus' : 'Batch syllabus'}</span></article>)}</div>{!(SUBJECTS[student.year] || []).length && <p className="sm-record-empty">No subjects for this stage.</p>}</section>
+    <section className="sm-record-section"><h2>Year history</h2>{!student.entries.length && <p>No tracked year attempts yet.</p>}<ol className="sm-timeline">{student.entries.map(entry => <li key={entry.id}><strong>{entry.year} / {entry.academicYear}</strong><span>{displayDate(entry.start)} to {entry.end ? displayDate(entry.end) : 'Present'} / SGT {entry.section} / {entry.outcome}</span>{canEdit && <div className="sm-actions"><button className="lb-btn" onClick={() => onAction({ type: 'correct', student, entry })}>Correct dates / SGT</button>{previous?.id === entry.id && ['Promoted', 'Not promoted'].includes(entry.outcome) && !student.graduated && <button className="lb-btn" onClick={() => onAction({ type: 'correctDecision', student, entry })}>Marked wrongly?</button>}</div>}</li>)}</ol></section>
+    <section className="sm-record-section"><h2>Change log</h2><ol className="sm-timeline">{[...student.history].reverse().map(event => <li key={event.id}><strong>{event.action}</strong><span>{event.year} / {event.academicYear} / {displayDate(event.date)}</span><p>{event.note}</p></li>)}</ol></section>
+  </section>
 }

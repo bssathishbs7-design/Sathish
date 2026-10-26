@@ -1,64 +1,101 @@
-html:has(.student-management-page) { scrollbar-gutter: stable; }
-
-.sm-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
-.sm-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
-.sm-section-head h2 { font-size: var(--fs-body); margin: 0; color: var(--text-strong); }
-.sm-section-head p { color: var(--text-muted); margin: var(--s-1) 0 0; }
-.sm-batches, .sm-batch-detail { display: grid; gap: var(--s-4); }
-.sm-notice { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); }
-.sm-notice span { flex: 1; }
-.student-management-page button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
-.student-management-page .admin-card-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
-
-.student-management-shell { display: grid; gap: var(--s-3); min-width: 0; }
-.student-management-header .my-skills-overview-main { grid-template-rows: auto auto; align-content: center; gap: var(--s-3); padding: var(--s-5); min-width: 0; }
-.student-management-header .my-skills-overview-copy { display: grid; align-content: start; gap: var(--s-2); min-width: 0; max-width: none; }
-.student-management-page .student-management-header .my-skills-overview-copy h1 { max-width: none; line-height: 1.2; }
-.student-management-header .my-skills-overview-copy p { max-width: none; }
-.student-management-page .student-management-action-card { cursor: default; }
-.student-management-page .student-management-action-card .lb-new-entry-btn { animation: none; }
-.student-management-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); margin-top: auto; }
-.student-management-page .student-management-card-actions .lb-new-entry-btn { width: 100%; min-width: 0; margin: 0; padding-inline: var(--s-3); white-space: nowrap; }
-.student-management-page .student-management-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; }
-.student-management-page .lb-summary-item { cursor: default; }
-.student-management-page .lb-summary-item:hover { transform: none; }
-.student-management-page .my-skills-metric-card-copy strong { font-family: var(--f-code); font-variant-numeric: tabular-nums; }
-
-.student-management-toolbar,
-.student-management-filter-panel,
-.student-management-table-card { display: grid; gap: var(--s-3); min-width: 0; }
-.student-management-toolbar-topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); }
-.student-management-search { display: flex; align-items: center; gap: var(--s-2); min-width: 0; padding-inline: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); }
-.student-management-search svg { flex: none; }
-.student-management-search input { width: 100%; min-width: 0; min-height: 44px; border: 0; padding: var(--s-2) 0; background: transparent; color: var(--text-body); }
-.student-management-search input::placeholder { color: var(--text-muted); }
-.student-management-search:focus-within { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
-.student-management-page .student-management-search input:focus-visible { outline: none; box-shadow: none; }
-.student-management-page .student-management-filter-toggle.is-active { background: var(--surface-soft); border-color: var(--forest); color: var(--text-brand); }
-.student-management-filter-panel { padding-top: var(--s-4); border-top: 1px solid var(--border); }
-.student-management-table-head p { margin: var(--s-1) 0 0; color: var(--text-muted); }
-.student-management-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
-.student-management-filter-grid .lb-field { margin: 0; min-width: 0; }
-.student-management-page .student-management-table-head h2 { font-size: var(--fs-body, 1rem); margin: 0; }
-.student-management-table-wrap { overflow-x: auto; min-width: 0; border: 1px solid var(--border); border-radius: var(--r-sm); }
-.student-management-table-wrap:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
-.student-management-table { width: 100%; border-collapse: collapse; text-align: left; }
-.student-management-table th { padding: var(--s-3) var(--s-4); background: var(--surface-soft); color: var(--text-muted); font-size: var(--fs-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
-.student-management-table td { padding: var(--s-3) var(--s-4); border-top: 1px solid var(--border); color: var(--text-body); white-space: nowrap; }
-.student-management-table tbody tr:hover { background: var(--surface-soft); }
-.student-management-status { display: inline-flex; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-body); font-size: var(--fs-micro); font-weight: 600; }
-.student-management-status::before { content: ''; width: var(--s-2); height: var(--s-2); border-radius: var(--r-pill); background: var(--activity-text-muted); }
-.student-management-status.is-active::before { background: var(--activity-green); }
-.student-management-table .lb-empty { white-space: normal; padding: var(--s-6); }
-
-@media (max-width: 767px) {
-  .student-management-page .student-management-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .student-management-filter-grid { grid-template-columns: 1fr; }
-  .student-management-search input { font-size: var(--fs-small, .875rem); }
+html:has(.student-management-page) { scrollbar-gutter:stable; }
+.student-management-page { --f-body:var(--font-family-base); --fs-body:var(--font-size-body); --fs-small:var(--font-size-small); --fs-h3:var(--font-size-h3); --fs-h4:var(--font-size-h3); }
+.student-management-page .student-management-shell { display:grid; gap:var(--s-3); min-width:0; max-width:none; margin-inline:0; background:transparent; font-family:var(--f-body); color:var(--text-body); }
+.student-management-page .page-navigation-header { font-size:var(--fs-small); color:var(--text-muted); }
+.student-management-page .page-navigation-crumbs .is-current { color:var(--text-muted); font-weight:500; }
+.sm-actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-2); }
+.sm-section-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--s-3); }
+.sm-section-head h2 { margin:0; font-size:var(--fs-body); color:var(--text-strong); }
+.sm-section-head p { margin:var(--s-1) 0 0; color:var(--text-muted); font-size:var(--fs-small); }
+.student-management-page .lb-card { background:var(--surface-card); box-shadow:none; border:1px solid var(--border); padding:var(--s-4); }
+.student-management-page .lb-btn { min-height:var(--s-6); padding:var(--s-2) var(--s-3); font:600 var(--fs-small) var(--f-body); border-radius:var(--r-pill); box-shadow:none; white-space:nowrap; }
+.student-management-page .lb-icon-btn { width:var(--s-6); height:var(--s-6); min-width:var(--s-6); padding:var(--s-2); }
+.student-management-page button:disabled { opacity:.55; cursor:not-allowed; transform:none; }
+.student-management-page button:active:not(:disabled) { transform:translateY(1px) scale(.97); transition:none; }
+.student-management-page button:focus-visible { outline:2px solid var(--forest); outline-offset:2px; box-shadow:0 0 0 5px var(--focus-ring); }
+.student-management-search { display:flex; align-items:center; gap:var(--s-2); min-width:0; padding-inline:var(--s-3); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); color:var(--text-muted); }
+.student-management-search svg { flex:none; }
+.student-management-search input { width:100%; min-width:0; height:var(--s-6); border:0; padding:var(--s-2) 0; background:transparent; color:var(--text-body); font:var(--fs-small) var(--f-body); }
+.student-management-search input::placeholder { color:var(--text-muted); }
+.student-management-search:focus-within { outline:2px solid var(--forest); outline-offset:2px; box-shadow:0 0 0 5px var(--focus-ring); }
+.student-management-page .student-management-search input:focus-visible { outline:none; box-shadow:none; }
+.sm-batch-workspace { display:grid; gap:var(--s-3); min-width:0; padding:var(--s-4); background:var(--surface-card); border:1px solid var(--border); border-radius:var(--r); }
+.sm-year-tabs { display:flex; gap:var(--s-1); overflow-x:auto; border-bottom:1px solid var(--border); padding-bottom:var(--s-2); }
+.sm-year-tabs button { flex:0 0 auto; border:1px solid transparent; background:transparent; color:var(--text-muted); padding:var(--s-2) var(--s-3); border-radius:var(--r-sm); font:var(--fs-small) var(--f-body); cursor:pointer; }
+.sm-year-tabs button:hover { background:var(--surface-mist); color:var(--text-strong); }
+.sm-year-tabs button.is-active { background:var(--surface-soft); border-color:var(--border); color:var(--text-brand); font-weight:600; }
+.student-management-page .sm-batch-workspace .student-management-table-card { display:grid; gap:var(--s-3); min-width:0; border:0; padding:0; border-radius:0; }
+.student-management-table-wrap { overflow-x:auto; min-width:0; border:1px solid var(--border); border-radius:var(--r-sm); }
+.student-management-table-wrap:focus-visible { outline:2px solid var(--forest); outline-offset:2px; box-shadow:0 0 0 5px var(--focus-ring); }
+.student-management-table { width:100%; border-collapse:collapse; text-align:left; }
+.student-management-page .student-management-table th { padding:var(--s-2) var(--s-3); background:var(--surface-soft); color:var(--text-muted); font-size:var(--fs-small); font-weight:500; letter-spacing:normal; text-transform:none; white-space:nowrap; vertical-align:middle; }
+.student-management-page .student-management-table td { padding:var(--s-2) var(--s-3); border-top:1px solid var(--border-soft); color:var(--text-body); font-size:var(--fs-small); white-space:nowrap; vertical-align:middle; }
+.student-management-table tbody tr:hover { background:var(--surface-soft); }
+.student-management-page .student-management-table :is(th,td):last-child { text-align:right; }
+.student-management-page .sm-row-actions { flex-wrap:nowrap; justify-content:flex-end; gap:var(--s-1); }
+.sm-row-actions > * { flex-shrink:0; }
+.student-management-status { display:inline-flex; align-items:center; gap:var(--s-2); padding:var(--s-1) var(--s-2); border:1px solid var(--border); border-radius:var(--r-pill); background:var(--surface-soft); color:var(--text-body); font-size:var(--fs-micro); }
+.student-management-status::before { content:''; width:var(--s-2); height:var(--s-2); border-radius:var(--r-pill); background:var(--text-muted); }
+.student-management-status.is-active { background:var(--surface-soft); color:var(--text-brand); border-color:var(--line-mint); }
+.student-management-status.is-active::before { background:var(--text-brand); }
+.student-management-status.is-inactive { background:var(--danger-soft); color:var(--danger-ink); border-color:var(--danger-line); }
+.student-management-status.is-inactive::before { background:var(--danger-ink); }
+.student-management-table .lb-empty { white-space:normal; padding:var(--s-5); }
+.student-management-page .sm-student-link { gap:var(--s-1); padding:0; }
+.student-management-page .sm-student-link strong { font:600 var(--fs-small) var(--f-body); }
+.student-management-page .sm-student-link span,.student-management-page .sm-cell-note { font-size:var(--fs-micro); }
+.student-management-page .sm-cell-note { margin-top:0; }
+.student-management-page .sm-record { display:grid; gap:var(--s-3); padding:var(--s-4); }
+.student-management-page .sm-record dd { overflow-wrap:anywhere; }
+@media(max-width:767px){
+ .sm-batch-workspace { padding:var(--s-3); }
 }
+/* Keep every desktop action aligned; shared logbook rules otherwise force primary buttons taller. */
+.student-management-page.logbook-scope.lb-page :is(.lb-btn,.lb-icon-btn) { min-height:var(--s-6); }
+.student-management-page .sm-row-actions .lb-icon-btn { height:var(--s-6); min-height:var(--s-6); }
+.student-management-page .sm-record h1 { margin:0; font-size:var(--font-size-h3); color:var(--text-strong); }
+.student-management-page .sm-record > section { padding-top:var(--s-3); border-top:1px solid var(--border); }
+.student-management-page .sm-record > section > h2 { margin:0 0 var(--s-2); font-size:var(--fs-body); }
+@media(pointer:coarse){ .student-management-page.logbook-scope.lb-page :is(.lb-btn,.lb-icon-btn) { min-height:44px; } .student-management-page .sm-row-actions .lb-icon-btn { min-width:44px; } }
+/* A single select wrapper controls both padding and chevron placement. */
+.student-management-page .sm-select-control { position:relative; display:block; min-width:0; }
+.student-management-page .sm-select-control > select { appearance:none; width:100%; padding-right:var(--s-6); background-image:none; }
+.student-management-page .sm-select-control > svg { position:absolute; right:var(--s-3); top:50%; transform:translateY(-50%); pointer-events:none; color:var(--text-muted); }
+.student-management-page .sm-workspace-panel .sm-field .sm-select-control > select { padding-inline:var(--s-3) var(--s-6); }
+.student-management-page .sm-workspace-panel .sm-field > .sm-select-control { font-weight:400; }
+/* Make enabled student-management fields visibly interactive on hover. */
+.student-management-page :is(input,select,textarea):not(:disabled):not([readonly]),
+.student-management-page .sm-select-control:has(select:not(:disabled)) { cursor:pointer; }
+.student-management-page :is(input,select,textarea):disabled { cursor:not-allowed; }
+/* Capitalized Case for interface copy; student values retain their original casing. */
+.student-management-page :is(h1,h2,h3,legend,th,dt),
+.student-management-page button:not(.sm-student-link),
+.student-management-page .lb-field > span:first-child,
+.student-management-page .sm-metric > div > span,
+.student-management-page .sm-directory-caption,
+.student-management-page .sm-academic-preview > span,
+.student-management-page .sm-photo-tile small,
+.student-management-page .sm-inline-confirm strong,
+.student-management-page .student-management-search input::placeholder { text-transform:capitalize; }
+.student-management-page .sm-record h1,
+.student-management-page .sm-search-results button,
+.student-management-page .sm-student-link { text-transform:none; }
 
-@media (max-width: 479px) {
-  .student-management-toolbar-topbar { grid-template-columns: 1fr; }
-  .student-management-page .student-management-stats { grid-template-columns: 1fr; }
-  .student-management-filter-toggle { justify-self: start; }
-}
+
+/* Match the Correlation Rating page outer spacing. */
+.vx-content.logbook-scope.student-management-page { padding:calc(var(--s-2) + var(--s-1) / 2) calc(var(--s-2) + var(--s-1) / 2) calc(var(--s-4) + var(--s-1) / 2); }
+@media(max-width:767.98px){ .vx-content.logbook-scope.student-management-page { padding:var(--s-2); } }
+
+
+
+.sm-page-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--s-3); min-width:0; }
+.sm-page-heading > .page-navigation-header { flex:1; min-width:0; }
+.sm-page-heading > .lb-btn { margin-left:auto; flex-shrink:0; }
+
+.sm-page-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:var(--s-2); margin-left:auto; }
+.sm-page-actions > .sm-actions { flex-wrap:wrap; gap:var(--s-2); }
+@media(max-width:767px) { .sm-page-heading > .page-navigation-header { flex-basis:100%; } .sm-page-actions { width:100%; } }
+
+.sm-page-batch-picker { margin-left:auto; flex-shrink:0; }
+.sm-page-batch-picker .lb-field { margin:0; }
+.student-management-page .sm-page-batch-picker select { width:calc(var(--s-9) + var(--s-8)); min-width:0; height:var(--s-6); min-height:var(--s-6); padding:0 var(--s-6) 0 var(--s-3); font:400 var(--fs-small) var(--f-body); border-radius:var(--r-sm); }

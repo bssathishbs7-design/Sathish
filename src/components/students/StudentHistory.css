@@ -1,6 +1,40 @@
-.sm-history { display: grid; gap: var(--s-3); }
-.sm-history h2, .sm-history p { margin: 0; }
-.sm-history-item { border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-4); display: grid; gap: var(--s-3); }
-.sm-history-student { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
-.sm-history-student span { flex: 1; color: var(--text-muted); }
-.sm-history-item time { font-family: var(--f-code); color: var(--text-muted); }
+.sm-history { display:grid; gap:var(--s-3); }
+.sm-history h2, .sm-history p { margin:0; }
+.sm-history-help { color:var(--text-muted); font-size:var(--fs-small); line-height:1.5; }
+.sm-history-item { border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); }
+.student-management-page .sm-history-item > summary { display:flex; align-items:center; justify-content:space-between; gap:var(--s-3); padding:var(--s-3) var(--s-4); min-height:var(--s-8); box-sizing:border-box; border-radius:var(--r-sm); cursor:pointer; list-style:none; color:var(--text-strong); }
+.sm-history-item > summary::-webkit-details-marker { display:none; }
+.sm-history-item > summary:hover { background:var(--surface-soft); }
+.sm-history-item > summary:active { background:var(--surface-mist); }
+.sm-history-item > summary:focus-visible, .sm-history-name:focus-visible { outline:2px solid var(--forest); outline-offset:2px; box-shadow:0 0 0 5px var(--focus-ring); }
+.sm-history-event, .sm-history-meta { display:flex; align-items:center; flex-wrap:wrap; gap:var(--s-2); font-size:var(--fs-small); }
+.sm-history-event > span { color:var(--text-muted); }
+.sm-history-meta { justify-content:flex-end; }
+.sm-history-meta time { color:var(--text-muted); font-family:var(--f-code); font-size:var(--fs-small); white-space:nowrap; }
+.sm-history-meta > svg { flex-shrink:0; transition:transform var(--dur-control) var(--ease-standard); }
+.sm-history-item[open] > summary .sm-history-meta > svg { transform:rotate(180deg); }
+.sm-history-body { display:grid; gap:var(--s-3); padding:var(--s-3); border-top:1px solid var(--border); }
+.sm-history-student-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--s-2); color:var(--text-muted); font-size:var(--fs-small); }
+.sm-history-students { border:1px solid var(--border); border-radius:var(--r-sm); }
+.sm-history-student { display:flex; align-items:center; gap:var(--s-3); padding:var(--s-3); }
+.sm-history-student + .sm-history-student { border-top:1px solid var(--border); }
+.sm-history-identity { display:grid; gap:var(--s-1); flex:1; min-width:0; }
+.student-management-page .sm-history-name { padding:0; border:0; background:transparent; color:var(--text-strong); font:600 var(--fs-small) var(--f-body); text-align:left; justify-self:start; cursor:pointer; text-transform:none; overflow-wrap:anywhere; }
+.sm-history-name:hover:not(:disabled) { color:var(--text-brand); }
+.sm-history-name:disabled { color:var(--text-muted); cursor:default; }
+.sm-history-identity > span { font:var(--fs-micro) var(--f-code); color:var(--text-muted); overflow-wrap:anywhere; }
+.sm-history-badge { display:inline-flex; align-items:center; border:1px solid var(--border); border-radius:var(--r-pill); padding:var(--s-1) var(--s-2); color:var(--text-brand); background:var(--surface-soft); font:500 var(--fs-micro) var(--f-body); white-space:nowrap; }
+@media(max-width:767px) { .sm-history-item > summary { align-items:flex-start; } .sm-history-event { flex-direction:column; align-items:flex-start; } .sm-history-student { flex-wrap:wrap; gap:var(--s-2); } .sm-history-identity { flex-basis:100%; } }
+@media(prefers-reduced-motion:reduce) { .sm-history-meta > svg { transition:none; } }
+
+.sm-history-event-icon { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:var(--s-6); height:var(--s-6); border-radius:var(--r-sm); color:var(--text-brand); background:var(--surface-soft); }
+.sm-history-event { flex:0 1 auto; display:grid; gap:var(--s-1); }
+.sm-history-event > span { font-size:var(--fs-micro); }
+.sm-history-meta { margin-left:auto; gap:var(--s-3); }
+.student-management-page .sm-history-help { padding:var(--s-2) var(--s-3); border-radius:var(--r-sm); background:var(--surface-soft); }
+@media(max-width:767px) { .student-management-page .sm-history-item > summary { padding:var(--s-3); flex-wrap:wrap; } .sm-history-meta { margin-left:auto; } }
+
+
+.sm-history-note-trigger { flex-shrink:0; }
+.sm-history-note-popup { display:grid; gap:var(--s-1); max-width:100%; text-align:left; }
+.sm-history-note-popup > span { white-space:pre-wrap; overflow-wrap:anywhere; }

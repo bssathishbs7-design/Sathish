@@ -1,0 +1,23 @@
+.sm-photo { display:grid; justify-items:center; align-content:start; gap:var(--s-2); min-width:0; }
+.sm-photo-tile { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--s-3); width:100%; min-height:var(--s-9); padding:var(--s-3); border:1px dashed var(--border); border-radius:var(--r-sm); background:var(--surface-soft); color:var(--text-brand); cursor:pointer; overflow:hidden; }
+.sm-photo-tile > span { display:flex; align-items:center; gap:var(--s-1); font:500 var(--fs-micro) var(--font-family-base); }
+.sm-photo-tile:hover { border-color:var(--forest); }
+.sm-photo-tile:disabled { cursor:not-allowed; opacity:.6; }
+.sm-photo-tile img { width:var(--s-8); height:var(--s-8); border-radius:var(--r-sm); object-fit:cover; }
+.sm-photo-input { position:absolute; width:1px; height:1px; padding:0; margin:-1px; clip-path:inset(50%); overflow:hidden; white-space:nowrap; }
+.sm-photo small { color:var(--text-muted); font-size:var(--fs-micro); text-align:center; }
+.sm-photo > p { margin:0; font-size:var(--fs-small); }
+.sm-photo > [role="group"] { display:flex; flex-wrap:wrap; gap:var(--s-1); }
+.sm-photo > [role="group"] p { width:100%; margin:0; font-size:var(--fs-small); }
+@media(max-width:767px){ .sm-personal-layout .sm-photo { grid-template-columns:128px minmax(0,1fr); justify-items:start; align-items:center; } .sm-personal-layout .sm-photo small { text-align:left; } }
+.student-management-page .sm-student-popup .sm-photo small { font-size:var(--fs-micro); line-height:1.4; }
+.student-management-page .sm-student-popup .sm-photo-field .sm-photo-tile { padding:var(--s-2); gap:var(--s-2); }
+.student-management-page .sm-student-popup .sm-photo-field .sm-photo-tile small { font-weight:400; text-align:center; }
+/* Compact upload card aligned to the first personal-details row. */
+.student-management-page .sm-student-popup .sm-sketch-personal { align-items:start; }
+.student-management-page .sm-student-popup .sm-photo-field { align-content:start; }
+.student-management-page .sm-student-popup .sm-photo-field .sm-photo { height:auto; align-content:start; }
+.student-management-page .sm-student-popup .sm-photo-field .sm-photo-tile { height:calc(var(--s-9) + var(--s-6)); min-height:calc(var(--s-9) + var(--s-6)); gap:var(--s-2); padding:var(--s-2) var(--s-1); }
+.student-management-page .sm-student-popup .sm-photo-tile small { display:grid; gap:var(--s-1); line-height:1.2; width:100%; }
+.student-management-page .sm-student-popup .sm-photo-tile small > span { display:block; white-space:normal; overflow-wrap:break-word; }
+@media(max-width:479px){ .student-management-page .sm-student-popup .sm-photo-field .sm-photo { grid-template-columns:1fr; } .student-management-page .sm-student-popup .sm-photo-field .sm-photo-tile { min-height:var(--s-9); height:auto; } }

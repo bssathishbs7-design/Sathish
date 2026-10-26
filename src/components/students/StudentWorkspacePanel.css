@@ -1,0 +1,44 @@
+.student-management-page .sm-workspace-panel {
+  position: fixed; inset: 0; margin: auto; padding: 0;
+  width: min(680px, calc(100vw - var(--s-5))); max-width: none;
+  max-height: calc(100dvh - var(--s-5)); min-width: 0; overflow: hidden;
+  color: var(--text-body); background: var(--surface-card);
+  border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-lg);
+}
+.sm-workspace-panel[open] { display: flex; flex-direction: column; animation: sm-popup-enter var(--dur-overlay) var(--ease-emphasized) both; }
+.sm-workspace-panel::backdrop { background: color-mix(in srgb, var(--forest-900) 40%, transparent); animation: sm-popup-backdrop var(--dur-overlay) var(--ease-standard) both; }
+.student-management-page .sm-workspace-heading { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) var(--s-4); border-bottom: 1px solid var(--border); background: var(--surface-card); }
+.sm-popup-title { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+.sm-popup-icon { display: grid; place-items: center; width: var(--s-6); height: var(--s-6); flex: none; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-brand); }
+.sm-popup-icon svg { width: var(--s-5); height: var(--s-5); }
+.student-management-page .sm-workspace-heading h2 { margin: 0; color: var(--text-strong); font-size: var(--fs-body); font-weight: 700; }
+.student-management-page .sm-workspace-heading p { margin: var(--s-1) 0 0; color: var(--text-muted); font-size: var(--fs-small); }
+.sm-workspace-panel .sm-editor { overflow: hidden; }
+.student-management-page .sm-workspace-panel .sm-form-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--s-3) var(--s-4); gap: var(--s-3); }
+.student-management-page .sm-workspace-panel .sm-form-body > p { margin: 0; font-size: var(--fs-small); }
+.student-management-page .sm-workspace-panel .sm-form-grid { border: 0; margin: 0; padding: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); align-items: start; }
+.student-management-page .sm-workspace-panel .sm-field { gap: var(--s-1); }
+.student-management-page .sm-workspace-panel .sm-field > span { font-size: var(--fs-small); font-weight: 500; color: var(--text-strong); }
+.student-management-page .sm-workspace-panel .sm-field :is(input,select) { font: var(--fs-small) var(--f-body); height: calc(var(--s-6) + var(--s-2)); min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); }
+.student-management-page .sm-workspace-panel .sm-form-footer { display: flex; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); padding: var(--s-2) var(--s-4); border-top: 1px solid var(--border); background: var(--surface-card); }
+.sm-inline-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); border: 1px solid var(--border); background: var(--surface-mist); border-radius: var(--r-sm); padding: var(--s-3); }
+.sm-inline-confirm strong { margin-right: auto; }
+.sm-academic-preview { display: grid; gap: var(--s-1); padding-left: var(--s-3); border-left: 2px solid var(--border); align-self: end; }
+.sm-academic-preview span,.sm-academic-preview small { color: var(--text-muted); font-size: var(--fs-small); }
+.student-management-page .sm-academic-preview strong { justify-self: start; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-brand); font: 600 var(--fs-small) var(--f-code); }
+@keyframes sm-popup-enter { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes sm-popup-backdrop { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 767px) { .student-management-page .sm-workspace-panel .sm-form-grid { grid-template-columns: 1fr; } }
+@media (max-width: 479px) { .sm-popup-icon { display: none; } }
+@media (prefers-reduced-motion: reduce) { .sm-workspace-panel[open], .sm-workspace-panel::backdrop { animation: none; } }
+
+/* Destructive confirmations have a focused, compact composition. */
+.student-management-page .sm-confirm-popup { width:min(440px,calc(100vw - var(--s-5))); }
+.student-management-page .sm-confirm-popup .sm-workspace-heading { padding:var(--s-4) var(--s-4) var(--s-2); border-bottom:0; }
+.student-management-page .sm-confirm-popup .sm-popup-icon { display:grid; width:calc(var(--s-6) + var(--s-2)); height:calc(var(--s-6) + var(--s-2)); color:var(--danger-ink); background:var(--danger-soft); border-color:var(--danger-line); }
+.student-management-page .sm-confirm-popup .sm-form-body { padding:var(--s-2) var(--s-4) var(--s-4); }
+.student-management-page .sm-confirm-popup .sm-form-body > p { color:var(--text-muted); line-height:1.6; }
+.student-management-page .sm-confirm-popup .sm-form-footer { padding:var(--s-3) var(--s-4); }
+.student-management-page .sm-confirm-popup .sm-form-footer .lb-primary { color:var(--danger-ink); background:var(--danger-soft); border-color:var(--danger-line); }
+.student-management-page .sm-confirm-popup .sm-form-footer .lb-primary:hover:not(:disabled) { background:color-mix(in srgb,var(--danger-ink) 15%,var(--surface-card)); border-color:var(--danger-ink); }
+.student-management-page .sm-confirm-popup .sm-form-footer .lb-primary:active:not(:disabled) { transform:translateY(1px) scale(.97); transition:none; }

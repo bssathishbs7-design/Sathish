@@ -1041,3 +1041,173 @@
 
 ## 2026-10-23 - Completion-aware suggestions
 - Suggestions starts open for an incomplete blueprint matrix. Both the panel and launcher hide when marks, question counts and competency targets are complete.
+
+## 2026-10-24 - Student management master flow
+- Replaced the general directory entry with batch overview, per-batch year tabs, cross-batch student search and reloadable Student Record routes.
+- Limited onboarding to First Year and added Tracking IDs, photo handling, import error export and Finish step.
+- Added separate year attempts, academic-only undo, latest-decision correction, subject syllabus overrides, bulk legacy setup and read-only Graduated lists.
+- Migrates version 1 records without reconstructing missing historic attempts; the first successful write backs up the previous version.
+
+
+### 2026-10-24 - Student management inline workspace
+- Replaced student task drawers and discard popups with inline form workspaces and inline confirmations. Back or Cancel returns to the existing batch/year or student record.
+- Grouped academic stage navigation, contextual actions and student directory into one batch workspace.
+
+
+### 2026-10-24 - Centred student task popups
+- Student forms and imports now open as centred modal windows over the current batch or record. Fade and scale entrances replace inline task navigation; no sliding panels.
+
+
+### 2026-10-24 - Student toolbar cleanup
+- Removed the Needs setup shortcut from the search toolbar. Searching for an untracked student still opens their setup view.
+
+
+### 2026-10-24 - Empty batch deletion shortcut
+- Editable empty batch rows now expose a delete icon with a centred confirmation. The save transaction rechecks emptiness, updates the directory and shows a toast. Populated and read-only rows do not offer this shortcut.
+
+
+### 2026-10-24 - Student actions in page header
+- Moved Add Student, Upload Excel and Subjects And Syllabus beside Add New Batch in the page header. Their selected batch, year and permission conditions are preserved; Select All Active remains with the student table.
+
+
+### 2026-10-24 - Inline batch subjects and syllabus
+- Batch academic stages now show a compact Subjects & Syllabus section below their tabs, including empty stages. Per-subject dropdowns save batch defaults immediately with a toast; All Subjects filters the cards. Replaces the page-header syllabus action, preserves individual student overrides, and is read-only without edit permission.
+
+
+### 2026-10-24 - Show all stage subjects
+- Removed the All Subjects filter from the inline syllabus section. All subjects for the selected academic stage remain visible.
+
+
+### 2026-10-24 - Automatic student joining date
+- Joined On is disabled in the student form. New students inherit the selected batch start date; changing destination batch refreshes this date and academic year. Valid batch start dates are allowed for future batches while other date checks remain in place.
+
+
+### 2026-10-24 - Delete only empty batches from batch workspace
+- The batch header shows Delete Batch only for editable batches with zero students across all stages, including graduated and untracked students. The confirmation uses the empty-only deletion command, which rechecks current records before saving.
+
+
+### 2026-10-24 - Batch table sorting and pagination
+- Admission Batches supports sorting by batch, course, student count and start date. Footer adds row totals, selectable page sizes and previous/next page navigation; sorting resets to page one.
+
+
+### 2026-10-24 - Add batch action placement
+- Moved Add New Batch from the page header to the right of Admission Batches. Batch creation remains available to users with edit permission, including when the batch list is empty.
+
+
+### 2026-10-24 - Student directory introduction and actions
+- Added the two-panel Student Management introduction with Add Student and Upload actions. Actions use the selected batch or newest batch from the overview, and are disabled without edit permission or a batch. Add New Batch stays on Admission Batches.
+
+
+### 2026-10-24 - Header batch action
+- The Student Directory card now contains Add New Batch, replacing its Add Student and Upload actions. Removed the duplicate batch creation button from Admission Batches; student onboarding actions now appear in the selected batch First Year table toolbar.
+
+
+### 2026-10-24 - Admission batch header filters
+- Moved the global search and batch selector into the right side of the Admission Batches header on the overview. Selected batch views retain their filter strip.
+
+
+### 2026-10-24 - Focused batch workspace
+- Header introduction, metrics and Add New Batch card appear only on All Batches. Removed the search/filter strip from selected batch views; All Batches returns to the overview and its search controls.
+
+
+### 2026-10-25 - Add students from directory card
+- Added Add Students beside Add New Batch in the overview card. Opens the student form with the newest batch initially selected; users can change the destination batch. Disabled for read-only users or when no batches exist.
+
+
+### 2026-10-25 - Student page content scrolling
+- Student Management scrolls within its page surface while the navbar and sidebar remain fixed. Viewport-sized batch grid continues to account for the content scroll position.
+
+
+### 2026-10-25 - Revert content-only scrolling
+- Reverted the preceding content-only scroll change at user request, restoring the previous shell and page scrolling behaviour.
+
+
+### 2026-10-25 - Select batch before entering student details
+- Add Student opens with no destination batch selected. Other fields, photo upload and Save Student stay disabled until a valid batch is selected; batch selection fills the joining date and academic year. Edit Student remains unchanged.
+
+
+### 2026-10-25 - Batch workspace browser navigation
+- Batch selection, academic stages, search results and All Changes now create browser history entries. Back and Forward restore batch, year and view while clearing stale row selection and transient popups. App owns history writes.
+
+### 2026-10-25 - Batch header navigation
+- Removed the All batches button from the batch header; the page Back and Forward arrows handle navigation history.
+
+### 2026-10-25 - Consolidated student selection
+- Removed the separate Select all active button. The table header now selects active students in the current batch/year and toggles to Unselect all. Inactive students remain individually selectable; promotion eligibility is unchanged.
+
+### 2026-10-25 - Batch title return button
+- The batch title is now a back-arrow button that opens the Admission Batches table using the existing workspace navigation history.
+
+### 2026-10-25 - Collapsible batch syllabus
+- Subjects & Syllabus now starts collapsed. Its header toggles the subject controls and resets closed when switching batch or academic stage. Saved syllabus values remain unchanged.
+
+### 2026-10-26 - Simplified student selection toolbar
+- Removed Not promoted and Delete selected from the bulk selection toolbar. Promotion/completion and Clear remain available. Individual row deletion remains available.
+
+### 2026-10-26 - Floating student selection actions
+- Selected count, promotion/completion and Clear now appear in a bottom floating card centred within the student table content width. The card hides when selection clears and bottom space protects table content.
+
+### 2026-10-26 - Movable selection card
+- Added a mouse/touch drag handle and keyboard arrow movement to the selection card. Movement stays within the visible content area; Home resets its position. Clearing selection resets the card for next use.
+
+### 2026-10-26 - Batch header student actions
+- Moved Add Student and Upload Excel from above the student table to the batch header before Undo Last Change and All Changes. Existing first-year, permission and selection visibility rules remain in place.
+
+### 2026-10-26 - Undo action in change history
+- Moved Undo Last Change from the batch header into the All Changes view beside Change list. Existing undo eligibility, edit permissions and confirmation remain unchanged.
+
+### 2026-10-26 - Student table pagination footer
+- Added an always-visible student count and pagination footer with 5/10/20/50 rows per page (default 10). Page-size changes reset to page one; sorting still precedes pagination and selection remains scoped to the batch/year.
+
+### 2026-10-26 - Change note popup
+- Replaced expanded note blocks with a note icon beside the student count. Click opens the shared floating tooltip; outside click, Escape or a second click dismisses it without toggling the history card.
+
+### 2026-10-26 - Latest change review card
+- Replaced the standalone undo action with a Latest change card containing affected students, saved before/after academic values, timestamp, note and undo availability. Existing confirmation remains. New progression records preserve an after snapshot; older records use current values only while revisions still match, otherwise unavailable details are identified explicitly.
+
+### 2026-10-26 - Collapsible latest change
+- Latest Change now starts collapsed. Its header expands the academic comparison and undo action, while the note remains independently accessible.
+
+### 2026-10-26 - History header cleanup
+- Removed Year List from the history header. Academic stage tabs and browser history remain available for returning to the student list.
+
+### 2026-10-26 - History collapsed by default
+- All individual change-history cards now start closed, matching the Latest Change card. Each header expands its own details on demand.
+
+### 2026-10-26 - Visible students needing setup
+- Added a batch-scoped Needs setup tab so untracked students included in totals are accessible. Batches with only untracked students open this tab automatically. Setup lists and bulk setup are scoped to the selected batch.
+
+### 2026-10-26 - Return from student profile to year list
+- The profile return button now opens the student's batch and academic stage (or Needs setup), rather than the admission-batch overview. App records the destination in navigation history.
+
+
+## 2026-10-26 - Promotion review
+- Promotion now suggests a compatible academic year and start date from the end date, shows the destination stage and student count, and validates fields before enabling Promote students. A different start date remains optional; manual dates are preserved when the end date changes.
+
+
+## 2026-10-26 - Import destination selection
+- Upload students now offers editable destination batch and academic year dropdowns. Preview revalidates against the selected destination; later academic years require the existing earlier-batch reason. Imports remain First Year only.
+
+
+## 2026-10-26 - Batch-linked import academic year
+- Upload students now derives academic year from the destination batch and offers only that year. Removed later-year selection and its earlier-batch reason fields from this flow.
+
+
+## 2026-10-26 - Six-column student import
+- Sample and error spreadsheets use Student ID, Student Name, Email, Code, Phone No and optional SGT. Blank SGT defaults to N/A; the other five values are mandatory. Course, joining date, batch and academic year come from the selected batch; Department defaults to N/A and admission stays First Year.
+
+
+## 2026-10-26 - Excel analysis before preview
+- Upload now shows an analysing state for at least 30 seconds and waits for validation before revealing results. Cancel aborts pending results; Import remains disabled until a valid preview is ready.
+
+
+## 2026-10-26 - Two-step Excel upload
+- Step 1 contains destination selection, template download and timed analysis. Analysis completion opens Step 2 with validation results, error download and Import. Back to upload clears the preview for a replacement file.
+
+
+## 2026-10-26 - Original workbook with Errors sheet
+- Error download now preserves the uploaded workbook and adds/replaces an Errors sheet with original row, student identity, field and message. Re-upload ignores Errors and reads the original student sheet. The source file is not overwritten.
+
+
+## 2026-10-26 - Separate valid and invalid Excel rows
+- Error downloads now put valid student rows in the first sheet and invalid rows with all six input fields and messages in Errors (second sheet). Re-upload combines both for fresh validation; prior message-only reports remain ignored.

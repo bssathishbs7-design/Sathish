@@ -1,0 +1,27 @@
+.sm-subject-options { display: grid; gap: var(--s-2); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); }
+
+.sm-delete-batch-counts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s-2); margin:0; padding:0; }
+.sm-delete-batch-counts > div { display:flex; align-items:center; justify-content:space-between; gap:var(--s-1); padding:var(--s-2); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-soft); }
+.sm-delete-batch-counts dt { margin:0; color:var(--text-muted); font-size:var(--fs-small); }
+.sm-delete-batch-counts dd { margin:0; color:var(--text-strong); font:600 var(--fs-small) var(--f-code); font-variant-numeric:tabular-nums; }
+@media(max-width:479px){ .sm-delete-batch-counts { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.student-management-page .sm-move-date-toggle { display:flex; align-items:center; gap:var(--s-2); grid-column:1 / -1; margin:0; font:500 var(--fs-small) var(--f-body); color:var(--text-body); cursor:pointer; }
+.sm-move-date-toggle input { flex:none; width:var(--s-4); height:var(--s-4); margin:0; accent-color:var(--forest); cursor:pointer; }
+.sm-move-date-toggle input:focus-visible { outline:2px solid var(--forest); outline-offset:2px; box-shadow:0 0 0 5px var(--focus-ring); }
+.sm-move-date-toggle:has(input:disabled) { opacity:.65; cursor:not-allowed; }
+.sm-move-note { grid-column:1 / -1; min-width:0; }
+
+.student-management-page .sm-workspace-panel .sm-form-grid.sm-move-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+@media(max-width:767px){ .student-management-page .sm-workspace-panel .sm-form-grid.sm-move-grid { grid-template-columns:1fr; } }
+
+.student-management-page .sm-workspace-panel .sm-form-body > .sm-move-guidance { margin:0; padding:var(--s-2) var(--s-3); border:1px solid var(--border); border-inline-start:var(--s-1) solid var(--sky); border-radius:var(--r-sm); background:color-mix(in srgb,var(--sky) 25%,var(--surface-card)); color:var(--text-body); font-size:var(--fs-small); line-height:1.5; }
+
+.sm-delete-students-list { display:grid; gap:var(--s-2); list-style:none; padding:0; margin:0; }
+.sm-delete-students-list li { display:grid; gap:var(--s-1); padding:var(--s-3); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-soft); overflow-wrap:anywhere; }
+.sm-delete-students-list strong { color:var(--text-strong); font-size:var(--fs-small); }
+.sm-delete-students-list span { color:var(--text-muted); font:var(--fs-micro) var(--f-code); }
+.student-management-page .sm-delete-acknowledgement { display:flex; align-items:flex-start; gap:var(--s-2); margin:0; font:400 var(--fs-small) var(--f-body); line-height:1.5; color:var(--text-body); cursor:pointer; }
+.sm-delete-acknowledgement input { flex:none; width:var(--s-4); height:var(--s-4); margin:calc(var(--s-1) / 2) 0 0; accent-color:var(--forest); }
+.sm-delete-acknowledgement input:focus-visible { outline:2px solid var(--forest); outline-offset:2px; box-shadow:0 0 0 5px var(--focus-ring); }
+.sm-delete-acknowledgement:has(input:disabled) { cursor:not-allowed; opacity:.65; }

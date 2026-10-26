@@ -1,8 +1,47 @@
-.sm-upload { display: grid; justify-items: center; gap: var(--s-2); padding: var(--s-5); border: 1px dashed var(--border); border-radius: var(--r); background: var(--surface-soft); color: var(--text-body); }
-.sm-upload input { max-width: 100%; }
+.sm-upload { display: grid; justify-items: center; align-content:center; text-align:center; gap: var(--s-2); padding: var(--s-5); border: 1px dashed var(--border); border-radius: var(--r); background: var(--surface-soft); color: var(--text-body); }
+.sm-upload input[hidden] { display:none; }
 .sm-upload span { color: var(--text-muted); font-size: var(--fs-small); }
-.sm-import-table { overflow: auto; max-height: 45dvh; border: 1px solid var(--border); border-radius: var(--r-sm); }
-.sm-import-table table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
-.sm-import-table :is(th,td) { padding: var(--s-3); border-bottom: 1px solid var(--border); text-align: left; }
-.sm-import-table th { background: var(--surface-soft); color: var(--text-strong); position: sticky; top: 0; }
-.sm-import-table small { display: block; color: var(--text-muted); }
+
+/* Match the compact spacing shared by the student workflow popups. */
+.sm-workspace-panel .sm-form-body > fieldset { display:grid; gap:var(--s-3); min-width:0; margin:0; padding:0; border:0; }
+.sm-workspace-panel .sm-form-body > fieldset > .lb-btn { justify-self:start; }
+.sm-workspace-panel .sm-form-body > fieldset > p { margin:0; font-size:var(--fs-small); }
+.sm-workspace-panel .sm-upload { padding:var(--s-4); border-radius:var(--r-sm); }
+
+.sm-import-destination { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s-3); }
+@media(max-width:767px) { .sm-import-destination { grid-template-columns:1fr; } }
+
+.sm-workspace-panel .sm-upload { gap:var(--s-3); padding:var(--s-5); }
+.sm-upload > svg { color:var(--text-brand); }
+.sm-upload-filename { max-width:100%; overflow-wrap:anywhere; }
+.sm-upload-button { justify-self:center; }
+
+.sm-import-review-heading { margin:0; font-size:var(--fs-body); color:var(--text-strong); }
+.sm-import-review-heading:focus-visible { outline:2px solid var(--forest); outline-offset:var(--s-1); }
+.sm-form-footer .sm-import-back { margin-right:auto; }
+
+.sm-import-error-block { display:grid; gap:var(--s-3); padding:var(--s-4); border:1px solid var(--danger-line); border-inline-start:var(--s-1) solid var(--danger); border-radius:var(--r-sm); background:var(--danger-soft); color:var(--danger-ink); }
+.sm-import-error-block p { margin:0; color:inherit; font-size:var(--fs-small); line-height:1.5; }
+.student-management-page .sm-import-error-block .lb-btn { color:var(--danger-ink); border-color:var(--danger-line); background:var(--surface-card); }
+.student-management-page .sm-import-error-block .lb-btn:hover:not(:disabled) { background:var(--danger-soft); border-color:var(--danger); }
+
+.sm-import-review-header { display:flex; align-items:center; justify-content:space-between; gap:var(--s-3); min-width:0; }
+.sm-import-review-heading { flex-shrink:0; }
+.sm-import-review-filename { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; color:var(--text-muted); font-size:var(--fs-small); }
+@media(max-width:479px) { .sm-import-review-header { flex-wrap:wrap; } .sm-import-review-filename { margin-left:auto; max-width:100%; } }
+
+.sm-import-error-heading { display:flex; align-items:center; justify-content:space-between; gap:var(--s-3); min-width:0; }
+.sm-import-error-heading strong { font-size:var(--fs-small); line-height:1.5; }
+.sm-import-error-heading .lb-btn { flex-shrink:0; }
+@media(max-width:599px) { .sm-import-error-heading { flex-direction:column; align-items:flex-start; gap:var(--s-2); } }
+
+.sm-import-onboarding-notice { display:grid; grid-template-columns:var(--s-5) minmax(0,1fr); align-items:start; gap:var(--s-2); padding:var(--s-3); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-soft); color:var(--text-body); }
+.sm-import-onboarding-notice > svg { width:var(--s-4); height:var(--s-4); align-self:start; justify-self:center; color:var(--text-brand); margin-top:calc(var(--s-1) / 2); }
+.sm-import-onboarding-notice p { display:grid; gap:var(--s-1); margin:0; font-size:var(--fs-small); line-height:1.5; }
+.sm-import-onboarding-notice strong { color:var(--text-strong); }
+
+.sm-import-ready { display:flex; align-items:center; gap:var(--s-3); padding:var(--s-4); border:1px solid var(--border); border-inline-start:var(--s-1) solid var(--forest); border-radius:var(--r-sm); background:var(--surface-soft); color:var(--text-strong); }
+.sm-import-ready > svg { flex-shrink:0; color:var(--text-brand); }
+.sm-import-ready strong { font-size:var(--fs-small); line-height:1.5; font-weight:600; }
+
+.sm-import-ready p { margin:var(--s-1) 0 0; font-size:var(--fs-small); color:var(--text-muted); }

@@ -1,0 +1,92 @@
+.sm-directory-heading { display:flex; align-items:center; justify-content:space-between; gap:var(--s-3); padding:var(--s-3) var(--s-4); }
+.sm-directory-heading h2 { display:flex; align-items:center; gap:var(--s-2); margin:0; font-size:var(--fs-body); color:var(--text-strong); }
+.sm-directory-heading h2 span { font:var(--fs-small) var(--f-code); padding:var(--s-1) var(--s-2); border-radius:var(--r-sm); background:var(--surface-mist); color:var(--text-muted); }
+.sm-directory-heading p { margin:var(--s-1) 0 0; color:var(--text-muted); font-size:var(--fs-small); }
+.sm-directory-caption { font-size:var(--fs-small); color:var(--text-muted); white-space:nowrap; }
+.sm-batch-link { display:flex; align-items:center; gap:var(--s-3); border:0; background:transparent; padding:0; color:var(--text-strong); font:inherit; cursor:pointer; }
+.sm-open-batch { display:inline-flex; align-items:center; gap:var(--s-2); background:transparent; border:0; color:var(--text-brand); font:inherit; font-weight:600; padding:var(--s-2); border-radius:var(--r-pill); cursor:pointer; }
+.sm-open-batch:hover { background:var(--surface-soft); }
+.sm-batch-link:hover strong { text-decoration:underline; text-underline-offset:var(--s-1); }
+.sm-batch-link:active,.sm-open-batch:active { transform:scale(.97); }
+.sm-stage-list { display:flex; flex-wrap:wrap; gap:var(--s-2); max-width:320px; }
+.sm-stage-list > span { display:inline-flex; align-items:center; gap:var(--s-2); color:var(--text-muted); font-size:var(--fs-small); }
+.sm-stage-list b { font:var(--fs-micro) var(--f-code); padding:var(--s-1); background:var(--surface-mist); border-radius:var(--r-sm); }
+.student-management-page .sm-batch-overview { gap:0; padding:0; overflow:hidden; border:1px solid var(--border); border-radius:var(--r); background:var(--surface-card); }
+.student-management-page .sm-cohort-table td { padding-block:var(--s-3); }
+.student-management-page .sm-batch-overview .student-management-table-wrap { border:0; border-radius:0; }
+@media(max-width:767px){ .sm-directory-heading { padding:var(--s-4); } .sm-directory-caption { display:none; } }
+.sm-batch-emblem { display:grid; place-items:center; flex:none; width:var(--s-6); height:var(--s-6); border-radius:var(--r-sm); background:var(--surface-soft); color:var(--text-brand); }
+.sm-student-count { display:inline-flex; align-items:center; gap:var(--s-2); color:var(--text-muted); }
+.sm-student-count b { color:var(--text-strong); font-weight:500; }
+.student-management-page .sm-cohort-table :is(th,td) { padding-inline:var(--s-4); }
+.student-management-page .sm-cohort-table th:nth-child(3),.student-management-page .sm-cohort-table td:nth-child(3) { text-align:center; }
+.student-management-page .sm-cohort-table td { padding-block:var(--s-2); }
+.sm-stage-list > span { padding:var(--s-1) var(--s-2); border-radius:var(--r-sm); border:1px solid var(--border-soft); color:var(--text-body); }
+.sm-stage-list .sm-stage-current { background:color-mix(in srgb,var(--sky) 24%,var(--surface-card)); }
+.sm-stage-list .sm-stage-complete { background:var(--surface-soft); }
+.sm-stage-list .sm-stage-setup { background:color-mix(in srgb,var(--butter) 32%,var(--surface-card)); }
+.sm-stage-list b { background:var(--surface-card); color:var(--text-strong); padding:0 var(--s-1); }
+.sm-open-batch { border:1px solid var(--border); background:var(--surface-card); padding:var(--s-1) var(--s-3); min-height:var(--s-6); }
+.sm-directory-heading h2 > svg { color:var(--text-brand); }
+
+.sm-batch-row-actions { display:flex; align-items:center; justify-content:center; gap:var(--s-2); flex-wrap:nowrap; }
+.student-management-page .sm-delete-empty { color:var(--danger-ink); }
+.student-management-page .sm-delete-empty:hover { background:var(--danger-soft); border-color:var(--danger-line); }
+
+/* Stable column tracks and restrained colour make the cohort grid easier to scan. */
+.student-management-page .sm-batch-overview .sm-cohort-table { table-layout:fixed; min-width:880px; }
+.sm-cohort-col-batch { width:20%; } .sm-cohort-col-course { width:10%; } .sm-cohort-col-count { width:10%; } .sm-cohort-col-date { width:15%; } .sm-cohort-col-stages { width:30%; } .sm-cohort-col-actions { width:15%; }
+.student-management-page .sm-batch-overview .sm-cohort-table th { padding:var(--s-3); font-weight:600; color:var(--text-strong); background:color-mix(in srgb,var(--sky) 45%,var(--surface-card)); border-block:1px solid var(--border); text-align:center; }
+.student-management-page .sm-batch-overview .sm-cohort-table td { padding:var(--s-2) var(--s-3); vertical-align:middle; }
+.student-management-page .sm-batch-overview .sm-cohort-table :is(th,td) + :is(th,td) { border-left:1px solid var(--border-soft); }
+.student-management-page .sm-batch-overview .sm-cohort-table tbody tr:nth-child(even) { background:color-mix(in srgb,var(--surface-soft) 35%,var(--surface-card)); }
+.student-management-page .sm-batch-overview .sm-cohort-table tbody tr:hover { background:var(--surface-soft); }
+.student-management-page .sm-batch-overview .sm-cohort-table :is(th,td):nth-child(2),.student-management-page .sm-batch-overview .sm-cohort-table :is(th,td):nth-child(3) { text-align:center; }
+.sm-cohort-table time { font:var(--fs-small) var(--f-code); font-variant-numeric:tabular-nums; }
+.sm-cohort-table .sm-student-count { min-width:var(--s-7); justify-content:center; padding:var(--s-1) var(--s-2); border-radius:var(--r-pill); background:color-mix(in srgb,var(--sky) 35%,var(--surface-card)); }
+.sm-cohort-table .sm-student-count b { font-family:var(--f-code); font-variant-numeric:tabular-nums; font-weight:600; }
+.sm-course-badge { display:inline-flex; padding:var(--s-1) var(--s-2); border-radius:var(--r-pill); background:color-mix(in srgb,var(--lilac) 32%,var(--surface-card)); color:var(--text-body); font-size:var(--fs-micro); font-weight:600; }
+.sm-cohort-table .sm-batch-link { gap:var(--s-2); text-align:left; }
+.sm-cohort-table .sm-stage-list { max-width:none; gap:var(--s-1); }
+.sm-cohort-table .sm-stage-empty { border-style:dashed; color:var(--text-muted); }
+.sm-cohort-table .sm-open-batch { background:var(--surface-soft); }
+.sm-cohort-table .sm-open-batch:hover { border-color:var(--forest); }
+
+.student-management-page .sm-cohort-sort { display:flex; align-items:center; justify-content:center; gap:var(--s-1); width:100%; min-height:var(--s-6); padding:0; border:0; border-radius:var(--r-sm); background:transparent; color:inherit; font:inherit; text-align:inherit; cursor:pointer; }
+.sm-cohort-sort svg { flex:none; }
+.student-management-page .sm-cohort-table th:nth-child(2) .sm-cohort-sort,.student-management-page .sm-cohort-table th:nth-child(3) .sm-cohort-sort { justify-content:center; }
+.student-management-page .sm-batch-overview .sm-cohort-table th { padding-block:var(--s-1); vertical-align:middle; }
+.sm-cohort-footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--s-3); padding:var(--s-3); border-top:1px solid var(--border); color:var(--text-muted); font-size:var(--fs-small); background:var(--surface-card); }
+.sm-cohort-pagination,.sm-cohort-pagination nav,.sm-cohort-pagination label { display:flex; align-items:center; gap:var(--s-2); }
+.sm-cohort-pagination { flex-wrap:wrap; gap:var(--s-4); }
+.student-management-page .sm-cohort-pagination label { margin:0; font:400 var(--fs-small) var(--f-body); line-height:1; white-space:nowrap; }
+.student-management-page .sm-cohort-pagination select { box-sizing:border-box; width:var(--s-8); height:var(--s-6); min-height:var(--s-6); margin:0; font:var(--fs-small) var(--f-code); line-height:normal; padding:0 var(--s-2); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); color:var(--text-body); cursor:pointer; }
+.sm-cohort-page-number { font:var(--fs-small) var(--f-code); font-variant-numeric:tabular-nums; }
+
+.sm-page-size-control { position:relative; display:flex; align-items:center; height:var(--s-6); }
+.student-management-page .sm-page-size-control select { appearance:none; background-image:none; padding:0 var(--s-5) 0 var(--s-2); text-align:center; text-align-last:center; }
+.sm-page-size-control > svg { position:absolute; right:var(--s-2); top:50%; transform:translateY(-50%); pointer-events:none; color:var(--text-muted); }
+
+@media(max-width:479px){ .sm-batch-overview .sm-directory-heading { flex-wrap:wrap; gap:var(--s-2); } }
+
+.student-management-page .sm-batch-overview .sm-cohort-table thead th:last-child { text-align:center; }
+
+.student-management-page .sm-batch-overview { overflow:visible; min-width:0; }
+.sm-batch-overview .sm-directory-heading { flex-wrap:wrap; }
+.sm-cohort-filters { display:grid; grid-template-columns:minmax(220px,1fr) auto; align-items:center; gap:var(--s-3); margin-left:auto; width:min(560px,100%); }
+.sm-cohort-filters .lb-field { display:flex; align-items:center; gap:var(--s-2); margin:0; }
+.sm-cohort-filters .lb-field > span { font-size:var(--fs-small); }
+.student-management-page .sm-cohort-filters select { height:var(--s-6); min-height:var(--s-6); width:144px; padding:var(--s-1) var(--s-6) var(--s-1) var(--s-2); font:var(--fs-small) var(--f-body); background:var(--surface-card); color:var(--text-body); border:1px solid var(--border); border-radius:var(--r-sm); }
+.sm-batch-overview .sm-cohort-footer { border-radius:0 0 var(--r) var(--r); }
+@media(max-width:767px){ .sm-cohort-filters { width:100%; grid-template-columns:minmax(0,1fr) auto; gap:var(--s-2); } }
+@media(max-width:479px){ .sm-cohort-filters { grid-template-columns:1fr; } .sm-cohort-filters > .sm-actions { justify-content:flex-end; } }
+
+/* Use remaining viewport space without stretching the data rows. */
+@media(min-width:768px){
+ .student-management-page .sm-batch-overview { height:var(--sm-grid-height,auto); display:flex; flex-direction:column; }
+ .sm-batch-overview > .sm-directory-heading,.sm-batch-overview > .sm-cohort-footer { flex:none; }
+ .student-management-page .sm-batch-overview > .student-management-table-wrap { flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain; }
+ .student-management-page .sm-batch-overview .sm-cohort-table thead th { position:sticky; top:0; z-index:1; }
+ .sm-batch-overview:has(> .lb-empty) > .student-management-table-wrap { flex:0 1 auto; }
+ .sm-batch-overview > .lb-empty { flex:1; }
+}

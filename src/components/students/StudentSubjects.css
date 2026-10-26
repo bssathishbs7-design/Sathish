@@ -1,0 +1,39 @@
+.sm-subjects { min-width:0; padding:0; border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); display:grid; transition:background var(--dur-hover) var(--ease-standard); }
+.sm-subjects-heading { display:flex; align-items:center; flex-wrap:wrap; justify-self:start; max-width:100%; gap:var(--s-1) var(--s-2); padding:0; }
+.student-management-page .sm-subjects-heading .sm-subjects-title { margin:0; font:600 var(--fs-small) var(--f-body); color:var(--text-brand); }
+
+.student-management-page .sm-subjects-heading .sm-subjects-context { display:inline-flex; flex-wrap:wrap; align-items:center; gap:var(--s-1); margin:0; color:var(--text-strong); font:600 var(--fs-small) var(--f-body); line-height:1.3; }
+.student-management-page .sm-subjects-heading :is(.sm-subjects-title, .sm-subjects-context, .sm-subjects-year) { font-size:var(--fs-small); font-weight:600; line-height:1.3; }
+.sm-subjects-year { font-family:var(--f-code); font-variant-numeric:tabular-nums; }
+.sm-subjects-list { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:var(--s-2); }
+.sm-subject-chip { --subject-accent:var(--sky); display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:var(--s-1); min-width:0; margin:0; padding:var(--s-2); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); border-inline-start:var(--s-1) solid var(--subject-accent); color:var(--text-body); font-size:var(--fs-small); }
+.sm-subject-chip:nth-child(5n + 2) { --subject-accent:var(--peach); }
+.sm-subject-chip:nth-child(5n + 3) { --subject-accent:var(--lilac); }
+.sm-subject-chip:nth-child(5n + 4) { --subject-accent:var(--butter); }
+.sm-subject-chip:nth-child(5n + 5) { --subject-accent:var(--mint); }
+.sm-subject-chip > span:first-child { min-width:0; line-height:1.3; overflow-wrap:break-word; }
+.sm-subjects-select { position:relative; display:flex; align-items:center; flex-shrink:0; width:100%; min-width:0; margin-top:auto; }
+.student-management-page .sm-subjects-select select { appearance:none; box-sizing:border-box; width:100%; min-width:0; height:var(--s-6); min-height:var(--s-6); margin:0; padding:0 var(--s-6) 0 var(--s-2); font:var(--fs-small) var(--f-body); color:var(--text-brand); background:var(--surface-card); border:1px solid var(--border); border-radius:var(--r-pill); cursor:pointer; transition:border-color var(--dur-hover) var(--ease-standard); }
+.sm-subjects-select > svg { position:absolute; right:var(--s-2); top:50%; transform:translateY(-50%); pointer-events:none; color:var(--text-brand); }
+.sm-subjects-select > .sm-spinner { top:var(--s-2); }
+.student-management-page .sm-subjects-select select:hover:not(:disabled) { border-color:var(--forest); }
+.student-management-page .sm-subjects-select select:focus-visible { outline:2px solid var(--forest); outline-offset:2px; box-shadow:0 0 0 5px var(--focus-ring); }
+.student-management-page .sm-subjects-select select:active:not(:disabled) { transform:translateY(1px); transition:none; }
+.student-management-page .sm-subjects-select select:disabled { opacity:.65; cursor:not-allowed; }
+.sm-subjects-status { font-size:var(--fs-small); color:var(--text-muted); }
+.sm-subjects-panel > .sm-error { margin:0; font-size:var(--fs-small); }
+@media(max-width:767px) { .sm-subjects-list { grid-auto-flow:row; grid-template-columns:repeat(2,minmax(0,1fr)); } .sm-subjects-heading .sm-subjects-context { max-width:100%; } }
+@media(prefers-reduced-motion:reduce) { .student-management-page .sm-subjects-select select { transition:none; } }
+
+.student-management-page .sm-subjects-toggle-heading { margin:0; }
+.sm-subjects-toggle { display:flex; align-items:center; justify-content:space-between; gap:var(--s-2); width:100%; padding:var(--s-3); border:0; background:transparent; color:var(--text-brand); text-align:left; cursor:pointer; border-radius:var(--r-sm); }
+.sm-subjects-toggle > svg { flex-shrink:0; transition:transform var(--dur-control) var(--ease-standard); }
+.sm-subjects-toggle[aria-expanded="true"] > svg { transform:rotate(180deg); }
+.student-management-page .sm-subjects-toggle:hover { background:transparent; }
+.sm-subjects:has(.sm-subjects-toggle:hover) { background:var(--surface-soft); }
+.student-management-page .sm-subjects-toggle:active:not(:disabled) { transform:none; }
+.sm-subjects-toggle:active .sm-subjects-heading { transform:translateY(1px); }
+.sm-subjects-toggle:hover > svg { color:var(--text-strong); }
+.sm-subjects-toggle:focus-visible { outline:2px solid var(--forest); outline-offset:2px; box-shadow:0 0 0 5px var(--focus-ring); }
+.sm-subjects-panel:not([hidden]) { display:grid; gap:var(--s-2); padding:0 var(--s-3) var(--s-3); }
+@media(prefers-reduced-motion:reduce) { .sm-subjects, .sm-subjects-toggle > svg { transition:none; } }

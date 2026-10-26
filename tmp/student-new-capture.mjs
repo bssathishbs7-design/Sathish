@@ -1,0 +1,1 @@
+import {browser,pause} from './cdp.mjs';import fs from 'node:fs';const b=await browser();await pause(600);fs.writeFileSync('tmp/student-new-overview.png',Buffer.from((await b.call('Page.captureScreenshot',{format:'png'})).data,'base64'));b.close();
