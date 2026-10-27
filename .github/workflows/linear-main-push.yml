@@ -1,4 +1,4 @@
-name: Create Linear review task for main push
+name: Record Linear UI update for main push
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  linear-review:
+  linear-update:
     if: github.event.deleted == false
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -21,6 +21,8 @@ jobs:
         env:
           LINEAR_API_KEY: ${{ secrets.MEDSY_UI_LINEAR_API_KEY }}
           LINEAR_TEAM_ID: 8acbfb6e-79e3-4f8a-9f89-27f89d1f7f18
-          LINEAR_REVIEW_STATE_ID: 92c4acd0-02da-4852-936c-c9d368b95fa5
+          LINEAR_DONE_STATE_ID: d79d5f48-1069-4a70-8674-d9cc495d1cba
+          LINEAR_ASSIGNEE_ID: 8177a4ee-a534-4a88-a501-c2f77a0ad18e
+          LINEAR_LABEL_ID: 940d24c0-46af-4ab3-a717-b747967c8d04
           GITHUB_TOKEN: ${{ github.token }}
-        run: node .github/scripts/linear-main-push.mjs
+        run: node "linear automation/linear-main-push.mjs"

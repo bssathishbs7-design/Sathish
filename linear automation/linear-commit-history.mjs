@@ -1,6 +1,6 @@
 import { appendFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
-import { collectHistory } from '../../scripts/generate-commit-history.mjs'
+import { collectHistory } from './generate-commit-history.mjs'
 
 export const DOCUMENT_LIMIT = 240000
 const escape = value => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\|/g, '&#124;').replace(/`/g, '&#96;').replace(/[\r\n]+/g, ' ')
