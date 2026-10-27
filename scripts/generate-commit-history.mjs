@@ -16,8 +16,8 @@ export function parseFileChanges(output) {
 }
 
 /** Read committed history only. Merge file totals compare against the first parent. */
-export function collectHistory() {
-  const fields = git(['log', 'HEAD', '--date-order', '-z', '--format=%H%x00%h%x00%cI%x00%aI%x00%an%x00%s%x00%b%x00%P']).split('\0')
+export function collectHistory(ref = 'HEAD') {
+  const fields = git(['log', ref, '--date-order', '-z', '--format=%H%x00%h%x00%cI%x00%aI%x00%an%x00%s%x00%b%x00%P']).split('\0')
   if (fields.at(-1) === '') fields.pop()
   if (fields.length % 8) throw new Error('Unexpected Git commit metadata.')
   const commits = []
