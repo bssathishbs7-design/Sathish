@@ -1,6 +1,7 @@
 import NavigationModeToggle from './NavigationModeToggle'
 import {
   Bell,
+  BookOpen,
   ChevronRight,
   LogOut,
   Maximize,
@@ -47,6 +48,7 @@ export default function Navbar({
   onToggleProfileMenu,
   profileUser,
   onEditProfile,
+  onOpenIdGuide,
   onLogbookAccount,
   onSignOut,
   profileToast,
@@ -125,6 +127,15 @@ export default function Navbar({
                 <span>
                   <strong>Edit Profile</strong>
                   <small>Open profile settings</small>
+                </span>
+              </button>
+              <button type="button" className="vx-profile-action" onClick={onOpenIdGuide}>
+                <span className="vx-profile-action-icon" aria-hidden="true">
+                  <BookOpen size={16} strokeWidth={2} />
+                </span>
+                <span>
+                  <strong>ID guide</strong>
+                  <small>What SA, AP, BP, QB and AQ IDs mean</small>
                 </span>
               </button>
               <button type="button" className="vx-profile-action is-danger" onClick={onSignOut}>

@@ -1,4 +1,6 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import SkillIdentity from '../components/SkillIdentity'
+import { ensureSkillIdentity } from '../services/skillIdentity'
+import { useEffect, useRef, useState } from 'react'
 import {
   CheckCircle2,
   ChevronDown,
@@ -466,6 +468,7 @@ function SkillManagementPage({ onAssignActivity, onGenerateComplete, onOpenImage
     ?.activities.find((activity) => activity.id === activityId) ?? null
 
   const assignActivityToDefaultBatch = (recordId, activityId, batch = 'Batch A • 28 students') => {
+    ensureSkillIdentity({ id: activityId }, true)
     setRecords((current) => current.map((record) => (
       record.id === recordId
         ? {
@@ -1165,6 +1168,7 @@ function SkillManagementPage({ onAssignActivity, onGenerateComplete, onOpenImage
                                   <strong className="forms-activity-text">
                                     {getTruncatedActivityName(activity.name)}
                                   </strong>
+                                  <SkillIdentity record={activity} assigned={activity.status === 'Assigned'} />
                                 </div>
                               </div>
                               <div className="forms-flow-cell is-center" data-label="Certifiable">

@@ -1,3 +1,4 @@
+import { publishAssessmentIdentity } from './assessmentIdentity.js'
 import {appendAssessmentHistory} from './assessmentHistory.js'
 import {rescheduleAssessment, isPracticeSchedule} from './assessmentReschedule.js'
 /** Convert a saved 12/24-hour clock to a native time input value. */
@@ -36,6 +37,7 @@ export function buildApprovedPublication(reviewed, actor, now = new Date()) {
 
 /** Commit publication and approval together, restoring all storage keys if any write fails. */
 export function commitApprovedPublication(record, queue, local = localStorage, session = sessionStorage) {
+ record = publishAssessmentIdentity(record, local)
  const pubKey='vx-assessment-published', draftKey='vx-assessment-drafts', queueKey='vx-approval-queue-rows'
  const id=record.setup.assessmentId
  const before=[[local,pubKey],[local,draftKey],[session,queueKey],[local,'vx-assessment-create-initial-tab'],[session,'vx-assessment-highlight'],[local,'vx-assessment-history:'+id]].map(([storage,key])=>[storage,key,storage.getItem(key)])
@@ -48,6 +50,7 @@ export function commitApprovedPublication(record, queue, local = localStorage, s
    local.setItem('vx-assessment-create-initial-tab','published')
    session.setItem('vx-assessment-highlight',id)
    appendAssessmentHistory(record,{action:'Assessment approved and published',actor:record.reviewedBy, timestamp:record.publishedAt},local)
+   return record
  } catch(error) {
    for(const [storage,key] of before) storage.removeItem(key)
    for(const [storage,key,value] of before) if(value!==null)storage.setItem(key,value)

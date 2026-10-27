@@ -1,0 +1,5 @@
+.skill-identity { display:inline-flex; flex-wrap:wrap; align-items:center; gap:var(--s-2,var(--space-2)); }
+.skill-identity > button { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; padding:var(--s-1,var(--space-1)); color:var(--text-brand); background:var(--surface-card); border:1px solid var(--border); border-radius:var(--r-pill); cursor:pointer; }
+.skill-identity > button:hover { background:var(--surface-soft); }
+.skill-identity > button:active { transform:translateY(1px) scale(.96); }
+.skill-identity > button:focus-visible { outline:2px solid var(--text-brand); outline-offset:var(--s-1); }

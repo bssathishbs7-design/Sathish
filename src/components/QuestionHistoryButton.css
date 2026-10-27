@@ -1,0 +1,5 @@
+.question-history-control { display:inline-flex; }
+.question-history-control > button { display:inline-flex; padding:var(--s-1); color:var(--text-brand); background:var(--surface-card); border:1px solid var(--border); border-radius:var(--r-pill); cursor:pointer; }
+.question-history-control > button:hover { background:var(--surface-soft); }
+.question-history-control > button:active { transform:translateY(1px) scale(.96); }
+.question-history-control > button:focus-visible { outline:2px solid var(--text-brand); outline-offset:var(--s-1); }

@@ -1,3 +1,4 @@
+import { createDraftRecordCode } from './draftReference.js'
 export const DESCRIPTIVE_QUESTION_TYPES = [
   {
     type: 'Desc Long Answer Questions (LAQs)',
@@ -102,6 +103,7 @@ export const createAuthoringQuestion = ({
   id: `${idPrefix}-${Date.now()}-${authoringSequence++}`,
   title,
   type,
+  draftCode: createDraftRecordCode(includeQuestionBankFields ? 'QB' : 'AQ'),
   parentId: config.parentId ?? null,
   level: config.level ?? 'parent',
   questionText: '',

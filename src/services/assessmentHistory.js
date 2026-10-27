@@ -18,6 +18,7 @@ export function readAssessmentHistory(record, storage = localStorage) {
   const setup = record.setup || {}
   const add = (action, timestamp, notes = '', actor = '') => { if (timestamp) rows.push({ id: `${action}:${timestamp}:${notes}`, action, timestamp, notes, actor }) }
   add('Assessment created', setup.createdAt || record.createdAt)
+  if ((setup.draftCode || record.draftCode) && !assessmentDisplayId(record).startsWith('DRF-')) add('Permanent assessment ID issued', record.publishedAt, (setup.draftCode || record.draftCode) + ' ? ' + assessmentDisplayId(record))
   add('Sent for approval', record.sentAt, record.approvalFaculty?.note || '', record.senderName || '')
   if (record.approvalStatus === 'Approved' || /reject/i.test(record.approvalStatus || '')) {
     add(record.approvalStatus, record.reviewedAt || record.approvedAt || record.rejectedAt, record.reviewRemarks || '', record.reviewerName || '')

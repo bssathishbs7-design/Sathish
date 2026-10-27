@@ -1,3 +1,5 @@
+import CopyIdBadge from '../components/CopyIdBadge'
+import { questionDisplayId } from '../utils/questionLifecycle'
 import BlueprintApprovalReview from '../components/BlueprintApprovalReview'
 import AssessmentApprovalReview from '../components/AssessmentApprovalReview'
 import { useMemo, useState } from 'react'
@@ -853,6 +855,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
     }))
     const syncedApprovedQuestions = writeApprovedQuestionsToQuestionBank(reviewedQuestions, approvalRecord)
     const syncedApprovedById = new Map(syncedApprovedQuestions.map((question) => [question.id, question]))
+    for (const result of questionBankResults) { const approved = syncedApprovedById.get(result.questionId); if (approved) { result.questionBankId = approved.questionBankId; result.history = approved.history } }
     const nextReviewedQuestions = reviewedQuestions.map((question) => (
       syncedApprovedById.get(question.id) ?? question
     ))
@@ -1053,6 +1056,8 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
                         {isQuestionSelected ? <SquareCheckBig size={16} strokeWidth={2.2} /> : <Square size={16} strokeWidth={2.2} />}
                       </button>
                       <div className="approval-view-qb-question-badges">
+                        {questionDisplayId(question) && <CopyIdBadge value={questionDisplayId(question)} label="question ID" />}
+                        {question.replaceQuestionId && <span>Edit of {question.sourceBankId} ? replaces it under the same ID</span>}
                         <span className="approval-view-qb-pill is-type">{getQuestionTypeLabel(question.type)}</span>
                         <span className={`approval-view-qb-pill is-revision ${String(question.revisionStatus ?? 'Created').toLowerCase()}`}>
                           {getQuestionRevisionLabel(question)}

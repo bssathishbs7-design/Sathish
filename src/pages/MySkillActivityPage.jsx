@@ -1,3 +1,4 @@
+import SkillIdentity from '../components/SkillIdentity'
 import PageNavigationHeader from '../components/PageNavigationHeader'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -61,7 +62,7 @@ function ActivityCard({ item, onStartActivity, onSelectAnalytics, isSelected = f
         <span className={`my-skills-status-pill ${statusToneClass}`}>{item.status}</span>
       </div>
 
-      <strong className="my-skills-activity-title">{item.title}</strong>
+      <strong className="my-skills-activity-title">{item.title}</strong><SkillIdentity record={item} assigned />
 
       <div className="my-skills-activity-info-row">
         <span className="my-skills-attempt-pill">Attempt {normalizedAttemptValue}</span>

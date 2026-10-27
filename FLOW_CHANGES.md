@@ -1211,3 +1211,12 @@
 
 ## 2026-10-26 - Separate valid and invalid Excel rows
 - Error downloads now put valid student rows in the first sheet and invalid rows with all six input fields and messages in Errors (second sheet). Re-upload combines both for fresh validation; prior message-only reports remain ignored.
+
+## 2026-10-27 - Standard IDs and reference lookup (MED-19)
+- Creating an assessment/question/skill/blueprint issues a temporary display ID; first assignment, publication or approval issues its permanent ID without changing internal links.
+- Profile menu opens the ID guide. Question Bank and My Questions support ID lookup; Question Bank supports ID sorting and history.
+- Assessment History lets faculty send published assessment-owned questions for Question Bank approval, retaining their AQ provenance and issuing a separate QB ID on approval.
+
+
+## 2026-10-27 - Compact ID guide
+- ID guide keeps its overview visible and groups type-specific explanations in collapsed, keyboard-accessible sections. The header remains visible while the content scrolls.

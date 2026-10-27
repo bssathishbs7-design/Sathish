@@ -1,3 +1,4 @@
+import { deleteBlueprintWorkflow } from '../services/blueprintApproval'
 import { parseAssessmentDate, applyAssessmentTime, formatAssessmentRemainingTime, getPublishedAssessmentScheduleStatus, hasPublishedResults, splitPublishedAssessmentRows, canStartLiveEvaluation } from '../services/assessmentTrackerLifecycle'
 import { createQuestionPaperExporter } from '../utils/assessmentQuestionPaper'
 import FloatingTooltip from '../components/FloatingTooltip'
@@ -624,7 +625,7 @@ const readExamControlLogRows = (assessment) => {
   }
 }
 
-export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [], onViewSubmission, onClearAll, onReschedule }) {
+export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [], onViewSubmission, onClearAll, onReschedule, onSendToApproval }) {
   const creatingAssessmentRef = useRef(false)
   const [cardView, setCardView] = useState(readAssessmentView)
   const compactCards = cardView !== 'list'
@@ -950,6 +951,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
 
   const deleteDraftAssessment = (draftId) => {
     setDraftAssessments((current) => {
+      deleteBlueprintWorkflow(current.find(draft => draft.id === draftId))
       const nextDrafts = current.filter((draft) => draft.id !== draftId)
       window.localStorage.setItem(ASSESSMENT_DRAFTS_STORAGE_KEY, JSON.stringify(nextDrafts))
       if (!nextDrafts.length && activeAssessmentTab === 'draft') {
@@ -998,6 +1000,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
       const nextPublished = current.filter((assessment) => assessment.id !== assessmentId)
       window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
       clearDeletedAssessmentSessionRecords(deletedAssessment)
+      deleteBlueprintWorkflow(deletedAssessment)
       window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
       setSelectedPublishedLogAssessment((selected) => (selected?.id === assessmentId ? null : selected))
       if (!nextPublished.length && activeAssessmentTab === 'published') {
@@ -1585,7 +1588,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
           </section>
         </div>
       ), document.body) : null}
-      {selectedPublishedLogAssessment && <AssessmentHistoryDialog stage={activeTabLabel} assessment={selectedPublishedLogAssessment} controlLogs={readExamControlLogRows(selectedPublishedLogAssessment)} onClose={() => setSelectedPublishedLogAssessment(null)} />}
+      {selectedPublishedLogAssessment && <AssessmentHistoryDialog onSendToApproval={onSendToApproval} stage={activeTabLabel} assessment={selectedPublishedLogAssessment} controlLogs={readExamControlLogRows(selectedPublishedLogAssessment)} onClose={() => setSelectedPublishedLogAssessment(null)} />}
     </section>
   )
 }

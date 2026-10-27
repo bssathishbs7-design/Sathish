@@ -1,3 +1,4 @@
+import CopyIdBadge from './CopyIdBadge'
 import { X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -29,7 +30,7 @@ export default function SaveChangesDialog({ reference, theme, busy, showClose = 
       {showClose && <button type="button" className="save-changes-close" onClick={onCancel} disabled={busy} aria-label="Close dialog"><X size={18} aria-hidden="true" /></button>}
       <h2 id="save-changes-title">{title}</h2>
       <p id="save-changes-description">{description}</p>
-      {reference && <p className="save-changes-reference">Assessment ID <strong>{reference}</strong></p>}
+      {reference && <p className="save-changes-reference">Assessment ID <CopyIdBadge value={reference} /></p>}
       {children}
       {error && <p className="save-changes-error" role="alert">{error}</p>}
       <div className="save-changes-actions">

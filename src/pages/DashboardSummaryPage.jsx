@@ -1,3 +1,4 @@
+import SkillIdentity from '../components/SkillIdentity'
 import { useMemo, useState } from 'react'
 import {
   ArrowUpRight,
@@ -1462,7 +1463,7 @@ export default function DashboardSummaryPage({
                     { id: 'sample-activity-2', activityName: 'Identify specimen image', activityType: 'Image', year: 'Second Year', sgt: 'SGT B', submitted: 3, score: 68, status: 'Pending' },
                   ]).map((row) => (
                     <tr key={row.id}>
-                      <td><strong>{row.activityName}</strong></td>
+                      <td><strong>{row.activityName}</strong><SkillIdentity record={row} assigned /></td>
                       <td>{row.activityType}</td>
                       <td>{row.year} · {row.sgt}</td>
                       <td>{row.submitted}</td>

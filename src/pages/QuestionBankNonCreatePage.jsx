@@ -1,3 +1,7 @@
+import QuestionHistoryButton from '../components/QuestionHistoryButton'
+import CopyIdBadge from '../components/CopyIdBadge'
+import { questionDisplayId } from '../utils/questionLifecycle'
+import { formatQid } from '../utils/qid'
 import { matchesBlueprintBrowseCompetency } from '../utils/blueprintPicker'
 import BlueprintRequirementMenu from '../components/BlueprintRequirementMenu'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
@@ -274,16 +278,17 @@ const usesSaqModeOneDetailPreview = (question) => (
 )
 
 const getQuestionBankDisplayId = (question, questionNumber = null) => {
+  if (questionDisplayId(question)) return questionDisplayId(question)
   if (question.bankDisplayId) return question.bankDisplayId
   const isMedsySource = isMedsyQuestion(question)
   const isInstituteSource = !isMedsySource && isInstituteQuestion(question)
   const rawDisplayNumber = String(
-    questionNumber ?? question.displayNumber ?? question.questionNumber ?? question.order ?? 1,
+    question.displayNumber ?? question.questionNumber ?? questionNumber ?? question.order ?? 1,
   ).replace(/\D/g, '')
 
   return isInstituteSource
     ? `INSC-B01-${rawDisplayNumber.padStart(3, '0').slice(-3)}`
-    : `MED-A01-${rawDisplayNumber.padStart(5, '0').slice(-5)}`
+    : formatQid('QB', Math.max(1, Number(rawDisplayNumber)), 'MED')
 }
 const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionControls = null, questionNumber = null, isLearnPracticeShared = false) => {
   const primaryCurriculum = getQuestionPrimaryCurriculum(question, curriculum)
@@ -315,7 +320,7 @@ const renderQuestionCompactMeta = (question, curriculum, tagToggle = {}, actionC
       <span className="assessment-page-question-meta-items">
         <span className={`assessment-page-question-source-badge ${sourceClassName}`}>{sourceLabel}</span>
         {sourceDisplayId ? (
-          <span className="assessment-page-question-id-badge">{sourceDisplayId}</span>
+          <><CopyIdBadge value={sourceDisplayId} label="question ID" /><QuestionHistoryButton question={question} /></>
         ) : null}
         {renderCompetencyCodeBadge(primaryCurriculum)}
         <span className={`assessment-page-grid-type-label ${getQuestionTypeBadgeClassName(question)} is-${getQuestionTypeCompactLabel(question).toLowerCase()}`}>{getQuestionTypeLabel(question)}</span>
@@ -451,6 +456,7 @@ const createMedsySampleQuestion = (row, rowIndex, typeKey, typeIndex) => {
   const id = `medsy-uploaded-sample-${questionNumber}`
   const baseQuestion = {
     id,
+    medsyQuestionId: formatQid('QB', questionNumber, 'MED'),
     displayNumber: questionNumber,
     questionNumber,
     authorName: 'Medsy',
@@ -1243,6 +1249,7 @@ const readApprovedCreatedQuestions = () => {
 
 const readAllQuestionBankQuestions = () => {
   const questionsById = new Map()
+  const deletedQuestionIds = new Set(JSON.parse(localStorage.getItem('vx-question-deletions') || '[]').map(row => row.id))
   const reportedQuestionIds = getReportedQuestionIds()
   const storedPublishedQuestions = readStoredQuestionList(QUESTION_BANK_PUBLISHED_KEY)
   const institutePublishedQuestions = storedPublishedQuestions.filter((question) => (
@@ -1274,7 +1281,7 @@ const readAllQuestionBankQuestions = () => {
     ...readStoredQuestionList(QUESTION_BANK_UPLOADED_KEY),
     ...publishedQuestions,
   ].forEach((question, index) => {
-    if (reportedQuestionIds.has(question.id)) return
+    if (reportedQuestionIds.has(question.id) || deletedQuestionIds.has(question.id)) return
     questionsById.set(question.id ?? `question-${index}`, question)
   })
 
@@ -3114,6 +3121,11 @@ export default function QuestionBankNonCreatePage({
   const deleteQuestionFromList = (questionId) => {
     if (!questionId) return
 
+    const deletedQuestion = publishedQuestions.find(question => question.id === questionId)
+    if (deletedQuestion) {
+      const deleted = JSON.parse(localStorage.getItem('vx-question-deletions') || '[]')
+      localStorage.setItem('vx-question-deletions', JSON.stringify([...deleted, { id: questionId, questionBankId: getQuestionBankDisplayId(deletedQuestion), deletedAt: new Date().toISOString(), reason: 'Removed from the Question Bank' }]))
+    }
     removeQuestionFromStorage(questionId)
     setPublishedQuestions((current) => current.filter((item) => item.id !== questionId))
     setSelectedGridQuestionIds((current) => current.filter((id) => id !== questionId))
@@ -4094,6 +4106,7 @@ export default function QuestionBankNonCreatePage({
             className={`assessment-page-bank-controls ${activeView === 'grid' ? 'is-grid-attached' : ''} ${isFilterHeaderCompact ? 'is-compact' : ''} ${isCompactFilterTrayOpen ? 'is-filter-tray-open' : ''}`}
             aria-label="All question bank controls"
           >
+
             <div className="assessment-page-filter-strip" aria-label="Question filters">
               <span className="assessment-page-filter-controls">
                 <>

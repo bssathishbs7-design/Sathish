@@ -1,3 +1,5 @@
+import { ensureSkillIdentity, appendSkillIdentityEvent } from './services/skillIdentity'
+import IdGuideDialog from './components/IdGuideDialog'
 import { persistAssessmentDemoQueue } from './services/assessmentDemoSession'
 import { commitAssessmentApprovalSubmission } from './services/assessmentApprovalSubmission'
 import AssessmentPublishedConfirmation from './components/AssessmentPublishedConfirmation'
@@ -450,6 +452,7 @@ function AppAlert({ alert }) {
  * - Must remain the app entry shell because all page-level routing-like behavior depends on it.
  */
 function App() {
+  const [idGuideOpen, setIdGuideOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => getPageFromPath(window.location.pathname) === APP_PAGES.FACULTY_VIEW_ANALYTICS)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [theme, setTheme] = useState(() => window.localStorage.getItem('vx-theme') ?? 'light')
@@ -769,6 +772,8 @@ function App() {
 
   const handleAssignSkillActivity = (assignment) => {
     if (!assignment?.id) return
+    const identity = ensureSkillIdentity(assignment, true)
+    assignment = { ...assignment, activityCode: identity.code, draftCode: identity.draftCode }
     const { year, sgt } = parseAssignmentTarget(assignment.assignedTo)
     const assignmentInstanceId = assignment.assignmentInstanceId
       ?? `${assignment.id}-assigned-${Date.now()}`
@@ -1036,6 +1041,7 @@ function App() {
 
   const handleSendToApproval = (payload) => {
     if (!payload?.activityId) return
+    if (payload.activityType === 'Question Bank') payload = { ...payload, questionRows: payload.questionRows?.map(question => ({ ...question, authorId: question.authorId || profileUser.id || profileUser.registerId, authorName: question.authorName || profileUser.name })) }
     const approvalTimestamp = new Date().toISOString()
 
     const sameSubmission = item => item.activityId === payload.activityId || (
@@ -1126,8 +1132,7 @@ function App() {
     if (nextReviewedRecord.activityType === 'Assessment' && existingApprovalRow?.approvalStatus !== 'Pending Approval') throw new Error('This assessment has already been reviewed. Return to the approval queue.')
     const nextRows = approvalQueueRows.map(item => item.activityId === reviewedRecord.activityId ? nextReviewedRecord : item)
     if (nextReviewedRecord.activityType === 'Assessment' && nextReviewedRecord.approvalStatus === 'Approved') {
-      const published = buildApprovedPublication(nextReviewedRecord, profileUser.name)
-      commitApprovedPublication(published, nextRows)
+      const published = commitApprovedPublication(buildApprovedPublication(nextReviewedRecord, profileUser.name), nextRows)
       setApprovalQueueRows(nextRows)
       setSelectedApprovalViewRecord(nextReviewedRecord)
       setApprovalPublication(published)
@@ -1155,6 +1160,9 @@ function App() {
     if (!activityId) return
 
     const publishedAt = new Date().toISOString()
+    try { appendSkillIdentityEvent(assignedSkillActivities.find(item => item.id === activityId) || record, 'Results published', publishedAt) } catch (error) {
+      showAlert({ tone: 'warning', message: error.message }); return
+    }
     const reattemptRows = getReattemptRows(activityId, completedEvaluationRows)
     const nextAttemptCount = reattemptRows.length
     const nextAttemptNumber = nextAttemptCount
@@ -1455,8 +1463,9 @@ function App() {
           </div>
         ) : null}
 
+        {idGuideOpen && <IdGuideDialog theme={theme} onClose={() => setIdGuideOpen(false)} />}
         {!hideShellChrome ? (
-          <Navbar
+          <Navbar onOpenIdGuide={() => { setIdGuideOpen(true); setIsProfileMenuOpen(false) }}
             navigationMode={navigationMode}
             onNavigationModeChange={changeNavigationMode}
             sidebarCollapsed={sidebarCollapsed}
@@ -1525,7 +1534,7 @@ function App() {
               onClearAttemptSchedule={handleClearPublishedAttemptSchedule}
             />
           ) : activePage === APP_PAGES.ASSESSMENT_CREATE ? (
-            <AssessmentCreatePage onReschedule={setRescheduleRecord} onClearAll={() => { const remaining = clearAssessmentCards(); setApprovalQueueRows(remaining); showAlert({ tone: 'secondary', message: 'All assessment cards cleared.' }) }} onNavigate={navigateToPage} onAlert={showAlert} approvalQueueRows={approvalQueueRows} onViewSubmission={record => handleOpenApprovalView({ ...record, submissionReadOnly: true })} />
+            <AssessmentCreatePage onSendToApproval={handleSendToApproval} onReschedule={setRescheduleRecord} onClearAll={() => { const remaining = clearAssessmentCards(); setApprovalQueueRows(remaining); showAlert({ tone: 'secondary', message: 'All assessment cards cleared.' }) }} onNavigate={navigateToPage} onAlert={showAlert} approvalQueueRows={approvalQueueRows} onViewSubmission={record => handleOpenApprovalView({ ...record, submissionReadOnly: true })} />
           ) : activePage === APP_PAGES.CREATE_ASSESSMENT ? (
             <CreateAssessmentPage
               onReworkDraftSaved={handleReworkDraftSaved}
@@ -1587,7 +1596,7 @@ function App() {
           ) : activePage === APP_PAGES.COMPETENCY_ANALYTICS ? (
             <CompetencyAnalyticsPage card={practiceAnalyticsContext?.card} onNavigate={navigateToPage} />
           ) : activePage === APP_PAGES.QUESTION_BANK ? (
-            <QuestionBankPage onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
+            <QuestionBankPage currentUser={profileUser} onNavigate={navigateToPage} onAlert={showAlert} onSendToApproval={handleSendToApproval} mode={questionBankMode} />
           ) : activePage === APP_PAGES.QUESTION_BANK_NON_CREATE ? (
             <QuestionBankNonCreatePage onNavigate={navigateToPage} mode="editable" />
           ) : activePage === APP_PAGES.SHARE_STU_FACULTY ? (

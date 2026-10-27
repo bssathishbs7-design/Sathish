@@ -1,3 +1,5 @@
+import { formatQid } from '../../utils/qid.js'
+import { createDraftRecordCode } from '../../utils/draftReference.js'
 import { demoQuestions, DEMO_STUDENTS } from './questions.js'
 const day = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
 const time = date => `${String(date.getHours()%12||12).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`
@@ -38,11 +40,13 @@ export const DEMO_SCENARIOS = [
 /** Pure fixture factory; no storage or network side effects. @returns {{drafts:DemoAssessment[],queue:Object[],published:DemoAssessment[]}} */
 export function createAssessmentDemoData(now = new Date()) {
  const result={drafts:[],queue:[],published:[]}
+ let publishedIndex=0, questionIndex=0
  DEMO_SCENARIOS.forEach(([slug,title,stage,kind,mode,variant],index)=>{
   const start=new Date(now.getTime()+(['live'].includes(stage)?-10:stage==='soon'?8:['evaluation','evaluated','results','expired'].includes(stage)?-2880:1440)*60000)
   const end=new Date(start.getTime()+120*60000)
-  const id=`demo-assessment-${slug}`, code=`DEMO${String(index+1).padStart(3,'0')}`
-  const questionRows=demoQuestions(kind,variant==='long')
+  const unpublished=['draft','pending','expired','approved','rejected'].includes(stage)
+  const id=`demo-assessment-${slug}`, code=unpublished ? createDraftRecordCode('AP') : formatQid('AP', ++publishedIndex)
+  const questionRows=demoQuestions(kind,variant==='long').map(question => ({ ...question, draftCode:createDraftRecordCode('AQ'), ...(unpublished ? {} : { assessmentQuestionId:formatQid('AQ',++questionIndex) }) }))
   const auto=variant==='auto'
   const manual=variant==='manual'||variant==='offline'||variant==='readonly'
   const setup={assessmentId:id,assessmentCode:code,assessmentName:title,collegeName:'Medsy Demo Medical College',academicYear:`${now.getFullYear()} - ${now.getFullYear()+1}`,examCategory:'Midterm',course:'MBBS',year:'First Year',assignYear:'First Year',assignGroup:'SGT Group A',sgt:'SGT Group A',examType:kind,

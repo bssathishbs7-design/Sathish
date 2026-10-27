@@ -1,3 +1,9 @@
+import QuestionSnapshotNotice from '../components/QuestionSnapshotNotice'
+import { detachBankQuestion, isBankQuestion } from '../utils/questionLifecycle'
+import { questionContentChanged } from '../utils/questionContent'
+import CopyIdBadge from '../components/CopyIdBadge'
+import { publishAssessmentIdentity } from '../services/assessmentIdentity'
+import { questionDisplayId } from '../utils/questionLifecycle'
 import { readBlueprintPlanner, saveBlueprintPlannerReference, compactDuplicateBlueprintPlanners } from '../services/blueprintPlannerStorage'
 import '../components/BlueprintSaveDialog.css'
 import BlueprintModifiedBadge from '../components/BlueprintModifiedBadge'
@@ -1150,6 +1156,7 @@ const getPreviewStructureCounts = (item) => {
 }
 
 const getPreviewQuestionBankId = (item, displayNumber) => {
+  if (questionDisplayId(item)) return questionDisplayId(item)
   const existingId = item?.questionBankId || item?.bankId || item?.medsyQuestionId || item?.sourceQuestionId
   if (/^(MED|INS|INSC|ASST)-/i.test(String(existingId ?? ''))) return existingId
 
@@ -1182,13 +1189,13 @@ const getPreviewQuestionSourceMeta = (item, displayNumber) => {
   const isAssessmentOwned = item?.assessmentEdited || isCreateAssessmentAuthoredQuestion(item)
 
   if (isAssessmentOwned) {
-    return { label: 'Assessment', idLabel: getCreateAssessmentPreviewId(displayNumber), className: 'is-assessment', isMedsy: false }
+    return { label: 'Assessment', idLabel: questionDisplayId(item) || getCreateAssessmentPreviewId(displayNumber), className: 'is-assessment', isMedsy: false }
   }
   if (isMedsy && isInstituteTagged) {
     return { label: 'Inst (Medsy)', idLabel: '', className: 'is-medsy-institute', isMedsy: true }
   }
   if (isInstitute) {
-    return { label: 'Institute', idLabel: getCreateAssessmentInstituteId(displayNumber), className: 'is-institute', isMedsy: false }
+    return { label: 'Institute', idLabel: questionDisplayId(item) || getCreateAssessmentInstituteId(displayNumber), className: 'is-institute', isMedsy: false }
   }
   return { label: 'Medsy', idLabel: questionBankId, className: 'is-medsy', isMedsy: true }
 }
@@ -4309,7 +4316,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     if (requiresPublicationApproval) { setSaveStatus('Changes to this assessment require approval.'); return false }
     if (blueprintApprovalLocked(readBlueprintWorkflow(setup.assessmentId))) { setSaveStatus('Approve the blueprint before publishing.'); return false }
     const nextSetup = persistSetupDraft('', draft)
-    const record = getPublishedAssessmentRecord(nextSetup, getCurrentAssessmentQuestions())
+    const record = publishAssessmentIdentity(getPublishedAssessmentRecord(nextSetup, getCurrentAssessmentQuestions()))
     const publishStorageResult = upsertPublishedAssessment(record)
     if (!publishStorageResult) {
       setSaveStatus('Unable to publish assessment. Browser storage is full. Please remove large images and try again.')
@@ -5083,8 +5090,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       : options.editingPreviewQuestionId
     const isEditingPreviewQuestion = Boolean(targetEditingPreviewQuestionId)
 
+    const originalSnapshot = savedQuestionsRef.current.find(item => item.id === targetEditingPreviewQuestionId)
+    const editedQuestion = isEditingPreviewQuestion && isBankQuestion(questionOverride) && questionContentChanged(originalSnapshot, questionOverride) ? detachBankQuestion(questionOverride) : questionOverride
     const nextQuestion = {
-      ...questionOverride,
+      ...editedQuestion,
       id: targetEditingPreviewQuestionId || questionOverride.id,
       status,
       assessmentName: setup.assessmentName || 'Untitled Assessment',
@@ -8291,7 +8300,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
               <p className="create-assessment-header-details">
                 {detailItems.length > 0 && <span>{detailItems.join(' / ')}</span>}
                 {assessmentReview && <span className="qb-sort-scope create-assessment-header-code">{assessmentReview.blueprintId ? `${assessmentReview.blueprintId} / ` : ''}{blueprintReview ? 'Blueprint review' : assessmentEditable ? 'Assessment review' : 'Read-only'}</span>}
-                {headerSetup.assessmentCode && <span className="qb-sort-scope create-assessment-header-code" aria-label={`Assessment ID ${headerSetup.assessmentCode}`}>{headerSetup.assessmentCode}</span>}
+                {headerSetup.assessmentCode && <span className="qb-sort-scope create-assessment-header-code" aria-label={`Assessment ID ${headerSetup.assessmentCode}`}><CopyIdBadge value={headerSetup.assessmentCode} /></span>}
               </p>
             ) : null}
           </div>
@@ -8829,7 +8838,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                             <span className="create-assessment-preview-meta-row">
                               <span className={`create-assessment-preview-chip is-source ${previewSourceMeta.className}`}>{previewSourceMeta.label}</span>
                               {previewSourceMeta.idLabel ? (
-                                <span className="create-assessment-preview-chip is-id">{previewSourceMeta.idLabel}</span>
+                                <><CopyIdBadge value={previewSourceMeta.idLabel} label="question ID" /><QuestionSnapshotNotice question={item} /></>
                               ) : null}
                               {previewCompetencyCode ? (
                                 <span className="assessment-page-competency-code-wrap">

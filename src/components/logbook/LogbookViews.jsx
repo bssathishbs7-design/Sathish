@@ -1,3 +1,4 @@
+import SkillIdentity from '../SkillIdentity'
 import { logbookActivityRows } from '../../services/logbookActivityRows'
 import LogbookPendingGroups from './LogbookPendingGroups'
 import { isLoggedEntry, entrySubjectLocked } from '../../services/logbookPolicy'
@@ -17,9 +18,9 @@ import LogbookCategoryMenu from './LogbookCategoryMenu'
 /** Presentational collection: all record data and navigation callbacks come from the page. */
 export function EntryList({ entries, onOpen, empty = 'No entries here yet.' }) {
   const [limit, setLimit] = useState(25)
-  return entries.length ? <div className="lb-entry-list">{entries.slice(0, limit).map((entry) => <button className="lb-entry-row" key={entry.id} onClick={() => onOpen(entry.id)}>
-    <span className={`lb-entry-icon is-${entry.status.toLowerCase().replaceAll(' ', '-')}`}><BookOpen size={18} /></span><span className="lb-entry-copy"><span className="lb-title-with-indicators"><strong>{entryTitle(entry)}</strong><LogbookCommentBadge entry={entry} /></span><small>{entry.values.competency ? `${entry.values.competency} · ` : ''}{subjectLabel(entry.subject)} · {facultyName(entry.faculty)}</small></span><span className="lb-entry-meta">{entry.attemptNumber && <small>Attempt {entry.attemptNumber}</small>}<span className={`lb-status is-${entry.status.toLowerCase().replaceAll(' ', '-')}`}>{entry.status}</span><small>{formatDate(entry.date)}</small></span><ChevronRight size={16} />
-  </button>)}<LogbookPagination count={entries.length} limit={limit} onMore={() => setLimit(value => value + 25)} /></div> : <div className="lb-empty"><BookOpen size={26} /><p>{empty}</p></div>
+  return entries.length ? <div className="lb-entry-list">{entries.slice(0, limit).map((entry) => <div className="lb-entry-row" role="button" tabIndex={0} key={entry.id} onClick={() => onOpen(entry.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen(entry.id) } }}>
+    <span className={`lb-entry-icon is-${entry.status.toLowerCase().replaceAll(' ', '-')}`}><BookOpen size={18} /></span><span className="lb-entry-copy"><span className="lb-title-with-indicators"><strong>{entryTitle(entry)}</strong><LogbookCommentBadge entry={entry} />{entry.source === 'skills' && <SkillIdentity record={entry} assigned />}</span><small>{entry.values.competency ? `${entry.values.competency} · ` : ''}{subjectLabel(entry.subject)} · {facultyName(entry.faculty)}</small></span><span className="lb-entry-meta">{entry.attemptNumber && <small>Attempt {entry.attemptNumber}</small>}<span className={`lb-status is-${entry.status.toLowerCase().replaceAll(' ', '-')}`}>{entry.status}</span><small>{formatDate(entry.date)}</small></span><ChevronRight size={16} />
+  </div>)}<LogbookPagination count={entries.length} limit={limit} onMore={() => setLimit(value => value + 25)} /></div> : <div className="lb-empty"><BookOpen size={26} /><p>{empty}</p></div>
 }
 export function SearchView({ entries, onOpen, view = {}, onFilter, signoffs = [], onSubject }) {
   const { query = '', status = '', category = 'all', subject = '', range = 'all', sort = 'recent' } = view

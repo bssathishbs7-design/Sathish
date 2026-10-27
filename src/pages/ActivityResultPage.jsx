@@ -1,3 +1,4 @@
+import SkillIdentity from '../components/SkillIdentity'
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
@@ -240,7 +241,7 @@ export default function ActivityResultPage({
         <div className="my-skills-progress-header">
           <div className="my-skills-progress-heading">
             <div>
-              <h1>{activityName}</h1>
+              <h1>{activityName}</h1><SkillIdentity record={resultRecord} assigned />
               <p>All published student results appear here, grouped overall and by attempt.</p>
             </div>
           </div>

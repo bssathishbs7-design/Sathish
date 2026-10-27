@@ -1,20 +1,20 @@
+import { createDraftRecordCode } from '../utils/draftReference.js'
+import { isPermanentRecordId, mintRecordId } from '../utils/qid.js'
+import { readBlueprintTemplates, BLUEPRINT_TEMPLATES_KEY } from './blueprintTemplates.js'
 import { appendAssessmentHistory } from './assessmentHistory.js'
 const PREFIX = 'vx-assessment-blueprint-workflow:'
 export const BLUEPRINT_WORKFLOW_EVENT = 'vx-blueprint-workflow-changed'
 export const readBlueprintWorkflow = (id, storage = localStorage) => JSON.parse(storage.getItem(PREFIX + id) || 'null')
 export const blueprintApprovalLocked = flow => Boolean(flow?.approvalRequired && flow.status !== 'Approved')
 const notify = () => { if (typeof window !== 'undefined') window.dispatchEvent(new Event(BLUEPRINT_WORKFLOW_EVENT)) }
-/** Reserve one sequential blueprint ID per assessment, serialised across browser tabs. */
+/** Reserve one draft blueprint ID per assessment, serialised across browser tabs. */
 export async function reserveBlueprintIdentity(assessmentId, { storage = localStorage, locks = globalThis.navigator?.locks } = {}) {
   if (!assessmentId) throw new Error('Save the assessment identity before creating a blueprint.')
   const reserve = () => {
     const existing = readBlueprintWorkflow(assessmentId, storage)
     if (existing) return existing
-    const current = Number(storage.getItem('vx-blueprint-sequence') || 0)
-    if (!Number.isSafeInteger(current) || current < 0) throw new Error('Unable to read the blueprint sequence.')
-    const next = current + 1
-    storage.setItem('vx-blueprint-sequence', String(next))
-    const flow = { assessmentId, blueprintId: `ASSTBP${String(next).padStart(3,'0')}`, revision: 0, status: 'Draft', approvalRequired: false }
+    const draftCode = createDraftRecordCode('BP')
+    const flow = { assessmentId, blueprintId: draftCode, draftCode, revision: 0, status: 'Draft', approvalRequired: false }
     storage.setItem(PREFIX + assessmentId, JSON.stringify(flow))
     return flow
   }
@@ -55,9 +55,16 @@ export function reviewBlueprintWorkflow(record, status, remarks, storage = local
     }
   }
   const next = { ...flow, snapshot, revision: flow.revision + (changed ? 1 : 0), status: status === 'Approved' ? 'Approved' : 'Rejected', reviewRemarks: remarks || '', reviewedAt: new Date().toISOString() }
+  if (status === 'Approved') {
+    next.blueprintId = isPermanentRecordId(flow.blueprintId, 'BP') ? flow.blueprintId : mintRecordId('BP', { storage, existing: [flow] })
+    const templates = readBlueprintTemplates(storage)
+    const template = { id: next.blueprintId, blueprintId: next.blueprintId, name: record.assessmentName || record.activityName || next.blueprintId, approved: true,
+      createdAt: next.reviewedAt, cognition: snapshot.blueprintCognitionWeightage || {}, breakdown: snapshot.blueprintQuestionTypeDraft || {}, laqParts: snapshot.laqParts || [], totalMarks: Number(snapshot.blueprintDraft?.totalMark) || 0 }
+    storage.setItem(BLUEPRINT_TEMPLATES_KEY, JSON.stringify([template, ...templates.filter(row => row.id !== template.id)]))
+  }
   storage.setItem(PREFIX + id, JSON.stringify(next))
   if (changed) appendAssessmentHistory(record, { action: 'Blueprint edited during review', notes: `${flow.blueprintId} / revision ${next.revision}`, actor: record.approvalFaculty?.name || '' }, storage)
-  appendAssessmentHistory(record, { action: `Blueprint ${next.status.toLowerCase()}`, notes: `${flow.blueprintId}: ${remarks || ''}` }, storage)
+  appendAssessmentHistory(record, { action: `Blueprint ${next.status.toLowerCase()}`, notes: `${flow.blueprintId} to ${next.blueprintId}: ${remarks || ''}` }, storage)
   notify()
   return next
 }
@@ -67,4 +74,12 @@ export function reviseBlueprintWorkflow(id, storage = localStorage) {
   if (flow.status === 'Pending Approval') throw new Error('Wait for blueprint review before editing.')
   const next = { ...flow, status: 'Revision required' }
   storage.setItem(PREFIX + id, JSON.stringify(next)); notify(); return next
+}
+
+/** Delete only the paired workflow; approved reusable templates and ID counters remain intact. */
+export function deleteBlueprintWorkflow(record, storage = globalThis.localStorage) {
+  const id = record?.setup?.assessmentId || record?.assessmentId || record?.id
+  if (!id) return
+  storage.removeItem(PREFIX + id)
+  notify()
 }

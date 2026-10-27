@@ -1,3 +1,4 @@
+import SkillIdentity from '../components/SkillIdentity'
 import { useMemo, useState } from 'react'
 import {
   Activity,
@@ -369,7 +370,7 @@ function EvaluationCard({ record, onOpenEvaluation, onOpenActivityResult, onSche
         </div>
 
         <div className="eval-card-title">
-          <h3 title={activityName}>{truncatedActivityName}</h3>
+          <h3 title={activityName}>{truncatedActivityName}</h3><SkillIdentity record={record} assigned />
         </div>
       </div>
 

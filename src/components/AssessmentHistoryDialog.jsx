@@ -1,3 +1,5 @@
+import AssessmentBankSubmission from './AssessmentBankSubmission'
+import CopyIdBadge from './CopyIdBadge'
 import { sortAssessmentHistory } from '../services/assessmentHistorySort'
 import { readBlueprintWorkflow } from '../services/blueprintApproval'
 import { History, X, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
@@ -6,7 +8,7 @@ import SaveChangesDialog from './SaveChangesDialog'
 import { assessmentDisplayId, readAssessmentHistory } from '../services/assessmentHistory'
 import './AssessmentHistoryDialog.css'
 /** @param {{assessment:Object,onClose:Function,controlLogs?:Array}} props Shared lifecycle history across assessment stages. */
-export default function AssessmentHistoryDialog({ assessment, onClose, stage, controlLogs = [] }) {
+export default function AssessmentHistoryDialog({ assessment, onClose, stage, controlLogs = [], onSendToApproval }) {
   const blueprintId = readBlueprintWorkflow(assessment.setup?.assessmentId || assessment.assessmentId || assessment.id)?.blueprintId
   const [history, setHistory] = useState([])
   const [error, setError] = useState('')
@@ -23,7 +25,7 @@ export default function AssessmentHistoryDialog({ assessment, onClose, stage, co
   }, [assessment])
   const theme = document.documentElement.dataset.theme || (document.querySelector('.theme-dark') ? 'dark' : 'light')
   const events = sortAssessmentHistory([...history, ...controlLogs.map(log => ({ id: log.id, action: log.action || 'Exam control updated', timestamp: log.timestamp, notes: log.remarks, actor: log.faculty, legacyTime: [log.date, log.time].filter(Boolean).join(' ') }))], sort.key, sort.direction)
-  return <SaveChangesDialog className="assessment-history-dialog" theme={theme} title={<span className="assessment-history-title"><span className="assessment-history-icon"><History size={18} aria-hidden="true" /></span>Assessment History</span>} description={<span className="assessment-history-meta"><strong>{assessment.assessmentName || assessment.activityName || assessment.setup?.assessmentName || 'Untitled Assessment'}</strong><span className="assessment-history-chip is-id mono">{assessmentDisplayId(assessment)}</span><span className="assessment-history-chip is-stage">{stage || '-'}</span>{blueprintId && <span className="assessment-history-chip is-blueprint mono">{blueprintId}</span>}<span className="assessment-history-count">{events.length} activities</span></span>} onCancel={onClose} cancelLabel={<X size={18} aria-hidden="true" />} cancelAriaLabel="Close assessment history" error={error}>
+  return <SaveChangesDialog className="assessment-history-dialog" theme={theme} title={<span className="assessment-history-title"><span className="assessment-history-icon"><History size={18} aria-hidden="true" /></span>Assessment History</span>} description={<span className="assessment-history-meta"><strong>{assessment.assessmentName || assessment.activityName || assessment.setup?.assessmentName || 'Untitled Assessment'}</strong><CopyIdBadge value={assessmentDisplayId(assessment)} /><span className="assessment-history-chip is-stage">{stage || '-'}</span>{blueprintId && <CopyIdBadge value={blueprintId} label="blueprint ID" />}<span className="assessment-history-count">{events.length} activities</span></span>} onCancel={onClose} cancelLabel={<X size={18} aria-hidden="true" />} cancelAriaLabel="Close assessment history" error={error}>
     <div className="assessment-history-table-wrap" tabIndex={0} role="region" aria-label="Scrollable assessment history">
       <table className="assessment-history-table">
         <thead><tr>{[['timestamp', 'Date & time'], ['action', 'Activity'], ['actor', 'Person']].map(([key, label]) => {
@@ -38,5 +40,5 @@ export default function AssessmentHistoryDialog({ assessment, onClose, stage, co
       </table>
       {!events.length && !error && <p className="assessment-history-empty">No recorded activity yet.</p>}
     </div>
-  </SaveChangesDialog>
+  <AssessmentBankSubmission assessment={assessment} onSendToApproval={onSendToApproval} theme={theme} /></SaveChangesDialog>
 }

@@ -1,3 +1,5 @@
+import CopyIdBadge from '../components/CopyIdBadge'
+import { assessmentDisplayId } from '../services/assessmentHistory'
 import { TriangleAlert } from 'lucide-react'
 import { isPendingAssessmentExpired } from '../services/assessmentScheduleExpiry'
 import { useEffect, useMemo, useState } from 'react'
@@ -208,7 +210,7 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
             <span className={`review-approve-status-pill ${getDecisionTone(decision)}`}>{decision}</span>
           </div>
           <div className="review-approve-card-title">
-            <h3>{row.assessmentName ?? row.activityName ?? 'Untitled Assessment'}</h3>
+            <h3>{row.assessmentName ?? row.activityName ?? 'Untitled Assessment'}</h3><CopyIdBadge value={assessmentDisplayId(row)} />
           </div>
           <div className="review-approve-assessment-badges">
             <span className={`is-mode-${String(assessmentMode).trim().toLowerCase()}`}>{assessmentMode}</span>
@@ -221,7 +223,7 @@ function ReviewApproveCard({ row, isInfoOpen, onToggleInfo, onView }) {
           {primaryDetails.map((item) => (
             <div key={item.label} className="review-approve-assessment-item">
               <span>{item.label}</span>
-              <strong>{item.value}</strong>
+              <strong>{item.label.endsWith(' ID') ? <CopyIdBadge value={item.value} label={item.label.toLowerCase()} /> : item.value}</strong>
             </div>
           ))}
         </div>

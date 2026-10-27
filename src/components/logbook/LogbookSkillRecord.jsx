@@ -1,3 +1,4 @@
+import SkillIdentity from '../SkillIdentity'
 import LogbookDrawer from './LogbookDrawer'
 import { entryTitle, formatDate } from '../../services/logbook'
 import './LogbookSkillRecord.css'
@@ -11,7 +12,7 @@ export default function LogbookSkillRecord({ entry, entries, theme, onClose, onO
   return <LogbookDrawer title={entryTitle(entry)} subtitle={`${entry.subject} · ${entry.cat === 'cert' ? 'Certifiable skill' : 'Skill competency'}`} theme={theme} onClose={onClose}>
     <div className="lb-drawer-body lb-skill-record">
       <p className="lb-alert">This is a read-only skill record. Complete the activity and faculty evaluation in Skills.</p>
-      <dl className="lb-record">
+      <SkillIdentity record={entry} assigned /><dl className="lb-record">
         <div><dt>Student</dt><dd>{entry.studentName} · {entry.studentId}</dd></div>
         <div><dt>Attempt</dt><dd className="lb-mono">{entry.attemptNumber}</dd></div>
         <div><dt>Status</dt><dd><span className={`lb-status is-${entry.status.toLowerCase().replaceAll(' ', '-')}`}>{entry.status}</span></dd></div>

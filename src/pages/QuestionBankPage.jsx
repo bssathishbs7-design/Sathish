@@ -1,3 +1,6 @@
+import CopyIdBadge from '../components/CopyIdBadge'
+import { createDraftRecordCode } from '../utils/draftReference'
+import { questionDisplayId } from '../utils/questionLifecycle'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { sanitizeRichHtml } from '../utils/sanitizeHtml'
@@ -344,7 +347,7 @@ const getThinkingLevelLabel = (value) => {
   return value
 }
 
-const getCreatedQuestionDisplayId = (index) => `INSC-B01-${String(index + 1).padStart(3, '0')}`
+const getCreatedQuestionDisplayId = question => questionDisplayId(question)
 
 const readReportedQuestionRecords = () => {
   if (typeof window === 'undefined') return []
@@ -403,7 +406,9 @@ const deleteQuestionFromStorage = (questionId) => {
   window.dispatchEvent(new Event('question-bank-uploaded-questions'))
 }
 
-const cloneQuestionForCreate = (question, mode) => {
+const cloneQuestionForCreate = (question, mode, currentUser) => {
+  const own = mode !== 'duplicate' && question.authorId && question.authorId === (currentUser?.id || currentUser?.registerId)
+  const originalCode = questionDisplayId(question)
   const questionId = mode === 'duplicate'
     ? `question-${Date.now()}-${questionSequence++}`
     : question.id
@@ -419,7 +424,10 @@ const cloneQuestionForCreate = (question, mode) => {
 
   return {
     ...question,
-    id: questionId,
+    id: own ? questionId : `question-${crypto.randomUUID()}`,
+    draftCode: createDraftRecordCode('QB'), questionBankId: undefined, bankId: undefined, bankDisplayId: undefined, medsyQuestionId: undefined, assessmentQuestionId: undefined,
+    replaceQuestionId: own ? question.id : undefined, sourceBankId: originalCode, derivedFrom: own ? question.derivedFrom : originalCode,
+    authorId: currentUser?.id || currentUser?.registerId, authorName: currentUser?.name,
     title: question.title || getQuestionPreview(question).slice(0, 60),
     options: clonedOptions,
     correctOptionIds: mode === 'duplicate'
@@ -470,6 +478,7 @@ const asArray = (value) => (Array.isArray(value) ? value : [])
 
 const normalizeQuestionForAuthoring = (question = {}) => ({
   ...question,
+  draftCode: question.draftCode || createDraftRecordCode('QB'),
   type: question.type ?? 'MCQ',
   questionText: question.questionText ?? '',
   answerKey: question.answerKey ?? '',
@@ -1584,7 +1593,7 @@ function QuestionBankUploadDropdown({
   )
 }
 
-export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'editable' }) {
+export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'editable', currentUser }) {
   const normalizedMode = mode === 'editable' ? 'editable' : 'readonly'
   const [questions, setQuestions] = useState(() => readStoredQuestionBankQuestions())
   const [selectedQuestionId, setSelectedQuestionId] = useState(null)
@@ -1925,7 +1934,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
   const draftQuestionCards = questions.filter((item) => item.status === 'Draft')
   const createdQuestionCards = questions.filter((item) => ['Created', 'Generating'].includes(item.status) && !isExcelUploadedQuestion(item))
   const questionBankGenerationProcessorRows = createdQuestionCards
-    .map((item, index) => {
+    .map((item) => {
       const isGenerating = item.status === 'Generating'
       const startedAt = generationProcessorStartedAt[item.id] ?? generationProcessorTick
       const elapsed = Math.max(0, generationProcessorTick - startedAt)
@@ -1936,7 +1945,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       return {
         id: item.id,
         typeLabel: getQuestionTypeMeta(item.type).shortLabel,
-        idLabel: getCreatedQuestionDisplayId(index),
+        idLabel: getCreatedQuestionDisplayId(item),
         status: isGenerating ? 'Generating' : 'Completed',
         percent,
         onClick: item.status !== 'Generating'
@@ -2165,7 +2174,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
         window.sessionStorage.removeItem(QUESTION_BANK_EDIT_HANDOFF_KEY)
         const mode = handoff.mode === 'duplicate' ? 'duplicate' : 'overwrite'
-        const editableQuestion = cloneQuestionForCreate(handoff.question, mode)
+        const editableQuestion = cloneQuestionForCreate(handoff.question, mode, currentUser)
         const typeMeta = getQuestionTypeMeta(editableQuestion.type)
 
         setQuestions((current) => {
@@ -2187,7 +2196,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       }
     }, 0)
     return () => window.clearTimeout(timerId)
-  }, [onAlert])
+  }, [onAlert, currentUser])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -2277,6 +2286,8 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
 
         return {
           ...question,
+          questionBankId: result.questionBankId || question.questionBankId,
+          history: result.history || question.history,
           status: result.status === 'Approved' ? 'Approved' : 'Approval Rejected',
           approvalReviewRemarks: result.remarks ?? '',
           approvalReviewedAt: result.reviewedAt ?? '',
@@ -2673,6 +2684,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       designation: selectedApprovalReviewer.designation,
       note: approvalNote,
       questionRows: sentQuestions.map((question, index) => ({
+        ...question,
         id: question.id,
         questionNumber: index + 1,
         title: getQuestionPreview(question),
@@ -3475,6 +3487,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
       designation: selectedApprovalReviewer.designation,
       note: approvalNote,
       questionRows: selectedQuestions.map((question, index) => ({
+        ...question,
         id: question.id,
         questionNumber: index + 1,
         title: getQuestionPreview(question),
@@ -6199,7 +6212,6 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                 </section>
 
                 ) : null}
-
                 {['created', 'uploaded', 'draft', 'sent', 'approved', 'rejected', 'report'].includes(activeQuestionTab) && activeQuestionCards.length ? (
                   <section className="question-bank-created-panel">
                     {approvalStatusTabs}
@@ -6406,7 +6418,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                             ? 'is-lot'
                             : 'lilac'
                         const rootCompetencyDisplay = getCreatedQuestionPrimaryCompetencyDisplay(question)
-                        const createdDisplayId = getCreatedQuestionDisplayId(index)
+                        const createdDisplayId = getCreatedQuestionDisplayId(question)
                         const createdCardKpis = [
                           { label: 'Question ID', value: createdDisplayId },
                           { label: 'Suggested', value: questionMarksLabel ? `${questionMarksLabel} Mark${questionMarksLabel === '1' ? '' : 's'}` : '' },
@@ -6492,7 +6504,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                   <span className="question-bank-created-header">
                                   <span className="question-bank-created-header-badges">
                                     <span className="question-bank-badge success question-bank-created-source-badge">Institute</span>
-                                    <span className="question-bank-badge soft question-bank-created-id-badge">{createdDisplayId}</span>
+                                    <CopyIdBadge value={createdDisplayId} label="question ID" />{question.replaceQuestionId && <p>Your changes replace {question.derivedFrom || question.sourceBankId} after approval, under the same ID. Until then the approved question stays in use.</p>}
                                     {rootCompetencyDisplay ? (
                                       <span className="question-bank-created-descriptive-code-wrap">
                                         <span className="question-bank-created-descriptive-code" tabIndex={0}>

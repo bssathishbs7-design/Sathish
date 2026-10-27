@@ -1,3 +1,4 @@
+import CopyIdBadge from './CopyIdBadge'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Check, ChevronDown, Eye, Plus, Search, Trash2 } from 'lucide-react'
 import BlueprintTemplatePreview from './BlueprintTemplatePreview'
@@ -74,9 +75,10 @@ export default function BlueprintTemplateSelect({ templates, selected, value, pl
               <span className="blueprint-template-creator" title={template.createdBy || 'Creator unavailable'}>{template.createdBy ? `Created by: ${template.createdBy}` : 'Creator unavailable'}</span>
               <span className="blueprint-template-cognition">{cognition ? `LoT ${cognition.lot}% / HoT ${cognition.hot}%` : 'Cognition unavailable'}</span>
             </button>
+            {template.blueprintId && <CopyIdBadge value={template.blueprintId} label="blueprint ID" />}
             <button type="button" className="blueprint-template-view" aria-label={`Preview template ${template.name}`} aria-haspopup="dialog" aria-expanded={preview?.template.id === template.id} aria-controls={preview?.template.id === template.id ? id + '-preview' : undefined}
               onClick={event => { const anchor = event.currentTarget; setPreview(current => current?.template.id === template.id ? null : { template, anchor }) }}><Eye size={15} aria-hidden="true" /></button>
-            <button type="button" className="blueprint-template-delete" aria-label={`Delete template ${template.name}`} title="Delete template"
+            <button type="button" className="blueprint-template-delete" disabled={template.approved} aria-label={`Delete template ${template.name}`} title="Delete template"
               onClick={() => { closePreview(); setPendingDelete(template); setError(''); setOpen(false); trigger.current?.focus() }}><Trash2 size={15} aria-hidden="true" /></button>
           </div>
         })}
