@@ -28,12 +28,10 @@ Run `node --test --test-isolation=none .github/scripts/linear-main-push.test.mjs
 
 ## Automatic Linear commit-history document
 
-The separate commit-history workflow refreshes an editable document titled **Sathish — Commit history**, directly in the **Medsy_UI Documents** section. It publishes the generated Markdown as document content, not as a file attachment. It creates the document once with a fixed ID, then updates that same document after main pushes; unchanged content produces no write.
+The history workflow updates the existing [Commit Document](https://linear.app/medsy/document/commit-document-da40e4e2b367) in Medsy_UI. It preserves the title and publishes a native four-column table: description and author; date and time in IST; changed files and line counts; GitHub commit links. It creates no documents, subdocuments or attachments.
 
-The job checks out latest main with full history and uses only GitHub contents-read permission. It does not commit or push documentation changes back to the repository. The Linear API key is supplied by the same encrypted repository secret used for task creation. The fixed document ID and team ID are configured in the workflow. A deleted document or a document belonging to a different team is not overwritten.
+Each row includes total file and line counts, with up to three file paths and the link to the complete diff. This keeps the content below Linear's verified 250,000-character limit. The renderer reduces file-name previews for larger histories; if even compact rows exceed its 240,000-character budget, it shows the newest rows and explicitly links the complete GitHub history. Binary files have no line counts; merge statistics compare with the first parent. Timestamps are commit times, not historical push times.
 
-Commit timestamps appear in IST (UTC+05:30), with original ISO dates retained. These are commit times, not historical push times. File lists are published as native Markdown tables without HTML disclosure elements. Comments on the Linear document can hold review discussions; its generated body is replaced on each refresh.
+The workflow checks out latest main with full history, then renders and updates Linear directly. It uses only GitHub contents-read permission and the existing MEDSY_UI_LINEAR_API_KEY secret. It does not generate attachments or push documentation changes back to GitHub. A missing, trashed or wrong-team target causes a visible failure rather than creating a replacement. Identical content skips the write.
 
-Local preview: node scripts/generate-commit-history.mjs. Publishing entry point: .github/scripts/linear-commit-history.mjs. The generated Markdown is published as editable Linear document content.
-
-Both workflows must be reviewed and merged, and the encrypted secret configured, before automatic updates are active. The first successful history run creates the document; later runs refresh it.
+The body is automation-managed; use document comments for review discussions. The fixed target ID is 22c6599f-60ee-434a-a3b6-ba0efc5df627. A failed history run can be rerun from Actions after fixing access.
