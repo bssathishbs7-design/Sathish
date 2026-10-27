@@ -10,18 +10,18 @@ const time = value => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata
 export function renderLinearHistory(commits, repository = 'bssathishbs7-design/Sathish') {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) throw new Error('Invalid GitHub repository.')
   const base = `https://github.com/${repository}`
-  const header = '## Commit history\n\n| Description and author | Date and time in IST | Changed files and line counts | GitHub commit links |\n| --- | --- | --- | --- |\n'
-  const row = (commit, fileLimit) => {
+  const header = '## Commit history\n\n| S. no. | Description and author | Date and time in IST | Changed files and line counts | GitHub commit links |\n| ---: | --- | --- | --- | --- |\n'
+  const row = (commit, fileLimit, index) => {
     const added = commit.changes.reduce((sum, file) => sum + (Number(file.added) || 0), 0)
     const removed = commit.changes.reduce((sum, file) => sum + (Number(file.removed) || 0), 0)
     const binary = commit.changes.filter(file => file.added === '-' || file.removed === '-').length
     const files = commit.changes.slice(0, fileLimit).map(file => `${escape(file.path)} (+${file.added}/-${file.removed})`).join('; ')
     const remainder = commit.changes.length > fileLimit ? `; ${commit.changes.length - fileLimit} more files in commit link` : ''
     const changes = `${commit.changes.length} files (+${added} / -${removed})${binary ? `; ${binary} binary files (no line counts)` : ''}${commit.merge ? '; merge vs first parent' : ''}${files ? ': ' + files : ''}${remainder}`
-    return `| ${escape(commit.subject).slice(0, 500)} — ${escape(commit.author).slice(0, 100)} | ${time(commit.committedAt)} | ${changes} | [${commit.short}](${base}/commit/${commit.sha}) |\n`
+    return `| ${index + 1} | ${escape(commit.subject).slice(0, 500)} — ${escape(commit.author).slice(0, 100)} | ${time(commit.committedAt)} | ${changes} | [${commit.short}](${base}/commit/${commit.sha}) |\n`
   }
   for (const fileLimit of [3, 1, 0]) {
-    const rendered = commits.map(commit => row(commit, fileLimit))
+    const rendered = commits.map((commit, index) => row(commit, fileLimit, index))
     if ((header + rendered.join('')).length <= DOCUMENT_LIMIT) return header + rendered.join('')
     if (fileLimit === 0) {
       let content = header, count = 0
