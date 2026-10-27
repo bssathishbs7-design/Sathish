@@ -7,8 +7,9 @@ const commit = { sha: 'a'.repeat(40), short: 'aaaaaaa', subject: 'Fix | UI', aut
 const content = renderLinearHistory([commit])
 const document = { id: 'doc', title: 'Commit Document', content: null, team: { id: 'team' } }
 const reply = data => ({ ok: true, json: async () => ({ data }) })
-test('renders four columns with IST timestamps and exact change counts', () => {
-  assert.match(content, /Description and author \| Date and time in IST \| Changed files and line counts \| GitHub commit links/)
+test('renders serial numbers and four detail columns with IST timestamps and exact change counts', () => {
+  assert.match(content, /S\. no\. \| Description and author \| Date and time in IST \| Changed files and line counts \| GitHub commit links/)
+  assert.deepEqual(renderLinearHistory([commit, commit]).split('\n').filter(line => /^\| \d+ \|/.test(line)).map(line => line.split('|')[1].trim()), ['1', '2'])
   assert.match(content, /27 Oct 2026, 05:30:00 IST/)
   assert.match(content, /Fix &#124; UI — Sathish/)
   assert.match(content, /1 files \(\+3 \/ -1\)/)
