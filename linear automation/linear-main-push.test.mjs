@@ -2,12 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { syncPush, issueIdForRun, buildIssue } from './linear-main-push.mjs'
 
-const env = { GITHUB_EVENT_NAME: 'push', GITHUB_REPOSITORY: 'owner/repo', GITHUB_RUN_ID: '123', GITHUB_TOKEN: 'test-github', LINEAR_API_KEY: 'test-linear', LINEAR_TEAM_ID: 'team', LINEAR_REVIEW_STATE_ID: 'review' }
+const env = { GITHUB_EVENT_NAME: 'push', GITHUB_REPOSITORY: 'owner/repo', GITHUB_RUN_ID: '123', GITHUB_TOKEN: 'test-github', LINEAR_API_KEY: 'test-linear', LINEAR_TEAM_ID: 'team', LINEAR_DONE_STATE_ID: 'done', LINEAR_ASSIGNEE_ID: 'sathish', LINEAR_LABEL_ID: 'ui-update' }
 const event = { ref: 'refs/heads/main', before: 'a'.repeat(40), after: 'b'.repeat(40), sender: { login: 'author' }, commits: [{ id: 'b'.repeat(40), message: 'Update UI', author: { name: 'Author' } }] }
 const issue = { id: 'id', identifier: 'MEDUI-1', url: 'https://linear.app/example' }
 const response = data => ({ ok: true, json: async () => data })
 
-test('one task contains the push summary and review state, without executing shell text', async () => {
+test('one task contains the push summary, Done state, assignee and label, without executing shell text', async () => {
   const calls = []
   const fetchImpl = async (url, options) => {
     calls.push({ url, options })
@@ -17,7 +17,11 @@ test('one task contains the push summary and review state, without executing she
   }
   assert.equal((await syncPush({ event, env, fetchImpl })).issue, issue)
   const input = JSON.parse(calls[2].options.body).variables.input
-  assert.equal(input.stateId, 'review')
+  assert.equal(input.stateId, 'done')
+  assert.equal(input.assigneeId, 'sathish')
+  assert.deepEqual(input.labelIds, ['ui-update'])
+  assert.match(input.title, /^UI update:/)
+  assert.doesNotMatch(input.description, /Review checklist|mark the task Done/)
   assert.equal(input.teamId, 'team')
   assert.match(input.description, /src\/App.jsx/)
   assert.match(input.description, /already on main/)
@@ -38,7 +42,9 @@ test('other branches, deletion and non-push events never write to Linear', async
   assert.equal((await syncPush({ event, env: { ...env, GITHUB_EVENT_NAME: 'pull_request' }, fetchImpl })).skipped, true)
 })
 test('missing secrets and GraphQL errors fail visibly before creating tasks', async () => {
-  await assert.rejects(syncPush({ event, env: { ...env, LINEAR_API_KEY: '' } }), /Missing LINEAR_API_KEY/)
+  for (const name of ['LINEAR_API_KEY', 'LINEAR_DONE_STATE_ID', 'LINEAR_ASSIGNEE_ID', 'LINEAR_LABEL_ID']) {
+    await assert.rejects(syncPush({ event, env: { ...env, [name]: '' }, fetchImpl: () => { throw new Error('Unexpected request') } }), new RegExp('Missing ' + name))
+  }
   await assert.rejects(syncPush({ event, env, fetchImpl: async () => response({ errors: [{ message: 'Denied' }] }) }), /Linear rejected/)
   await assert.rejects(syncPush({ event, env, fetchImpl: async () => ({ ok: false, status: 401 }) }), /HTTP 401/)
 })

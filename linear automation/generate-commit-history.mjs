@@ -41,7 +41,7 @@ export function renderHistory(commits, repositoryUrl) {
     `Recorded commits: **${commits.length}**. Latest recorded commit: **${commits[0]?.short || 'None'}**.`, '',
     'Dates below are commit timestamps, displayed in India Standard Time. They are not push timestamps. Original ISO timestamps and author dates are retained in each entry.', '',
     'This document covers committed history reachable from the checked-out branch, newest first. Uncommitted changes and generated history-update commits are excluded. Descriptions come from the original commit messages; changed files and line counts come directly from Git. Binary changes have no line counts. Renames appear as deletion/addition pairs. Merge changes compare against the first parent.', '',
-    'Update locally: `node scripts/generate-commit-history.mjs`. Once enabled, the GitHub workflow refreshes the editable commit-history document in Linear Medsy_UI after pushes to main. This is automatically generated content; record review discussions in document comments.', '',
+    'Update locally: `node "linear automation/generate-commit-history.mjs"`. Once enabled, the GitHub workflow refreshes the editable commit-history document in Linear Medsy_UI after pushes to main. This is automatically generated content; record review discussions in document comments.', '',
     '## Commit index', '',
     '| Date and time (IST) | Commit | Description | Files changed |',
     '| --- | --- | --- | ---: |',
@@ -72,6 +72,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const match = remote.match(/^(?:https:\/\/github\.com\/|git@github\.com:)([\w.-]+\/[\w.-]+?)(?:\.git)?$/)
   if (!match) throw new Error('Expected a GitHub origin URL without embedded credentials.')
   const commits = collectHistory()
-  writeFileSync('COMMIT_HISTORY.md', renderHistory(commits, `https://github.com/${match[1]}`))
-  console.log(`COMMIT_HISTORY.md updated: ${commits.length} commits, latest ${commits[0]?.short || 'none'}.`)
+  writeFileSync('linear automation/COMMIT_HISTORY.md', renderHistory(commits, `https://github.com/${match[1]}`))
+  console.log(`linear automation/COMMIT_HISTORY.md updated: ${commits.length} commits, latest ${commits[0]?.short || 'none'}.`)
 }

@@ -28,4 +28,4 @@ jobs:
           LINEAR_SOURCE_TEAM_ID: 308e1550-2a4b-4cb7-b3e4-f4c8a112517f
           LINEAR_DESTINATION_TEAM_ID: 8acbfb6e-79e3-4f8a-9f89-27f89d1f7f18
           LINEAR_ASSIGNEE_ID: 8177a4ee-a534-4a88-a501-c2f77a0ad18e
-        run: node .github/scripts/linear-assignment-routing.mjs
+        run: node "linear automation/linear-assignment-routing.mjs"

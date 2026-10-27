@@ -26,10 +26,10 @@ export function buildIssue(event, env, comparison) {
     ? `${base}/commit/${event.after}` : `${base}/compare/${event.before}...${event.after}`
   const files = comparison?.files || []
   const commitCount = comparison?.total_commits ?? event.size ?? commits.length
-  const title = `Review main push: ${singleLine(latest).slice(0, 170)} (${event.after.slice(0, 7)})`
+  const title = `UI update: ${singleLine(latest).slice(0, 170)} (${event.after.slice(0, 7)})`
   const description = [
-    `A push to ${code(env.GITHUB_REPOSITORY)} on ${code('main')} is ready for team review.`,
-    '**These changes are already on main. This task tracks review after the push.**',
+    `A push to ${code(env.GITHUB_REPOSITORY)} on ${code('main')} has been recorded as a completed UI update.`,
+    '**These changes are already on main. This task records the completed UI update.**',
     `Pushed by: ${code(event.sender?.login || event.pusher?.name || env.GITHUB_ACTOR)}`,
     `Before: ${code(event.before)}\nAfter: ${code(event.after)}`,
     `[Review the changes](${compareUrl}) · [Workflow run](${base}/actions/runs/${env.GITHUB_RUN_ID})`,
@@ -43,7 +43,6 @@ export function buildIssue(event, env, comparison) {
     comparison ? '' : 'GitHub comparison details were unavailable; use the comparison link to inspect changed files. Commit details above come from the push event.',
     comparison && !files.length ? 'No changed files returned by GitHub for this comparison.' : '',
     event.forced ? '**Force push:** review the branch history as well as the comparison.' : '',
-    '### Review checklist\n- [ ] Review the changed code\n- [ ] Check the affected UI or workflow\n- [ ] Record corrections or mark the task Done',
     `Automation reference: ${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`,
   ].filter(Boolean).join('\n\n')
   return { title, description }
@@ -55,7 +54,7 @@ export function buildIssue(event, env, comparison) {
  */
 export async function syncPush({ event, env, fetchImpl = fetch }) {
   if (env.GITHUB_EVENT_NAME !== 'push' || event.ref !== 'refs/heads/main' || event.deleted) return { skipped: true }
-  for (const name of ['LINEAR_API_KEY', 'LINEAR_TEAM_ID', 'LINEAR_REVIEW_STATE_ID', 'GITHUB_TOKEN', 'GITHUB_REPOSITORY', 'GITHUB_RUN_ID']) {
+  for (const name of ['LINEAR_API_KEY', 'LINEAR_TEAM_ID', 'LINEAR_DONE_STATE_ID', 'LINEAR_ASSIGNEE_ID', 'LINEAR_LABEL_ID', 'GITHUB_TOKEN', 'GITHUB_REPOSITORY', 'GITHUB_RUN_ID']) {
     if (!env[name]) throw new Error(`Missing ${name}. Configure the workflow before retrying.`)
   }
   if (!/^[\w.-]+\/[\w.-]+$/.test(env.GITHUB_REPOSITORY) || !/^\d+$/.test(env.GITHUB_RUN_ID)
@@ -68,7 +67,7 @@ export async function syncPush({ event, env, fetchImpl = fetch }) {
     })
     if (!response.ok) throw new Error(`Linear request failed (HTTP ${response.status}). Rerun this job after resolving access or rate limits.`)
     const result = await response.json()
-    if (result.errors?.length || !result.data) throw new Error('Linear rejected the request. Check the API key, team and review status permissions, then rerun this job.')
+    if (result.errors?.length || !result.data) throw new Error('Linear rejected the request. Check the API key, team, status, assignee and label permissions, then rerun this job.')
     return result.data
   }
   const id = issueIdForRun(env.GITHUB_REPOSITORY, env.GITHUB_RUN_ID)
@@ -82,9 +81,9 @@ export async function syncPush({ event, env, fetchImpl = fetch }) {
         signal: AbortSignal.timeout(30000), headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
       })
       if (response.ok) comparison = await response.json()
-    } catch { /* The push still needs review when a force push or API outage prevents comparison. */ }
+    } catch { /* The push still needs recording when a force push or API outage prevents comparison. */ }
   }
-  const input = { id, teamId: env.LINEAR_TEAM_ID, stateId: env.LINEAR_REVIEW_STATE_ID, ...buildIssue(event, env, comparison) }
+  const input = { id, teamId: env.LINEAR_TEAM_ID, stateId: env.LINEAR_DONE_STATE_ID, assigneeId: env.LINEAR_ASSIGNEE_ID, labelIds: [env.LINEAR_LABEL_ID], ...buildIssue(event, env, comparison) }
   const created = await linear('mutation($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id identifier url } } }', { input })
   if (!created.issueCreate.success || !created.issueCreate.issue) throw new Error('Linear did not confirm issue creation. Rerun this job; its stable issue ID prevents duplicate creation.')
   return { existing: false, issue: created.issueCreate.issue }

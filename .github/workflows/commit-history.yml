@@ -29,4 +29,4 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.MEDSY_UI_LINEAR_API_KEY }}
           LINEAR_TEAM_ID: 8acbfb6e-79e3-4f8a-9f89-27f89d1f7f18
           LINEAR_HISTORY_DOCUMENT_ID: 22c6599f-60ee-434a-a3b6-ba0efc5df627
-        run: node .github/scripts/linear-commit-history.mjs
+        run: node "linear automation/linear-commit-history.mjs"
