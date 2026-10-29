@@ -31,6 +31,7 @@ export default function Sidebar({
   useCompactLogo,
   activePage,
   navigationMode = 'faculty',
+  approvalRequestCount = 0,
   queryRequestCount = 0,
   createdReportCount = 0,
   onSelectPage,
@@ -67,7 +68,7 @@ export default function Sidebar({
   const groupRefs = useRef({})
   const useCollapsedFlyout = sidebarCollapsed && !mobileSidebarOpen
   const getNotificationCount = (page) => (
-    page === APP_PAGES.QUERY_REQUEST
+    page === APP_PAGES.REVIEW_APPROVE ? approvalRequestCount : page === APP_PAGES.QUERY_REQUEST
       ? queryRequestCount
       : page === APP_PAGES.QUESTION_BANK
         ? createdReportCount

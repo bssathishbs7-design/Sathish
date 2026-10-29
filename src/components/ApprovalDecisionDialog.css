@@ -1,0 +1,10 @@
+.aq-confirm-backdrop { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; background: var(--surface-glass); padding: var(--s-4); }
+.aq-confirm { width: min(100%, 520px); max-height: 90dvh; overflow: auto; background: var(--surface-card); color: var(--text-body); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-5); box-shadow: var(--shadow-lg); }
+.aq-confirm h2 { color: var(--text-strong); margin-top: 0; font-size: var(--font-size-h3); }
+.aq-confirm footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-3); margin-top: var(--s-5); }
+.aq-confirm button { border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-body); padding: var(--s-2) var(--s-4); font: inherit; cursor: pointer; transition: background var(--dur-hover) var(--ease-standard); }
+.aq-confirm button:hover:not(:disabled) { background: var(--surface-soft); }
+.aq-confirm button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.aq-confirm button:disabled { opacity: .5; cursor: wait; }
+.aq-confirm :focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+@media (prefers-reduced-motion: reduce) { .aq-confirm button { transition: none; } }

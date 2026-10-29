@@ -1,3 +1,4 @@
+import { returnOverdueQuestions, saveAutomaticReturns } from './services/approvalReturns'
 import { ensureSkillIdentity, appendSkillIdentityEvent } from './services/skillIdentity'
 import IdGuideDialog from './components/IdGuideDialog'
 import { persistAssessmentDemoQueue } from './services/assessmentDemoSession'
@@ -15,6 +16,10 @@ import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import { AlertTriangle, CheckCircle2, Info, Monitor, OctagonAlert } from 'lucide-react'
 import Navbar from './components/Navbar'
+import DemoVideoDock from './components/DemoVideoDock'
+import DemoVideoBoundary from './components/demos/DemoVideoBoundary'
+import { demosAllowed } from './config/demoVideos'
+import { useDemoVideoState, setDemoVideosEnabled } from './services/demoVideoState'
 import Sidebar from './components/Sidebar'
 import SkillManagementPage from './pages/SkillManagementPage'
 import SkillAssessmentPage from './pages/SkillAssessmentPage'
@@ -28,7 +33,9 @@ import QuestionBankNonCreatePage from './pages/QuestionBankNonCreatePage'
 import BlueprintPage from './pages/BlueprintPage'
 import QueryRequestPage from './pages/QueryRequestPage'
 import CompletedEvaluationPage from './pages/CompletedEvaluationPage'
-import ReviewApprovePage from './pages/ReviewApprovePage'
+import ReviewApprovePage from './pages/ApprovalQueueByFaculty'
+import { assertReviewDecision, assertReviewable, isNewRequest, queueItems, markRequestsSeen, markDecisionsSeen, persistQueueCache, restoreQueueCache, visibleRequests } from './services/approvalQueue'
+import ApprovalQueueBoundary from './components/ApprovalQueueBoundary'
 import ApprovalViewPage from './pages/ApprovalViewPage'
 import DashboardSummaryPage from './pages/DashboardSummaryPage'
 import StartEvaluationPage from './pages/StartEvaluationPage'
@@ -123,7 +130,6 @@ const getPageFromPath = (pathname) => studentPath(pathname) ? APP_PAGES.STUDENT_
 const PHONE_UNSUPPORTED_PAGES = new Set([
   APP_PAGES.CONFIGURATION,
   APP_PAGES.DASHBOARD,
-  APP_PAGES.REVIEW_APPROVE,
   APP_PAGES.QUESTION_BANK,
   APP_PAGES.QUESTION_BANK_NON_CREATE,
   APP_PAGES.SHARE_STU_FACULTY,
@@ -495,7 +501,7 @@ function App() {
   const [completedEvaluationRows, setCompletedEvaluationRows] = useState(() => readStoredRows(COMPLETED_EVALUATIONS_STORAGE_KEY))
   const [approvalPublication, setApprovalPublication] = useState(null)
   const [rescheduleRecord, setRescheduleRecord] = useState(null)
-  const [approvalQueueRows, setApprovalQueueRows] = useState(() => { resetAssessmentTrackerOnce(window.localStorage, window.sessionStorage); return readStoredRows(APPROVAL_QUEUE_STORAGE_KEY) })
+  const [approvalQueueRows, setApprovalQueueRows] = useState(() => { resetAssessmentTrackerOnce(window.localStorage, window.sessionStorage); return window.sessionStorage.getItem(APPROVAL_QUEUE_STORAGE_KEY) ? readStoredRows(APPROVAL_QUEUE_STORAGE_KEY) : restoreQueueCache(window.localStorage) || [] })
   const [selectedApprovalViewRecord, setSelectedApprovalViewRecord] = useState(() => readStoredApprovalViewRecord())
   const [selectedProgressResultRecord, setSelectedProgressResultRecord] = useState(() => readStoredProgressResultRecord())
   const [selectedActivityResultRecord, setSelectedActivityResultRecord] = useState(() => readStoredActivityResultRecord())
@@ -548,6 +554,17 @@ function App() {
     registerId: 'MC2568',
     designation: 'Admin',
     role: 'Admin',
+  }
+  const demoViewerId = isLogbookWorkspace ? logbookAccount.id : profileUser.registerId
+  const demoVideoState = useDemoVideoState(demoViewerId)
+  const toggleDemoVideos = () => {
+    setDemoVideosEnabled(demoViewerId, !demoVideoState.enabled)
+    setIsProfileMenuOpen(false)
+    showAlert({ tone: 'secondary', message: demoVideoState.enabled ? 'Demo videos are off. Turn them on from your profile menu.' : 'Demo videos are on. Open the Demos dock for walkthroughs.' })
+  }
+  const disableDemoVideos = () => {
+    setDemoVideosEnabled(demoViewerId, false)
+    showAlert({ tone: 'secondary', message: 'Demo videos are off. Turn them on from your profile menu.' })
   }
 
   useEffect(() => {
@@ -635,8 +652,24 @@ function App() {
   }, [completedEvaluationRows])
 
   useEffect(() => {
+    const checkDeadlines = () => {
+      const returned = returnOverdueQuestions(approvalQueueRows)
+      if (!returned.results.length) return
+      try {
+        saveAutomaticReturns(returned.results, window.localStorage)
+        setApprovalQueueRows(returned.rows)
+        window.dispatchEvent(new Event('question-bank-review-results'))
+      } catch { /* Keep pending records intact and retry when storage becomes available. */ }
+    }
+    const initial = setTimeout(checkDeadlines, 0)
+    const timer = setInterval(checkDeadlines, 30000)
+    return () => { clearTimeout(initial); clearInterval(timer) }
+  }, [approvalQueueRows])
+
+  useEffect(() => {
     storeRows(APPROVAL_QUEUE_STORAGE_KEY, approvalQueueRows)
     persistAssessmentDemoQueue(approvalQueueRows)
+    try { persistQueueCache(approvalQueueRows, window.localStorage) } catch { /* Session remains available if local storage is full. */ }
   }, [approvalQueueRows])
 
   useEffect(() => {
@@ -1058,6 +1091,8 @@ function App() {
       ...(payload.setup ? { setup: submittedSetup } : {}),
       previousSubmissions: previous ? [...previousSubmissions, previousSnapshot] : [],
       id: `approval-${payload.activityId}`,
+      reviewerId: payload.approvalFaculty?.employeeId || payload.reviewerId || '',
+      seenBy: {},
       senderName: profileUser.name,
       senderId: profileUser.registerId,
       senderDesignation: profileUser.designation ?? profileUser.role,
@@ -1108,7 +1143,7 @@ function App() {
 
   const finishApprovalPublication = () => {
     setApprovalPublication(null)
-    navigateToPage(APP_PAGES.ASSESSMENT_CREATE)
+    navigateToPage(APP_PAGES.REVIEW_APPROVE)
   }
   useEffect(() => {
     if (!approvalPublication) return undefined
@@ -1116,14 +1151,21 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [approvalPublication])
 
+  const validateApprovalReview = record => assertReviewable(approvalQueueRows.find(row => row.id === record.id), record, profileUser)
+
   const handleApprovalReviewAction = (reviewedRecord) => {
     if (!reviewedRecord?.activityId) return
+    validateApprovalReview(reviewedRecord)
+    assertReviewDecision(reviewedRecord)
 
     const existingApprovalRow = approvalQueueRows.find((item) => item.activityId === reviewedRecord.activityId)
     const nextReviewedRecord = {
       ...(existingApprovalRow ?? {}),
       ...reviewedRecord,
+      decisionNoticeVersion: crypto.randomUUID(),
       reviewedBy: profileUser.name,
+      reviewedById: profileUser.registerId,
+      reviewedAt: reviewedRecord.reviewedAt || new Date().toISOString(),
       attemptCount: existingApprovalRow?.attemptCount ?? reviewedRecord.attemptCount,
       attemptNumber: existingApprovalRow?.attemptNumber ?? reviewedRecord.attemptNumber,
       attemptLabel: existingApprovalRow?.attemptLabel ?? reviewedRecord.attemptLabel,
@@ -1145,14 +1187,9 @@ function App() {
     storeApprovalViewRecord(nextReviewedRecord)
     showAlert({
       tone: nextReviewedRecord.approvalStatus === 'Approved' ? 'secondary' : 'warning',
-      message: `${nextReviewedRecord.activityName ?? 'Activity'} ${nextReviewedRecord.approvalStatus === 'Approved' ? 'approved' : 'rejected'}${nextReviewedRecord.reviewRemarks ? ' with remarks' : ''}.`,
+      message: `${nextReviewedRecord.activityName ?? 'Activity'} ${nextReviewedRecord.approvalStatus === 'Withdrawn' ? 'closed after withdrawal' : nextReviewedRecord.approvalStatus === 'Approved' ? 'approved' : 'rejected'}${nextReviewedRecord.reviewRemarks ? ' with remarks' : ''}.`,
     })
-    if (['Blueprint', 'Assessment'].includes(nextReviewedRecord.activityType)) { navigateToPage(APP_PAGES.REVIEW_APPROVE); return }
-    navigateToPage(
-      String(nextReviewedRecord.activityType ?? '').trim().toLowerCase() === 'question bank'
-        ? APP_PAGES.QUESTION_BANK
-        : APP_PAGES.EVALUATION,
-    )
+    navigateToPage(APP_PAGES.REVIEW_APPROVE)
   }
 
   const handlePublishEvaluation = (record) => {
@@ -1447,6 +1484,7 @@ function App() {
           theme={theme}
           useCompactLogo={useCompactLogo}
           activePage={activePage}
+          approvalRequestCount={queueItems(visibleRequests(approvalQueueRows, profileUser)).filter(row => isNewRequest(row, profileUser)).length}
           queryRequestCount={queryRequestCount}
           createdReportCount={createdReportCount}
           onSelectPage={navigateToPage}
@@ -1483,6 +1521,8 @@ function App() {
             onEditProfile={handleEditProfile}
             onSignOut={handleSignOut}
             profileToast={profileToast}
+            demoVideosEnabled={demoVideoState.enabled}
+            onToggleDemoVideos={toggleDemoVideos}
           />
         ) : null}
 
@@ -1628,13 +1668,16 @@ function App() {
               onSendToApproval={handleSendToApproval}
             />
           ) : activePage === APP_PAGES.REVIEW_APPROVE ? (
-            <ReviewApprovePage
+            <ApprovalQueueBoundary><ReviewApprovePage
+              currentUser={profileUser}
+              onMarkSeen={ids => setApprovalQueueRows(rows => markRequestsSeen(rows, ids, profileUser))}
+              onMarkDecisionsSeen={ids => setApprovalQueueRows(rows => markDecisionsSeen(rows, ids, profileUser))}
               approvalQueueRows={approvalQueueRows}
               completedEvaluationRows={completedEvaluationRows}
               onAlert={showAlert}
               onViewApproval={handleOpenApprovalView}
               onReschedule={setRescheduleRecord}
-            />
+            /></ApprovalQueueBoundary>
           ) : activePage === APP_PAGES.APPROVAL_VIEW ? (
             <ApprovalViewPage
               currentUser={profileUser}
@@ -1650,6 +1693,7 @@ function App() {
                 } else navigateToPage(APP_PAGES.REVIEW_APPROVE)
               }}
               onAlert={showAlert}
+              onValidateReview={validateApprovalReview}
               onApprovalAction={handleApprovalReviewAction}
             />
           ) : activePage === APP_PAGES.START_EVALUATION ? (
@@ -1844,7 +1888,10 @@ function App() {
         </div>
 
       </main>
-      {approvalPublication && <AssessmentPublishedConfirmation theme={theme} title="Assessment approved and published" message="Ready for the scheduled exam." onContinue={finishApprovalPublication} />}
+      {approvalPublication && <AssessmentPublishedConfirmation continueLabel="Back to approval queue" navigationMessage="Returning to the approval queue..." theme={theme} title="Assessment approved and published" message="Ready for the scheduled exam." onContinue={finishApprovalPublication} />}
+      {demoVideoState.enabled && demosAllowed(activePage, shouldShowMobileUnsupported) && <DemoVideoBoundary key={demoViewerId} theme={theme} onDisable={disableDemoVideos}>
+        <DemoVideoDock viewerId={demoViewerId} state={demoVideoState} activePage={activePage} theme={theme} onNavigate={navigateToPage} onDisable={disableDemoVideos} />
+      </DemoVideoBoundary>}
       {rescheduleRecord && <AssessmentRescheduleDialog record={rescheduleRecord} theme={theme} onCancel={() => setRescheduleRecord(null)} onSave={saveRescheduledAssessment} />}
     </div>
   )

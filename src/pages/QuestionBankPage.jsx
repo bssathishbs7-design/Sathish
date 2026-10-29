@@ -2288,7 +2288,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
           ...question,
           questionBankId: result.questionBankId || question.questionBankId,
           history: result.history || question.history,
-          status: result.status === 'Approved' ? 'Approved' : 'Approval Rejected',
+          status: result.status === 'Draft' ? 'Draft' : result.status === 'Approved' ? 'Approved' : 'Approval Rejected',
           approvalReviewRemarks: result.remarks ?? '',
           approvalReviewedAt: result.reviewedAt ?? '',
           questionBankStatus: result.status === 'Approved'
@@ -7006,7 +7006,7 @@ export default function QuestionBankPage({ onAlert, onSendToApproval, mode = 'ed
                                     ) : null}
                                     {status === 'Approval Rejected' && question.approvalReviewRemarks ? (
                                       <span className="question-bank-created-answer is-rejected-remark">
-                                        <b>Reviewer Remarks</b>
+                                        <b>Rejected:</b>
                                         {question.approvalReviewRemarks}
                                       </span>
                                     ) : null}

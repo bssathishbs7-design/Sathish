@@ -2,13 +2,9 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BriefcaseBusiness, Check, ChevronDown, IdCard, SendHorizonal, UserRound, X } from 'lucide-react'
 import '../styles/approval-modal.css'
+import { APPROVAL_REVIEWERS, resolveApprovalReviewer } from '../services/approvalReviewers'
 
-const FACULTY_OPTIONS = [
-  { facultyName: 'Dr. Meera Nair', employeeId: 'EMP1021', designation: 'Professor' },
-  { facultyName: 'Dr. Arun Kumar', employeeId: 'EMP1045', designation: 'Associate Professor' },
-  { facultyName: 'Dr. Priya Shah', employeeId: 'EMP1098', designation: 'Assistant Professor' },
-  { facultyName: 'Dr. Karthik Raman', employeeId: 'EMP1120', designation: 'Professor' },
-]
+const FACULTY_OPTIONS = APPROVAL_REVIEWERS
 
 const defaultForm = {
   ...FACULTY_OPTIONS[0],
@@ -114,7 +110,7 @@ export default function SendApprovalModal({ open, title = 'Send to Approval', co
     setForm((current) => ({ ...current, [field]: value }))
   }
 
-  const canSend = form.facultyName.trim() && form.employeeId.trim() && form.designation.trim()
+  const canSend = Boolean(resolveApprovalReviewer(form))
 
   const handleSend = () => {
     if (!canSend) return

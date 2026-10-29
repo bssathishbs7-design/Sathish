@@ -1,0 +1,6 @@
+.demo-video-frame { width: 100%; aspect-ratio: 16 / 9; min-height: 200px; background: var(--surface-mist); }
+.demo-video-frame iframe { display: block; width: 100%; height: 100%; min-height: 200px; border: 0; }
+.demo-video-message, .demo-up-next { padding: var(--s-3); background: var(--surface-soft); }
+.demo-video-message p, .demo-up-next p { margin: 0 0 var(--s-2); }
+.demo-video-links, .demo-up-next > div { display: flex; flex-wrap: wrap; gap: var(--s-3); padding: var(--s-2) var(--s-3); }
+.demo-video-links a { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--text-brand); font-size: var(--fs-small); }

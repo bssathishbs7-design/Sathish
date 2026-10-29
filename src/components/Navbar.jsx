@@ -13,6 +13,7 @@ import {
   Search,
   Sun,
   UserPen,
+  Video,
 } from 'lucide-react'
 
 /**
@@ -52,6 +53,8 @@ export default function Navbar({
   onLogbookAccount,
   onSignOut,
   profileToast,
+  demoVideosEnabled,
+  onToggleDemoVideos,
 }) {
   return (
     <header className="vx-topbar">
@@ -119,6 +122,10 @@ export default function Navbar({
                 </div>
               </div> 
               <div className="vx-profile-divider" />
+              <button type="button" className="vx-profile-action" role="menuitemcheckbox" aria-checked={demoVideosEnabled} onClick={onToggleDemoVideos}>
+                <span className="vx-profile-action-icon" aria-hidden="true"><Video size={16} /></span>
+                <span><strong>Demo videos</strong><small>{demoVideosEnabled ? 'On — show walkthroughs in the Demos dock' : 'Off — turn on walkthroughs'}</small></span>
+              </button>
               {onLogbookAccount && <button type="button" className="vx-profile-action" onClick={onLogbookAccount}><span><strong>Logbook account</strong><small>Switch sample account</small></span></button>}
               <button type="button" className="vx-profile-action" onClick={onEditProfile}>
                 <span className="vx-profile-action-icon" aria-hidden="true">

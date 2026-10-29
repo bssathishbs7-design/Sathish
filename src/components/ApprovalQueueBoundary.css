@@ -1,0 +1,5 @@
+.aq-error { margin: var(--s-5); padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); color: var(--text-body); }
+.aq-error button { padding: var(--s-2) var(--s-4); border-radius: var(--r-pill); border: 1px solid var(--border); background: var(--surface); color: var(--text-body); cursor: pointer; }
+.aq-error button:hover { background: var(--surface-soft); }
+.aq-error button:active { transform: translateY(1px) scale(.97); }
+.aq-error button:focus-visible { outline: 2px solid var(--forest); box-shadow: 0 0 0 5px var(--focus-ring); }

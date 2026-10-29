@@ -89,7 +89,7 @@
 .assessment-expiry-message { display: flex; align-items: center; gap: var(--s-2); margin: 0; padding: var(--s-2); border-radius: var(--r-sm); background: var(--danger-soft); color: var(--danger-ink); font: 500 .8125rem/1.5 var(--font-family-base); }
 .assessment-expiry-message > svg { flex-shrink: 0; }
 .assessment-expiry-message strong { color: inherit; font: inherit; font-weight: 600; }
-.assessment-tracker-card.is-expired, .review-approve-compact-card.is-expired { cursor: default; }
+.assessment-tracker-card.is-expired { cursor: default; }
 
 
 .assessment-create-theme.assessment-create-theme.assessment-create-theme.assessment-create-theme .assessment-tracker-card.is-just-published { border-color: var(--text-brand); box-shadow: 0 0 0 2px var(--surface-soft); }

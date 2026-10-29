@@ -58,13 +58,13 @@ export function reviewBlueprintWorkflow(record, status, remarks, storage = local
   if (status === 'Approved') {
     next.blueprintId = isPermanentRecordId(flow.blueprintId, 'BP') ? flow.blueprintId : mintRecordId('BP', { storage, existing: [flow] })
     const templates = readBlueprintTemplates(storage)
-    const template = { id: next.blueprintId, blueprintId: next.blueprintId, name: record.assessmentName || record.activityName || next.blueprintId, approved: true,
+    const template = { id: next.blueprintId, blueprintId: next.blueprintId, name: record.assessmentName || record.activityName || next.blueprintId, approved: true, approvedBy: record.reviewedBy || '', approvedById: record.reviewedById || '',
       createdAt: next.reviewedAt, cognition: snapshot.blueprintCognitionWeightage || {}, breakdown: snapshot.blueprintQuestionTypeDraft || {}, laqParts: snapshot.laqParts || [], totalMarks: Number(snapshot.blueprintDraft?.totalMark) || 0 }
     storage.setItem(BLUEPRINT_TEMPLATES_KEY, JSON.stringify([template, ...templates.filter(row => row.id !== template.id)]))
   }
   storage.setItem(PREFIX + id, JSON.stringify(next))
-  if (changed) appendAssessmentHistory(record, { action: 'Blueprint edited during review', notes: `${flow.blueprintId} / revision ${next.revision}`, actor: record.approvalFaculty?.name || '' }, storage)
-  appendAssessmentHistory(record, { action: `Blueprint ${next.status.toLowerCase()}`, notes: `${flow.blueprintId} to ${next.blueprintId}: ${remarks || ''}` }, storage)
+  if (changed) appendAssessmentHistory(record, { action: 'Blueprint edited during review', notes: `${flow.blueprintId} / revision ${next.revision}`, actor: record.reviewedBy || '' }, storage)
+  appendAssessmentHistory(record, { action: `Blueprint ${next.status.toLowerCase()}`, notes: `${flow.blueprintId} to ${next.blueprintId}: ${remarks || ''}`, actor: record.reviewedBy || '' }, storage)
   notify()
   return next
 }

@@ -1,0 +1,5 @@
+.demo-failure { position: fixed; right: var(--s-4); bottom: var(--s-4); z-index: 900; padding: var(--s-4); border: 1px solid var(--border); border-radius: var(--r); color: var(--text-body); background: var(--surface-card); box-shadow: var(--shadow-md); }
+.demo-failure button { padding: var(--s-2) var(--s-3); margin-right: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--text-brand); background: var(--surface-soft); cursor: pointer; }
+.demo-failure button:hover { border-color: var(--forest); }
+.demo-failure button:active { transform: scale(.97); }
+.demo-failure button:focus-visible { outline: 2px solid var(--forest); box-shadow: 0 0 0 5px var(--focus-ring); }

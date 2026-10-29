@@ -1,9 +1,10 @@
+import ApprovalDecisionDialog from '../components/ApprovalDecisionDialog'
+import { isInactiveQuestion, questionDecision, questionReviewSummary, requestStatus } from '../services/approvalQueue'
 import CopyIdBadge from '../components/CopyIdBadge'
 import { questionDisplayId } from '../utils/questionLifecycle'
 import BlueprintApprovalReview from '../components/BlueprintApprovalReview'
 import AssessmentApprovalReview from '../components/AssessmentApprovalReview'
-import { useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useMemo, useState } from 'react'
 import { sanitizeRichHtml } from '../utils/sanitizeHtml'
 import {
   ArrowUpDown,
@@ -476,9 +477,12 @@ const InfoTooltipButton = (props) => {
   )
 }
 
-export default function ApprovalViewPage({ currentUser, approvalRecord, completedEvaluationRows = [], onBack, onAlert, onApprovalAction, theme, onToggleTheme }) {
+export default function ApprovalViewPage({ currentUser, approvalRecord, completedEvaluationRows = [], onBack, onAlert, onApprovalAction, onValidateReview, theme, onToggleTheme }) {
   const [activeTooltipId, setActiveTooltipId] = useState('')
   const [reviewRemarks, setReviewRemarks] = useState('')
+  const [pendingDecision, setPendingDecision] = useState('')
+  const [reviewBusy, setReviewBusy] = useState(false)
+  const [reviewError, setReviewError] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
   const [studentStatusFilter, setStudentStatusFilter] = useState('all')
   const [studentSortKey, setStudentSortKey] = useState('studentName')
@@ -490,6 +494,11 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
   const [activeQuestionTagsId, setActiveQuestionTagsId] = useState('')
   const [selectedQuestionReviewIds, setSelectedQuestionReviewIds] = useState([])
   const [isQuestionSubmitConfirmOpen, setIsQuestionSubmitConfirmOpen] = useState(false)
+  useEffect(() => {
+    if (!approvalRecord?.focusQuestionId) return
+    const frame = requestAnimationFrame(() => document.querySelector('[data-question-id="' + CSS.escape(String(approvalRecord.focusQuestionId)) + '"]')?.scrollIntoView({ block: 'center' }))
+    return () => cancelAnimationFrame(frame)
+  }, [approvalRecord?.focusQuestionId])
   const studentPageSize = 10
   const approvalStudentRows = useMemo(() => {
     if (!approvalRecord) return []
@@ -666,7 +675,8 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
   const senderId = approvalRecord.senderId ?? 'Sender ID not set'
   const senderDesignation = approvalRecord.senderDesignation ?? ''
   const attemptCount = approvalRecord.attemptCount ?? approvalRecord.attempts ?? approvalRecord.attemptNumber ?? 1
-  const showDecisionPanel = String(status).trim().toLowerCase() !== 'published'
+  const reviewReadOnly = Boolean(approvalRecord.submissionReadOnly) || requestStatus(approvalRecord) !== 'Requests'
+  const showDecisionPanel = !reviewReadOnly
   const questionRows = Array.isArray(approvalRecord.questionRows) ? approvalRecord.questionRows : []
 
   const setQuestionDecision = (questionId, decision) => {
@@ -689,7 +699,12 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
     }))
   }
 
-  const handleApprovalAction = (action) => {
+  const handleApprovalAction = async (action) => {
+    if (reviewReadOnly || reviewBusy) return
+    if (action === 'reject' && !reviewRemarks.trim()) { setReviewError('Add remarks before rejecting this request.'); return }
+    setReviewBusy(true); setReviewError('')
+    try {
+    onValidateReview?.(approvalRecord)
     const nextStatus = action === 'approve' ? 'Approved' : 'Approval Rejected'
     const reviewPayload = {
       ...approvalRecord,
@@ -701,7 +716,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
     }
 
     if (onApprovalAction) {
-      onApprovalAction(reviewPayload)
+      await onApprovalAction(reviewPayload)
       return
     }
 
@@ -709,6 +724,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
       tone: action === 'approve' ? 'secondary' : 'warning',
       message: `${approvalRecord.activityName ?? 'Activity'} ${action === 'approve' ? 'approved' : 'rejected'}${reviewRemarks.trim() ? ' with remarks' : ''}.`,
     })
+    } catch (error) { setReviewError(error.message || 'Unable to save review.') } finally { setReviewBusy(false) }
   }
 
   const handleStudentSort = (key) => {
@@ -774,26 +790,23 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
   ]
 
   const getQuestionReviewId = (question, index) => question.id ?? `question-${index}`
-  const questionReviewIds = questionRows.map(getQuestionReviewId)
+  const activeQuestionRows = questionRows.filter(question => !isInactiveQuestion(question))
+  const questionReviewIds = questionRows.map((question, index) => isInactiveQuestion(question) ? null : getQuestionReviewId(question, index)).filter(Boolean)
   const pendingQuestionIds = questionRows
     .map((question, index) => ({
+      withdrawn: isInactiveQuestion(question),
       id: getQuestionReviewId(question, index),
-      decision: questionReviewState[getQuestionReviewId(question, index)]?.decision ?? 'Pending',
+      decision: questionDecision(question, questionReviewState[getQuestionReviewId(question, index)]),
     }))
-    .filter((item) => item.decision === 'Pending')
+    .filter((item) => !item.withdrawn && item.decision === 'Pending')
     .map((item) => item.id)
   const selectedReviewIds = selectedQuestionReviewIds.filter((id) => questionReviewIds.includes(id))
   const selectedReviewSet = new Set(selectedReviewIds)
   const hasAllPendingSelected = pendingQuestionIds.length > 0
     && pendingQuestionIds.every((id) => selectedReviewSet.has(id))
-  const reviewCounts = questionRows.reduce((summary, question, index) => {
-    const decision = questionReviewState[getQuestionReviewId(question, index)]?.decision ?? 'Pending'
-    return {
-      ...summary,
-      [decision.toLowerCase()]: (summary[decision.toLowerCase()] ?? 0) + 1,
-    }
-  }, { pending: 0, approved: 0, rejected: 0 })
-  const allQuestionsReviewed = questionRows.length > 0 && reviewCounts.pending === 0
+  const reviewCounts = questionReviewSummary(questionRows, questionReviewState)
+  const missingRemarks = questionRows.some((question, index) => !isInactiveQuestion(question) && questionDecision(question, questionReviewState[getQuestionReviewId(question, index)]) === 'Rejected' && !(questionReviewState[getQuestionReviewId(question, index)]?.remark ?? question.reviewRemarks)?.trim())
+  const allQuestionsReviewed = !reviewReadOnly && questionRows.length > 0 && reviewCounts.pending === 0 && !missingRemarks
 
   const toggleQuestionReviewSelection = (questionId) => {
     setSelectedQuestionReviewIds((current) => (
@@ -829,26 +842,33 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
     setSelectedQuestionReviewIds([])
   }
 
-  const submitQuestionBankReview = () => {
-    if (!allQuestionsReviewed) return
+  const submitQuestionBankReview = async () => {
+    if (!allQuestionsReviewed || reviewBusy) return
+    setReviewBusy(true); setReviewError('')
+    try {
+    onValidateReview?.(approvalRecord)
     const hasRejected = questionRows.some((question, index) => (
-      questionReviewState[getQuestionReviewId(question, index)]?.decision === 'Rejected'
+      questionDecision(question, questionReviewState[getQuestionReviewId(question, index)]) === 'Rejected'
     ))
-    const nextStatus = hasRejected ? 'Approval Rejected' : 'Approved'
+    const nextStatus = !activeQuestionRows.length ? reviewCounts.returned ? 'Returned' : 'Withdrawn' : hasRejected || reviewCounts.returned ? 'Approval Rejected' : 'Approved'
     const reviewedQuestions = questionRows.map((question, index) => {
+      if (isInactiveQuestion(question)) return question
       const questionId = getQuestionReviewId(question, index)
       const reviewState = questionReviewState[questionId] ?? {}
 
       return {
         ...question,
-        reviewStatus: reviewState.decision ?? 'Pending',
-        reviewRemarks: reviewState.remark ?? '',
+        reviewStatus: questionDecision(question, reviewState),
+        reviewRemarks: reviewState.remark ?? question.reviewRemarks ?? '',
+        reviewedAt: new Date().toISOString(),
+        history: [...(question.history || []), { action: questionDecision(question, reviewState), actor: currentUser?.name || 'Reviewer', timestamp: new Date().toISOString(), remarks: reviewState.remark ?? question.reviewRemarks ?? '' }],
       }
     })
-    const questionBankResults = reviewedQuestions.map((question) => ({
+    const questionBankResults = reviewedQuestions.filter(question => !isInactiveQuestion(question)).map((question) => ({
       questionId: question.id,
       status: question.reviewStatus,
       remarks: question.reviewRemarks,
+      history: question.history,
       activityId: approvalRecord.activityId,
       questionBankStatus: question.reviewStatus === 'Approved' ? 'Add to Question Bank' : undefined,
       reviewedAt: new Date().toISOString(),
@@ -877,7 +897,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
       }
     }
 
-    onApprovalAction?.({
+    await onApprovalAction?.({
       ...approvalRecord,
       status: nextStatus,
       approvalStatus: nextStatus,
@@ -886,52 +906,12 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
       reviewedAt: new Date().toISOString(),
     })
     setIsQuestionSubmitConfirmOpen(false)
+    } catch (error) { setReviewError(error.message || 'Unable to submit review.') } finally { setReviewBusy(false) }
   }
-  const questionSubmitConfirmModal = isQuestionSubmitConfirmOpen ? (
-    <div className="approval-view-qb-confirm" role="dialog" aria-modal="true" aria-labelledby="question-bank-submit-review-title">
-      <button
-        type="button"
-        className="approval-view-qb-confirm-backdrop"
-        onClick={() => setIsQuestionSubmitConfirmOpen(false)}
-        aria-label="Cancel submit review"
-      />
-      <div className="approval-view-qb-confirm-card">
-        <div className="approval-view-qb-confirm-copy">
-          <h2 id="question-bank-submit-review-title">Submit Review</h2>
-          <p>Your decisions are ready to send for this Question Bank.</p>
-          <div className="approval-view-qb-confirm-summary" aria-label="Review summary">
-            <span className="is-approved">
-              <BadgeCheck size={14} strokeWidth={2.1} />
-              <strong>{reviewCounts.approved ?? 0}</strong>
-              Approved
-            </span>
-            <span className="is-rejected">
-              <XCircle size={14} strokeWidth={2.1} />
-              <strong>{reviewCounts.rejected ?? 0}</strong>
-              Rejected
-            </span>
-          </div>
-        </div>
-        <div className="approval-view-qb-confirm-actions">
-          <button
-            type="button"
-            className="approval-view-qb-toolbar-btn"
-            onClick={() => setIsQuestionSubmitConfirmOpen(false)}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="approval-view-qb-toolbar-btn is-submit"
-            onClick={submitQuestionBankReview}
-          >
-            <Send size={14} strokeWidth={2.1} />
-            Send
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null
+  const questionSubmitConfirmModal = isQuestionSubmitConfirmOpen ? <ApprovalDecisionDialog title="Submit review" theme={theme} busy={reviewBusy} error={reviewError} onClose={() => setIsQuestionSubmitConfirmOpen(false)} onConfirm={submitQuestionBankReview}>
+    <p>{reviewCounts.approved} approved; {reviewCounts.rejected} rejected; {reviewCounts.withdrawn} withdrawn; {reviewCounts.returned} automatically returned.</p>
+    <p>Your decisions and remarks will be returned to the author.</p>
+  </ApprovalDecisionDialog> : null
 
   if (isQuestionBankRecord(approvalRecord)) {
     return (
@@ -945,10 +925,10 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
               <div className="approval-view-meta-row">
                 <span className={`approval-view-activity-pill ${getActivityToneClass(activityType)}`}>Question Bank</span>
                 <span className="approval-view-status-pill">{status}</span>
-                {approvalRecord.note ? (
-                  <span className="approval-view-qb-note-pill" title={approvalRecord.note}>
+                {(approvalRecord.note || approvalRecord.approvalFaculty?.note) ? (
+                  <span className="approval-view-qb-note-pill" title={approvalRecord.note || approvalRecord.approvalFaculty?.note}>
                     <strong>Note</strong>
-                    {approvalRecord.note}
+                    {approvalRecord.note || approvalRecord.approvalFaculty?.note}
                   </span>
                 ) : null}
               </div>
@@ -982,7 +962,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
                 type="button"
                 className="approval-view-qb-toolbar-btn"
                 onClick={hasAllPendingSelected ? unselectAllQuestionReviews : selectAllPendingQuestionReviews}
-                disabled={!pendingQuestionIds.length}
+                disabled={reviewReadOnly || reviewBusy || !pendingQuestionIds.length}
               >
                 {hasAllPendingSelected ? <X size={14} strokeWidth={2.1} /> : <CheckCheck size={14} strokeWidth={2.1} />}
                 {hasAllPendingSelected ? 'Unselect All' : 'Select All'}
@@ -990,6 +970,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
               <button
                 type="button"
                 className="approval-view-qb-toolbar-btn"
+                disabled={reviewReadOnly || reviewBusy}
                 onClick={clearQuestionReviewState}
               >
                 <X size={14} strokeWidth={2.1} />
@@ -999,7 +980,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
                 type="button"
                 className="approval-view-qb-toolbar-btn is-reject"
                 onClick={() => applyBulkQuestionDecision('Rejected')}
-                disabled={!selectedReviewIds.length}
+                disabled={reviewReadOnly || reviewBusy || !selectedReviewIds.length}
               >
                 <XCircle size={14} strokeWidth={2.1} />
                 Reject Selected
@@ -1008,7 +989,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
                 type="button"
                 className="approval-view-qb-toolbar-btn is-approve"
                 onClick={() => applyBulkQuestionDecision('Approved')}
-                disabled={!selectedReviewIds.length}
+                disabled={reviewReadOnly || reviewBusy || !selectedReviewIds.length}
               >
                 <BadgeCheck size={14} strokeWidth={2.1} />
                 Approve Selected
@@ -1017,20 +998,22 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
                 type="button"
                 className="approval-view-qb-toolbar-btn is-submit"
                 onClick={() => setIsQuestionSubmitConfirmOpen(true)}
-                disabled={!allQuestionsReviewed}
+                disabled={!allQuestionsReviewed || reviewBusy}
               >
                 <Send size={14} strokeWidth={2.1} />
-                Submit Review
+                {activeQuestionRows.length ? 'Submit review' : 'Close withdrawn request'}
               </button>
             </div>
           </section>
 
+          {missingRemarks && <p role="alert">Add remarks to every rejected question before submitting.</p>}
           <section className="approval-view-qb-list" aria-label="Questions sent for approval">
             {questionRows.map((question, index) => {
               const questionId = question.id ?? `question-${index}`
               const reviewState = questionReviewState[questionId] ?? {}
-              const decision = reviewState.decision ?? 'Pending'
-              const remarkValue = reviewState.remark ?? ''
+              const withdrawn = isInactiveQuestion(question)
+              const decision = questionDecision(question, reviewState)
+              const remarkValue = reviewState.remark ?? question.reviewRemarks ?? ''
               const isRemarkOpen = activeQuestionRemarkId === questionId
               const optionRows = Array.isArray(question.options) ? question.options : []
               const imageRows = Array.isArray(question.images) ? question.images : []
@@ -1043,12 +1026,13 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
               const questionMarksLabel = getQuestionMarksLabel(question)
 
               return (
-                <article key={questionId} className={`approval-view-qb-question-card is-${String(decision).toLowerCase()} ${isQuestionSelected ? 'is-selected' : ''}`}>
+                <article key={questionId} data-question-id={questionId} className={`approval-view-qb-question-card is-${String(decision).toLowerCase()} ${isQuestionSelected ? 'is-selected' : ''}`}>
                   <div className="approval-view-qb-question-head">
                     <div className="approval-view-qb-question-head-left">
                       <button
                         type="button"
                         className={`approval-view-qb-select-btn ${isQuestionSelected ? 'is-selected' : ''}`}
+                        disabled={reviewReadOnly || withdrawn || reviewBusy}
                         onClick={() => toggleQuestionReviewSelection(questionId)}
                         aria-pressed={isQuestionSelected}
                         aria-label={`${isQuestionSelected ? 'Unselect' : 'Select'} question ${question.questionNumber ?? index + 1}`}
@@ -1194,11 +1178,12 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
                       {isRemarkOpen ? (
                         <div className="approval-view-qb-remark-popover" role="tooltip">
                           <label>
-                            <span>Comment</span>
+                            <span>Remarks{decision === 'Rejected' ? ' (required)' : ''}</span>
                             <textarea
                               value={remarkValue}
                               onChange={(event) => setQuestionRemark(questionId, event.target.value)}
-                              placeholder="Add comment for this question"
+                              placeholder="Add remarks for this question"
+                              readOnly={reviewReadOnly || withdrawn || reviewBusy}
                               rows={4}
                             />
                           </label>
@@ -1208,7 +1193,8 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
                     <button
                       type="button"
                       className={`approval-view-qb-action-btn is-reject ${decision === 'Rejected' ? 'is-active' : ''}`}
-                      onClick={() => setQuestionDecision(questionId, 'Rejected')}
+                      disabled={reviewReadOnly || withdrawn || reviewBusy}
+                      onClick={() => { setQuestionDecision(questionId, 'Rejected'); setActiveQuestionRemarkId(questionId) }}
                     >
                       <XCircle size={15} strokeWidth={2.1} />
                       Reject
@@ -1216,6 +1202,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
                     <button
                       type="button"
                       className={`approval-view-qb-action-btn is-approve ${decision === 'Approved' ? 'is-active' : ''}`}
+                      disabled={reviewReadOnly || withdrawn || reviewBusy}
                       onClick={() => setQuestionDecision(questionId, 'Approved')}
                     >
                       <BadgeCheck size={15} strokeWidth={2.1} />
@@ -1226,14 +1213,14 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
               )
             })}
           </section>
-          {questionSubmitConfirmModal ? createPortal(questionSubmitConfirmModal, document.body) : null}
+          {questionSubmitConfirmModal}
         </div>
       </section>
     )
   }
 
   if (approvalRecord?.activityType === 'Assessment') return <AssessmentApprovalReview currentUser={currentUser} onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} readOnly={approvalRecord.submissionReadOnly} />
-  if (approvalRecord?.activityType === 'Blueprint') return <BlueprintApprovalReview currentUser={currentUser} onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} />
+  if (approvalRecord?.activityType === 'Blueprint') return <BlueprintApprovalReview onValidateReview={onValidateReview} currentUser={currentUser} onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} />
 
   return (
     <section className="vx-content approval-view-page">
@@ -1287,7 +1274,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
             <section className="approval-view-panel approval-view-decision-panel">
               <div className="approval-view-decision-column">
                 <span className="approval-view-decision-label">Approval note</span>
-                <p className="approval-view-note-text">{approvalRecord.note || 'No approval note added.'}</p>
+                <p className="approval-view-note-text">{approvalRecord.note || approvalRecord.approvalFaculty?.note || 'No approval note added.'}</p>
               </div>
 
               <div className="approval-view-decision-divider" aria-hidden="true" />
@@ -1298,16 +1285,19 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
                   <textarea
                     value={reviewRemarks}
                     onChange={(event) => setReviewRemarks(event.target.value)}
-                    placeholder="Add review remarks"
+                    aria-label="Review remarks"
+                    placeholder="Remarks (required for rejection)"
                     rows={4}
                   />
                 </label>
+                {reviewError && <p role="alert">{reviewError}</p>}
+                {pendingDecision && <ApprovalDecisionDialog title={pendingDecision === 'approve' ? 'Approve skill assessment' : 'Return for correction'} theme={theme} busy={reviewBusy} error={reviewError} onClose={() => setPendingDecision('')} onConfirm={() => handleApprovalAction(pendingDecision)}><p>{approvalRecord.activityName}</p><p>{tableSummaryCounts.students} students. {pendingDecision === 'approve' ? 'Faculty can publish the results after approval.' : reviewRemarks}</p></ApprovalDecisionDialog>}
                 <div className="approval-view-review-actions">
-                  <button type="button" className="ghost approval-view-return-btn" onClick={() => handleApprovalAction('reject')}>
+                  <button type="button" className="ghost approval-view-return-btn" disabled={reviewBusy} onClick={() => { if (!reviewRemarks.trim()) { setReviewError('Add remarks before rejecting this request.'); return } setReviewError(''); setPendingDecision('reject') }}>
                     <RotateCcw size={16} strokeWidth={2.1} />
                     Reject
                   </button>
-                  <button type="button" className="tool-btn green approval-view-approve-btn" onClick={() => handleApprovalAction('approve')}>
+                  <button type="button" className="tool-btn green approval-view-approve-btn" disabled={reviewBusy} onClick={() => { setReviewError(''); setPendingDecision('approve') }}>
                     <BadgeCheck size={16} strokeWidth={2.1} />
                     Approve
                   </button>

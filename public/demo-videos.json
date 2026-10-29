@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "playlists": { "skills": "PLShLy6-6Rnz8", "questions": "PLG88LHul4I1g" },
+  "videos": {
+    "skills-introduction": { "videoId": "O1MhhLe2MNc", "duration": 161 },
+    "skills-ospe": { "videoId": "ThPd1LWeayc", "duration": 232 },
+    "skills-image": { "videoId": "HJupV__bWyk", "duration": 154 },
+    "skills-interpretation": { "videoId": "xF5omq0UNSY", "duration": 124 },
+    "skills-edit": { "videoId": "dB0GSxy-aO0", "duration": 77 },
+    "skills-evaluate": { "videoId": "VRU76E1A2_A", "duration": 137 },
+    "skills-approve": { "videoId": "p_NSRKCd4pA", "duration": 60 },
+    "skills-publish": { "videoId": "fxMugx6PscA", "duration": 45 },
+    "skills-results": { "videoId": "cDSkIJX58kw", "duration": 53 },
+    "questions-mcq": { "videoId": "ZRH7gdxVT5Q", "duration": 129 },
+    "questions-saq": { "videoId": "Tn2apZjUSKk", "duration": 88 },
+    "questions-laq": { "videoId": "0M18jTY2B8M", "duration": 107 },
+    "questions-edit": { "videoId": "CZj8mmfmxKQ", "duration": 85 },
+    "questions-find": { "videoId": "YzPeDxdIWaw", "duration": 109 }
+  }
+}

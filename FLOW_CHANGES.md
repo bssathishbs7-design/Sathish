@@ -1,3 +1,8 @@
+## 2026-10-28 - Collapsible demo library
+
+- Replaced demo series tabs with For this page, Recently watched, All videos, Question Bank and Skill Assessment accordion sections. For this page opens by default; opening another section collapses the previous one.
+- Recently watched lists the five most recently played videos and resumes unfinished playback using saved viewer progress.
+
 ## 2026-10-08 - Disable practice retakes
 
 - Disabled Retake in the practice session list and Retake Practice / Resume Retake in submitted practice reviews. Submit Practice retains its existing availability during an active attempt.
@@ -1220,3 +1225,33 @@
 
 ## 2026-10-27 - Compact ID guide
 - ID guide keeps its overview visible and groups type-specific explanations in collapsed, keyboard-accessible sections. The header remains visible while the content scrolls.
+
+## 2026-10-27 - Faculty approval queue (MEDUI-5)
+
+- Approval Queue now starts with faculty selection, status/type filters and an optional oldest-first view across faculty. Reviewed requests remain accessible.
+- Opening a request marks its current submission seen; the sidebar and mark-all action share the same new-request state.
+- Question and skill decisions require confirmation; all rejections require remarks. Withdrawn question rows are excluded from review and an all-withdrawn request can be closed.
+- Assessment approval returns to the queue after publication confirmation. The queue is now available on phones. Assessment results keep the existing publication flow.
+- Archive/delete/restore, new author withdrawal actions and automatic returns await the referenced lifecycle specification.
+
+## 2026-10-27 - Approval queue specification corrections
+
+- Show each question separately in faculty queues and preserve its own outcome tab; open the original submission focused on that question.
+- Opening faculty clears unseen badges while keeping New tags until leaving. Completed reviews return to Approval Queue.
+- Pending questions automatically return to author Draft after 14 days in the local mock; production requires a server deadline job. Assessment results retain their existing publication flow.
+
+
+## 2026-10-27 - Hide empty approval type filters
+- Approval Queue shows only request types with results in the current faculty/status/search context. A type that becomes empty resets to All; an entirely empty result hides the type row. Status tabs remain available.
+
+
+## 2026-10-27 - View all approval requests
+- Replaced the oldest-first checkbox with View all. It opens the existing all-faculty request view; selecting a faculty returns to that faculty. Existing ordering is preserved.
+
+- Approval queue decision notifications: successful decisions create a persistent per-viewer faculty badge. Opening the card targets unseen Approved/Returned results; only viewed decision results are acknowledged. Existing decisions without notification versions are not flagged.
+
+## 2026-10-28 - MEDUI-4 in-app demo walkthroughs
+
+- Added a persistent Demos dock with page suggestions, library, video playback and Go there navigation across supported pages.
+- Added viewer-specific Demo videos controls in the profile menu and library; exams, unsupported mobile screens and sign-out stop playback.
+- Added replay/resume and next-unwatched flow based on actual playback coverage for the two supplied Medsy video series.
