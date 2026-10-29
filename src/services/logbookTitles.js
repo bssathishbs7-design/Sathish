@@ -26,6 +26,6 @@ export function activityParts(entry) {
     default: return [v.activity || v.topic || v.diagnosis || v.provDx || v.notable || v.place]
   }
 }
-export const entryTitle = entry => join(activityParts(entry)) || CATEGORIES.find(category => category.id === entry.cat)?.shortName || CATEGORIES.find(category => category.id === entry.cat)?.name || 'Untitled entry'
+export const entryTitle = entry => join(activityParts(entry)) || entry.assignment?.activityName || CATEGORIES.find(category => category.id === entry.cat)?.shortName || CATEGORIES.find(category => category.id === entry.cat)?.name || 'Untitled entry'
 export const activityKey = entry => JSON.stringify([entry.cat, ...activityParts(entry).map(value => String(value || '').trim().toLowerCase())])
 export const attestationLabel = category => ({ ece: 'Facilitator confirmation', aetcom: 'Facilitator / faculty confirmation', ccp: 'Facilitator / faculty confirmation', fvs: 'Facilitator / faculty confirmation' })[category] || 'Faculty confirmation'

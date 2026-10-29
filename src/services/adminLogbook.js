@@ -2,6 +2,7 @@ import { readSkillEntries } from './skillLogbook.js'
 import { signoffEligibility, assertSubjectWritable, subjectWriteBlock, assertLogbookText, signoffVersion } from './logbookPolicy.js'
 import { applyDeltas, commit, readDeltas, today } from './logbook.js'
 import { CATEGORIES, SUBJECTS } from './logbookSample.js'
+import { assignmentCategory, findAssignmentActivity, sourceAssignmentValues, sampleInstructions } from './logbookAssignmentSamples.js'
 
 /**
  * @typedef {{id:string,name:string,departments:string[],role:string}} FacultyActor
@@ -60,7 +61,10 @@ export async function reassignEntry(id, actor, faculty) {
 }
 /** Assignment shape: {by, due, instructions, assignedAt}; student completes schema fields. */
 export const assignmentFields = (cat, subject) => (getLogbookGroups(cat, subject)[0]?.fields || []).filter(field => ['competency', 'moduleNo', 'topic', 'activity', 'depts', 'recordType', 'sessionType', 'exerciseType', 'activityType', 'exerciseNo', 'specimenNo', 'place', 'village', 'day', 'station', 'week', 'diagnosis', 'provDx'].includes(field.key))
-export async function assignEntries(actor, { studentId, subject, cat, due = '', instructions = '', values = {} }) {
+function stageAssignment(actor, { studentId, subject, cat, due = '', instructions = '', values = {}, activityId = '', phase = '' }, deltas) {
+  const activity = activityId ? findAssignmentActivity(activityId) : null
+  requireThat(!activityId || activity && activity.subject === subject && assignmentCategory(activity.category) === cat && activity.phase === phase, 'Choose an activity from this subject and phase.')
+  if (activity) values = { ...values, ...sourceAssignmentValues(activity) }
   assertLogbookText(instructions, 'Instructions')
   requireThat(actor.departments.includes(subject), 'Choose your department subject.')
   requireThat(CATEGORIES.some(category => category.id === cat) && SUBJECTS.find(item => item.name === subject)?.categories.includes(cat), 'Choose a category for this subject.')
@@ -75,12 +79,47 @@ export async function assignEntries(actor, { studentId, subject, cat, due = '', 
   requireThat(instructions.trim() || Object.keys(taskValues).length, 'Add task details or instructions for the student.')
   const students = studentId === 'all' ? LEARNERS : LEARNERS.filter(person => person.id === studentId)
   requireThat(students.length, 'Choose a student.')
+  const existing = activity ? applyDeltas(deltas) : []
+  const locked = students.filter(person => subjectWriteBlock(deltas, person.id, subject))
+  const writable = students.filter(person => !locked.includes(person))
+  const duplicate = writable.filter(person => existing.some(entry => entry.studentId === person.id && entry.assignment?.activityId === activityId))
+  const eligible = writable.filter(person => !duplicate.includes(person))
+  eligible.forEach(person => deltas.added.unshift({ id: crypto.randomUUID(), studentId: person.id, subject, cat, faculty: actor.id, status: 'To do', date: activity ? '' : today(), values: { ...taskValues }, extra: {}, assignment: { by: actor.id, due, instructions: instructions.trim(), locked: Object.keys(taskValues), assignedAt: timestamp(), ...(activity ? { activityId, phase, sourceCategory: activity.category, activityName: activity.name, sample: activity.sample, sources: activity.sources } : {}) } }))
+  return { assigned: eligible.length, skipped: students.length - eligible.length, locked: locked.length, duplicate: duplicate.length }
+}
+
+/** Source assignments are idempotent per activity/student; manual assignments retain existing behaviour. */
+export async function assignEntries(actor, request) {
   const deltas = readDeltas()
-  const eligible = students.filter(person => !subjectWriteBlock(deltas, person.id, subject))
-  requireThat(eligible.length, 'No eligible recipients. These subject logbooks are signed off or awaiting final approval.')
-  eligible.forEach(person => deltas.added.unshift({ id: crypto.randomUUID(), studentId: person.id, subject, cat, faculty: actor.id, status: 'To do', date: today(), values: taskValues, extra: {}, assignment: { by: actor.id, due, instructions: instructions.trim(), locked: Object.keys(taskValues), assignedAt: timestamp() } }))
+  const result = stageAssignment(actor, request, deltas)
+  requireThat(result.assigned, result.duplicate ? 'This activity is already assigned to the selected students.' : 'No eligible recipients. These subject logbooks are signed off or awaiting final approval.')
   const entries = commit(deltas)
-  return { entries, assigned: eligible.length, skipped: students.length - eligible.length }
+  return { entries, ...result }
+}
+
+/** Preview and submission revalidate permissions, duplicates and subject locks.
+ * @param {FacultyActor} actor
+ * @param {{activityIds:string[],studentId:string,due?:string,instructions?:string}} request Exact reviewed IDs and recipient.
+ * @returns {Promise<{rows:Object[],assigned:number,skipped:number}>}
+ */
+export async function previewSampleAssignments(actor, request) { return sampleBatch(actor, request, false) }
+export async function assignSampleEntries(actor, request) { return sampleBatch(actor, request, true) }
+function sampleBatch(actor, { activityIds, studentId, due = '', instructions = '' }, save) {
+  requireThat(Array.isArray(activityIds) && activityIds.length > 0 && activityIds.length <= 30, 'Choose between 1 and 30 sample activities.')
+  requireThat(new Set(activityIds).size === activityIds.length, 'Choose each activity only once.')
+  const deltas = readDeltas(), rows = []
+  for (const id of activityIds) {
+    const activity = findAssignmentActivity(id)
+    requireThat(activity, 'A selected activity is no longer available.')
+    const result = stageAssignment(actor, { studentId, subject: activity.subject, cat: assignmentCategory(activity.category), activityId: id, phase: activity.phase, due, instructions: instructions || sampleInstructions(activity) }, deltas)
+    rows.push({ activity, ...result })
+  }
+  const assigned = rows.reduce((sum, row) => sum + row.assigned, 0), skipped = rows.reduce((sum, row) => sum + row.skipped, 0)
+  if (save) {
+    requireThat(assigned, 'No new eligible assignments. Existing assignments and locked logbooks were skipped.')
+    commit(deltas)
+  }
+  return { rows, assigned, skipped }
 }
 export async function cancelAssignment(id, actor) {
   const deltas = readDeltas(), entry = applyDeltas(deltas).find(item => item.id === id)

@@ -7,4 +7,4 @@ export function inLastDays(value, days, now = new Date()) {
   return date >= start && date <= end
 }
 /** Most recent persisted event, including faculty decisions and conversation. */
-export const latestEntryEvent = entry => [entry.date, entry.submittedAt, entry.updatedAt, entry.verifiedAt, ...(entry.audit || []).map(event => event.at), ...(entry.extra?.comments || []).map(comment => comment.date)].filter(Boolean).sort().at(-1) || ''
+export const latestEntryEvent = entry => [entry.date, entry.assignment?.assignedAt, entry.submittedAt, entry.updatedAt, entry.verifiedAt, ...(entry.audit || []).map(event => event.at), ...(entry.extra?.comments || []).map(comment => comment.date)].filter(Boolean).sort().at(-1) || ''

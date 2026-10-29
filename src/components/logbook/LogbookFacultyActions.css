@@ -53,3 +53,7 @@
 
 
 
+.faculty-assignment-note { grid-column: 1 / -1; font-size: var(--fs-micro); color: var(--text-muted); margin: var(--s-2) 0; }
+.faculty-source-details { min-width: 0; overflow-wrap: anywhere; }
+.faculty-source-details summary { font-size: var(--fs-micro); }
+.faculty-assignment-details input[readonly] { background: var(--surface-soft); color: var(--text-muted); }

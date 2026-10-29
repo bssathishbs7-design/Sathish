@@ -1,3 +1,4 @@
+import LogbookAssignmentNotice from './LogbookAssignmentNotice'
 import { subjectWriteBlock, textLimitFor } from '../../services/logbookPolicy'
 import { useRef, useState } from 'react'
 import { certificationTarget } from '../../services/logbookProgress'
@@ -148,7 +149,7 @@ export default function LogbookEntryForm({ entry, entries = [], workflow, mode, 
         </div>}
         <fieldset className="lb-form-sections" disabled={Boolean(selectionChange)}>
         {parent && <section className="lb-feedback"><strong>Original faculty feedback · {parent.values.competency || parent.values.activity}</strong><p>{parent.extra?.facultyRemarks || 'No written feedback was supplied.'}</p></section>}
-        {form.assignment && <div className="lb-alert">{form.assignment.instructions || 'Complete the assigned activity.'}<p>{form.assignment.due ? `Due ${formatDate(form.assignment.due)}` : 'No deadline'}</p><small>Faculty-supplied fields are locked.</small></div>}
+        <LogbookAssignmentNotice assignment={form.assignment} />
         <p className="lb-form-hint"><span className="lb-required" aria-hidden="true">*</span> Required fields</p>
         {form.cat === 'cert' && <p className="lb-form-hint">Catalogue target: <output aria-label="Certification target">{certificationTarget(form.subject, form.values.competency || form.values.activity) || 'Not configured'}</output> approved attempts. This target is set by the subject catalogue.</p>}
         <LogbookAccordionSection index={0} title="Subject & category" summary={contextReady ? subject.label + ' / ' + (category.shortName || category.name) : 'Choose where this learning belongs'} open={step === 0} complete={contextReady} onOpen={() => openStep(0)}>

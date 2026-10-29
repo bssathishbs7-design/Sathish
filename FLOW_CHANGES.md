@@ -1,3 +1,11 @@
+## 2026-10-29 - Department logbook assignments
+
+Assign entry now filters document activities by department and posting phase, keeps a manual activity path, and offers a reviewed representative sample batch for selected demo students. Batch assignment rechecks locks and existing activity assignments before creating To do entries. Source phase/category/provenance stays attached to the learner handoff; Skills remains a separate workflow.
+
+## 2026-10-29 - ECE and AETCOM assignment examples
+
+- Added 13 supplied ECE competency/topic pairs scoped to Anatomy, Physiology and Biochemistry, plus three AETCOM module/topic pairs available across subjects. Selecting a sample in Assign entry fills the editable Topic field; submitting uses the existing assignment flow and locks entered details for the student. No entries are automatically assigned to students.
+
 ## 2026-10-29 - Single competency assignment selection
 
 - Assign entry selects one competency at a time. Selection replaces the previous code and closes the dropdown; search and full-name tooltips remain. Any multi-code draft selection is reduced to its first code.

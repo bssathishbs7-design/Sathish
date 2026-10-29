@@ -1,0 +1,4 @@
+﻿.lb-assignment-notice { overflow-wrap: anywhere; }
+.lb-assignment-notice p { margin: var(--s-2) 0; }
+.lb-assignment-notice strong { color: var(--text-strong); font-size: var(--fs-small); }
+.lb-assignment-notice small { color: var(--text-muted); font-size: var(--fs-micro); }

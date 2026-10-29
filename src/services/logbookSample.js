@@ -1,4 +1,5 @@
 /** Sample curriculum only. Replace catalogues and requirements with institution API data. */
+import { CATEGORY_SAMPLE_ENTRIES } from './logbookCategorySamples.js'
 export { REVIEWERS as FACULTY } from './logbookPeople.js'
 export { CATEGORIES, FIELDS, SUBJECTS } from './logbookCatalog.js'
 export const STUDENT = { name: 'Karthik Subramanian', registerId: 'MC2568', programme: 'MBBS', batch: '2024–2029', postingEnd: '2026-10-15', posting: 'General Medicine' }
@@ -19,6 +20,7 @@ export const SAMPLE_ENTRIES = [
 
 /** Cohort examples remain available without manually populating browser storage. */
 export const COHORT_ENTRIES = [
+  ...CATEGORY_SAMPLE_ENTRIES,
   { ...SAMPLE_ENTRIES[4], id: 'cohort-1', studentId: 'MC2569', values: { ...SAMPLE_ENTRIES[4].values, topic: 'Cardiovascular assessment' } },
   { ...SAMPLE_ENTRIES[3], id: 'cohort-2', studentId: 'MC2569', status: 'Pending', extra: { remarks: '', comments: [] } },
   { ...SAMPLE_ENTRIES[0], id: 'cohort-3', studentId: 'MC2570', verifiedAt: '2026-09-20T10:00:00.000Z', audit: [{ actor: 'RM', action: 'Approved', remarks: 'Demonstrated independently.', at: '2026-09-20T10:00:00.000Z' }] },
