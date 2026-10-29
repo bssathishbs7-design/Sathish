@@ -9,7 +9,7 @@ export default function LogbookAccountSwitcher({ actor, onSelect, disabled = fal
   return <div className="lb-account-switcher">
     <span className="lb-account-switch-select">
       <select value={actor.id} onChange={event => onSelect(event.target.value)} disabled={disabled} aria-label="Viewing as" title={actor.name}>
-        {['Faculty', 'HoD', 'Dean', 'Director'].map(role => <optgroup key={role} label={role}>{REVIEWERS.filter(person => person.role === role).map(person => <option key={person.id} value={person.id}>{person.name}{person.role === 'Faculty' ? ` — ${person.departments.join(' / ')}` : ''}</option>)}</optgroup>)}
+        {['Super admin', 'Faculty', 'HoD', 'Dean', 'Director'].map(role => <optgroup key={role} label={role}>{REVIEWERS.filter(person => person.role === role).map(person => <option key={person.id} value={person.id}>{person.name}{person.role === 'Super admin' ? ' — All subjects' : person.role === 'Faculty' ? ` — ${person.departments.join(' / ')}` : ''}</option>)}</optgroup>)}
       </select><ChevronDown size={16} aria-hidden="true" />
     </span>
   </div>

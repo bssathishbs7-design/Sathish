@@ -2,6 +2,22 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { assignEntries, cancelAssignment, changeSignoff, getLogbookWorkflow, reassignEntry, REVIEWERS, reviewEntries, saveApprovalChain } from './adminLogbook.js'
 import { listLogbookEntries, readDeltas, saveLogbookEntry, STORAGE_KEY, today } from './logbook.js'
+import { SUBJECTS } from './logbookCatalog.js'
+
+test('super admin can assign every catalogue subject while faculty stays department-scoped', async () => {
+  const previous = globalThis.window, data = new Map()
+  globalThis.window = { localStorage: { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) }, dispatchEvent: () => {} }
+  try {
+    const admin = REVIEWERS.find(person => person.id === 'SUPER-ADMIN')
+    assert.deepEqual(admin.departments, SUBJECTS.map(subject => subject.name))
+    for (const subject of SUBJECTS) {
+      const cat = subject.categories.find(category => !['skill', 'cert'].includes(category))
+      const result = await assignEntries(admin, { studentId: 'MC2568', subject: subject.name, cat, instructions: 'Complete this subject activity.' })
+      assert.equal(result.assigned, 1, subject.name)
+    }
+    await assert.rejects(assignEntries(REVIEWERS[0], { studentId: 'MC2568', subject: 'Biochemistry', cat: 'sdl', instructions: 'Complete activity.' }), /department/)
+  } finally { globalThis.window = previous }
+})
 
 test('faculty review, assignments and sign-off lifecycle enforce ownership and preserve records', async () => {
   const previous = globalThis.window, data = new Map()

@@ -530,9 +530,16 @@ function App() {
     ?? completedEvaluationRows.find((row) => row.activityRecord)?.activityRecord
     ?? null
   const [adminLogbookView, navigateAdminLogbook, adminLogbookHistory] = useAdminLogbookRoute()
-  const [logbookAccounts, setLogbookAccounts] = useState(() => { try { return JSON.parse(localStorage.getItem('medsy-logbook-accounts')) || {} } catch { return {} } })
+  const [logbookAccounts, setLogbookAccounts] = useState(() => {
+    let saved = {}
+    try { saved = JSON.parse(localStorage.getItem('medsy-logbook-accounts')) || {} } catch { /* Use the default preview account when storage is unavailable. */ }
+    if (saved.facultyDefaultVersion === 1) return saved
+    const defaults = { ...saved, faculty: 'SUPER-ADMIN', facultyDefaultVersion: 1 }
+    try { localStorage.setItem('medsy-logbook-accounts', JSON.stringify(defaults)) } catch { /* Keep the default available for this session. */ }
+    return defaults
+  })
   const [logbookAccountOpen, setLogbookAccountOpen] = useState(false)
-  const logbookFaculty = LOGBOOK_REVIEWERS.find(person => person.id === logbookAccounts.faculty) || LOGBOOK_REVIEWERS[0]
+  const logbookFaculty = LOGBOOK_REVIEWERS.find(person => person.id === logbookAccounts.faculty) || LOGBOOK_REVIEWERS.find(person => person.id === 'SUPER-ADMIN')
   const logbookStudent = LOGBOOK_LEARNERS.find(person => person.id === logbookAccounts.student) || LOGBOOK_LEARNERS[0]
   const isLogbookWorkspace = [APP_PAGES.ADMIN_LOGBOOK, APP_PAGES.LOGBOOK].includes(activePage)
   const logbookAccount = activePage === APP_PAGES.ADMIN_LOGBOOK ? logbookFaculty : logbookStudent

@@ -1,3 +1,19 @@
+## 2026-10-29 - Single competency assignment selection
+
+- Assign entry selects one competency at a time. Selection replaces the previous code and closes the dropdown; search and full-name tooltips remain. Any multi-code draft selection is reduced to its first code.
+
+## 2026-10-29 - Assignment competency selection
+
+- Assign entry now selects competencies from the subject curriculum using search and checkboxes, with Select All/select results and Clear. Multiple codes are saved in the existing competency field; changing subject or category clears the selection.
+
+## 2026-10-29 - Default Logbook preview account
+
+- Default to Super admin, including a one-time migration of previously saved faculty selections. Subsequent account selections remain remembered; the selected student is preserved.
+
+## 2026-10-29 - Logbook Super admin account
+
+- Added Super admin to the Logbook preview-account selector with all 19 catalogue subjects available for assignment. Faculty accounts retain their department memberships; signed-off and in-review logbook protections remain enforced. This is a local preview identity, not production authentication.
+
 ## 2026-10-28 - Collapsible demo library
 
 - Replaced demo series tabs with For this page, Recently watched, All videos, Question Bank and Skill Assessment accordion sections. For this page opens by default; opening another section collapses the previous one.

@@ -1,0 +1,24 @@
+.lb-competency-control { min-width: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); }
+.lb-competency-control.is-open { border-color: var(--forest); }
+.logbook-scope .lb-competency-trigger { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); width: 100%; min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-3); border: 0; border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
+.lb-competency-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-competency-trigger svg { flex: none; }
+.lb-competency-panel { border-top: 1px solid var(--border); padding: var(--s-2); min-width: 0; }
+.lb-competency-control.is-open .lb-competency-trigger { border-radius: var(--r-sm) var(--r-sm) 0 0; }
+.lb-competency-search { position: relative; margin-bottom: var(--s-2); }
+.lb-competency-search > svg { position: absolute; left: var(--s-2); top: 50%; transform: translateY(-50%); color: var(--text-brand); pointer-events: none; }
+.logbook-scope .faculty-assignment-grid .lb-competency-search input { padding-left: var(--s-6); }
+.lb-competency-options { max-height: calc(var(--s-7) * 3); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.logbook-scope .lb-competency-option { display: flex; align-items: center; gap: var(--s-1); padding: var(--s-1); min-height: var(--s-5); font-size: var(--fs-micro); font-weight: 400; line-height: 1.5; color: var(--text-body); }
+.lb-competency-badge { display: inline-flex; align-items: center; gap: var(--s-1); flex: none; padding: 0 var(--s-1); border: 1px solid var(--border); border-radius: var(--s-1); background: color-mix(in srgb, var(--lilac) 25%, var(--surface-card)); }
+.lb-competency-code { color: var(--text-strong); font-family: var(--f-code); font-size: var(--fs-micro); line-height: 1.5; font-weight: 500; cursor: pointer; }
+.lb-competency-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-micro); font-weight: 400; color: var(--text-muted); cursor: pointer; }
+.logbook-scope .lb-competency-info { display: inline-flex; align-items: center; justify-content: center; width: var(--s-4); height: var(--s-4); min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); color: var(--text-brand); background: transparent; cursor: help; }
+.logbook-scope .faculty-assignment-grid .lb-competency-option input { appearance: auto; width: var(--s-4); height: var(--s-4); min-height: var(--s-4); padding: 0; margin: 0; flex: none; accent-color: var(--forest); }
+.lb-competency-trigger:hover:not(:disabled), .lb-competency-option:hover { background: var(--surface-soft); }
+.lb-competency-select button:active:not(:disabled) { transform: translateY(1px); }
+.lb-competency-select button:disabled { opacity: .55; cursor: not-allowed; }
+.lb-competency-select :is(button,input):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 var(--s-1) var(--focus-ring); }
+.faculty-assignment-details > .faculty-assignment-grid { align-items: start; }
+
+.logbook-scope .faculty-assignment-grid .lb-competency-search input { height: var(--s-6); min-height: var(--s-6); font-size: var(--fs-small); }

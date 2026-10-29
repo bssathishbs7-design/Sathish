@@ -1,0 +1,3 @@
+.lb-floating-tooltip { position: fixed; z-index: 100; display: grid; gap: var(--s-1); width: min(280px, calc(100vw - var(--s-4))); max-height: calc(100dvh - var(--s-4)); overflow: auto; box-sizing: border-box; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); box-shadow: var(--shadow-md); font-family: var(--f-body); font-size: var(--fs-small); line-height: 1.5; overflow-wrap: anywhere; }
+.lb-floating-tooltip strong { font-family: var(--f-code); font-size: var(--fs-small); color: var(--text-strong); }
+.lb-floating-tooltip[popover] { margin: 0; inset: auto; }
