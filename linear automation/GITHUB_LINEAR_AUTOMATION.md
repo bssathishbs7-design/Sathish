@@ -1,30 +1,12 @@
-# Main pushes to Medsy_UI
+# Main pushes update the Linear document only
 
-Every push to `main` triggers `.github/workflows/linear-main-push.yml` and creates one task in the Medsy_UI team, in **Done**, assigned to **Sathishkumar R**, with the **UI Update** label. Multiple commits in one push create one task. The task includes the pusher, commit authors/messages, changed files, before/after SHAs, a comparison link and the Actions run link. The task title is `UI update: <commit message> (<short SHA>)`.
+Every push to `main` runs `.github/workflows/commit-history.yml` to refresh the existing Linear Commit Document. Pushes no longer create Linear issues: the `linear-main-push.yml` workflow has been removed. Existing issues are preserved.
 
-This records a completed UI update after changes reach `main`; Done does not certify code review. It does not protect the branch or require approval before merging. Local commits must be pushed to GitHub. Other branches and branch-deletion events do not create tasks.
+The former `linear-main-push.mjs` script and its tests remain as inactive reference code; no workflow invokes it.
 
-## Configuration
+Repository: `bssathishbs7-design/Sathish`. The document workflow uses the encrypted `MEDSY_UI_LINEAR_API_KEY` Actions secret. Never commit its value.
 
-- Repository: `bssathishbs7-design/Sathish`.
-- Repository Actions secret: `MEDSY_UI_LINEAR_API_KEY` (never place its value in workflow files).
-- Team, Done state, assignee and label IDs are non-secret workflow environment values.
-- The job has read-only GitHub contents permission and uses a pinned checkout action with credential persistence disabled. It installs no application dependencies and runs no application build scripts.
-- The Linear key must be able to read and create issues in Medsy_UI. Limit access to repository workflows and the API key to trusted maintainers.
-
-## Operation and recovery
-
-The issue UUID is deterministic from the repository name and GitHub workflow run ID. Re-running the same Actions run finds the existing task, including archived tasks. Even overlapping attempts use the same UUID, preventing duplicate issues. A separate push that happens to use the same commit SHA gets a separate task.
-
-If a run fails, open GitHub **Actions → Record Linear UI update for main push → Re-run failed jobs** after fixing the secret or API access. The task link is written to the run summary. No automatic mutation retry is performed after an uncertain API response; rerunning checks for the existing task first.
-
-Summaries include up to 100 commits and 100 files. Large comparisons are labelled as partial; the comparison link is the source for the full diff. If GitHub cannot compare the push (for example after some force pushes), the task still records the push payload and explicitly says that file details were unavailable.
-
-GitHub must have Actions enabled. GitHub's push-event limits and recognised skip-workflow commit instructions can prevent a run; this integration does not override GitHub's event delivery rules. It does not backfill historical pushes.
-
-## Validation
-
-Run `node --test --test-isolation=none "linear automation/linear-main-push.test.mjs"` for mock-backed coverage of task creation, rerun identity, scope, required assignee/status/label configuration, missing secrets, API errors, comparison failures and bounded summaries. The deployment push is the live end-to-end verification: its Actions run must complete successfully and link a new MEDUI task.
+Before an assistant-made push, present the changes and ask for approval. Document updates are the default for both manual and assistant-made pushes. If the user requests skipping Linear updates for a push, ask for a second explicit confirmation before adding a skip-workflow marker or suppressing automation.
 
 ## Automatic Linear commit-history document
 
@@ -50,7 +32,7 @@ Validation: `node --test --test-isolation=none "linear automation/linear-assignm
 
 ## File organisation
 
-All automation scripts, tests and this guide live in `linear automation/`. GitHub requires the three workflow entry files to remain in `.github/workflows/`; each calls its script here with a quoted path.
+All automation scripts, tests and this guide live in `linear automation/`. GitHub requires the two active workflow entry files to remain in `.github/workflows/`; each calls its script here with a quoted path.
 
 Run all automation checks from the repository root:
 
