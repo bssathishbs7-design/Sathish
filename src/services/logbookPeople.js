@@ -17,6 +17,7 @@ export const REVIEWERS = [
   ...SUBJECTS.map(subject => ({ id: `HOD-${subject.code}`, name: `${subject.label} head of department`, departments: [subject.name], role: 'HoD' })),
   { id: 'DEAN', name: 'Dean', departments: [], role: 'Dean' },
   { id: 'DIRECTOR', name: 'Director', departments: [], role: 'Director' },
+  { id: 'SUPER-ADMIN', name: 'Super admin', departments: SUBJECTS.map(subject => subject.name), role: 'Super admin' },
 ]
 export const belongsTo = (entry, studentId) => (entry.studentId || 'MC2568') === studentId
 export const learnerName = id => LEARNERS.find(person => person.id === (id || 'MC2568'))?.name || id
