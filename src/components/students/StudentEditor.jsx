@@ -1,3 +1,4 @@
+import { STUDY_YEARS, admissionDestination, calendarLabel, calendarValue } from '../../services/studentCalendar'
 import { useId, useState } from 'react'
 import { LoaderCircle, ChevronDown, Info } from 'lucide-react'
 import StudentWorkspacePanel from './StudentWorkspacePanel'
@@ -21,7 +22,9 @@ export default function StudentEditor({ mode, data, onClose, onSave }) {
   const promoting = mode.type === 'move' && mode.action === 'promote'
   const selectedStudents = mode.type === 'move' ? data.students.filter(item => mode.ids.includes(item.id)) : []
   const nextYear = moving ? Number(moving.academicYear.slice(5)) : Number(today().slice(0, 4))
-  const [draft, setDraft] = useState(() => mode.type === 'save' ? (student ? { ...student, section: student.section || 'N/A' } : { name: '', registrationId: '', email: '', code: '+91', phone: '', batch: '', course: batch?.course || 'MBBS', section: 'N/A', department: 'N/A', joinedOn: '', academicYear: '', year: YEARS[0], photo: '' }) : { ...mode, id: student?.id, batch: student?.batch || mode.batch || '', year: mode.year || student?.year || YEARS[0], joinedOn: student?.joinedOn || '', academicYear: `${nextYear}-${nextYear + 1}`, startsOn: mode.entry?.start || student?.startedAt || today(), endsOn: mode.entry?.end || '', section: mode.entry?.section || student?.section || 'N/A', academicRevision: student?.academicRevision, entryId: mode.entry?.id, photo: student?.photo || '', date: today(), reason: '', note: '', confirm: '', syllabus: 'CBME 2024', subjects: [], course: 'MBBS', batchYear: '', batchStart: today(), ...(promoting ? { ...suggestPromotion(selectedStudents, today()), differentStart: false } : {}) })
+  const [draft, setDraft] = useState(() => mode.type === 'save' ? (student ? { ...student, section: student.section || 'N/A' } : { name: '', registrationId: '', email: '', code: '+91', phone: '', batch: batch?.id || '', course: batch?.course || 'MBBS', section: 'N/A', department: 'N/A', joinedOn: batch?.startsOn || today(), academicYear: '', year: mode.year || YEARS[0], photo: '' }) : { ...mode, id: student?.id, batch: student?.batch || mode.batch || '', year: mode.year || student?.year || YEARS[0], joinedOn: student?.joinedOn || '', academicYear: `${nextYear}-${nextYear + 1}`, startsOn: mode.entry?.start || student?.startedAt || today(), endsOn: mode.entry?.end || '', section: mode.entry?.section || student?.section || 'N/A', academicRevision: student?.academicRevision, entryId: mode.entry?.id, photo: student?.photo || '', date: today(), reason: '', note: '', confirm: '', syllabus: 'CBME 2024', subjects: [], course: 'MBBS', batchYear: '', batchStart: today(), ...(promoting ? { ...suggestPromotion(selectedStudents, today()), differentStart: false } : {}) })
+  let destination = null, destinationMessage = ''
+  if (!student && mode.type === 'save' && draft.batch && data.version === 4) { try { destination = admissionDestination(data, draft, today()) } catch (failure) { destinationMessage = failure.message } }
   const [photoBusy, setPhotoBusy] = useState(false)
   const [errors, setErrors] = useState({}), [error, setError] = useState(''), [busy, setBusy] = useState(false), [dirty, setDirty] = useState(false), [discard, setDiscard] = useState(false), [savedId, setSavedId] = useState(null)
   const titles = { save: student ? 'Edit student' : 'Add student', batch: 'Add batch', deleteBatch: 'Delete batch', delete: 'Delete students', move: mode.action === 'complete' ? 'Mark course completed' : mode.action === 'repeat' ? 'Mark not promoted' : 'Promote students', undo: 'Undo progression', status: 'Change account status', setup: 'Set up year tracking', bulkSetup: 'Set up legacy students', correct: 'Correct year dates / SGT', correctDecision: 'Correct latest decision', syllabus: 'Subjects and syllabus', photo: 'Student photo' }
@@ -34,7 +37,7 @@ export default function StudentEditor({ mode, data, onClose, onSave }) {
     event.preventDefault()
     if (awaitingBatch || Object.keys(promotionErrors).length) return
     // Optional admission fields retain the form defaults when not supplied.
-    const profileDraft = { ...draft, joinedOn: draft.joinedOn || data.batches.find(item => item.id === draft.batch)?.startsOn, department: draft.department || 'N/A', section: draft.section || 'N/A' }
+    const profileDraft = { ...draft, ...(destination ? { academicYear: calendarValue(destination.calendar) } : {}), joinedOn: draft.joinedOn || data.batches.find(item => item.id === draft.batch)?.startsOn, department: draft.department || 'N/A', section: draft.section || 'N/A' }
     if (mode.type === 'save' && !savedId) {
       const next = validateStudent(profileDraft, data, student); setErrors(next)
       if (Object.keys(next).length) { setError('Check the highlighted fields.'); return }
@@ -61,25 +64,26 @@ export default function StudentEditor({ mode, data, onClose, onSave }) {
     <form className="sm-editor" onSubmit={save} noValidate={mode.type === 'save'}>
       <fieldset className="sm-form-body" disabled={busy}>
         {mode.type === 'save' ? <>
-          {!student && <p className="sm-first-year-notice"><Info size={16} aria-hidden="true"/><span>Select a destination batch to enable the form. New students can only be added to First Year.</span></p>}
+          {!student && <p className="sm-first-year-notice"><Info size={16} aria-hidden="true"/><span>Choose a batch and joining year. Academic dates follow the batch calendar.</span></p>}
           <fieldset className="sm-profile-section"><legend>Personal details</legend><div className="sm-sketch-personal">
             <div className="sm-photo-field"><StudentPhoto value={draft.photo || ''} onChange={set('photo')} onBusyChange={setPhotoBusy} disabled={busy || awaitingBatch} /></div>
             <div className="sm-sketch-fields">
-              <div className="sm-sketch-row sm-sketch-identity">{field('registrationId', 'Student ID', { disabled: Boolean(student) })}{field('batch', 'Destination batch', { options: [{ value: '', label: 'Select Your Batch' }, ...batches.map(b => b.id)], disabled: Boolean(student) })}</div>
-              <div className="sm-sketch-row sm-sketch-name">{field('name', 'Full name')}{field('joinedOn', 'Joined on', { type: 'date', disabled: true, required: false })}</div>
+              <div className="sm-sketch-row sm-sketch-identity">{field('registrationId', 'Student ID')}{field('batch', 'Destination batch', { options: [{ value: '', label: 'Select Your Batch' }, ...batches.map(b => b.id)], disabled: Boolean(student) })}</div>
+              <div className="sm-sketch-row sm-sketch-name">{field('name', 'Full name')}{field('joinedOn', 'Joined on', { type: 'date', disabled: Boolean(student) })}</div>
               <div className="sm-sketch-row sm-sketch-contact">{field('email', 'Email', { type: 'email' })}<div className="sm-aligned-phone">{field('code', 'Code', { options: ['+91', '+1', '+44', '+61', '+971'] })}{field('phone', 'Phone', { type: 'tel' })}</div></div>
             </div>
           </div></fieldset>
           <fieldset disabled={Boolean(savedId)} className="sm-profile-section"><legend>Admission details</legend><div className="sm-admission-grid">
-            {field('academicYear', 'Academic year', { disabled: Boolean(student) })}{field('course', 'Course', { options: COURSES, disabled: Boolean(student) })}<span className="sm-grid-spacer" aria-hidden="true" />
-            {field('department', 'Department', { options: DEPARTMENTS, required: false, disabled: Boolean(student) })}{field('year', 'Year', { disabled: true })}{field('section', 'SGT', { options: ['N/A', ...'ABCDEFGHIJKLMNO'.split('')], required: false })}
-            {!student && Number(draft.batch) < Number(draft.academicYear?.slice(0, 4)) && <>{field('batchReason', 'Reason for earlier batch', { options: ['', 'Repeater transferred in', 'Rejoining after a break', 'Other'] })}{draft.batchReason === 'Other' && field('batchReasonDetail', 'Explain the reason')}</>}
+            <StudentField label={destination ? 'Academic year (Batch ' + destination.batch + ' calendar)' : 'Academic year'} value={destination ? calendarLabel(destination.calendar) : student ? calendarLabel(student.academicYear) : 'Set dates in Admission batches'} disabled />{field('course', 'Course', { options: COURSES, disabled: Boolean(student) })}<span className="sm-grid-spacer" aria-hidden="true" />
+            {field('department', 'Department', { options: DEPARTMENTS, required: false })}{field('year', 'Joining year', { options: STUDY_YEARS, disabled: Boolean(student) })}{field('section', 'SGT', { options: ['N/A', ...'ABCDEFGHIJKLMNO'.split('')], required: false })}
+            {!student && destination && destination.batch !== draft.batch && <>{field('batchReason', 'Reason for earlier batch', { options: ['', 'Repeater transferred in', 'Rejoining after a break'] })}{draft.batchReason === 'Other' && field('batchReasonDetail', 'Explain the reason')}</>}
           </div></fieldset>
         </> : mode.type === 'photo' ? <StudentPhoto value={draft.photo ?? student?.photo ?? ''} onChange={set('photo')} onBusyChange={setPhotoBusy} disabled={busy} /> : <StudentWorkflowFields mode={mode} draft={draft} data={data} student={student} field={field} set={set} />}
+        {destinationMessage && <p className="sm-error" role="alert">{destinationMessage}</p>}
         {error && <p className="lb-alert sm-error" role="alert">{error}</p>}
         {discard && <div className="sm-inline-confirm" role="alert"><strong>Discard unsaved changes?</strong><button type="button" className="lb-btn" onClick={() => setDiscard(false)}>Keep editing</button><button type="button" className="lb-btn" onClick={onClose}>Discard changes</button></div>}
       </fieldset>
-      <footer className="sm-form-footer"><button type="button" className="lb-btn" disabled={busy} onClick={close}>{savedId ? 'Close' : 'Cancel'}</button><button className="lb-btn lb-primary" disabled={busy || awaitingBatch || Object.keys(promotionErrors).length > 0 || photoBusy || discard || (mode.type === 'delete' && !draft.acknowledged)} type="submit">{busy && <LoaderCircle size={16} className="sm-spinner" />}{busy ? 'Saving...' : savedId ? 'Retry photo' : mode.type === 'deleteBatch' && mode.emptyOnly ? 'Delete batch' : ['delete', 'deleteBatch'].includes(mode.type) ? 'Confirm deletion' : mode.type === 'save' ? (student ? 'Update' : 'Save student') : mode.type === 'batch' ? 'Create batch' : promoting ? `Promote ${mode.ids.length} ${mode.ids.length === 1 ? 'student' : 'students'}` : 'Confirm'}</button></footer>
+      <footer className="sm-form-footer"><button type="button" className="lb-btn" disabled={busy} onClick={close}>{savedId ? 'Close' : 'Cancel'}</button><button className="lb-btn lb-primary" disabled={busy || awaitingBatch || Boolean(destinationMessage) || Object.keys(promotionErrors).length > 0 || photoBusy || discard || (mode.type === 'delete' && !draft.acknowledged)} type="submit">{busy && <LoaderCircle size={16} className="sm-spinner" />}{busy ? 'Saving...' : savedId ? 'Retry photo' : mode.type === 'deleteBatch' && mode.emptyOnly ? 'Delete batch' : ['delete', 'deleteBatch'].includes(mode.type) ? 'Confirm deletion' : mode.type === 'save' ? (student ? 'Update' : 'Save student') : mode.type === 'batch' ? 'Create batch' : promoting ? `Promote ${mode.ids.length} ${mode.ids.length === 1 ? 'student' : 'students'}` : 'Confirm'}</button></footer>
     </form>
   </StudentWorkspacePanel>
 }

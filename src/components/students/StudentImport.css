@@ -35,10 +35,6 @@
 .sm-import-error-heading .lb-btn { flex-shrink:0; }
 @media(max-width:599px) { .sm-import-error-heading { flex-direction:column; align-items:flex-start; gap:var(--s-2); } }
 
-.sm-import-onboarding-notice { display:grid; grid-template-columns:var(--s-5) minmax(0,1fr); align-items:start; gap:var(--s-2); padding:var(--s-3); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-soft); color:var(--text-body); }
-.sm-import-onboarding-notice > svg { width:var(--s-4); height:var(--s-4); align-self:start; justify-self:center; color:var(--text-brand); margin-top:calc(var(--s-1) / 2); }
-.sm-import-onboarding-notice p { display:grid; gap:var(--s-1); margin:0; font-size:var(--fs-small); line-height:1.5; }
-.sm-import-onboarding-notice strong { color:var(--text-strong); }
 
 .sm-import-ready { display:flex; align-items:center; gap:var(--s-3); padding:var(--s-4); border:1px solid var(--border); border-inline-start:var(--s-1) solid var(--forest); border-radius:var(--r-sm); background:var(--surface-soft); color:var(--text-strong); }
 .sm-import-ready > svg { flex-shrink:0; color:var(--text-brand); }

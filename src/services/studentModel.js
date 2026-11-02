@@ -1,3 +1,4 @@
+import { admissionDestination, STUDY_YEARS } from './studentCalendar.js'
 /** Academic records are separate from profile revisions. Dates are ISO calendar dates.
  * @typedef {{id:string,year:string,academicYear:string,start:string,end:string|null,outcome:string,section:string}} YearEntry
  * @typedef {{id:string,trackingId:string,registrationId:string,batch:string,entries:YearEntry[],history:Array,academicRevision:number,revision:number}} Student
@@ -29,7 +30,7 @@ export function issueTrackingId(data, batch) {
 }
 /** Version 1 migration preserves raw audit events. Missing historic attempts are not invented. */
 export function migrateDirectory(source) {
-  if (![1, 2].includes(source?.version) || !Array.isArray(source.students) || !Array.isArray(source.batches) || !Array.isArray(source.moves)) fail('Saved student data could not be read. Your stored data has not been overwritten.')
+  if (![1, 2, 4].includes(source?.version) || !Array.isArray(source.students) || !Array.isArray(source.batches) || !Array.isArray(source.moves)) fail('Saved student data could not be read. Your stored data has not been overwritten.')
   const data = structuredClone(source)
   data.counters ||= {}
   for (const student of data.students) {
@@ -54,7 +55,7 @@ export function migrateDirectory(source) {
   }
   // Old moves saved full profiles, not academic snapshots. Retain for audit, never unsafe rollback.
   for (const move of data.moves) if (!move.students.every(item => item.beforeAcademic)) move.legacy = true
-  data.version = 2
+  data.version = source.version === 4 ? 4 : 2
   return data
 }
 export const academicSnapshot = student => structuredClone(Object.fromEntries(['entries', 'year', 'academicYear', 'startedAt', 'graduated', 'completedOn', 'tracked'].map(key => [key, student[key] ?? null])))
@@ -63,7 +64,7 @@ export function syncAcademic(student) {
   if (entry) { student.year = entry.year; student.academicYear = entry.academicYear; student.startedAt = entry.start; student.graduated = false; student.completedOn = null }
   else if (student.graduated) student.year = 'Graduated'
 }
-export function canUndo(student, member, move) { return Boolean(student && !move.legacy && !member.undone && student.academicRevision === member.afterAcademicRevision) }
+export function canUndo(student, member, move) { return Boolean(student && !move.legacy && !member.undone && (member.afterAcademic?.lastAcademicChange ? student.lastAcademicChange === member.afterAcademic.lastAcademicChange : student.academicRevision === member.afterAcademicRevision)) }
 export function effectiveSyllabus(data, student, subject) { return student.subjectSyllabuses?.[`${student.year}:${subject}`] || student.syllabus || data.batches.find(batch => batch.id === student.batch)?.subjectSyllabuses?.[`${student.year}:${subject}`] || data.batches.find(batch => batch.id === student.batch)?.syllabus || 'CBME 2024' }
 /** Shared create validation; edits validate changed profile fields only. */
 export function validateStudent(draft, data, original) {
@@ -80,6 +81,13 @@ export function validateStudent(draft, data, original) {
   for (const key of ['registrationId', 'email', 'phone']) {
     const normalise = value => key === 'phone' ? String(value || '').replace(/\D/g, '') : String(value || '').trim().toLowerCase()
     if ((changed(key) || (key === 'phone' && changed('code'))) && data.students.some(student => student.id !== original?.id && (key === 'phone' ? phoneIdentity(student) === phoneIdentity(draft) : normalise(student[key]) === normalise(draft[key])))) errors[key] = `This ${key === 'registrationId' ? 'student ID' : key} already exists.`
+  }
+  if (!original && data.version === 4) {
+    if (!STUDY_YEARS.includes(draft.year)) errors.year = 'Choose the year the student is joining.'
+    if (!validDate(draft.joinedOn)) errors.joinedOn = 'Choose the joining date.'
+    try { const destination = admissionDestination(data, draft, today()); if (destination.batch !== draft.batch && !draft.batchReason) errors.batchReason = 'Choose a reason for joining from an earlier batch.' } catch (error) { errors.batch = error.message }
+    if (!data.batches.some(b => b.id === draft.batch && b.course === draft.course)) errors.course = 'Choose a batch for this course.'
+    return errors
   }
   if (!original) {
     const year = normaliseAcademicYear(draft.academicYear)

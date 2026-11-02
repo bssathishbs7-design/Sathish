@@ -1279,3 +1279,44 @@ Assign entry now filters document activities by department and posting phase, ke
 - Added a persistent Demos dock with page suggestions, library, video playback and Go there navigation across supported pages.
 - Added viewer-specific Demo videos controls in the profile menu and library; exams, unsupported mobile screens and sign-out stop playback.
 - Added replay/resume and next-unwatched flow based on actual playback coverage for the two supplied Medsy video series.
+
+
+## 2026-11-02 - Student calendar and migration workflow
+
+- Admission batches now use four-year calendar cards with inclusive 6-24-month ranges; Fourth Year defaults to 18 months. Students inherit dates from their batch calendar.
+- Batch workspaces provide On Track and Backlog filters, migrated-in/out and left-over views, closing notices and a combined Year roster. Needs setup is removed.
+- Onboarding accepts any eligible running year. Earlier-batch admissions resolve to an eligible later calendar while retaining the mother batch.
+- Promotion follows the next calendar; Fourth Year completes the course. Not promoted migrates to a later batch with the original Tracking ID. Wrongly mapped issues a new ID and retains previous IDs, before any year-end decision.
+- Bulk SGT, latest-decision correction and confirmed undo retain audit records. Completed and legacy records remain searchable.
+- Existing local records are upgraded without replacement. Explicit calendar reconciliation retains original current-entry dates for audit; the old storage key is preserved.
+
+## 2026-11-02 - Batch overview navigation
+
+- Removed the top-right batch selector from Student Management. Open a batch through its existing batch card.
+
+## 2026-11-02 - Compact batch overview
+
+- Batch calendar cards now start collapsed. Expand a card to review its years; additional years remain available through Show more years.
+
+## 2026-11-02 - Add student from overview
+
+- Added Add student beside Add batch in the overview header. Opens the existing student form with destination batch selection; unavailable until a batch exists.
+
+## 2026-11-02 - Empty batch onboarding shortcut
+
+- Empty batches show Add student in the student table, opening the existing form with the batch preselected. Filtered empty results retain Reset filters.
+
+
+## 2026-11-02 - Student row actions
+
+- Student tables now group information into Student, Contact, Academic details, Status and Actions. View opens the record directly; More actions opens Edit student and Delete student, retaining their existing dialogs and confirmation rules.
+
+
+## 2026-11-02 - Bulk student actions above the table
+
+- Selecting students now reveals a compact action toolbar above the column headings. Promotion, change batch and SGT actions no longer appear in the pagination footer; the draggable footer card was removed.
+
+
+## 2026-11-02 - Year roster filter setup
+
+- Year roster shows a setup prompt until at least one admission batch and a study year are selected. The student table and search then appear. Reset filters in the roster header clears the setup; resetting an empty table clears search and SGT while retaining batch and study-year selection.

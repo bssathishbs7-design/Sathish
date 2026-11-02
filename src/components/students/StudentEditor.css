@@ -61,16 +61,15 @@
 .student-management-page .sm-student-popup .sm-photo-field .sm-photo small br { display:block; }
 .student-management-page .sm-student-popup .sm-photo-field .sm-photo-tile > span { white-space:nowrap; }
 
-/* Compact labelled controls: labels stay visible inside each control's boundary. */
+/* Inset labels reserve a separate line above each value. */
 .student-management-page .sm-student-popup { border-radius:var(--r); }
 .student-management-page .sm-student-popup .sm-workspace-heading { padding:var(--s-2) var(--s-4); align-items:center; background:var(--surface-card); }
 .student-management-page .sm-student-popup .sm-workspace-heading h2 { font-size:var(--fs-body); }
 .student-management-page .sm-student-popup .sm-form-body { padding:var(--s-3) var(--s-4); gap:var(--s-3); }
 .student-management-page .sm-student-popup .sm-field { position:relative; display:block; }
 .student-management-page .sm-student-popup .sm-field > span:first-child { position:absolute; top:var(--s-1); left:var(--s-3); z-index:1; font-size:var(--fs-micro); line-height:1.3; color:var(--text-muted); pointer-events:none; }
-.student-management-page .sm-student-popup .sm-field :is(input,select) { height:var(--s-7); min-height:var(--s-7); padding:var(--s-4) var(--s-3) 0; border-radius:var(--r-sm); font-size:var(--fs-small); }
 .student-management-page .sm-student-popup .sm-field .sm-select-control { display:block; }
-.student-management-page .sm-student-popup .sm-field .sm-select-control > svg { top:65%; }
+.student-management-page .sm-student-popup .sm-field .sm-select-control > svg { top:50%; }
 .student-management-page .sm-student-popup .sm-field small.sm-error { display:block; margin-top:var(--s-1); }
 .student-management-page .sm-student-popup .sm-photo-field { padding-top:0; }
 .student-management-page .sm-student-popup .sm-form-footer { padding:var(--s-2) var(--s-4); background:var(--surface-card); }

@@ -1,8 +1,10 @@
-import { validateStudent, phoneIdentity, normaliseAcademicYear, academicYearFor } from './studentModel.js'
+import { admissionDestination, calendarValue } from './studentCalendar.js'
+import { today } from './studentModel.js'
+import { validateStudent, phoneIdentity, academicYearFor } from './studentModel.js'
 export const STUDENT_COLUMNS = ['Student ID', 'Student Name', 'Email', 'Code', 'Phone No', 'SGT']
 const keys = ['registrationId', 'name', 'email', 'code', 'phone', 'section']
 /** Six-column import: five required identity/contact values and optional SGT. Admission details come from the destination batch. */
-export function previewStudentSheet(rows, batchId, directory) {
+export function previewStudentSheet(rows, batchId, directory, destination = {}) {
   const batch = directory.batches.find(b => b.id === batchId)
   if (!batch) throw new Error('Choose a destination batch.')
   if (rows.length < 2 || rows.length > 1001) throw new Error('Import between 1 and 1,000 student rows.')
@@ -11,10 +13,11 @@ export function previewStudentSheet(rows, batchId, directory) {
   if (missing.length) throw new Error(`Missing columns: ${missing.join(', ')}. Use the sample template.`)
   const seen = { registrationId: new Set(), email: new Set(), phone: new Set() }
   return rows.slice(1).map((row, index) => ({ row, number: index + 2 })).filter(({ row }) => row.some(value => value !== null && String(value).trim() !== '')).map(({ row, number }) => {
-    const draft = { batch: batchId, academicYear: academicYearFor(batchId), course: batch.course, department: 'N/A', joinedOn: batch.startsOn, year: 'First Year' }
+    const draft = { batch: batchId, academicYear: academicYearFor(batchId), course: batch.course, department: 'N/A', joinedOn: batch.startsOn, year: 'First Year', ...(directory.version === 4 ? destination : {}) }
     keys.forEach((key, index) => { const value = row[headers.indexOf(STUDENT_COLUMNS[index].toLowerCase())]; draft[key] = value instanceof Date ? value.toISOString().slice(0, 10) : String(value ?? '').trim() })
     draft.section ||= 'N/A'
     if (draft.code && !draft.code.startsWith('+')) draft.code = '+' + draft.code
+    if (directory.version === 4) { try { draft.academicYear = calendarValue(admissionDestination(directory, draft, today()).calendar) } catch { /* Shared validation below reports invalid destinations. */ } }
     const fieldErrors = validateStudent(draft, directory)
     keys.slice(0, 5).forEach((key, index) => { if (!draft[key]) fieldErrors[key] = STUDENT_COLUMNS[index] + ' is required.' })
     const labels = Object.fromEntries(keys.map((key, index) => [key, STUDENT_COLUMNS[index]]))
@@ -22,8 +25,8 @@ export function previewStudentSheet(rows, batchId, directory) {
     const errors = issues.map(issue => issue.message)
     const addIssue = (field, message) => { errors.push(message); issues.push({ field, message }) }
     const explicitYear = row[headers.indexOf('academic year')], stage = row[headers.indexOf('year')]
-    if (explicitYear && normaliseAcademicYear(explicitYear) !== draft.academicYear) addIssue('Academic year', 'Academic year conflicts with the selected academic year.')
-    if (stage && !['first year', '1', 'i'].includes(String(stage).toLowerCase())) addIssue('Year', 'Only First Year students can be imported.')
+    if (explicitYear && String(explicitYear).trim() !== draft.academicYear) addIssue('Academic year', 'Academic year conflicts with the selected academic year.')
+    if (stage && (directory.version === 4 ? String(stage).toLowerCase() !== draft.year.toLowerCase() : !['first year', '1', 'i'].includes(String(stage).toLowerCase()))) addIssue('Year', 'Study year conflicts with the selected joining year.')
     for (const key of Object.keys(seen)) {
       const value = key === 'phone' ? phoneIdentity(draft) : draft[key].toLowerCase()
       if (seen[key].has(value)) addIssue(labels[key], `Duplicate ${key} in this file.`)
@@ -50,7 +53,7 @@ export async function readStudentFile(file) {
 }
 export async function downloadStudentTemplate() {
   const { default: writeExcel } = await import('write-excel-file/browser')
-  await writeExcel([STUDENT_COLUMNS, ['MC2026999', 'Sample Student', 'sample.student@example.edu', '+91', '9876543210', '']]).toFile('StudentsFirstYearSample.xlsx')
+  await writeExcel([STUDENT_COLUMNS, ['MC2026999', 'Sample Student', 'sample.student@example.edu', '+91', '9876543210', '']]).toFile('StudentsSample.xlsx')
 }
 /** Download a copy of the original uploaded workbook with a refreshed error report. */
 export async function downloadStudentErrors(preview, file) {
@@ -66,7 +69,7 @@ export async function downloadStudentErrors(preview, file) {
 }
 
 /** Read and validate before revealing results, with a cancellable minimum analysis display time. */
-export async function analyseStudentFile(file, batchId, directory, { signal, minimumDuration = 30000, readFile = readStudentFile } = {}) {
+export async function analyseStudentFile(file, batchId, directory, { signal, minimumDuration = 30000, readFile = readStudentFile, destination = {} } = {}) {
   const wait = new Promise((resolve, reject) => {
     const abort = () => { clearTimeout(timer); reject(new DOMException('Analysis cancelled', 'AbortError')) }
     const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve() }, minimumDuration)
@@ -74,7 +77,7 @@ export async function analyseStudentFile(file, batchId, directory, { signal, min
     else signal?.addEventListener('abort', abort, { once: true })
   })
   const read = Promise.resolve().then(() => readFile(file)).then(sheet => {
-    const preview = previewStudentSheet(sheet, batchId, directory)
+    const preview = previewStudentSheet(sheet, batchId, directory, destination)
     if (!preview.length) throw new Error('The spreadsheet has no student rows. Add students and choose the file again.')
     return { sheet }
   }).catch(error => ({ error }))

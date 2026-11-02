@@ -1,0 +1,5 @@
+.sm-closing { margin-block:var(--s-3); padding:var(--s-3); border:1px solid color-mix(in srgb,var(--info-ink) 22%,transparent); border-left:var(--s-1) solid var(--info-ink); border-radius:var(--r-sm); background:color-mix(in srgb,var(--info-ink) 5%,var(--surface-card)); font-size:var(--fs-small); }
+.sm-closing > div:first-child { display:flex; gap:var(--s-2); align-items:center; flex-wrap:wrap; }
+.sm-closing button { color:var(--text-brand); margin-left:auto; }
+.sm-closing-list { display:grid; gap:var(--s-3); margin-top:var(--s-3); border-top:1px solid var(--border); padding-top:var(--s-3); }
+.sm-closing-list > div { display:flex; align-items:center; flex-wrap:wrap; gap:var(--s-2); }

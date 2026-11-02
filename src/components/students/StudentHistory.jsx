@@ -4,11 +4,11 @@ import FloatingTooltip from '../FloatingTooltip'
 import StudentLatestChange from './StudentLatestChange'
 import './StudentHistory.css'
 
-const actionLabels = { promote: 'Promotion', repeat: 'Year repeated', complete: 'Course completed', undo: 'Change reversed' }
+const actionLabels = { promote: 'Promotion', repeat: 'Not promoted / migrated', mapping: 'Wrongly mapped', complete: 'Course completed', undo: 'Change reversed' }
 
 /** Batch change history. Undo eligibility uses academic revisions; profile changes are preserved. */
 export default function StudentHistory({ data, batch, canEdit, onOpen, onAction, onUndoLast }) {
-  const moves = data.moves.filter(move => !batch || move.batch === batch)
+  const moves = data.moves.filter(move => !batch || move.batch === batch || move.targetBatch === batch)
   return <section className="lb-card sm-history">
     <div className="sm-section-head"><h2>Change list</h2></div>
     <StudentLatestChange move={moves[0]} students={data.students} canEdit={canEdit} onUndo={onUndoLast} />

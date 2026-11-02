@@ -1,3 +1,6 @@
+import { readStudentSnapshot, writeStudentSnapshot } from './studentDirectoryStorage.js'
+import { applyCalendarCommand } from './studentCalendarCommands.js'
+import { calendarSampleDirectory, upgradeStudentCalendars } from './studentCalendarData.js'
 /** Integration contract (all writes require student_management.edit and institution ownership).
  * Local persistence is a mock adapter, not an authentication or server-authorisation layer.
  * Production mappings:
@@ -16,12 +19,13 @@ import { COURSES, SUBJECTS, YEARS, today, academicYearFor, normaliseAcademicYear
 import { sampleDirectory } from './studentSamples.js'
 import { applyAcademicCommand } from './studentProgression.js'
 export { YEARS, today, academicYearFor, validateStudent, sampleDirectory }
-export const DIRECTORY_KEY = 'medsy-student-directory-v1'
+export const DIRECTORY_KEY = 'medsy-student-directory-v4'
 export const DIRECTORY_EVENT = 'medsy-students-changed'
 
 /** Pure atomic mock transaction. Production must independently enforce institution ownership and edit permission. */
 export function applyStudentCommand(source, command, { canEdit = false } = {}) {
   if (!canEdit) fail('You have read-only access to student management.')
+  if (source.version === 4) { const result = applyCalendarCommand(source, command, { canEdit }); if (result) return result }
   const data = migrateDirectory(source)
   const find = id => data.students.find(student => student.id === id) || fail('This student no longer exists. Refresh and try again.')
   const audit = (student, action, note, date = today()) => { student.history.push({ id: uid(), action, year: student.year, academicYear: student.academicYear, date, at: new Date().toISOString(), note }); student.revision++ }
@@ -88,19 +92,27 @@ export function applyStudentCommand(source, command, { canEdit = false } = {}) {
   return data
 }
 export async function getStudentDirectory() {
-  const stored = localStorage.getItem(DIRECTORY_KEY)
-  if (!stored) return sampleDirectory()
+  const snapshot = await readStudentSnapshot()
+  if (snapshot !== undefined) return upgradeStudentCalendars(snapshot)
+  const stored = localStorage.getItem(DIRECTORY_KEY) || localStorage.getItem('medsy-student-directory-v1')
+  if (!stored) return calendarSampleDirectory()
   let parsed
   try { parsed = JSON.parse(stored) } catch { fail('Saved student data could not be read. It has not been overwritten.') }
-  return migrateDirectory(parsed)
+  return upgradeStudentCalendars(parsed)
 }
 /** API adapter boundary. Lock covers read/validate/write; failed storage writes never report success. */
 export async function saveStudentCommand(command, permissions) {
   const commit = async () => {
-    const next = applyStudentCommand(await getStudentDirectory(), command, permissions)
-    const existing = localStorage.getItem(DIRECTORY_KEY)
-    if (existing && JSON.parse(existing).version === 1 && !localStorage.getItem(`${DIRECTORY_KEY}-backup-v1`)) localStorage.setItem(`${DIRECTORY_KEY}-backup-v1`, existing)
-    localStorage.setItem(DIRECTORY_KEY, JSON.stringify(next)); window.dispatchEvent(new Event(DIRECTORY_EVENT)); return next
+    const previous = await getStudentDirectory()
+    const next = applyStudentCommand(previous, command, permissions)
+    await writeStudentSnapshot(next, previous)
+    window.dispatchEvent(new Event(DIRECTORY_EVENT))
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel(DIRECTORY_EVENT)
+      channel.postMessage('saved')
+      channel.close()
+    }
+    return next
   }
   return navigator.locks ? navigator.locks.request(DIRECTORY_KEY, commit) : commit()
 }

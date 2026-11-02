@@ -1,8 +1,10 @@
+import { studying, studentProgress } from '../../services/studentCalendar'
+import { today } from '../../services/studentModel'
+import { Layers, Users, UserCheck, Hourglass } from 'lucide-react'
 import { createElement } from 'react'
-import { Layers, Users, UserCheck, ClipboardList } from 'lucide-react'
 import './StudentMetrics.css'
-/** Counts use the full directory, independent of the selected batch. */
+/** Uses the same summary cards as Admin Logbook, with counts derived from the directory. */
 export default function StudentMetrics({ data }) {
- const metrics=[{label:'Admission batches',value:data.batches.length,Icon:Layers,tone:'mint'},{label:'Total students',value:data.students.length,Icon:Users,tone:'sky'},{label:'Active accounts',value:data.students.filter(s=>s.status==='Active').length,Icon:UserCheck,tone:'lilac'},{label:'Needs setup',value:data.students.filter(s=>!s.tracked).length,Icon:ClipboardList,tone:'butter'}]
- return <div className="sm-metrics" aria-label="Student directory metrics">{metrics.map(({label,value,Icon,tone})=><div className={'sm-metric sm-accent-'+tone} key={label}><span className="sm-metric-icon">{createElement(Icon, { size: 20 })}</span><div><span>{label}</span><strong>{value}</strong></div></div>)}</div>
+ const metrics=[['Batches',data.batches.length,Layers],['Students',data.students.filter(studying).length,Users],['Active',data.students.filter(s=>studying(s)&&s.status==='Active').length,UserCheck],['Backlog',data.students.filter(s=>studying(s)&&studentProgress(data,s,today()).lag>0).length,Hourglass]]
+ return <div className="lb-summary-strip admin-logbook-metrics sm-directory-metrics" data-count="4" aria-label="Student directory metrics">{metrics.map(([label,value,Icon],index)=><div className={'lb-summary-item my-skills-metric-card '+(index<2?'is-assigned':'is-completed')} key={label}><span className="my-skills-metric-card-icon">{createElement(Icon,{size:18,'aria-hidden':true})}</span><span className="my-skills-metric-card-copy"><strong>{value}</strong><span>{label}</span></span></div>)}</div>
 }

@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     watch: {
       // Browser QA profiles contain files locked by Chrome on Windows.
-      ignored: ['**/.logbook-check.local/**'],
+      ignored: ['**/.logbook-check.local/**', '**/tmp/**'],
     },
   },
 })

@@ -1,0 +1,9 @@
+.sm-student-actions { display:flex; align-items:center; justify-content:flex-end; gap:var(--s-1); }
+.student-management-page .sm-student-actions .lb-btn { min-height:var(--s-6); padding:var(--s-1) var(--s-3); font:500 var(--font-size-small) var(--font-family-base); border-radius:var(--r-pill); }
+.student-management-page .sm-student-actions .lb-icon-btn { width:var(--s-6); min-width:var(--s-6); height:var(--s-6); min-height:var(--s-6); padding:0; border-radius:var(--r-pill); }
+.sm-student-action-menu { position:fixed; inset:auto; margin:0; padding:var(--s-1); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); color:var(--text-body); box-shadow:var(--shadow-md); }
+.sm-student-action-menu button { display:flex; align-items:center; gap:var(--s-2); width:100%; border:0; border-radius:var(--r-sm); padding:var(--s-2) var(--s-3); background:transparent; color:var(--text-body); font:400 var(--font-size-small)/1.5 var(--font-family-base); cursor:pointer; }
+.sm-student-action-menu button:hover { background:var(--surface-soft); }
+.sm-student-action-menu button:active { transform:translateY(1px); }
+.sm-student-action-menu button:focus-visible { outline:2px solid var(--forest); outline-offset:-2px; }
+.sm-student-action-menu .is-destructive { color:var(--danger-ink); }

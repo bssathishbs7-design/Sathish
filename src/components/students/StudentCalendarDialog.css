@@ -1,0 +1,9 @@
+.sm-change-reasons { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s-3); margin:var(--s-3) 0; }
+.sm-change-reasons > label { display:grid; grid-template-columns:auto 1fr; gap:var(--s-2); padding:var(--s-3); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); cursor:pointer; }
+.sm-change-reasons > label > :is(span,small) { grid-column:1/-1; }
+.sm-change-reasons .is-selected { border-color:var(--forest); background:var(--surface-soft); }
+.sm-change-reasons label:has(input:disabled) { background:var(--surface-mist); cursor:not-allowed; }
+@media(max-width:767px) { .sm-change-reasons { grid-template-columns:1fr; } }
+.sm-calendar-reconcile { display:flex; align-items:flex-start; gap:var(--s-2); padding:var(--s-2) var(--s-3); border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-soft); }
+.sm-calendar-reconcile input { flex:none; margin:var(--s-1) 0 0; accent-color:var(--forest); }
+.sm-calendar-reconcile span { min-width:0; }

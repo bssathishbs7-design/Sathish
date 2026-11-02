@@ -1,0 +1,5 @@
+.student-management-page .sm-student-link .sm-student-avatar { display:flex; align-items:center; justify-content:center; flex:none; width:calc(var(--s-6) + var(--s-1)); height:calc(var(--s-6) + var(--s-1)); overflow:hidden; border:1px solid var(--border); border-radius:var(--r-pill); background:color-mix(in srgb,var(--sky) 45%,var(--surface-card)); color:var(--info-ink); font:600 var(--font-size-small)/1 var(--font-family-base); }
+.sm-student-avatar img { display:block; width:100%; height:100%; object-fit:cover; }
+.student-management-page .sm-students-table .sm-student-link { display:flex; align-items:center; gap:var(--s-2); width:100%; }
+.sm-student-identity { display:grid; gap:var(--s-1); min-width:0; }
+.student-management-page .sm-student-identity > span { white-space:normal; overflow-wrap:anywhere; }

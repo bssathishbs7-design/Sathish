@@ -3,8 +3,8 @@ import { canUndo } from '../../services/studentModel'
 import FloatingTooltip from '../FloatingTooltip'
 import './StudentLatestChange.css'
 
-const labels = { promote: 'Promotion', repeat: 'Year repeated', complete: 'Course completed' }
-const fields = [['year', 'Year'], ['academicYear', 'Academic year'], ['startedAt', 'Start date'], ['completedOn', 'Completed on']]
+const labels = { promote: 'Promotion', repeat: 'Not promoted / migrated', mapping: 'Batch corrected', complete: 'Course completed' }
+const fields = [['batch', 'Batch'], ['trackingId', 'Tracking ID'], ['year', 'Year'], ['academicYear', 'Academic year'], ['startedAt', 'Start date'], ['completedOn', 'Completed on']]
 
 /** Latest batch operation with saved academic comparisons and the existing confirmed undo action.
  * @param {{move:Object, students:Array, canEdit:boolean, onUndo:Function|undefined}} props

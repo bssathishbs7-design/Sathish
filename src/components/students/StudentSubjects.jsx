@@ -1,3 +1,4 @@
+import { calendarLabel } from '../../services/studentCalendar'
 import { useId, useRef, useState } from 'react'
 import { ChevronDown, LoaderCircle } from 'lucide-react'
 import { SUBJECTS, YEARS } from '../../services/studentModel'
@@ -16,7 +17,7 @@ export default function StudentSubjects({ batch, year, students, canEdit, onSave
   const subjects = SUBJECTS[year] || []
   const academicYears = [...new Set(students.filter(student => student.tracked && student.batch === batch.id && student.year === year).map(student => student.academicYear).filter(Boolean))].sort()
   const startYear = Number(batch.id) + YEARS.indexOf(year)
-  const academicYear = academicYears.length ? academicYears.join(', ') : startYear + '-' + (startYear + 1)
+  const academicYear = batch.calendars ? calendarLabel(batch.calendars[year]) : academicYears.length ? academicYears.join(', ') : startYear + '-' + (startYear + 1)
   const changeSyllabus = async (subject, syllabus) => {
     if (!canEdit || saving.current) return
     saving.current = true
