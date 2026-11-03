@@ -1,0 +1,80 @@
+.instruction-badge {
+  --instruction-fill: var(--peach, #FFD8C4);
+  --instruction-highlight: var(--coral, #FFC3B4);
+  display: inline-flex;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  align-items: center;
+  gap: var(--s-1, 4px);
+  border: 0;
+  border-radius: var(--r-pill, 999px);
+  padding: var(--s-1, 4px) var(--s-3, 12px);
+  background: var(--instruction-fill);
+  color: var(--text-body, var(--app-text));
+  font: inherit;
+  font-size: var(--fs-micro, 11px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-hover, 180ms) var(--ease-standard, ease);
+}
+.instruction-badge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--instruction-highlight);
+  transform-origin: left center;
+  pointer-events: none;
+  animation: instruction-badge-fill calc(var(--dur-reveal, 1s) * 3) var(--ease-standard, ease) infinite;
+}
+.instruction-badge:hover::before,
+.instruction-badge[aria-describedby]::before {
+  animation: none;
+  transform: scaleX(1);
+}
+.instruction-badge:hover,
+.instruction-badge[aria-describedby] {
+  background: var(--instruction-highlight);
+}
+.instruction-badge:focus-visible {
+  outline: 2px solid var(--text-brand, currentColor);
+  outline-offset: var(--s-1, 4px);
+}
+.instruction-badge:active { transform: translateY(1px) scale(.97); transition: none; }
+.floating-tooltip.instruction-badge-popover {
+  width: min(840px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  padding: var(--s-4, 16px);
+  text-align: justify;
+  color: var(--text-body, #333333);
+  font-size: calc(var(--fs-body, 1rem) * .875);
+  line-height: 1.6;
+}
+.instruction-badge-heading {
+  margin: 0 0 var(--s-2, 8px);
+  color: var(--text-brand, var(--text-strong, #0F6844));
+  font-size: var(--fs-body, 1rem);
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: left;
+}
+.instruction-badge-content {
+  margin: 0;
+  color: inherit;
+  font: inherit;
+}
+
+@keyframes instruction-badge-fill {
+  0%, 10% { transform: scaleX(0); opacity: 1; }
+  55%, 75% { transform: scaleX(1); opacity: 1; }
+  95%, 100% { transform: scaleX(1); opacity: 0; }
+}
+:is([data-theme="dark"], [data-theme="oled"], .theme-dark) .instruction-badge {
+  --instruction-fill: color-mix(in srgb, var(--peach, #FFD8C4) 15%, var(--surface-card, var(--app-surface)));
+  --instruction-highlight: color-mix(in srgb, var(--coral, #FFC3B4) 30%, var(--surface-card, var(--app-surface)));
+}
+@media (prefers-reduced-motion: reduce) {
+  .instruction-badge { transition: none; }
+  .instruction-badge::before { animation: none; transform: scaleX(1); }
+}

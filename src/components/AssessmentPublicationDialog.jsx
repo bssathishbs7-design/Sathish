@@ -42,8 +42,8 @@ export default function AssessmentPublicationDialog({ action, name, theme, year,
       await new Promise(resolve => setTimeout(resolve, 0))
       const success = await onConfirm({ assignYear, assignGroup, reviewer: { ...reviewer, note: note.trim() } })
       if (!success) setError('Unable to complete this action. Check the assessment and try again.')
-    } catch {
-      setError('Unable to complete this action. Please try again.')
+    } catch (reason) {
+      setError(reason.message || 'Unable to complete this action. Please try again.')
     } finally { locked.current = false; setBusy(false) }
   }
   const Icon = assigning ? UsersRound : Send

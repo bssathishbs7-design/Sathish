@@ -9,6 +9,7 @@
 .aq-insights-wrap .aq-insights dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .aq-type-question { --aq-accent: var(--sky); }
 .aq-type-assessment { --aq-accent: var(--mint); }
+.aq-type-assessment-result { --aq-accent: var(--mint); }
 .aq-type-blueprint { --aq-accent: var(--lilac); }
 .aq-type-skill-assessment { --aq-accent: var(--peach); }
 .aq-type-all { --aq-accent: var(--forest); }

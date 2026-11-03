@@ -1,6 +1,10 @@
 import SkillIdentity from '../components/SkillIdentity'
+import InstructionBadge from '../components/InstructionBadge'
+import ActivityNameRefiner from '../components/ActivityNameRefiner'
+import ActivityOptionSwitch from '../components/ActivityOptionSwitch'
+import '../styles/config/activity-builder.css'
 import { ensureSkillIdentity } from '../services/skillIdentity'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   CheckCircle2,
   ChevronDown,
@@ -129,7 +133,14 @@ const defaultActivityDraft = {
   manualName: '',
   assessmentType: 'OSPE',
   includeCertifiable: false,
-  includeMarks: false,
+  includeMarks: true,
+}
+
+const activityAssessmentHints = {
+  Image: 'Image-based task',
+  Interpretation: 'Interpret findings',
+  OSCE: 'Clinical examination',
+  OSPE: 'Practical examination',
 }
 
 const generationModes = [
@@ -169,6 +180,7 @@ const generationStatusSteps = [
 function SkillManagementPage({ onAssignActivity, onGenerateComplete, onOpenImageActivity, onOpenInterpretationActivity, onOpenOspeActivity, onAlert, savedImageActivities = {} }) {
   const generationPopoverRef = useRef(null)
   const activityNameInputRef = useRef(null)
+  const [activityNameStatusTarget, setActivityNameStatusTarget] = useState(null)
   const [records, setRecords] = useState(competencyRecords)
   const [selectedRecordId, setSelectedRecordId] = useState(competencyRecords[0].id)
   const [searchQuery, setSearchQuery] = useState('')
@@ -296,6 +308,29 @@ function SkillManagementPage({ onAssignActivity, onGenerateComplete, onOpenImage
 
     return () => window.cancelAnimationFrame(frameId)
   }, [activityFormRecordId])
+
+  // Fit typed, pasted and cleared content; remeasure when the available width changes.
+  useLayoutEffect(() => {
+    const field = activityNameInputRef.current
+    if (!field) return undefined
+    const resize = () => {
+      field.style.height = 'auto'
+      const styles = getComputedStyle(field)
+      const borders = parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth)
+      field.style.height = `${field.scrollHeight + borders}px`
+    }
+    resize()
+    let width = field.getBoundingClientRect().width
+    const observer = new ResizeObserver(() => {
+      const nextWidth = field.getBoundingClientRect().width
+      if (nextWidth !== width) {
+        width = nextWidth
+        resize()
+      }
+    })
+    observer.observe(field)
+    return () => observer.disconnect()
+  }, [activityDraft.manualName, activityFormRecordId])
 
   const handleClearListFilters = () => {
     setYearFilter('All Years')
@@ -1020,65 +1055,54 @@ function SkillManagementPage({ onAssignActivity, onGenerateComplete, onOpenImage
                           <strong>Activities</strong>
                           <span>Parent-child relationship: activities belong to this competency record.</span>
                         </div>
-                        <button type="button" className="activity-btn" onClick={() => handleOpenActivityForm(record.id)}>Add Activity</button>
+                        <button
+                          type="button"
+                          className="activity-btn"
+                          onClick={() => activityFormRecordId === record.id ? handleCloseActivityForm() : handleOpenActivityForm(record.id)}
+                          aria-expanded={activityFormRecordId === record.id}
+                        >
+                          {activityFormRecordId === record.id ? <><X size={16} aria-hidden="true" />Close</> : 'Add Activity'}
+                        </button>
                       </div>
 
                       {activityFormRecordId === record.id ? (
-                        <div className="activity-inline-builder">
-                          <div className="activity-inline-builder-head">
-                            <div>
-                              <span className="activity-inline-builder-kicker">Add Activity</span>
-                            </div>
-                            <button
-                              type="button"
-                              className="generation-inline-close"
-                              onClick={handleCloseActivityForm}
-                              aria-label="Close activity builder"
-                            >
-                              <X size={16} strokeWidth={2.2} />
-                            </button>
-                          </div>
-
+                        <div className="activity-inline-builder activity-builder-compact">
                           <div className="activity-inline-builder-grid">
-                            <label className="activity-inline-field activity-inline-field-full">
-                              <span>Activity Name</span>
-                              <input
+                            <div className="activity-inline-field activity-inline-field-full">
+                              <div className="activity-inline-name-label">
+                                <label htmlFor={`activity-name-${record.id}`}>Activity name <em className="activity-required" aria-hidden="true">*</em></label>
+                                <InstructionBadge content="Give the activity a clear, descriptive name that tells students and assessors what task will be performed or assessed. Include the skill or procedure and any relevant clinical context—for example, “Measure blood pressure in an adult patient” or “Interpret a chest X-ray for suspected pneumonia”. Avoid vague names such as “Activity 1”." />
+                                <div className="activity-inline-name-status" ref={setActivityNameStatusTarget} />
+                                <p className="activity-builder-marks-badge"><FileText size={14} aria-hidden="true" />Marks are enabled</p>
+                              </div>
+                              <p className="activity-builder-help" id={`activity-name-help-${record.id}`}>Describe what the student will perform or demonstrate.</p>
+                              <ActivityNameRefiner value={activityDraft.manualName} onChange={(text) => handleActivityDraftChange('manualName', text)} inputRef={activityNameInputRef} statusTarget={activityNameStatusTarget}>
+                              <textarea
+                                id={`activity-name-${record.id}`}
+                                rows={2}
+                                required
+                                aria-describedby={`activity-name-help-${record.id}`}
                                 ref={activityNameInputRef}
                                 value={activityDraft.manualName}
                                 onChange={(event) => handleActivityDraftChange('manualName', event.target.value)}
-                                placeholder="e.g. Clinical Assessment 2024"
+                                placeholder="e.g. Measure blood pressure in an adult patient"
                               />
-                            </label>
-
-                            <div className="activity-inline-field activity-inline-field-full">
-                              <span>Show in Row</span>
-                              <div className="activity-inline-types">
-                                <button
-                                  type="button"
-                                  className={`activity-inline-type ${activityDraft.includeCertifiable ? 'active' : ''}`}
-                                  onClick={() => handleActivityDraftChange('includeCertifiable', !activityDraft.includeCertifiable)}
-                                >
-                                  <span className="activity-inline-type-icon" aria-hidden="true">
-                                    <CheckCircle2 size={14} strokeWidth={2} />
-                                  </span>
-                                  <span>Certifiable</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`activity-inline-type ${activityDraft.includeMarks ? 'active' : ''}`}
-                                  onClick={() => handleActivityDraftChange('includeMarks', !activityDraft.includeMarks)}
-                                >
-                                  <span className="activity-inline-type-icon" aria-hidden="true">
-                                    <FileText size={14} strokeWidth={2} />
-                                  </span>
-                                  <span>Marks</span>
-                                </button>
-                              </div>
+                              </ActivityNameRefiner>
                             </div>
 
-                            <div className="activity-inline-field activity-inline-field-full">
-                              <span>Assessment Type</span>
-                              <div className="activity-inline-types">
+                            <div className="activity-inline-field activity-choice-panel">
+                              <span>Is this activity certifiable? <em className="activity-required" aria-hidden="true">*</em></span>
+                              <div className="activity-option-switches">
+                                <ActivityOptionSwitch label="Certification" checked={activityDraft.includeCertifiable}
+                                  onChange={(checked) => handleActivityDraftChange('includeCertifiable', checked)}
+                                  onLabel="Yes" offLabel="No" />
+                              </div>
+                              <p className="activity-builder-help">{activityDraft.includeCertifiable ? 'This activity will be marked as certifiable.' : 'This activity will be marked as non-certifiable.'}</p>
+                            </div>
+
+                            <div className="activity-inline-field activity-choice-panel">
+                              <div className="activity-assessment-label"><span>How will it be assessed? <em className="activity-required" aria-hidden="true">*</em></span><small>Choose one</small></div>
+                              <div className="activity-inline-types activity-assessment-tiles" role="group" aria-label="Assessment type">
                                 {assessmentTypeGroups.flatMap((group) => group.options).map((option) => {
                                   const icon = option.value === 'Image'
                                     ? ImageIcon
@@ -1095,13 +1119,16 @@ function SkillManagementPage({ onAssignActivity, onGenerateComplete, onOpenImage
                                     <button
                                       key={option.value}
                                       type="button"
+                                      aria-pressed={isActive}
                                       className={`activity-inline-type ${isActive ? 'active' : ''}`}
                                       onClick={() => handleActivityDraftChange('assessmentType', option.value)}
                                     >
                                       <span className="activity-inline-type-icon" aria-hidden="true">
                                         <Icon size={14} strokeWidth={2} />
                                       </span>
-                                      <span>{option.label}</span>
+                                      <strong>{option.label}</strong>
+                                      <CheckCircle2 size={14} className={`activity-assessment-selected${isActive ? ' is-selected' : ''}`} aria-hidden="true" />
+                                      <small>{activityAssessmentHints[option.value]}</small>
                                     </button>
                                   )
                                 })}
@@ -1111,7 +1138,7 @@ function SkillManagementPage({ onAssignActivity, onGenerateComplete, onOpenImage
 
                           <div className="activity-inline-actions">
                             <button type="button" className="ghost" onClick={handleCloseActivityForm}>Cancel</button>
-                            <button type="button" className="tool-btn green" onClick={handleCreateActivity}>Create Activity</button>
+                            <button type="button" className="tool-btn green" onClick={handleCreateActivity}>Create activity</button>
                           </div>
                         </div>
                       ) : null}

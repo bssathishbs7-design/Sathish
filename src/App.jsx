@@ -26,6 +26,7 @@ import SkillAssessmentPage from './pages/SkillAssessmentPage'
 import AssessmentCreatePage from './pages/AssessmentCreatePage'
 import CreateAssessmentPage from './pages/CreateAssessmentPage'
 import AssessmentEvaluationPage from './pages/AssessmentEvaluationPage'
+import { ASSESSMENT_RESULT_TYPE, submitAssessmentResults, reviewAssessmentResults } from './services/assessmentResultWorkflow'
 import AssessmentDashboardPage from './pages/AssessmentDashboardPage'
 import ExamControlsPage from './pages/ExamControlsPage'
 import QuestionBankPage from './pages/QuestionBankPage'
@@ -1091,7 +1092,7 @@ function App() {
       && item.setup?.assessmentId === payload.setup.assessmentId
     )
     const previous = approvalQueueRows.find(sameSubmission)
-    const { reworkReview, ...submittedSetup } = payload.setup || {}
+    const { reworkReview: _reworkReview, ...submittedSetup } = payload.setup || {}
     const { previousSubmissions = [], ...previousSnapshot } = previous || {}
     const approvalRow = {
       ...payload,
@@ -1107,11 +1108,15 @@ function App() {
       receivedAt: approvalTimestamp,
     }
 
-    const nextRows = [approvalRow, ...approvalQueueRows.filter(item => !sameSubmission(item))]
-    commitAssessmentApprovalSubmission(payload, nextRows, window.localStorage, window.sessionStorage)
+    let nextRows = [approvalRow, ...approvalQueueRows.filter(item => !sameSubmission(item))]
+    if (payload.activityType === ASSESSMENT_RESULT_TYPE) {
+      const saved = submitAssessmentResults(approvalRow, nextRows, window.localStorage, window.sessionStorage)
+      nextRows = saved.queue
+      window.dispatchEvent(new Event('vx-assessment-result-release-changed'))
+    } else commitAssessmentApprovalSubmission(payload, nextRows, window.localStorage, window.sessionStorage)
     if (payload.activityType === 'Assessment') window.dispatchEvent(new CustomEvent('vx-assessment-published-changed'))
     setApprovalQueueRows(nextRows)
-    if (payload.setup?.assessmentId) appendAssessmentHistory(payload, { action: 'Sent for approval', timestamp: approvalTimestamp, actor: profileUser.name, notes: payload.approvalFaculty?.note || '' })
+    if (payload.activityType !== ASSESSMENT_RESULT_TYPE && payload.setup?.assessmentId) appendAssessmentHistory(payload, { action: 'Sent for approval', timestamp: approvalTimestamp, actor: profileUser.name, notes: payload.approvalFaculty?.note || '' })
     showAlert({ tone: 'secondary', message: `${payload.activityName ?? 'Activity'} sent to ${payload.approvalFaculty?.facultyName || 'the reviewer'} for approval.` })
     return true
   }
@@ -1162,6 +1167,16 @@ function App() {
 
   const handleApprovalReviewAction = (reviewedRecord) => {
     if (!reviewedRecord?.activityId) return
+    if (reviewedRecord.activityType === ASSESSMENT_RESULT_TYPE) {
+      const saved = reviewAssessmentResults(reviewedRecord, profileUser, window.localStorage, window.sessionStorage)
+      setApprovalQueueRows(saved.queue)
+      setSelectedApprovalViewRecord(saved.record)
+      window.dispatchEvent(new Event('vx-assessment-published-changed'))
+      window.dispatchEvent(new Event('vx-assessment-result-release-changed'))
+      showAlert({ tone: saved.record.approvalStatus === 'Approved' ? 'success' : 'warning', message: saved.record.approvalStatus === 'Approved' ? 'Results approved and published.' : 'Results returned to faculty with review remarks.' })
+      navigateToPage(APP_PAGES.REVIEW_APPROVE)
+      return
+    }
     validateApprovalReview(reviewedRecord)
     assertReviewDecision(reviewedRecord)
 
@@ -1594,6 +1609,8 @@ function App() {
             />
           ) : activePage === APP_PAGES.ASSESSMENT_EVALUATION ? (
             <AssessmentEvaluationPage
+              currentUser={profileUser}
+              onSendToApproval={handleSendToApproval}
               view="list"
               onNavigate={navigateToPage}
               onAlert={showAlert}
@@ -1602,6 +1619,8 @@ function App() {
             />
           ) : activePage === APP_PAGES.ASSESSMENT_STUDENT_EVALUATION ? (
             <AssessmentEvaluationPage
+              currentUser={profileUser}
+              onSendToApproval={handleSendToApproval}
               view="student"
               onNavigate={navigateToPage}
               onAlert={showAlert}
@@ -1610,6 +1629,8 @@ function App() {
             />
           ) : activePage === APP_PAGES.ASSESSMENT_STUDENT_RESULT ? (
             <AssessmentEvaluationPage
+              currentUser={profileUser}
+              onSendToApproval={handleSendToApproval}
               view="result"
               onNavigate={navigateToPage}
               onAlert={showAlert}
@@ -1618,6 +1639,8 @@ function App() {
             />
           ) : activePage === APP_PAGES.ASSESSMENT_OVERALL_ANALYTICS ? (
             <AssessmentEvaluationPage
+              currentUser={profileUser}
+              onSendToApproval={handleSendToApproval}
               view="overall"
               onNavigate={navigateToPage}
               onAlert={showAlert}

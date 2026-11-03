@@ -60,5 +60,5 @@ export const MOCK_EVALUATION_STUDENTS = [
  */
 export function assessmentRoster(assessment) {
   return [assessment.students, assessment.assignedStudents, assessment.studentRows, assessment.setup?.students, assessment.setup?.assignedStudents]
-    .find(rows => Array.isArray(rows) && rows.length) || MOCK_EVALUATION_STUDENTS
+    .find(Array.isArray) || []
 }

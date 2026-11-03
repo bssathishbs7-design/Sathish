@@ -19,6 +19,7 @@ import { appendAssessmentHistory } from '../services/assessmentHistory'
 import AssessmentPublicationDialog from '../components/AssessmentPublicationDialog'
 import AssessmentApprovalReview from '../components/AssessmentApprovalReview'
 import AssessmentOptionsDialog from '../components/AssessmentOptionsDialog'
+import { resolveAssessmentAssignment } from '../services/assessmentAssignment'
 import AssessmentSchedulePanel from '../components/AssessmentSchedulePanel'
 import AssessmentAutomationSettings from '../components/AssessmentAutomationSettings'
 import { updateAssessmentAutomation } from '../services/assessmentAutomation'
@@ -186,7 +187,7 @@ const CREATE_ASSESSMENT_SELECT_OPTIONS = {
   examCategories: DEFAULT_EXAM_CATEGORIES,
   courses: ['India MBBS (NMC Syllabus)'],
   years: YEAR_OPTIONS,
-  sgtGroups: ['SGT Group A', 'SGT Group B', 'Class A', 'Class B'],
+  sgtGroups: Array.from({ length: 15 }, (_, index) => `SGT Group ${String.fromCharCode(65 + index)}`),
   academicYears: ['2024 - 2025', '2025 - 2026', '2026 - 2027', '2027 - 2028'],
 }
 const CREATE_ASSESSMENT_DEFAULT_SETUP = {
@@ -8384,6 +8385,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
           const errors = validateSetupDraft(draft)
           if (!assignYear) errors.assignYear = 'Select year.'
           if (Object.keys(errors).length) { setSetupErrors(errors); return false }
+          draft.students = await resolveAssessmentAssignment(draft)
           const success = publicationAction === 'Direct Publish'
             ? publishAssessmentDirectly(draft)
             : await sendAssessmentToApproval(draft, reviewer)

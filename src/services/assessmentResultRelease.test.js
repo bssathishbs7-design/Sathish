@@ -39,6 +39,19 @@ test('hybrid waits for real descriptive marks and rejects invalid marks', () => 
 test('draft submissions cannot produce results', () => {
   assert.equal(prepareAssessmentResult(assessment, { ...attempt, isAssessmentSubmitted: false }), null)
 })
+
+test('pending or returned result reviews cannot be bypassed by automatic release', () => {
+  for (const status of ['Pending Approval', 'Approval Rejected']) {
+    const prepared = prepareAssessmentResult({ ...assessment, resultApproval: { status } }, attempt, {}, {}, start + 200000)
+    assert.equal(prepared.result.status, 'evaluated')
+  }
+})
+
+test('unassigned students cannot be graded from a saved attempt', () => {
+  const store = storage({ 'vx-assessment-published': JSON.stringify([{ ...assessment, students: [] }]), 'vx-online-practice-exam-attempts': JSON.stringify({ exam: { one: attempt } }) })
+  reconcileAssessmentResults(store, start + 200000)
+  assert.equal(JSON.parse(store.getItem('vx-assessment-published'))[0].studentResults, undefined)
+})
 test('refresh does not reset countdown or republish; results stay student-specific', () => {
   const store = storage({ 'vx-assessment-published': JSON.stringify([{ ...assessment, students: [{ id: 'one' }, { id: 'two' }] }]), 'vx-online-practice-exam-attempts': JSON.stringify({ exam: { one: attempt } }) })
   reconcileAssessmentResults(store, start)
@@ -58,7 +71,7 @@ test('reopened attempt has a new countdown and cannot inherit publication', () =
   assert.equal(prepareAssessmentResult(assessment, reopened, previous, {}, start + 300000).result.status, 'evaluated')
 })
 test('failed persistence is reported instead of claiming publication', () => {
-  const store = storage({ 'vx-assessment-published': JSON.stringify([assessment]), 'vx-online-practice-exam-attempts': JSON.stringify({ exam: { one: attempt } }) })
+  const store = storage({ 'vx-assessment-published': JSON.stringify([{ ...assessment, students: [{ id: 'one' }] }]), 'vx-online-practice-exam-attempts': JSON.stringify({ exam: { one: attempt } }) })
   store.setItem = () => { throw new Error('Quota exceeded') }
   assert.throws(() => reconcileAssessmentResults(store, start + 200000), /Quota exceeded/)
 })
@@ -137,18 +150,14 @@ test('expired written exams evaluate saved text and give zero to blank present s
  assert.equal(blank.status,'not-attempted')
  assert.equal(blank.marks,0)
 })
-test('ended assessments evaluate the shared fallback roster shown by the table', () => {
+test('ended assessments with no assignment never evaluate invented sample students', () => {
  const end = new Date(2026,9,22,11,0).getTime()
  const row = {...assessment,startDate:'2026-10-22',startTime:'10:00 AM',totalDuration:'01:00'}
  const store = storage({'vx-assessment-published':JSON.stringify([row])})
  reconcileAssessmentResults(store,end)
  const saved = JSON.parse(store.getItem('vx-assessment-published'))[0]
- for (const id of ['MV1253','MV1254','MV1255']) {
-   assert.equal(saved.studentResults[id].marks,0)
-   assert.equal(saved.studentResults[id].status,'evaluated')
-   assert.ok(saved.students.some(student => student.id === id))
- }
- assert.equal(saved.studentResults.MV1256,undefined)
+ assert.deepEqual(saved,row)
+ assert.equal(saved.studentResults,undefined)
 })
 test('published results update corrected marks without creating another record', () => {
  const row = {...assessment,students:[{id:'one',attendance:'P'}]}

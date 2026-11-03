@@ -1,3 +1,22 @@
+## 2026-11-03 - Activity form header toggle
+
+- The header shows Close with an X icon while Add Activity is open. Selecting Close dismisses the form and restores Add Activity. The existing in-form close control remains available.
+
+## 2026-11-03 - Separate activity suggestions and refinement
+
+- Typing automatically opens activity suggestions. Refine now opens one enhanced-content preview with Apply and Cancel, replacing any suggestions panel. Both paths preserve the draft until Apply and support Undo. Separate labelled demo service functions support later backend integration.
+
+## 2026-11-03 - Activity name refinement
+
+- Added optional demo wording suggestions after typing pauses or selecting Refine. Apply replaces text with Undo; dismiss and close preserve the draft. The local demo service can be replaced with a backend refinement API.
+
+## 2026-11-02 - Assessment result approval and assignment
+
+- Completed evaluation now submits a frozen result snapshot to a distinct Assessment Result request in the shared Approval Queue. Reviewers approve and publish, or reject with required remarks; faculty correct and resubmit. Pending results stay private and cannot bypass review.
+- Direct release validates saved marks, roster, required submissions and snapshot version. Publication, history and navigation writes complete before success; failed writes restore earlier local state and remain open for retry.
+- Publication assignment resolves active students in the selected year/SGT from Student Management. Empty assignments block publication; empty rosters remain empty. Student lists and automatic grading exclude unassigned students.
+- Protected edit/delete demo verification is labelled and restricted to demo mode; production actions require authentication integration.
+
 ## 2026-10-29 - Department logbook assignments
 
 Assign entry now filters document activities by department and posting phase, keeps a manual activity path, and offers a reviewed representative sample batch for selected demo students. Batch assignment rechecks locks and existing activity assignments before creating To do entries. Source phase/category/provenance stays attached to the learner handoff; Skills remains a separate workflow.

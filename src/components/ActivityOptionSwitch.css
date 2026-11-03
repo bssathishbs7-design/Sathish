@@ -1,0 +1,117 @@
+.activity-option-switches { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3, 12px); }
+.activity-option-segments, .activity-option-marks {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border, #c9ddd1);
+  border-radius: var(--r-pill, 999px);
+  padding: var(--s-1, 4px);
+  background: var(--surface-card, var(--app-surface, #fff));
+  color: var(--text-muted, var(--forms-muted));
+  box-sizing: border-box;
+  min-height: calc(var(--s-5, 24px) + var(--s-4, 16px) + var(--s-1, 4px));
+}
+.activity-option-segments button, .activity-option-marks {
+  gap: var(--s-2, 8px);
+  font: inherit;
+  font-size: var(--fs-micro, 11px);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-control, 300ms) var(--ease-standard, ease);
+}
+.activity-option-segments button {
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: calc(var(--s-5, 24px) + var(--s-3, 12px));
+  min-height: calc(var(--s-5, 24px) + var(--s-3, 12px));
+  padding: 0 var(--s-3, 12px);
+  border: 0;
+  border-radius: var(--r-pill, 999px);
+  color: inherit;
+  background: transparent;
+  white-space: nowrap;
+}
+.activity-option-segments button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--mint-200, #5fe8b1) 50%, var(--surface-card, var(--app-surface, #fff)));
+  color: var(--text-brand, var(--forms-text));
+}
+.activity-option-segments {
+  max-width: 100%;
+  height: calc(var(--s-5, 24px) + var(--s-4, 16px) + var(--s-1, 4px));
+  padding: calc(var(--s-1, 4px) - 1px);
+}
+.activity-option-marks { padding: var(--s-2, 8px) var(--s-3, 12px); justify-content: center; min-width: 120px; }
+.activity-option-marks .activity-option-label { color: inherit; font: inherit; letter-spacing: inherit; }
+.activity-option-marks .activity-option-status {
+  padding: var(--s-1, 4px) var(--s-2, 8px);
+  border-radius: var(--r-pill, 999px);
+  background: var(--surface-mist, #f5f5f5);
+  color: var(--text-muted, var(--forms-muted));
+  font: inherit;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.activity-option-marks[aria-pressed="true"] .activity-option-status { background: color-mix(in srgb, var(--mint-200, #5fe8b1) 50%, var(--surface-card, var(--app-surface, #fff))); }
+.activity-option-segments button:hover:not(:disabled), .activity-option-marks:hover:not(:disabled) { background: color-mix(in srgb, var(--mint-200, #5fe8b1) 25%, var(--surface-card, var(--app-surface, #fff))); }
+.activity-option-segments button:active:not(:disabled), .activity-option-marks:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.activity-option-segments button:focus-visible, .activity-option-marks:focus-visible { outline: 2px solid var(--text-brand, #0f6844); outline-offset: var(--s-1, 4px); }
+.activity-option-segments button:disabled, .activity-option-marks:disabled { opacity: .5; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .activity-option-segments button, .activity-option-marks { transition: none; } }
+
+/* Keep the assessment pills in the same visual family as the activity settings. */
+.activity-inline-builder .activity-inline-types { display: flex; flex-wrap: wrap; gap: var(--s-3, 12px); }
+.activity-inline-builder .activity-inline-types .activity-inline-type {
+  height: calc(var(--s-5, 24px) + var(--s-4, 16px) + var(--s-1, 4px));
+  min-height: calc(var(--s-5, 24px) + var(--s-4, 16px) + var(--s-1, 4px));
+  box-sizing: border-box;
+  width: auto;
+  justify-content: center;
+  padding: 0 var(--s-3, 12px);
+  gap: var(--s-1, 4px);
+  border-color: var(--border, #c9ddd1);
+  border-radius: var(--r-pill, 999px);
+  background: var(--surface-card, var(--app-surface, #fff));
+  color: var(--text-muted, var(--forms-muted));
+  font-size: var(--fs-micro, 11px);
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  box-shadow: none;
+  transition: background var(--dur-control, 300ms) var(--ease-standard, ease);
+}
+.activity-inline-builder .activity-inline-types .activity-inline-type span { color: inherit; font: inherit; letter-spacing: inherit; }
+.activity-inline-builder .activity-inline-types .activity-inline-type.active {
+  background: color-mix(in srgb, var(--mint-200, #5fe8b1) 30%, var(--surface-card, var(--app-surface, #fff)));
+  border-color: var(--mint-200, #5fe8b1);
+  color: var(--text-brand, var(--forms-text));
+}
+.activity-inline-builder .activity-inline-types .activity-inline-type:hover {
+  background: color-mix(in srgb, var(--mint-200, #5fe8b1) 25%, var(--surface-card, var(--app-surface, #fff)));
+  transform: none;
+}
+.activity-inline-builder .activity-inline-types .activity-inline-type:active { transform: translateY(1px) scale(.97); transition: none; }
+.activity-inline-builder .activity-inline-types .activity-inline-type:focus-visible { outline: 2px solid var(--text-brand, #0f6844); outline-offset: var(--s-1, 4px); }
+.activity-inline-builder .activity-inline-types .activity-inline-type .activity-inline-type-icon {
+  width: calc(var(--s-4, 16px) + var(--s-1, 4px));
+  height: calc(var(--s-4, 16px) + var(--s-1, 4px));
+  background: color-mix(in srgb, var(--mint-200, #5fe8b1) 12%, var(--surface-card, var(--app-surface, #fff)));
+}
+.activity-option-segments svg, .activity-option-marks svg, .activity-inline-builder .activity-inline-type svg { width: 14px; height: 14px; flex-shrink: 0; }
+.activity-option-marks.is-always-on { cursor: default; }
+.activity-option-marks.is-always-on:hover { background: var(--surface-card, var(--app-surface, #fff)); }
+.activity-option-marks.is-always-on:active { transform: none; }
+.activity-option-marks.is-always-on .activity-option-status { background: color-mix(in srgb, var(--mint-200, #5fe8b1) 80%, var(--surface-card, var(--app-surface, #fff))); color: var(--text-brand, var(--forms-text)); }
+.activity-assessment-label { display: flex; align-items: baseline; gap: var(--s-1, 4px); }
+.activity-inline-builder .activity-inline-field > span,
+.activity-inline-builder .activity-assessment-label {
+  min-height: calc(var(--s-4, 16px) + var(--s-1, 4px));
+  line-height: calc(var(--s-4, 16px) + var(--s-1, 4px));
+}
+.activity-assessment-label em { color: var(--danger-ink, #b42318); font-style: normal; }
+.activity-assessment-label small { color: var(--text-muted, var(--forms-muted)); font-size: calc(var(--fs-body, 1rem) * .8125); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .activity-inline-builder .activity-inline-types .activity-inline-type { transition: none; } }

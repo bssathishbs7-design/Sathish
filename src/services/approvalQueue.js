@@ -12,7 +12,7 @@
  */
 export const QUEUE_KEY = 'vx-approval-queue-rows'
 export const QUEUE_CACHE_KEY = 'medsy-approval-queue-v1'
-export const APPROVAL_TYPES = ['All', 'Question', 'Assessment', 'Blueprint', 'Skill Assessment']
+export const APPROVAL_TYPES = ['All', 'Question', 'Assessment', 'Assessment Result', 'Blueprint', 'Skill Assessment']
 export const APPROVAL_STATUSES = ['Requests', 'Approved', 'Returned']
 const DAY = 86400000
 export const reviewerKey = user => String(user?.id || user?.registerId || user?.employeeId || '')
@@ -24,6 +24,7 @@ export const requestType = row => {
   if (type === 'question bank' || type === 'question') return 'Question'
   if (type === 'blueprint') return 'Blueprint'
   if (type === 'assessment') return 'Assessment'
+  if (type === 'assessment result') return 'Assessment Result'
   return 'Skill Assessment'
 }
 export const requestStatus = row => {

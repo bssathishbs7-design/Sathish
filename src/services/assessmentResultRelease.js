@@ -80,7 +80,8 @@ export function prepareAssessmentResult(assessment, attempt, previous = {}, eval
   }
   const complete = items.length > 0 && items.every(valid)
   const releaseAt = new Date(Date.parse(attempt.submittedAt) + RESULT_PREPARATION_MS).toISOString()
-  const publish = complete && policy.canAutoPublishCombined && now >= Date.parse(releaseAt)
+  const reviewRequired = ['Pending Approval', 'Approval Rejected'].includes(assessment.resultApproval?.status)
+  const publish = complete && policy.canAutoPublishCombined && !reviewRequired && now >= Date.parse(releaseAt)
   const alreadyPublished = sameAttempt && previous.status === 'published'
   const sections = Object.fromEntries(['mcq', 'descriptive'].map(section => {
     const rows = items.filter(item => item.section === section)
@@ -125,6 +126,7 @@ export function reconcileAssessmentResults(storage = localStorage, now = Date.no
     const statuses = read(storage, statusKey)
     let processed = false
     for (const [studentId, attempt] of Object.entries(attempts)) {
+      if (!roster.some(student => String(student.id || student.studentId || student.registerId) === studentId)) continue
       if (absentIds.has(studentId)) continue
       if (!attempt.isAssessmentSubmitted) {
         if (results[studentId]) { delete results[studentId]; delete statuses[studentId]; processed = true }

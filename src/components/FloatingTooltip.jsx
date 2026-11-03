@@ -2,8 +2,8 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom'
 import './FloatingTooltip.css'
 
-/** @param {{content: import('react').ReactNode, className?: string, children: import('react').ReactNode, interactive?:boolean, label?:string, clickOnly?:boolean}} props */
-export default function FloatingTooltip({ content, className, children, interactive = false, label, clickOnly = false }) {
+/** @param {{content: import('react').ReactNode, className?: string, children: import('react').ReactNode, interactive?:boolean, label?:string, clickOnly?:boolean, arrow?:boolean, tooltipClassName?:string}} props */
+export default function FloatingTooltip({ content, className, children, interactive = false, label, clickOnly = false, arrow = false, tooltipClassName = '' }) {
   const id = useId()
   const trigger = useRef(null)
   const tip = useRef(null)
@@ -24,6 +24,7 @@ export default function FloatingTooltip({ content, className, children, interact
     }, delay)
   }
   const onBlur = event => {
+    if (pinned.current && !event.relatedTarget) return
     if (trigger.current?.contains(event.relatedTarget) || tip.current?.contains(event.relatedTarget)) return
     dismiss()
   }
@@ -40,6 +41,8 @@ export default function FloatingTooltip({ content, className, children, interact
       // Portals sit outside the page theme; preserve its semantic tokens.
       setPosition({
         theme,
+        above: anchor.top >= box.height + gap * 2,
+        arrowLeft: anchor.left + anchor.width / 2 - Math.max(gap, Math.min(anchor.left + (anchor.width - box.width) / 2, window.innerWidth - box.width - gap)),
         left: Math.max(gap, Math.min(anchor.left + (anchor.width - box.width) / 2, window.innerWidth - box.width - gap)),
         top: anchor.top >= box.height + gap * 2 ? anchor.top - box.height - gap : Math.min(anchor.bottom + gap, window.innerHeight - box.height - gap),
       })
@@ -70,8 +73,8 @@ export default function FloatingTooltip({ content, className, children, interact
       onMouseEnter={clickOnly ? undefined : show} onMouseLeave={leave} onFocus={clickOnly ? undefined : show} onBlur={onBlur}>
       {children}
     </Trigger>
-    {open && createPortal(<div ref={tip} id={id} role="tooltip" className={`floating-tooltip${interactive ? ' is-interactive' : ''}`}
+    {open && createPortal(<div ref={tip} id={id} role="tooltip" className={`floating-tooltip${interactive ? ' is-interactive' : ''} ${tooltipClassName}`} data-placement={position?.above ? 'above' : 'below'}
       onMouseEnter={cancelClose} onMouseLeave={leave} onFocus={cancelClose} onBlur={onBlur}
-      style={{ ...position?.theme, left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? 'visible' : 'hidden' }}>{content}</div>, document.body)}
+      style={{ ...position?.theme, '--tooltip-arrow-left': `${position?.arrowLeft ?? 0}px`, left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? 'visible' : 'hidden' }}>{arrow && <span className="floating-tooltip-arrow" aria-hidden="true" />}{content}</div>, document.body)}
   </>
 }

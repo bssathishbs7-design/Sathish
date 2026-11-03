@@ -1,0 +1,84 @@
+.activity-inline-builder.activity-builder-compact {
+  gap: var(--s-3, 12px);
+  background: var(--surface-card, var(--app-surface, #fff));
+  border-color: var(--border, #c9ddd1);
+  box-shadow: var(--shadow-md, 0 16px 38px -14px rgba(15, 104, 68, .22));
+}
+.activity-builder-compact .activity-required { color: var(--danger-ink, #b42318); font-style: normal; font-weight: 700; }
+.activity-builder-marks-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1, 4px);
+  margin: 0;
+  margin-left: auto;
+  padding: var(--s-1, 4px) var(--s-2, 8px);
+  border-radius: var(--r-pill, 999px);
+  background: color-mix(in srgb, var(--sky, #cfebff) 45%, var(--surface-card, var(--app-surface, #fff)));
+  color: var(--text-body, var(--forms-text));
+  font-size: calc(var(--fs-body, 1rem) * .75);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.activity-inline-name-status:not(:empty) + .activity-builder-marks-badge { margin-left: 0; }
+.activity-builder-compact .activity-inline-builder-grid { gap: var(--s-4, 16px); }
+.activity-builder-compact .activity-builder-help { margin: 0; color: var(--text-muted, var(--forms-muted)); font-size: calc(var(--fs-body, 1rem) * .75); line-height: 1.4; }
+.activity-builder-compact .activity-inline-name-label > label,
+.activity-builder-compact .activity-inline-field > span,
+.activity-builder-compact .activity-assessment-label > span {
+  color: var(--text-body, var(--forms-text));
+  font-size: calc(var(--fs-body, 1rem) * .8125);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.activity-builder-compact .activity-option-segments button,
+.activity-builder-compact .activity-inline-types .activity-inline-type {
+  font-size: calc(var(--fs-body, 1rem) * .75);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.activity-builder-compact .activity-inline-types .activity-inline-type span { text-transform: none; }
+.activity-builder-compact .activity-inline-field textarea { min-height: calc(var(--s-4, 16px) * 4); }
+.activity-builder-compact .activity-inline-actions { padding-top: var(--s-1, 4px); }
+
+.activity-builder-compact .activity-choice-panel {
+  padding: var(--s-3, 12px);
+  border: 1px solid var(--border, #c9ddd1);
+  border-radius: var(--r-sm, 12px);
+  gap: var(--s-2, 8px);
+}
+.activity-choice-panel .activity-option-segments { width: 160px; }
+.activity-choice-panel .activity-option-segments button { flex: 1; }
+.activity-builder-compact .activity-inline-types.activity-assessment-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-2, 8px);
+}
+.activity-builder-compact .activity-inline-types.activity-assessment-tiles .activity-inline-type {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) 14px;
+  grid-template-rows: calc(var(--s-4, 16px) + var(--s-1, 4px)) 1fr;
+  align-items: center;
+  align-content: start;
+  justify-content: start;
+  column-gap: var(--s-1, 4px);
+  row-gap: var(--s-1, 4px);
+  min-height: calc(var(--s-4, 16px) * 5);
+  height: auto;
+  width: 100%;
+  padding: var(--s-3, 12px);
+  border-radius: var(--r-sm, 12px);
+  text-align: left;
+  white-space: normal;
+}
+.activity-assessment-tiles .activity-inline-type strong { grid-column: 2; grid-row: 1; font: inherit; line-height: 1.4; overflow-wrap: normal; }
+.activity-assessment-tiles .activity-inline-type small { grid-column: 1 / -1; grid-row: 2; align-self: start; font-size: var(--fs-micro, 11px); font-weight: 400; line-height: 1.4; color: var(--text-muted, var(--forms-muted)); }
+.activity-assessment-selected { grid-column: 3; grid-row: 1; visibility: hidden; justify-self: end; }
+.activity-assessment-selected.is-selected { visibility: visible; }
+.activity-builder-compact .activity-inline-types.activity-assessment-tiles .activity-inline-type-icon { width: 14px; height: 16px; background: none; }
+@container (min-width: 960px) {
+  .activity-builder-compact .activity-inline-builder-grid { grid-template-columns: minmax(0, .65fr) minmax(0, 1.35fr); }
+}
+@container (max-width: 600px) {
+  .activity-builder-compact .activity-inline-types.activity-assessment-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

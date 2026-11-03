@@ -1,5 +1,6 @@
 import AssessmentResultCountdownButton from '../components/AssessmentResultCountdownButton'
 import { getStudentReleasedResult } from '../services/assessmentResultRelease'
+import { assessmentRoster } from '../services/assessmentRoster'
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Activity, BadgeCheck, CalendarClock, ChartColumnBig, ChevronDown, ClipboardList, EyeOff, ListFilter, Monitor, Search, ShieldCheck, X } from 'lucide-react'
@@ -387,7 +388,8 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   const [isMyAssessmentFilterOpen, setIsMyAssessmentFilterOpen] = useState(false)
   const [accessRequestNotice, setAccessRequestNotice] = useState(null)
   const studentOnlineAssessments = publishedAssessments.filter((assessment) => (
-    isOnlinePracticeAssessment(assessment) || isOnlineProctoredAssessment(assessment)
+    (isOnlinePracticeAssessment(assessment) || isOnlineProctoredAssessment(assessment))
+    && assessmentRoster(assessment).some(student => String(student.id || student.studentId || student.registerId) === CURRENT_STUDENT_ID)
   ))
   const liveOnlineAssessmentCount = studentOnlineAssessments.filter((assessment) => (
     getPublishedAssessmentScheduleStatus(assessment, scheduleNow)?.type === 'live'
@@ -523,6 +525,7 @@ export default function AssessmentDashboardPage({ mode = 'dashboard', onNavigate
   useEffect(() => {
     if (!isMyAssessment) return
     for (const assessment of publishedAssessments) {
+      if (!assessmentRoster(assessment).some(student => String(student.id || student.studentId || student.registerId) === CURRENT_STUDENT_ID)) continue
       const result = getStudentReleasedResult(assessment, CURRENT_STUDENT_ID)
       if (!result?.autoPublish) continue
       const key = 'vx-result-auto-open:' + getAssessmentId(assessment) + ':' + result.submittedAt

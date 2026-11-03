@@ -18,7 +18,7 @@ export function clearAssessmentCards(storage = localStorage, session = sessionSt
   const queueKey = 'vx-approval-queue-rows'
   const before = CARD_KEYS.map(key => [key, storage.getItem(key)])
   const queueBefore = session.getItem(queueKey)
-  const remaining = JSON.parse(queueBefore || '[]').filter(row => !['assessment', 'blueprint'].includes(String(row.activityType || '').toLowerCase()))
+  const remaining = JSON.parse(queueBefore || '[]').filter(row => !['assessment', 'assessment result', 'blueprint'].includes(String(row.activityType || '').toLowerCase()))
   try {
     CARD_KEYS.forEach(key => storage.setItem(key, '[]'))
     session.setItem(queueKey, JSON.stringify(remaining))

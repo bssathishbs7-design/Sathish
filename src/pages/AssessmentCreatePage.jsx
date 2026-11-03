@@ -1,6 +1,7 @@
 import { deleteBlueprintWorkflow } from '../services/blueprintApproval'
 import { parseAssessmentDate, applyAssessmentTime, formatAssessmentRemainingTime, getPublishedAssessmentScheduleStatus, hasPublishedResults, splitPublishedAssessmentRows, canStartLiveEvaluation } from '../services/assessmentTrackerLifecycle'
 import { createQuestionPaperExporter } from '../utils/assessmentQuestionPaper'
+import { assessmentDemoEnabled } from '../services/assessmentDemoSession'
 import FloatingTooltip from '../components/FloatingTooltip'
 import AssessmentStartCountdown from '../components/AssessmentStartCountdown'
 import AssessmentPublicationBadge from '../components/AssessmentPublicationBadge'
@@ -18,7 +19,7 @@ import { assessmentDisplayId } from '../services/assessmentHistory'
 import AssessmentCardSettings from '../components/AssessmentCardSettings'
 import AssessmentResultStatus from '../components/AssessmentResultStatus'
 import { createElement, useEffect, useRef, useState } from 'react'
-import { reserveAssessmentIdentity } from '../services/assessmentIdentity'
+import { createAssessmentWorkspace } from '../services/assessmentWorkspaceCreation'
 import { resetAssessmentTrackerOnce } from '../services/assessmentTrackerReset'
 import { createPortal } from 'react-dom'
 import { ArrowRight, CalendarDays, ChevronDown, BadgeCheck, ChartColumnBig, ClipboardCheck, Clock3, Download, LoaderCircle, EyeOff, FolderPlus, Info, ListFilter, Monitor, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
@@ -625,7 +626,7 @@ const readExamControlLogRows = (assessment) => {
   }
 }
 
-export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [], onViewSubmission, onClearAll, onReschedule, onSendToApproval }) {
+export default function AssessmentCreatePage({ onNavigate, onAlert, approvalQueueRows = [], onViewSubmission, onClearAll, onReschedule, onSendToApproval }) {
   const creatingAssessmentRef = useRef(false)
   const [cardView, setCardView] = useState(readAssessmentView)
   const compactCards = cardView !== 'list'
@@ -890,9 +891,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
     setIsCreatingAssessment(true)
     setCreationError('')
     try {
-      const identity = await reserveAssessmentIdentity()
-      window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify({ ...initialForm, ...identity }))
-      window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'create')
+      await createAssessmentWorkspace(initialForm)
       onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
     } catch (error) {
       setCreationError(error instanceof Error ? error.message : 'Unable to create assessment. Please try again.')
@@ -1011,6 +1010,10 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
   }
 
   const openPublishedActionModal = (action, assessment) => {
+    if (!assessmentDemoEnabled()) {
+      onAlert?.({ tone: 'warning', message: 'Protected assessment changes require the authentication API. Demo verification is unavailable outside demo mode.' })
+      return
+    }
     setPublishedActionModal({
       action,
       assessment,
@@ -1050,6 +1053,10 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
   const submitPublishedActionVerification = (event) => {
     event.preventDefault()
     if (!publishedActionModal?.assessment) return
+    if (!assessmentDemoEnabled()) {
+      setPublishedActionModal(current => ({ ...current, error: 'Demo verification is disabled. Connect the authentication API to continue.' }))
+      return
+    }
 
     const enteredValue = String(publishedActionModal.value || '').trim()
     if (enteredValue !== PUBLISHED_ACTION_VERIFICATION_CODE) {
@@ -1541,7 +1548,7 @@ export default function AssessmentCreatePage({ onNavigate, approvalQueueRows = [
                   <h3 id="assessment-create-action-guard-title">
                     Verify {publishedActionModal.action === 'delete' ? 'Delete' : 'Edit'} Action
                   </h3>
-                  <p>Select Password or OTP, then enter the code to continue.</p>
+                  <p>Demo verification only. Select Password or OTP and enter the demo code. Production verification requires the authentication API.</p>
                 </div>
                 <div className="assessment-create-action-methods" role="radiogroup" aria-label="Verification method">
                   <button

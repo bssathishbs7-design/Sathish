@@ -26,7 +26,7 @@ export function getAssessmentAutomation(setup, types, capabilities = ASSESSMENT_
 }
 
 /** Resolve saved configuration independently of executor availability. This never executes grading or incurs cost.
- * @param {Object} setup Persisted settings; descriptive Yes means AI, No means faculty evaluation.
+ * @param {Object} setup Persisted settings; descriptive Yes means keyword coverage, No means faculty evaluation.
  * @param {{hasMcq?:boolean,hasDescriptive?:boolean}} types Applicable question types.
  */
 export function getAssessmentAutomationConfiguration(setup, types) {

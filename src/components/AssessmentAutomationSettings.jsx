@@ -9,7 +9,7 @@ export default function AssessmentAutomationSettings({ setup, types, onChange, o
   const hybrid = policy.rows.length === 2
   const publishEligible = policy.rows.length > 0 && policy.rows.every(row => row.evaluation)
   const publishHelp = hybrid
-    ? publishEligible ? 'Publish the combined result automatically after both sections are evaluated.' : 'Requires Online Response for both sections and AI evaluation for Descriptive in an online exam.'
+    ? publishEligible ? 'Publish the combined result automatically after both sections are evaluated.' : 'Requires online responses for both sections and automatic descriptive evaluation.'
     : publishEligible ? 'Publish results automatically after evaluation.' : 'Requires Online Response and automatic evaluation in an online exam.'
   return <div className={'assessment-automation qb-sort-scope' + (hybrid ? ' is-hybrid' : '')}>
     <section className="assessment-automation-answers" aria-label="Answers and results">
@@ -29,7 +29,7 @@ export default function AssessmentAutomationSettings({ setup, types, onChange, o
         </div>
         <div className="assessment-automation-fields">
           {!row.enabled ? <p className="assessment-automation-manual"><Eye size={16} aria-hidden="true" /><span>{row.readOnly ? 'Read-only questions' : 'Offline assessment'}<br /><small>{row.readOnly ? 'Students can view questions but cannot enter answers. ' : ''}Manual evaluation and publishing.</small></span></p> : [
-            {name:'Evaluation', field:row.key+'AutoEvaluation', active:row.evaluation, fixed:row.key === 'mcq', labels:['AI','Manual'], reason:row.key === 'mcq' ? 'AI Evaluated Automatically' : row.evaluation ? 'AI Evaluated Automatically' : 'Faculty evaluate student responses.', Icon:ClipboardCheck},
+            {name:'Evaluation', field:row.key+'AutoEvaluation', active:row.evaluation, fixed:row.key === 'mcq', labels:['Automatic','Manual'], reason:row.key === 'mcq' ? 'Evaluated using the answer key.' : row.evaluation ? 'Uses model-answer keyword coverage. Responses that cannot be graded require faculty review.' : 'Faculty evaluate student responses.', Icon:ClipboardCheck},
           ].map(({Icon, ...control}) => <div className="assessment-automation-field" key={control.field}>
             <span>{createElement(Icon, { size: 14, 'aria-hidden': true })}{control.name}</span>
             {control.fixed ? <span className="assessment-automation-fixed"><CheckSquare size={14} aria-hidden="true" />Automatic</span> : <div className="assessment-automation-options" role="group" aria-label={row.label+' '+control.name}>

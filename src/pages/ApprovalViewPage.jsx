@@ -4,6 +4,7 @@ import CopyIdBadge from '../components/CopyIdBadge'
 import { questionDisplayId } from '../utils/questionLifecycle'
 import BlueprintApprovalReview from '../components/BlueprintApprovalReview'
 import AssessmentApprovalReview from '../components/AssessmentApprovalReview'
+import AssessmentResultReview from '../components/AssessmentResultReview'
 import { useEffect, useMemo, useState } from 'react'
 import { sanitizeRichHtml } from '../utils/sanitizeHtml'
 import {
@@ -1219,6 +1220,7 @@ export default function ApprovalViewPage({ currentUser, approvalRecord, complete
     )
   }
 
+  if (approvalRecord?.activityType === 'Assessment Result') return <AssessmentResultReview record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} theme={theme} />
   if (approvalRecord?.activityType === 'Assessment') return <AssessmentApprovalReview currentUser={currentUser} onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} readOnly={approvalRecord.submissionReadOnly} />
   if (approvalRecord?.activityType === 'Blueprint') return <BlueprintApprovalReview onValidateReview={onValidateReview} currentUser={currentUser} onToggleTheme={onToggleTheme} theme={theme} record={approvalRecord} onBack={onBack} onDecision={onApprovalAction} />
 

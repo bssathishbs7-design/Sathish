@@ -1,3 +1,4 @@
+import { isDescriptiveQuestionType, getQuestionMarksTotal, getDescriptiveSectionMarks, getDescriptiveScoringItems, getQuestionKey } from '../services/assessmentScoringItems'
 import { liveEvaluationProgress } from '../services/liveEvaluationProgress'
 import { getPublishedAssessmentScheduleStatus, hasSubmittedResponses } from '../services/assessmentTrackerLifecycle'
 import { MOCK_EVALUATION_STUDENTS, assessmentRoster } from '../services/assessmentRoster'
@@ -5,6 +6,9 @@ import { appendAssessmentHistory } from '../services/assessmentHistory'
 import DescriptiveEvaluationReport from '../components/DescriptiveEvaluationReport'
 import { getStudentReleasedResult, RESULT_RELEASE_EVENT } from '../services/assessmentResultRelease'
 import { getAssessmentAutomation } from '../services/assessmentAutomation'
+import { ASSESSMENT_RESULT_TYPE, publishAssessmentResults, resultSnapshotVersion } from '../services/assessmentResultWorkflow'
+import AssessmentPublicationDialog from '../components/AssessmentPublicationDialog'
+import SaveChangesDialog from '../components/SaveChangesDialog'
 import EvaluationActionBar from '../components/EvaluationActionBar'
 import EvaluationRowActions from '../components/EvaluationRowActions'
 import EvaluationStatus from '../components/EvaluationStatus'
@@ -46,12 +50,6 @@ const STUDENT_EXAM_SUBMISSION_STATUS_EVENT = 'vx-student-exam-submission-status-
 const ASSESSMENT_EVALUATION_ATTENDANCE_KEY = 'vx-assessment-evaluation-attendance'
 const ASSESSMENT_STUDENT_QUESTION_EVALUATION_KEY = 'vx-assessment-student-question-evaluation'
 const ASSESSMENT_STUDENT_EVALUATION_STATUS_KEY = 'vx-assessment-student-evaluation-status'
-const DEFAULT_EVALUATION_STUDENTS = [
-  { id: 'MV1253', name: 'Student 1', attendance: 'P' },
-  { id: 'MV1254', name: 'Student 2', attendance: 'P' },
-  { id: 'MV1255', name: 'Student 3', attendance: 'P' },
-  { id: 'MC2568', name: 'Karthik Subramanian', attendance: 'P' },
-]
 const MOCK_EVALUATION_QUESTIONS = [
   {
     id: 'mock-eval-mcq-1',
@@ -192,14 +190,14 @@ const normalizeSelectedAssessmentForMockFlow = (assessment) => {
 
   return {
     ...assessment,
-    questions: hasQuestions ? assessment.questions : MOCK_EVALUATION_QUESTIONS,
-    questionRows: hasQuestions ? assessment.questionRows : MOCK_EVALUATION_QUESTIONS,
+    questions: hasQuestions ? assessment.questions : [],
+    questionRows: hasQuestions ? assessment.questionRows : [],
     students: assessmentRoster(assessment),
     setup: {
       ...MOCK_EVALUATION_ASSESSMENT.setup,
       ...(assessment.setup || {}),
-      questions: hasQuestions ? (assessment.setup?.questions || assessment.questions || assessment.questionRows) : MOCK_EVALUATION_QUESTIONS,
-      questionRows: hasQuestions ? (assessment.setup?.questionRows || assessment.questionRows || assessment.questions) : MOCK_EVALUATION_QUESTIONS,
+      questions: hasQuestions ? (assessment.setup?.questions || assessment.questions || assessment.questionRows) : [],
+      questionRows: hasQuestions ? (assessment.setup?.questionRows || assessment.questionRows || assessment.questions) : [],
       students: assessmentRoster(assessment),
     },
   }
@@ -289,72 +287,8 @@ const parseMarksValue = (value) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-const isDescriptiveQuestionType = (type) => (
-  type === 'Descriptive Question'
-  || String(type ?? '').toLowerCase().includes('descriptive')
-  || String(type ?? '').includes('SAQs')
-  || String(type ?? '').includes('MEQs')
-  || String(type ?? '').includes('LAQs')
-)
-
-const getQuestionMarksTotal = (item) => {
-  if (isDescriptiveQuestionType(item?.type)) {
-    const sections = descriptiveSections(item)
-    const sectionMarks = sections.reduce((total, section) => {
-      const children = Array.isArray(section.children) ? section.children : []
-      const childMarks = children.reduce((sum, child) => sum + parseMarksValue(child.marks), 0)
-      const ownMarks = children.length ? 0 : parseMarksValue(section.marks)
-      return total + ownMarks + childMarks
-    }, 0)
-    const totalMarks = (sections.length ? 0 : parseMarksValue(item?.marks)) + sectionMarks
-    return totalMarks || (stripHtml(item?.questionText) ? 2 : 0)
-  }
-
-  if (item?.type === 'MCQ' && !parseMarksValue(item?.marks)) return 1
-  return parseMarksValue(item?.marks)
-}
-
-const getDescriptiveSectionMarks = (section) => {
-  const children = Array.isArray(section?.children) ? section.children : []
-  if (children.length) {
-    return children.reduce((total, child) => total + (getQuestionMarksTotal(child) || parseMarksValue(child?.marks)), 0)
-  }
-  return getQuestionMarksTotal(section) || parseMarksValue(section?.marks)
-}
-
-const getDescriptiveScoringItems = (question, index, answerInput = false) => {
-  if (answerInput) return descriptiveResponseItems(question, index).map(({ key, item }) => ({ key, maxMarks: getQuestionMarksTotal(item) || parseMarksValue(item.marks) }))
-  const baseKey = getQuestionKey(question, `descriptive-${index + 1}`)
-  const sections = descriptiveSections(question)
-
-  if (!sections.length) {
-    return [{ key: baseKey, maxMarks: getQuestionMarksTotal(question) }]
-  }
-
-  return sections.flatMap((section, sectionIndex) => {
-    const sectionKey = getQuestionKey(section, `${baseKey}-section-${sectionIndex + 1}`)
-    const children = Array.isArray(section.children) ? section.children : []
-
-    if (!children.length) {
-      return [{ key: sectionKey, maxMarks: getDescriptiveSectionMarks(section) }]
-    }
-
-    return children.map((child, childIndex) => ({
-      key: getQuestionKey(child, `${sectionKey}-child-${childIndex + 1}`),
-      maxMarks: getQuestionMarksTotal(child) || parseMarksValue(child?.marks),
-    }))
-  })
-}
-
 const getQuestionText = (item, fallback = 'Question not available') => (
   stripHtml(item?.questionText ?? item?.prompt ?? item?.text ?? item?.title ?? item?.question ?? fallback)
-)
-
-const getQuestionKey = (item, fallback) => String(
-  item?.id
-  || item?.questionId
-  || item?._id
-  || fallback
 )
 
 const getQuestionImages = (item) => {
@@ -834,10 +768,10 @@ const readEvaluationStudents = (assessment, studentSessions = {}, submissionStat
     assessment?.studentRows,
     assessment?.setup?.students,
     assessment?.setup?.assignedStudents,
-  ].find((items) => Array.isArray(items) && items.length)
+  ].find(Array.isArray)
 
   const assessmentId = getAssessmentControlId(assessment)
-  const baseStudents = attachedStudents || DEFAULT_EVALUATION_STUDENTS
+  const baseStudents = attachedStudents || []
   const hasAttachedStudents = Boolean(attachedStudents)
   const isOffline = isOfflineAssessment(assessment)
 
@@ -863,15 +797,16 @@ const readEvaluationStudents = (assessment, studentSessions = {}, submissionStat
   })
 }
 
-export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 'light', onToggleTheme, view = 'list' }) {
+export default function AssessmentEvaluationPage({ onNavigate, onAlert, onSendToApproval, currentUser, theme = 'light', onToggleTheme, view = 'list' }) {
   const isStudentResultView = view === 'result'
   const isOverallAnalyticsView = view === 'overall'
-  const isReadOnlyQuestionView = isStudentResultView || isOverallAnalyticsView
   const isStudentEvaluationView = view === 'student' || isStudentResultView
   const shouldHideOverallAnalyticsBack = isOverallAnalyticsView && window.sessionStorage.getItem(ASSESSMENT_OVERALL_ANALYTICS_SOURCE_KEY) === 'results'
   const studentResultSource = window.sessionStorage.getItem(ASSESSMENT_STUDENT_RESULT_SOURCE_KEY)
   const isMyAssessmentStudentResult = isStudentResultView && studentResultSource === 'my-assessment'
   const [assessment, setAssessment] = useState(() => readSelectedAssessment())
+  const isResultReviewPending = assessment.resultApproval?.status === 'Pending Approval'
+  const isReadOnlyQuestionView = isStudentResultView || isOverallAnalyticsView || isResultReviewPending
   const [selectedStudent, setSelectedStudent] = useState(() => readSelectedStudent())
   const [studentSessions, setStudentSessions] = useState(() => readStorageObject(STUDENT_EXAM_SESSION_KEY))
   const [submissionStatuses, setSubmissionStatuses] = useState(() => readStorageObject(STUDENT_EXAM_SUBMISSION_STATUS_KEY))
@@ -903,6 +838,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   const [isThresholdConfirmOpen, setIsThresholdConfirmOpen] = useState(false)
   const [isThresholdConfigOpen, setIsThresholdConfigOpen] = useState(false)
   const [isDirectPublishConfirmOpen, setIsDirectPublishConfirmOpen] = useState(false)
+  const [resultApprovalOpen, setResultApprovalOpen] = useState(false)
+  const [resultSaveError, setResultSaveError] = useState('')
+  const [resultSaving, setResultSaving] = useState(false)
+  const resultSaveLock = useRef(false)
+  const publicationVersion = useRef('')
   const [thresholdConfig, setThresholdConfig] = useState(() => buildAssessmentThresholdConfig(readSelectedAssessment()))
   const [thresholdDraft, setThresholdDraft] = useState(() => buildAssessmentThresholdConfig(readSelectedAssessment()))
   const [thinkingThresholdTab, setThinkingThresholdTab] = useState('hotLot')
@@ -1156,62 +1096,65 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     { hasMcq: mcqQuestions.length > 0, hasDescriptive: descriptiveQuestions.length > 0 },
   ).canAutoPublishCombined
   const isResultAlreadyPublished = String(assessment.resultStatus || assessment.evaluationStatus || '').toLowerCase() === 'published'
-  const isManualResultPublishDisabled = isResultAutoPublishEnabled || isResultAlreadyPublished || pendingCount > 0 || completedScoreRows.length === 0
+  const resultActionsDisabled = resultSaving || isResultReviewPending || isResultAutoPublishEnabled || isResultAlreadyPublished || pendingCount > 0 || completedScoreRows.length === 0
+  const isManualResultPublishDisabled = resultActionsDisabled || Boolean(assessment.resultApproval?.requestId)
 
   const sendEvaluationToApproval = () => {
-    if (isManualResultPublishDisabled) return
-    if (pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
-    onAlert?.({ tone: 'primary', message: 'Evaluation result sent to approval.' })
+    if (resultActionsDisabled || !onSendToApproval) return
+    setResultSaveError('')
+    setResultApprovalOpen(true)
+  }
+
+  const submitEvaluationToApproval = async ({ reviewer }) => {
+    const saved = await onSendToApproval({
+      activityId: `assessment-result-${getAssessmentControlId(assessment)}`,
+      activityType: ASSESSMENT_RESULT_TYPE,
+      activityName: `${assessmentName} results`,
+      assessmentName: `${assessmentName} results`,
+      assessmentRecordId: getAssessmentControlId(assessment),
+      setup: assessment.setup,
+      approvalStatus: 'Pending Approval', status: 'Pending Approval',
+      approvalFaculty: reviewer,
+      resultRows: normalizedRows.map(({ id, name, isAbsent, evalStatus, scoringSummary }) => ({ id, name, isAbsent, evalStatus, scoringSummary })),
+    })
+    if (!saved) return false
+    setResultApprovalOpen(false)
+    window.dispatchEvent(new Event(RESULT_RELEASE_EVENT))
+    return true
   }
 
   const directPublishEvaluationResult = () => {
     if (isManualResultPublishDisabled) return
-    if (pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
-    setIsDirectPublishConfirmOpen(true)
+    setResultSaveError('')
+    try {
+      publicationVersion.current = resultSnapshotVersion(assessment, window.localStorage)
+      setIsDirectPublishConfirmOpen(true)
+    } catch {
+      onAlert?.({ tone: 'warning', message: 'Saved evaluation data could not be read. Reload evaluation before publishing.' })
+    }
   }
 
-  const confirmDirectPublishEvaluationResult = () => {
-    if (isManualResultPublishDisabled) return
-    if (pendingCount > 0) { onAlert?.({ tone: 'warning', message: 'Complete descriptive evaluation for every present student before releasing results.' }); return }
-    const publishedAt = new Date().toISOString()
-    const nextAssessment = {
-      ...assessment,
-      resultStatus: 'Published',
-      evaluationStatus: 'Published',
-      publishedResultAt: publishedAt,
-      resultsPublishedAt: publishedAt,
-    }
-
+  const confirmDirectPublishEvaluationResult = async () => {
+    if (isManualResultPublishDisabled || resultSaveLock.current) return
+    resultSaveLock.current = true
+    setResultSaving(true)
+    setResultSaveError('')
     try {
-      const publishedAssessments = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
-      if (Array.isArray(publishedAssessments)) {
-        const nextPublished = publishedAssessments.map((item) => (
-          item.id === assessment?.id
-            ? {
-              ...item,
-              resultStatus: 'Published',
-              evaluationStatus: 'Published',
-              publishedResultAt: publishedAt,
-              resultsPublishedAt: publishedAt,
-            }
-            : item
-        ))
-        window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
-        appendAssessmentHistory(assessment, { action: 'Results published', timestamp: publishedAt })
-        window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
-      }
-    } catch {
-      // Session storage still carries the published result status for navigation.
+      await new Promise(resolve => setTimeout(resolve, 0))
+      const saved = publishAssessmentResults({ assessmentId: getAssessmentControlId(assessment), rows: normalizedRows,
+        version: publicationVersion.current, actor: currentUser?.name || '' }, window.localStorage, window.sessionStorage)
+      setAssessment(saved)
+      setIsDirectPublishConfirmOpen(false)
+      window.dispatchEvent(new Event(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
+      window.dispatchEvent(new Event(RESULT_RELEASE_EVENT))
+      onAlert?.({ tone: 'success', message: 'Assessment results published to the student portal.' })
+      onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
+    } catch (error) {
+      setResultSaveError(error.message || 'Results could not be saved. Please retry.')
+    } finally {
+      resultSaveLock.current = false
+      setResultSaving(false)
     }
-
-    window.sessionStorage.setItem(ASSESSMENT_EVALUATION_SELECTED_KEY, JSON.stringify(nextAssessment))
-    window.localStorage.setItem(ASSESSMENT_CREATE_INITIAL_TAB_KEY, 'results')
-    setIsDirectPublishConfirmOpen(false)
-    onAlert?.({
-      tone: 'success',
-      message: 'The assessment results have been successfully published to the student portal.',
-    })
-    onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
   }
 
   const downloadEvaluationExcel = () => {
@@ -1346,7 +1289,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
       if (Array.isArray(publishedAssessments)) {
         const nextPublished = publishedAssessments.map((item) => (item.id === assessment?.id ? mergeAssessmentThresholdConfig(item, nextConfig) : item))
         window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(nextPublished))
-        appendAssessmentHistory(assessment, { action: 'Results published', timestamp: publishedAt })
+        appendAssessmentHistory(assessment, { action: 'Threshold configuration updated', timestamp: new Date().toISOString() })
         window.dispatchEvent(new CustomEvent(ASSESSMENT_PUBLISHED_CHANGED_EVENT))
       }
     } catch {
@@ -1542,6 +1485,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
   }
 
   const updateManualAttendance = (studentId, attendance) => {
+    if (isResultReviewPending) return
     setManualAttendance((current) => {
       const nextAttendance = { ...current, [studentId]: attendance }
       writeStorageObject(getManualAttendanceStorageKey(assessment), nextAttendance)
@@ -1575,7 +1519,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
     : null
 
   const saveQuestionEvaluationState = (updater) => {
-    if (!selectedStudent) return
+    if (!selectedStudent || isResultReviewPending) return
     const historyEventId = crypto.randomUUID()
     setQuestionEvaluationState((current) => {
       const nextState = typeof updater === 'function' ? updater(current) : updater
@@ -4150,6 +4094,7 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
             </tbody>
           </table>
         </div>
+        {assessment.resultApproval?.remarks && <p role="status"><strong>Result review remarks:</strong> {assessment.resultApproval.remarks}</p>}
         <footer className="assessment-evaluation-table-footer">
           <button type="button" className="assessment-evaluation-floating-btn is-download" onClick={downloadEvaluationExcel}>
             <Download size={15} strokeWidth={2.4} />
@@ -4157,11 +4102,11 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           </button>
         <div className="assessment-evaluation-floating-card" aria-label="Evaluation result actions">
 
-          <button type="button" className="assessment-evaluation-floating-btn is-approval" onClick={sendEvaluationToApproval} disabled>
+          <button type="button" className="assessment-evaluation-floating-btn is-approval" onClick={sendEvaluationToApproval} disabled={resultActionsDisabled || !onSendToApproval} title={isResultReviewPending ? 'Results are awaiting review.' : undefined}>
             <Check size={15} strokeWidth={2.4} />
-            Send to Approval
+            {isResultReviewPending ? 'Awaiting result approval' : assessment.resultApproval?.status === 'Approval Rejected' ? 'Resubmit results' : 'Send results for approval'}
           </button>
-          <button type="button" className="assessment-evaluation-floating-btn is-publish" onClick={directPublishEvaluationResult} disabled={isManualResultPublishDisabled} title={isResultAutoPublishEnabled ? 'Auto Publish is enabled. Results publish automatically after evaluation.' : isResultAlreadyPublished ? 'Results are already published.' : undefined}>
+          <button type="button" className="assessment-evaluation-floating-btn is-publish" onClick={directPublishEvaluationResult} disabled={isManualResultPublishDisabled} title={assessment.resultApproval?.requestId ? 'Results submitted for review must follow the approval route.' : isResultAutoPublishEnabled ? 'Auto Publish is enabled. Results publish automatically after evaluation.' : isResultAlreadyPublished ? 'Results are already published.' : undefined}>
             <Award size={15} strokeWidth={2.4} />
             Direct Publish Result
           </button>
@@ -4339,21 +4284,10 @@ export default function AssessmentEvaluationPage({ onNavigate, onAlert, theme = 
           </article>
         </div>
       ) : null}
-      {isDirectPublishConfirmOpen ? (
-        <div className="assessment-evaluation-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="direct-publish-confirm-title">
-          <article className="assessment-evaluation-confirm-modal">
-            <span className="assessment-evaluation-confirm-icon is-publish" aria-hidden="true">
-              <Award size={24} strokeWidth={2.4} />
-            </span>
-            <h2 id="direct-publish-confirm-title">Are you sure publish assessment results to students?</h2>
-            <p>{assessmentName}</p>
-            <div className="assessment-evaluation-confirm-actions">
-              <button type="button" className="is-secondary" onClick={() => setIsDirectPublishConfirmOpen(false)}>No</button>
-              <button type="button" className="is-primary" onClick={confirmDirectPublishEvaluationResult}>Yes</button>
-            </div>
-          </article>
-        </div>
-      ) : null}
+      {resultApprovalOpen && <AssessmentPublicationDialog action="Send to Approval" name={`${assessmentName} results`} theme={theme} onCancel={() => setResultApprovalOpen(false)} onConfirm={submitEvaluationToApproval} />}
+      {isDirectPublishConfirmOpen && <SaveChangesDialog title="Publish assessment results?" description={assessmentName} theme={theme}
+        onCancel={() => setIsDirectPublishConfirmOpen(false)} onSave={confirmDirectPublishEvaluationResult}
+        busy={resultSaving} error={resultSaveError} saveLabel="Publish results" busyLabel="Publishing..." />}
       {confirmAction ? (
         <div className="assessment-evaluation-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="assessment-evaluation-confirm-title">
           <article className="assessment-evaluation-confirm-modal">
