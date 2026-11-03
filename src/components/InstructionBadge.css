@@ -43,13 +43,13 @@
 }
 .instruction-badge:active { transform: translateY(1px) scale(.97); transition: none; }
 .floating-tooltip.instruction-badge-popover {
-  width: min(840px, calc(100vw - 32px));
+  width: min(calc(var(--s-9, 96px) * 6), calc(100vw - 32px));
   max-width: calc(100vw - 32px);
   padding: var(--s-4, 16px);
-  text-align: justify;
+  text-align: left;
   color: var(--text-body, #333333);
   font-size: calc(var(--fs-body, 1rem) * .875);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 .instruction-badge-heading {
   margin: 0 0 var(--s-2, 8px);
@@ -63,7 +63,17 @@
   margin: 0;
   color: inherit;
   font: inherit;
+  text-align: justify;
+  text-align-last: left;
 }
+.instruction-badge-scroll {
+  max-height: min(calc(var(--s-9, 96px) * 3), calc(100dvh - 160px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: var(--s-2, 8px);
+}
+.instruction-badge-scroll:focus-visible { outline: 2px solid var(--text-brand); outline-offset: var(--s-1, 4px); }
 
 @keyframes instruction-badge-fill {
   0%, 10% { transform: scaleX(0); opacity: 1; }

@@ -1,6 +1,18 @@
 .activity-name-refiner { position: relative; min-width: 0; }
-.activity-name-refiner-entry { display: flex; align-items: flex-start; gap: var(--s-2, 8px); }
-.activity-name-refiner-entry textarea { flex: 1; min-width: 0; }
+.activity-name-refiner-entry textarea { width: 100%; min-width: 0; }
+.activity-refiner-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2, 8px);
+  margin-top: var(--s-2, 8px);
+  padding: var(--s-2, 8px) var(--s-3, 12px);
+  border: 1px solid color-mix(in srgb, var(--lilac, #E3DCFF) 65%, var(--border, var(--app-border)));
+  border-radius: var(--r-sm, 12px);
+  background: color-mix(in srgb, var(--lilac, #E3DCFF) 25%, var(--surface-card, var(--app-surface, #fff)));
+  box-shadow: var(--shadow-xs, 0 1px 3px rgba(15, 104, 68, .06));
+}
+.activity-refiner-card-copy { flex: 1; min-width: 0; }
+.activity-name-refiner .activity-refiner-card-copy p { margin: 0; color: var(--text-body, var(--app-text, #333)); font-size: var(--fs-caption, .8125rem); line-height: 1.4; }
 .activity-refine-button,
 .activity-refiner-popover button,
 .activity-refiner-undo button {
@@ -18,8 +30,9 @@
   cursor: pointer;
   transition: background var(--dur-hover, 180ms) var(--ease-standard, ease);
 }
-.activity-refine-button { flex-shrink: 0; }
-:is(.activity-refine-button, .activity-refiner-popover button, .activity-refiner-undo button):hover:not(:disabled) { background: color-mix(in srgb, var(--mint-200, #5fe8b1) 20%, var(--surface-card, var(--app-surface, #fff))); }
+.activity-name-refiner .activity-refiner-card .activity-refine-button { flex-shrink: 0; min-height: var(--s-5, 32px); font-size: var(--fs-caption, .8125rem); line-height: 1.4; border-color: var(--peach, #FFD8C4); background: color-mix(in srgb, var(--peach, #FFD8C4) 85%, var(--surface-card, var(--app-surface, #fff))); padding: var(--s-1, 4px) var(--s-3, 12px); box-shadow: var(--shadow-sm, 0 4px 14px -6px rgba(15, 104, 68, .12)); transition: background var(--dur-hover, 180ms) var(--ease-standard, ease), box-shadow var(--dur-hover, 180ms) var(--ease-standard, ease); color: var(--text-strong, var(--app-text, #333)); }
+.activity-name-refiner .activity-refiner-card .activity-refine-button:hover:not(:disabled) { box-shadow: var(--shadow-md, 0 16px 38px -14px rgba(15, 104, 68, .22)); background: color-mix(in srgb, var(--coral, #FFC3B4) 85%, var(--surface-card, var(--app-surface, #fff))); color: var(--text-strong, var(--app-text, #333)); }
+:is(.activity-refiner-popover button, .activity-refiner-undo button):hover:not(:disabled) { background: color-mix(in srgb, var(--mint-200, #5fe8b1) 20%, var(--surface-card, var(--app-surface, #fff))); }
 :is(.activity-refine-button, .activity-refiner-popover button, .activity-refiner-undo button):active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
 :is(.activity-refine-button, .activity-refiner-popover button, .activity-refiner-undo button):focus-visible { outline: 2px solid var(--text-brand, #0f6844); outline-offset: var(--s-1, 4px); }
 .activity-refine-button:disabled, .activity-refiner-popover button:disabled { opacity: .5; cursor: not-allowed; }
@@ -36,10 +49,8 @@
   font-size: calc(var(--fs-body, 1rem) * .875);
   line-height: 1.5;
 }
-.activity-refiner-popover::before { content: ''; position: absolute; top: var(--refiner-arrow-top); bottom: var(--refiner-arrow-bottom); left: var(--s-5, 24px); width: var(--s-2, 8px); height: var(--s-2, 8px); background: inherit; transform: rotate(45deg); pointer-events: none; }
 .activity-refiner-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2, 8px); }
 .activity-refiner-heading strong { color: var(--text-brand, var(--text-strong, #0f6844)); font-size: var(--fs-body, 1rem); }
-.activity-refiner-caption { margin: var(--s-2, 8px) 0; color: var(--text-muted, var(--text-body, #333)); }
 .activity-refiner-list { margin: 0; padding: 0; list-style: none; max-height: 45dvh; overflow-y: auto; }
 .activity-refiner-list li { margin: 0; padding: var(--s-1, 4px) 0; }
 .activity-refiner-list li + li { border-top: 1px solid var(--border, #c9ddd1); }
@@ -61,7 +72,7 @@
 .activity-refiner-suggestions .activity-refiner-heading strong { font-size: inherit; }
 .activity-refiner-suggestions button { padding: var(--s-1, 4px); min-width: 28px; min-height: 28px; }
 .activity-refiner-suggestions .activity-refiner-heading button { border-color: transparent; background: transparent; }
-.activity-refiner-suggestions .activity-refiner-list { max-height: none; overflow: visible; }
+.activity-refiner-suggestions .activity-refiner-list { max-height: 40dvh; overflow-y: auto; overscroll-behavior: contain; }
 .activity-refiner-suggestions .activity-suggestion-row {
   display: grid;
   width: 100%;
@@ -85,29 +96,14 @@
 .activity-refiner-suggestions .activity-suggestion-row:hover { background: color-mix(in srgb, var(--mint-200, #5fe8b1) 20%, var(--surface-card, var(--app-surface, #fff))); }
 .activity-refiner-suggestions .activity-suggestion-row:active { transform: translateY(1px) scale(.99); transition: none; }
 .activity-refiner-suggestions .activity-suggestion-row:focus-visible { outline-offset: -2px; }
-.activity-refiner-preview > p { margin: var(--s-3, 12px) 0; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40dvh; overflow-y: auto; }
-.activity-refiner-preview-actions { display: flex; justify-content: flex-end; gap: var(--s-2, 8px); }
-.activity-refiner-enhancement { display: grid; gap: var(--s-3, 12px); }
-.activity-refiner-enhancement::before { content: none; }
-.activity-refiner-enhancement > .activity-refiner-caption { margin: 0; }
-.activity-refiner-enhancement > [aria-live]:empty { display: none; }
-.activity-refiner-enhancement .activity-refiner-heading button {
-  width: calc(var(--s-4, 16px) * 2);
-  height: calc(var(--s-4, 16px) * 2);
-  padding: 0;
-}
-.activity-refiner-enhancement .activity-refiner-preview { display: grid; gap: var(--s-4, 16px); }
-.activity-refiner-enhancement .activity-refiner-preview > p { margin: 0; }
-.activity-refiner-enhancement .activity-refiner-preview-actions { align-items: center; }
-.activity-refiner-enhancement .activity-refiner-preview-actions button {
-  min-width: calc(var(--s-4, 16px) * 5);
-  min-height: calc(var(--s-4, 16px) * 2);
-  padding: var(--s-1, 4px) var(--s-3, 12px);
-  font-size: calc(var(--fs-body, 1rem) * .8125);
-}
 .activity-refiner-undo { display: flex; align-items: center; gap: var(--s-2, 8px); font-size: calc(var(--fs-body, 1rem) * .75); line-height: 1.4; color: var(--text-brand, var(--app-text)); }
 .activity-refiner-undo button { min-height: var(--s-5, 24px); padding: 0 var(--s-2, 8px); font-size: inherit; gap: var(--s-1, 4px); }
 .activity-refiner-spinner { animation: activity-refiner-spin var(--dur-reveal, 1s) linear infinite; }
 @keyframes activity-refiner-spin { to { transform: rotate(360deg); } }
-@media (max-width: 767px) { .activity-name-refiner-entry { flex-direction: column; } .activity-refine-button { align-self: flex-end; } }
+@media (max-width: 767px) { .activity-refiner-card { flex-direction: column; align-items: stretch; } .activity-refine-button { align-self: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .activity-refiner-spinner { animation: none; } .activity-refine-button, .activity-refiner-popover button, .activity-refiner-undo button { transition: none; } }
+
+.activity-name-refiner .activity-refiner-card .activity-refine-button:active:not(:disabled) { box-shadow: none; transform: translateY(1px) scale(.97); transition: none; }
+.activity-name-refiner .activity-refiner-card .activity-refine-button:focus-visible { outline: 2px solid var(--text-brand, #0f6844); outline-offset: var(--s-1, 4px); }
+.activity-name-refiner .activity-refiner-card .activity-refine-button:disabled { box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .activity-name-refiner .activity-refiner-card .activity-refine-button { transition: none; } }

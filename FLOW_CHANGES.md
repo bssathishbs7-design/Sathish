@@ -1,3 +1,7 @@
+## 2026-11-03 - Explicit activity name suggestions (MEDUI-18)
+
+- Improve / Refine is always visible. Suggestions are requested only after selecting it or Retry; typing cancels pending suggestions without starting another request. Selecting a suggestion applies it, with Undo available. This replaces the earlier automatic typing-triggered flow.
+
 ## 2026-11-03 - Activity form header toggle
 
 - The header shows Close with an X icon while Add Activity is open. Selecting Close dismisses the form and restores Add Activity. The existing in-form close control remains available.
