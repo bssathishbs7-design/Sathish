@@ -20240,19 +20240,6 @@
   transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
 }
 
-.create-assessment-blueprint-reset-btn {
-  border: 1px solid #fda4af;
-  background: #fff7f8;
-  color: #be123c;
-}
-
-.create-assessment-blueprint-reset-btn:hover,
-.create-assessment-blueprint-reset-btn:focus-visible {
-  border-color: #fb7185;
-  background: #fff1f2;
-  outline: none;
-}
-
 .create-assessment-blueprint-competency-btn {
   border: 1px solid #0f9f91;
   background: #10b9a8;
@@ -22675,6 +22662,10 @@
 
 .create-assessment-action-btn.is-draft {
   justify-content: center;
+}
+
+.create-assessment-action-btn.is-draft,
+.create-assessment-blueprint-template {
   border-color: #f0c56b;
   background: #fff7df;
   color: #805b00;
@@ -25086,123 +25077,6 @@
   max-height: 380px;
 }
 
-
-.create-assessment-blueprint-reset-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 10020;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(15, 23, 42, 0.52);
-  backdrop-filter: blur(4px);
-  animation: createAssessmentBackdropIn 160ms ease-out;
-}
-
-.create-assessment-blueprint-reset-modal {
-  display: grid;
-  justify-items: center;
-  width: min(420px, calc(100vw - 40px));
-  padding: 24px;
-  border: 1px solid #fecdd3;
-  border-radius: 14px;
-  background: #ffffff;
-  text-align: center;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
-  animation: createAssessmentModalIn 190ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.create-assessment-blueprint-reset-icon {
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #fff1f2;
-  color: #be123c;
-}
-
-.create-assessment-blueprint-reset-modal.is-edit-distribution {
-  border-color: #99e6da;
-}
-
-.create-assessment-blueprint-reset-modal.is-edit-distribution .create-assessment-blueprint-reset-icon {
-  background: #e8fbf7;
-  color: #08776d;
-}
-
-.create-assessment-blueprint-reset-modal.is-edit-distribution .create-assessment-blueprint-reset-actions .is-confirm {
-  border-color: #0f9f91;
-  background: #10b9a8;
-}
-
-.create-assessment-blueprint-reset-modal.is-edit-distribution .create-assessment-blueprint-reset-actions .is-confirm:hover,
-.create-assessment-blueprint-reset-modal.is-edit-distribution .create-assessment-blueprint-reset-actions .is-confirm:focus-visible {
-  border-color: #087f75;
-  background: #0b9689;
-}
-
-.create-assessment-blueprint-reset-modal.is-save-blueprint {
-  border-color: #99e6da;
-}
-
-.create-assessment-blueprint-reset-modal.is-save-blueprint .create-assessment-blueprint-reset-icon {
-  background: #e8fbf7;
-  color: #08776d;
-}
-
-.create-assessment-blueprint-reset-modal.is-save-blueprint .create-assessment-blueprint-reset-actions .is-confirm {
-  border-color: #0f9f91;
-  background: #10b9a8;
-}
-
-.create-assessment-blueprint-reset-modal.is-save-blueprint .create-assessment-blueprint-reset-actions .is-confirm:hover,
-.create-assessment-blueprint-reset-modal.is-save-blueprint .create-assessment-blueprint-reset-actions .is-confirm:focus-visible {
-  border-color: #087f75;
-  background: #0b9689;
-}
-
-.create-assessment-blueprint-reset-modal.is-disable-blueprint {
-  border-color: #f3cf8b;
-}
-
-.create-assessment-blueprint-reset-modal.is-disable-blueprint .create-assessment-blueprint-reset-icon {
-  background: #fff7e6;
-  color: #b45309;
-}
-
-.create-assessment-blueprint-reset-modal.is-disable-blueprint .create-assessment-blueprint-reset-actions .is-confirm {
-  border-color: #d97706;
-  background: #d97706;
-}
-
-.create-assessment-blueprint-reset-modal.is-disable-blueprint .create-assessment-blueprint-reset-actions .is-confirm:hover,
-.create-assessment-blueprint-reset-modal.is-disable-blueprint .create-assessment-blueprint-reset-actions .is-confirm:focus-visible {
-  border-color: #b45309;
-  background: #b45309;
-}
-
-.create-assessment-blueprint-reset-modal.is-enable-blueprint {
-  border-color: #99e6da;
-}
-
-.create-assessment-blueprint-reset-modal.is-enable-blueprint .create-assessment-blueprint-reset-icon {
-  background: #e8fbf7;
-  color: #08776d;
-}
-
-.create-assessment-blueprint-reset-modal.is-enable-blueprint .create-assessment-blueprint-reset-actions .is-confirm {
-  border-color: #0f9f91;
-  background: #10b9a8;
-}
-
-.create-assessment-blueprint-reset-modal.is-enable-blueprint .create-assessment-blueprint-reset-actions .is-confirm:hover,
-.create-assessment-blueprint-reset-modal.is-enable-blueprint .create-assessment-blueprint-reset-actions .is-confirm:focus-visible {
-  border-color: #087f75;
-  background: #0b9689;
-}
-
 .create-assessment-blueprint-row-progress {
   display: grid;
   justify-items: center;
@@ -25333,64 +25207,6 @@ tr.is-complete .create-assessment-blueprint-row-progress i b {
 
 .create-assessment-blueprint-row-status.is-complete > span {
   color: #05815e;
-}
-
-.create-assessment-blueprint-reset-modal h2 {
-  margin: 14px 0 0;
-  color: #172b3a;
-  font-size: 1.05rem;
-  font-weight: 900;
-}
-
-.create-assessment-blueprint-reset-modal p {
-  max-width: 340px;
-  margin: 8px 0 0;
-  color: #607381;
-  font-size: 0.8rem;
-  font-weight: 650;
-  line-height: 1.5;
-}
-
-.create-assessment-blueprint-reset-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  gap: 10px;
-  width: 100%;
-  margin-top: 20px;
-}
-
-.create-assessment-blueprint-reset-actions button {
-  min-height: 38px;
-  border-radius: 7px;
-  font-size: 0.76rem;
-  font-weight: 850;
-  cursor: pointer;
-}
-
-.create-assessment-blueprint-reset-actions .is-cancel {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #475569;
-}
-
-.create-assessment-blueprint-reset-actions .is-confirm {
-  border: 1px solid #e11d48;
-  background: #e11d48;
-  color: #ffffff;
-}
-
-.create-assessment-blueprint-reset-actions .is-cancel:hover,
-.create-assessment-blueprint-reset-actions .is-cancel:focus-visible {
-  border-color: #94a3b8;
-  background: #f8fafc;
-  outline: none;
-}
-
-.create-assessment-blueprint-reset-actions .is-confirm:hover,
-.create-assessment-blueprint-reset-actions .is-confirm:focus-visible {
-  border-color: #be123c;
-  background: #be123c;
-  outline: none;
 }
 
 .create-assessment-instructions-editor {
@@ -40002,45 +39818,6 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   color: #8df0c7;
 }
 
-.theme-dark .create-assessment-blueprint-reset-modal.is-save-blueprint {
-  border-color: rgba(45, 212, 191, 0.45);
-  background: #132235;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-save-blueprint h2 {
-  color: #eef6ff;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-save-blueprint p {
-  color: #c3d4e8;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-disable-blueprint {
-  border-color: rgba(245, 158, 11, 0.5);
-  background: #132235;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-disable-blueprint h2 {
-  color: #eef6ff;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-disable-blueprint p {
-  color: #c3d4e8;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-enable-blueprint {
-  border-color: rgba(45, 212, 191, 0.45);
-  background: #132235;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-enable-blueprint h2 {
-  color: #eef6ff;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-enable-blueprint p {
-  color: #c3d4e8;
-}
-
 .theme-dark .create-assessment-blueprint-row-progress strong {
   color: #cfe1f2;
 }
@@ -41047,8 +40824,7 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   opacity: 1;
 }
 
-.theme-dark .create-assessment-blueprint-reset-btn,
-.theme-dark .create-assessment-blueprint-test-reset-btn {
+.theme-dark .create-assessment-blueprint-reset-btn, .theme-dark .create-assessment-blueprint-test-reset-btn {
   border-color: rgba(251, 113, 133, 0.48);
   background: rgba(159, 18, 57, 0.18);
   color: #fda4af;
@@ -41080,51 +40856,6 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   background: #172335;
   color: #71859a;
   opacity: 1;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal {
-  border-color: rgba(251, 113, 133, 0.42);
-  background: #101827;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-edit-distribution {
-  border-color: rgba(45, 212, 191, 0.48);
-}
-
-.theme-dark .create-assessment-blueprint-reset-icon {
-  background: rgba(159, 18, 57, 0.24);
-  color: #fda4af;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-edit-distribution .create-assessment-blueprint-reset-icon {
-  background: rgba(13, 148, 136, 0.22);
-  color: #99f6e4;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-edit-distribution .create-assessment-blueprint-reset-actions .is-confirm {
-  border-color: #2dd4bf;
-  background: #0f8f82;
-  color: #ffffff;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal.is-edit-distribution .create-assessment-blueprint-reset-actions .is-confirm:hover,
-.theme-dark .create-assessment-blueprint-reset-modal.is-edit-distribution .create-assessment-blueprint-reset-actions .is-confirm:focus-visible {
-  border-color: #5eead4;
-  background: #0d766d;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal h2 {
-  color: #eef7ff;
-}
-
-.theme-dark .create-assessment-blueprint-reset-modal p {
-  color: #a9b8c9;
-}
-
-.theme-dark .create-assessment-blueprint-reset-actions .is-cancel {
-  border-color: rgba(94, 116, 145, 0.52);
-  background: rgba(15, 23, 42, 0.56);
-  color: #d9e8f8;
 }
 
 .theme-dark .create-assessment-blueprint-competency-intro,
@@ -41596,7 +41327,8 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   color: #ffffff;
 }
 
-.theme-dark .create-assessment-action-btn.is-draft {
+.theme-dark .create-assessment-action-btn.is-draft,
+.theme-dark .create-assessment-blueprint-template {
   border-color: rgba(251, 191, 36, 0.62);
   background: rgba(120, 73, 10, 0.42);
   color: #fde68a;
@@ -60855,4 +60587,17 @@ body > .assessment-page-filter-menu {
 .create-assessment-preview-list .create-assessment-preview-card:not(.is-open):is(.is-laq-preview, .is-mcq-preview) > .create-assessment-preview-main {
   min-height: 0 !important;
   padding-bottom: 0 !important;
+}
+
+.create-assessment-blueprint-reset-btn {
+  border: 1px solid #fda4af;
+  background: #fff7f8;
+  color: #be123c;
+}
+
+.create-assessment-blueprint-reset-btn:hover,
+.create-assessment-blueprint-reset-btn:focus-visible {
+  border-color: #fb7185;
+  background: #fff1f2;
+  outline: none;
 }

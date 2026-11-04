@@ -1,0 +1,74 @@
+/* Scope portal styling to the assessment editor, leaving other pages unchanged. */
+body:has(.create-assessment-workspace) .save-changes-dialog {
+  box-sizing: border-box;
+  padding: var(--s-4);
+  border-radius: var(--r-sm);
+  max-height: calc(100dvh - var(--s-6));
+  overflow: auto;
+}
+
+body:has(.create-assessment-workspace) .save-changes-dialog:not(.assessment-options-dialog, .assessment-publication-dialog, .blueprint-template-dialog, .blueprint-save-dialog) {
+  width: min(calc(100vw - var(--s-6)), calc(var(--s-9) * 4));
+}
+
+body:has(.create-assessment-workspace) .save-changes-dialog > h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-2);
+  font-size: var(--font-size-body);
+  line-height: 1.4;
+}
+
+body:has(.create-assessment-workspace) .save-changes-dialog > p {
+  margin: 0 0 var(--s-3);
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+}
+
+body:has(.create-assessment-workspace) .save-changes-dialog .save-changes-actions {
+  gap: var(--s-2);
+  align-items: center;
+  margin-top: var(--s-3);
+}
+
+body:has(.create-assessment-workspace) .save-changes-dialog .save-changes-actions button {
+  min-height: calc(var(--s-1) * 9);
+  padding: var(--s-1) var(--s-3);
+  font-size: var(--font-size-small);
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+body:has(.create-assessment-workspace) .save-changes-dialog .save-changes-actions .is-discard {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+  border-color: var(--danger-line);
+}
+
+body:has(.create-assessment-workspace) .save-changes-dialog[open],
+body:has(.create-assessment-workspace) :is(.blueprint-template-menu, .blueprint-template-preview, .question-bank-descriptive-map-popover, .create-assessment-sequence-popover, .create-assessment-blueprint-select-menu, .create-assessment-time-stepper-popover) {
+  animation: assessment-popup-enter var(--dur-overlay) var(--ease-standard);
+}
+
+body:has(.create-assessment-workspace) .save-changes-dialog[open]::backdrop {
+  animation: assessment-popup-backdrop var(--dur-overlay) var(--ease-standard);
+}
+
+@keyframes assessment-popup-enter {
+  from { opacity: 0; translate: 0 var(--s-2); }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes assessment-popup-backdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.create-assessment-workspace) .save-changes-dialog[open],
+  body:has(.create-assessment-workspace) .save-changes-dialog[open]::backdrop,
+  body:has(.create-assessment-workspace) :is(.blueprint-template-menu, .blueprint-template-preview, .question-bank-descriptive-map-popover, .create-assessment-sequence-popover, .create-assessment-blueprint-select-menu, .create-assessment-time-stepper-popover) {
+    animation: none;
+  }
+}

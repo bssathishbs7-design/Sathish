@@ -26,7 +26,7 @@
 .blueprint-breakdown-heading-status { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--s-2); margin-left: auto; min-width: 0; }
 .blueprint-breakdown-heading-status .blueprint-cognition-applied { margin: 0; color: var(--text-brand); font-size: var(--fs-micro, .6875rem); line-height: 1.4; }
 .blueprint-cognition-applied:empty { display: none; }
-@container (min-width: 1000px) {
+@container (min-width: 760px) {
   .blueprint-breakdown-with-suggestions:has(> .blueprint-cognition-suggestions) { grid-template-columns: minmax(0, 1fr) 248px; }
   .blueprint-breakdown-with-suggestions > .blueprint-cognition-suggestions { display: flex; flex-direction: column; contain: size; align-self: stretch; min-height: 0; overflow: hidden; padding: var(--s-2); }
   .blueprint-breakdown-with-suggestions .blueprint-cognition-suggestions-heading { flex-shrink: 0; padding-bottom: var(--s-2); border-bottom: 1px solid var(--border); }
@@ -38,5 +38,10 @@
   .create-assessment-blueprint-spec-card.is-type-summary .blueprint-breakdown-with-suggestions:has(> .blueprint-cognition-suggestions) .create-assessment-blueprint-spec-table :is(th, td):not(:first-child) { width: auto; }
   .create-assessment-blueprint-spec-card.is-type-summary .blueprint-breakdown-with-suggestions:has(> .blueprint-cognition-suggestions) .create-assessment-blueprint-spec-table th { white-space: normal; overflow-wrap: anywhere; }
   .create-assessment-blueprint-spec-card.is-type-summary .blueprint-breakdown-with-suggestions:has(> .blueprint-cognition-suggestions) .create-assessment-blueprint-spec-number { min-width: 0; max-width: 100%; box-sizing: border-box; padding-inline: var(--s-1); }
+}
+@container (min-width: 760px) and (max-width: 999px) {
+  .create-assessment-blueprint-spec-card.is-type-summary .blueprint-breakdown-with-suggestions:has(> .blueprint-cognition-suggestions) .create-assessment-blueprint-spec-table {
+    min-width: 720px;
+  }
 }
 @media (prefers-reduced-motion: reduce) { .blueprint-cognition-suggestion button { transition: none; } }

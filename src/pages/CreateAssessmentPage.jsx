@@ -35,11 +35,12 @@ import './PreviewQuestionActions.css'
 import SaveChangesDialog from '../components/SaveChangesDialog'
 import BlueprintTemplateDialog from '../components/BlueprintTemplateDialog'
 import BlueprintTemplateSelect from '../components/BlueprintTemplateSelect'
+import { createInstitutionBlueprintTemplates } from '../services/blueprintTemplateSamples'
 import { readBlueprintTemplates, resolveTemplateCognition, snapshotBlueprintBreakdown } from '../services/blueprintTemplates'
 import { captureAssessmentStorage, commitAssessmentStorage, upsertAssessmentDraft } from '../services/assessmentDraftStorage'
 import BlueprintSelectionProgress from '../components/BlueprintSelectionProgress'
 import BlueprintCompletionToast from '../components/BlueprintCompletionToast'
-import './BlueprintConfirmationDialog.css'
+import './CreateAssessmentPopups.css'
 import { buildBlueprintPickerRows, getBlueprintPickerProgress, matchesBlueprintPickerRow, orderBlueprintRequirements } from '../utils/blueprintPicker'
 import { getLaqSplitBreakdowns } from '../utils/blueprintLaqBreakdown'
 import './BlueprintLaqLayout.css'
@@ -1695,13 +1696,43 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   ))
   const [activeBlueprintTab, setActiveBlueprintTab] = useState(blueprintReview ? 'questionSpecifications' : setup.draftWorkspace?.activeBlueprintTab ?? (initialBlueprintPlanner ? 'questionSpecifications' : 'distribution'))
   const [isBlueprintMatrixCreated, setIsBlueprintMatrixCreated] = useState(blueprintReview || assessmentReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintMatrixCreated ?? Boolean(initialBlueprintPlanner))
+  const [blueprintPurpose, setBlueprintPurpose] = useState(() => isBlueprintMatrixCreated ? 'assessment' : setup.draftWorkspace?.blueprintPurpose === 'assessment' ? 'assessment' : 'template')
   const [isBlueprintQuestionSplitCreated, setIsBlueprintQuestionSplitCreated] = useState(blueprintReview || assessmentReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintQuestionSplitCreated ?? Boolean(initialBlueprintPlanner))
   const [isBlueprintCompetencyMatrixCreated, setIsBlueprintCompetencyMatrixCreated] = useState(blueprintReview || assessmentReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintCompetencyMatrixCreated ?? Boolean(initialBlueprintPlanner))
   const [blueprintTemplates, setBlueprintTemplates] = useState(() => {
-    try { return readBlueprintTemplates() } catch { return [] }
+    const institutionTemplates = createInstitutionBlueprintTemplates()
+    try { return [...institutionTemplates, ...readBlueprintTemplates()] } catch { return institutionTemplates }
   })
   const [templateSnapshot, setTemplateSnapshot] = useState(null)
+  const [unreadBlueprintTemplateIds, setUnreadBlueprintTemplateIds] = useState([])
+  const hasUnreadBlueprintTemplates = unreadBlueprintTemplateIds.some(id => blueprintTemplates.some(template => template.id === id && template.scope !== 'institution'))
+  const [savedTemplateFocusId, setSavedTemplateFocusId] = useState(null)
+  const templateBannerRef = useRef(null)
+  useEffect(() => {
+    if (!savedTemplateFocusId) return undefined
+    const frame = requestAnimationFrame(() => {
+      templateBannerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' })
+      templateBannerRef.current?.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [savedTemplateFocusId])
+  const handleBlueprintTemplateSaved = template => {
+    setBlueprintTemplates(current => [...current, template])
+    setUnreadBlueprintTemplateIds(current => [...new Set([...current, template.id])])
+    if (isDirectBlueprintTemplateCreation) {
+      setBlueprintDraft(current => ({ ...current, totalMark: '', template: '', templateSnapshot: null }))
+      resetBlueprintDependentData()
+      setAppliedCognitionDraft(null)
+      setAppliedCognitionChanges({})
+      setIsBlueprintLaqSplitOpen(true)
+      setActiveBlueprintTab('distribution')
+      setSavedTemplateFocusId(template.id)
+    }
+    setTemplateSnapshot(null)
+    setSaveStatus('Blueprint template saved.')
+  }
   const [isBlueprintResetConfirmOpen, setIsBlueprintResetConfirmOpen] = useState(false)
+  const [isBlueprintClearConfirmOpen, setIsBlueprintClearConfirmOpen] = useState(false)
   const [isBlueprintEditConfirmOpen, setIsBlueprintEditConfirmOpen] = useState(false)
   const [isBlueprintSaveConfirmOpen, setIsBlueprintSaveConfirmOpen] = useState(false)
   const [isBlueprintDisableConfirmOpen, setIsBlueprintDisableConfirmOpen] = useState(false)
@@ -1805,6 +1836,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         setIsBlueprintPlannerSaved(true)
         setIsBlueprintPlannerEditing(false)
         setIsBlueprintMatrixCreated(true)
+        setBlueprintPurpose('assessment')
         setIsBlueprintQuestionSplitCreated(true)
         setIsBlueprintCompetencyMatrixCreated(true)
       }
@@ -1830,7 +1862,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const [previewSectionTitleDraft, setPreviewSectionTitleDraft] = useState('')
   const [draggedPreviewQuestionId, setDraggedPreviewQuestionId] = useState(null)
   const [draggedPreviewSectionKey, setDraggedPreviewSectionKey] = useState(null)
-  const [blueprintSuggestionsOpen, setBlueprintSuggestionsOpen] = useState(true)
+  const [blueprintSuggestionsOpen, setBlueprintSuggestionsOpen] = useState(false)
   const [generationJobs, setGenerationJobs] = useState([])
   const [generationTick, setGenerationTick] = useState(Date.now())
   const [descriptiveCompetencyDraft, setDescriptiveCompetencyDraft] = useState(null)
@@ -1867,7 +1899,8 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       }
       return
     }
-    setIsBlueprintQuestionSplitCreated(false)
+    // Direct template authoring does not require a Distribution matrix.
+    // Keep its question split open while row drafts are edited.
     setIsBlueprintCompetencyMatrixCreated(false)
     setIsBlueprintResetConfirmOpen(false)
     setIsBlueprintEditConfirmOpen(false)
@@ -1875,50 +1908,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     setBlueprintCompetencyViewMode('multi')
   }, [isBlueprintMatrixCreated, blueprintDraft.template, blueprintQuestionTypeDraft])
 
-  useEffect(() => {
-    if (!isBlueprintResetConfirmOpen) return undefined
-    const handleResetConfirmKeyDown = (event) => {
-      if (event.key === 'Escape') setIsBlueprintResetConfirmOpen(false)
-    }
-    window.addEventListener('keydown', handleResetConfirmKeyDown)
-    return () => window.removeEventListener('keydown', handleResetConfirmKeyDown)
-  }, [isBlueprintResetConfirmOpen])
 
-  useEffect(() => {
-    if (!isBlueprintEditConfirmOpen) return undefined
-    const handleEditConfirmKeyDown = (event) => {
-      if (event.key === 'Escape') setIsBlueprintEditConfirmOpen(false)
-    }
-    window.addEventListener('keydown', handleEditConfirmKeyDown)
-    return () => window.removeEventListener('keydown', handleEditConfirmKeyDown)
-  }, [isBlueprintEditConfirmOpen])
 
-  useEffect(() => {
-    if (!isBlueprintSaveConfirmOpen) return undefined
-    const handleSaveConfirmKeyDown = (event) => {
-      if (event.key === 'Escape') setIsBlueprintSaveConfirmOpen(false)
-    }
-    window.addEventListener('keydown', handleSaveConfirmKeyDown)
-    return () => window.removeEventListener('keydown', handleSaveConfirmKeyDown)
-  }, [isBlueprintSaveConfirmOpen])
 
-  useEffect(() => {
-    if (!isBlueprintDisableConfirmOpen) return undefined
-    const handleDisableConfirmKeyDown = (event) => {
-      if (event.key === 'Escape') setIsBlueprintDisableConfirmOpen(false)
-    }
-    window.addEventListener('keydown', handleDisableConfirmKeyDown)
-    return () => window.removeEventListener('keydown', handleDisableConfirmKeyDown)
-  }, [isBlueprintDisableConfirmOpen])
 
-  useEffect(() => {
-    if (!isBlueprintEnableConfirmOpen) return undefined
-    const handleEnableConfirmKeyDown = (event) => {
-      if (event.key === 'Escape') setIsBlueprintEnableConfirmOpen(false)
-    }
-    window.addEventListener('keydown', handleEnableConfirmKeyDown)
-    return () => window.removeEventListener('keydown', handleEnableConfirmKeyDown)
-  }, [isBlueprintEnableConfirmOpen])
 
   useEffect(() => {
     if (activeBlueprintTab !== 'questionSpecifications') return undefined
@@ -2826,19 +2819,20 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     && !blueprintQuestionTypeHasInvalidRows
     && blueprintQuestionTypeHotMarksTotal === blueprintCognitionHotMarks
     && blueprintQuestionTypeLotMarksTotal === blueprintCognitionLotMarks
-  const isBlueprintCompetencyMatrixReady = isBlueprintQuestionSplitCreated && isBlueprintBreakdownReady
-  const canSaveBlueprintTemplate = isBlueprintCompetencyMatrixReady
+  const isDirectBlueprintTemplateCreation = blueprintPurpose === 'template' && !blueprintReview && !assessmentReview
+  const isBlueprintCompetencyMatrixReady = isBlueprintQuestionSplitCreated && isBlueprintBreakdownReady && isBlueprintDistributionReady && blueprintDistributionMatchesTotal
+  const canSaveBlueprintTemplate = isBlueprintQuestionSplitCreated && isBlueprintBreakdownReady
     && blueprintQuestionTypeRows.every(row => (
       (!String(row.perQuestionMarks).trim() && !String(row.totalMarks).trim())
       || (row.hasRequiredValues && row.hasValidQuestionTotal)
     ))
   const hasBlueprintCompetencySelection = Boolean(blueprintDraft.subject && blueprintDraft.topics.length && selectedBlueprintRows.length)
   const selectBlueprintTemplate = (templateId) => {
-    if (!hasBlueprintCompetencySelection) return
+    if (isBlueprintReadOnly || isBlueprintPlannerSaved || isBlueprintCompetencyMatrixCreated) return
     const template = blueprintTemplates.find(item => item.id === templateId)
     const totalMark = template ? String(template.totalMarks) : ''
     const cognition = resolveTemplateCognition(template)
-    setBlueprintDraft(current => ({ ...current, template: templateId, templateSnapshot: template ? structuredClone(template) : null }))
+    setBlueprintDraft(current => ({ ...current, template: templateId, templateSnapshot: template ? structuredClone(template) : null, totalMark }))
     updateBlueprintTotalMark(totalMark)
     setBlueprintQuestionTypeDraft(template ? structuredClone(template.breakdown) : {})
     setBlueprintLaqQuestionSplits(template ? structuredClone(template.laqParts) : [])
@@ -2867,11 +2861,14 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     assessmentBlueprintRef.current?.focus({ preventScroll: true })
     assessmentBlueprintRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
   }, [isBlueprintCompetencyMatrixCreated, activeBlueprintTab])
-  const resetBlueprintDependentData = () => {
+  const resetBlueprintDependentData = (preserveTemplate = false) => {
+    setBlueprintSuggestionsOpen(false)
     setBlueprintDistributionDraft({})
-    setBlueprintQuestionTypeDraft({})
-    setBlueprintLaqQuestionSplits([])
-    setBlueprintCognitionWeightage({ lot: '', hot: '' })
+    if (!preserveTemplate) {
+      setBlueprintQuestionTypeDraft({})
+      setBlueprintLaqQuestionSplits([])
+      setBlueprintCognitionWeightage({ lot: '', hot: '' })
+    }
     setBlueprintManualCells({})
     setBlueprintAllocationNotice('')
     setBlueprintTestSpecificationCountDraft({})
@@ -2893,21 +2890,28 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   }
   const updateBlueprintSubject = (subject) => {
     if (subject === blueprintDraft.subject) return
-    setBlueprintDraft(current => ({ ...current, subject, topics: [], competencies: [], template: '', templateSnapshot: null, totalMark: '' }))
+    setBlueprintDraft(current => ({ ...current, subject, topics: [], competencies: [], ...(selectedBreakdownTemplate ? {} : { template: '', templateSnapshot: null, totalMark: '' }) }))
+    resetBlueprintDependentData(Boolean(selectedBreakdownTemplate))
+  }
+  const clearBlueprintFields = () => {
+    if (isBlueprintReadOnly) return
+    setBlueprintPurpose('template')
+    setBlueprintDraft(current => ({ ...current, subject: '', topics: [], competencies: [], template: '', templateSnapshot: null, totalMark: '' }))
     resetBlueprintDependentData()
+    setSaveStatus('Blueprint fields cleared.')
   }
   const updateBlueprintTopics = (topics) => {
     if (!blueprintDraft.subject) return
-    setBlueprintDraft(current => ({ ...current, topics, competencies: [], template: '', templateSnapshot: null, totalMark: '' }))
-    resetBlueprintDependentData()
+    setBlueprintDraft(current => ({ ...current, topics, competencies: [], ...(selectedBreakdownTemplate ? {} : { template: '', templateSnapshot: null, totalMark: '' }) }))
+    resetBlueprintDependentData(Boolean(selectedBreakdownTemplate))
   }
   const updateBlueprintCompetencies = (competencies) => {
     if (!blueprintDraft.subject || !blueprintDraft.topics.length) return
-    setBlueprintDraft(current => ({ ...current, competencies, template: '', templateSnapshot: null, totalMark: '' }))
-    resetBlueprintDependentData()
+    setBlueprintDraft(current => ({ ...current, competencies, ...(selectedBreakdownTemplate ? {} : { template: '', templateSnapshot: null, totalMark: '' }) }))
+    resetBlueprintDependentData(Boolean(selectedBreakdownTemplate))
   }
   const updateBlueprintTotalMark = (totalMark) => {
-    if (!hasBlueprintCompetencySelection) return
+    if (!hasBlueprintCompetencySelection && activeBlueprintTab !== 'questionSpecifications') return
     if (!/^\d*$/.test(totalMark)) return
     setBlueprintDraft((current) => (
       current.totalMark === totalMark
@@ -3433,7 +3437,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     invalidateBlueprintAllocations()
     if (value === '') {
       setBlueprintCognitionWeightage({ lot: '', hot: '' })
-      setIsBlueprintQuestionSplitCreated(false)
       return
     }
     const nextValue = Math.max(0, Math.min(100, Number(value)))
@@ -3541,20 +3544,19 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       setIsBlueprintEditConfirmOpen(true)
       return
     }
-    if (!isBlueprintDistributionReady) return
+    if (!isBlueprintDistributionReady || !blueprintDistributionMatchesTotal) return
     if (selectedBreakdownTemplate) {
       const hasIncompleteRows = blueprintQuestionTypeRows.some(row => (
         (String(row.perQuestionMarks).trim() || String(row.totalMarks).trim())
         && (!row.hasRequiredValues || !row.hasValidQuestionTotal)
       ))
       if (!isBlueprintBreakdownReady || hasIncompleteRows) {
-        setSaveStatus('This template has incomplete or mismatched cognition and question totals. Select a valid template or Create Blueprint (Default).')
+        setSaveStatus('This template has incomplete or mismatched cognition and question totals. Select a valid template to continue.')
         return
       }
-      if (!createBlueprintCompetencyMatrix()) return
       setIsBlueprintQuestionSplitCreated(true)
-      focusAssessmentBlueprintRef.current = true
     }
+    setBlueprintPurpose('assessment')
     setIsBlueprintMatrixCreated(true)
     setActiveBlueprintTab('questionSpecifications')
   }
@@ -5373,7 +5375,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       updatedAt: new Date().toISOString(),
       draftWorkspace: {
         question, editingPreviewQuestionId, selectedCreateQuestionTypeLabel, activeCreateTab,
-        activeBlueprintTab, isBlueprintPlannerEditing, hasSelectedCreateTab,
+        activeBlueprintTab, blueprintPurpose, isBlueprintPlannerEditing, hasSelectedCreateTab,
         isBlueprintMatrixCreated, isBlueprintQuestionSplitCreated, isBlueprintCompetencyMatrixCreated, isBlueprintPlannerSaved,
         blueprint: {
           enabled: isBlueprintEnabled, blueprintDraft, blueprintDistributionDraft,
@@ -7008,18 +7010,42 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   </>
   const blueprintPanel = isBlueprintEnabled && activeCreateTab === 'blueprint' ? (
           <section {...blueprintEditHighlights} className="create-assessment-blueprint-panel qb-sort-scope" aria-label="Blueprint configuration">
+    {isBlueprintClearConfirmOpen && <SaveChangesDialog
+      theme={theme}
+      title="Clear blueprint fields?"
+      description="This will clear the subject, topics, competencies, template, marks and generated blueprint matrices. This cannot be undone."
+      saveLabel="Yes, clear"
+      cancelLabel="Cancel"
+      danger
+      onCancel={() => setIsBlueprintClearConfirmOpen(false)}
+      onSave={() => { clearBlueprintFields(); setIsBlueprintClearConfirmOpen(false) }}
+    />}
             <header className="create-assessment-blueprint-head">
-              <div className="create-assessment-blueprint-subject">
-                <BlueprintSingleSelect
-                  label="Subject"
-                  required
-                  disabled={isBlueprintReadOnly || isBlueprintMatrixCreated}
-                  hideLabel placeholder="Select your subject"
-                  options={blueprintSubjectOptions}
-                  value={blueprintDraft.subject}
-                  onChange={updateBlueprintSubject}
-                />
-              </div>
+                    <div ref={templateBannerRef} tabIndex={-1} className={`create-assessment-blueprint-template${hasUnreadBlueprintTemplates ? ' has-unread-templates' : ''}`} role="group" aria-label="Blueprint template">
+                      <LayoutGrid className="create-assessment-blueprint-template-icon" size={16} aria-hidden="true" />
+                      <p className="create-assessment-blueprint-template-help" title="Blueprint Templates. Apply a template to set marks distribution."><strong>Blueprint Templates.</strong> Apply a template to set marks distribution.</p>
+                      <BlueprintTemplateSelect
+                        unreadIds={unreadBlueprintTemplateIds}
+                        onRead={() => setUnreadBlueprintTemplateIds([])}
+                        templates={blueprintTemplates}
+                        selected={selectedBreakdownTemplate}
+                        theme={theme}
+                        disabled={false}
+                        readOnly={isBlueprintReadOnly || isBlueprintPlannerSaved || isBlueprintCompetencyMatrixCreated}
+                        placeholder="Choose template"
+                        value={blueprintDraft.template || ''}
+                        onChange={selectBlueprintTemplate}
+                        onDeleted={template => {
+                          if (blueprintDraft.template === template.id) {
+                            setBlueprintDraft(current => ({ ...current, templateSnapshot: structuredClone(template) }))
+                          }
+                          setBlueprintTemplates(current => current.filter(item => item.id !== template.id))
+                          setSaveStatus('Blueprint template deleted. Loaded assessment data has been kept.')
+                        }}
+                      />
+                      {templateMarksMismatch && <p className="blueprint-template-feedback" role="alert">The breakdown contains {blueprintQuestionTypeTotal} marks. Adjust it to match your assessment total.</p>}
+                    </div>
+
               <div className="create-assessment-blueprint-tabs" role="tablist" aria-label="Blueprint sections">
                 <button
                   type="button"
@@ -7037,10 +7063,9 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                   onClick={() => setActiveBlueprintTab('questionSpecifications')}
                   role="tab"
                   aria-selected={activeBlueprintTab === 'questionSpecifications'}
-                  disabled={!isBlueprintMatrixCreated}
                 >
                   <FilePenLine size={14} strokeWidth={2.3} />
-                  <span>Specifications</span>
+                  <span>Create Template</span>
                 </button>
               </div>
             </header>
@@ -7048,6 +7073,18 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
               {activeBlueprintTab === 'distribution' ? (
                 <>
                   <div className="create-assessment-blueprint-grid">
+              <div className="create-assessment-blueprint-subject">
+                <BlueprintSingleSelect
+                  label="Subject"
+                  required
+                  disabled={isBlueprintReadOnly || isBlueprintMatrixCreated}
+                  placeholder="Select your subject"
+                  options={blueprintSubjectOptions}
+                  value={blueprintDraft.subject}
+                  onChange={updateBlueprintSubject}
+                />
+              </div>
+
                     <BlueprintMultiSelect
                       label="Topics"
                       required
@@ -7071,26 +7108,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                       getSummaryLabel={(option) => option.row?.code || option.label}
                     />
 
-                    <div className="create-assessment-blueprint-template">
-                      <BlueprintTemplateSelect
-                        templates={blueprintTemplates}
-                        selected={selectedBreakdownTemplate}
-                        theme={theme}
-                        disabled={isBlueprintReadOnly || !hasBlueprintCompetencySelection || isBlueprintPlannerSaved || isBlueprintCompetencyMatrixCreated}
-                        placeholder={!hasBlueprintCompetencySelection ? 'Select competency first' : 'Select Blueprint Template'}
-                        value={blueprintDraft.template || ''}
-                        onChange={selectBlueprintTemplate}
-                        onDeleted={template => {
-                          if (blueprintDraft.template === template.id) {
-                            setBlueprintDraft(current => ({ ...current, templateSnapshot: structuredClone(template) }))
-                          }
-                          setBlueprintTemplates(current => current.filter(item => item.id !== template.id))
-                          setSaveStatus('Blueprint template deleted. Loaded assessment data has been kept.')
-                        }}
-                      />
-                      {templateMarksMismatch && <p className="blueprint-template-feedback" role="alert">The breakdown contains {blueprintQuestionTypeTotal} marks. Adjust it to match your assessment total.</p>}
-                    </div>
-
                     <label className={`create-assessment-blueprint-field ${isBlueprintMatrixCreated || !hasBlueprintCompetencySelection ? 'is-disabled' : ''}`}>
                       <span>
                         Enter Total Mark
@@ -7099,7 +7116,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                       <input
                         type="number"
                         min="1"
-                        value={blueprintDraft.totalMark}
+                        value={hasBlueprintCompetencySelection ? blueprintDraft.totalMark : ''}
                         readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
                         aria-readonly={Boolean(selectedBreakdownTemplate)}
                         onChange={(event) => updateBlueprintTotalMark(event.target.value)}
@@ -7270,6 +7287,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
               ) : (
                 <div className={`create-assessment-blueprint-specifications ${isBlueprintQuestionSplitCreated ? 'has-question-split' : 'is-cognition-only'} ${isBlueprintCompetencyMatrixCreated ? `is-competency-matrix is-${blueprintCompetencyViewMode}-view` : ''}`}>
                   <div className="create-assessment-blueprint-spec-left-stack" ref={blueprintSpecLeftStackRef}>
+                    <p className="blueprint-purpose-label" role="status">{isDirectBlueprintTemplateCreation ? 'Create a reusable blueprint template.' : 'Prepare your assessment blueprint.'}</p>
                     {isBlueprintQuestionSplitCreated ? (
                       <section ref={blueprintBreakdownRef} tabIndex={-1} className="create-assessment-blueprint-spec-card is-type-summary" aria-label="Question Type Breakdown">
                         <div className="blueprint-breakdown-with-suggestions">
@@ -7697,7 +7715,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         </div>
                         <div className="create-assessment-blueprint-cognition-stage-row">
                           <div className="create-assessment-blueprint-cognition-marks-summary">
-                            <strong>{blueprintCognitionTotalMarks > 0 ? `Total Marks ${blueprintCognitionTotalMarks}` : 'Total Marks -'}</strong>
+                            <label className="blueprint-cognition-total-field">
+                              <strong>Total Marks</strong>
+                              <input type="text" inputMode="numeric" aria-label="Template total marks" value={blueprintDraft.totalMark} onChange={event => updateBlueprintTotalMark(event.target.value)} readOnly={isBlueprintReadOnly || isBlueprintMatrixCreated || isBlueprintQuestionSplitCreated || Boolean(selectedBreakdownTemplate)} placeholder="-" />
+                            </label>
                             <span>LoT {hasBlueprintCognitionMarks ? blueprintCognitionLotMarks : 0} Marks</span>
                             <span>HoT {hasBlueprintCognitionMarks ? blueprintCognitionHotMarks : 0} Marks</span>
                           </div>
@@ -7737,10 +7758,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                 type="button"
                                 className="create-assessment-blueprint-question-split-btn"
                                 onClick={createBlueprintQuestionSplit}
-                                disabled={isBlueprintReadOnly || !hasBlueprintCognitionPercentages}
+                                disabled={isBlueprintReadOnly || !hasBlueprintCognitionMarks}
                               >
                                 <LayoutGrid size={15} strokeWidth={2.3} />
-                                <span>Create Questions Split</span>
+                                <span>Create Split</span>
                               </button>
                             </div>
                           ) : null}
@@ -7759,7 +7780,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         }}>
                         <Save size={15} aria-hidden="true" /><span>Save Template</span>
                       </button>}
-                      <button
+                      {!isDirectBlueprintTemplateCreation && <><button
                         type="button"
                         className="create-assessment-blueprint-reset-btn"
                         disabled={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
@@ -7776,7 +7797,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                       >
                         <LayoutGrid size={15} strokeWidth={2.3} />
                         <span>Create Competency Matrix</span>
-                      </button>
+                      </button></>}
                     </div>
                     ) : null}
                   </div>
@@ -8049,7 +8070,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         </div>
                       </div>
                     </div>
-                      <BlueprintChecklist open={blueprintSuggestionsOpen && !blueprintTestSpecificationMatrixIsValid} onOpenChange={setBlueprintSuggestionsOpen} theme={theme} total={Object.values(blueprintIndividualUnits).reduce((sum, units) => sum + units.length, 0)} units={blueprintUnallocatedUnits} onAdd={addBlueprintUnit} disabled={isBlueprintReadOnly || isBlueprintPlannerSaved && !isBlueprintPlannerEditing} items={blueprintTestSpecificationColumns.map(column => ({
+                      <BlueprintChecklist open={isBlueprintCompetencyMatrixCreated && blueprintSuggestionsOpen && !blueprintTestSpecificationMatrixIsValid} onOpenChange={setBlueprintSuggestionsOpen} theme={theme} total={Object.values(blueprintIndividualUnits).reduce((sum, units) => sum + units.length, 0)} units={blueprintUnallocatedUnits} onAdd={addBlueprintUnit} disabled={isBlueprintReadOnly || isBlueprintPlannerSaved && !isBlueprintPlannerEditing} items={blueprintTestSpecificationColumns.map(column => ({
                         key: column.key, group: column.group, label: column.label,
                         remaining: Math.max(0, (blueprintTestSpecificationQuestionCounts[column.key] || 0) - getBlueprintTestSpecificationColumnCountTotal(column.key)),
                       }))} />
@@ -8234,9 +8255,18 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                 <div className="create-assessment-blueprint-matrix-actions">
                   <button
                     type="button"
+                    className="create-assessment-blueprint-matrix-btn is-edit create-assessment-blueprint-clear-btn"
+                    onClick={() => setIsBlueprintClearConfirmOpen(true)}
+                    disabled={isBlueprintReadOnly || !(blueprintDraft.subject || blueprintDraft.topics.length || blueprintDraft.competencies.length || blueprintDraft.template || blueprintDraft.totalMark || isBlueprintMatrixCreated)}
+                  >
+                    <RotateCcw size={15} aria-hidden="true" />
+                    <span>Clear</span>
+                  </button>
+                  <button
+                    type="button"
                     className={`create-assessment-blueprint-matrix-btn ${isBlueprintMatrixCreated ? 'is-edit' : 'is-create'}`}
                     onClick={handleBlueprintMatrixAction}
-                    disabled={isBlueprintReadOnly || !isBlueprintMatrixCreated && !isBlueprintDistributionReady}
+                    disabled={isBlueprintReadOnly || !isBlueprintMatrixCreated && (!isBlueprintDistributionReady || !blueprintDistributionMatchesTotal)}
                   >
                     {isBlueprintMatrixCreated
                       ? <Pencil size={15} strokeWidth={2.3} />
@@ -8401,61 +8431,11 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         onNavigate?.(APP_PAGES.ASSESSMENT_CREATE)
       }} />}
 
-      {isBlueprintResetConfirmOpen ? (
-        <div className="create-assessment-blueprint-reset-backdrop" role="presentation">
-          <section
-            className="create-assessment-blueprint-reset-modal"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="create-assessment-blueprint-reset-title"
-            aria-describedby="create-assessment-blueprint-reset-description"
-          >
-            <span className="create-assessment-blueprint-reset-icon" aria-hidden="true">
-              <RotateCcw size={20} strokeWidth={2.3} />
-            </span>
-            <h2 id="create-assessment-blueprint-reset-title">Reset Matrix?</h2>
-            <p id="create-assessment-blueprint-reset-description">
-              This will clear the Level of Cognition, Question Type Breakdown, and competency matrix values.
-            </p>
-            <div className="create-assessment-blueprint-reset-actions">
-              <button type="button" className="is-cancel" autoFocus onClick={() => setIsBlueprintResetConfirmOpen(false)}>
-                No, Cancel
-              </button>
-              <button type="button" className="is-confirm" onClick={confirmBlueprintMatrixReset}>
-                Yes, Reset
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      {isBlueprintResetConfirmOpen && <SaveChangesDialog theme={theme} title="Reset matrix?" description="Clear cognition, question breakdown and competency allocations?"
+        onCancel={() => setIsBlueprintResetConfirmOpen(false)} onSave={confirmBlueprintMatrixReset} saveLabel="Yes, reset" danger />}
 
-      {isBlueprintEditConfirmOpen ? (
-        <div className="create-assessment-blueprint-reset-backdrop" role="presentation">
-          <section
-            className="create-assessment-blueprint-reset-modal is-edit-distribution"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="create-assessment-blueprint-edit-title"
-            aria-describedby="create-assessment-blueprint-edit-description"
-          >
-            <span className="create-assessment-blueprint-reset-icon" aria-hidden="true">
-              <Pencil size={20} strokeWidth={2.3} />
-            </span>
-            <h2 id="create-assessment-blueprint-edit-title">Edit Distribution?</h2>
-            <p id="create-assessment-blueprint-edit-description">
-              This will unlock the Distribution fields so you can change the blueprint values.
-            </p>
-            <div className="create-assessment-blueprint-reset-actions">
-              <button type="button" className="is-cancel" autoFocus onClick={() => setIsBlueprintEditConfirmOpen(false)}>
-                No
-              </button>
-              <button type="button" className="is-confirm" onClick={confirmBlueprintDistributionEdit}>
-                Yes
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      {isBlueprintEditConfirmOpen && <SaveChangesDialog theme={theme} title="Edit distribution?" description="Unlock distribution fields to change blueprint values."
+        onCancel={() => setIsBlueprintEditConfirmOpen(false)} onSave={confirmBlueprintDistributionEdit} saveLabel="Yes, edit" />}
 
       {isBlueprintSaveConfirmOpen && <SaveChangesDialog showClose showCancel={false} className="blueprint-save-dialog" theme={theme} title="Save blueprint planner" description="Continue directly or submit this blueprint for faculty approval." error={blueprintSaveError} busy={blueprintSaveBusy}
         onCancel={() => setIsBlueprintSaveConfirmOpen(false)} cancelLabel="Cancel"
@@ -8463,83 +8443,15 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         footerStart={<button type="button" disabled={blueprintSaveBusy} onClick={() => confirmSaveBlueprintPlanner('continue')}>{blueprintSaveBusy ? 'Saving blueprint...' : 'Continue to assessment'}</button>} />}
       {blueprintApprovalOpen && <AssessmentPublicationDialog action="Send to Approval" name={`${setupDraft.assessmentName || 'Untitled Assessment'}${blueprintFlow?.blueprintId ? ' / ' + blueprintFlow.blueprintId : ''}`} theme={theme}
         onCancel={() => setBlueprintApprovalOpen(false)} onConfirm={({ reviewer }) => confirmSaveBlueprintPlanner('approval', reviewer)} />}
-      {isBlueprintDisableConfirmOpen ? (
-        <div
-          className="create-assessment-blueprint-reset-backdrop"
-          role="presentation"
-          onPointerDown={(event) => {
-            if (event.target === event.currentTarget) setIsBlueprintDisableConfirmOpen(false)
-          }}
-        >
-          <section
-            className="create-assessment-blueprint-reset-modal is-disable-blueprint qb-sort-scope"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="create-assessment-blueprint-disable-title"
-            aria-describedby="create-assessment-blueprint-disable-description"
-          >
-            <span className="create-assessment-blueprint-reset-icon" aria-hidden="true">
-              <SlidersHorizontal size={20} strokeWidth={2.3} />
-            </span>
-            <h2 id="create-assessment-blueprint-disable-title">Disable Blueprint?</h2>
-            <p id="create-assessment-blueprint-disable-description">
-              Blueprint guidance, filters, validation, and progress tracking will be hidden. Your saved planner and assessment questions will remain preserved.
-            </p>
-            <div className="create-assessment-blueprint-reset-actions">
-              <button type="button" className="is-cancel" autoFocus onClick={() => setIsBlueprintDisableConfirmOpen(false)}>
-                No, Keep Enabled
-              </button>
-              <button type="button" className="is-confirm" onClick={confirmBlueprintDisable}>
-                Yes, Disable
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      {isBlueprintDisableConfirmOpen && <SaveChangesDialog theme={theme} title="Disable blueprint?" description="Hide blueprint guidance and tracking. Your saved planner and assessment questions will be kept."
+        onCancel={() => setIsBlueprintDisableConfirmOpen(false)} onSave={confirmBlueprintDisable} saveLabel="Yes, disable" danger />}
 
-      {isBlueprintEnableConfirmOpen ? (
-        <div
-          className="create-assessment-blueprint-reset-backdrop"
-          role="presentation"
-          onPointerDown={(event) => {
-            if (event.target === event.currentTarget) setIsBlueprintEnableConfirmOpen(false)
-          }}
-        >
-          <section
-            className="create-assessment-blueprint-reset-modal is-enable-blueprint"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="create-assessment-blueprint-enable-title"
-            aria-describedby="create-assessment-blueprint-enable-description"
-          >
-            <span className="create-assessment-blueprint-reset-icon" aria-hidden="true">
-              <SlidersHorizontal size={20} strokeWidth={2.3} />
-            </span>
-            <h2 id="create-assessment-blueprint-enable-title">Enable Blueprint?</h2>
-            <p id="create-assessment-blueprint-enable-description">
-              {isBlueprintPlannerSaved
-                ? 'A saved Blueprint Planner is available. Enabling Blueprint will restore its matrix, filters, validation, and question progress.'
-                : 'Enabling Blueprint will open the Distribution stage so you can create a Blueprint Planner.'}
-            </p>
-            <div className="create-assessment-blueprint-reset-actions">
-              <button type="button" className="is-cancel" autoFocus onClick={() => setIsBlueprintEnableConfirmOpen(false)}>
-                No, Keep Disabled
-              </button>
-              <button type="button" className="is-confirm" onClick={confirmBlueprintEnable}>
-                Yes, Enable
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      {isBlueprintEnableConfirmOpen && <SaveChangesDialog theme={theme} title="Enable blueprint?" description="Open Distribution to set up your blueprint. Any saved planner will be restored."
+        onCancel={() => setIsBlueprintEnableConfirmOpen(false)} onSave={confirmBlueprintEnable} saveLabel="Yes, enable" />}
 
       {templateSnapshot && <BlueprintTemplateDialog snapshot={templateSnapshot} theme={theme} createdBy={currentUser?.name || ''}
         onCancel={() => setTemplateSnapshot(null)}
-        onSaved={template => {
-          setBlueprintTemplates(current => [...current, template])
-          setTemplateSnapshot(null)
-          setSaveStatus('Blueprint template saved.')
-        }} />}
+        onSaved={handleBlueprintTemplateSaved} />}
       <div className="create-assessment-workspace-body">
       <main className="create-assessment-workspace-main">
         {isBlueprintEnabled && activeCreateTab === 'blueprint' ? blueprintPanel : null}

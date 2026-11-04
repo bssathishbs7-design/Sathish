@@ -30,3 +30,16 @@ export function createBlueprintTemplateSamples() {
     }
   })
 }
+
+/** Fictional institution-owned examples, independent of personal saved templates.
+ * @returns {Array<import('./blueprintTemplates').BlueprintTemplate & {scope:'institution'}>}
+ */
+export function createInstitutionBlueprintTemplates() {
+  return createBlueprintTemplateSamples().slice(0, 2).map((template, index) => ({
+    ...template,
+    id: `institution-blueprint-sample-${index + 1}`,
+    name: index === 0 ? 'Clinical assessment — sample' : 'Para-clinical assessment — sample',
+    createdBy: 'Institution sample',
+    scope: 'institution',
+  }))
+}

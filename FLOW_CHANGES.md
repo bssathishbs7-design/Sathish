@@ -1,3 +1,71 @@
+## 2026-11-04 - Explicit blueprint purpose
+
+- Specifications identifies assessment setup versus reusable template creation. Create Blueprint Matrix explicitly starts assessment setup after distribution totals match. Tab changes and template selection retain that purpose, which is stored with drafts. Applying a template no longer automatically creates the competency matrix. Assessment setup shows Reset Matrix and Create Competency Matrix and preserves working values and the current tab when saving a template. Direct template saves continue to clear the form and return to Distribution. Clear starts a fresh template flow.
+
+## 2026-11-04 - Clear direct template form after save
+
+- Successful direct template saves clear total marks, cognition, question rows and LAQ parts, hide the split, and return to Distribution. Saved templates and unread notification state are retained. Failed saves and saves from a normal assessment matrix retain their working values.
+
+## 2026-11-04 - Return to templates after saving
+
+- Successful Save Template returns to Distribution, brings the Blueprint Templates banner into view and briefly highlights it with a two-pulse animation. The saved-template notification count remains available. Reduced-motion users receive a static highlight. Failed saves remain in the editor.
+
+## 2026-11-04 - Direct template authoring actions
+
+- Specifications opened without a Distribution matrix now shows Save Template without Reset Matrix or Create Competency Matrix. This prevents invoking distribution allocation and its mismatch notification during template-only authoring. Template total and cognition validation remain required. Normal matrix and review workflows retain their actions.
+
+## 2026-11-04 - Choose blueprint templates before curriculum
+
+- The template dropdown opens by default. Users can select a template before selecting curriculum; its marks and breakdown persist as subject, topics and competencies are selected. Approval and saved-matrix editing restrictions remain enforced.
+
+## 2026-11-04 - Remove Create template shortcut
+
+- Removed Create template from the blueprint banner. Users can still open Specifications through its tab; Choose template remains in the banner.
+
+## 2026-11-04 - Restore template controls
+
+- Reverted conditional template visibility and stage-specific guidance. Both Create template and Choose template remain visible on both blueprint tabs; choosing stays disabled until curriculum selection is complete.
+
+## 2026-11-04 - Hide template creation after curriculum selection
+
+- Hide Create template once subject, topics and competencies are selected. Distribution retains Choose template and its help text now directs users to reuse a saved template.
+
+## 2026-11-04 - Conditional blueprint template controls
+
+- Create template remains available throughout the blueprint workspace. Choose template appears in Distribution only after selecting a subject, topics and competencies; it is hidden in Specifications. Banner guidance follows setup, template selection, cognition entry and question breakdown stages.
+
+## 2026-11-03 - Create templates in Specifications
+
+- Create template is always visible in the blueprint banner and switches directly to Specifications. The separate editor popup is removed. Enter total marks and cognition in the existing tab, create the question split, then use Save Template. Existing values are preserved when switching tabs.
+
+## 2026-11-03 - Independent blueprint template creation
+
+- Specifications now offers Create template beside the template picker. A separate editor captures name, editable total marks, cognition targets, question breakdown and LAQ parts. Save requires matching totals and adds the template to For You with a notification badge. Save and Cancel leave the current assessment unchanged; Save Template still saves its current breakdown.
+
+## 2026-11-03 - Saved template notification badges
+
+- Successful template saves add a session unread count to the picker and For You tab. Viewing For You clears the count and briefly highlights new templates first. Locked blueprints permit browsing and preview while selection and deletion remain locked.
+
+## 2026-11-03 - Blueprint suggestions shown on request
+
+- Allocation Suggestions now starts closed and opens only on request after the competency matrix is created. Resetting blueprint dependencies closes it.
+
+## 2026-11-03 - Blueprint template source tabs
+
+- Added For Institution and For You tabs. Institution includes two selectable, previewable samples without deletion; personal templates retain existing actions. Search filters the active tab and resets when switching.
+
+## 2026-11-03 - Confirm blueprint clearing
+
+- Clear now opens a confirmation dialog. Cancel preserves all fields; Yes, clear resets blueprint fields and matrices.
+
+## 2026-11-03 - Clear blueprint fields
+
+- Added Clear at the bottom-left of Distribution to reset subject, topics, competencies, template, marks and dependent blueprint matrices. Disabled for empty and read-only blueprints.
+
+## 2026-11-03 - Blueprint template selection
+
+- Removed the Create Blueprint (Default) action from the template picker. The dropdown now lists saved templates only; existing assessment data is preserved.
+
 ## 2026-11-03 - Explicit activity name suggestions (MEDUI-18)
 
 - Improve / Refine is always visible. Suggestions are requested only after selecting it or Retry; typing cancels pending suggestions without starting another request. Selecting a suggestion applies it, with Undo available. This replaces the earlier automatic typing-triggered flow.

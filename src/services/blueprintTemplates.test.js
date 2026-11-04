@@ -1,7 +1,20 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { createInstitutionBlueprintTemplates } from './blueprintTemplateSamples.js'
 import { BLUEPRINT_TEMPLATES_KEY, deleteBlueprintTemplate, readBlueprintTemplates, resolveTemplateCognition, saveBlueprintTemplate, snapshotBlueprintBreakdown } from './blueprintTemplates.js'
 const memory = () => { const data = new Map([[BLUEPRINT_TEMPLATES_KEY, '[]']]); return {getItem:key=>data.get(key) ?? null,setItem:(key,value)=>data.set(key,value)} }
+test('institution samples have valid totals and cannot be deleted from personal storage', async () => {
+ const templates = createInstitutionBlueprintTemplates()
+ assert.equal(templates.length, 2)
+ const storage = memory()
+ for (const template of templates) {
+  assert.equal(template.scope, 'institution')
+  assert.equal(Object.values(template.breakdown).reduce((sum, row) => sum + Number(row.totalMarks), 0), template.totalMarks)
+  assert.equal(Number(template.cognition.hot) + Number(template.cognition.lot), 100)
+  await assert.rejects(deleteBlueprintTemplate(template.id, storage), /Institution templates/)
+ }
+ assert.deepEqual(readBlueprintTemplates(storage), [])
+})
 const snapshot = () => snapshotBlueprintBreakdown([{label:'MCQs',perQuestionMarks:'1',totalMarks:'20',hotQuestionsValue:'8',lotQuestionsValue:'12',subject:'must not save'}], [{splitCount:'1',splits:[{marks:'10',level:'hot'}]}], {lot:'60',hot:'40',distribution:'must not save'})
 test('stores only cognition and breakdown data and keeps an independent copy of LAQ parts', async()=>{
  const storage=memory();const input=snapshot();const saved=await saveBlueprintTemplate('  Anatomy mix  ',input,storage)

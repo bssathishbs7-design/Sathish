@@ -76,8 +76,10 @@ export async function saveBlueprintTemplate(name, snapshot, storage = localStora
 
 /** Remove a reusable template only. Assessment drafts and loaded values are untouched. */
 export async function deleteBlueprintTemplate(id, storage = localStorage) {
+  if (id.startsWith('institution-blueprint-')) throw new Error('Institution templates cannot be deleted.')
   if (id === 'default') throw new Error('The default option cannot be deleted.')
   const rows = readBlueprintTemplates(storage)
+  if (rows.find(row => row.id === id)?.scope === 'institution') throw new Error('Institution templates cannot be deleted.')
   if (rows.find(row => row.id === id)?.approved) throw new Error('Approved blueprint templates cannot be deleted.')
   try { storage.setItem(BLUEPRINT_TEMPLATES_KEY, JSON.stringify(rows.filter(row => row.id !== id))) }
   catch { throw new Error('Unable to delete template. Please try again.') }
