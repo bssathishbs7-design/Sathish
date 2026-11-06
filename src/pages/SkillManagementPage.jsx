@@ -1071,7 +1071,7 @@ function SkillManagementPage({ onAssignActivity, onGenerateComplete, onOpenImage
                             <div className="activity-inline-field activity-inline-field-full">
                               <div className="activity-inline-name-label">
                                 <label htmlFor={`activity-name-${record.id}`}>Activity name <em className="activity-required" aria-hidden="true">*</em></label>
-                                <InstructionBadge content="Give the activity a clear, descriptive name that tells students and assessors what task will be performed or assessed. Include the skill or procedure and any relevant clinical context—for example, “Measure blood pressure in an adult patient” or “Interpret a chest X-ray for suspected pneumonia”. Avoid vague names such as “Activity 1”." />
+                                <InstructionBadge />
                                 <div className="activity-inline-name-status" ref={setActivityNameStatusTarget} />
                                 <p className="activity-builder-marks-badge"><FileText size={14} aria-hidden="true" />Marks are enabled</p>
                               </div>

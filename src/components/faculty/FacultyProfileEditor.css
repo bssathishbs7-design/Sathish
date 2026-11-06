@@ -1,0 +1,6 @@
+.fm-profile-review h3 { margin:0 0 var(--s-4); color:var(--text-strong); }
+.fm-profile-review dl { margin:0; display:grid; gap:var(--s-3); }
+.fm-profile-review dl > div { display:grid; grid-template-columns:minmax(100px,1fr) 3fr; gap:var(--s-4); border-bottom:1px solid var(--border-soft); padding-bottom:var(--s-3); }
+.fm-profile-review dt { color:var(--text-muted); } .fm-profile-review dd { margin:0; overflow-wrap:anywhere; }
+.fm-inline-check { display:flex; align-items:center; gap:var(--s-2); }
+

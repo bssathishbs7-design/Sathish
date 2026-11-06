@@ -1,0 +1,175 @@
+{
+    "schema_version":  2,
+    "diagram_type":  "workflow",
+    "meta":  {
+                 "title":  "Proposed student assignment",
+                 "locale":  "en",
+                 "quality_profile":  "showcase",
+                 "output":  ".archify/workflow-faculty-plan-20261104-144515/assignment.html"
+             },
+    "lanes":  [
+                  {
+                      "id":  "choose",
+                      "label":  "Choose teaching scope"
+                  },
+                  {
+                      "id":  "publish",
+                      "label":  "Review and publish"
+                  },
+                  {
+                      "id":  "recover",
+                      "label":  "Resolve changes"
+                  }
+              ],
+    "nodes":  [
+                  {
+                      "id":  "context",
+                      "lane":  "choose",
+                      "col":  0,
+                      "label":  "Teaching context",
+                      "sublabel":  "Faculty / year / period",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "subject",
+                      "lane":  "choose",
+                      "col":  1,
+                      "label":  "Subject",
+                      "sublabel":  "Eligible for faculty",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "sgt",
+                      "lane":  "choose",
+                      "col":  2,
+                      "label":  "Teaching batches + SGT",
+                      "sublabel":  "Matching calendars",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "roster",
+                      "lane":  "choose",
+                      "col":  3,
+                      "label":  "Review students",
+                      "sublabel":  "Eligible current attempts",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "review",
+                      "lane":  "publish",
+                      "col":  3,
+                      "label":  "Review assignment",
+                      "sublabel":  "Dates / roster / conflicts",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "validate",
+                      "lane":  "publish",
+                      "col":  2,
+                      "label":  "Revalidate",
+                      "sublabel":  "Permissions + revisions",
+                      "type":  "security"
+                  },
+                  {
+                      "id":  "save",
+                      "lane":  "publish",
+                      "col":  1,
+                      "label":  "Atomic save",
+                      "sublabel":  "Assignment + members",
+                      "type":  "database"
+                  },
+                  {
+                      "id":  "published",
+                      "lane":  "publish",
+                      "col":  0,
+                      "label":  "Saved assignment",
+                      "sublabel":  "Scheduled or active",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "resolve",
+                      "lane":  "recover",
+                      "col":  2,
+                      "label":  "Resolve differences",
+                      "sublabel":  "Refresh roster and review",
+                      "type":  "frontend"
+                  }
+              ],
+    "edges":  [
+                  {
+                      "id":  "context-subject",
+                      "from":  "context",
+                      "to":  "subject"
+                  },
+                  {
+                      "id":  "subject-sgt",
+                      "from":  "subject",
+                      "to":  "sgt"
+                  },
+                  {
+                      "id":  "sgt-roster",
+                      "from":  "sgt",
+                      "to":  "roster"
+                  },
+                  {
+                      "id":  "roster-review",
+                      "from":  "roster",
+                      "to":  "review"
+                  },
+                  {
+                      "id":  "review-validate",
+                      "from":  "review",
+                      "to":  "validate"
+                  },
+                  {
+                      "id":  "validate-save",
+                      "from":  "validate",
+                      "to":  "save",
+                      "label":  "Valid"
+                  },
+                  {
+                      "id":  "save-published",
+                      "from":  "save",
+                      "to":  "published",
+                      "label":  "Saved"
+                  },
+                  {
+                      "id":  "validate-resolve",
+                      "from":  "validate",
+                      "to":  "resolve",
+                      "label":  "Conflict / stale"
+                  },
+                  {
+                      "id":  "resolve-review",
+                      "from":  "resolve",
+                      "to":  "review",
+                      "label":  "Review again"
+                  }
+              ],
+    "cards":  [
+                  {
+                      "dot":  "cyan",
+                      "title":  "Source of students",
+                      "items":  [
+                                    "Read Student Management; never clone its writable roster.",
+                                    "Context includes course, study year, exact period and teaching batches."
+                                ]
+                  },
+                  {
+                      "dot":  "emerald",
+                      "title":  "Explicit eligibility",
+                      "items":  [
+                                    "One subject; selected A-O groups; active current attempts.",
+                                    "Ungrouped, inactive and mismatched students show exclusion reasons."
+                                ]
+                  },
+                  {
+                      "dot":  "amber",
+                      "title":  "Proposed publication rules",
+                      "items":  [
+                                    "Block overlapping primary responsibility; offer reassignment.",
+                                    "Save failure retains draft. Scheduled work needs a valid start."
+                                ]
+                  }
+              ]
+}

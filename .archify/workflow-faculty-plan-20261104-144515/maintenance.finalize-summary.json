@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "workflow",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\maintenance.json",
+    "sha256": "efe29f8189c2ff5c4bbd1cde5388b4ee21626f37275eab54b6f2a6421ceef138",
+    "bytes": 6461
+  },
+  "artifact": {
+    "path": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\maintenance.html",
+    "sha256": "63ff5709310e651e96d82d82a473382f025b85abf1f8812001be5e1233f035ce",
+    "bytes": 841473
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\maintenance.finalize.json",
+    "summaryReceipt": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\maintenance.finalize-summary.json",
+    "browserCheckReceipt": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\maintenance.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-04T09:21:04.091Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 3320,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

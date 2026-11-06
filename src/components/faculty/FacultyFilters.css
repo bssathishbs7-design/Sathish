@@ -1,0 +1,5 @@
+.fm-filter-panel { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--s-3); padding:var(--s-3); border-top:1px solid var(--border-soft); align-items:end; }
+@media(max-width:767px) { .fm-filter-panel { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.fm-filter-panel > button { justify-self:start; }
+@media(min-width:768px) and (max-width:1023px) { .fm-filter-panel { grid-template-columns:repeat(3,minmax(0,1fr)); } }

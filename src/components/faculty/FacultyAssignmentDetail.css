@@ -1,0 +1,3 @@
+.fm-detail-meta { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-3); font-size:var(--fs-small); }
+.fm-change-review { padding:var(--s-4); background:var(--surface-soft); border:1px solid var(--border); border-radius:var(--r); }
+.fm-change-review h3 { margin:0; font-size:var(--font-size-h4); } .fm-change-review details { margin-block:var(--s-2); } .fm-change-review summary { cursor:pointer; }

@@ -1,0 +1,17 @@
+.management-multi { display:grid; gap:var(--s-1); min-width:0; font:var(--fs-small)/1.5 var(--f-body); }
+.management-multi > label { color:var(--text-strong); font-weight:500; }
+.management-multi-trigger { display:flex; align-items:center; gap:var(--s-2); width:100%; min-width:0; min-height:calc(var(--s-6) + var(--s-1)); padding:var(--s-2) var(--s-3); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text-body); background:var(--surface-card); font:inherit; text-align:left; cursor:pointer; transition:border-color var(--dur-hover) var(--ease-standard); }
+.management-multi-trigger > span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.management-multi-trigger > :is(svg,small) { flex:none; color:var(--text-muted); }
+.management-multi-trigger:hover:not(:disabled), .management-multi-trigger[aria-expanded=true] { border-color:var(--forest); }
+.management-multi-menu { min-width:0; border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); overflow:hidden; }
+.management-multi-search { display:flex; align-items:center; gap:var(--s-2); padding:var(--s-2) var(--s-3); border-bottom:1px solid var(--border); color:var(--text-muted); }
+.fm-workspace .management-multi-search input[type=search] { border:0; border-radius:0; min-height:var(--s-6); padding:var(--s-1); background:transparent; }
+.management-multi-options { max-height:calc(var(--s-9) * 2); overflow-y:auto; overscroll-behavior:contain; padding:var(--s-1); }
+.management-multi-options label { display:flex; align-items:center; gap:var(--s-2); margin:0; padding:var(--s-2); border-radius:var(--r-sm); cursor:pointer; }
+.management-multi-options label:hover, .management-multi-options label:has(input:checked) { background:var(--surface-soft); }
+.management-multi-options input { margin:0; }
+.management-multi-options p { margin:var(--s-2); color:var(--text-muted); }
+.management-multi-footer { display:flex; align-items:center; gap:var(--s-2); border-top:1px solid var(--border); padding:var(--s-2) var(--s-3); }
+.management-multi-footer > span { margin-right:auto; color:var(--text-muted); }
+@media(pointer:coarse) { .management-multi-trigger, .management-multi-options label { min-height:44px; } }

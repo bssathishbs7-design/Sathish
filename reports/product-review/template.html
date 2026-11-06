@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en" class="demo-scope"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Project Management | Medsy</title><style>__CSS__</style></head>
+<body><header class="viewer"><strong>Project Management <span>/ Medsy</span></strong><div class="utilities"><button id="import-notes">Import notes</button></div></header>
+<main><div class="heading"><div><p class="eyebrow">Module reports</p><h1>What needs attention?</h1><p class="lead">Find the page, understand the issue, and give the right team a clear next step.</p></div><div id="version" class="version"></div></div>
+<div id="storage-alert" class="notice warning" role="alert" hidden></div><section id="summary" aria-label="Review summary"></section>
+<nav class="jump-links" aria-label="Report sections"><a href="#module-reports">Module reports</a><a href="#team-report">Team responsibilities</a><a href="#next-actions">Next actions</a><a href="#version-history">Version history</a></nav>
+<section id="module-reports"><div class="section-heading"><div><h2>Reports by module</h2><p>Open a module to see its pages, findings and recommended solutions.</p></div><span id="result-count" role="status"></span></div>
+<div class="filters" id="filters" hidden><label>Audience<select id="audience-filter"></select></label><label>Module<select id="module-filter"></select></label><label>Page<select id="page-filter"></select></label><label>Team<select id="team-filter"></select></label><label>Status / finding<select id="status-filter"></select></label><button id="reset">Reset</button></div>
+<div class="legend" aria-label="Colour meaning"><span class="badge pass">Verified pass</span><span class="badge issue">Confirmed issue</span><span class="badge pending">Partial / pending</span><span class="badge decision">Decision needed</span><span class="badge neutral">Not reviewed</span></div>
+<div id="modules"></div></section>
+<section id="team-report"><div class="section-heading"><div><h2>Who handles what?</h2><p>Counts use open findings, not tasks or assumed progress. Choose a team to filter the report.</p></div></div><div id="teams"></div></section>
+<section id="next-actions"><div class="section-heading"><h2>Recommended next steps</h2></div><div id="recommendations"></div></section>
+<section id="version-history"><div class="section-heading"><div><h2>Versions and review maintenance</h2><p>Document versions describe the report. Source versions identify the code that was checked.</p></div></div><div id="history"></div></section>
+<footer><p>Internal reference only. Copying a prompt does not execute it or authorise a fix. Downloaded reports are snapshots; they do not monitor your repository.</p><details><summary>Preserved workspace notes and assignments</summary><p>The earlier workspace is retained as a local archive. These records are personal annotations, not verified audit evidence.</p><div id="legacy-notes"></div></details></footer>
+</main><div id="message" role="status" class="toast" hidden></div><input id="notes-file" type="file" accept="application/json,.json" hidden>
+<noscript><p class="notice">Enable JavaScript to load this interactive report. Use the local planning service for Word or PDF downloads.</p></noscript>
+<script id="report-data" type="application/json">__DATA__</script><script>__JS__</script></body></html>

@@ -1,3 +1,26 @@
+## 2026-11-05 — Instructions hover preview and click pin
+
+- Restored the Instructions badge fill animation. Mouse hover previews guidance and permits moving into the popover; leaving closes an unpinned preview. Clicking pins it open; clicking again, Close, Escape or outside dismisses it. Reduced-motion preferences disable the animation.
+
+## 2026-11-05 — Activity instructions popover
+
+- Activity naming guidance now opens on click beside Instructions, with right/left placement and a mobile fallback. Guidance is organised as an instruction card, table, two examples and closing note. Outside click, Escape and Close dismiss it; long content scrolls within the panel.
+
+## 2026-11-04 — Remove faculty application-role flow
+
+- Removed application-role selection, profile-review roles, directory role labels and role-change descriptions from Faculty Management. New profiles and imports no longer require or assign application roles. Primary/co-teacher teaching responsibility and page access permissions remain unchanged. Historical stored snapshots are retained.
+
+## 2026-11-04 — Faculty breadcrumb navigation
+
+- Faculty Management now uses Student Management's shared page-navigation header: My Pages / Faculty Management, with browser-history back and forward controls.
+
+## 2026-11-04 - Faculty onboarding and reviewed teaching assignments
+
+- Faculty Management is available beside Student Management in faculty navigation, with Faculty, Teaching assignments and History views.
+- Add/edit faculty reviews identity and teaching eligibility before saving, then optionally opens a four-step assignment wizard. Excel imports preview valid and rejected rows before an explicit save.
+- Assign students chooses study year, exact academic period, compatible batches, subject, primary/co-teacher role and whole-batch/SGT scope before roster review and publication. Profile edits preserve assignments.
+- Assignment details support roster-change review, dated reassignment, ending dependent co-teaching and copying to a fresh-period draft. Deactivation previews and closes affected responsibilities while preserving history.
+
 ## 2026-11-04 - Explicit blueprint purpose
 
 - Specifications identifies assessment setup versus reusable template creation. Create Blueprint Matrix explicitly starts assessment setup after distribution totals match. Tab changes and template selection retain that purpose, which is stored with drafts. Applying a template no longer automatically creates the competency matrix. Assessment setup shows Reset Matrix and Create Competency Matrix and preserves working values and the current tab when saving a template. Direct template saves continue to clear the form and return to Distribution. Clear starts a fresh template flow.
@@ -1411,3 +1434,43 @@ Assign entry now filters document activities by department and posting phase, ke
 ## 2026-11-02 - Year roster filter setup
 
 - Year roster shows a setup prompt until at least one admission batch and a study year are selected. The student table and search then appear. Reset filters in the roster header clears the setup; resetting an empty table clears search and SGT while retaining batch and study-year selection.
+
+
+## 2026-11-05 - Reference workspace section tabs
+
+- Split the standalone Business Analyst reference into Module reports, AI specialists, Next steps and Version history tabs. The header stays visible while scrolling. Team drill-down opens the filtered module tab; archived notes remain in Version history. Medsy application navigation is unchanged.
+
+
+## 2026-11-06 - Module review and planning handoff
+
+- Added Review before Plan in the standalone reference workspace. Users select pages and review areas, optionally save context/documents, confirm Yes/No and follow actual AI review stages. Versioned results support finding selection and a separate confirmed planning flow. Review generation does not execute fixes or mark modules verified/complete.
+
+
+## 2026-11-06 - Local AI connection
+- Header AI status opens a connection dialog. Cancel discards inputs; Link verifies and saves API key/model locally, then applies them without restarting. Review and Plan remain separate confirmed actions.
+
+
+## 2026-11-06 - Hierarchical AI review ownership
+- AI specialists now show module-specific hierarchical ownership and expandable role details. Review/Plan scope can include AI/ML; confirmation lists the participating roles. New runs follow specialist, branch leadership and executive synthesis stages, recording hierarchy version without rewriting historical runs.
+
+
+## 2026-11-06 - All-role module review and test evidence
+- Confirmed Review now runs mapped isolated service checks followed by all 11 roles. Results show executed checks, specialist reports, conflicts, consolidated findings and separate review status. Partial reviews remain downloadable but cannot be handed to planning; retry creates a new run. Module downloads include the latest review.
+
+
+## 2026-11-06 - Codex prompt handoff
+- Module Review/Plan actions replaced with Copy review prompt. Added dependencies, responsibility grid and Fix bugs popup with selected-finding planning prompts. A recorded current plan enables Yes/No confirmation to copy an approved-fix prompt. Copying does not change statuses or run code.
+
+
+### 2026-11-06 - Automatic project report updates
+- The local Project Management workspace checks saved report versions every five seconds while visible. Updated evidence and recorded plans appear without manual reload.
+- Issue popups preserve selected open findings, expanded evidence and sorting; resolved items become unselectable. Editable and approval dialogs defer evidence replacement until closed.
+- Offline HTML remains a snapshot; no review, implementation or approval runs automatically.
+
+
+### 2026-11-06 - Unified module tab
+- Replaced audience and attention tabs with a single All modules tab. Every module is listed together; existing search and advanced filters remain available.
+
+
+### 2026-11-06 - Module version history popover
+- Rows show only the current module version. Hover, focus or click its info icon to inspect recorded module, review and plan versions with timestamps. Click pins the popover; Escape, outside click or Close dismisses it.

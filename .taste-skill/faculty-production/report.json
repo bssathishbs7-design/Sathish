@@ -1,0 +1,1430 @@
+{
+ "url": "http://127.0.0.1:5174/faculty-management",
+ "at": "2026-11-04T10:15:17.953Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.18,
+    0.2
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 1,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 1187,
+     "screens": 1.3,
+     "words": 175,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 35,
+     "sections": 2,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Faculty management",
+     "words": 2,
+     "chars": 18,
+     "lines": 1,
+     "size": 25,
+     "vw": 1.7,
+     "font": "Inter",
+     "weight": 700,
+     "tracking": -0.02,
+     "leading": 1.3,
+     "top": 132,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Faculty management",
+     "words": 2,
+     "lines": 1,
+     "size": 25,
+     "font": "Inter"
+    },
+    "headings": [],
+    "headingSummary": {
+     "count": 0,
+     "maxLines": 0,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Inter",
+       "share": 0.96,
+       "mono": false
+      },
+      {
+       "family": "ui-monospace",
+       "share": 0.04,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      16,
+      25
+     ],
+     "sizeCount": 4,
+     "notLoaded": [],
+     "body": {
+      "font": "Inter",
+      "size": 12.8,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": -0.01,
+      "contrast": 7
+     },
+     "measureChars": 55,
+     "max": {
+      "size": 25,
+      "vw": 1.7,
+      "font": "Inter",
+      "text": "Faculty management"
+     },
+     "monoShare": 0.04,
+     "monoProseShare": 0.04,
+     "monoFamilies": [
+      "ui-monospace"
+     ],
+     "monoSamples": [
+      "6",
+      "2",
+      "14",
+      "0",
+      "FAC-001",
+      "FAC-002"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0.03,
+     "centerShare": 0.18,
+     "smallText": 38
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#ffffff",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 1
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f8f8f8",
+       "top": 0,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.97
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 74,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#333333",
+       "share": 0.36
+      },
+      {
+       "color": "#565a58",
+       "share": 0.34
+      },
+      {
+       "color": "#063a28",
+       "share": 0.17
+      },
+      {
+       "color": "#475569",
+       "share": 0.07
+      },
+      {
+       "color": "#334155",
+       "share": 0.03
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#333333"
+     },
+     "lowContrast": [
+      {
+       "text": "MC2568",
+       "ratio": 2.6,
+       "need": 4.5,
+       "size": 11.5,
+       "fg": "#94a3b8",
+       "bg": "#ffffff"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 20,
+     "inHero": 17,
+     "radius": "pill",
+     "height": 36,
+     "withShadow": 2,
+     "withGradient": 1,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skills",
+      "Admin Logbook",
+      "Approval Queue",
+      "Correlation Rating",
+      "Assessment Suite"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 2,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "aside.vx-sidebar 260px",
+      "div.vx-logo-row 259px",
+      "div.fm-metrics 1132px",
+      "nav.fm-tabs 1132px",
+      "div.fm-table-caption 1130px"
+     ],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 2,
+     "roundedBoxes": 1,
+     "boxRadius": 18,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": true,
+     "height": 74,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "inter"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 1187,
+    "margins": {
+     "left": 12,
+     "right": 41
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Faculty management",
+      "size": 25,
+      "top": 132,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 284,
+      "n": 1
+     },
+     {
+      "x": 301,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 2,
+    "bodySize": 13,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.1,
+    "voidBox": {
+     "x": 0,
+     "y": 480,
+     "w": 300,
+     "h": 420
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": false,
+    "ground": "#ffffff",
+    "sidebar": {
+     "w": 260,
+     "tag": "aside",
+     "links": 15,
+     "share": 0.18
+    },
+    "topbar": {
+     "h": 74
+    },
+    "canvas": {
+     "left": 24,
+     "right": 24
+    },
+    "hero": {
+     "text": "Faculty management",
+     "words": 2,
+     "chars": 18,
+     "lines": 1,
+     "size": 25,
+     "vw": 1.7,
+     "font": "Inter",
+     "weight": 700,
+     "tracking": -0.02,
+     "leading": 1.3,
+     "top": 132,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 3,
+     "firstScreen": 3,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 5,
+     "radii": [
+      [
+       0,
+       4
+      ],
+      [
+       18,
+       1
+      ]
+     ],
+     "heavyBorders": 3,
+     "borderSamples": [
+      "#94a5b5 on #ffffff (2.53:1)",
+      "#106b42 on #ffffff (6.55:1)",
+      "#106b42 on #ffffff (6.55:1)"
+     ],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 2
+    },
+    "chips": {
+     "count": 8,
+     "hues": 2,
+     "samples": [
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      },
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      },
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      },
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      }
+     ]
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 1,
+     "tabularShare": 1,
+     "kpiMax": 25
+    },
+    "rows": {
+     "count": 6,
+     "median": 91
+    },
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.01,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      12,
+      13,
+      16,
+      25
+     ]
+    },
+    "title": {
+     "text": "Faculty management",
+     "size": 25,
+     "top": 132
+    },
+    "colourShare": 0.005
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.27,
+    0.26
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 1,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 1361,
+     "screens": 1.3,
+     "words": 175,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 35,
+     "sections": 2,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 1,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Faculty management",
+     "words": 2,
+     "chars": 18,
+     "lines": 1,
+     "size": 25,
+     "vw": 3.3,
+     "font": "Inter",
+     "weight": 700,
+     "tracking": -0.02,
+     "leading": 1.3,
+     "top": 132,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Faculty management",
+     "words": 2,
+     "lines": 1,
+     "size": 25,
+     "font": "Inter"
+    },
+    "headings": [],
+    "headingSummary": {
+     "count": 0,
+     "maxLines": 0,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Inter",
+       "share": 0.96,
+       "mono": false
+      },
+      {
+       "family": "ui-monospace",
+       "share": 0.04,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      16,
+      25
+     ],
+     "sizeCount": 4,
+     "notLoaded": [],
+     "body": {
+      "font": "Inter",
+      "size": 12.8,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": -0.01,
+      "contrast": 7
+     },
+     "measureChars": 55,
+     "max": {
+      "size": 25,
+      "vw": 3.3,
+      "font": "Inter",
+      "text": "Faculty management"
+     },
+     "monoShare": 0.04,
+     "monoProseShare": 0.04,
+     "monoFamilies": [
+      "ui-monospace"
+     ],
+     "monoSamples": [
+      "6",
+      "2",
+      "14",
+      "0",
+      "FAC-001",
+      "FAC-002"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0.03,
+     "centerShare": 0.18,
+     "smallText": 38
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#ffffff",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 1
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f8f8f8",
+       "top": 0,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.97
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 0,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#333333",
+       "share": 0.36
+      },
+      {
+       "color": "#565a58",
+       "share": 0.34
+      },
+      {
+       "color": "#063a28",
+       "share": 0.17
+      },
+      {
+       "color": "#475569",
+       "share": 0.07
+      },
+      {
+       "color": "#334155",
+       "share": 0.03
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#333333"
+     },
+     "lowContrast": [
+      {
+       "text": "MC2568",
+       "ratio": 2.6,
+       "need": 4.5,
+       "size": 11.5,
+       "fg": "#94a3b8",
+       "bg": "#ffffff"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 20,
+     "inHero": 17,
+     "radius": "pill",
+     "height": 36,
+     "withShadow": 2,
+     "withGradient": 1,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skills",
+      "Admin Logbook",
+      "Approval Queue",
+      "Correlation Rating",
+      "Assessment Suite"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 2,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "aside.vx-sidebar 270px",
+      "div.vx-logo-row 269px",
+      "div.fm-metrics 720px",
+      "nav.fm-tabs 720px",
+      "div.fm-table-caption 718px"
+     ],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 2,
+     "roundedBoxes": 1,
+     "boxRadius": 18,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": true,
+     "height": 74,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "inter"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 1361,
+    "margins": {
+     "left": 24,
+     "right": 25
+    },
+    "sections": [
+     {
+      "sel": "div.fm-metrics",
+      "tag": "div",
+      "top": 209,
+      "height": 162,
+      "words": 11,
+      "media": 0,
+      "middle": 227,
+      "heading": {
+       "text": "14",
+       "size": 25,
+       "tag": "strong"
+      },
+      "left": 24,
+      "right": 186,
+      "textLeft": 24,
+      "textRight": 186,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section.fm-sheet",
+      "tag": "section",
+      "top": 445,
+      "height": 891,
+      "words": 134,
+      "media": 0,
+      "middle": 6,
+      "heading": {
+       "text": "Faculty",
+       "size": 16,
+       "tag": "h2"
+      },
+      "left": 41,
+      "right": 0,
+      "textLeft": 41,
+      "textRight": 25,
+      "fullBleed": false,
+      "footer": true,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Faculty management",
+      "size": 25,
+      "top": 132,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 24,
+      "n": 1
+     },
+     {
+      "x": 41,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 2,
+    "bodySize": 13,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "dark": false,
+    "ground": "#ffffff",
+    "sidebar": {
+     "w": 270,
+     "tag": "aside",
+     "links": 15,
+     "share": 0.35
+    },
+    "topbar": {
+     "h": 74
+    },
+    "canvas": {
+     "left": 116,
+     "right": -3
+    },
+    "hero": {
+     "text": "Faculty management",
+     "words": 2,
+     "chars": 18,
+     "lines": 1,
+     "size": 25,
+     "vw": 3.3,
+     "font": "Inter",
+     "weight": 700,
+     "tracking": -0.02,
+     "leading": 1.3,
+     "top": 132,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 3,
+     "firstScreen": 3,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 3,
+     "radii": [
+      [
+       0,
+       2
+      ],
+      [
+       18,
+       1
+      ]
+     ],
+     "heavyBorders": 2,
+     "borderSamples": [
+      "#106b42 on #ffffff (6.55:1)",
+      "#106b42 on #ffffff (6.55:1)"
+     ],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 1
+    },
+    "chips": {
+     "count": 8,
+     "hues": 2,
+     "samples": [
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      },
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      },
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      },
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      }
+     ]
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 1,
+     "tabularShare": 1,
+     "kpiMax": 25
+    },
+    "rows": {
+     "count": 6,
+     "median": 104
+    },
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.01,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      12,
+      13,
+      16,
+      25
+     ]
+    },
+    "title": {
+     "text": "Faculty management",
+     "size": 25,
+     "top": 132
+    },
+    "colourShare": 0.009
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.39,
+    0.17
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 1,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 1390,
+     "screens": 1.6,
+     "words": 172,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 35,
+     "sections": 2,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 1,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Faculty management",
+     "words": 2,
+     "chars": 18,
+     "lines": 1,
+     "size": 20,
+     "vw": 5.1,
+     "font": "Inter",
+     "weight": 700,
+     "tracking": -0.02,
+     "leading": 1.3,
+     "top": 108,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Faculty management",
+     "words": 2,
+     "lines": 1,
+     "size": 20,
+     "font": "Inter"
+    },
+    "headings": [],
+    "headingSummary": {
+     "count": 0,
+     "maxLines": 0,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Inter",
+       "share": 0.96,
+       "mono": false
+      },
+      {
+       "family": "ui-monospace",
+       "share": 0.04,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      11,
+      12,
+      13,
+      16,
+      20
+     ],
+     "sizeCount": 5,
+     "notLoaded": [],
+     "body": {
+      "font": "Inter",
+      "size": 12.8,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": -0.01,
+      "contrast": 7
+     },
+     "measureChars": 55,
+     "max": {
+      "size": 20,
+      "vw": 5.1,
+      "font": "Inter",
+      "text": "Faculty management"
+     },
+     "monoShare": 0.04,
+     "monoProseShare": 0.04,
+     "monoFamilies": [
+      "ui-monospace"
+     ],
+     "monoSamples": [
+      "6",
+      "2",
+      "14",
+      "0",
+      "FAC-001",
+      "FAC-002"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0.03,
+     "centerShare": 0.19,
+     "smallText": 38
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#ffffff",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 1
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f8f8f8",
+       "top": 0,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.97
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 0,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#333333",
+       "share": 0.37
+      },
+      {
+       "color": "#565a58",
+       "share": 0.34
+      },
+      {
+       "color": "#063a28",
+       "share": 0.17
+      },
+      {
+       "color": "#475569",
+       "share": 0.07
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#333333"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 19,
+     "inHero": 14,
+     "radius": "pill",
+     "height": 44,
+     "withShadow": 2,
+     "withGradient": 1,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skills",
+      "Admin Logbook",
+      "Approval Queue",
+      "Correlation Rating",
+      "Assessment Suite"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 3,
+     "shadowSamples": [],
+     "gradients": 1,
+     "scrims": 0,
+     "gradientSamples": [
+      "button.vx-link.active → linear-gradient(rgb(239, 255, 247), rgb(221, 255, 240))"
+     ],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "aside.vx-sidebar 320px",
+      "div.vx-logo-row 319px",
+      "div.fm-metrics 358px",
+      "nav.fm-tabs 358px",
+      "div.fm-table-caption 356px"
+     ],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 3,
+     "roundedBoxes": 1,
+     "boxRadius": 18,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": true,
+     "height": 58,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "inter"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 1390,
+    "margins": {
+     "left": 16,
+     "right": 17
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Faculty management",
+      "size": 20,
+      "top": 108,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 1
+     },
+     {
+      "x": 33,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 2,
+    "bodySize": 13,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": false,
+    "ground": "#ffffff",
+    "sidebar": null,
+    "topbar": {
+     "h": 74
+    },
+    "canvas": {
+     "left": 16,
+     "right": -353
+    },
+    "hero": {
+     "text": "Faculty management",
+     "words": 2,
+     "chars": 18,
+     "lines": 1,
+     "size": 20,
+     "vw": 5.1,
+     "font": "Inter",
+     "weight": 700,
+     "tracking": -0.02,
+     "leading": 1.3,
+     "top": 108,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 3,
+     "firstScreen": 3,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 3,
+     "radii": [
+      [
+       0,
+       2
+      ],
+      [
+       18,
+       1
+      ]
+     ],
+     "heavyBorders": 2,
+     "borderSamples": [
+      "#106b42 on #ffffff (6.55:1)",
+      "#106b42 on #ffffff (6.55:1)"
+     ],
+     "heavyShadows": 1,
+     "softShadows": 0,
+     "shadowSamples": [
+      "rgba(15, 23, 42, 0.22) 0px 18px 48px 0px"
+     ],
+     "glass": 1
+    },
+    "chips": {
+     "count": 8,
+     "hues": 2,
+     "samples": [
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      },
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      },
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      },
+      {
+       "hue": 209,
+       "size": 24,
+       "radius": "8px"
+      }
+     ]
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 1,
+     "tabularShare": 1,
+     "kpiMax": 20
+    },
+    "rows": {
+     "count": 6,
+     "median": 112
+    },
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.01,
+     "tiny": 0,
+     "tinySamples": [],
+     "sizes": [
+      11,
+      12,
+      13,
+      16,
+      20
+     ]
+    },
+    "title": {
+     "text": "Faculty management",
+     "size": 20,
+     "top": 108
+    },
+    "colourShare": 0.02
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "button-fx",
+   "width": 1440,
+   "message": "Buttons with gradient fill and shadow/glow.",
+   "fix": "Flat fill, one colour.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "contrast",
+   "width": 1440,
+   "message": "Low-contrast text: \"MC2568\" 2.6:1 needs 4.5:1",
+   "fix": "Darken or lighten the text colour.",
+   "alsoAt": [
+    768
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "heavy-borders",
+   "width": 1440,
+   "message": "3 panel borders are dark against their ground: #94a5b5 on #ffffff (2.53:1) | #106b42 on #ffffff (6.55:1) | #106b42 on #ffffff (6.55:1)",
+   "fix": "A panel border is a whisper: about 1.1–1.3:1 against its ground on a light screen (#e5e7eb–#ededed on white), and about 1.2–1.5:1 on a dark one (#1a1a1a on #000, #2e2e2e on #111). Darker lines turn the screen into a grid of boxes; keep the stronger line for controls."
+  },
+  {
+   "level": "FAIL",
+   "id": "icon-chips",
+   "width": 1440,
+   "message": "8 icons sit in tinted squares or circles in 2 different colours.",
+   "fix": "This is the commonest tell of a generated dashboard. Drop the tinted square: a KPI is a label and a number; an icon, if it helps, is plain and in the text colour.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "covered-text",
+   "width": 768,
+   "message": "Large text lies under another element at some scroll position: \"Faculty management\" (screen 1, 100% hidden)",
+   "fix": "Nothing may sit on top of a headline or statement. Move the picture, shorten the pinned run, or raise the text above it (z-index) and give it a ground."
+  },
+  {
+   "level": "FAIL",
+   "id": "gradient",
+   "width": 390,
+   "message": "1 gradient fill(s): button.vx-link.active → linear-gradient(rgb(239, 255, 247), rgb(221, 255, 240))",
+   "fix": "Use a flat colour or a real image. The only gradient allowed by default is a neutral scrim over a photo for legibility."
+  },
+  {
+   "level": "FAIL",
+   "id": "heavy-shadow",
+   "width": 390,
+   "message": "1 panel shadow(s) heavy enough to read as floating: rgba(15, 23, 42, 0.22) 0px 18px 48px 0px",
+   "fix": "Panels sit on the ground: separate them with a fill one step from the ground or a quiet 1px border. A shadow, if any, is under 8% black with a small blur. Real overlays (menus, dialogs, popovers) may float."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "D:\\Medsy\\version_1(live)\\.taste-skill\\faculty-production\\desktop-fold.jpg",
+   "pages": [
+    "D:\\Medsy\\version_1(live)\\.taste-skill\\faculty-production\\desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "D:\\Medsy\\version_1(live)\\.taste-skill\\faculty-production\\tablet-fold.jpg",
+   "pages": [
+    "D:\\Medsy\\version_1(live)\\.taste-skill\\faculty-production\\tablet-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "D:\\Medsy\\version_1(live)\\.taste-skill\\faculty-production\\mobile-fold.jpg",
+   "pages": [
+    "D:\\Medsy\\version_1(live)\\.taste-skill\\faculty-production\\mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

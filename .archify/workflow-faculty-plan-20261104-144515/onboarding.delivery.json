@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "1a67379c-ec64-4c92-8298-4478bd1fba6f",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\onboarding.json",
+  "output": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\onboarding.html",
+  "specification": {
+    "sha256": "51de3ff525504978d21eb8206011b54870d6a639a0d9e27763114fc6509e01cd",
+    "bytes": 4759
+  },
+  "artifact": {
+    "sha256": "4421ce5160f2188745559d28d622df5e49c1da5429f9e7a8c9e1980fe606dc17",
+    "bytes": 834769
+  }
+}

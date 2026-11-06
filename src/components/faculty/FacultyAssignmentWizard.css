@@ -1,0 +1,10 @@
+.fm-steps { display:flex; list-style:none; gap:var(--s-3); padding:var(--s-2) var(--s-4); margin:0; border-bottom:1px solid var(--border); overflow-x:auto; flex-shrink:0; }
+.fm-steps li { display:flex; gap:var(--s-2); align-items:center; color:var(--text-muted); white-space:nowrap; font-size:var(--fs-small); }
+.fm-steps li span { font-family:var(--f-code); border:1px solid var(--border); border-radius:var(--r-pill); padding:var(--s-1) var(--s-2); }
+.fm-steps li[aria-current] { color:var(--text-strong); font-weight:600; }
+.fm-steps li[aria-current] span { background:var(--surface-soft); border-color:var(--forest); }
+.fm-context { display:flex; flex-wrap:wrap; justify-content:space-between; gap:var(--s-2); padding:var(--s-3); background:var(--surface-mist); border-radius:var(--r-sm); font-size:var(--fs-small); }
+.fm-step-title { margin:0; color:var(--text-strong); font-size:var(--font-size-h4); }
+.fm-review-summary { display:grid; gap:var(--s-2); padding:var(--s-4); background:var(--surface-soft); border:1px solid var(--border); border-radius:var(--r); }
+.fm-review-summary strong { font:600 var(--font-size-h3) var(--f-code); }
+

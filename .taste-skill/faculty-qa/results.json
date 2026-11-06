@@ -1,0 +1,13 @@
+{
+  "passed": [
+    "Profile onboarding and whole-batch publication",
+    "IndexedDB persistence after reload",
+    "Rollover clears previous academic context",
+    "SGT exclusions, Student Management event and reviewed reconciliation",
+    "Unsaved form confirmation preserves or discards explicitly",
+    "Native dialog Escape close",
+    "390/768/1024/1440 overflow and modal bounds",
+    "Reduced motion"
+  ],
+  "consoleErrors": []
+}

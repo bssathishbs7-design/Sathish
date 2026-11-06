@@ -1,0 +1,169 @@
+{
+    "schema_version":  2,
+    "diagram_type":  "workflow",
+    "meta":  {
+                 "title":  "Proposed assignment maintenance",
+                 "locale":  "en",
+                 "quality_profile":  "showcase",
+                 "output":  ".archify/workflow-faculty-plan-20261104-144515/maintenance.html"
+             },
+    "lanes":  [
+                  {
+                      "id":  "changes",
+                      "label":  "Student or faculty change"
+                  },
+                  {
+                      "id":  "review",
+                      "label":  "Protect and reconcile"
+                  },
+                  {
+                      "id":  "rollover",
+                      "label":  "Next academic period"
+                  }
+              ],
+    "nodes":  [
+                  {
+                      "id":  "change",
+                      "lane":  "changes",
+                      "col":  0,
+                      "label":  "Source change",
+                      "sublabel":  "SGT / year / status",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "compare",
+                      "lane":  "changes",
+                      "col":  1,
+                      "label":  "Compare membership",
+                      "sublabel":  "Saved vs current roster",
+                      "type":  "backend"
+                  },
+                  {
+                      "id":  "flag",
+                      "lane":  "changes",
+                      "col":  2,
+                      "label":  "Needs review",
+                      "sublabel":  "Block ineligible access",
+                      "type":  "security"
+                  },
+                  {
+                      "id":  "inspect",
+                      "lane":  "review",
+                      "col":  2,
+                      "label":  "Review differences",
+                      "sublabel":  "Added / removed / changed",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "confirm",
+                      "lane":  "review",
+                      "col":  1,
+                      "label":  "Confirm changes",
+                      "sublabel":  "Revalidate and save",
+                      "type":  "security"
+                  },
+                  {
+                      "id":  "history",
+                      "lane":  "review",
+                      "col":  0,
+                      "label":  "Preserve history",
+                      "sublabel":  "New membership revision",
+                      "type":  "database"
+                  },
+                  {
+                      "id":  "end",
+                      "lane":  "rollover",
+                      "col":  0,
+                      "label":  "Period ends",
+                      "sublabel":  "Retain past roster",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "copy",
+                      "lane":  "rollover",
+                      "col":  1,
+                      "label":  "Copy as draft",
+                      "sublabel":  "Next period context",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "fresh",
+                      "lane":  "rollover",
+                      "col":  2,
+                      "label":  "Review new roster",
+                      "sublabel":  "Publish through wizard",
+                      "type":  "frontend"
+                  }
+              ],
+    "edges":  [
+                  {
+                      "id":  "change-compare",
+                      "from":  "change",
+                      "to":  "compare"
+                  },
+                  {
+                      "id":  "compare-flag",
+                      "from":  "compare",
+                      "to":  "flag",
+                      "label":  "Affected"
+                  },
+                  {
+                      "id":  "flag-inspect",
+                      "from":  "flag",
+                      "to":  "inspect"
+                  },
+                  {
+                      "id":  "inspect-confirm",
+                      "from":  "inspect",
+                      "to":  "confirm"
+                  },
+                  {
+                      "id":  "confirm-history",
+                      "from":  "confirm",
+                      "to":  "history",
+                      "label":  "Valid + saved"
+                  },
+                  {
+                      "id":  "history-end",
+                      "from":  "history",
+                      "to":  "end"
+                  },
+                  {
+                      "id":  "end-copy",
+                      "from":  "end",
+                      "to":  "copy",
+                      "label":  "Optional"
+                  },
+                  {
+                      "id":  "copy-fresh",
+                      "from":  "copy",
+                      "to":  "fresh"
+                  }
+              ],
+    "cards":  [
+                  {
+                      "dot":  "amber",
+                      "title":  "No silent membership changes",
+                      "items":  [
+                                    "Newly eligible students wait for reviewed addition.",
+                                    "Invalid members lose live eligibility; history stays intact."
+                                ]
+                  },
+                  {
+                      "dot":  "cyan",
+                      "title":  "Reassignment and deactivation",
+                      "items":  [
+                                    "Preview impact and validate replacement faculty.",
+                                    "End old membership and create replacement atomically."
+                                ]
+                  },
+                  {
+                      "dot":  "emerald",
+                      "title":  "Proposed rollover",
+                      "items":  [
+                                    "An ended assignment stays ended without an open browser.",
+                                    "Copy context only; never carry last year\u0027s student IDs blindly."
+                                ]
+                  }
+              ]
+}

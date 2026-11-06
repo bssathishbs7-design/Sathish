@@ -1,0 +1,186 @@
+{
+  "method": "Single Codex review across 11 responsibility perspectives; not independent AI agents.",
+  "tests": [
+    {
+      "moduleId": "student-management",
+      "status": "Verified pass",
+      "reason": "Mapped service tests passed.",
+      "exitCode": 0,
+      "files": [
+        "src/services/studentManagement.test.js",
+        "src/services/studentCalendar.test.js",
+        "src/services/studentImport.test.js",
+        "src/services/studentPromotionForm.test.js"
+      ],
+      "startedAt": "2026-11-05T21:10:06.593Z",
+      "finishedAt": "2026-11-05T21:10:07.169Z",
+      "output": "TAP version 13\n# Subtest: inclusive calendars enforce 6–24 months, year order and 18-month Fourth Year\nok 1 - inclusive calendars enforce 6–24 months, year order and 18-month Fourth Year\n  ---\n  duration_ms: 15.1177\n  type: 'test'\n  ...\n# Subtest: onboarding resolves running advanced years and redirects ended years\nok 2 - onboarding resolves running advanced years and redirects ended years\n  ---\n  duration_ms: 1.141\n  type: 'test'\n  ...\n# Subtest: left over requires later batch own students, not migrants alone\nok 3 - left over requires later batch own students, not migrants alone\n  ---\n  duration_ms: 0.363\n  type: 'test'\n  ...\n# Subtest: repeat migration preserves identity, audit and mother batch; undo preserves profile and SGT\nok 4 - repeat migration preserves identity, audit and mother batch; undo preserves profile and SGT\n  ---\n  duration_ms: 3.7184\n  type: 'test'\n  ...\n# Subtest: promotion uses calendar dates and is atomic when next dates are absent\nok 5 - promotion uses calendar dates and is atomic when next dates are absent\n  ---\n  duration_ms: 1.53\n  type: 'test'\n  ...\n# Subtest: Fourth Year completes course without opening an Internship attempt\nok 6 - Fourth Year completes course without opening an Internship attempt\n  ---\n  duration_ms: 0.372\n  type: 'test'\n  ...\n# Subtest: wrong mapping issues a new identity and blocks students with year-end decisions\nok 7 - wrong mapping issues a new identity and blocks students with year-end decisions\n  ---\n  duration_ms: 1.3963\n  type: 'test'\n  ...\n# Subtest: SGT updates only the selected attempt; stale academic changes reject atomically\nok 8 - SGT updates only the selected attempt; stale academic changes reject atomically\n  ---\n  duration_ms: 0.4976\n  type: 'test'\n  ...\n# Subtest: legacy conversion retains records and explicit calendar reconciliation retains original dates\nok 9 - legacy conversion retains records and explicit calendar reconciliation retains original dates\n  ---\n  duration_ms: 3.3554\n  type: 'test'\n  ...\n# Subtest: batches with migration links cannot be deleted and permissions default to read only\nok 10 - batches with migration links cannot be deleted and permissions default to read only\n  ---\n  duration_ms: 0.5642\n  type: 'test'\n  ...\n# Subtest: advanced-year Excel rows inherit calendar dates and optional SGT\nok 11 - advanced-year Excel rows inherit calendar dates and optional SGT\n  ---\n  duration_ms: 3.3524\n  type: 'test'\n  ...\n# Subtest: duplicate imported identities reject the entire new-calendar transaction\nok 12 - duplicate imported identities reject the entire new-calendar transaction\n  ---\n  duration_ms: 0.833\n  type: 'test'\n  ...\n# Subtest: analysis withholds a valid preview until the minimum time elapses\nok 13 - analysis withholds a valid preview until the minimum time elapses\n  ---\n  duration_ms: 6.1621\n  type: 'test'\n  ...\n# Subtest: read failures are shown only after analysis time, and cancellation rejects stale work\nok 14 - read failures are shown only after analysis time, and cancellation rejects stale work\n  ---\n  duration_ms: 1.5795\n  type: 'test'\n  ...\n# Subtest: migration retains audit and only reconstructs the known current attempt\nok 15 - migration retains audit and only reconstructs the known current attempt\n  ---\n  duration_ms: 2.417\n  type: 'test'\n  ...\n# Subtest: tracking IDs are unique and never reused after deletion\nok 16 - tracking IDs are unique and never reused after deletion\n  ---\n  duration_ms: 3.4892\n  type: 'test'\n  ...\n# Subtest: edits validate changed fields and keep identity/batch fixed\nok 17 - edits validate changed fields and keep identity/batch fixed\n  ---\n  duration_ms: 1.199\n  type: 'test'\n  ...\n# Subtest: onboarding validates bounded earlier batches, fields and duplicate phones\nok 18 - onboarding validates bounded earlier batches, fields and duplicate phones\n  ---\n  duration_ms: 2.9544\n  type: 'test'\n  ...\n# Subtest: batch start accepts the following year and rejects duplicate/invalid batches\nok 19 - batch start accepts the following year and rejects duplicate/invalid batches\n  ---\n  duration_ms: 3.4551\n  type: 'test'\n  ...\n# Subtest: permissions default to read-only and stale profile saves fail\nok 20 - permissions default to read-only and stale profile saves fail\n  ---\n  duration_ms: 2.2754\n  type: 'test'\n  ...\n# Subtest: promotion closes the old attempt and opens next at the same move date by default\nok 21 - promotion closes the old attempt and opens next at the same move date by default\n  ---\n  duration_ms: 1.6512\n  type: 'test'\n  ...\n# Subtest: repeat preserves separate attempts in the same year\nok 22 - repeat preserves separate attempts in the same year\n  ---\n  duration_ms: 1.0298\n  type: 'test'\n  ...\n# Subtest: invalid/mixed/inactive progression rejects the entire transaction\nok 23 - invalid/mixed/inactive progression rejects the entire transaction\n  ---\n  duration_ms: 6.6787\n  type: 'test'\n  ...\n# Subtest: completion closes internship, leaves no current entry and preserves account status\nok 24 - completion closes internship, leaves no current entry and preserves account status\n  ---\n  duration_ms: 2.9227\n  type: 'test'\n  ...\n# Subtest: undo preserves later profile, SGT and account edits\nok 25 - undo preserves later profile, SGT and account edits\n  ---\n  duration_ms: 2.5083\n  type: 'test'\n  ...\n# Subtest: partial undo leaves others untouched and repeated undo fails\nok 26 - partial undo leaves others untouched and repeated undo fails\n  ---\n  duration_ms: 1.9785\n  type: 'test'\n  ...\n# Subtest: decision correction flips only latest outcome and invalidates original undo\nok 27 - decision correction flips only latest outcome and invalidates original undo\n  ---\n  duration_ms: 2.1251\n  type: 'test'\n  ...\n# Subtest: year corrections enforce chronology and cannot change academic identity\nok 28 - year corrections enforce chronology and cannot change academic identity\n  ---\n  duration_ms: 2.254\n  type: 'test'\n  ...\n# Subtest: subject-specific syllabus defaults, overrides and reset persist separately\nok 29 - subject-specific syllabus defaults, overrides and reset persist separately\n  ---\n  duration_ms: 2.0162\n  type: 'test'\n  ...\n# Subtest: bulk setup applies to every legacy student in the selected stage\nok 30 - bulk setup applies to every legacy student in the selected stage\n  ---\n  duration_ms: 1.0332\n  type: 'test'\n  ...\n# Subtest: import master columns, batch date fallback, duplicate phones and stage conflicts\nok 31 - import master columns, batch date fallback, duplicate phones and stage conflicts\n  ---\n  duration_ms: 2.8043\n  type: 'test'\n  ...\n# Subtest: batch deletion retains tracking counters\nok 32 - batch deletion retains tracking counters\n  ---\n  duration_ms: 1.2665\n  type: 'test'\n  ...\n# Subtest: sequential deletion reports partial failure accurately\nok 33 - sequential deletion reports partial failure accurately\n  ---\n  duration_ms: 0.1744\n  type: 'test'\n  ...\n# Subtest: stale progression requests and stale corrections cannot overwrite newer academic work\nok 34 - stale progression requests and stale corrections cannot overwrite newer academic work\n  ---\n  duration_ms: 1.8853\n  type: 'test'\n  ...\n# Subtest: completion undo restores Internship without changing later account state\nok 35 - completion undo restores Internship without changing later account state\n  ---\n  duration_ms: 1.8231\n  type: 'test'\n  ...\n# Subtest: N/A SGT saves and remains valid when correcting year dates\nok 36 - N/A SGT saves and remains valid when correcting year dates\n  ---\n  duration_ms: 2.3745\n  type: 'test'\n  ...\n# Subtest: samples cover every batch and stage without replacing existing records\nok 37 - samples cover every batch and stage without replacing existing records\n  ---\n  duration_ms: 1.5454\n  type: 'test'\n  ...\n# Subtest: empty batch shortcut rejects populated batches and respects permissions\nok 38 - empty batch shortcut rejects populated batches and respects permissions\n  ---\n  duration_ms: 1.7942\n  type: 'test'\n  ...\n# Subtest: future batch start dates are valid for automatic joining dates\nok 39 - future batch start dates are valid for automatic joining dates\n  ---\n  duration_ms: 1.1111\n  type: 'test'\n  ...\n# Subtest: progression retains before and after snapshots when the operation is undone\nok 40 - progression retains before and after snapshots when the operation is undone\n  ---\n  duration_ms: 1.3717\n  type: 'test'\n  ...\n# Subtest: batch-scoped setup leaves other batches untracked\nok 41 - batch-scoped setup leaves other batches untracked\n  ---\n  duration_ms: 0.8977\n  type: 'test'\n  ...\n# Subtest: six-column imports derive admission details and default optional SGT\nok 42 - six-column imports derive admission details and default optional SGT\n  ---\n  duration_ms: 1.7024\n  type: 'test'\n  ...\n# Subtest: late promotion suggests dates compatible with the end date\nok 43 - late promotion suggests dates compatible with the end date\n  ---\n  duration_ms: 0.2149\n  type: 'test'\n  ...\n# Subtest: choosing a future academic year moves the suggested start into that year\nok 44 - choosing a future academic year moves the suggested start into that year\n  ---\n  duration_ms: 0.062\n  type: 'test'\n  ...\n# Subtest: manual mismatched dates identify the fields that need correction\nok 45 - manual mismatched dates identify the fields that need correction\n  ---\n  duration_ms: 0.0883\n  type: 'test'\n  ...\n# Subtest: promotion requires a later end date and later academic year for every selected student\nok 46 - promotion requires a later end date and later academic year for every selected student\n  ---\n  duration_ms: 0.0714\n  type: 'test'\n  ...\n1..46\n# tests 46\n# suites 0\n# pass 46\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 132.5305\n",
+      "limitations": [
+        "Browser journeys, visual design, accessibility and production API integration remain pending verification."
+      ],
+      "scope": "Automated service tests on a temporary source copy with sample data; not a page-level pass."
+    },
+    {
+      "moduleId": "faculty-management",
+      "status": "Verified pass",
+      "reason": "Mapped service tests passed.",
+      "exitCode": 0,
+      "files": [
+        "src/services/facultyManagement.test.js"
+      ],
+      "startedAt": "2026-11-05T21:10:07.244Z",
+      "finishedAt": "2026-11-05T21:10:07.721Z",
+      "output": "TAP version 13\n# Subtest: profile edit preserves all teaching memberships and rejects duplicate identities\nok 1 - profile edit preserves all teaching memberships and rejects duplicate identities\n  ---\n  duration_ms: 6.9713\n  type: 'test'\n  ...\n# Subtest: permission and optimistic revisions are enforced\nok 2 - permission and optimistic revisions are enforced\n  ---\n  duration_ms: 0.6257\n  type: 'test'\n  ...\n# Subtest: whole batch includes N/A and repeaters, excludes inactive students\nok 3 - whole batch includes N/A and repeaters, excludes inactive students\n  ---\n  duration_ms: 0.7724\n  type: 'test'\n  ...\n# Subtest: SGT selection excludes ungrouped and other groups; intentional exclusions persist\nok 4 - SGT selection excludes ungrouped and other groups; intentional exclusions persist\n  ---\n  duration_ms: 15.0354\n  type: 'test'\n  ...\n# Subtest: whole batch cannot hide intentional exclusions\nok 5 - whole batch cannot hide intentional exclusions\n  ---\n  duration_ms: 0.7201\n  type: 'test'\n  ...\n# Subtest: mismatched calendars and invalid dates are rejected\nok 6 - mismatched calendars and invalid dates are rejected\n  ---\n  duration_ms: 0.7338\n  type: 'test'\n  ...\n# Subtest: one primary across scopes and same-faculty duplicates are rejected\nok 7 - one primary across scopes and same-faculty duplicates are rejected\n  ---\n  duration_ms: 0.4603\n  type: 'test'\n  ...\n# Subtest: co-teacher must be covered by a primary and may not be its faculty\nok 8 - co-teacher must be covered by a primary and may not be its faculty\n  ---\n  duration_ms: 0.5343\n  type: 'test'\n  ...\n# Subtest: stale student preview rejects publication without changing original state\nok 9 - stale student preview rejects publication without changing original state\n  ---\n  duration_ms: 1.0726\n  type: 'test'\n  ...\n# Subtest: publication retries are idempotent and reused request IDs cannot change commands\nok 10 - publication retries are idempotent and reused request IDs cannot change commands\n  ---\n  duration_ms: 0.8291\n  type: 'test'\n  ...\n# Subtest: student departures produce review differences and remain in historical roster\nok 11 - student departures produce review differences and remain in historical roster\n  ---\n  duration_ms: 1.9272\n  type: 'test'\n  ...\n# Subtest: deactivation closes primary and co-teacher assignments atomically\nok 12 - deactivation closes primary and co-teacher assignments atomically\n  ---\n  duration_ms: 0.6467\n  type: 'test'\n  ...\n# Subtest: faculty import validates subjects and duplicates within the file\nok 13 - faculty import validates subjects and duplicates within the file\n  ---\n  duration_ms: 0.5102\n  type: 'test'\n  ...\n# Subtest: primary reassignment preserves dependent co-teacher coverage and old ownership\nok 14 - primary reassignment preserves dependent co-teacher coverage and old ownership\n  ---\n  duration_ms: 0.7604\n  type: 'test'\n  ...\n# Subtest: unknown restrictions are marked unverified; explicit restrictions exclude the student\nok 15 - unknown restrictions are marked unverified; explicit restrictions exclude the student\n  ---\n  duration_ms: 0.4453\n  type: 'test'\n  ...\n# Subtest: invalid primary eligibility removes co-teacher live eligibility\nok 16 - invalid primary eligibility removes co-teacher live eligibility\n  ---\n  duration_ms: 0.3451\n  type: 'test'\n  ...\n# Subtest: scheduled activation blocks an unreviewed roster change\nok 17 - scheduled activation blocks an unreviewed roster change\n  ---\n  duration_ms: 0.9715\n  type: 'test'\n  ...\n# Subtest: ending an empty draft cancels it without creating past dates\nok 18 - ending an empty draft cancels it without creating past dates\n  ---\n  duration_ms: 0.5702\n  type: 'test'\n  ...\n# Subtest: SGT changes preserve whole-batch eligibility while marking context for review\nok 19 - SGT changes preserve whole-batch eligibility while marking context for review\n  ---\n  duration_ms: 0.9574\n  type: 'test'\n  ...\n1..19\n# tests 19\n# suites 0\n# pass 19\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 60.1237\n",
+      "limitations": [
+        "Browser journeys, visual design, accessibility and production API integration remain pending verification."
+      ],
+      "scope": "Automated service tests on a temporary source copy with sample data; not a page-level pass."
+    }
+  ],
+  "browser": {
+    "date": "2026-11-05T21:11:06.188Z",
+    "checks": [
+      {
+        "label": "Sample batch overview loads",
+        "pass": true
+      },
+      {
+        "label": "Add batch opens native dialog",
+        "pass": true
+      },
+      {
+        "label": "Add student form opens",
+        "pass": true
+      },
+      {
+        "label": "Roster waits for required context",
+        "pass": true
+      },
+      {
+        "label": "Batch alone does not reveal roster",
+        "pass": true
+      },
+      {
+        "label": "Batch plus study year reveals roster",
+        "pass": true
+      },
+      {
+        "label": "Batch opens student directory",
+        "pass": true
+      },
+      {
+        "label": "Selecting a student reveals bulk actions",
+        "pass": true
+      },
+      {
+        "label": "SGT change form opens",
+        "pass": true
+      },
+      {
+        "label": "Change batch distinguishes repeat from mapping correction",
+        "pass": true
+      },
+      {
+        "label": "Import setup and sample template entry render",
+        "pass": true
+      },
+      {
+        "label": "Student record route and year history render",
+        "pass": true
+      },
+      {
+        "label": "Record survives direct-link reload",
+        "pass": true
+      },
+      {
+        "label": "Record return restores batch directory",
+        "pass": true
+      },
+      {
+        "label": "No document overflow in batch view at 390",
+        "pass": true
+      },
+      {
+        "label": "No document overflow in batch view at 768",
+        "pass": true
+      },
+      {
+        "label": "No document overflow in batch view at 1280",
+        "pass": true
+      },
+      {
+        "label": "No document overflow in batch view at 1440",
+        "pass": true
+      },
+      {
+        "label": "Mobile search geometry captured",
+        "pass": true,
+        "geometry": {
+          "available": true,
+          "box": {
+            "left": 25,
+            "right": 355,
+            "top": 486.1875,
+            "bottom": 518.1875,
+            "height": 32
+          },
+          "input": {
+            "left": 38,
+            "right": 342,
+            "top": 511.1875,
+            "bottom": 541.1875,
+            "height": 30
+          },
+          "icon": {
+            "left": 38,
+            "right": 54,
+            "top": 487.1875,
+            "bottom": 503.1875,
+            "height": 16
+          },
+          "display": "flex"
+        }
+      },
+      {
+        "label": "Isolated browser transaction: saved",
+        "pass": true
+      },
+      {
+        "label": "Isolated browser transaction: persisted",
+        "pass": true
+      },
+      {
+        "label": "Isolated browser transaction: denied",
+        "pass": true
+      },
+      {
+        "label": "Isolated browser transaction: unchanged",
+        "pass": true
+      },
+      {
+        "label": "No browser runtime errors",
+        "pass": true
+      },
+      {
+        "label": "Mobile batch search input remains within its control",
+        "pass": false,
+        "evidence": "Input bottom 541.1875px; control bottom 518.1875px at 390px viewport."
+      }
+    ],
+    "errors": [],
+    "scope": "Fresh Chrome profile; UI navigation/dialog checks plus local sample status-write persistence and denied-write checks. No production records used."
+  },
+  "assessmentAssignment": {
+    "passed": 2,
+    "failed": 0,
+    "command": "node --test --test-isolation=none src/services/assessmentAssignment.test.js",
+    "scope": "Injected in-memory directory fixtures; current year, SGT, inactive exclusion, missing/duplicate roster guards."
+  },
+  "limitations": [
+    "No production API or authenticated identity verification",
+    "No end-to-end browser submission of Excel import, promotion/repeat/undo, correction or faculty publication",
+    "No browser quota/corruption recovery or cross-tab race verification",
+    "No full screen-reader, keyboard, dark-mode or cross-browser audit",
+    "Other related module journeys were not behaviour-tested"
+  ]
+}

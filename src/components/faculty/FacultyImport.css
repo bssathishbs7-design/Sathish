@@ -1,0 +1,11 @@
+.fm-import-controls { display:grid; grid-template-columns:max-content minmax(0,1fr); align-items:end; gap:var(--s-4); }
+.fm-import-template { display:grid; align-content:start; gap:var(--s-1); }
+.fm-import-template > span { font:500 var(--fs-small)/1.5 var(--f-body); color:var(--text-strong); }
+.fm-import-controls .fm-field { min-width:0; margin:0; }
+.fm-import-controls .fm-field > span { line-height:1.5; }
+.fm-workspace .fm-import-controls .fm-btn { min-height:calc(var(--s-6) + var(--s-1)); }
+.fm-workspace .fm-import-controls input[type=file] { box-sizing:border-box; width:100%; min-width:0; max-width:100%; height:calc(var(--s-6) + var(--s-1)); margin:0; padding:0; border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface-card); color:var(--text-body); font:var(--fs-small)/1.5 var(--f-body); }
+.fm-workspace .fm-import-controls input[type=file]::file-selector-button { height:100%; border:0; border-right:1px solid var(--border); border-radius:0; padding:0 var(--s-3); margin-right:var(--s-2); background:var(--surface-soft); color:var(--text-body); font:inherit; cursor:pointer; transition:background var(--dur-hover) var(--ease-standard); }
+.fm-workspace .fm-import-controls input[type=file]:hover:not(:disabled)::file-selector-button { background:var(--surface-mist); }
+.fm-workspace .fm-import-controls input[type=file]:active:not(:disabled)::file-selector-button { background:var(--border-soft); transition:none; }
+@media(max-width:479px) { .fm-import-controls { grid-template-columns:minmax(0,1fr); gap:var(--s-3); } .fm-import-template .fm-btn { justify-self:start; } .fm-workspace .fm-import-controls :is(.fm-btn,input[type=file]) { min-height:44px; height:44px; } }

@@ -1,0 +1,56 @@
+{
+  "findingId": "SM-REV-02",
+  "sourceFingerprint": "62a87929a0f078a2a2cd8a5a124d7cdadc870846c09f4b77f6f0f728851cbb18",
+  "change": "Scoped flex-wrap:nowrap override on batch search label; mobile generic filter label rule previously wrapped its input.",
+  "browser": {
+    "at": "2026-11-05T21:21:19.680Z",
+    "checks": [
+      {
+        "width": 390,
+        "contained": true,
+        "inputBottom": 517.1875,
+        "boxBottom": 518.1875,
+        "wrap": "nowrap",
+        "noOverflow": true
+      },
+      {
+        "width": 768,
+        "contained": true,
+        "inputBottom": 294.5,
+        "boxBottom": 295.5,
+        "wrap": "nowrap",
+        "noOverflow": true
+      },
+      {
+        "width": 1280,
+        "contained": true,
+        "inputBottom": 294.5,
+        "boxBottom": 295.5,
+        "wrap": "nowrap",
+        "noOverflow": true
+      },
+      {
+        "width": 1440,
+        "contained": true,
+        "inputBottom": 254.5,
+        "boxBottom": 255.5,
+        "wrap": "nowrap",
+        "noOverflow": true
+      }
+    ],
+    "focus": {
+      "style": "solid",
+      "width": "2px"
+    },
+    "filterNoMatch": true,
+    "clearRestoresRows": true,
+    "errors": []
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "Passed"
+  },
+  "limitations": [
+    "Focused CSS regression verification only; full module journeys, themes and cross-browser coverage remain pending."
+  ]
+}

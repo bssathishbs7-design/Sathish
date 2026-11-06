@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "0b5aa20b-cd85-4b10-8c36-7bf41806ac26",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\maintenance.json",
+  "output": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\maintenance.html",
+  "specification": {
+    "sha256": "efe29f8189c2ff5c4bbd1cde5388b4ee21626f37275eab54b6f2a6421ceef138",
+    "bytes": 6461
+  },
+  "artifact": {
+    "sha256": "63ff5709310e651e96d82d82a473382f025b85abf1f8812001be5e1233f035ce",
+    "bytes": 841473
+  }
+}

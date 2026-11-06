@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "fce8d972-f5bb-403d-b228-8c17a5c1aff5",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\assignment.json",
+  "output": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\assignment.html",
+  "specification": {
+    "sha256": "f9296ed05cf3855d7eca5c9a8162924b5858484c67257c2dff952474f9d6f6c0",
+    "bytes": 6725
+  },
+  "artifact": {
+    "sha256": "9b1d9ea40e711724807c3332fc3acfd8dbf0e21b447add9520afdf642f641a3c",
+    "bytes": 841401
+  }
+}

@@ -1,0 +1,9 @@
+.connection-trigger{display:flex;align-items:center;gap:var(--s-1);flex:none;color:var(--text-muted)}
+.connection-dialog{width:min(480px,calc(100vw - var(--s-4)))}
+.connection-dialog .dialog-body{display:flex;flex-direction:column;gap:var(--s-2)}
+.connection-dialog label{display:flex;justify-content:space-between;gap:var(--s-2);font-weight:600}
+.connection-dialog label span{font-weight:400;color:var(--text-muted)}
+.connection-key{display:flex;align-items:center;gap:var(--s-2)}
+.connection-key input{min-width:0;flex:1}
+.connection-dialog p{margin:0}.connection-dialog .connection-note{margin-top:var(--s-2);font-size:var(--fs-micro)}
+.connection-dialog[aria-busy="true"] #link-connection{cursor:progress}

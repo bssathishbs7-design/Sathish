@@ -1846,7 +1846,7 @@ function App() {
               onBackToActivities={() => navigateToPage(APP_PAGES.MY_SKILL_ACTIVITY)}
             />
           ) : activePage === APP_PAGES.FACULTY_MANAGEMENT ? (
-            <FacultyManagementPageV2 onAlert={showAlert} />
+            <FacultyManagementPageV2 onAlert={showAlert} actor={profileUser.name} canEdit={profileUser.role === 'Admin' || profileUser.permissions?.includes('faculty_management.edit')} institutionId={profileUser.institutionId || 'medsy-demo'} />
           ) : activePage === APP_PAGES.STUDENT_MANAGEMENT ? (
             <StudentManagementPage onNavigateWorkspace={studentWorkspace => {
               const current = window.history.state || {}

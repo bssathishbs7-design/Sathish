@@ -1,0 +1,1 @@
+.fm-roster { min-width:0; display:grid; gap:var(--s-3); } .fm-roster .fm-toolbar { padding:0; border:0; } .fm-roster table { min-width:640px; } .fm-roster td { vertical-align:top; } .fm-roster td:last-child { white-space:normal; max-width:280px; }

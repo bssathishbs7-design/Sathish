@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "workflow",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\onboarding.json",
+    "sha256": "51de3ff525504978d21eb8206011b54870d6a639a0d9e27763114fc6509e01cd",
+    "bytes": 4759
+  },
+  "artifact": {
+    "path": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\onboarding.html",
+    "sha256": "4421ce5160f2188745559d28d622df5e49c1da5429f9e7a8c9e1980fe606dc17",
+    "bytes": 834769
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\onboarding.finalize.json",
+    "summaryReceipt": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\onboarding.finalize-summary.json",
+    "browserCheckReceipt": "D:\\Medsy\\version_1(live)\\.archify\\workflow-faculty-plan-20261104-144515\\onboarding.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-04T09:21:04.091Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 4041,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

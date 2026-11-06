@@ -13,6 +13,7 @@ import {
   NotebookPen,
   SlidersHorizontal,
   TrendingUp,
+  UsersRound,
 } from 'lucide-react'
 
 export const APP_PAGES = {
@@ -155,6 +156,10 @@ export const SIDEBAR_MENU = [
       {
         label: APP_PAGES.QUERY_REQUEST,
         icon: MessageSquareText,
+      },
+      {
+        label: APP_PAGES.FACULTY_MANAGEMENT,
+        icon: UsersRound,
       },
       {
         label: APP_PAGES.STUDENT_MANAGEMENT,

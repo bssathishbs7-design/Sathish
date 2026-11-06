@@ -1,0 +1,125 @@
+{
+    "schema_version":  2,
+    "diagram_type":  "workflow",
+    "meta":  {
+                 "title":  "Proposed faculty onboarding",
+                 "locale":  "en",
+                 "quality_profile":  "showcase",
+                 "output":  ".archify/workflow-faculty-plan-20261104-144515/onboarding.html"
+             },
+    "lanes":  [
+                  {
+                      "id":  "profile",
+                      "label":  "Enter and review"
+                  },
+                  {
+                      "id":  "save",
+                      "label":  "Validate and continue"
+                  }
+              ],
+    "nodes":  [
+                  {
+                      "id":  "identity",
+                      "lane":  "profile",
+                      "col":  0,
+                      "label":  "Faculty identity",
+                      "sublabel":  "Unique employee ID",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "eligibility",
+                      "lane":  "profile",
+                      "col":  1,
+                      "label":  "Teaching eligibility",
+                      "sublabel":  "Subjects and app roles",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "review",
+                      "lane":  "profile",
+                      "col":  2,
+                      "label":  "Review profile",
+                      "sublabel":  "Check entered details",
+                      "type":  "frontend"
+                  },
+                  {
+                      "id":  "check",
+                      "lane":  "save",
+                      "col":  2,
+                      "label":  "Validate profile",
+                      "sublabel":  "Errors stay in editor",
+                      "type":  "security"
+                  },
+                  {
+                      "id":  "persist",
+                      "lane":  "save",
+                      "col":  1,
+                      "label":  "Save faculty",
+                      "sublabel":  "Atomic profile save",
+                      "type":  "database"
+                  },
+                  {
+                      "id":  "ready",
+                      "lane":  "save",
+                      "col":  0,
+                      "label":  "Choose next action",
+                      "sublabel":  "Assign or return",
+                      "type":  "frontend"
+                  }
+              ],
+    "edges":  [
+                  {
+                      "id":  "identity-eligibility",
+                      "from":  "identity",
+                      "to":  "eligibility"
+                  },
+                  {
+                      "id":  "eligibility-review",
+                      "from":  "eligibility",
+                      "to":  "review"
+                  },
+                  {
+                      "id":  "review-check",
+                      "from":  "review",
+                      "to":  "check"
+                  },
+                  {
+                      "id":  "check-persist",
+                      "from":  "check",
+                      "to":  "persist",
+                      "label":  "Valid"
+                  },
+                  {
+                      "id":  "persist-ready",
+                      "from":  "persist",
+                      "to":  "ready",
+                      "label":  "Saved"
+                  }
+              ],
+    "cards":  [
+                  {
+                      "dot":  "emerald",
+                      "title":  "Onboard once",
+                      "items":  [
+                                    "A saved profile can remain unassigned.",
+                                    "Assign students opens the separate assignment wizard."
+                                ]
+                  },
+                  {
+                      "dot":  "amber",
+                      "title":  "Validation and recovery",
+                      "items":  [
+                                    "Duplicate identity: open the existing profile.",
+                                    "Field or save error: keep the draft; correct and retry."
+                                ]
+                  },
+                  {
+                      "dot":  "cyan",
+                      "title":  "Proposed, not implemented",
+                      "items":  [
+                                    "No silent Course Lead role or login invitation.",
+                                    "Profile edits preserve all teaching assignments."
+                                ]
+                  }
+              ]
+}

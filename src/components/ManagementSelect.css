@@ -1,0 +1,4 @@
+.management-select { position:relative; display:block; min-width:0; }
+.management-select > select { appearance:none; background-image:none; width:100%; cursor:pointer; }
+.management-select > svg { position:absolute; right:var(--s-3); top:50%; transform:translateY(-50%); pointer-events:none; color:var(--text-muted); }
+.fm-workspace .management-select > select { padding-right:calc(var(--s-6) + var(--s-1)); }
