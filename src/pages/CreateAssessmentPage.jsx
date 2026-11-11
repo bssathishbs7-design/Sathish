@@ -103,7 +103,6 @@ import {
   TriangleAlert,
   Trash2,
   Underline,
-  UsersRound,
   Wifi,
   WifiOff,
   BookOpen,
@@ -4686,9 +4685,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     setupDraft.thinkingThresholdMode,
     setupDraft.understandThreshold,
   ])
-  const primaryPublicationActionLabel = !requiresPublicationApproval && setupDraft.approvalFlow === 'Direct Publish'
-    ? isPublishedEditMode ? 'Update assessment' : 'Publish assessment'
-    : 'Send to approval'
+  const primaryPublicationActionLabel = 'Publish assessment'
   const isPublicationHeaderComplete = Boolean(
     setupDraft.collegeName
     && String(setupDraft.assessmentName || '').trim()
@@ -8405,18 +8402,19 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       ) : null}
 
       {publicationAction && <AssessmentPublicationDialog
-        requireAssignment={publicationAction !== 'Direct Publish'} action={publicationAction} name={setupDraft.assessmentName} theme={theme}
-        year={setupDraft.assignYear} group={setupDraft.assignGroup}
+        combined allowDirectPublish={!requiresPublicationApproval} action={publicationAction} name={setupDraft.assessmentName} theme={theme}
+        year={setupDraft.assignYear} group={setupDraft.assignGroup} selectedGroups={setupDraft.assignGroups} batch={setupDraft.assignBatch} selectedStudentIds={setupDraft.assignStudentIds}
         years={CREATE_ASSESSMENT_SELECT_OPTIONS.years} groups={CREATE_ASSESSMENT_SELECT_OPTIONS.sgtGroups}
         onCancel={() => setPublicationAction(null)}
-        onConfirm={async ({ assignYear, assignGroup, reviewer }) => {
-          const draft = { ...setupDraft, approvalFlow: publicationAction,
-            assignYear, assignGroup }
+        onConfirm={async ({ action, assignYear, assignGroup, assignGroups, assignBatch, assignStudentIds, reviewer }) => {
+          if (requiresPublicationApproval && action === 'Direct Publish') return false
+          const draft = { ...setupDraft, approvalFlow: action,
+            assignYear, assignGroup, assignGroups, assignBatch, assignStudentIds }
           const errors = validateSetupDraft(draft)
           if (!assignYear) errors.assignYear = 'Select year.'
           if (Object.keys(errors).length) { setSetupErrors(errors); return false }
           draft.students = await resolveAssessmentAssignment(draft)
-          const success = publicationAction === 'Direct Publish'
+          const success = action === 'Direct Publish'
             ? publishAssessmentDirectly(draft)
             : await sendAssessmentToApproval(draft, reviewer)
           if (success) setPublicationAction(null)
@@ -9768,11 +9766,8 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                 {requiresPublicationApproval && <span role="note">Changes to this assessment require approval.</span>}
                 <span className="assessment-create-form-actions-spacer" aria-hidden="true" />
 
-                <button type="button" className="is-primary" id="assessment-assign-information-section" disabled={requiresPublicationApproval || Boolean(assessmentReview) || !canSendAssessmentForApproval} aria-haspopup="dialog" onClick={() => openApprovalModal('Direct Publish')}>
-                  <UsersRound size={15} aria-hidden="true" />Direct Publish
-                </button>
-                <button type="button" className="is-primary" disabled={Boolean(assessmentReview) || !canSendAssessmentForApproval} aria-haspopup="dialog" onClick={() => openApprovalModal('Send to Approval')}>
-                  <ArrowRight size={15} aria-hidden="true" />Send to Approval
+                <button type="button" className="is-primary" id="assessment-assign-information-section" disabled={Boolean(assessmentReview) || !canSendAssessmentForApproval} aria-haspopup="dialog" onClick={openApprovalModal}>
+                  <ArrowRight size={15} aria-hidden="true" />Publish assessment
                 </button>
               </div>
 

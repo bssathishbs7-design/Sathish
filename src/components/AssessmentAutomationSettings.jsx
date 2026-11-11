@@ -10,7 +10,7 @@ export default function AssessmentAutomationSettings({ setup, types, onChange, o
   const publishEligible = policy.rows.length > 0 && policy.rows.every(row => row.evaluation)
   const publishHelp = hybrid
     ? publishEligible ? 'Publish the combined result automatically after both sections are evaluated.' : 'Requires online responses for both sections and automatic descriptive evaluation.'
-    : publishEligible ? 'Publish results automatically after evaluation.' : 'Requires Online Response and automatic evaluation in an online exam.'
+    : publishEligible ? 'Publish results automatically after evaluation.' : 'Requires Answer online and automatic evaluation in an online exam.'
   return <div className={'assessment-automation qb-sort-scope' + (hybrid ? ' is-hybrid' : '')}>
     <section className="assessment-automation-answers" aria-label="Answers and results">
     <header className="assessment-automation-title"><strong><ClipboardCheck size={16} aria-hidden="true" /> Answers &amp; Results</strong></header>
@@ -21,15 +21,18 @@ export default function AssessmentAutomationSettings({ setup, types, onChange, o
         <div className="assessment-automation-response">
           <div className="assessment-automation-field">
             <span><PenLine size={14} aria-hidden="true" /> Student Response <em>*</em></span>
-            <div className="assessment-automation-options" role="group" aria-label={row.label + ' answer mode'}>
-              {['Answer Input', 'Read-Only'].map(option => <button type="button" key={option} aria-pressed={setup[row.key + 'DisplayType'] === option} onClick={() => onAnswerChange(row.key + 'DisplayType', option)}>{option === 'Answer Input' ? 'Online Response' : 'Read-only'}</button>)}
+            <div className="assessment-automation-options" role="group" aria-label={row.label + ' answer mode'} aria-describedby={row.key + '-answer-mode-help'}>
+              {['Answer Input', 'Read-Only'].map(option => <button type="button" key={option} aria-pressed={setup[row.key + 'DisplayType'] === option} onClick={() => onAnswerChange(row.key + 'DisplayType', option)}>{option === 'Answer Input' ? 'Answer online' : 'Write on paper'}</button>)}
             </div>
+            {['Answer Input', 'Read-Only'].includes(setup[row.key + 'DisplayType']) && <p className="assessment-automation-response-help" id={row.key + '-answer-mode-help'} aria-live="polite">{setup[row.key + 'DisplayType'] === 'Answer Input'
+              ? 'Students enter and submit their answers directly on the platform.'
+              : 'Students view questions on the platform, write their answers on paper, and hand them to faculty for evaluation.'}</p>}
             {errors[row.key + 'DisplayType'] && <small className="assessment-automation-error" role="alert">{errors[row.key + 'DisplayType']}</small>}
           </div>
         </div>
         <div className="assessment-automation-fields">
           {!row.enabled ? <p className="assessment-automation-manual"><Eye size={16} aria-hidden="true" /><span>{row.readOnly ? 'Read-only questions' : 'Offline assessment'}<br /><small>{row.readOnly ? 'Students can view questions but cannot enter answers. ' : ''}Manual evaluation and publishing.</small></span></p> : [
-            {name:'Evaluation', field:row.key+'AutoEvaluation', active:row.evaluation, fixed:row.key === 'mcq', labels:['Automatic','Manual'], reason:row.key === 'mcq' ? 'Evaluated using the answer key.' : row.evaluation ? 'Uses model-answer keyword coverage. Responses that cannot be graded require faculty review.' : 'Faculty evaluate student responses.', Icon:ClipboardCheck},
+            {name:'Evaluation', field:row.key+'AutoEvaluation', active:row.evaluation, fixed:row.key === 'mcq', labels:['Automatic','Manual'], reason:row.key === 'mcq' ? 'Evaluated using the answer key.' : row.evaluation ? 'Answers are automatically evaluated using AI.' : 'Faculty review and grade each student?s answers.', Icon:ClipboardCheck},
           ].map(({Icon, ...control}) => <div className="assessment-automation-field" key={control.field}>
             <span>{createElement(Icon, { size: 14, 'aria-hidden': true })}{control.name}</span>
             {control.fixed ? <span className="assessment-automation-fixed"><CheckSquare size={14} aria-hidden="true" />Automatic</span> : <div className="assessment-automation-options" role="group" aria-label={row.label+' '+control.name}>

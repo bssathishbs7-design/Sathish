@@ -1474,3 +1474,32 @@ Assign entry now filters document activities by department and posting phase, ke
 
 ### 2026-11-06 - Module version history popover
 - Rows show only the current module version. Hover, focus or click its info icon to inspect recorded module, review and plan versions with timestamps. Click pins the popover; Escape, outside click or Close dismisses it.
+
+## 6 November 2026 - Report repository entry point
+Added a Repositories header button opening a connection-options popup. The local workspace opens separately; GitHub account connection is explicitly unavailable pending integration.
+
+
+## 2026-11-11 — Assessment assignment to multiple SGT groups
+- Send to approval and the shared direct-publish assignment dialog now allow multiple SGT groups, search, Select all and Clear selection. Changing year clears the selection; an empty selection continues to mean the whole year.
+- Next/Back retains the selected groups. Assignment resolves the union of eligible current students, with legacy single-group drafts supported.
+
+## 2026-11-11 — Simplify Logbook Assign entry
+- Removed Activity source selection. The subject automatically uses department document activities when available, otherwise manual entry; switching subject recalculates this default.
+
+## 2026-11-11 — Hide Logbook posting phase selection
+- Removed Posting phase from Assign entry. The existing first phase for each subject remains selected automatically; log category and document activity controls remain available.
+
+## 2026-11-11 — Combined assessment publication popup
+- Replaced Direct Publish and Send to Approval buttons with Publish assessment. Assignment year, optional SGT groups and publication method now share one popup.
+- Send for approval reveals Reviewer and Note; Publish directly hides those fields. Switching methods retains local choices; Cancel discards them. Approval-required assessments cannot select direct publication.
+- Removed the assignment/reviewer Next and Back steps. Existing blueprint, question-bank and result approval dialogs retain their review-only presentation.
+
+## 2026-11-11 — Cascading assessment recipients
+- Publish assessment now uses Batch > Year > SGT > Student in a two-column grid, stacked on mobile. Batch/Year are single-select; SGT/Student are searchable floating multi-selects with Select all and Clear selection.
+- Batch changes clear Year/SGT/Student; Year changes clear SGT/Student; SGT changes remove students outside the chosen groups. At least one group and one student are required.
+- Directory-backed filters use current academic entries; both publication methods persist the explicit batch and student IDs. Submission reloads directory eligibility and rejects stale or out-of-scope selections. Legacy assignments without explicit student IDs remain readable.
+
+## 2026-11-11 — Default whole-year assessment selection
+- Choosing Year now preselects all eligible SGT groups and their students for the chosen batch. Both dropdowns expose an All checkbox and show All SGT groups / All students when complete.
+- Choosing different SGT groups selects all students in those groups; individual students can then be deselected. Changing batch resets dependent fields; changing year restores All. Clearing students blocks submission.
+- Summary identifies full-year versus partial assignment. Actual directory IDs remain explicit and are revalidated before submission; legacy saved selections are not silently expanded.

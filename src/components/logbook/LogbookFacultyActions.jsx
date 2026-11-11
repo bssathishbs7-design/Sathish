@@ -14,19 +14,19 @@ import './LogbookFacultyActions.css'
 /** Assignment state belongs to this drawer. Document identities remain separate from competency codes. */
 export function AssignmentDrawer({ actor, workflow, studentId = '', subject: initialSubject = '', theme, onClose, onChanged }) {
   const initial = actor.departments.includes(initialSubject) ? initialSubject : actor.departments[0]
-  const [form, setForm] = useState({ studentId, subject: initial, phase: assignmentPhases(initial)[0] || '', cat: '', due: '', instructions: '', values: {}, activityId: '', mode: assignmentPhases(initial).length ? 'catalogue' : 'manual' })
+  const [form, setForm] = useState({ studentId, subject: initial, phase: assignmentPhases(initial)[0] || '', cat: '', due: '', instructions: '', values: {}, activityId: '' })
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
   const [confirmClose, setConfirmClose] = useState(false)
   const change = (key, value) => {
     setError('')
     setForm(current => ({ ...current, [key]: value,
-      ...(['subject', 'phase', 'mode', 'cat'].includes(key) ? { values: {}, activityId: '' } : {}),
-      ...(['subject', 'phase', 'mode'].includes(key) ? { cat: '' } : {}),
-      ...(key === 'subject' ? { phase: assignmentPhases(value)[0] || '', mode: assignmentPhases(value).length ? current.mode : 'manual' } : {}),
+      ...(['subject', 'phase', 'cat'].includes(key) ? { values: {}, activityId: '' } : {}),
+      ...(['subject', 'phase'].includes(key) ? { cat: '' } : {}),
+      ...(key === 'subject' ? { phase: assignmentPhases(value)[0] || '' } : {}),
     }))
   }
-  const sourceMode = form.mode === 'catalogue'
   const phases = assignmentPhases(form.subject)
+  const sourceMode = phases.length > 0
   const category = sourceMode ? assignmentCategory(form.cat) : form.cat
   const activity = findAssignmentActivity(form.activityId)
   const recipients = form.studentId === 'all' ? LEARNERS : LEARNERS.filter(person => person.id === form.studentId)
@@ -57,8 +57,6 @@ export function AssignmentDrawer({ actor, workflow, studentId = '', subject: ini
         <fieldset disabled={busy} className="faculty-fieldset faculty-assignment-grid">
           <label className="lb-field"><span>Student <span className="faculty-required" aria-hidden="true">*</span></span><span className="faculty-select"><select required value={form.studentId} onChange={event => change('studentId', event.target.value)}><option value="">Choose student</option><option value="all">Entire sample cohort ({LEARNERS.length} students)</option>{LEARNERS.map(person => <option key={person.id} value={person.id} disabled={Boolean(subjectWriteBlock(workflow, person.id, form.subject))}>{person.name}{subjectWriteBlock(workflow, person.id, form.subject) ? ' · read-only logbook' : ''}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span></label>
           <label className="lb-field"><span>Subject <span className="faculty-required" aria-hidden="true">*</span></span><span className="faculty-select"><select required value={form.subject} onChange={event => change('subject', event.target.value)}>{actor.departments.map(subject => <option key={subject}>{subject}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span></label>
-          <label className="lb-field"><span>Activity source</span><span className="faculty-select"><select value={form.mode} onChange={event => change('mode', event.target.value)}><option value="catalogue" disabled={!phases.length}>Department logbook documents</option><option value="manual">Manual activity</option></select><ChevronDown size={16} aria-hidden="true" /></span></label>
-          {sourceMode && <label className="lb-field"><span>Posting phase</span><span className="faculty-select"><select value={form.phase} onChange={event => change('phase', event.target.value)}>{phases.map(phase => <option key={phase}>{phase}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span></label>}
           {!phases.length && <p className="faculty-assignment-note">No document for this subject was supplied in the ZIP. You can assign a manual activity.</p>}
           <label className="lb-field"><span>Log category <span className="faculty-required" aria-hidden="true">*</span></span><span className="faculty-select"><select required value={form.cat} onChange={event => change('cat', event.target.value)}><option value="">Choose category</option>{categories.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span></label>
           <label className="lb-field"><span>Due date <span className="faculty-optional">(optional)</span></span><input type="date" min={today()} value={form.due} onChange={event => change('due', event.target.value)} /></label>

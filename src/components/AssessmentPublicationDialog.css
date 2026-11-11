@@ -38,8 +38,53 @@
 @media (max-width: 600px) { .publication-dialog-grid, .publication-dialog-grid.is-reviewer { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .save-changes-dialog.assessment-publication-dialog, .assessment-publication-dialog::backdrop, .publication-spinner { animation: none; } }
 
-.publication-step-progress { margin-bottom: var(--s-4); }
-.publication-step-progress p { color: var(--text-muted); font-size: .75rem; margin: 0 0 var(--s-2); }
-.publication-step-progress ol { display: flex; flex-wrap: wrap; gap: var(--s-2); list-style: none; margin: 0; padding: 0; }
-.publication-step-progress li { flex: 1; padding: var(--s-2); border-bottom: 2px solid var(--border); color: var(--text-muted); font-size: .8125rem; }
-.publication-step-progress li[aria-current="step"] { border-color: var(--text-brand); color: var(--text-brand); font-weight: 600; }
+
+/* Keep the expanded choices inside the modal's scroll area at every viewport size. */
+.assessment-publication-dialog .management-multi { align-self: start; }
+.assessment-publication-dialog .management-multi-trigger { min-height: calc(var(--s-6) + var(--s-2)); font-size: var(--fs-xs, 12px); }
+.assessment-publication-dialog .management-multi-options label { display: flex; font-weight: 400; }
+.assessment-publication-dialog .management-multi-options input[type=checkbox] { width: var(--s-4); height: var(--s-4); min-height: 0; margin: 0; padding: 0; flex: none; accent-color: var(--forest); }
+.assessment-publication-dialog .management-multi-search { margin: var(--s-2); padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.assessment-publication-dialog .management-multi-search > svg { flex: none; }
+.assessment-publication-dialog .management-multi-search input[type=search] { flex: 1; width: 0; min-width: 0; height: var(--s-6); min-height: var(--s-6); margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font-size: var(--fs-xs, 12px); }
+.assessment-publication-dialog .management-multi-search:focus-within { outline: 2px solid var(--forest); outline-offset: 0; box-shadow: 0 0 0 5px var(--focus-ring); }
+.assessment-publication-dialog .management-multi-search input[type=search]:focus { outline: none; box-shadow: none; }
+.assessment-publication-dialog .management-multi-footer { flex-wrap: wrap; font-size: var(--fs-micro); }
+.assessment-publication-dialog .management-multi-footer button { border: 1px solid var(--border); border-radius: var(--r-pill); padding: var(--s-1) var(--s-2); background: var(--surface-card); color: var(--text-body); font: inherit; cursor: pointer; }
+.assessment-publication-dialog .management-multi-trigger:active { transition: none; }
+
+.publication-methods { min-width: 0; margin: 0; padding: 0; border: 0; }
+.publication-methods legend { margin-bottom: var(--s-2); padding: 0; color: var(--text-strong); font: 600 var(--fs-xs, 12px)/1.5 var(--f-body); }
+.publication-method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+.publication-dialog-fields .publication-method { display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); cursor: pointer; }
+.publication-dialog-fields .publication-method input[type=radio] { flex: none; width: var(--s-4); height: var(--s-4); min-height: 0; margin: var(--s-1) 0 0; padding: 0; accent-color: var(--forest); }
+.publication-method > span { display: grid; gap: var(--s-1); }
+.publication-method strong { color: var(--text-strong); font-size: var(--fs-sm, 14px); }
+.publication-method > span > span { color: var(--text-body); font-weight: 400; }
+.publication-method:has(input:checked) { border-color: var(--forest); background: var(--surface-soft); }
+.publication-method:hover:not(:has(input:disabled)) { border-color: var(--forest); }
+.publication-method:active:not(:has(input:disabled)) { transform: translateY(1px) scale(.99); }
+.publication-method:has(input:disabled) { opacity: .6; cursor: not-allowed; }
+.publication-dialog-fields .publication-method-note { margin: var(--s-2) 0 0; color: var(--text-muted); font-size: var(--fs-xs, 12px); }
+.publication-dialog-grid.is-combined-reviewer { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 600px) { .publication-method-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Compact combined form: keep the complete decision and actions visible on laptop screens. */
+.save-changes-dialog.assessment-publication-dialog.is-compact-publication { width: min(760px, calc(100vw - var(--s-4))); padding: var(--s-4); max-height: calc(100dvh - var(--s-4)); }
+.is-compact-publication .publication-dialog-close { top: var(--s-4); right: var(--s-4); }
+.save-changes-dialog.is-compact-publication > #save-changes-description { margin-bottom: var(--s-3); padding-bottom: var(--s-2); }
+.is-compact-publication .publication-dialog-fields { gap: var(--s-2); padding-bottom: var(--s-3); }
+.is-compact-publication .publication-dialog-grid { gap: var(--s-2) var(--s-3); }
+.is-compact-publication .publication-methods legend { margin-bottom: var(--s-1); font-size: var(--fs-xs, 12px); }
+.is-compact-publication .publication-dialog-fields .publication-method { padding: var(--s-2); gap: var(--s-2); }
+.is-compact-publication .publication-method strong { font-size: var(--fs-xs, 12px); }
+.is-compact-publication .publication-method > span { gap: 0; }
+.is-compact-publication .publication-review-section { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); align-items: start; }
+.is-compact-publication .publication-review-section textarea { resize: none; }
+.is-compact-publication .save-changes-actions { padding-top: var(--s-2); }
+.is-compact-publication .save-changes-actions button { min-height: var(--s-6); }
+@media (max-width: 600px) {
+  .is-compact-publication .assessment-assignment-fields > .publication-dialog-grid,
+  .is-compact-publication .publication-method-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+  .is-compact-publication .publication-review-section { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
+}
