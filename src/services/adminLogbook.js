@@ -1,3 +1,4 @@
+import { resolveAssessmentAssignment } from './assessmentAssignment.js'
 import { readSkillEntries } from './skillLogbook.js'
 import { signoffEligibility, assertSubjectWritable, subjectWriteBlock, assertLogbookText, signoffVersion } from './logbookPolicy.js'
 import { applyDeltas, commit, readDeltas, today } from './logbook.js'
@@ -61,10 +62,16 @@ export async function reassignEntry(id, actor, faculty) {
 }
 /** Assignment shape: {by, due, instructions, assignedAt}; student completes schema fields. */
 export const assignmentFields = (cat, subject) => (getLogbookGroups(cat, subject)[0]?.fields || []).filter(field => ['competency', 'moduleNo', 'topic', 'activity', 'depts', 'recordType', 'sessionType', 'exerciseType', 'activityType', 'exerciseNo', 'specimenNo', 'place', 'village', 'day', 'station', 'week', 'diagnosis', 'provDx'].includes(field.key))
-function stageAssignment(actor, { studentId, subject, cat, due = '', instructions = '', values = {}, activityId = '', phase = '' }, deltas) {
+function stageAssignment(actor, { studentId, subject, cat, due = '', instructions = '', values = {}, activityId = '', phase = '' }, deltas, resolvedStudents) {
   const activity = activityId ? findAssignmentActivity(activityId) : null
   requireThat(!activityId || activity && activity.subject === subject && assignmentCategory(activity.category) === cat && activity.phase === phase, 'Choose an activity from this subject and phase.')
-  if (activity) values = { ...values, ...sourceAssignmentValues(activity) }
+  if (activity) {
+    const sourceValues = sourceAssignmentValues(activity)
+    // Faculty may customise the topic; catalogue identity and other source fields remain intact.
+    const topic = Object.hasOwn(sourceValues, 'topic') && Object.hasOwn(values, 'topic') ? values.topic : sourceValues.topic
+    if (topic !== undefined) assertLogbookText(topic, 'Topic')
+    values = { ...values, ...sourceValues, ...(topic !== undefined ? { topic } : {}) }
+  }
   assertLogbookText(instructions, 'Instructions')
   requireThat(actor.departments.includes(subject), 'Choose your department subject.')
   requireThat(CATEGORIES.some(category => category.id === cat) && SUBJECTS.find(item => item.name === subject)?.categories.includes(cat), 'Choose a category for this subject.')
@@ -77,21 +84,32 @@ function stageAssignment(actor, { studentId, subject, cat, due = '', instruction
     requireThat(!value || !field.options || field.options.includes(value), `${field.label}: choose a listed option.`)
   }
   requireThat(instructions.trim() || Object.keys(taskValues).length, 'Add task details or instructions for the student.')
-  const students = studentId === 'all' ? LEARNERS : LEARNERS.filter(person => person.id === studentId)
+  const students = resolvedStudents || (studentId === 'all' ? LEARNERS.filter(person => !person.directoryStudent) : LEARNERS.filter(person => person.id === studentId))
   requireThat(students.length, 'Choose a student.')
   const existing = activity ? applyDeltas(deltas) : []
   const locked = students.filter(person => subjectWriteBlock(deltas, person.id, subject))
   const writable = students.filter(person => !locked.includes(person))
   const duplicate = writable.filter(person => existing.some(entry => entry.studentId === person.id && entry.assignment?.activityId === activityId))
   const eligible = writable.filter(person => !duplicate.includes(person))
-  eligible.forEach(person => deltas.added.unshift({ id: crypto.randomUUID(), studentId: person.id, subject, cat, faculty: actor.id, status: 'To do', date: activity ? '' : today(), values: { ...taskValues }, extra: {}, assignment: { by: actor.id, due, instructions: instructions.trim(), locked: Object.keys(taskValues), assignedAt: timestamp(), ...(activity ? { activityId, phase, sourceCategory: activity.category, activityName: activity.name, sample: activity.sample, sources: activity.sources } : {}) } }))
+  eligible.forEach(person => deltas.added.unshift({ id: crypto.randomUUID(), studentId: person.id, ...(resolvedStudents ? { studentProfile: { id: person.id, name: person.name, registerId: person.registerId, directoryStudent: true } } : {}), subject, cat, faculty: actor.id, status: 'To do', date: activity ? '' : today(), values: { ...taskValues }, extra: {}, assignment: { by: actor.id, due, instructions: instructions.trim(), locked: Object.keys(taskValues), assignedAt: timestamp(), ...(activity ? { activityId, phase, sourceCategory: activity.category, activityName: activity.name, sample: activity.sample, sources: activity.sources } : {}) } }))
   return { assigned: eligible.length, skipped: students.length - eligible.length, locked: locked.length, duplicate: duplicate.length }
 }
 
+/** Explicit scope uses stable directory IDs. Legacy sample IDs remain distinct.
+ * @param {{recipientScope?:{assignBatch:string,assignYear:string,assignGroups:string[],assignStudentIds:string[]}}} request
+ * @param {Function} [loadDirectory] Test/API adapter override.
+ */
+async function resolveRecipients(request, loadDirectory) {
+  if (!request.recipientScope) return undefined
+  const rows = await resolveAssessmentAssignment(request.recipientScope, loadDirectory)
+  return rows.map(row => ({ id: row.sourceStudentId, name: row.name, registerId: row.registrationId }))
+}
+
 /** Source assignments are idempotent per activity/student; manual assignments retain existing behaviour. */
-export async function assignEntries(actor, request) {
+export async function assignEntries(actor, request, loadDirectory) {
+  const recipients = await resolveRecipients(request, loadDirectory)
   const deltas = readDeltas()
-  const result = stageAssignment(actor, request, deltas)
+  const result = stageAssignment(actor, request, deltas, recipients)
   requireThat(result.assigned, result.duplicate ? 'This activity is already assigned to the selected students.' : 'No eligible recipients. These subject logbooks are signed off or awaiting final approval.')
   const entries = commit(deltas)
   return { entries, ...result }
@@ -102,16 +120,17 @@ export async function assignEntries(actor, request) {
  * @param {{activityIds:string[],studentId:string,due?:string,instructions?:string}} request Exact reviewed IDs and recipient.
  * @returns {Promise<{rows:Object[],assigned:number,skipped:number}>}
  */
-export async function previewSampleAssignments(actor, request) { return sampleBatch(actor, request, false) }
-export async function assignSampleEntries(actor, request) { return sampleBatch(actor, request, true) }
-function sampleBatch(actor, { activityIds, studentId, due = '', instructions = '' }, save) {
+export async function previewSampleAssignments(actor, request, loadDirectory) { return sampleBatch(actor, request, false, loadDirectory) }
+export async function assignSampleEntries(actor, request, loadDirectory) { return sampleBatch(actor, request, true, loadDirectory) }
+async function sampleBatch(actor, { activityIds, studentId, recipientScope, due = '', instructions = '' }, save, loadDirectory) {
+  const recipients = await resolveRecipients({ recipientScope }, loadDirectory)
   requireThat(Array.isArray(activityIds) && activityIds.length > 0 && activityIds.length <= 30, 'Choose between 1 and 30 sample activities.')
   requireThat(new Set(activityIds).size === activityIds.length, 'Choose each activity only once.')
   const deltas = readDeltas(), rows = []
   for (const id of activityIds) {
     const activity = findAssignmentActivity(id)
     requireThat(activity, 'A selected activity is no longer available.')
-    const result = stageAssignment(actor, { studentId, subject: activity.subject, cat: assignmentCategory(activity.category), activityId: id, phase: activity.phase, due, instructions: instructions || sampleInstructions(activity) }, deltas)
+    const result = stageAssignment(actor, { studentId, subject: activity.subject, cat: assignmentCategory(activity.category), activityId: id, phase: activity.phase, due, instructions: instructions || sampleInstructions(activity) }, deltas, recipients)
     rows.push({ activity, ...result })
   }
   const assigned = rows.reduce((sum, row) => sum + row.assigned, 0), skipped = rows.reduce((sum, row) => sum + row.skipped, 0)

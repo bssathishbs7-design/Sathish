@@ -6,10 +6,10 @@ import { assessmentGroupKey, eligibleAssessmentStudents } from '../services/asse
 import './AssessmentAssignmentFields.css'
 
 /** Controlled cascading assignment scope. Student IDs are directory IDs, never labels.
- * @param {{value:{assignBatch:string,assignYear:string,assignGroups:string[],assignStudentIds:string[]},onChange:Function,onValidityChange:Function,disabled?:boolean}} props
+ * @param {{value:{assignBatch:string,assignYear:string,assignGroups:string[],assignStudentIds:string[]},onChange:Function,onValidityChange:Function,disabled?:boolean,excludedStudentIds?:string[]}} props
  * Loading/errors remain local; the parent retains the selection when publication method changes.
  */
-export default function AssessmentAssignmentFields({ value, onChange, onValidityChange, disabled = false }) {
+export default function AssessmentAssignmentFields({ value, onChange, onValidityChange, disabled = false, excludedStudentIds = [] }) {
   const [directory, setDirectory] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -38,7 +38,7 @@ export default function AssessmentAssignmentFields({ value, onChange, onValidity
   const years = [...new Set(batchStudents.map(student => student.year))].sort((a, b) => YEARS.indexOf(a) - YEARS.indexOf(b))
   const yearStudents = batchStudents.filter(student => student.year === value.assignYear)
   const groups = [...new Set(yearStudents.map(student => assessmentGroupKey(student.section)).filter(Boolean))].sort()
-  const visibleStudents = yearStudents.filter(student => value.assignGroups.map(assessmentGroupKey).includes(assessmentGroupKey(student.section)))
+  const visibleStudents = yearStudents.filter(student => !excludedStudentIds.includes(student.id) && value.assignGroups.map(assessmentGroupKey).includes(assessmentGroupKey(student.section)))
   const studentOptions = visibleStudents.map(student => ({ value: student.id, label: `${student.name} (${student.registrationId || student.id})` }))
   const selectedCount = visibleStudents.filter(student => value.assignStudentIds.includes(student.id)).length
   const valid = !loading && !error && batches.includes(value.assignBatch) && years.includes(value.assignYear)
@@ -47,20 +47,26 @@ export default function AssessmentAssignmentFields({ value, onChange, onValidity
   useEffect(() => { onValidityChange(Boolean(valid)) }, [valid, onValidityChange])
   const locked = disabled || loading || Boolean(error)
   const changeGroups = nextGroups => {
-    const allowed = yearStudents.filter(student => nextGroups.map(assessmentGroupKey).includes(assessmentGroupKey(student.section))).map(student => student.id)
+    const allowed = yearStudents.filter(student => !excludedStudentIds.includes(student.id) && nextGroups.map(assessmentGroupKey).includes(assessmentGroupKey(student.section))).map(student => student.id)
     onChange({ ...value, assignGroups: nextGroups, assignStudentIds: allowed })
   }
   const changeYear = assignYear => {
-    const students = batchStudents.filter(student => student.year === assignYear && assessmentGroupKey(student.section))
+    const students = batchStudents.filter(student => student.year === assignYear && !excludedStudentIds.includes(student.id) && assessmentGroupKey(student.section))
     onChange({ ...value, assignYear,
       assignGroups: [...new Set(students.map(student => 'SGT Group ' + assessmentGroupKey(student.section)))],
       assignStudentIds: students.map(student => student.id) })
   }
-  const wholeYear = yearStudents.length > 0 && selectedCount === yearStudents.length
+  useEffect(() => {
+    const ids = value.assignStudentIds.filter(id => !excludedStudentIds.includes(id))
+    if (ids.length !== value.assignStudentIds.length) onChange({ ...value, assignStudentIds: ids })
+  }, [excludedStudentIds, value, onChange])
+  const excludedCount = yearStudents.filter(student => excludedStudentIds.includes(student.id)).length
+  const assignableYearCount = yearStudents.length - excludedCount
+  const wholeYear = assignableYearCount > 0 && selectedCount === assignableYearCount
   const summary = !value.assignYear ? 'Choose a batch and year to select all eligible students.'
     : !selectedCount ? 'No students selected. Choose students to continue.'
     : wholeYear ? 'All ' + selectedCount + ' eligible student' + (selectedCount === 1 ? '' : 's') + ' in ' + value.assignYear + ', Batch ' + value.assignBatch + '.'
-    : selectedCount + ' of ' + yearStudents.length + ' eligible students selected in ' + value.assignYear + ', Batch ' + value.assignBatch + '.'
+    : selectedCount + ' of ' + assignableYearCount + ' eligible students selected in ' + value.assignYear + ', Batch ' + value.assignBatch + '.'
   return <div className="assessment-assignment-fields" aria-busy={loading}>
     <div className="publication-dialog-grid">
       <label>Batch <em>*</em><span className="publication-select"><select ref={batchRef} required disabled={locked} value={value.assignBatch} onChange={event => onChange({ assignBatch: event.target.value, assignYear: '', assignGroups: [], assignStudentIds: [] })}>
@@ -76,6 +82,7 @@ export default function AssessmentAssignmentFields({ value, onChange, onValidity
         onChange={assignStudentIds => onChange({ ...value, assignStudentIds })} disabled={locked || !value.assignGroups.length}
         placeholder={value.assignGroups.length ? 'Select students' : 'Select SGT groups first'} searchLabel="Search students" emptyLabel="No eligible students." allLabel="All students" allowSelectAll compact floating />
     </div>
+    {excludedCount > 0 && <p className="assessment-assignment-status">{excludedCount} read-only subject logbook{excludedCount === 1 ? ' is' : 's are'} excluded.</p>}
     {error ? <div className="assessment-assignment-error" role="alert"><span>{error}</span><button type="button" disabled={disabled} onClick={retry}>Retry</button></div>
       : <p className="assessment-assignment-status" role="status">{loading ? 'Loading student directory...' : summary}</p>}
     {!loading && !error && value.assignStudentIds.length > selectedCount && <p className="assessment-assignment-error" role="alert">Some selected students are no longer eligible. Clear the student selection and choose again.</p>}

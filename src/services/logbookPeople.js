@@ -32,3 +32,15 @@ export const matchesRemedial = (parent, child) => child.linkedTo === parent.id &
 export const awaitingRemedial = (entry, entries) => entry.status === 'Returned' && !entries.some(child => matchesRemedial(entry, child) && child.status !== 'Draft')
 export const waitingDays = entry => Math.max(0, Math.floor((Date.now() - Date.parse(entry.submittedAt || `${entry.date}T00:00:00`)) / 86400000))
 export const overdueEntry = entry => entry.status === 'Pending' && waitingDays(entry) > 7
+
+/** Restore recipient display identities from persisted assignments without renaming legacy accounts. */
+export function registerLogbookRecipients(entries) {
+  for (const entry of entries) {
+    const person = entry.studentProfile
+    if (!person?.directoryStudent || person.id !== entry.studentId || !person.name) continue
+    const existing = LEARNERS.find(row => row.id === person.id)
+    if (!existing) LEARNERS.push({ ...person, role: 'Student' })
+    else if (existing.directoryStudent) Object.assign(existing, person)
+  }
+  return entries
+}

@@ -4,7 +4,7 @@ import { entryTitle } from './logbookTitles.js'
 export { entryTitle } from './logbookTitles.js'
 import { getLogbookGroups } from './logbookSchemas.js'
 import { CATEGORIES, COHORT_ENTRIES, FACULTY, SAMPLE_ENTRIES, SUBJECTS } from './logbookSample.js'
-import { belongsTo, isGraded, eligibleReviewers, matchesRemedial, learnerName } from './logbookPeople.js'
+import { registerLogbookRecipients, belongsTo, isGraded, eligibleReviewers, matchesRemedial, learnerName } from './logbookPeople.js'
 import { collectSkills, certificationTarget, REQUIREMENTS_VERSION } from './logbookProgress.js'
 
 /**
@@ -114,7 +114,7 @@ export function searchEntries(entries, query) {
   })
 }
 
-export async function listLogbookEntries() { return [...applyDeltas(readDeltas()), ...readSkillEntries()] }
+export async function listLogbookEntries() { return registerLogbookRecipients([...applyDeltas(readDeltas()), ...readSkillEntries()]) }
 /** Begin a separate app namespace without importing or deleting prototype records. */
 export async function startSeparateLogbook() {
   if (window.localStorage.getItem(STORAGE_KEY)) return listLogbookEntries()
@@ -123,6 +123,7 @@ export async function startSeparateLogbook() {
 export function commit(deltas) {
   try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...deltas, schemaVersion: 4 })) }
   catch { throw new Error('Unable to save Logbook changes. Free some browser storage and try again. Your form is still open.') }
+  registerLogbookRecipients(applyDeltas(deltas))
   window.dispatchEvent(new Event('medsy-logbook-changed'))
   return applyDeltas(deltas)
 }

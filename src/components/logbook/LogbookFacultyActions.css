@@ -9,8 +9,6 @@
 .faculty-assignment-grid .faculty-optional { position: static; font-size: var(--fs-micro); font-weight: 400; color: var(--text-muted); }
 .logbook-scope .faculty-assignment-grid :is(input,select,textarea) { min-width: 0; width: 100%; min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-3); font-size: 13px; font-weight: 400; }
 .faculty-assignment-details { grid-column: 1 / -1; display: grid; gap: var(--s-3); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-soft); }
-.logbook-scope .faculty-assignment-details h3 { margin: 0; font-size: 13px; }
-.faculty-assignment-details p { margin: var(--s-1) 0 0; color: var(--text-muted); font-size: var(--fs-micro); }
 .faculty-assignment-instructions { grid-column: 1 / -1; }
 .faculty-assignment-form .lb-drawer-foot { flex-shrink: 0; position: static; }
 @media (max-width: 480px) { .faculty-assignment-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); } .faculty-assignment-body { padding: var(--s-4); } }
@@ -26,7 +24,6 @@
 .logbook-scope .faculty-assignment-grid .lb-field > span:first-child { line-height: 1.5; }
 .logbook-scope .faculty-assignment-details .lb-field > :is(input, .faculty-select) { margin-top: auto; }
 .logbook-scope .faculty-assignment-instructions textarea { min-height: var(--s-9); resize: vertical; }
-.logbook-scope .faculty-assignment-recipients { margin: var(--s-4) 0 0; }
 @media (max-width: 767px) {
   .faculty-assignment-body,
   .faculty-assignment-form .lb-drawer-foot { padding-inline: var(--s-4); }
@@ -54,6 +51,27 @@
 
 
 .faculty-assignment-note { grid-column: 1 / -1; font-size: var(--fs-micro); color: var(--text-muted); margin: var(--s-2) 0; }
-.faculty-source-details { min-width: 0; overflow-wrap: anywhere; }
-.faculty-source-details summary { font-size: var(--fs-micro); }
 .faculty-assignment-details input[readonly] { background: var(--surface-soft); color: var(--text-muted); }
+
+/* Shared cascading selector within the existing Logbook assignment form. */
+.faculty-recipient-selector { grid-column: 1 / -1; min-width: 0; }
+.faculty-recipient-selector .publication-dialog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+.faculty-recipient-selector label { font-size: var(--fs-xs, 12px); font-weight: 600; }
+.faculty-recipient-selector em { color: var(--danger-ink); font-style: normal; }
+.faculty-recipient-selector .publication-select { position: relative; display: block; margin-top: var(--s-1); }
+.faculty-recipient-selector .publication-select select { appearance: none; padding-right: var(--s-6); }
+.faculty-recipient-selector .publication-select > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
+.faculty-recipient-selector .management-multi-trigger { min-height: calc(var(--s-6) + var(--s-2)); font-size: var(--fs-xs, 12px); }
+.faculty-recipient-selector .management-multi-options label { display: flex; font-weight: 400; }
+.faculty-recipient-selector .management-multi-options input[type=checkbox] { width: var(--s-4); height: var(--s-4); min-height: 0; margin: 0; padding: 0; flex: none; accent-color: var(--forest); }
+.faculty-recipient-selector .management-multi-search input[type=search] { min-width: 0; flex: 1; width: 0; margin: 0; }
+.faculty-recipient-selector .management-multi-footer { flex-wrap: wrap; font-size: var(--fs-xs, 12px); }
+.faculty-recipient-selector .management-multi-footer button { border: 1px solid var(--border); border-radius: var(--r-pill); padding: var(--s-1) var(--s-2); background: var(--surface-card); color: var(--text-body); font: inherit; cursor: pointer; }
+.faculty-recipient-selector button:disabled { opacity: .6; cursor: not-allowed; }
+.faculty-recipient-selector button:hover:not(:disabled) { border-color: var(--forest); }
+.faculty-recipient-selector button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+.faculty-recipient-selector :is(button,input,select):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+@media (max-width: 480px) { .faculty-recipient-selector .publication-dialog-grid { grid-template-columns: minmax(0, 1fr); } }
+
+
+.faculty-assignment-grid .faculty-topic-field { grid-column: 1 / -1; }

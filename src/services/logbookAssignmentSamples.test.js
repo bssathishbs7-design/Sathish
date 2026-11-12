@@ -108,3 +108,13 @@ test('source code and topic remain locked while a learner completes the assignme
   await saveLogbookEntry({ ...task, values: { ...task.values, date: '2026-10-29' }, extra: { notes: 'Learner draft' } })
   assert.equal((await listLogbookEntries()).find(row => row.id === task.id).assignment.activityId, activity.id)
 }))
+
+test('faculty topic edits persist without changing catalogue identity or competency', async () => withStorage(async () => {
+  const activity = assignmentSamples('ece', 'Human Anatomy')[0]
+  await assignEntries(actor, { ...sourceRequest(activity), values: { topic: 'Custom teaching topic', competency: 'Changed code' } })
+  const task = readDeltas().added[0]
+  assert.equal(task.values.topic, 'Custom teaching topic')
+  assert.equal(task.values.competency, activity.code)
+  assert.equal(task.assignment.activityName, activity.name)
+  assert.equal(task.assignment.activityId, activity.id)
+}))

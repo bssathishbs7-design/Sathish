@@ -1,3 +1,4 @@
+import { listLogbookEntries, STORAGE_KEY as LOGBOOK_STORAGE_KEY } from './services/logbook'
 import { returnOverdueQuestions, saveAutomaticReturns } from './services/approvalReturns'
 import { ensureSkillIdentity, appendSkillIdentityEvent } from './services/skillIdentity'
 import IdGuideDialog from './components/IdGuideDialog'
@@ -539,6 +540,19 @@ function App() {
     try { localStorage.setItem('medsy-logbook-accounts', JSON.stringify(defaults)) } catch { /* Keep the default available for this session. */ }
     return defaults
   })
+  useEffect(() => {
+    if (![APP_PAGES.ADMIN_LOGBOOK, APP_PAGES.LOGBOOK].includes(activePage)) return
+    let active = true
+    const refresh = async () => {
+      try { await listLogbookEntries(); if (active) setLogbookAccounts(current => ({ ...current })) }
+      catch { /* The Logbook page displays storage failures through its existing error state. */ }
+    }
+    const storage = event => { if (!event.key || event.key === LOGBOOK_STORAGE_KEY) void refresh() }
+    void refresh()
+    window.addEventListener('medsy-logbook-changed', refresh)
+    window.addEventListener('storage', storage)
+    return () => { active = false; window.removeEventListener('medsy-logbook-changed', refresh); window.removeEventListener('storage', storage) }
+  }, [activePage])
   const [logbookAccountOpen, setLogbookAccountOpen] = useState(false)
   const logbookFaculty = LOGBOOK_REVIEWERS.find(person => person.id === logbookAccounts.faculty) || LOGBOOK_REVIEWERS.find(person => person.id === 'SUPER-ADMIN')
   const logbookStudent = LOGBOOK_LEARNERS.find(person => person.id === logbookAccounts.student) || LOGBOOK_LEARNERS[0]

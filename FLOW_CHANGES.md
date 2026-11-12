@@ -1,3 +1,12 @@
+## 2026-11-12 - Simplify Assign entry
+
+- Removed the Sample assignments preview/save panel from Assign entry. Faculty assign the selected activity using the existing footer action. Removed the highlighted instructions helper, recipient count and Skills note.
+
+## 2026-11-11 - Logbook assignment recipient cascade
+
+- Assign entry now selects Batch, Year, SGT and Student using the shared assessment selector. Selecting a year defaults to all eligible groups and students; both multi-selects can narrow recipients. Parent changes reset dependent selections.
+- Individual and sample assignments validate selected directory IDs and exclude read-only subject logbooks. Recipient names persist after reload; legacy sample identities remain distinct.
+
 ## 2026-11-05 — Instructions hover preview and click pin
 
 - Restored the Instructions badge fill animation. Mouse hover previews guidance and permits moving into the popover; leaving closes an unpinned preview. Clicking pins it open; clicking again, Close, Escape or outside dismisses it. Reduced-motion preferences disable the animation.

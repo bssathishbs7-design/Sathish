@@ -30,7 +30,7 @@
 .faculty-chart-legend { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-3) 0; }
 .faculty-chart-legend > span { display: flex; align-items: center; gap: var(--s-1); font-size: var(--fs-micro); color: var(--text-muted); }
 .faculty-chart-legend i { width: var(--s-2); height: var(--s-2); border-radius: var(--r-pill); background: var(--chart-colour); }
-.faculty-subject-row { grid-template-columns: minmax(100px, 1fr) minmax(0, 1fr) 3ch; }
+.faculty-subject-row { position: relative; grid-template-columns: minmax(100px, 1fr) minmax(0, 1fr) 3ch; }
 .faculty-subject-row > span:first-child { overflow-wrap: anywhere; }
 .faculty-subject-bar { display: flex; }
 .faculty-subject-bar > span { height: 100%; background: var(--chart-colour); }
