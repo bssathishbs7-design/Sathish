@@ -1,3 +1,13 @@
+## 2026-11-12 - Tabbed activity configuration and assignment
+
+- OSPE and image/interpretation activities now share a Configure and assign dialog with Threshold configuration and Assignment tabs. Next/Back preserve draft choices; Proceed validates both tabs.
+- Assignment uses Batch, Year, SGT and Student selectors, defaulting to all eligible recipients after choosing a year. Available faculty/student modules and optional scheduling remain supported. Fresh directory validation supplies an explicit roster and count to assignment and evaluation records.
+
+## 2026-11-12 - Question Bank share recipients
+
+- Share to students now uses Batch, Year, SGT and Student cascading selectors. Year defaults to all eligible groups/students; SGT and Student can be narrowed with multi-select.
+- Immediate and scheduled shares revalidate the directory and persist explicit student IDs and group selections with question history and practice sessions.
+
 ## 2026-11-12 - Simplify Assign entry
 
 - Removed the Sample assignments preview/save panel from Assign entry. Faculty assign the selected activity using the existing footer action. Removed the highlighted instructions helper, recipient count and Skills note.

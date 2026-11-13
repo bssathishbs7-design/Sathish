@@ -1,3 +1,6 @@
+import AssessmentAssignmentFields from '../components/AssessmentAssignmentFields'
+import { resolveQuestionShareRecipients } from '../services/questionShareRecipients'
+import './QuestionBankShareRecipients.css'
 import QuestionHistoryButton from '../components/QuestionHistoryButton'
 import CopyIdBadge from '../components/CopyIdBadge'
 import { questionDisplayId } from '../utils/questionLifecycle'
@@ -72,13 +75,6 @@ const DESCRIPTIVE_FILTER_TYPE_LABELS = new Map([
 ])
 const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
 const SHARE_STUDENTS_SUMMARY_PAGE_SIZE = 4
-const SHARE_ASSIGN_YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year', 'Final Year']
-const SHARE_ASSIGN_SGT_OPTIONS = {
-  'First Year': ['SGT A', 'SGT B', 'SGT C'],
-  'Second Year': ['SGT A', 'SGT B', 'SGT C'],
-  'Third Year': ['SGT A', 'SGT B', 'SGT C'],
-  'Final Year': ['SGT A', 'SGT B', 'SGT C'],
-}
 const QUESTION_BANK_YEAR_LABELS = {
   first: 'First year',
   second: 'Second year',
@@ -2265,8 +2261,9 @@ export default function QuestionBankNonCreatePage({
   const [shareStudentsSummaryOpen, setShareStudentsSummaryOpen] = useState(false)
   const [shareStudentsSummaryPage, setShareStudentsSummaryPage] = useState(1)
   const [shareActivePanel, setShareActivePanel] = useState('summary')
-  const [shareAssignYear, setShareAssignYear] = useState('')
-  const [shareAssignSgt, setShareAssignSgt] = useState('')
+  const [shareRecipients, setShareRecipients] = useState({ assignBatch: '', assignYear: '', assignGroups: [], assignStudentIds: [] })
+  const [shareRecipientsValid, setShareRecipientsValid] = useState(false)
+  const [shareBusy, setShareBusy] = useState(false)
   const [shareScheduleEnabled, setShareScheduleEnabled] = useState(false)
   const [shareStartDate, setShareStartDate] = useState('')
   const [shareStartTime, setShareStartTime] = useState('')
@@ -2330,7 +2327,6 @@ export default function QuestionBankNonCreatePage({
     (Math.min(shareStudentsSummaryPage, shareStudentsSummaryPageCount) - 1) * SHARE_STUDENTS_SUMMARY_PAGE_SIZE,
     Math.min(shareStudentsSummaryPage, shareStudentsSummaryPageCount) * SHARE_STUDENTS_SUMMARY_PAGE_SIZE,
   )
-  const shareAssignSgtOptions = shareAssignYear ? (SHARE_ASSIGN_SGT_OPTIONS[shareAssignYear] ?? []) : []
   const shareScheduleStartDateTime = shareStartDate && shareStartTime ? new Date(`${shareStartDate}T${shareStartTime}`) : null
   const shareScheduleEndDateTime = shareEndDate && shareEndTime ? new Date(`${shareEndDate}T${shareEndTime}`) : null
   const hasValidShareSchedule = !shareScheduleEnabled || (
@@ -2340,7 +2336,7 @@ export default function QuestionBankNonCreatePage({
   )
   const canShareSelectedQuestions = Boolean(
     availableSelectedGridQuestionIds.length
-    && shareAssignYear
+    && shareRecipientsValid && !shareBusy
     && hasValidShareSchedule,
   )
 
@@ -2982,11 +2978,12 @@ export default function QuestionBankNonCreatePage({
     setShareStudentsSummaryOpen(true)
   }
 
-  const shareSelectedQuestionsWithStudents = () => {
+  const shareSelectedQuestionsWithStudents = async () => {
+    if (shareBusy) return
     if (!availableSelectedGridQuestionIds.length) return
-    if (!shareAssignYear) {
+    if (!shareRecipientsValid) {
       setShareActivePanel('assigning')
-      setShareAssignError('Select Year before sharing.')
+      setShareAssignError('Choose a batch, year and at least one student.')
       return
     }
     if (!hasValidShareSchedule) {
@@ -2994,24 +2991,29 @@ export default function QuestionBankNonCreatePage({
       setShareAssignError('Select a valid start and end schedule.')
       return
     }
-    const assignment = {
-      year: shareAssignYear,
-      sgt: shareAssignSgt,
-      assignedTo: shareAssignSgt ? `${shareAssignYear} • ${shareAssignSgt}` : shareAssignYear,
-      scheduleEnabled: shareScheduleEnabled,
-      startDate: shareScheduleEnabled ? shareStartDate : '',
-      startTime: shareScheduleEnabled ? shareStartTime : '',
-      endDate: shareScheduleEnabled ? shareEndDate : '',
-      endTime: shareScheduleEnabled ? shareEndTime : '',
-      startsAt: shareScheduleEnabled ? shareScheduleStartDateTime?.toISOString() : '',
-      endsAt: shareScheduleEnabled ? shareScheduleEndDateTime?.toISOString() : '',
-    }
-    const sharedCount = selectedShareQuestions.length || availableSelectedGridQuestionIds.length
-    shareQuestionsWithStudentsInStorage(availableSelectedGridQuestionIds, assignment)
-    persistLearnPracticeSharedCards(selectedShareQuestions, assignment)
-    setPublishedQuestions(readAllQuestionBankQuestions())
-    setShareSuccessNotice({ count: sharedCount, year: shareAssignYear })
-    resetAssessmentSelection()
+    setShareBusy(true)
+    try {
+      const recipients = await resolveQuestionShareRecipients(shareRecipients)
+      const assignment = {
+        ...recipients,
+        scheduleEnabled: shareScheduleEnabled,
+        startDate: shareScheduleEnabled ? shareStartDate : '',
+        startTime: shareScheduleEnabled ? shareStartTime : '',
+        endDate: shareScheduleEnabled ? shareEndDate : '',
+        endTime: shareScheduleEnabled ? shareEndTime : '',
+        startsAt: shareScheduleEnabled ? shareScheduleStartDateTime?.toISOString() : '',
+        endsAt: shareScheduleEnabled ? shareScheduleEndDateTime?.toISOString() : '',
+      }
+      const sharedCount = selectedShareQuestions.length || availableSelectedGridQuestionIds.length
+      shareQuestionsWithStudentsInStorage(availableSelectedGridQuestionIds, assignment)
+      persistLearnPracticeSharedCards(selectedShareQuestions, assignment)
+      setPublishedQuestions(readAllQuestionBankQuestions())
+      setShareSuccessNotice({ count: sharedCount, year: shareRecipients.assignYear })
+      resetAssessmentSelection()
+    } catch (error) {
+      setShareActivePanel('assigning')
+      setShareAssignError(error.message || 'Unable to share. Please try again.')
+    } finally { setShareBusy(false) }
   }
 
   const getSelectedAssessmentQuestions = () => (
@@ -4801,14 +4803,14 @@ export default function QuestionBankNonCreatePage({
 
         {isEditable && shareStudentsSummaryOpen && typeof document !== 'undefined' ? createPortal(
           <div className="assessment-page-share-modal" role="dialog" aria-modal="true" aria-labelledby="assessment-share-title">
-            <div className="assessment-page-share-backdrop" onClick={() => setShareStudentsSummaryOpen(false)} aria-hidden="true" />
+            <div className="assessment-page-share-backdrop" onClick={() => { if (!shareBusy) setShareStudentsSummaryOpen(false) }} aria-hidden="true" />
             <div className="assessment-page-share-card">
               <header className="assessment-page-share-head">
                 <div>
                   <h2 id="assessment-share-title">Confirm share to students</h2>
                   <p>Review the selected question summary and confirm before sharing.</p>
                 </div>
-                <button type="button" onClick={() => setShareStudentsSummaryOpen(false)} aria-label="Close share to students dialog">
+                <button type="button" onClick={() => { if (!shareBusy) setShareStudentsSummaryOpen(false) }} aria-label="Close share to students dialog">
                   <X size={17} strokeWidth={2.4} />
                 </button>
               </header>
@@ -4913,40 +4915,8 @@ export default function QuestionBankNonCreatePage({
                   </button>
                   {shareActivePanel === 'assigning' ? (
                     <>
-                      <div className="assessment-page-share-target-box">
-                    <label className="assessment-page-share-field is-active-field">
-                      <span>Select Year <em aria-hidden="true">*</em></span>
-                      <select
-                        value={shareAssignYear}
-                        onChange={(event) => {
-                          const nextYear = event.target.value
-                          setShareAssignYear(nextYear)
-                          setShareAssignSgt('')
-                          setShareAssignError('')
-                        }}
-                      >
-                        <option value="">Select year</option>
-                        {SHARE_ASSIGN_YEAR_OPTIONS.map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="assessment-page-share-field is-disabled-field">
-                      <span>SGT</span>
-                      <select
-                        value={shareAssignSgt}
-                        onChange={(event) => {
-                          setShareAssignSgt(event.target.value)
-                          setShareAssignError('')
-                        }}
-                        disabled
-                      >
-                        <option value="">SGT disabled for this share</option>
-                        {shareAssignSgtOptions.map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                    </label>
+                      <div className="question-share-recipients qb-sort-scope">
+                        <AssessmentAssignmentFields value={shareRecipients} onChange={value => { setShareRecipients(value); setShareAssignError('') }} onValidityChange={setShareRecipientsValid} disabled={shareBusy} />
                       </div>
                       <label className="assessment-page-share-schedule-toggle">
                     <input
@@ -4993,7 +4963,7 @@ export default function QuestionBankNonCreatePage({
                 </section>
               </div>
               <div className="assessment-page-share-actions">
-                <button type="button" className="is-secondary" onClick={() => setShareStudentsSummaryOpen(false)}>
+                <button type="button" className="is-secondary" onClick={() => { if (!shareBusy) setShareStudentsSummaryOpen(false) }}>
                   Cancel
                 </button>
                 <button
@@ -5002,7 +4972,7 @@ export default function QuestionBankNonCreatePage({
                   disabled={!canShareSelectedQuestions}
                 >
                   <Share2 size={14} strokeWidth={2.3} />
-                  Share to Students
+                  {shareBusy ? 'Sharing...' : 'Share to students'}
                 </button>
               </div>
             </div>

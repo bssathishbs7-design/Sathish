@@ -323,7 +323,9 @@ const isAssignmentCertifiable = (assignment) => Boolean(
 )
 
 const buildEvaluationRecordFromAssignment = (assignment) => {
-  const { year, sgt } = parseAssignmentTarget(assignment.assignedTo)
+  const legacyTarget = parseAssignmentTarget(assignment.assignedTo)
+  const year = assignment.year || legacyTarget.year
+  const sgt = assignment.sgt || legacyTarget.sgt
 
   return {
     id: assignment.id,
@@ -829,7 +831,9 @@ function App() {
     if (!assignment?.id) return
     const identity = ensureSkillIdentity(assignment, true)
     assignment = { ...assignment, activityCode: identity.code, draftCode: identity.draftCode }
-    const { year, sgt } = parseAssignmentTarget(assignment.assignedTo)
+    const legacyTarget = parseAssignmentTarget(assignment.assignedTo)
+    const year = assignment.year || legacyTarget.year
+    const sgt = assignment.sgt || legacyTarget.sgt
     const assignmentInstanceId = assignment.assignmentInstanceId
       ?? `${assignment.id}-assigned-${Date.now()}`
     if (assignedSkillActivities.some(item => item.id === assignmentInstanceId)) return

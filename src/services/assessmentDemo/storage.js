@@ -1,4 +1,4 @@
-import { createAssessmentDemoData } from './scenarios.js'
+import { createAssessmentDemoData, DEMO_COMBINATION_ADDITIONS } from './scenarios.js'
 import { descriptiveResponseItems } from '../descriptiveResponses.js'
 import { prepareAssessmentResult, automatedEvaluationKey } from '../assessmentResultRelease.js'
 
@@ -84,6 +84,7 @@ export function buildDemoPayload(now=new Date()) {
  */
 export function installAssessmentDemo(local=localStorage,session=sessionStorage,{now=new Date(),refresh=false}={}) {
  const marker=local.getItem(DEMO_MARKER)
+ const upgrade=Boolean(marker && !refresh && JSON.parse(marker).version < 2)
  const payload=buildDemoPayload(now)
  const writes=[]
  if(!marker||refresh){
@@ -98,7 +99,25 @@ export function installAssessmentDemo(local=localStorage,session=sessionStorage,
    else if(localMaps.includes(key)) next={...Object.fromEntries(Object.entries(read(local,key,{})).filter(([id])=>!id.startsWith('demo-assessment-'))),...value}
    writes.push([local,key,JSON.stringify(next)])
   }
-  writes.push([local,DEMO_MARKER,JSON.stringify({version:1,createdAt:now.toISOString()})])
+  writes.push([local,DEMO_MARKER,JSON.stringify({version:2,createdAt:now.toISOString()})])
+ }
+ if(upgrade){
+  // Add only newly introduced combinations. Existing schedules, edits and attempts remain intact.
+  const existingIds=new Set(['vx-assessment-drafts','vx-assessment-published',DEMO_QUEUE]
+   .flatMap(key=>read(local,key,[])).map(row=>row.setup?.assessmentId || row.assessmentId || row.id))
+  const additions=new Set(DEMO_COMBINATION_ADDITIONS.map(([slug])=>`demo-assessment-${slug}`).filter(id=>!existingIds.has(id)))
+  for(const [key,value] of Object.entries(payload.local)){
+   if(key==='vx-assessment-published'){
+    writes.push([local,key,JSON.stringify([...read(local,key,[]),...value.filter(row=>additions.has(row.id))])])
+   }else if(localMaps.includes(key)){
+    const current=read(local,key,{})
+    const added=Object.fromEntries(Object.entries(value).filter(([id])=>additions.has(id) && !(id in current)))
+    writes.push([local,key,JSON.stringify({...current,...added})])
+   }else if([...additions].some(id=>key.endsWith(`:${id}`)||key.includes(`:${id}:`)) && local.getItem(key)===null){
+    writes.push([local,key,JSON.stringify(value)])
+   }
+  }
+  writes.push([local,DEMO_MARKER,JSON.stringify({...JSON.parse(marker),version:2})])
  }
  const queue=(!marker||refresh)?payload.data.queue:read(local,DEMO_QUEUE,[])
  const currentQueue=read(session,'vx-approval-queue-rows',[])
@@ -118,5 +137,5 @@ export function installAssessmentDemo(local=localStorage,session=sessionStorage,
  const before=writes.map(([store,key])=>[store,key,store.getItem(key)])
  try{for(const [store,key,value] of writes){if(value===null)store.removeItem(key);else store.setItem(key,value)}}
  catch(error){for(const [store,key,value] of before.reverse()){try{if(value===null)store.removeItem(key);else store.setItem(key,value)}catch{/* Preserve the original storage error. */}}throw error}
- return {installed:!marker||refresh,scenarios:payload.data}
+ return {installed:!marker||refresh||upgrade,scenarios:payload.data}
 }

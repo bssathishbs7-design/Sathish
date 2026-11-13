@@ -1,5 +1,5 @@
+import ActivityAssignmentDialog from '../components/ActivityAssignmentDialog'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import {
   BookCheck,
   CheckCircle2,
@@ -30,18 +30,6 @@ const domainOptionsMap = {
   psychomotor: psychomotorOptions,
 }
 const scaffoldStarterTypes = ['MCQ', 'Descriptive', 'True or False', 'Fill in the blanks']
-const ASSIGN_YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year Part 1', 'Third Year Part 2', 'Final Year']
-const ASSIGN_SGT_OPTIONS = {
-  'First Year': ['SGT A', 'SGT B', 'SGT C'],
-  'Second Year': ['SGT D', 'SGT E'],
-  'Third Year Part 1': ['SGT F', 'SGT G'],
-  'Third Year Part 2': ['SGT H', 'SGT I'],
-  'Final Year': ['SGT J', 'SGT K'],
-}
-const ASSIGN_SERVER_TIME = {
-  date: '2026-04-05',
-  label: 'Server time (IST)',
-}
 const scaffoldingTypeOptions = [
   { value: 'MCQ', label: 'MCQ', helper: 'Multi Choice Question' },
   { value: 'Descriptive', label: 'Descriptive', helper: 'Long-form response' },
@@ -130,10 +118,6 @@ const formatThresholdValue = (value) => {
   return Number.isInteger(rounded) ? String(rounded) : String(rounded)
 }
 
-const formatThresholdPercentageInput = (value) => {
-  if (value === '' || value === null || value === undefined) return ''
-  return `${value}%`
-}
 
 const parseThresholdPercentageInput = (value) => value.replace(/%/g, '').trim()
 
@@ -640,7 +624,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const resolvedActivityData = activityData ?? fallbackOspeActivitySeed
   const activity = resolvedActivityData?.activity ?? resolvedActivityData ?? null
   const record = resolvedActivityData?.record ?? null
-  const assignDefaultYear = ASSIGN_YEAR_OPTIONS.includes(record?.year) ? record.year : ASSIGN_YEAR_OPTIONS[0]
   const generatedModesKey = (resolvedActivityData?.generatedModes ?? ['Checklist']).join('|')
   const generatedModules = useMemo(() => buildGeneratedModules(generatedModesKey.split('|')), [generatedModesKey])
 
@@ -656,8 +639,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
   const [isActivitySaved, setIsActivitySaved] = useState(false)
   const [isReviewAssignPopupOpen, setIsReviewAssignPopupOpen] = useState(() => Boolean(resolvedActivityData?.openReviewAssign))
   const [assignThresholds, setAssignThresholds] = useState(() => buildEmptyAssignThresholdRows())
-  const [assignYear, setAssignYear] = useState(assignDefaultYear)
-  const [assignSgt, setAssignSgt] = useState(() => ASSIGN_SGT_OPTIONS[assignDefaultYear]?.[0] ?? '')
   const [isAssignScheduleEnabled, setIsAssignScheduleEnabled] = useState(false)
   const [assignSchedule, setAssignSchedule] = useState({ date: '', time: '', meridiem: 'AM' })
   const [assignContent, setAssignContent] = useState({ checklist: true, form: false, question: false, scaffolding: false })
@@ -700,7 +681,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     : 0
   const hasMarks = marksEnabled
   const isCertifiable = certifiableEnabled
-  const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
 
   useEffect(() => {
     if (!activeEditorId) return undefined
@@ -736,13 +716,12 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [isScaffoldingTooltipOpen])
-  const ospeAssignHelperText = ''
   const assignThresholdErrors = useMemo(() => assignThresholds.map((row, index) => {
     const from = Number(row.from)
     const to = Number(row.to)
     if (!row.label.trim()) return 'Enter a threshold label.'
-    if (Number.isNaN(from) || Number.isNaN(to)) return 'Enter valid values.'
-    if (from > to) return '`From` must be less than or equal to `To`.'
+    if (String(row.from).trim() === '' || String(row.to).trim() === '' || !Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to > 100) return 'Enter percentages from 0 to 100.'
+    if (from >= to) return 'From must be less than To.'
     if (index === 0 && from !== 0) return 'First row must start at 0.'
     if (index > 0) {
       const previousTo = Number(assignThresholds[index - 1].to)
@@ -754,8 +733,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     return ''
   }), [assignThresholds])
   const canProceedAssign = assignThresholdErrors.every((error) => !error)
-    && Boolean(assignYear)
-    && Boolean(assignSgt)
     && (!isAssignScheduleEnabled || Boolean(assignSchedule.date && assignSchedule.time && assignSchedule.meridiem))
   const certifiableLabel = isCertifiable ? 'Yes' : 'No'
   const totalMarksLabel = hasMarks ? overallTotalMarks : 'Disabled'
@@ -786,8 +763,6 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       return
     }
     setAssignThresholds(buildEmptyAssignThresholdRows(overallTotalMarks))
-    setAssignYear(assignDefaultYear)
-    setAssignSgt('')
     setIsAssignScheduleEnabled(false)
     setAssignSchedule({ date: '', time: '', meridiem: 'AM' })
     setAssignContent({
@@ -818,9 +793,9 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
     setAssignThresholds((current) => current.filter((row) => row.id !== id))
   }
 
-  const handleProceedAssign = () => {
+  const handleProceedAssign = async (recipients) => {
     if (!canProceedAssign) {
-      onAlert?.({ tone: 'warning', message: 'Complete thresholds, year, SGT, and schedule fields before proceeding.' })
+      onAlert?.({ tone: 'warning', message: 'Complete thresholds, recipients, and schedule fields before proceeding.' })
       return
     }
 
@@ -865,14 +840,15 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
       isCritical: Boolean(item.isCritical),
     }))
 
-    onAssignActivity?.({
+    await onAssignActivity?.({
       id: activity?.id ?? `ospe-assignment-${Date.now()}`,
       title: activityName,
       type: activity?.type ?? 'OSPE',
       createdDate: new Date().toLocaleDateString('en-GB'),
       attemptCount: '0 / 1',
       status: 'Assigned',
-      assignedTo: `${assignYear} • ${assignSgt}`,
+      ...recipients,
+      assignedTo: `${recipients.year} - ${recipients.sgt}`,
       certifiable: isCertifiable,
       marks: hasMarks ? String(overallTotalMarks) : 'Nil',
       isCertifiable,
@@ -1330,206 +1306,14 @@ function OspeActivityPage({ activityData, onAlert, onAssignActivity }) {
           </button>
         </div>
 
-        {isReviewAssignPopupOpen ? createPortal(
-          <div className="ospe-review-popup-backdrop" onClick={() => setIsReviewAssignPopupOpen(false)} aria-hidden="true">
-            <section className="ospe-review-popup-dialog" onClick={(event) => event.stopPropagation()}>
-              <div className="ospe-review-popup-head">
-                <div className="ospe-review-popup-copy">
-                  <span className="ospe-review-popup-kicker">Configuration &amp; Assign</span>
-                  <p>Set the assignment content, threshold configuration, target group, and optional schedule.</p>
-                </div>
-                <button
-                  type="button"
-                  className="ospe-review-popup-close"
-                  onClick={() => setIsReviewAssignPopupOpen(false)}
-                  aria-label="Close Review and Assign"
-                >
-                  <X size={16} strokeWidth={2.2} />
-                </button>
-              </div>
-              <div className="ospe-assign-type-grid">
-                <section className="ospe-assign-panel ospe-assign-panel--compact">
-                  <div className="ospe-assign-panel-head">
-                    <span className="ospe-assign-panel-badge">Assign To Faculty :</span>
-                  </div>
-                  <div className="ospe-assign-pill-row">
-                    <label className="ospe-assign-check is-static">
-                      <input
-                        type="checkbox"
-                        checked={assignContent.checklist}
-                        onChange={(event) => setAssignContent((current) => ({ ...current, checklist: event.target.checked }))}
-                      />
-                      <span>Checklist</span>
-                    </label>
-                  </div>
-                </section>
-                <section className="ospe-assign-panel ospe-assign-panel--compact">
-                  <div className="ospe-assign-panel-head">
-                    <span className="ospe-assign-panel-badge">Assign To Student :</span>
-                  </div>
-                  <div className="ospe-assign-pill-row">
-                    <label className={`ospe-assign-check ${formCount > 0 ? '' : 'is-disabled'}`.trim()}>
-                      <input
-                        type="checkbox"
-                        checked={assignContent.form}
-                        disabled={formCount === 0}
-                        onChange={(event) => setAssignContent((current) => ({ ...current, form: event.target.checked }))}
-                      />
-                      <span>Form</span>
-                    </label>
-                    <label className={`ospe-assign-check ${scaffoldingCount > 0 ? '' : 'is-disabled'}`.trim()}>
-                      <input
-                        type="checkbox"
-                        checked={assignContent.scaffolding}
-                        disabled={scaffoldingCount === 0}
-                        onChange={(event) => setAssignContent((current) => ({ ...current, scaffolding: event.target.checked }))}
-                      />
-                      <span>Scaffolding</span>
-                    </label>
-                  </div>
-                </section>
-              </div>
-              {ospeAssignHelperText ? <small className="ospe-assign-helper">{ospeAssignHelperText}</small> : null}
-              <div className="ospe-review-popup-foot">
-                <div className="ospe-assign-grid">
-                <section className="ospe-assign-panel ospe-assign-panel--threshold">
-                    <div className="ospe-assign-panel-head">
-                      <span className="ospe-assign-panel-badge">Threshold Configuration *</span>
-                    </div>
-                    <div className="ospe-threshold-list">
-                      {assignThresholds.map((row, index) => (
-                        <div key={row.id} className="ospe-threshold-row">
-                          <input
-                            className="ospe-threshold-label"
-                            value={row.label}
-                            onChange={(event) => updateAssignThreshold(row.id, 'label', event.target.value)}
-                            placeholder="Create label"
-                          />
-                          <input
-                            className="ospe-threshold-from"
-                            type="text"
-                            inputMode="decimal"
-                            value={formatThresholdPercentageInput(row.from)}
-                            onChange={(event) => updateAssignThreshold(row.id, 'from', event.target.value)}
-                            placeholder="From"
-                          />
-                          <span className="ospe-threshold-separator" aria-hidden="true">-</span>
-                          <input
-                            className="ospe-threshold-to"
-                            type="text"
-                            inputMode="decimal"
-                            value={formatThresholdPercentageInput(row.to)}
-                            onChange={(event) => updateAssignThreshold(row.id, 'to', event.target.value)}
-                            placeholder="To"
-                          />
-                          <div className="ospe-threshold-actions">
-                            <button
-                              type="button"
-                              className="ghost ospe-threshold-delete"
-                              onClick={() => deleteAssignThreshold(row.id)}
-                              disabled={assignThresholds.length === 1}
-                              aria-label={`Delete threshold ${index + 1}`}
-                            >
-                              <Trash2 size={14} strokeWidth={2} />
-                            </button>
-                            {index === assignThresholds.length - 1 ? (
-                              <button type="button" className="ghost ospe-threshold-add" onClick={addAssignThreshold} aria-label="Add threshold">
-                                <Plus size={15} strokeWidth={2.2} />
-                              </button>
-                            ) : <span className="ospe-threshold-add-placeholder" aria-hidden="true" />}
-                          </div>
-                          {assignThresholdErrors[index] ? (
-                            <small className="ospe-assign-error">{assignThresholdErrors[index]}</small>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-
-                <section className="ospe-assign-panel ospe-assign-panel--targets">
-                    <div className="ospe-assign-panel-head">
-                      <span className="ospe-assign-panel-badge">Assigning To *</span>
-                    </div>
-                    <div className="ospe-assign-targets">
-                      <div className="forms-select-wrap">
-                        <select
-                          value={assignYear}
-                          onChange={(event) => {
-                            const nextYear = event.target.value
-                            setAssignYear(nextYear)
-                            setAssignSgt(ASSIGN_SGT_OPTIONS[nextYear]?.[0] ?? '')
-                          }}
-                        >
-                          {ASSIGN_YEAR_OPTIONS.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      </div>
-                        <div className="forms-select-wrap">
-                          <select value={assignSgt} onChange={(event) => setAssignSgt(event.target.value)} disabled={!assignYear}>
-                            {!assignYear ? <option value="">Select Year first</option> : null}
-                            {assignSgtOptions.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                        </select>
-                      </div>
-                    </div>
-                    <label className="ospe-assign-schedule-toggle">
-                      <input
-                        type="checkbox"
-                        checked={isAssignScheduleEnabled}
-                        onChange={(event) => {
-                          const isEnabled = event.target.checked
-                          setIsAssignScheduleEnabled(isEnabled)
-                          if (isEnabled) {
-                            setAssignSchedule((current) => ({
-                              ...current,
-                              date: current.date || ASSIGN_SERVER_TIME.date,
-                            }))
-                          }
-                        }}
-                      />
-                      <span>If you want schedule...</span>
-                    </label>
-                    {isAssignScheduleEnabled ? (
-                      <div className="ospe-assign-schedule-row">
-                        <input
-                          type="date"
-                          min={ASSIGN_SERVER_TIME.date}
-                          value={assignSchedule.date}
-                          onChange={(event) => setAssignSchedule((current) => ({ ...current, date: event.target.value }))}
-                        />
-                        <input
-                          type="time"
-                          value={assignSchedule.time}
-                          onChange={(event) => setAssignSchedule((current) => ({ ...current, time: event.target.value }))}
-                        />
-                        <div className="forms-select-wrap">
-                          <select
-                            value={assignSchedule.meridiem}
-                            onChange={(event) => setAssignSchedule((current) => ({ ...current, meridiem: event.target.value }))}
-                          >
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                          </select>
-                        </div>
-                      </div>
-                    ) : null}
-                  </section>
-                </div>
-                <div className="ospe-assign-actions">
-                  <button type="button" className="ghost" onClick={() => setIsReviewAssignPopupOpen(false)}>
-                    Close
-                  </button>
-                  <button type="button" className="tool-btn green" onClick={handleProceedAssign} disabled={!canProceedAssign}>
-                    Proceed
-                  </button>
-                </div>
-              </div>
-            </section>
-          </div>,
-          document.body,
-        ) : null}
+        {isReviewAssignPopupOpen && <ActivityAssignmentDialog
+          thresholds={assignThresholds} thresholdErrors={assignThresholdErrors} onThresholdChange={updateAssignThreshold} onAddThreshold={addAssignThreshold} onDeleteThreshold={deleteAssignThreshold}
+          content={assignContent} onContentChange={setAssignContent}
+          facultyOptions={[{ key: 'checklist', label: 'Checklist', available: true }]}
+          studentOptions={[{ key: 'form', label: 'Form', available: formCount > 0 }, { key: 'scaffolding', label: 'Scaffolding', available: scaffoldingCount > 0 }]}
+          scheduleEnabled={isAssignScheduleEnabled} onScheduleEnabled={setIsAssignScheduleEnabled} schedule={assignSchedule} onScheduleChange={setAssignSchedule}
+          onClose={() => setIsReviewAssignPopupOpen(false)} onConfirm={handleProceedAssign}
+        />}
 
       </div>
     </section>

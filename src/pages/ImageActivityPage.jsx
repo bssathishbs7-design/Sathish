@@ -1,3 +1,4 @@
+import ActivityAssignmentDialog from '../components/ActivityAssignmentDialog'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -36,18 +37,6 @@ const domainOptionsMap = {
   psychomotor: psychomotorScaffoldingOptions,
 }
 const QUESTION_TEXT_PLACEHOLDER = 'Enter your question here......'
-const ASSIGN_YEAR_OPTIONS = ['First Year', 'Second Year', 'Third Year Part 1', 'Third Year Part 2', 'Final Year']
-const ASSIGN_SGT_OPTIONS = {
-  'First Year': ['SGT A', 'SGT B', 'SGT C'],
-  'Second Year': ['SGT D', 'SGT E'],
-  'Third Year Part 1': ['SGT F', 'SGT G'],
-  'Third Year Part 2': ['SGT H', 'SGT I'],
-  'Final Year': ['SGT J', 'SGT K'],
-}
-const ASSIGN_SERVER_TIME = {
-  date: '2026-04-05',
-  label: 'Server time (IST)',
-}
 const scaffoldingTypeOptions = [
   { value: 'MCQ', label: 'MCQ', helper: 'Multi Choice Question' },
   { value: 'Descriptive', label: 'Descriptive', helper: 'Long-form response' },
@@ -60,10 +49,6 @@ const formatThresholdValue = (value) => {
   return Number.isInteger(rounded) ? String(rounded) : String(rounded)
 }
 
-const formatThresholdPercentageInput = (value) => {
-  if (value === '' || value === null || value === undefined) return ''
-  return `${value}%`
-}
 
 const parseThresholdPercentageInput = (value) => value.replace(/%/g, '').trim()
 
@@ -201,7 +186,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const activity = activityData?.activity ?? activityData ?? null
   const record = activityData?.record ?? null
   const savedDraft = activityData?.draft ?? null
-  const assignDefaultYear = ASSIGN_YEAR_OPTIONS.includes(record?.year) ? record.year : ASSIGN_YEAR_OPTIONS[0]
   const defaultActivityName = activity?.name ?? (
     isInterpretationWorkflow
       ? 'Interpret the most important clinical finding visible in the case.'
@@ -242,8 +226,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const [isActivityCreated, setIsActivityCreated] = useState(Boolean(savedDraft?.isSkillActivitySaved || activity?.status === 'Created'))
   const [isReviewAssignPopupOpen, setIsReviewAssignPopupOpen] = useState(() => Boolean(activityData?.openReviewAssign))
   const [assignThresholds, setAssignThresholds] = useState(() => buildEmptyAssignThresholdRows())
-  const [assignYear, setAssignYear] = useState(assignDefaultYear)
-  const [assignSgt, setAssignSgt] = useState(() => ASSIGN_SGT_OPTIONS[assignDefaultYear]?.[0] ?? '')
   const [isAssignScheduleEnabled, setIsAssignScheduleEnabled] = useState(false)
   const [assignSchedule, setAssignSchedule] = useState({ date: '', time: '', meridiem: 'AM' })
   const [assignContent, setAssignContent] = useState({ form: false, question: true, scaffolding: false })
@@ -299,7 +281,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   }, [])
 
   useEffect(() => {
-    if (!previewImage && !isReviewAssignPopupOpen) return undefined
+    if (!previewImage) return undefined
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -307,7 +289,7 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     return () => {
       document.body.style.overflow = previousOverflow
     }
-  }, [isReviewAssignPopupOpen, previewImage])
+  }, [previewImage])
 
   useEffect(() => {
     if (!previewImage) return undefined
@@ -480,8 +462,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
   const footerStatusSummary = isAutoSaving
     ? { label: 'Saving', text: 'Saving the latest changes to this activity.' }
     : readinessSummary
-  const assignSgtOptions = assignYear ? (ASSIGN_SGT_OPTIONS[assignYear] ?? []) : []
-  const imageAssignHelperText = ''
   const imageStudentAssignOptions = [
     { key: 'question', label: isInterpretationWorkflow ? 'Manual Question' : 'Question', available: true },
     { key: 'scaffolding', label: 'Scaffolding', available: generatedQuestions.length > 0 },
@@ -490,8 +470,8 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     const from = Number(row.from)
     const to = Number(row.to)
     if (!row.label.trim()) return 'Enter a threshold label.'
-    if (Number.isNaN(from) || Number.isNaN(to)) return 'Enter valid values.'
-    if (from > to) return '`From` must be less than or equal to `To`.'
+    if (String(row.from).trim() === '' || String(row.to).trim() === '' || !Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to > 100) return 'Enter percentages from 0 to 100.'
+    if (from >= to) return 'From must be less than To.'
     if (index === 0 && from !== 0) return 'First row must start at 0.'
     if (index > 0) {
       const previousTo = Number(assignThresholds[index - 1].to)
@@ -503,8 +483,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     return ''
   }), [assignThresholds])
   const canProceedAssign = assignThresholdErrors.every((error) => !error)
-    && Boolean(assignYear)
-    && Boolean(assignSgt)
     && (!isAssignScheduleEnabled || Boolean(assignSchedule.date && assignSchedule.time && assignSchedule.meridiem))
 
   const handleAddQuestion = () => {
@@ -826,8 +804,6 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
 
   const handleReviewAssign = () => {
     setAssignThresholds(buildEmptyAssignThresholdRows(totalGeneratedMarks))
-    setAssignYear(assignDefaultYear)
-    setAssignSgt('')
     setIsAssignScheduleEnabled(false)
     setAssignSchedule({ date: '', time: '', meridiem: 'AM' })
     setAssignContent({
@@ -857,9 +833,9 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
     setAssignThresholds((current) => current.filter((row) => row.id !== id))
   }
 
-  const handleProceedAssign = async () => {
+  const handleProceedAssign = async (recipients) => {
     if (!canProceedAssign) {
-      onAlert?.({ tone: 'warning', message: 'Complete thresholds, year, SGT, and schedule fields before proceeding.' })
+      onAlert?.({ tone: 'warning', message: 'Complete thresholds, recipients, and schedule fields before proceeding.' })
       return
     }
 
@@ -905,14 +881,15 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
       isCritical: Boolean(question.isCritical),
     }))
 
-    onAssignActivity?.({
+    await onAssignActivity?.({
       id: activity?.id ?? `image-assignment-${Date.now()}`,
       title: activityName,
       type: activityTag,
       createdDate: new Date().toLocaleDateString('en-GB'),
       attemptCount: '0 / 1',
       status: 'Assigned',
-      assignedTo: `${assignYear} • ${assignSgt}`,
+      ...recipients,
+      assignedTo: `${recipients.year} - ${recipients.sgt}`,
       certifiable: isCertifiable,
       marks: hasMarks ? String(totalGeneratedMarks) : 'Nil',
       isCertifiable,
@@ -1871,199 +1848,14 @@ export default function ImageActivityPage({ activityData, onAlert, onSaveSkillAc
           </div>
         </div>
       </div>
-      {isReviewAssignPopupOpen ? createPortal(
-        <div className="image-activity-review-popup-backdrop" onClick={() => setIsReviewAssignPopupOpen(false)} aria-hidden="true">
-          <section className="image-activity-review-popup-dialog" onClick={(event) => event.stopPropagation()}>
-            <div className="image-activity-review-popup-head">
-              <div className="image-activity-review-popup-copy">
-                <span className="image-activity-review-popup-kicker">Configuration &amp; Assign</span>
-                <p>Set the assignment content, threshold configuration, target group, and optional schedule.</p>
-              </div>
-              <button
-                type="button"
-                className="image-activity-review-popup-close"
-                onClick={() => setIsReviewAssignPopupOpen(false)}
-                aria-label="Close Review and Assign"
-              >
-                <X size={16} strokeWidth={2.2} />
-              </button>
-            </div>
-            <div className="image-activity-assign-type-grid">
-              <section className="image-activity-assign-panel image-activity-assign-panel--compact">
-                <div className="image-activity-assign-panel-head">
-                  <span className="image-activity-assign-panel-badge">Assign To Faculty :</span>
-                </div>
-                <div className="image-activity-assign-pill-row">
-                  <span className="image-activity-assign-check is-static is-disabled">
-                    <span>No faculty module</span>
-                  </span>
-                </div>
-              </section>
-              <section className="image-activity-assign-panel image-activity-assign-panel--compact">
-                <div className="image-activity-assign-panel-head">
-                  <span className="image-activity-assign-panel-badge">Assign To Student :</span>
-                </div>
-                <div className="image-activity-assign-pill-row">
-                  {imageStudentAssignOptions.map((option) => (
-                    <label key={option.key} className={`image-activity-assign-check ${option.available ? '' : 'is-disabled'}`.trim()}>
-                      <input
-                        type="checkbox"
-                        checked={assignContent[option.key]}
-                        disabled={!option.available}
-                        onChange={(event) => setAssignContent((current) => ({ ...current, [option.key]: event.target.checked }))}
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </section>
-            </div>
-            {imageAssignHelperText ? <small className="image-activity-assign-helper">{imageAssignHelperText}</small> : null}
-            <div className="image-activity-review-popup-foot">
-              <div className="image-activity-assign-grid">
-                <section className="image-activity-assign-panel image-activity-assign-panel--threshold">
-                  <div className="image-activity-assign-panel-head">
-                    <span className="image-activity-assign-panel-badge">Threshold Configuration *</span>
-                  </div>
-                  <div className="image-activity-threshold-list">
-                    {assignThresholds.map((row, index) => (
-                      <div key={row.id} className="image-activity-threshold-row">
-                        <input
-                          className="image-activity-threshold-label"
-                          value={row.label}
-                          onChange={(event) => updateAssignThreshold(row.id, 'label', event.target.value)}
-                          placeholder="Create label"
-                        />
-                        <input
-                          className="image-activity-threshold-from"
-                          type="text"
-                          inputMode="decimal"
-                          value={formatThresholdPercentageInput(row.from)}
-                          onChange={(event) => updateAssignThreshold(row.id, 'from', event.target.value)}
-                          placeholder="From"
-                        />
-                        <span className="image-activity-threshold-separator" aria-hidden="true">-</span>
-                        <input
-                          className="image-activity-threshold-to"
-                          type="text"
-                          inputMode="decimal"
-                          value={formatThresholdPercentageInput(row.to)}
-                          onChange={(event) => updateAssignThreshold(row.id, 'to', event.target.value)}
-                          placeholder="To"
-                        />
-                        <div className="image-activity-threshold-actions">
-                          <button
-                            type="button"
-                            className="ghost image-activity-threshold-delete"
-                            onClick={() => deleteAssignThreshold(row.id)}
-                            disabled={assignThresholds.length === 1}
-                            aria-label={`Delete threshold ${index + 1}`}
-                          >
-                            <Trash2 size={14} strokeWidth={2} />
-                          </button>
-                          {index === assignThresholds.length - 1 ? (
-                            <button
-                              type="button"
-                              className="ghost image-activity-threshold-add"
-                              onClick={addAssignThreshold}
-                              aria-label="Add threshold"
-                            >
-                              <Plus size={15} strokeWidth={2.2} />
-                            </button>
-                          ) : <span className="image-activity-threshold-add-placeholder" aria-hidden="true" />}
-                        </div>
-                        {assignThresholdErrors[index] ? (
-                          <small className="image-activity-assign-error">{assignThresholdErrors[index]}</small>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="image-activity-assign-panel image-activity-assign-panel--targets">
-                  <div className="image-activity-assign-panel-head">
-                    <span className="image-activity-assign-panel-badge">Assigning To *</span>
-                  </div>
-                  <div className="image-activity-assign-targets">
-                    <div className="forms-select-wrap">
-                      <select
-                        value={assignYear}
-                        onChange={(event) => {
-                          const nextYear = event.target.value
-                          setAssignYear(nextYear)
-                          setAssignSgt(ASSIGN_SGT_OPTIONS[nextYear]?.[0] ?? '')
-                        }}
-                      >
-                        {ASSIGN_YEAR_OPTIONS.map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                    </div>
-                      <div className="forms-select-wrap">
-                        <select value={assignSgt} onChange={(event) => setAssignSgt(event.target.value)} disabled={!assignYear}>
-                          {!assignYear ? <option value="">Select Year first</option> : null}
-                          {assignSgtOptions.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                      </select>
-                    </div>
-                  </div>
-                  <label className="image-activity-assign-schedule-toggle">
-                    <input
-                      type="checkbox"
-                      checked={isAssignScheduleEnabled}
-                      onChange={(event) => {
-                        const isEnabled = event.target.checked
-                        setIsAssignScheduleEnabled(isEnabled)
-                        if (isEnabled) {
-                          setAssignSchedule((current) => ({
-                            ...current,
-                            date: current.date || ASSIGN_SERVER_TIME.date,
-                          }))
-                        }
-                      }}
-                    />
-                    <span>If you want schedule...</span>
-                  </label>
-                  {isAssignScheduleEnabled ? (
-                    <div className="image-activity-assign-schedule-row">
-                      <input
-                        type="date"
-                        min={ASSIGN_SERVER_TIME.date}
-                        value={assignSchedule.date}
-                        onChange={(event) => setAssignSchedule((current) => ({ ...current, date: event.target.value }))}
-                      />
-                      <input
-                        type="time"
-                        value={assignSchedule.time}
-                        onChange={(event) => setAssignSchedule((current) => ({ ...current, time: event.target.value }))}
-                      />
-                        <div className="forms-select-wrap">
-                          <select
-                            value={assignSchedule.meridiem}
-                            onChange={(event) => setAssignSchedule((current) => ({ ...current, meridiem: event.target.value }))}
-                          >
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                          </select>
-                        </div>
-                      </div>
-                  ) : null}
-                </section>
-              </div>
-              <div className="image-activity-assign-actions">
-                <button type="button" className="ghost" onClick={() => setIsReviewAssignPopupOpen(false)}>
-                  Close
-                </button>
-                <button type="button" className="tool-btn green" onClick={handleProceedAssign} disabled={!canProceedAssign}>
-                  Proceed
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>,
-        document.body,
-      ) : null}
+      {isReviewAssignPopupOpen && <ActivityAssignmentDialog
+          thresholds={assignThresholds} thresholdErrors={assignThresholdErrors} onThresholdChange={updateAssignThreshold} onAddThreshold={addAssignThreshold} onDeleteThreshold={deleteAssignThreshold}
+          content={assignContent} onContentChange={setAssignContent}
+          facultyOptions={[]}
+          studentOptions={imageStudentAssignOptions}
+          scheduleEnabled={isAssignScheduleEnabled} onScheduleEnabled={setIsAssignScheduleEnabled} schedule={assignSchedule} onScheduleChange={setAssignSchedule}
+          onClose={() => setIsReviewAssignPopupOpen(false)} onConfirm={handleProceedAssign}
+        />}
       {previewImage ? createPortal(
         <div className="image-activity-preview-modal" onClick={() => setPreviewImage(null)} aria-hidden="true">
           <div className="image-activity-preview-dialog" onClick={(event) => event.stopPropagation()}>

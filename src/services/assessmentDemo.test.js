@@ -12,9 +12,57 @@ class Store {
  removeItem(k){this.values.delete(k)}
 }
 const read=(s,k)=>JSON.parse(s.getItem(k))
+test('published fixtures cover all ten delivery combinations with usable questions and split timing',()=>{
+ const {data}=buildDemoPayload(now)
+ const combinations=new Set(data.published.map(row=>[
+  row.examMode,row.supervisionType,row.examType,row.setup.splitProctoredDuration?'split':'standard',
+ ].join('|')))
+ for(const mode of ['Proctored Exam','Practice Exam','Offline Exam']){
+  for(const kind of ['MCQ','Descriptive','Hybrid']){
+   const delivery=mode==='Offline Exam'?'Offline':'Online'
+   assert.ok(combinations.has(`${delivery}|${mode}|${kind}|standard`))
+  }
+ }
+ assert.ok(combinations.has('Online|Proctored Exam|Hybrid|split'))
+ for(const mode of ['Proctored Exam','Practice Exam']){
+  assert.ok(data.published.some(row=>row.supervisionType===mode && row.examType==='Descriptive'
+   && row.demoStage==='live' && row.setup.descriptiveDisplayType==='Answer Input'))
+ }
+ const split=data.published.find(row=>row.setup.splitProctoredDuration)
+ const minutes=value=>value.split(':').reduce((hours,part)=>hours*60+Number(part),0)
+ assert.equal(minutes(split.setup.mcqTimeLimit)+minutes(split.setup.descriptiveTimeLimit),minutes(split.totalDuration))
+ assert.equal(new Set(data.published.map(row=>row.id)).size,data.published.length)
+ for(const row of data.published){
+  assert.equal(row.questionCount,row.questionRows.length)
+  assert.ok(row.questionRows.every(q=>row.examType==='Hybrid'||(q.type==='MCQ')===(row.examType==='MCQ')))
+ }
+})
+test('version one upgrade adds missing combinations once without replacing existing work',()=>{
+ const local=new Store(),session=new Store()
+ installAssessmentDemo(local,session,{now})
+ const added=['proctored-descriptive','practice-descriptive','offline-mcq','offline-descriptive']
+ const rows=read(local,'vx-assessment-published').filter(row=>!added.includes(row.demoScenario))
+ rows[0].assessmentName='Keep my edited assessment'
+ local.setItem('vx-assessment-published',JSON.stringify(rows))
+ const marker={version:1,createdAt:now.toISOString()}
+ local.setItem(DEMO_MARKER,JSON.stringify(marker))
+ local.setItem('vx-online-practice-exam-attempts',JSON.stringify({real:{saved:true},[rows[0].id]:{MC2568:{answers:{q:1}}}}))
+ const before=JSON.stringify(rows)
+ installAssessmentDemo(local,session,{now:new Date(now.getTime()+86400000)})
+ const upgraded=read(local,'vx-assessment-published')
+ assert.equal(JSON.stringify(upgraded.slice(0,rows.length)),before)
+ assert.equal(upgraded.length,20)
+ assert.equal(read(local,'vx-online-practice-exam-attempts')[rows[0].id].MC2568.answers.q,1)
+ assert.equal(read(local,'vx-online-practice-exam-attempts').real.saved,true)
+ assert.deepEqual(read(local,DEMO_MARKER),{...marker,version:2})
+ // Deliberately deleted samples stay deleted on later reloads.
+ local.setItem('vx-assessment-published',JSON.stringify(upgraded.slice(0,-1)))
+ installAssessmentDemo(local,session,{now})
+ assert.equal(read(local,'vx-assessment-published').length,19)
+})
 test('fixtures cover tracker stages and connected published results',()=>{
  const {data,local}=buildDemoPayload(now)
- assert.equal(data.drafts.length,3);assert.equal(data.queue.length,4);assert.equal(data.published.length,16)
+ assert.equal(data.drafts.length,3);assert.equal(data.queue.length,4);assert.equal(data.published.length,20)
  for(const row of [...data.drafts,...data.queue,...data.published]){
   assert.equal(row.totalMarks,row.questionRows.reduce((n,q)=>n+q.marks,0))
   assert.equal(row.students.length,5)

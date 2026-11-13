@@ -4,6 +4,13 @@ import { demoQuestions, DEMO_STUDENTS } from './questions.js'
 const day = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
 const time = date => `${String(date.getHours()%12||12).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`
 const period = date => date.getHours()>=12?'PM':'AM'
+/** Additional combinations installed once into existing demo workspaces without resetting attempts. */
+export const DEMO_COMBINATION_ADDITIONS = [
+ ['proctored-descriptive','Live proctored: descriptive answers','live','Descriptive','Proctored Exam','manual'],
+ ['practice-descriptive','Live practice: descriptive answers','live','Descriptive','Practice Exam','manual'],
+ ['offline-mcq','Offline MCQ: attendance and marking','evaluation','MCQ','Offline Exam','offline'],
+ ['offline-descriptive','Offline descriptive: attendance and marking','evaluation','Descriptive','Offline Exam','offline'],
+]
 /** Scenario definitions are static; dates are anchored to first installation (or explicit refresh).
  * @typedef {Object} DemoAssessment
  * @property {string} id Stable demo-assessment-* ID shared by faculty/student views.
@@ -36,6 +43,7 @@ export const DEMO_SCENARIOS = [
  ['offline','Offline: attendance and marking','evaluation','Hybrid','Offline Exam','offline'],
  ['paused','Live proctored: invigilator lock','live','MCQ','Proctored Exam','paused'],
  ['locked','Live proctored: access request','live','MCQ','Proctored Exam','locked'],
+ ...DEMO_COMBINATION_ADDITIONS,
 ]
 /** Pure fixture factory; no storage or network side effects. @returns {{drafts:DemoAssessment[],queue:Object[],published:DemoAssessment[]}} */
 export function createAssessmentDemoData(now = new Date()) {
