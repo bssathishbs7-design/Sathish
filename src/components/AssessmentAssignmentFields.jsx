@@ -6,10 +6,10 @@ import { assessmentGroupKey, eligibleAssessmentStudents } from '../services/asse
 import './AssessmentAssignmentFields.css'
 
 /** Controlled cascading assignment scope. Student IDs are directory IDs, never labels.
- * @param {{value:{assignBatch:string,assignYear:string,assignGroups:string[],assignStudentIds:string[]},onChange:Function,onValidityChange:Function,disabled?:boolean,excludedStudentIds?:string[]}} props
+ * @param {{value:{assignBatch:string,assignYear:string,assignGroups:string[],assignStudentIds:string[]},onChange:Function,onValidityChange:Function,disabled?:boolean,excludedStudentIds?:string[],optionalFilters?:boolean}} props
  * Loading/errors remain local; the parent retains the selection when publication method changes.
  */
-export default function AssessmentAssignmentFields({ value, onChange, onValidityChange, disabled = false, excludedStudentIds = [] }) {
+export default function AssessmentAssignmentFields({ value, onChange, onValidityChange, disabled = false, excludedStudentIds = [], optionalFilters = false }) {
   const [directory, setDirectory] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -38,19 +38,21 @@ export default function AssessmentAssignmentFields({ value, onChange, onValidity
   const years = [...new Set(batchStudents.map(student => student.year))].sort((a, b) => YEARS.indexOf(a) - YEARS.indexOf(b))
   const yearStudents = batchStudents.filter(student => student.year === value.assignYear)
   const groups = [...new Set(yearStudents.map(student => assessmentGroupKey(student.section)).filter(Boolean))].sort()
-  const visibleStudents = yearStudents.filter(student => !excludedStudentIds.includes(student.id) && value.assignGroups.map(assessmentGroupKey).includes(assessmentGroupKey(student.section)))
+  const visibleStudents = yearStudents.filter(student => !excludedStudentIds.includes(student.id) && (optionalFilters && !value.assignGroups.length || value.assignGroups.map(assessmentGroupKey).includes(assessmentGroupKey(student.section))))
   const studentOptions = visibleStudents.map(student => ({ value: student.id, label: `${student.name} (${student.registrationId || student.id})` }))
-  const selectedCount = visibleStudents.filter(student => value.assignStudentIds.includes(student.id)).length
+  const selectedCount = optionalFilters && !value.assignStudentIds.length ? visibleStudents.length : visibleStudents.filter(student => value.assignStudentIds.includes(student.id)).length
   const valid = !loading && !error && batches.includes(value.assignBatch) && years.includes(value.assignYear)
-    && value.assignGroups.length > 0 && value.assignGroups.every(group => groups.includes(assessmentGroupKey(group)))
-    && value.assignStudentIds.length > 0 && selectedCount === value.assignStudentIds.length
+    && (optionalFilters || value.assignGroups.length > 0) && value.assignGroups.every(group => groups.includes(assessmentGroupKey(group)))
+    && (optionalFilters && !value.assignStudentIds.length ? visibleStudents.length > 0 : value.assignStudentIds.length > 0 && selectedCount === value.assignStudentIds.length)
   useEffect(() => { onValidityChange(Boolean(valid)) }, [valid, onValidityChange])
   const locked = disabled || loading || Boolean(error)
   const changeGroups = nextGroups => {
+    if (optionalFilters) { onChange({ ...value, assignGroups: nextGroups, assignStudentIds: [] }); return }
     const allowed = yearStudents.filter(student => !excludedStudentIds.includes(student.id) && nextGroups.map(assessmentGroupKey).includes(assessmentGroupKey(student.section))).map(student => student.id)
     onChange({ ...value, assignGroups: nextGroups, assignStudentIds: allowed })
   }
   const changeYear = assignYear => {
+    if (optionalFilters) { onChange({ ...value, assignYear, assignGroups: [], assignStudentIds: [] }); return }
     const students = batchStudents.filter(student => student.year === assignYear && !excludedStudentIds.includes(student.id) && assessmentGroupKey(student.section))
     onChange({ ...value, assignYear,
       assignGroups: [...new Set(students.map(student => 'SGT Group ' + assessmentGroupKey(student.section)))],
@@ -64,7 +66,7 @@ export default function AssessmentAssignmentFields({ value, onChange, onValidity
   const assignableYearCount = yearStudents.length - excludedCount
   const wholeYear = assignableYearCount > 0 && selectedCount === assignableYearCount
   const summary = !value.assignYear ? 'Choose a batch and year to select all eligible students.'
-    : !selectedCount ? 'No students selected. Choose students to continue.'
+    : !selectedCount ? optionalFilters ? 'No eligible students match this batch, year and SGT selection.' : 'No students selected. Choose students to continue.'
     : wholeYear ? 'All ' + selectedCount + ' eligible student' + (selectedCount === 1 ? '' : 's') + ' in ' + value.assignYear + ', Batch ' + value.assignBatch + '.'
     : selectedCount + ' of ' + assignableYearCount + ' eligible students selected in ' + value.assignYear + ', Batch ' + value.assignBatch + '.'
   return <div className="assessment-assignment-fields" aria-busy={loading}>
@@ -75,13 +77,14 @@ export default function AssessmentAssignmentFields({ value, onChange, onValidity
       <label>Year <em>*</em><span className="publication-select"><select required disabled={locked || !value.assignBatch} value={value.assignYear} onChange={event => changeYear(event.target.value)}>
         <option value="">{value.assignBatch ? years.length ? 'Select year' : 'No eligible years' : 'Select batch first'}</option>{years.map(year => <option key={year}>{year}</option>)}
       </select><ChevronDown size={16} aria-hidden="true" /></span></label>
-      <ManagementMultiSelect label={<>SGT <em>*</em></>} options={groups.map(group => ({ value: `SGT Group ${group}`, label: `SGT ${group}` }))}
+      <ManagementMultiSelect label={optionalFilters ? 'SGT (optional)' : <>SGT <em>*</em></>} options={groups.map(group => ({ value: `SGT Group ${group}`, label: `SGT ${group}` }))}
         value={value.assignGroups} onChange={changeGroups} disabled={locked || !value.assignYear}
-        placeholder={value.assignYear ? 'Select SGT groups' : 'Select year first'} searchLabel="Search SGT groups" emptyLabel="No eligible SGT groups." allLabel="All SGT groups" allowSelectAll compact floating />
-      <ManagementMultiSelect label={<>Student <em>*</em></>} options={studentOptions} value={value.assignStudentIds}
-        onChange={assignStudentIds => onChange({ ...value, assignStudentIds })} disabled={locked || !value.assignGroups.length}
-        placeholder={value.assignGroups.length ? 'Select students' : 'Select SGT groups first'} searchLabel="Search students" emptyLabel="No eligible students." allLabel="All students" allowSelectAll compact floating />
+        placeholder={value.assignYear ? optionalFilters ? 'All SGT groups' : 'Select SGT groups' : 'Select year first'} searchLabel="Search SGT groups" emptyLabel="No eligible SGT groups." allLabel="All SGT groups" allowSelectAll compact floating />
+      <ManagementMultiSelect label={optionalFilters ? 'Student (optional)' : <>Student <em>*</em></>} options={studentOptions} value={value.assignStudentIds}
+        onChange={assignStudentIds => onChange({ ...value, assignStudentIds })} disabled={locked || !value.assignYear || !optionalFilters && !value.assignGroups.length}
+        placeholder={optionalFilters ? value.assignYear ? 'All eligible students' : 'Select year first' : value.assignGroups.length ? 'Select students' : 'Select SGT groups first'} searchLabel="Search students" emptyLabel="No eligible students." allLabel="All students" allowSelectAll compact floating />
     </div>
+    {optionalFilters && <p className="assessment-assignment-status">Leave SGT and Student blank to assign all eligible students in the selected batch and year.</p>}
     {excludedCount > 0 && <p className="assessment-assignment-status">{excludedCount} read-only subject logbook{excludedCount === 1 ? ' is' : 's are'} excluded.</p>}
     {error ? <div className="assessment-assignment-error" role="alert"><span>{error}</span><button type="button" disabled={disabled} onClick={retry}>Retry</button></div>
       : <p className="assessment-assignment-status" role="status">{loading ? 'Loading student directory...' : summary}</p>}

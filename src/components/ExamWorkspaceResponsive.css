@@ -1,0 +1,81 @@
+/* Compact touch layouts shared by practice and proctored exams. */
+@media (max-width: 1023px) {
+  #exam-workspace .exam-workspace-header-metrics { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr); gap: var(--s-2); }
+  #exam-workspace .exam-workspace-chip { justify-content: center; min-width: 0; }
+  #exam-workspace .exam-workspace-section-bar { gap: var(--s-2); margin-bottom: var(--s-2); }
+  #exam-workspace .online-practice-exam-layout { gap: var(--s-2); }
+  #exam-workspace .online-practice-current-question h2 { text-align: left; text-justify: auto; }
+  #exam-workspace .online-practice-descriptive-sub > b { grid-column: 3; }
+  #exam-workspace .exam-workspace-footer { grid-template-columns: auto minmax(0,1fr) auto; gap: var(--s-2); padding: var(--s-2) var(--s-3) calc(var(--s-2) + env(safe-area-inset-bottom)); }
+  #exam-workspace .exam-workspace-paging { gap: var(--s-2); }
+  #exam-workspace .exam-workspace-paging > span { gap: var(--s-1); margin: 0; font-size: var(--fs-micro); }
+  #exam-workspace .exam-workspace-submit { grid-column: auto; justify-self: end; }
+  #exam-workspace .exam-workspace-footer button { padding-inline: var(--s-2); font-size: var(--fs-micro); }
+  #exam-workspace .exam-workspace-mobile-navigator button { min-height: 44px; }
+  #exam-workspace .descriptive-editor-content { font-size: var(--font-size-body); }
+}
+@media (max-width: 767px) {
+  #exam-workspace .exam-workspace-header { gap: var(--s-2); }
+  #exam-workspace .exam-workspace-identity { flex: 1 1 0; }
+  #exam-workspace .exam-workspace-identity h1 { font-size: var(--font-size-small); line-height: 1.4; }
+  #exam-workspace .exam-workspace-header-actions { gap: var(--s-1); }
+  #exam-workspace .exam-workspace-header-actions button { padding-inline: var(--s-2); }
+  #exam-workspace .exam-workspace-header-metrics { grid-template-columns: minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr); }
+  #exam-workspace .exam-workspace-chip { display: grid; grid-template-columns: auto auto; align-content: center; justify-content: center; column-gap: var(--s-1); row-gap: 0; }
+  #exam-workspace .exam-workspace-chip svg { grid-row: 1 / 3; }
+  #exam-workspace .exam-workspace-chip > span { font-size: var(--fs-micro); line-height: 1.3; }
+  #exam-workspace .exam-workspace-chip strong { grid-column: 2; font-size: var(--fs-micro); line-height: 1.4; }
+  #exam-workspace .exam-workspace-chip.is-duration strong { font-size: var(--font-size-small); }
+  #exam-workspace .online-practice-descriptive-paper-question { padding: var(--s-3); }
+  #exam-workspace .online-practice-descriptive-sub > b { grid-column: 2; }
+  #exam-workspace .online-practice-question-head.is-section-title,
+  #exam-workspace .online-practice-descriptive-section-head { padding: var(--s-2) var(--s-3); }
+  #exam-workspace .online-practice-current-question { display: grid; grid-template-columns: auto minmax(0,1fr); gap: var(--s-2); }
+  #exam-workspace .online-practice-current-question h2 { font-size: var(--font-size-small); }
+  #exam-workspace .exam-workspace-question-mark { grid-column: 2; justify-self: start; margin: 0; }
+  #exam-workspace .online-practice-option { padding: var(--s-3); }
+  #exam-workspace .exam-workspace-footer { grid-template-columns: minmax(0,1fr) auto auto; gap: var(--s-2); }
+  #exam-workspace .exam-workspace-paging { display: contents; }
+  #exam-workspace .exam-workspace-paging > span { grid-column: 1; grid-row: 1; display: flex; flex-wrap: nowrap; justify-content: flex-start; font-size: var(--fs-micro); white-space: nowrap; }
+  #exam-workspace .exam-workspace-paging > span small { font-size: var(--fs-micro); }
+  #exam-workspace .exam-workspace-previous { grid-column: 2; grid-row: 1; }
+  #exam-workspace .exam-workspace-next { grid-column: 3; grid-row: 1; }
+  #exam-workspace .exam-workspace-flag { grid-column: 1 / 3; grid-row: 2; justify-self: start; }
+  #exam-workspace .exam-workspace-submit { grid-column: 2 / 4; grid-row: 2; justify-self: end; padding: 0; }
+  #exam-workspace .exam-workspace-footer button { gap: var(--s-1); padding-inline: var(--s-2); }
+  #exam-workspace .exam-workspace-footer svg { width: 14px; height: 14px; }
+}
+@media (max-width: 359px) {
+  #exam-workspace .exam-workspace-paging > span { gap: var(--s-1); flex-direction: column; align-items: flex-start; }
+  #exam-workspace .exam-workspace-header-actions button:last-child:not([aria-label]) { padding-inline: var(--s-1); }
+}
+
+/* Portalled question navigator uses the same tokens without relying on the page ID. */
+.save-changes-dialog.exam-workspace-drawer { width: min(calc(100% - var(--s-5)),520px); max-height: calc(100dvh - var(--s-5)); padding: var(--s-4); border-radius: var(--r); }
+.exam-workspace-drawer h2 { margin: 0 var(--s-6) var(--s-1) 0; font-size: var(--font-size-h4); }
+.exam-workspace-drawer > p { margin: 0 var(--s-6) var(--s-3) 0; font-size: var(--font-size-small); color: var(--text-muted); }
+.exam-workspace-drawer .save-changes-close { position: absolute; right: var(--s-3); top: var(--s-3); display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-body); cursor: pointer; }
+.exam-workspace-drawer .save-changes-close:hover { background: var(--surface-soft); }
+.exam-workspace-drawer .save-changes-close:active { transform: translateY(1px) scale(.97); }
+.exam-workspace-drawer .save-changes-close:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.exam-workspace-drawer .descriptive-section-scroll { max-height: none; overflow: visible; }
+.exam-workspace-drawer .descriptive-question-navigator { gap: var(--s-2); }
+.exam-workspace-drawer .descriptive-nav-progress { float: none; display: block; }
+.exam-workspace-drawer .descriptive-view-switch button { min-height: 44px; font-size: var(--fs-micro); }
+.exam-workspace-drawer .online-practice-number-nav { grid-template-columns: repeat(5,minmax(0,1fr)); }
+.exam-workspace-drawer .online-practice-number-nav button { min-height: 44px; }
+.exam-workspace-drawer .online-practice-number-nav button.is-answered { background: var(--forest); color: var(--on-brand); }
+.exam-workspace-drawer .online-practice-number-nav button.is-viewed { background: var(--surface-soft); }
+.exam-workspace-drawer .online-practice-number-nav button.is-try-later { border-style: dashed; background: var(--surface-mist); }
+.exam-workspace-drawer .online-practice-number-nav button[aria-current] { outline: 2px solid var(--forest); outline-offset: 2px; }
+.exam-workspace-drawer .exam-workspace-status-counts { gap: var(--s-1); margin-top: var(--s-2); padding-top: var(--s-2); }
+.exam-workspace-drawer .save-changes-actions { margin-top: var(--s-3); }
+@media (max-width:767px) {
+  #exam-workspace .online-practice-submit-modal { max-height: calc(100dvh - var(--s-5)); overflow-y: auto; padding: var(--s-4); }
+  #exam-workspace .online-practice-submit-summary strong { white-space: normal; text-overflow: clip; overflow: visible; overflow-wrap: anywhere; }
+  #exam-workspace .online-practice-submit-actions { display: grid; grid-template-columns: minmax(0,1fr); gap: var(--s-2); }
+  #exam-workspace .online-practice-submit-actions button { width: 100%; min-height: 44px; white-space: nowrap; }
+  .exam-information-dialog .exam-information-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .exam-information-dialog .save-changes-close { width: 44px; height: 44px; }
+  .exam-information-dialog .save-changes-actions button { min-height: 44px; }
+}

@@ -27,18 +27,19 @@ export function eligibleAssessmentStudents(directory, scope = {}) {
  * @param {{assignBatch?:string,assignYear:string,assignGroup?:string,assignGroups?:string[],assignStudentIds?:string[]}} setup
  * assignStudentIds contains stable directory student IDs, not registration/display names.
  * @param {()=>Promise<{students:Array}>} [loadDirectory] Student directory adapter.
+ * @param {{optionalFilters?:boolean}} [options] Empty publication filters include all eligible batch/year students.
  * @returns {Promise<Array<{id:string,name:string,sourceStudentId:string,registrationId:string}>>}
  */
-export async function resolveAssessmentAssignment(setup, loadDirectory) {
+export async function resolveAssessmentAssignment(setup, loadDirectory, { optionalFilters = false } = {}) {
   if (!setup.assignYear) throw new Error('Select a student year.')
   const explicit = Object.hasOwn(setup, 'assignStudentIds')
   const groups = (Array.isArray(setup.assignGroups) ? setup.assignGroups : String(setup.assignGroup || '').split(',')).map(assessmentGroupKey).filter(Boolean)
-  if (explicit && !setup.assignBatch) throw new Error('Select a batch.')
-  if (explicit && !groups.length) throw new Error('Select at least one SGT group.')
-  if (explicit && (!Array.isArray(setup.assignStudentIds) || !setup.assignStudentIds.length)) throw new Error('Select at least one student.')
+  if ((explicit || optionalFilters) && !setup.assignBatch) throw new Error('Select a batch.')
+  if (explicit && !optionalFilters && !groups.length) throw new Error('Select at least one SGT group.')
+  if (explicit && (!Array.isArray(setup.assignStudentIds) || !optionalFilters && !setup.assignStudentIds.length)) throw new Error('Select at least one student.')
   const directory = await (loadDirectory || getStudentDirectory)()
   const eligible = eligibleAssessmentStudents(directory, { assignBatch: setup.assignBatch, assignYear: setup.assignYear, assignGroups: groups })
-  const selected = explicit ? new Set(setup.assignStudentIds) : null
+  const selected = explicit && (!optionalFilters || setup.assignStudentIds.length) ? new Set(setup.assignStudentIds) : null
   if (selected && (selected.size !== setup.assignStudentIds.length || [...selected].some(id => eligible.filter(student => student.id === id).length !== 1))) {
     throw new Error('Selected students have changed or no longer match this batch, year and SGT. Refresh the selection and try again.')
   }

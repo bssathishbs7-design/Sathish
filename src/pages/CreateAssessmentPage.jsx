@@ -8413,7 +8413,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
           const errors = validateSetupDraft(draft)
           if (!assignYear) errors.assignYear = 'Select year.'
           if (Object.keys(errors).length) { setSetupErrors(errors); return false }
-          draft.students = await resolveAssessmentAssignment(draft)
+          draft.students = await resolveAssessmentAssignment(draft, undefined, { optionalFilters: true })
           const success = action === 'Direct Publish'
             ? publishAssessmentDirectly(draft)
             : await sendAssessmentToApproval(draft, reviewer)

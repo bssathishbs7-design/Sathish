@@ -34,7 +34,7 @@ export default function AssessmentPublicationDialog({ action, name, theme, year,
   const assignmentValid = combined ? cascadeValid : Boolean(assignYear && assignGroups.every(value => availableGroups.includes(value)))
   const confirm = async () => {
     if (locked.current) return
-    if (combined && !cascadeValid) { setError('Select a batch, year, SGT group and at least one student.'); return }
+    if (combined && !cascadeValid) { setError('Select a batch and year with eligible students.'); return }
     if (!combined && needsAssignment && !assignYear) { setYearError(true); yearRef.current?.focus(); return }
     if (!combined && needsAssignment && !assignGroups.every(value => availableGroups.includes(value))) { setGroupError(true); return }
     if (!assigning && !reviewer) { setError('Select a faculty member.'); reviewerRef.current?.focus(); return }
@@ -57,7 +57,7 @@ export default function AssessmentPublicationDialog({ action, name, theme, year,
     busyLabel={<><LoaderCircle size={15} className="publication-spinner" aria-hidden="true" />{assigning ? 'Publishing…' : 'Sending…'}</>}>
     <button type="button" className="publication-dialog-close" disabled={busy} onClick={onCancel} aria-label="Close"><X size={18} /></button>
     <fieldset disabled={busy} className="publication-dialog-fields">
-      {combined && <AssessmentAssignmentFields value={assignment} onChange={setAssignment} onValidityChange={setCascadeValid} disabled={busy} />}
+      {combined && <AssessmentAssignmentFields optionalFilters value={assignment} onChange={setAssignment} onValidityChange={setCascadeValid} disabled={busy} />}
       {!combined && needsAssignment && <div className="publication-dialog-grid">
         <label>{combined ? 'Assign to year' : assigning ? 'Student Year' : 'Assign to Year'} <em>*</em>
           <span className="publication-select"><select ref={yearRef} required value={assignYear} aria-invalid={yearError} aria-describedby={yearError ? 'publication-year-error' : undefined} onChange={event => { setYear(event.target.value); setYearError(false); setGroups([]); setGroupError(false) }}>

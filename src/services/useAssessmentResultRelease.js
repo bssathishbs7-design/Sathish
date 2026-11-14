@@ -1,3 +1,4 @@
+import { getAssessmentStudentId } from './assessmentStudentIdentity'
 import { useEffect, useRef } from 'react'
 import { reconcileAssessmentResults, RESULT_RELEASE_EVENT } from './assessmentResultRelease'
 
@@ -16,8 +17,8 @@ export default function useAssessmentResultRelease(onReady) {
           const after = JSON.parse(localStorage.getItem('vx-assessment-published') || '[]')
           // Current student identity matches the existing exam and student portal adapters.
           for (const assessment of after) {
-            const result = assessment.studentResults?.MC2568
-            const previous = before.find(row => row.id === assessment.id)?.studentResults?.MC2568
+            const result = assessment.studentResults?.[getAssessmentStudentId()]
+            const previous = before.find(row => row.id === assessment.id)?.studentResults?.[getAssessmentStudentId()]
             if (result?.status === 'published' && previous?.status !== 'published') notify.current?.(`${assessment.assessmentName || 'Assessment'}: your result is ready.`)
           }
         }

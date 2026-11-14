@@ -5,9 +5,11 @@ import { useCallback, useEffect, useState } from 'react'
  */
 export default function useExamAttemptPersistence(writer, assessment, snapshot) {
   const [attemptSaveError, setAttemptSaveError] = useState('')
+  const [hasSaved, setHasSaved] = useState(false)
   const saveAttempt = useCallback((overrides = {}) => {
     if (!assessment) return false
     const saved = writer(assessment, { ...snapshot, ...overrides })
+    setHasSaved(Boolean(saved))
     setAttemptSaveError(saved ? '' : 'Your latest answers could not be saved. Keep this page open and retry before leaving.')
     return saved
   }, [assessment, snapshot, writer])
@@ -16,5 +18,5 @@ export default function useExamAttemptPersistence(writer, assessment, snapshot) 
     queueMicrotask(() => { if (active && assessment) saveAttempt() })
     return () => { active = false }
   }, [assessment, saveAttempt])
-  return { attemptSaveError, saveAttempt }
+  return { attemptSaveError, saveAttempt, hasSaved }
 }

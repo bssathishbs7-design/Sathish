@@ -1,3 +1,5 @@
+import { ExamWorkspaceHeader, ExamWorkspaceSummary, ExamSaveStatus, ExamQuestionStatusLegend, ExamWorkspaceSections, ExamWorkspaceFooter, ExamWorkspaceNavigator } from '../components/ExamWorkspaceChrome'
+import { getAssessmentStudentId } from '../services/assessmentStudentIdentity'
 import DescriptiveQuestionNavigator from '../components/DescriptiveQuestionNavigator'
 import DescriptiveAnswerEditor from '../components/DescriptiveAnswerEditor'
 import useExamAttemptPersistence from '../services/useExamAttemptPersistence'
@@ -25,7 +27,7 @@ const STUDENT_EXAM_RESET_KEY = 'vx-student-exam-reset-state'
 const STUDENT_EXAM_RESET_EVENT = 'vx-student-exam-reset-changed'
 const ONLINE_PRACTICE_ATTEMPT_STORAGE_KEY = 'vx-online-practice-exam-attempts'
 const ASSESSMENT_PUBLISHED_CHANGED_EVENT = 'vx-assessment-published-changed'
-const CURRENT_STUDENT_ID = 'MC2568'
+
 const PREVIEW_SECTION_CONFIG = [
   { key: 'MCQ', defaultTitle: 'Multiple Choice Question' },
   { key: 'SAQs', defaultTitle: 'Short Answer Questions' },
@@ -47,7 +49,7 @@ const getAssessmentId = (assessment) => (
   assessment?.id || assessment?.assessmentId || assessment?.setup?.assessmentId || 'selected-assessment'
 )
 
-const readStudentTimeExtension = (assessment, studentId = CURRENT_STUDENT_ID) => {
+const readStudentTimeExtension = (assessment, studentId = getAssessmentStudentId()) => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_TIME_EXTENSIONS_KEY) || 'null')
     const assessmentExtensions = parsed?.[getAssessmentId(assessment)]
@@ -58,7 +60,7 @@ const readStudentTimeExtension = (assessment, studentId = CURRENT_STUDENT_ID) =>
   }
 }
 
-const readStudentExamReset = (assessment, studentId = CURRENT_STUDENT_ID) => {
+const readStudentExamReset = (assessment, studentId = getAssessmentStudentId()) => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_RESET_KEY) || 'null')
     const reset = parsed?.[getAssessmentId(assessment)]?.[studentId]
@@ -68,7 +70,7 @@ const readStudentExamReset = (assessment, studentId = CURRENT_STUDENT_ID) => {
   }
 }
 
-const readStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => {
+const readStoredAttempt = (assessment, studentId = getAssessmentStudentId()) => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(ONLINE_PRACTICE_ATTEMPT_STORAGE_KEY) || 'null')
     const attempt = parsed?.[getAssessmentId(assessment)]?.[studentId]
@@ -78,7 +80,7 @@ const readStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => {
   }
 }
 
-const getInitialStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => {
+const getInitialStoredAttempt = (assessment, studentId = getAssessmentStudentId()) => {
   const attempt = readStoredAttempt(assessment, studentId)
   const reset = readStudentExamReset(assessment, studentId)
   if (!reset?.version) return attempt
@@ -95,9 +97,9 @@ const getInitialStoredAttempt = (assessment, studentId = CURRENT_STUDENT_ID) => 
   }
 }
 
-const writeStoredAttempt = (assessment, attempt, studentId = CURRENT_STUDENT_ID) => persistAssessmentAttempt(ONLINE_PRACTICE_ATTEMPT_STORAGE_KEY, getAssessmentId(assessment), studentId, attempt)
+const writeStoredAttempt = (assessment, attempt, studentId = getAssessmentStudentId()) => persistAssessmentAttempt(ONLINE_PRACTICE_ATTEMPT_STORAGE_KEY, getAssessmentId(assessment), studentId, attempt)
 
-const writeStudentSubmissionStatus = (assessment, status, studentId = CURRENT_STUDENT_ID) => {
+const writeStudentSubmissionStatus = (assessment, status, studentId = getAssessmentStudentId()) => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_SUBMISSION_STATUS_KEY) || 'null')
     const statuses = parsed && typeof parsed === 'object' ? parsed : {}
@@ -123,7 +125,7 @@ const writeStudentSubmissionStatus = (assessment, status, studentId = CURRENT_ST
   }
 }
 
-const writeStudentExamSession = (assessment, loginTime, studentId = CURRENT_STUDENT_ID) => {
+const writeStudentExamSession = (assessment, loginTime, studentId = getAssessmentStudentId()) => {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(STUDENT_EXAM_SESSION_KEY) || 'null')
     const sessions = parsed && typeof parsed === 'object' ? parsed : {}
@@ -518,7 +520,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     isMcqSubmitted,
     mcqQuestionStatuses,
   ])
-  const { saveAttempt, attemptSaveError } = useExamAttemptPersistence(writeStoredAttempt, assessment, attemptSnapshot)
+  const { saveAttempt, attemptSaveError, hasSaved } = useExamAttemptPersistence(writeStoredAttempt, assessment, attemptSnapshot)
 
   const questionRows = useMemo(
     () => (Array.isArray(assessment?.questionRows) ? assessment.questionRows : []),
@@ -589,13 +591,16 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }, [descriptiveGroups, hasMcqSection, questionRows, setup])
   const attendedMcqCount = useMemo(() => (
     mcqQuestions.filter((question, index) => (
-      mcqQuestionStatuses[getMcqQuestionKey(question, index)] === 'answered'
+      Number.isInteger(answers[getMcqQuestionKey(question, index)])
     )).length
-  ), [mcqQuestionStatuses, mcqQuestions])
+  ), [answers, mcqQuestions])
   const mcqAllowsAnswerInput = isAnswerInputMode(setup.mcqDisplayType || assessment?.mcqDisplayType || 'Answer Input')
   const descriptiveAllowsAnswerInput = isAnswerInputMode(setup.descriptiveDisplayType || assessment?.descriptiveDisplayType || 'Read-Only')
   const descriptiveAnswerCounts = descriptiveProgress(descriptiveQuestions, descriptiveAnswers)
-  const descriptiveAnswerSummary = descriptiveAllowsAnswerInput ? `${descriptiveAnswerCounts.answered} answered, ${descriptiveAnswerCounts.partial} partially answered, ${descriptiveAnswerCounts.unanswered} unanswered` : null
+  const mcqFlaggedCount = mcqQuestions.filter((question, index) => mcqQuestionStatuses[getMcqQuestionKey(question, index)] === 'try-later').length
+  const descriptiveFlaggedCount = descriptiveQuestions.filter((question, index) => descriptiveNavigationStatuses[question.id ?? index] === 'try-later').length
+  const mcqAnswerSummary = mcqAllowsAnswerInput ? `${attendedMcqCount} answered, ${mcqQuestions.length - attendedMcqCount} unanswered, ${mcqFlaggedCount} marked for review` : 'Read-only section'
+  const descriptiveAnswerSummary = descriptiveAllowsAnswerInput ? `${descriptiveAnswerCounts.answered} answered, ${descriptiveAnswerCounts.partial} partially answered, ${descriptiveAnswerCounts.unanswered} unanswered, ${descriptiveFlaggedCount} marked for review` : null
   const isMcqLocked = isMcqSubmitted || isAssessmentSubmitted
   const isDescriptiveLocked = isDescriptiveSubmitted || isAssessmentSubmitted
   const hasPendingMcq = hasMcqSection && !isMcqSubmitted
@@ -657,7 +662,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
       success: `${assessment?.name || 'Assessment'} has been completed successfully.`,
       questions: questionRows.length,
       marks: assessment?.totalMarks ?? (mcqTotalMarks + descriptiveTotalMarks),
-      answered: descriptiveAnswerSummary,
+      answered: [hasMcqSection && `MCQ: ${mcqAnswerSummary}`, hasDescriptiveSection && `Descriptive: ${descriptiveAnswerSummary || 'Read-only section'}`].filter(Boolean).join('; '),
     }
     : submitModal?.section === 'descriptive'
       ? {
@@ -674,7 +679,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
         success: 'MCQ section submitted successfully.',
         questions: mcqQuestions.length,
         marks: mcqTotalMarks,
-        answered: `${attendedMcqCount} / ${mcqQuestions.length} answered`,
+        answered: mcqAnswerSummary,
       }
 
   const switchSection = (section) => {
@@ -702,13 +707,13 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     if (!mcqAllowsAnswerInput || isMcqLocked) return
     const key = getMcqQuestionKey(question, index)
     setAnswers((current) => ({ ...current, [key]: optionIndex }))
-    setMcqQuestionStatuses((current) => ({ ...current, [key]: 'answered' }))
+    setMcqQuestionStatuses((current) => ({ ...current, [key]: current[key] === 'try-later' ? 'try-later' : 'answered' }))
   }
 
   const markTryLater = () => {
     if (!currentQuestion || !mcqAllowsAnswerInput || isMcqLocked) return
-    setMcqStatus(currentQuestion, activeQuestionIndex, 'try-later')
-    setActiveQuestionIndex((current) => Math.min(mcqQuestions.length - 1, current + 1))
+    const key = getMcqQuestionKey(currentQuestion, activeQuestionIndex)
+    setMcqStatus(currentQuestion, activeQuestionIndex, mcqQuestionStatuses[key] === 'try-later' ? Number.isInteger(answers[key]) ? 'answered' : 'viewed' : 'try-later')
   }
 
   const updateDescriptiveAnswer = (key, value) => {
@@ -759,6 +764,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     const completedAssessment = {
       ...assessment,
       status: 'completed',
+      studentId: getAssessmentStudentId(),
       completedAt: new Date().toISOString(),
     }
 
@@ -779,7 +785,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
           && item?.startDate === assessment?.startDate
           && item?.startTime === assessment?.startTime
 
-        return sameId || sameAssessment ? { ...item, status: 'completed', completedAt: completedAssessment.completedAt } : item
+        return sameId || sameAssessment ? { ...item, studentCompletions: { ...item.studentCompletions, [getAssessmentStudentId()]: completedAssessment.completedAt } } : item
       })
 
       window.localStorage.setItem(ASSESSMENT_PUBLISHED_STORAGE_KEY, JSON.stringify(updatedAssessments))
@@ -858,7 +864,6 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
     requestAnimationFrame(() => document.getElementById('practice-description-' + index)?.scrollIntoView({block:'start', behavior:'instant'}))
   }
 
-
   useEffect(() => {
     const timerId = window.setInterval(() => {
       setTimerNow(Date.now())
@@ -866,7 +871,6 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
     return () => window.clearInterval(timerId)
   }, [])
-
 
   useEffect(() => {
     const applyReset = () => {
@@ -989,6 +993,14 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
       animationFrameId = 0
       const header = document.querySelector('.online-practice-header')
       const activationLine = (header?.getBoundingClientRect().height ?? 84) + 90
+      if (descriptiveView === 'all' && !document.querySelector('dialog[open]')) {
+        const visibleQuestions = [...document.querySelectorAll('.online-practice-descriptive-paper-question')].filter(element => element.getClientRects().length)
+        const candidate = visibleQuestions.find(element => element.getBoundingClientRect().bottom > activationLine)
+        if (candidate) {
+          const index = Number(candidate.id.replace('practice-description-', ''))
+          if (Number.isInteger(index)) setDescriptiveIndex(current => current === index ? current : index)
+        }
+      }
       const sectionPositions = descriptiveGroups
         .map((group) => {
           const element = document.getElementById(getDescriptiveSectionDomId(group.key))
@@ -1030,7 +1042,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
       document.removeEventListener('scroll', handleScroll, { capture: true })
       if (animationFrameId) window.cancelAnimationFrame(animationFrameId)
     }
-  }, [activeSection, descriptiveGroups])
+  }, [activeSection, descriptiveGroups, descriptiveView])
 
   useEffect(() => {
     if (submitModal?.phase !== 'success') return undefined
@@ -1128,43 +1140,10 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
   }
 
   return (
-    <main className={`online-practice-exam-page practice-exam-theme logbook-scope is-practice-exam ${hasStarted ? 'has-fixed-header' : 'is-before-start'}`}>
-      {hasStarted ? (
-        <header className="online-practice-header start-practice-title-bar">
-          {headerLogo ? (
-            <img src={headerLogo} alt={setup.logoName || 'Assessment logo'} className="online-practice-logo-image" />
-          ) : (
-            <span className="online-practice-logo-mark" aria-hidden="true">
-              <ListChecks size={20} strokeWidth={2.3} />
-            </span>
-          )}
-          <div className="online-practice-header-title">
-            <h1>{assessment.assessmentName || 'Practice Assessment'}</h1>
-            <p>{setup.collegeName || assessment.collegeName || 'College not selected'}</p>
-            <small>
-              {[assessment.examCategory, setup.academicYear, assessment.assignTo, assessment.supervisionType || 'Practice Exam']
-                .filter(Boolean)
-                .join(' / ')}
-            </small>
-          </div>
-          <div className="online-practice-header-chips" aria-label="Assessment configuration summary">
-            {headerChips.map((chip) => (
-              <span key={chip.tone} className={`is-${chip.tone} ${chip.isCritical ? 'is-critical' : ''}`.trim()}>
-                <em>{chip.label}</em>
-                <strong>{chip.value}</strong>
-              </span>
-            ))}
-          </div>
-          <div className="online-practice-header-actions">
-            <button type="button" className="online-practice-theme-btn" onClick={onToggleTheme} aria-label="Toggle theme">
-              <ThemeIcon size={16} strokeWidth={2.2} />
-            </button>
-            <button type="button" className="online-practice-exit-btn" onClick={requestExit}>
-              Exit
-            </button>
-          </div>
-        </header>
-      ) : null}
+    <main id={hasStarted ? 'exam-workspace' : undefined} className={`online-practice-exam-page practice-exam-theme logbook-scope is-practice-exam ${hasStarted ? 'has-fixed-header' : 'is-before-start'}`}>
+      {hasStarted && <ExamWorkspaceHeader assessment={assessment} setup={setup} logo={headerLogo}
+        chips={headerChips} theme={theme} onToggleTheme={onToggleTheme}
+        onExit={requestExit}  />}
 
       {!hasStarted ? (
         <section className="online-practice-start-card">
@@ -1253,11 +1232,15 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
       ) : (
         <section className="online-practice-workspace">
           <ExamSaveError error={attemptSaveError} onRetry={() => { saveAttempt(); setTimerNow(Date.now()) }} />
+          <ExamWorkspaceSections active={activeSection} onSelect={switchSection} sections={[
+            ...(hasMcqSection ? [{ id: 'mcq', label: 'MCQ', count: mcqQuestions.length, complete: isMcqSubmitted, disabled: hasPendingImages || isMcqSubmitted }] : []),
+            ...(hasDescriptiveSection ? [{ id: 'descriptive', label: 'Descriptive', count: descriptiveQuestions.length, complete: isDescriptiveSubmitted, disabled: hasPendingImages || isDescriptiveSubmitted }] : []),
+          ]}><ExamSaveStatus saved={hasSaved} error={attemptSaveError} uploading={hasPendingImages} /></ExamWorkspaceSections>
           <div className="online-practice-exam-layout">
             <div className="online-practice-exam-main start-practice-answer-main">
               {activeSection === 'mcq' && hasMcqSection ? (
                 <div className="online-practice-question-head is-section-title type-mcq">
-                  <h2><span>{mcqSectionRoman}</span>{mcqSectionTitle}</h2>
+                  <h2><ListChecks size={17} aria-hidden="true" /><span>{mcqSectionRoman}</span>{mcqSectionTitle}</h2>
                   <strong>{String(mcqTotalMarks).padStart(2, '0')} Marks</strong>
                 </div>
               ) : null}
@@ -1273,7 +1256,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                           key={group.title}
                         >
                           <div className="online-practice-descriptive-section-head start-practice-answer-group-head">
-                            <h2><span>{group.roman}</span>{group.title}</h2>
+                            <h2><FileText size={17} aria-hidden="true" /><span>{group.roman}</span>{group.title}</h2>
                             <strong><span className="exam-mark-value">{String(group.totalMarks).padStart(2, '0')}</span> Marks</strong>
                           </div>
                           <div className="online-practice-descriptive-list">
@@ -1401,6 +1384,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                     <div className="online-practice-current-question">
                       <strong className="online-practice-current-question-number">{currentQuestionDisplayNumber}.</strong>
                       <h2>{getQuestionText(currentQuestion)}</h2>
+                      <span className="exam-workspace-question-mark">{parseMarksValue(currentQuestion.marks)} {parseMarksValue(currentQuestion.marks) === 1 ? 'mark' : 'marks'}</span>
                     </div>
                     {renderQuestionImages(currentQuestion.images, 'is-mcq', openImagePreview)}
 
@@ -1414,7 +1398,8 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                           <button
                             type="button"
                             key={optionKey}
-                            className={isSelected ? 'is-selected' : ''}
+                            aria-pressed={isSelected}
+                            className={`online-practice-option ${isSelected ? 'is-selected' : ''}`}
                             disabled={!mcqAllowsAnswerInput || isMcqLocked}
                             onClick={() => selectMcqOption(currentQuestion, activeQuestionIndex, optionIndex)}
                           >
@@ -1432,56 +1417,20 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                 )}
               </article>
 
-              {activeSection === 'descriptive' && descriptiveOrder.length > 0 && <footer className="online-practice-question-nav descriptive-question-pager"><button type="button" disabled={hasPendingImages || isDescriptiveLocked} onClick={()=>{const key=selectedDescriptive.id ?? descriptiveQuestions.indexOf(selectedDescriptive);setDescriptiveNavigationStatuses(current=>({...current,[key]:current[key]==='try-later'?'viewed':'try-later'}))}}>{descriptiveNavigationStatuses[selectedDescriptive.id ?? descriptiveQuestions.indexOf(selectedDescriptive)]==='try-later'?'Clear Try Later':'Try Later'}</button><button type="button" disabled={descriptiveIndex <= 0 || hasPendingImages} onClick={()=>selectDescriptiveQuestion(descriptiveIndex-1)}>Previous</button><span>Question {descriptiveIndex+1} of {descriptiveOrder.length}</span><button type="button" disabled={descriptiveIndex >= descriptiveOrder.length-1 || hasPendingImages} onClick={()=>selectDescriptiveQuestion(descriptiveIndex+1)}>Next</button></footer>}
-              {activeSection === 'mcq' && mcqAllowsAnswerInput ? (
-                <footer className="online-practice-question-nav">
-                  <button type="button" className="online-practice-try-later-btn" onClick={markTryLater} disabled={!currentQuestion || isMcqLocked}>
-                    Try Later
-                  </button>
-                  <span className="online-practice-question-nav-actions">
-                    <button type="button" disabled={activeQuestionIndex <= 0} onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}>
-                      <ChevronLeft size={16} strokeWidth={2.2} />
-                      Previous
-                    </button>
-                    <button type="button" disabled={activeQuestionIndex >= currentQuestions.length - 1} onClick={() => setActiveQuestionIndex((current) => Math.min(currentQuestions.length - 1, current + 1))}>
-                      Next
-                      <ChevronRight size={16} strokeWidth={2.2} />
-                    </button>
-                  </span>
-                </footer>
-              ) : null}
             </div>
 
-            <aside className="online-practice-side-nav start-practice-summary-card" aria-label="Question navigation">
-              <div className="online-practice-tabs" role="tablist" aria-label="Question sections">
-                {hasMcqSection ? (
-                  <button type="button" className={`${activeSection === 'mcq' ? 'is-active' : ''} ${isMcqSubmitted ? 'is-completed' : ''}`.trim()} onClick={() => switchSection('mcq')} disabled={hasPendingImages || isMcqSubmitted}>
-                    {isMcqSubmitted ? 'MCQ Completed' : 'MCQ'}
-                  </button>
-                ) : null}
-                {hasDescriptiveSection ? (
-                  <button type="button" className={`${activeSection === 'descriptive' ? 'is-active' : ''} ${isDescriptiveSubmitted ? 'is-completed' : ''}`.trim()} onClick={() => switchSection('descriptive')} disabled={hasPendingImages || isDescriptiveSubmitted}>
-                    {isDescriptiveSubmitted ? 'Descriptive Completed' : 'Descriptive'}
-                  </button>
-                ) : null}
-              </div>
+            <ExamWorkspaceNavigator theme={theme} >
+              <ExamWorkspaceSummary totalQuestions={questionRows.length} totalMarks={assessment.totalMarks ?? mcqTotalMarks + descriptiveTotalMarks}
+                section={activeSection === 'mcq' ? 'MCQ section' : 'Descriptive section'}
+                questions={activeSection === 'mcq' ? mcqQuestions.length : descriptiveQuestions.length}
+                marks={activeSection === 'mcq' ? mcqTotalMarks : descriptiveTotalMarks} />
 
-              <div className="online-practice-nav-summary" aria-label={`${activeSection === 'mcq' ? 'MCQ' : 'Descriptive'} section summary`}>
-                <span>
-                  <strong>{activeSection === 'mcq' ? mcqQuestions.length : descriptiveQuestions.length}</strong>
-                  <em>Total Questions</em>
-                </span>
-                <span>
-                  <strong>{String(activeSection === 'mcq' ? mcqTotalMarks : descriptiveTotalMarks).padStart(2, '0')}</strong>
-                  <em>Total Marks</em>
-                </span>
-              </div>
 
               {activeSection === 'mcq' ? (
                 mcqAllowsAnswerInput ? (
                   <div className="online-practice-mcq-nav-panel">
                     <div className="online-practice-mcq-attended-row">
-                      <span>Attended</span>
+                      <span>Answered</span>
                       <strong>{attendedMcqCount} / {mcqQuestions.length}</strong>
                     </div>
 
@@ -1493,6 +1442,8 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                           <button
                             type="button"
                             key={question.id ?? index}
+                            aria-current={activeQuestionIndex === index ? 'step' : undefined}
+                            aria-label={`Question ${index + 1}, ${status.replaceAll('-', ' ')}`}
                             className={`is-${status} ${activeQuestionIndex === index ? 'is-active' : ''}`.trim()}
                             onClick={() => setActiveQuestionIndex(index)}
                           >
@@ -1503,37 +1454,51 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
                     </div>
 
                     <>
-                      <div className="online-practice-question-status-legend" aria-label="Question status legend">
-                        <span className="is-answered"><i aria-hidden="true" />Answered</span>
-                        <span className="is-try-later"><i aria-hidden="true" />Try Later</span>
-                        <span className="is-not-viewed"><i aria-hidden="true" />Not Viewed</span>
-                        <span className="is-viewed"><i aria-hidden="true" />Viewed</span>
-                      </div>
-                      {shouldShowMcqSubmit ? (
-                        <button type="button" className="online-practice-submit-mcq-btn" onClick={() => openSubmitModal('mcq')} disabled={hasPendingImages || isMcqSubmitted || isAssessmentSubmitted}>
-                          {isMcqSubmitted ? 'MCQ Assessment Submitted' : isMcqFinalSubmit ? 'Submit Assessment' : 'Submit MCQ Assessment'}
-                        </button>
-                      ) : null}
+                      <ExamQuestionStatusLegend answeredCount={attendedMcqCount} statuses={mcqQuestions.map((question, index) => mcqQuestionStatuses[getMcqQuestionKey(question, index)] || 'not-viewed')} />
+
                     </>
                   </div>
                 ) : null
               ) : (
-                <DescriptiveQuestionNavigator groups={descriptiveGroups} questions={descriptiveQuestions} answers={descriptiveAnswers} navigationStatuses={descriptiveNavigationStatuses} activeIndex={descriptiveQuestions.indexOf(selectedDescriptive)} mode={descriptiveView} onMode={setDescriptiveView} onSelect={index=>selectDescriptiveQuestion(descriptiveOrder.indexOf(descriptiveQuestions[index]))} numberFor={descriptiveNumber} disabled={hasPendingImages} />
+                <DescriptiveQuestionNavigator groups={descriptiveGroups} questions={descriptiveQuestions} answers={descriptiveAnswers} navigationStatuses={descriptiveNavigationStatuses} activeIndex={descriptiveQuestions.indexOf(selectedDescriptive)} mode={descriptiveView} onMode={mode => { setDescriptiveView(mode); requestAnimationFrame(() => document.getElementById('practice-description-' + descriptiveIndex)?.scrollIntoView({ block: 'start', behavior: 'instant' })) }} onSelect={index=>selectDescriptiveQuestion(descriptiveOrder.indexOf(descriptiveQuestions[index]))} numberFor={descriptiveNumber} disabled={hasPendingImages} />
               )}
 
-              {shouldShowMcqSubmit && !mcqAllowsAnswerInput ? (
-                <button type="button" className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn" onClick={() => openSubmitModal('mcq')} disabled={hasPendingImages || isMcqSubmitted || isAssessmentSubmitted}>
-                  {isMcqSubmitted ? 'MCQ Assessment Submitted' : isMcqFinalSubmit ? 'Submit Assessment' : 'Submit MCQ Assessment'}
-                </button>
-              ) : null}
-
-              {shouldShowDescriptiveSubmit ? (
-                <button type="button" className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn" onClick={() => openSubmitModal('descriptive')} disabled={hasPendingImages || isDescriptiveSubmitted || isAssessmentSubmitted}>
-                  {isAssessmentSubmitted ? 'Assessment Submitted' : isDescriptiveSubmitted ? 'Descriptive Assessment Submitted' : isDescriptiveFinalSubmit ? 'Submit Assessment' : 'Submit Descriptive Assessment'}
-                </button>
-              ) : null}
-            </aside>
+            </ExamWorkspaceNavigator>
           </div>
+          <ExamWorkspaceFooter
+            sectionId={activeSection}
+            questionNumber={activeSection === 'mcq' ? currentQuestionDisplayNumber : selectedDescriptive ? descriptiveNumber(selectedDescriptive) : 0}
+            navigationVisible={activeSection === 'mcq' ? mcqAllowsAnswerInput && Boolean(currentQuestion) : descriptiveOrder.length > 0}
+            index={activeSection === 'mcq' ? activeQuestionIndex : descriptiveIndex}
+            total={activeSection === 'mcq' ? currentQuestions.length : descriptiveOrder.length}
+            flagged={activeSection === 'mcq' ? mcqQuestionStatuses[getMcqQuestionKey(currentQuestion, activeQuestionIndex)] === 'try-later' : descriptiveNavigationStatuses[selectedDescriptive?.id ?? descriptiveQuestions.indexOf(selectedDescriptive)] === 'try-later'}
+            flagDisabled={hasPendingImages || (activeSection === 'mcq' ? isMcqLocked : isDescriptiveLocked)}
+            previousDisabled={hasPendingImages || (activeSection === 'mcq' ? activeQuestionIndex <= 0 : descriptiveIndex <= 0)}
+            nextDisabled={hasPendingImages || (activeSection === 'mcq' ? activeQuestionIndex >= currentQuestions.length - 1 : descriptiveIndex >= descriptiveOrder.length - 1)}
+            onFlag={() => {
+              if (hasPendingImages) return
+              if (activeSection === 'mcq') { markTryLater(); return }
+              if (isDescriptiveLocked || !selectedDescriptive) return
+              const key = selectedDescriptive.id ?? descriptiveQuestions.indexOf(selectedDescriptive)
+              setDescriptiveNavigationStatuses(current => ({ ...current, [key]: current[key] === 'try-later' ? 'viewed' : 'try-later' }))
+            }}
+            onPrevious={() => activeSection === 'mcq' ? setActiveQuestionIndex(current => Math.max(0, current - 1)) : selectDescriptiveQuestion(descriptiveIndex - 1)}
+            onNext={() => activeSection === 'mcq' ? setActiveQuestionIndex(current => Math.min(currentQuestions.length - 1, current + 1)) : selectDescriptiveQuestion(descriptiveIndex + 1)}
+          >{shouldShowMcqSubmit && mcqAllowsAnswerInput ? (
+                        <button type="button" className="online-practice-submit-mcq-btn" onClick={() => openSubmitModal('mcq')} disabled={hasPendingImages || isMcqSubmitted || isAssessmentSubmitted}>
+                          {isMcqSubmitted ? 'MCQ submitted' : isMcqFinalSubmit ? 'Submit assessment' : 'Submit MCQ'}
+                        </button>
+                      ) : null}
+{shouldShowMcqSubmit && !mcqAllowsAnswerInput ? (
+                <button type="button" className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn" onClick={() => openSubmitModal('mcq')} disabled={hasPendingImages || isMcqSubmitted || isAssessmentSubmitted}>
+                  {isMcqSubmitted ? 'MCQ submitted' : isMcqFinalSubmit ? 'Submit assessment' : 'Submit MCQ'}
+                </button>
+              ) : null}
+{shouldShowDescriptiveSubmit ? (
+                <button type="button" className="online-practice-submit-mcq-btn online-practice-submit-assessment-btn" onClick={() => openSubmitModal('descriptive')} disabled={hasPendingImages || isDescriptiveSubmitted || isAssessmentSubmitted}>
+                  {isAssessmentSubmitted ? 'Assessment submitted' : isDescriptiveSubmitted ? 'Descriptive submitted' : isDescriptiveFinalSubmit ? 'Submit assessment' : 'Submit descriptive'}
+                </button>
+              ) : null}</ExamWorkspaceFooter>
         </section>
       )}
 
@@ -1556,7 +1521,7 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
               </>
             ) : (
               <>
-                <h2 id="online-practice-submit-title">{submitModalCopy.title}</h2>
+                <h2 id="online-practice-submit-title">{submitModal.isFinal ? 'Review assessment' : 'Review section'}</h2>
                 <p>{submitModalCopy.message}</p>
                 {descriptiveAllowsAnswerInput && (submitModal?.isFinal || submitModal?.section === 'descriptive') && (descriptiveAnswerCounts.partial + descriptiveAnswerCounts.unanswered > 0) && <p>Some descriptive answers are incomplete. You can still submit.</p>}
                 {attemptSaveError && <p role="alert">{attemptSaveError}</p>}
@@ -1588,10 +1553,10 @@ function OnlinePracticeExamPage({ onExit, theme = 'light', onToggleTheme }) {
 
                 <div className="online-practice-submit-actions">
                   <button type="button" className="is-secondary" onClick={closeSubmitModal}>
-                    Cancel
+                    Return to questions
                   </button>
                   <button type="button" onClick={confirmSubmit} disabled={hasPendingImages}>
-                    Confirm Submit
+                    {submitModal.isFinal ? 'Submit assessment' : submitModal.section === 'mcq' ? 'Submit MCQ section' : 'Submit descriptive section'}
                   </button>
                 </div>
               </>

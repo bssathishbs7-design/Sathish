@@ -51,3 +51,19 @@ test('explicit selection rejects missing scope, duplicates, other batches and st
   const updated = cascadeDirectory(); updated.students[1].section = 'C'
   await assert.rejects(resolveAssessmentAssignment(cascadeScope, async () => updated), /no longer match/)
 })
+
+
+test('optional publication filters include the whole batch/year, ungrouped students, or a selected subset', async () => {
+  const directory = cascadeDirectory()
+  directory.students.push({ ...active, id: 'ungrouped', registrationId: 'MC7', batch: '2026', section: '' })
+  const loadDirectory = async () => directory
+  const scope = { assignBatch: '2026', assignYear: 'First Year', assignGroups: [], assignStudentIds: [] }
+  const resolve = change => resolveAssessmentAssignment({ ...scope, ...change }, loadDirectory, { optionalFilters: true })
+  assert.deepEqual((await resolve({})).map(row => row.id), ['MC1', 'MC2', 'MC7'])
+  assert.deepEqual((await resolve({ assignGroups: ['SGT Group B'] })).map(row => row.id), ['MC2'])
+  assert.deepEqual((await resolve({ assignStudentIds: ['ungrouped'] })).map(row => row.id), ['MC7'])
+  await assert.rejects(resolve({ assignBatch: '' }), /Select a batch/)
+  await assert.rejects(resolve({ assignGroups: ['SGT Group Z'] }), /No active students/)
+  await assert.rejects(resolve({ assignStudentIds: ['other-batch'] }), /no longer match/)
+  await assert.rejects(resolve({ assignStudentIds: ['internal-1', 'internal-1'] }), /no longer match/)
+})

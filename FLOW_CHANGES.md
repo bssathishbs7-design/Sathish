@@ -1522,3 +1522,26 @@ Added a Repositories header button opening a connection-options popup. The local
 - Choosing Year now preselects all eligible SGT groups and their students for the chosen batch. Both dropdowns expose an All checkbox and show All SGT groups / All students when complete.
 - Choosing different SGT groups selects all students in those groups; individual students can then be deselected. Changing batch resets dependent fields; changing year restores All. Clearing students blocks submission.
 - Summary identifies full-year versus partial assignment. Actual directory IDs remain explicit and are revalidated before submission; legacy saved selections are not silently expanded.
+
+
+## 2026-11-14 ? Optional assessment recipient filters
+
+Assessment publication requires Batch and Year only. Empty SGT and Student filters include all eligible students in that batch/year, including students without an SGT. Selected groups and students narrow the scope. Empty or stale recipient scopes remain blocked. Activity and logbook assignment requirements are unchanged.
+
+
+## 2026-11-14 ? Assessment student preview identity
+
+My assessments exposes the selected demo student from published assignment rosters. The initial preview uses the first assigned student; explicit selection persists for the tab across practice/proctored attempts, controls and result views. Each student sees only their assigned exams. New completion records are scoped per student rather than marking the shared assessment completed for everyone. Production authentication must replace this local demo identity adapter.
+
+## 2026-11-14 — Shared compact exam workspace
+
+Practice and proctored exams now share a compact header, section controls, responsive question navigator, progress/status counts and fixed footer. Descriptive uses Single question by default and All questions as the alternate view; switching preserves answer state and scrolls to the current question. Submission actions retain the original eligibility/sequence guards. MCQ Try later now toggles without navigating, retains its flag when an answer is selected, and answered totals count saved selections independently of flags. On tablet/mobile the question navigator opens in a focus-trapped dialog; existing proctored device and lock rules still apply.
+
+
+## 2026-11-14 - Exam navigation and section review
+
+Practice and proctored exam footers now label flags as Mark for review and identify the displayed question alongside its section position. Next question becomes Review section on the last question when submission is available. Review actions open the existing answer-progress summary; Return to questions cancels, and the explicit Submit section or Submit assessment action confirms. Existing submission, upload and proctor guards are preserved.
+
+## 2026-11-14 - Single exam review action
+
+Next question remains a navigation action and is disabled on the last question. The fixed far-right Review & Submit button is the sole entry to the review summary; final submission still requires confirmation. Applies to practice and proctored exams.
