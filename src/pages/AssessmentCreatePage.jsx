@@ -1,6 +1,8 @@
 import { deleteBlueprintWorkflow } from '../services/blueprintApproval'
 import { parseAssessmentDate, applyAssessmentTime, formatAssessmentRemainingTime, getPublishedAssessmentScheduleStatus, hasPublishedResults, splitPublishedAssessmentRows, canStartLiveEvaluation } from '../services/assessmentTrackerLifecycle'
 import { createQuestionPaperExporter } from '../utils/assessmentQuestionPaper'
+import { getPublishedQuestionRows } from '../utils/publishedAssessmentQuestions'
+import { getAssessmentPaperLogo } from '../utils/assessmentPaperLogo'
 import { assessmentDemoEnabled } from '../services/assessmentDemoSession'
 import FloatingTooltip from '../components/FloatingTooltip'
 import AssessmentStartCountdown from '../components/AssessmentStartCountdown'
@@ -543,10 +545,6 @@ const getQuestionMarksTotal = (item) => {
   return parseMarksValue(item?.marks)
 }
 
-const getPublishedQuestionRows = (assessment) => (
-  Array.isArray(assessment?.questionRows) ? assessment.questionRows : []
-)
-
 const downloadQuestionPaperPdf = createQuestionPaperExporter({ stripHtml, isDescriptiveQuestionType, getQuestionMarksTotal, parseMarksValue, getPublishedQuestionRows })
 
 const getDraftSummary = (draft) => {
@@ -635,10 +633,19 @@ export default function AssessmentCreatePage({ onNavigate, onAlert, approvalQueu
   const [downloadingPaperId, setDownloadingPaperId] = useState(null)
   const downloadPaper = async assessment => {
     if (downloadingPaperId) return
+    const questionRows = getPublishedQuestionRows(assessment, window.localStorage)
+    if (!questionRows.length) {
+      setCreationError('')
+      return
+    }
     setDownloadingPaperId(assessmentDisplayId(assessment))
     setCreationError('')
     try {
-      await downloadQuestionPaperPdf(assessment)
+      await downloadQuestionPaperPdf({
+        ...assessment,
+        questionRows,
+        setup: { ...assessment.setup, logoPreview: getAssessmentPaperLogo(assessment, window.localStorage) },
+      })
     } catch {
       setCreationError('Unable to download the question paper. Please try again.')
     } finally {
@@ -1255,17 +1262,16 @@ export default function AssessmentCreatePage({ onNavigate, onAlert, approvalQueu
                   const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                   const canShowExamControls = !isOfflineExam && ['live', 'completed'].includes(scheduleStatus?.type)
                   const canShowPublishedActions = !isPublishedAssessmentActionLocked(assessment, scheduleNow)
-                  const publishedQuestionRows = getPublishedQuestionRows(assessment)
 
                   return (
                       <AssessmentTrackerCard key={assessment.id} className={[scheduleStatus?.type === 'live' ? 'is-live' : '', assessment.id === highlightedAssessment ? 'is-just-published' : ''].filter(Boolean).join(' ')}
                         topBadge={compactCards && scheduleStatus?.type === 'live' && <AssessmentStartCountdown status={scheduleStatus} />}
-                        identity={<><div className="assessment-draft-top-badges">{!compactCards && scheduleStatus?.type === 'live' && <AssessmentStartCountdown status={scheduleStatus} />}{renderAssessmentModeBadges(assessment)}{!compactCards && <AssessmentPublicationBadge assessment={assessment} />}{publishedQuestionRows.length ? (
-                            <button type="button" className="assessment-create-published-download-btn" disabled={Boolean(downloadingPaperId)} aria-busy={downloadingPaperId === assessmentDisplayId(assessment)} onClick={() => downloadPaper(assessment)}>
+                        identity={<><div className="assessment-draft-top-badges">{!compactCards && scheduleStatus?.type === 'live' && <AssessmentStartCountdown status={scheduleStatus} />}{renderAssessmentModeBadges(assessment)}{!compactCards && <AssessmentPublicationBadge assessment={assessment} />}{(
+                            <button type="button" className="assessment-create-published-download-btn" title="Download question paper" aria-busy={downloadingPaperId === assessmentDisplayId(assessment)} onClick={() => downloadPaper(assessment)}>
                               {downloadingPaperId === assessmentDisplayId(assessment) ? <LoaderCircle className="assessment-pdf-spinner" size={12} aria-hidden="true" /> : <Download size={12} strokeWidth={2.4} aria-hidden="true" />}
                               {downloadingPaperId === assessmentDisplayId(assessment) ? 'Preparing PDF' : 'Download PDF'}
                             </button>
-                          ) : null}</div>
+                          )}</div>
 
                         <div className="assessment-create-published-head">
                           <div>
@@ -1345,7 +1351,6 @@ export default function AssessmentCreatePage({ onNavigate, onAlert, approvalQueu
 
 
 
-                    const publishedQuestionRows = getPublishedQuestionRows(assessment)
 
                     const scheduleStatus = getPublishedAssessmentScheduleStatus(assessment, scheduleNow)
                     const isLive = scheduleStatus?.type === 'live'
@@ -1357,12 +1362,12 @@ export default function AssessmentCreatePage({ onNavigate, onAlert, approvalQueu
                     return (
                       <AssessmentTrackerCard key={assessment.id} className={isLive ? 'is-live' : ''}
                         topBadge={compactCards && evaluationBadge}
-                        identity={<><div className="assessment-draft-top-badges">{!compactCards && evaluationBadge}{renderAssessmentModeBadges(assessment)}{publishedQuestionRows.length ? (
-                            <button type="button" className="assessment-create-published-download-btn" disabled={Boolean(downloadingPaperId)} aria-busy={downloadingPaperId === assessmentDisplayId(assessment)} onClick={() => downloadPaper(assessment)}>
+                        identity={<><div className="assessment-draft-top-badges">{!compactCards && evaluationBadge}{renderAssessmentModeBadges(assessment)}{(
+                            <button type="button" className="assessment-create-published-download-btn" title="Download question paper" aria-busy={downloadingPaperId === assessmentDisplayId(assessment)} onClick={() => downloadPaper(assessment)}>
                               {downloadingPaperId === assessmentDisplayId(assessment) ? <LoaderCircle className="assessment-pdf-spinner" size={12} aria-hidden="true" /> : <Download size={12} strokeWidth={2.4} aria-hidden="true" />}
                               {downloadingPaperId === assessmentDisplayId(assessment) ? 'Preparing PDF' : 'Download PDF'}
                             </button>
-                          ) : null}</div>
+                          )}</div>
                         <div className="assessment-create-published-head">
                           <div>
                             {renderAssessmentIdentity(assessment, assessment.assessmentName || 'Untitled Assessment')}

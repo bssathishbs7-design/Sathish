@@ -1,3 +1,6 @@
+import { getPaperTopics, getPaperExamDate } from './assessmentPaperMetadata.js'
+import { drawPaperInstructions } from './assessmentPaperInstructions.js'
+
 /** Creates a questions-only PDF exporter. Helpers use the same question schema as the assessment editor. */
 export function createQuestionPaperExporter({ stripHtml, isDescriptiveQuestionType, getQuestionMarksTotal, parseMarksValue, getPublishedQuestionRows }) {
 const normalizePdfText = (value) => String(value ?? '')
@@ -196,38 +199,79 @@ const buildQuestionPaperPdf = async (assessment) => {
     }
   }
   const logo = await loadPdfImage(setup.logoPreview)
+  // Balance the logo space on both sides so headings remain centred on the page.
+  const logoColumnWidth = logo ? 60 : 0
+  const headerWidth = contentWidth - logoColumnWidth * 2
+  const headerCentre = pageWidth / 2
+  const headerStart = y
+  if (setup.collegeName) {
+    centred(setup.collegeName, 14, 'F2', headerWidth, headerCentre)
+    y -= 4
+  }
+  const category = assessment.examCategory || setup.examCategory
+  if (category) {
+    centred(`DEPARTMENT OF ${stripHtml(category).toUpperCase()}`, 12, 'F2', headerWidth, headerCentre)
+    y -= 4
+  }
+  centred(title.toUpperCase(), 15, 'F2', headerWidth, headerCentre)
   if (logo) {
-    const scale = Math.min(42 / logo.width, 42 / logo.height)
+    const scale = Math.min(48 / logo.width, 48 / logo.height)
+    const width = logo.width * scale
+    const height = logo.height * scale
+    const logoY = headerStart + 12 - height
     const name = 'Im1'
     pdfImages.push({ ...logo, name })
-    addCommand(`q ${(logo.width * scale).toFixed(2)} 0 0 ${(logo.height * scale).toFixed(2)} ${margin} ${(y - logo.height * scale + 12).toFixed(2)} cm /${name} Do Q`)
+    addCommand(`q ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${(margin + (48 - width) / 2).toFixed(2)} ${logoY.toFixed(2)} cm /${name} Do Q`)
+    y = Math.min(y, logoY - 8)
   }
-  const headerWidth = logo ? contentWidth - 108 : contentWidth
-  const headerStart = y
-  if (setup.collegeName) centred(setup.collegeName, 14, 'F2', headerWidth)
-  centred(title, 15, 'F2', headerWidth)
-  const category = assessment.examCategory || setup.examCategory
-  const year = assessment.assignTo || setup.assignYear || setup.year
-  const academicYear = setup.academicYear || assessment.academicYear
-  const details = [category, year, academicYear].filter(Boolean).join(' / ')
-  if (details) centred(details, 11)
-  if (logo) y = Math.min(y, headerStart - 46)
-  y -= 6
+  y -= 8
+  const topicText = getPaperTopics(questions).map(stripHtml).filter(Boolean).join('; ') || 'Not specified'
+  const topicLabel = 'Topic : '
+  const dateLabel = 'Date : '
+  const dateText = getPaperExamDate(assessment)
+  const topicLabelWidth = approximateTextWidth(topicLabel, 11, 'F2') + 4
+  const dateLabelWidth = approximateTextWidth(dateLabel, 11, 'F2') + 4
+  const dateWidth = dateLabelWidth + approximateTextWidth(dateText, 11, 'F1')
+  const topicLines = wrap(topicText, contentWidth - dateWidth - 24 - topicLabelWidth, 11)
+  for (let index = 0; index < topicLines.length; index++) {
+    ensureSpace(40)
+    addText({ text: topicLines[index], x: margin + topicLabelWidth, y, size: 11 })
+    if (index === 0) {
+      addText({ text: topicLabel, x: margin, y, size: 11, font: 'F2' })
+      addText({ text: dateLabel, x: right - dateWidth, y, size: 11, font: 'F2' })
+      addRightText({ text: dateText, y, size: 11 })
+    }
+    y -= 15
+  }
+  // The last metadata baseline sits eight points above the divider.
+  y += 7
   addLine(y)
-  y -= 20
+  y -= 14
   const rawDuration = assessment.totalDuration || setup.totalDuration || setup.duration || ''
   const time = String(rawDuration).match(/^(\d+):(\d{2})$/)
   const duration = time ? [Number(time[1]) ? Number(time[1]) + ' hours' : '', Number(time[2]) ? Number(time[2]) + ' minutes' : ''].filter(Boolean).join(' ') || '0 minutes' : rawDuration
   const marksSummary = getPdfMarksSummary(questions)
-  const leftLines = wrap('Duration: ' + (duration || 'Not specified'), contentWidth / 2 - 12, 12)
-  const markLines = wrap('Maximum marks: ' + marksSummary.totalMarks, contentWidth / 2 - 12, 12, 'F2')
-  for (let i = 0; i < Math.max(leftLines.length, markLines.length); i++) {
-    if (leftLines[i]) addText({ text: leftLines[i], x: margin, y, size: 12 })
-    if (markLines[i]) addRightText({ text: markLines[i], y, size: 12, font: 'F2' })
-    y -= 16
+  const detailsWidth = 130
+  const detailsX = right - detailsWidth
+  const blockStartY = y
+  const blockStartPage = pages.length
+  let detailsY = blockStartY - 13
+  for (const [label, value] of [['Duration :', duration || 'Not specified'], ['Maximum Marks :', String(marksSummary.totalMarks)]]) {
+    const labelWidth = approximateTextWidth(label, 10, 'F2') + 4
+    addText({ text: label, x: detailsX, y: detailsY, size: 10, font: 'F2' })
+    for (const line of wrap(value, detailsWidth - labelWidth, 10)) {
+      addText({ text: line, x: detailsX + labelWidth, y: detailsY, size: 10 })
+      detailsY -= 13
+    }
+    detailsY -= 1
   }
-  addLine(y + 5)
-  y -= 18
+  drawPaperInstructions(setup.studentInstructions, {
+    margin, right: detailsX - 18, measure: approximateTextWidth, text: addText, command: addCommand,
+    ensureSpace, getY: () => y, advance: height => { y -= height },
+  })
+  if (pages.length === blockStartPage) y = Math.min(y, detailsY)
+  addLine(y)
+  y -= 22
   // Section order follows the saved question paper, never an alphabetical sort.
   const groups = new Map()
   questions.forEach((item, index) => {
@@ -331,10 +375,8 @@ const buildQuestionPaperPdf = async (assessment) => {
     const pageObjectNumber = 3 + index * 2
     const streamObjectNumber = pageObjectNumber + 1
     const pageNumberText = `Page ${index + 1} of ${pages.length}`
-    const footerTitle = wrap(title, contentWidth - 90, 10)[0]
-    const footerTitleContent = `BT /F1 10 Tf ${margin.toFixed(2)} 32.00 Td (${escapePdfText(footerTitle)}) Tj ET`
     const pageNumberContent = `BT /F1 ${pageNumberSize} Tf ${(pageWidth - margin - approximateTextWidth(pageNumberText, pageNumberSize)).toFixed(2)} 32.00 Td (${escapePdfText(pageNumberText)}) Tj ET`
-    const fullPageContent = `${pageContent}\n${footerTitleContent}\n${pageNumberContent}`
+    const fullPageContent = `${pageContent}\n${pageNumberContent}`
     objects.push(`${pageObjectNumber} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontStartObjectNumber} 0 R /F2 ${fontStartObjectNumber + 1} 0 R /F3 ${fontStartObjectNumber + 2} 0 R >>${imageResource} >> /Contents ${streamObjectNumber} 0 R >>\nendobj\n`)
     objects.push(`${streamObjectNumber} 0 obj\n<< /Length ${fullPageContent.length} >>\nstream\n${fullPageContent}\nendstream\nendobj\n`)
   })
@@ -360,6 +402,14 @@ const buildQuestionPaperPdf = async (assessment) => {
 }
 
 const downloadQuestionPaperPdf = async (assessment) => {
+  // Open during the click gesture so asynchronous image rendering does not block the viewer.
+  const preview = window.open('about:blank', '_blank')
+  if (preview) {
+    preview.opener = null
+    preview.document.title = 'Preparing question paper'
+    preview.document.body.textContent = 'Preparing your assessment question paper…'
+  }
+  try {
   const pdf = await buildQuestionPaperPdf(assessment)
   const blob = new Blob([pdf], { type: 'application/pdf' })
   const url = URL.createObjectURL(blob)
@@ -370,7 +420,13 @@ const downloadQuestionPaperPdf = async (assessment) => {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  if (preview && !preview.closed) preview.location.replace(url)
+  // Keep the blob alive while the browser's PDF viewer and download consume it.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (error) {
+    if (preview && !preview.closed) preview.close()
+    throw error
+  }
 }
 
 

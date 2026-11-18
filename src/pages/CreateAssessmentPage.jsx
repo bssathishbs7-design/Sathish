@@ -1,4 +1,5 @@
 import QuestionSnapshotNotice from '../components/QuestionSnapshotNotice'
+import { mbbsSubjectOrder } from '../config/mbbsCurriculumOrder'
 import { detachBankQuestion, isBankQuestion } from '../utils/questionLifecycle'
 import { questionContentChanged } from '../utils/questionContent'
 import CopyIdBadge from '../components/CopyIdBadge'
@@ -14,6 +15,7 @@ import { getAssessmentPublicationMethod } from '../services/assessmentPublicatio
 import AssessmentPublishedConfirmation from '../components/AssessmentPublishedConfirmation'
 import { DEFAULT_ATTAINMENT_LEVELS, DEFAULT_BLOOMS_THRESHOLDS, DEFAULT_THINKING_THRESHOLDS } from '../services/assessmentConfigurationStatus'
 import { archiveAssessmentRecoveryBackups } from '../services/assessmentRecoveryStorage'
+import { savePublishedAssessments } from '../services/assessmentPublicationStorage'
 import { readBlueprintWorkflow, saveBlueprintWorkflow, blueprintApprovalLocked, reviseBlueprintWorkflow, BLUEPRINT_WORKFLOW_EVENT } from '../services/blueprintApproval'
 import { appendAssessmentHistory } from '../services/assessmentHistory'
 import AssessmentPublicationDialog from '../components/AssessmentPublicationDialog'
@@ -160,8 +162,10 @@ const CORELATION_RATING_SAVED_ROWS_KEY = 'medsy-corelation-rating-saved-rows'
 
 const SUBJECT_DIRECTORY = createAssessmentSubjectDirectory
 const YEAR_OPTIONS = createAssessmentYearOptions
-const DEFAULT_EXAM_CATEGORIES = ['Internal', 'Midterm', 'Final', 'Viva']
-const DEFAULT_COLLEGE_NAME = 'Sri Manakula Vinayagar Medical College and Hospital'
+const DEFAULT_EXAM_CATEGORIES = mbbsSubjectOrder.map(({ code, aliases }) => (
+  code === 'FM' ? 'Forensic Medicine and Toxicology' : aliases[0]
+))
+const DEFAULT_COLLEGE_NAME = 'SRI MANAKULA VINAYAGAR MEDICAL COLLEGE & HOSPITAL PUDUCHERRY'
 
 const BLOOMS_THRESHOLD_FIELDS = [
   { key: 'applyThreshold', label: 'Apply' },
@@ -176,10 +180,8 @@ const CONFIGURATION_OPTION_FIELDS = {
   thresholds: ['attainmentLevels', 'thinkingThresholdMode', 'lotThreshold', 'hotThreshold', ...Object.keys(DEFAULT_BLOOMS_THRESHOLDS)],
 }
 const DEFAULT_STUDENT_INSTRUCTIONS = [
-  '<h3>[Header] Mid-Term Market Analysis Quiz</h3>',
-  '<p><strong><em>[Description]</em></strong><br>This quiz evaluates your understanding of strategic frameworks from Modules 1-4. It consists of 20 multiple-choice questions and accounts for 15% of your final grade.</p>',
-  '<p><strong><em>[Instructions]</em></strong></p>',
-  '<ul><li><strong>Time Limit :</strong> <em>60 minutes once started (cannot be paused).</em></li></ul>',
+  '<p><strong>GENERAL INSTRUCTIONS</strong></p>',
+  '<ul><li>Attend all the questions.</li><li>Draw labelled diagrams, wherever appropriate.</li><li>MCQs – Single response type, choose the appropriate answer.</li></ul>',
 ].join('')
 const isProctoredSupervisionType = (value) => String(value || '').toLowerCase().includes('proctored')
 const CREATE_ASSESSMENT_SELECT_OPTIONS = {
@@ -194,7 +196,7 @@ const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   collegeName: DEFAULT_COLLEGE_NAME,
   logoName: '',
   logoPreview: '',
-  assessmentName: '',
+  assessmentName: 'Internal Assessment',
   academicYear: '2025 - 2026',
   examCategory: '',
   course: '',
@@ -730,48 +732,6 @@ const createStorageLightAssessmentQuestions = (questions = []) => (
   }))
 )
 
-const createStorageLightPreviewSections = (sections = []) => (
-  sections.map((section) => ({
-    ...section,
-    questions: createStorageLightAssessmentQuestions(section.questions ?? []),
-  }))
-)
-
-const createStorageLightSetup = (setup = {}) => ({
-  ...setup,
-  logoPreview: '',
-})
-
-const createStorageLightPublishedRecord = (record = {}) => ({
-  ...record,
-  setup: createStorageLightSetup(record.setup ?? {}),
-  questionRows: createStorageLightAssessmentQuestions(record.questionRows ?? []),
-  previewSections: createStorageLightPreviewSections(record.previewSections ?? []),
-})
-
-const createPublishedSummaryRecord = (record = {}) => ({
-  id: record.id,
-  publicationMethod: record.publicationMethod,
-  assessmentName: record.assessmentName,
-  examMode: record.examMode,
-  assignTo: record.assignTo,
-  supervisionType: record.supervisionType,
-  totalMarks: record.totalMarks,
-  examCategory: record.examCategory,
-  examType: record.examType,
-  startDate: record.startDate,
-  startTime: record.startTime,
-  totalDuration: record.totalDuration,
-  endDate: record.endDate,
-  endTime: record.endTime,
-  createdAt: record.createdAt,
-  publishedAt: record.publishedAt,
-  publishedLog: record.publishedLog,
-  questionCount: record.questionCount,
-  questionRows: [],
-  setup: createStorageLightSetup(record.setup ?? {}),
-})
-
 const writeAssessmentQuestionsStorage = (key, questions = []) => {
   if (writeLocalStorageJson(key, questions)) return 'full'
   return writeLocalStorageJson(key, createStorageLightAssessmentQuestions(questions)) ? 'light' : ''
@@ -972,7 +932,7 @@ const formatDurationValue = (totalMinutes) => {
 const CONFIGURATION_ERROR_LABELS = {
   collegeName: 'Select College Name',
   assessmentName: 'Assessment Name',
-  examCategory: 'Exam Category',
+  examCategory: 'Department of',
   academicYear: 'Academic Year',
   assignYear: 'Select Year',
   examDeliveryMode: 'Select Exam Mode',
@@ -1619,14 +1579,17 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const writeReviewSafeQuestions = (key, rows) => assessmentReview ? 'full' : writeAssessmentQuestionsStorage(key, rows);
   const [appliedCognitionDraft, setAppliedCognitionDraft] = useState(null)
   const [appliedCognitionChanges, setAppliedCognitionChanges] = useState({})
-  const [setup, setSetup] = useState(() => ({
-    ...CREATE_ASSESSMENT_DEFAULT_SETUP,
-    ...(assessmentReview?.setup || blueprintReview?.record.setup || readCreateAssessmentSetup()),
-  }))
-  const [setupDraft, setSetupDraft] = useState(() => ({
-    ...CREATE_ASSESSMENT_DEFAULT_SETUP,
-    ...(assessmentReview?.setup || blueprintReview?.record.setup || readCreateAssessmentSetup()),
-  }))
+  const [setup, setSetup] = useState(() => {
+    const savedSetup = assessmentReview?.setup || blueprintReview?.record.setup || readCreateAssessmentSetup()
+    return {
+      ...CREATE_ASSESSMENT_DEFAULT_SETUP,
+      ...savedSetup,
+      assessmentName: !assessmentReview && !blueprintReview && !String(savedSetup.assessmentName || '').trim()
+        ? CREATE_ASSESSMENT_DEFAULT_SETUP.assessmentName
+        : savedSetup.assessmentName ?? CREATE_ASSESSMENT_DEFAULT_SETUP.assessmentName,
+    }
+  })
+  const [setupDraft, setSetupDraft] = useState(() => ({ ...setup }))
   const [isRejectionReasonOpen, setIsRejectionReasonOpen] = useState(!assessmentReview && Boolean(setup.reworkReview))
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false)
   const [isSavingExit, setIsSavingExit] = useState(false)
@@ -4247,7 +4210,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       ['Assign To', previousRecord.assignTo, nextRecord.assignTo],
       ['Supervision Type', previousRecord.supervisionType, nextRecord.supervisionType],
       ['Total Marks', previousRecord.totalMarks, nextRecord.totalMarks],
-      ['Exam Category', previousRecord.examCategory, nextRecord.examCategory],
+      ['Department of', previousRecord.examCategory, nextRecord.examCategory],
       ['Exam Type', previousRecord.examType, nextRecord.examType],
       ['Start Date', previousRecord.startDate, nextRecord.startDate],
       ['Start Time', previousRecord.startTime, nextRecord.startTime],
@@ -4264,10 +4227,11 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     return `Edited: ${changes.slice(0, 4).join('; ')}${changes.length > 4 ? `; +${changes.length - 4} more` : ''}`
   }
 
-  const upsertPublishedAssessment = (record) => {
+  const upsertPublishedAssessment = async (record) => {
     try {
       const parsed = JSON.parse(window.localStorage.getItem(ASSESSMENT_PUBLISHED_STORAGE_KEY) || '[]')
-      const rows = Array.isArray(parsed) ? parsed : []
+      if (!Array.isArray(parsed)) throw new Error('Published assessments could not be read.')
+      const rows = parsed
       const existingRecord = rows.find((item) => item.id === record.id)
       const existingLog = Array.isArray(existingRecord?.publishedLog) ? existingRecord.publishedLog : []
       const nextLog = Array.isArray(record.publishedLog) ? record.publishedLog : []
@@ -4287,17 +4251,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         nextRecord,
         ...rows.filter((item) => item.id !== record.id),
       ]
-      const lightRows = nextRows.map(createStorageLightPublishedRecord)
-      const summaryRows = nextRows.map(createPublishedSummaryRecord)
-      if (writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, nextRows)) return 'full'
-      if (writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, lightRows)) return 'light'
-      return writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, summaryRows) ? 'summary' : ''
+      await savePublishedAssessments(nextRows)
+      return true
     } catch {
-      const lightRecord = createStorageLightPublishedRecord(record)
-      const summaryRecord = createPublishedSummaryRecord(record)
-      if (writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [record])) return 'full'
-      if (writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [lightRecord])) return 'light'
-      return writeReviewSafeJson(ASSESSMENT_PUBLISHED_STORAGE_KEY, [summaryRecord]) ? 'summary' : ''
+      return false
     }
   }
 
@@ -4314,14 +4271,15 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     }, 2000)
   }
 
-  const publishAssessmentDirectly = (draft) => {
+  const publishAssessmentDirectly = async (draft) => {
     if (requiresPublicationApproval) { setSaveStatus('Changes to this assessment require approval.'); return false }
     if (blueprintApprovalLocked(readBlueprintWorkflow(setup.assessmentId))) { setSaveStatus('Approve the blueprint before publishing.'); return false }
+    try { await archiveAssessmentRecoveryBackups() } catch { /* Keep recovery copies if archival is unavailable. */ }
     const nextSetup = persistSetupDraft('', draft)
     const record = publishAssessmentIdentity(getPublishedAssessmentRecord(nextSetup, getCurrentAssessmentQuestions()))
-    const publishStorageResult = upsertPublishedAssessment(record)
+    const publishStorageResult = await upsertPublishedAssessment(record)
     if (!publishStorageResult) {
-      setSaveStatus('Unable to publish assessment. Browser storage is full. Please remove large images and try again.')
+      setSaveStatus('Unable to save the complete assessment. Existing assessments are unchanged. Please retry or free browser storage.')
       return
     }
     setSaveStatus('')
@@ -8415,7 +8373,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
           if (Object.keys(errors).length) { setSetupErrors(errors); return false }
           draft.students = await resolveAssessmentAssignment(draft, undefined, { optionalFilters: true })
           const success = action === 'Direct Publish'
-            ? publishAssessmentDirectly(draft)
+            ? await publishAssessmentDirectly(draft)
             : await sendAssessmentToApproval(draft, reviewer)
           if (success) setPublicationAction(null)
           return Boolean(success)
@@ -9232,13 +9190,13 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
 
                 <div className="assessment-create-side-fields">
                   <div className={`assessment-create-field assessment-create-exam-category-field ${setupErrors.examCategory ? 'has-error' : ''}`.trim()}>
-                    <span>Exam Category<em className="assessment-create-required-mark">*</em>{setupErrors.examCategory && <small className="configuration-inline-error">{setupErrors.examCategory}</small>}</span>
+                    <span>Department of<em className="assessment-create-required-mark">*</em>{setupErrors.examCategory && <small className="configuration-inline-error">{setupErrors.examCategory}</small>}</span>
                     <span className="assessment-create-exam-category-row">
                       <span className="assessment-create-select-wrap">
                         <select value={setupDraft.examCategory} onChange={(event) => updateSetupDraft('examCategory', event.target.value)}>
-                          <option value="" disabled hidden>Select Exam Category</option>
+                          <option value="" disabled hidden>Select department</option>
                           {examCategoryOptions.map((option) => (
-                            <option key={option} value={option}>{option}</option>
+                            <option key={option} value={option}>{option.toUpperCase()}</option>
                           ))}
                         </select>
                         <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
@@ -9250,7 +9208,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                           onClick={() => {
                             setIsExamCategoryTooltipOpen((current) => !current)
                           }}
-                          aria-label="Add exam category"
+                          aria-label="Add department"
                           aria-expanded={isExamCategoryTooltipOpen}
                         >
                           <Plus size={15} strokeWidth={2.4} />
@@ -9260,7 +9218,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                             <input
                               type="text"
                               value={examCategoryDraft}
-                              placeholder="Add Category"
+                              placeholder="Add department"
                               onChange={(event) => setExamCategoryDraft(event.target.value)}
                               onKeyDown={(event) => {
                                 if (event.key === 'Enter') {
@@ -9760,7 +9718,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                   <RotateCcw size={15} strokeWidth={2.2} />
                   Clear
                 </button>
-                  {setupDraft.examDeliveryMode === 'Online' && <button type="button" className="configuration-edit-action" aria-haspopup="dialog" onClick={() => openConfigurationOptions('instructions')}><FilePenLine size={14} aria-hidden="true" />{setupDraft.provideStudentInstructions === 'Yes' ? 'Edit instructions' : 'Add instructions'}</button>}
+                  <button type="button" className="configuration-edit-action" aria-haspopup="dialog" onClick={() => openConfigurationOptions('instructions')}><FilePenLine size={14} aria-hidden="true" />{setupDraft.provideStudentInstructions === 'Yes' ? 'Edit instructions' : 'Add instructions'}</button>
                   <button type="button" className="configuration-edit-action" id="assessment-threshold-settings-section" aria-haspopup="dialog" onClick={() => openConfigurationOptions('thresholds')}><SlidersHorizontal size={14} aria-hidden="true" />Threshold settings</button>
                 </div>
                 {requiresPublicationApproval && <span role="note">Changes to this assessment require approval.</span>}

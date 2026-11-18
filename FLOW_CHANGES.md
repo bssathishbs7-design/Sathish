@@ -1,3 +1,7 @@
+## 2026-11-18 - Offline assessment instructions
+
+- Offline assessment configuration now offers Add/Edit instructions between Clear and Threshold settings, using the existing instructions dialog. Saved instructions remain available when switching between Online and Offline modes.
+
 ## 2026-11-12 - Tabbed activity configuration and assignment
 
 - OSPE and image/interpretation activities now share a Configure and assign dialog with Threshold configuration and Assignment tabs. Next/Back preserve draft choices; Proceed validates both tabs.

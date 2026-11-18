@@ -43,6 +43,18 @@ const getCardFirstQuestionValue = (card, key) => (
 )
 
 const normalizeCompetencyCode = (value) => String(value ?? '').replace(/\s+/g, '').toUpperCase()
+/** Split legacy combined code/description values for display without changing stored card identity.
+ * @param {{ competencyCode?: string, competencyName?: string }} card
+ * @returns {{ code: string, name: string }}
+ */
+const getCardTitle = (card) => {
+  const rawCode = String(card.competencyCode ?? '').trim()
+  const match = rawCode.match(/^([a-z]*\d+(?:\.\d+)+)\s+(.+)$/i)
+  return {
+    code: match?.[1] || rawCode,
+    name: match?.[2] || card.competencyName || ('Competency ' + rawCode),
+  }
+}
 const getCompetencyRow = (code) => corelationRatingRows.find((row) => (
   normalizeCompetencyCode(row.code) === normalizeCompetencyCode(code)
 ))
@@ -283,14 +295,14 @@ function LearnPracticePage({ onNavigate, onOpenAnalytics }) {
         <section className="learn-practice-results" aria-label="Shared practice">
           <div className="learn-practice-card-grid">
             {filteredCards.map(card => {
-              const competencyName = card.competencyName || ('Competency ' + card.competencyCode)
+              const { code: competencyCode, name: competencyName } = getCardTitle(card)
               const pendingCounts = getPendingPracticeTypeCounts(card)
               const [SubjectIcon, subjectTone] = PRACTICE_SUBJECT_ICONS[String(card.competencyCode || '').match(/^[a-z]+/i)?.[0]?.toUpperCase()] || [Stethoscope, 'teal']
               const cardOverview = getPracticeOverview([card])
               const cardStatus = cardOverview.completed ? 'Completed' : cardOverview.inProgress ? 'In progress' : getPracticeCardStatus(card) === 'Complete' ? 'Expired' : 'Not started'
               return <article key={card.id ?? card.competencyCode} className="learn-practice-card" data-tone={subjectTone}>
                 <div className="learn-practice-card-head"><span className="learn-practice-card-icon"><SubjectIcon size={20} aria-hidden="true" /></span><span className="learn-practice-card-context"><span>{getCardSubject(card)}</span><span className="learn-practice-card-year">{getCardYear(card)}</span></span><span className={'lb-status ' + (cardStatus === 'Completed' ? 'is-approved' : 'is-pending')}>{cardStatus}</span></div>
-                <div className="learn-practice-card-title"><h3 title={card.competencyCode + ": " + competencyName}><span className="learn-practice-title-code">{card.competencyCode}</span>{" "}{competencyName}</h3></div>
+                <div className="learn-practice-card-title"><h3 title={competencyCode + ": " + competencyName}><span className="learn-practice-title-code">{competencyCode}</span>{" "}{competencyName}</h3></div>
                 <div className="learn-practice-question-mix" aria-label={card.competencyCode + ' question type counts'}>
                   {[['mcq', 'MCQ'], ['saqs', 'SAQs'], ['laqs', 'LAQs']].map(([key, label]) => <div className="learn-practice-question-type" key={key}><span className="learn-practice-question-total"><strong>{card[key] || '-'}</strong><span>{label}</span></span>{pendingCounts[key] > 0 && <span className="learn-practice-notification-badge" title={pendingCounts[key] + ' questions in live practice'} aria-label={pendingCounts[key] + ' ' + label + ' questions in live practice'}>{pendingCounts[key]}</span>}</div>)}
                 </div>

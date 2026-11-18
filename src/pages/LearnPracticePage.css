@@ -21,9 +21,9 @@
 .learn-practice-page .learn-practice-card-icon { display: grid; place-items: center; width: var(--s-6); height: var(--s-6); flex-shrink: 0; border-radius: var(--r-sm); background: var(--surface-soft); color: var(--text-brand); }
 .learn-practice-page .learn-practice-card-context { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); min-width: 0; flex: 1; font-size: var(--fs-micro); color: var(--text-muted); overflow-wrap: anywhere; }
 .learn-practice-page .learn-practice-card-year { border-left: 1px solid var(--activity-line); padding-left: var(--s-2); white-space: nowrap; }
-.learn-practice-page .learn-practice-title-code { font-family: var(--f-code); font-size: 12px; font-weight: 600; color: var(--text-brand); margin-right: var(--s-1); white-space: nowrap; }
-.learn-practice-page .learn-practice-card-title { display: grid; justify-items: start; gap: var(--s-2); }
-.learn-practice-page .learn-practice-card-title h3 { font-size: 14px; line-height: 1.5; margin: 0; height: 3em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.learn-practice-page .learn-practice-title-code { font-family: var(--f-code); font-size: 12px; font-weight: 600; color: var(--text-brand); margin-right: var(--s-1); }
+.learn-practice-page .learn-practice-card-title { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--s-2); }
+.learn-practice-page .learn-practice-card-title h3 { min-width: 0; max-width: 100%; font-size: 14px; line-height: 1.5; margin: 0; height: 3em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .learn-practice-page .learn-practice-question-mix { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: auto; padding: var(--s-2) 0; border-radius: var(--r-sm); background: var(--surface-soft); }
 .learn-practice-page .learn-practice-question-type { display: flex; align-items: center; justify-content: space-between; gap: var(--s-1); min-width: 0; padding: var(--s-1) var(--s-2); }
 .learn-practice-page .learn-practice-question-type + .learn-practice-question-type { border-left: 1px solid var(--activity-line); }
