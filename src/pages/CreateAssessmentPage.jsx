@@ -1,3 +1,5 @@
+import FloatingTooltip from '../components/FloatingTooltip'
+import { explainBlueprintQuestionMismatch } from '../utils/blueprintQuestionMismatch'
 import QuestionSnapshotNotice from '../components/QuestionSnapshotNotice'
 import { mbbsSubjectOrder } from '../config/mbbsCurriculumOrder'
 import { detachBankQuestion, isBankQuestion } from '../utils/questionLifecycle'
@@ -5,7 +7,7 @@ import { questionContentChanged } from '../utils/questionContent'
 import CopyIdBadge from '../components/CopyIdBadge'
 import { publishAssessmentIdentity } from '../services/assessmentIdentity'
 import { questionDisplayId } from '../utils/questionLifecycle'
-import { readBlueprintPlanner, saveBlueprintPlannerReference, compactDuplicateBlueprintPlanners } from '../services/blueprintPlannerStorage'
+import { readBlueprintPlanner, saveBlueprintPlannerReference, compactDuplicateBlueprintPlanners, prefersBlueprintWorkspace } from '../services/blueprintPlannerStorage'
 import '../components/BlueprintSaveDialog.css'
 import BlueprintModifiedBadge from '../components/BlueprintModifiedBadge'
 import { blueprintTableSignatures, blueprintTableModifications } from '../services/blueprintTableModifications'
@@ -17,6 +19,8 @@ import { DEFAULT_ATTAINMENT_LEVELS, DEFAULT_BLOOMS_THRESHOLDS, DEFAULT_THINKING_
 import { archiveAssessmentRecoveryBackups } from '../services/assessmentRecoveryStorage'
 import { savePublishedAssessments } from '../services/assessmentPublicationStorage'
 import { readBlueprintWorkflow, saveBlueprintWorkflow, blueprintApprovalLocked, reviseBlueprintWorkflow, BLUEPRINT_WORKFLOW_EVENT } from '../services/blueprintApproval'
+import WorkspaceFullscreenButton from '../components/WorkspaceFullscreenButton'
+import { detachLegacyTemplateApproval, submitBlueprintTemplateApproval } from '../services/blueprintTemplateApproval'
 import { appendAssessmentHistory } from '../services/assessmentHistory'
 import AssessmentPublicationDialog from '../components/AssessmentPublicationDialog'
 import AssessmentApprovalReview from '../components/AssessmentApprovalReview'
@@ -37,8 +41,11 @@ import './PreviewQuestionActions.css'
 import SaveChangesDialog from '../components/SaveChangesDialog'
 import BlueprintTemplateDialog from '../components/BlueprintTemplateDialog'
 import BlueprintTemplateSelect from '../components/BlueprintTemplateSelect'
+import BlueprintTemplateLibrary from '../components/BlueprintTemplateLibrary'
+import { validateCompleteBlueprint } from '../services/blueprintTemplateValidation'
+import { readUnreadBlueprintTemplates, updateUnreadBlueprintTemplates, BLUEPRINT_TEMPLATE_UNREAD_KEY } from '../services/blueprintTemplateNotifications'
 import { createInstitutionBlueprintTemplates } from '../services/blueprintTemplateSamples'
-import { readBlueprintTemplates, resolveTemplateCognition, snapshotBlueprintBreakdown } from '../services/blueprintTemplates'
+import { readBlueprintTemplates, deleteBlueprintTemplate, resolveTemplateCognition, snapshotCompleteBlueprint, restoreCompleteBlueprint } from '../services/blueprintTemplates'
 import { captureAssessmentStorage, commitAssessmentStorage, upsertAssessmentDraft } from '../services/assessmentDraftStorage'
 import BlueprintSelectionProgress from '../components/BlueprintSelectionProgress'
 import BlueprintCompletionToast from '../components/BlueprintCompletionToast'
@@ -1570,17 +1577,17 @@ export default function CreateAssessmentPage(props) {
   return <AssessmentAuthorWorkspace {...props} />
 }
 
-export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme = 'light', onToggleTheme, currentUser, blueprintReview, assessmentReview, onReviewExit, reviewBusy = false, reviewActions, blueprintEditorRef, assessmentEditable = false, assessmentEditorRef, onReworkDraftSaved }) {
+export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme = 'light', onToggleTheme, currentUser, blueprintReview, assessmentReview, onReviewExit, reviewBusy = false, reviewActions, blueprintEditorRef, assessmentEditable = false, assessmentEditorRef, onReworkDraftSaved, templateOnly = false, templateWorkspace, templateWorkspaceRef, onTemplateSaved }) {
   const blueprintEditHighlights = useBlueprintEditHighlights()
   const blueprintBreakdownRef = useRef(null)
   const reviewReadOnly = Boolean(assessmentReview) && !assessmentEditable;
   // Review edits stay in React state until the approval coordinator commits the snapshot.
-  const writeReviewSafeJson = (key, value) => assessmentReview ? true : writeLocalStorageJson(key, value);
-  const writeReviewSafeQuestions = (key, rows) => assessmentReview ? 'full' : writeAssessmentQuestionsStorage(key, rows);
+  const writeReviewSafeJson = (key, value) => assessmentReview || templateOnly ? true : writeLocalStorageJson(key, value);
+  const writeReviewSafeQuestions = (key, rows) => assessmentReview || templateOnly ? 'full' : writeAssessmentQuestionsStorage(key, rows);
   const [appliedCognitionDraft, setAppliedCognitionDraft] = useState(null)
   const [appliedCognitionChanges, setAppliedCognitionChanges] = useState({})
   const [setup, setSetup] = useState(() => {
-    const savedSetup = assessmentReview?.setup || blueprintReview?.record.setup || readCreateAssessmentSetup()
+    const savedSetup = templateOnly ? { assessmentId: 'blueprint-template-workspace', draftWorkspace: templateWorkspace } : assessmentReview?.setup || blueprintReview?.record.setup || readCreateAssessmentSetup()
     return {
       ...CREATE_ASSESSMENT_DEFAULT_SETUP,
       ...savedSetup,
@@ -1599,7 +1606,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const checkpointKey = `vx-assessment-exit-checkpoint:${getAssessmentStorageSuffix(setup)}`
   const [initialCheckpoint] = useState(() => {
-    if (blueprintReview || assessmentReview) return {}
+    if (templateOnly || blueprintReview || assessmentReview) return {}
     const keys = [CREATE_ASSESSMENT_SETUP_KEY, getAssessmentQuestionsStorageKey(setup), getAssessmentSectionTitlesStorageKey(setup), getAssessmentSectionOrderStorageKey(setup), getAssessmentCustomSectionsStorageKey(setup), getBlueprintPlannerStorageKey(setup)]
     const values = captureAssessmentStorage(keys)
     if (!setup.sourceDraftId && !setup.sourcePublishedId) Object.keys(values).forEach(key => { values[key] = null })
@@ -1650,15 +1657,23 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     writeReviewSafeJson(nextCustomSectionsKey, customPreviewSections)
   }
   const [isDescriptiveTypePickerOpen, setIsDescriptiveTypePickerOpen] = useState(false)
-  const [initialBlueprintPlanner] = useState(() => assessmentReview ? assessmentReview.blueprintSnapshot || assessmentReview.setup?.draftWorkspace?.blueprint || null : blueprintReview?.record.blueprintSnapshot ?? readSavedBlueprintPlanner(setup) ?? readBlueprintWorkflow(setup.assessmentId)?.snapshot ?? setup.draftWorkspace?.blueprint)
+  const [preferDraftBlueprint] = useState(() => !assessmentReview && !blueprintReview && !templateOnly && prefersBlueprintWorkspace(setup, readBlueprintWorkflow(setup.assessmentId)))
+  const [legacyTemplateDetached] = useState(() => !templateOnly && !assessmentReview && !blueprintReview && detachLegacyTemplateApproval(setup.assessmentId))
+  const [initialBlueprintPlanner] = useState(() => templateOnly ? templateWorkspace?.blueprint || null : assessmentReview ? assessmentReview.blueprintSnapshot || assessmentReview.setup?.draftWorkspace?.blueprint || null : legacyTemplateDetached ? readBlueprintWorkflow(setup.assessmentId)?.snapshot : preferDraftBlueprint ? setup.draftWorkspace.blueprint : blueprintReview?.record.blueprintSnapshot ?? readSavedBlueprintPlanner(setup) ?? readBlueprintWorkflow(setup.assessmentId)?.snapshot ?? setup.draftWorkspace?.blueprint)
   // A Blueprint submission reviews its snapshot, even if the authoring setup has a stale disabled flag.
-  const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(Boolean(initialBlueprintPlanner) && (
+  const [isBlueprintEnabled, setIsBlueprintEnabled] = useState(templateOnly || Boolean(initialBlueprintPlanner) && (
     assessmentReview?.activityType === 'Blueprint' || Boolean(blueprintReview)
     || initialBlueprintPlanner.enabled !== false && assessmentReview?.setup?.blueprintEnabled !== false
   ))
   const [activeBlueprintTab, setActiveBlueprintTab] = useState(blueprintReview ? 'questionSpecifications' : setup.draftWorkspace?.activeBlueprintTab ?? (initialBlueprintPlanner ? 'questionSpecifications' : 'distribution'))
   const [isBlueprintMatrixCreated, setIsBlueprintMatrixCreated] = useState(blueprintReview || assessmentReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintMatrixCreated ?? Boolean(initialBlueprintPlanner))
-  const [blueprintPurpose, setBlueprintPurpose] = useState(() => isBlueprintMatrixCreated ? 'assessment' : setup.draftWorkspace?.blueprintPurpose === 'assessment' ? 'assessment' : 'template')
+  const blueprintPurpose = templateOnly ? 'template' : 'assessment'
+  const templateEditorRef = useRef(null)
+  const [hasOpenedTemplateEditor, setHasOpenedTemplateEditor] = useState(Boolean(setup.draftWorkspace?.templateWorkspace) || setup.draftWorkspace?.activeCreateTab === 'createBlueprint')
+  const [pendingTemplateId, setPendingTemplateId] = useState(null)
+  const [templateRowAction, setTemplateRowAction] = useState(null)
+  const templateRowActionLock = useRef(false)
+  const [templateLibraryError, setTemplateLibraryError] = useState('')
   const [isBlueprintQuestionSplitCreated, setIsBlueprintQuestionSplitCreated] = useState(blueprintReview || assessmentReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintQuestionSplitCreated ?? Boolean(initialBlueprintPlanner))
   const [isBlueprintCompetencyMatrixCreated, setIsBlueprintCompetencyMatrixCreated] = useState(blueprintReview || assessmentReview || readBlueprintWorkflow(setup.assessmentId)?.status === 'Pending Approval' ? true : setup.draftWorkspace?.isBlueprintCompetencyMatrixCreated ?? Boolean(initialBlueprintPlanner))
   const [blueprintTemplates, setBlueprintTemplates] = useState(() => {
@@ -1666,46 +1681,60 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     try { return [...institutionTemplates, ...readBlueprintTemplates()] } catch { return institutionTemplates }
   })
   const [templateSnapshot, setTemplateSnapshot] = useState(null)
-  const [unreadBlueprintTemplateIds, setUnreadBlueprintTemplateIds] = useState([])
-  const hasUnreadBlueprintTemplates = unreadBlueprintTemplateIds.some(id => blueprintTemplates.some(template => template.id === id && template.scope !== 'institution'))
-  const [savedTemplateFocusId, setSavedTemplateFocusId] = useState(null)
-  const templateBannerRef = useRef(null)
+  const [editingTemplate, setEditingTemplate] = useState(() => templateWorkspace?.editingTemplate || null)
+  const [templateManagementAction, setTemplateManagementAction] = useState(null)
+  const [templateManagementBusy, setTemplateManagementBusy] = useState(false)
+  const [templateToEdit, setTemplateToEdit] = useState(null)
   useEffect(() => {
-    if (!savedTemplateFocusId) return undefined
-    const frame = requestAnimationFrame(() => {
-      templateBannerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' })
-      templateBannerRef.current?.focus({ preventScroll: true })
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [savedTemplateFocusId])
+    if (!templateToEdit || !templateEditorRef.current) return
+    templateEditorRef.current.loadTemplate(templateToEdit)
+    setTemplateToEdit(null)
+  }, [templateToEdit])
+  const [unreadBlueprintTemplateIds, setUnreadBlueprintTemplateIds] = useState(() => readUnreadBlueprintTemplates())
+  const [visitNewTemplateIds, setVisitNewTemplateIds] = useState([])
+  const unreadBlueprintTemplateCount = blueprintTemplates.filter(template => (
+    template.schemaVersion === 2 && template.blueprint &&
+    (unreadBlueprintTemplateIds.includes(template.id) || visitNewTemplateIds.includes(template.id))
+    && template.scope !== 'institution'
+  )).length
+  const hasUnreadBlueprintTemplates = unreadBlueprintTemplateIds.some(id => blueprintTemplates.some(template => template.id === id && template.scope !== 'institution'))
+  const [pendingCognitionChange, setPendingCognitionChange] = useState(null)
+  const [cognitionInputError, setCognitionInputError] = useState('')
+  const templateBannerRef = useRef(null)
   const handleBlueprintTemplateSaved = template => {
-    setBlueprintTemplates(current => [...current, template])
-    setUnreadBlueprintTemplateIds(current => [...new Set([...current, template.id])])
-    if (isDirectBlueprintTemplateCreation) {
-      setBlueprintDraft(current => ({ ...current, totalMark: '', template: '', templateSnapshot: null }))
+    if (templateOnly) {
       resetBlueprintDependentData()
-      setAppliedCognitionDraft(null)
-      setAppliedCognitionChanges({})
+      setBlueprintDraft({ subject: '', topics: [], competencies: [], totalMark: '', template: '', templateSnapshot: null })
+      setEditingTemplate(null)
+      setBlueprintUnitAssignments({})
+      setBlueprintActiveField(null)
+      setBlueprintFieldError(null)
+      setPendingCognitionChange(null)
+      setCognitionInputError('')
       setIsBlueprintLaqSplitOpen(true)
-      setActiveBlueprintTab('distribution')
-      setSavedTemplateFocusId(template.id)
+      requestAnimationFrame(() => {
+        document.querySelector('.blueprint-template-workspace input, .blueprint-template-workspace button')?.focus({ preventScroll: true })
+        document.querySelector('.blueprint-template-workspace')?.scrollIntoView({ block: 'start', behavior: 'instant' })
+      })
     }
+    setBlueprintTemplates(current => [...current.filter(row => row.id !== template.id), template])
+    if (!template.updatedAt) setUnreadBlueprintTemplateIds(current => [...new Set([...current, template.id])])
     setTemplateSnapshot(null)
-    setSaveStatus('Blueprint template saved.')
+    setSaveStatus(template.updatedAt ? 'Blueprint template updated successfully.' : 'Blueprint template saved successfully.')
+    if (templateOnly) onTemplateSaved?.(template)
   }
   const [isBlueprintResetConfirmOpen, setIsBlueprintResetConfirmOpen] = useState(false)
   const [isBlueprintClearConfirmOpen, setIsBlueprintClearConfirmOpen] = useState(false)
   const [isBlueprintEditConfirmOpen, setIsBlueprintEditConfirmOpen] = useState(false)
   const [isBlueprintSaveConfirmOpen, setIsBlueprintSaveConfirmOpen] = useState(false)
   const [isBlueprintDisableConfirmOpen, setIsBlueprintDisableConfirmOpen] = useState(false)
-  const [isBlueprintEnableConfirmOpen, setIsBlueprintEnableConfirmOpen] = useState(false)
   const [savedPickerRows, setSavedPickerRows] = useState(initialBlueprintPlanner?.pickerRows || [])
   const [activePickerId, setActivePickerId] = useState('')
   const [filterRequirementId, setFilterRequirementId] = useState('')
   const pickerBankRef = useRef(null)
   const [pickerNavigationRequest, setPickerNavigationRequest] = useState(0)
   const [replacingPickerQuestion, setReplacingPickerQuestion] = useState(null)
-  const [isBlueprintPlannerSaved, setIsBlueprintPlannerSaved] = useState(readBlueprintWorkflow(setup.assessmentId)?.snapshot ? true : setup.draftWorkspace?.isBlueprintPlannerSaved ?? Boolean(initialBlueprintPlanner))
+  const [isBlueprintPlannerSaved, setIsBlueprintPlannerSaved] = useState(preferDraftBlueprint ? Boolean(setup.draftWorkspace?.isBlueprintPlannerSaved) : readBlueprintWorkflow(setup.assessmentId)?.snapshot ? true : setup.draftWorkspace?.isBlueprintPlannerSaved ?? Boolean(initialBlueprintPlanner))
   const [isBlueprintPlannerEditing, setIsBlueprintPlannerEditing] = useState(Boolean(blueprintReview) || assessmentEditable || (setup.draftWorkspace?.isBlueprintPlannerEditing ?? false))
   const [blueprintCompetencyViewMode, setBlueprintCompetencyViewMode] = useState('multi')
   const [blueprintDraft, setBlueprintDraft] = useState(initialBlueprintPlanner?.blueprintDraft ?? {
@@ -1755,6 +1784,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const [openPreviewCardIds, setOpenPreviewCardIds] = useState([])
   const [saveStatus, setSaveStatus] = useState('')
   const [requestedCreateTab, setActiveCreateTabState] = useState(() => {
+    if (templateOnly) return 'blueprint'
     if (assessmentReview) return isBlueprintEnabled ? 'blueprint' : 'preview'
     if (blueprintReview) return 'blueprint'
     const initialTab = readCreateAssessmentInitialTab()
@@ -1763,6 +1793,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   })
   const [blueprintFlow, setBlueprintFlow] = useState(() => assessmentReview ? { blueprintId: assessmentReview.blueprintId, status: assessmentReview.approvalStatus, snapshot: initialBlueprintPlanner } : readBlueprintWorkflow(setup.assessmentId))
   const [blueprintApprovalOpen, setBlueprintApprovalOpen] = useState(false)
+  const [templateApprovalTarget, setTemplateApprovalTarget] = useState(null)
   const [blueprintSaveBusy, setBlueprintSaveBusy] = useState(false)
   const [blueprintSaveError, setBlueprintSaveError] = useState('')
   const blueprintSaveLock = useRef(false)
@@ -1770,6 +1801,27 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const isBlueprintOnlyRework = !assessmentReview && setup.reworkReview?.activityType === 'Blueprint'
   const blueprintLocked = !assessmentReview && !blueprintReview && (blueprintApprovalLocked(blueprintFlow) || setup.reworkReview?.activityType === 'Blueprint')
   const activeCreateTab = blueprintReview || blueprintLocked ? 'blueprint' : requestedCreateTab
+  useEffect(() => {
+    if (templateOnly || assessmentReview || blueprintReview) return
+    if (activeCreateTab !== 'blueprint') {
+      setVisitNewTemplateIds([])
+      return
+    }
+    if (!unreadBlueprintTemplateIds.length) return
+    setVisitNewTemplateIds(current => [...new Set([...current, ...unreadBlueprintTemplateIds])])
+    updateUnreadBlueprintTemplates({ seen: unreadBlueprintTemplateIds })
+    setUnreadBlueprintTemplateIds([])
+  }, [activeCreateTab, unreadBlueprintTemplateIds, templateOnly, assessmentReview, blueprintReview])
+  useEffect(() => {
+    if (templateOnly) return undefined
+    const sync = event => {
+      if (event.key !== BLUEPRINT_TEMPLATE_UNREAD_KEY) return
+      setUnreadBlueprintTemplateIds(readUnreadBlueprintTemplates())
+      try { setBlueprintTemplates([...createInstitutionBlueprintTemplates(), ...readBlueprintTemplates()]) } catch { /* Retain the last available library. */ }
+    }
+    window.addEventListener('storage', sync)
+    return () => window.removeEventListener('storage', sync)
+  }, [templateOnly])
   const setActiveCreateTab = tab => {
     if (blueprintReview && tab !== 'blueprint') return
     if (reviewReadOnly && !['blueprint', 'preview', 'configuration'].includes(tab)) return
@@ -1778,8 +1830,9 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   }
   const blueprintLastStatus = useRef(blueprintFlow?.status)
   useEffect(() => {
-    if (assessmentReview) return
+    if (assessmentReview || templateOnly) return
     const refresh = () => {
+      setBlueprintTemplates([...createInstitutionBlueprintTemplates(), ...readBlueprintTemplates()])
       const next = readBlueprintWorkflow(setup.assessmentId)
       if (blueprintLastStatus.current === 'Pending Approval' && next?.status === 'Approved' && next.snapshot) {
         const snapshot = next.snapshot
@@ -1798,7 +1851,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         setIsBlueprintPlannerSaved(true)
         setIsBlueprintPlannerEditing(false)
         setIsBlueprintMatrixCreated(true)
-        setBlueprintPurpose('assessment')
         setIsBlueprintQuestionSplitCreated(true)
         setIsBlueprintCompetencyMatrixCreated(true)
       }
@@ -1808,7 +1860,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     window.addEventListener(BLUEPRINT_WORKFLOW_EVENT, refresh)
     window.addEventListener('storage', refresh)
     return () => { window.removeEventListener(BLUEPRINT_WORKFLOW_EVENT, refresh); window.removeEventListener('storage', refresh) }
-  }, [setup.assessmentId])
+  }, [setup.assessmentId, assessmentReview, templateOnly])
   const [hasSelectedCreateTab, setHasSelectedCreateTab] = useState(setup.draftWorkspace?.hasSelectedCreateTab ?? false)
   const isPublishedEditMode = Boolean(setupDraft.isPublishedEdit || setupDraft.sourcePublishedId || setup.isPublishedEdit || setup.sourcePublishedId)
   const requiresPublicationApproval = getAssessmentPublicationMethod({ setup: setupDraft }) === 'approval'
@@ -1849,7 +1901,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     setIsBlueprintEditConfirmOpen(false)
     setIsBlueprintSaveConfirmOpen(false)
     setIsBlueprintDisableConfirmOpen(false)
-    setIsBlueprintEnableConfirmOpen(false)
     setBlueprintChangedSpecificationCells([])
   }, [isBlueprintEnabled])
 
@@ -1959,6 +2010,8 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     return blueprintCompetencyOptions
       .filter((option) => selectedSet.has(option.value))
       .map((option) => {
+        const reference = blueprintDraft.referenceRows?.find(row => row.key === option.value)
+        if (reference) return reference
         const saved = savedCorelationRows[option.value]?.values ?? {}
         const ratingValue = saved.rating || option.row.rating || ''
         return {
@@ -1969,7 +2022,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
           ratingNumber: Number(ratingValue) || 0,
         }
       })
-  }, [blueprintCompetencyOptions, blueprintDraft.competencies, savedCorelationRows])
+  }, [blueprintCompetencyOptions, blueprintDraft.competencies, blueprintDraft.referenceRows, savedCorelationRows])
   const blueprintTotalMarkNumber = Number(blueprintDraft.totalMark) || 0
   const blueprintRoundedTotalMark = blueprintTotalMarkNumber ? Math.round(blueprintTotalMarkNumber) : 0
   const blueprintCorrelationTotal = selectedBlueprintRows.reduce((total, row) => total + (Number(row.correlationLevel) || 0), 0)
@@ -2748,6 +2801,11 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const blueprintCognitionTotalMarks = blueprintRoundedTotalMark || blueprintQuestionTypeTotal || blueprintTestSpecificationCognitionTotal
   const hasBlueprintCognitionPercentages = blueprintCognitionWeightage.lot !== '' && blueprintCognitionWeightage.hot !== ''
   const hasBlueprintCognitionMarks = blueprintCognitionTotalMarks > 0 && hasBlueprintCognitionPercentages
+  useEffect(() => {
+    if (isBlueprintQuestionSplitCreated || !hasBlueprintCognitionMarks || cognitionInputError || isBlueprintReadOnly) return undefined
+    const timer = window.setTimeout(() => setIsBlueprintQuestionSplitCreated(true), 500)
+    return () => window.clearTimeout(timer)
+  }, [blueprintCognitionWeightage.lot, blueprintCognitionWeightage.hot, hasBlueprintCognitionMarks, cognitionInputError, isBlueprintReadOnly, isBlueprintQuestionSplitCreated])
   const blueprintCognitionMarks = calculateCognitionMarks({
     totalMarks: hasBlueprintCognitionMarks ? blueprintCognitionTotalMarks : 0,
     hotPercentage: blueprintCognitionHotPercent,
@@ -2783,15 +2841,41 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     && blueprintQuestionTypeLotMarksTotal === blueprintCognitionLotMarks
   const isDirectBlueprintTemplateCreation = blueprintPurpose === 'template' && !blueprintReview && !assessmentReview
   const isBlueprintCompetencyMatrixReady = isBlueprintQuestionSplitCreated && isBlueprintBreakdownReady && isBlueprintDistributionReady && blueprintDistributionMatchesTotal
-  const canSaveBlueprintTemplate = isBlueprintQuestionSplitCreated && isBlueprintBreakdownReady
+  const canSaveBlueprintTemplate = isBlueprintCompetencyMatrixCreated && blueprintTestSpecificationMatrixIsValid && isBlueprintQuestionSplitCreated && isBlueprintBreakdownReady
     && blueprintQuestionTypeRows.every(row => (
       (!String(row.perQuestionMarks).trim() && !String(row.totalMarks).trim())
       || (row.hasRequiredValues && row.hasValidQuestionTotal)
     ))
   const hasBlueprintCompetencySelection = Boolean(blueprintDraft.subject && blueprintDraft.topics.length && selectedBlueprintRows.length)
-  const selectBlueprintTemplate = (templateId) => {
-    if (isBlueprintReadOnly || isBlueprintPlannerSaved || isBlueprintCompetencyMatrixCreated) return
-    const template = blueprintTemplates.find(item => item.id === templateId)
+  const selectBlueprintTemplate = (templateId, sourceTemplate) => {
+    if (isBlueprintReadOnly || blueprintFlow?.approvalRequired) return
+    const template = sourceTemplate || blueprintTemplates.find(item => item.id === templateId)
+    const complete = restoreCompleteBlueprint(template)
+    if (complete) {
+      setBlueprintDraft({ ...complete.blueprintDraft, template: templateId, templateSnapshot: structuredClone(template) })
+      setBlueprintDistributionDraft(complete.blueprintDistributionDraft || {})
+      setBlueprintQuestionTypeDraft(complete.blueprintQuestionTypeDraft || {})
+      setBlueprintCognitionWeightage(complete.blueprintCognitionWeightage)
+      setBlueprintLaqQuestionSplits(complete.blueprintLaqQuestionSplits || [])
+      setBlueprintTestSpecificationCountDraft(complete.blueprintTestSpecificationCountDraft || {})
+      setBlueprintTestSpecificationMarkDraft(complete.blueprintTestSpecificationMarkDraft || {})
+      setBlueprintUnitAssignments(complete.blueprintUnitAssignments || {})
+      setBlueprintManualCells(complete.blueprintManualCells || {})
+      setBlueprintRebalanceMetadata(complete.blueprintRebalanceMetadata || {})
+      setIsBlueprintMatrixCreated(true)
+      setIsBlueprintQuestionSplitCreated(true)
+      setIsBlueprintCompetencyMatrixCreated(true)
+      setIsBlueprintPlannerSaved(false)
+      setIsBlueprintPlannerEditing(true)
+      setSavedPickerRows([])
+      setBlueprintActiveField(null)
+      setBlueprintChangedSpecificationCells([])
+      setIsBlueprintEnabled(true)
+      setActiveBlueprintTab('questionSpecifications')
+      setActiveCreateTab('blueprint')
+      setSaveStatus('Complete blueprint applied. Review all tables before continuing to questions.')
+      return
+    }
     const totalMark = template ? String(template.totalMarks) : ''
     const cognition = resolveTemplateCognition(template)
     setBlueprintDraft(current => ({ ...current, template: templateId, templateSnapshot: template ? structuredClone(template) : null, totalMark }))
@@ -2810,10 +2894,16 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     setBlueprintTestSpecificationMarkDraft({})
     setBlueprintChangedSpecificationCells([])
     setSavedPickerRows([])
+    setIsBlueprintEnabled(true)
+    setIsBlueprintPlannerEditing(true)
+    setIsBlueprintQuestionSplitCreated(Boolean(template && cognition))
+    setActiveBlueprintTab('distribution')
+    setSaveStatus('Cognition and breakdown loaded. Complete the subject, topics, competencies and matrix for this assessment.')
   }
   const selectedBreakdownTemplate = blueprintTemplates.find(item => item.id === blueprintDraft.template)
     || (blueprintDraft.templateSnapshot?.id === blueprintDraft.template ? blueprintDraft.templateSnapshot : null)
-  const blueprintCognitionSuggestions = !selectedBreakdownTemplate && hasBlueprintCognitionPercentages && !blueprintQuestionTypeHasInvalidRows
+  const isLegacyBreakdownTemplate = Boolean(selectedBreakdownTemplate && !selectedBreakdownTemplate.blueprint)
+  const blueprintCognitionSuggestions = !isLegacyBreakdownTemplate && hasBlueprintCognitionPercentages && !blueprintQuestionTypeHasInvalidRows
     ? getCognitionSuggestions(blueprintQuestionTypeRows, { totalMarks: blueprintRoundedTotalMark, hotMarks: blueprintCognitionHotMarks }) : null
   const templateMarksMismatch = selectedBreakdownTemplate && Number(blueprintDraft.totalMark) > 0
     && blueprintQuestionTypeTotal !== Number(blueprintDraft.totalMark)
@@ -2852,12 +2942,11 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   }
   const updateBlueprintSubject = (subject) => {
     if (subject === blueprintDraft.subject) return
-    setBlueprintDraft(current => ({ ...current, subject, topics: [], competencies: [], ...(selectedBreakdownTemplate ? {} : { template: '', templateSnapshot: null, totalMark: '' }) }))
+    setBlueprintDraft(current => ({ ...current, subject, referenceRows: undefined, topics: [], competencies: [], ...(selectedBreakdownTemplate ? {} : { template: '', templateSnapshot: null, totalMark: '' }) }))
     resetBlueprintDependentData(Boolean(selectedBreakdownTemplate))
   }
   const clearBlueprintFields = () => {
     if (isBlueprintReadOnly) return
-    setBlueprintPurpose('template')
     setBlueprintDraft(current => ({ ...current, subject: '', topics: [], competencies: [], template: '', templateSnapshot: null, totalMark: '' }))
     resetBlueprintDependentData()
     setSaveStatus('Blueprint fields cleared.')
@@ -2891,9 +2980,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     setIsBlueprintMatrixCreated(false)
     setIsBlueprintCompetencyMatrixCreated(false)
     setBlueprintCompetencyViewMode('multi')
-    if (selectedBlueprintRows.length && totalMark) {
-      setSaveStatus(`Distribution recalculated for ${totalMark} ${Number(totalMark) === 1 ? 'mark' : 'marks'}.`)
-    }
   }
   const removeBlueprintCompetency = (competencyKey) => {
     updateBlueprintCompetencies(blueprintDraft.competencies.filter(key => key !== competencyKey))
@@ -3203,7 +3289,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     },
   }))
 
-  const confirmSaveBlueprintPlanner = async (action = 'continue', reviewer) => {
+  const confirmSaveBlueprintPlanner = async (action = 'continue', reviewer, stayInLibrary = false) => {
     if (blueprintSaveLock.current) return false
     setBlueprintSaveError('')
     if (action === 'approval' && typeof onSendToApproval !== 'function') { setSaveStatus('Approval service is unavailable. Try again later.'); return false }
@@ -3244,10 +3330,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       setIsBlueprintPlannerSaved(true)
       setIsBlueprintPlannerEditing(false)
       setIsBlueprintSaveConfirmOpen(false)
-      setActiveCreateTabState(action === 'approval' ? 'blueprint' : 'questionBank')
+      setActiveCreateTabState(action === 'approval' || stayInLibrary ? 'blueprint' : 'questionBank')
       setHasSelectedCreateTab(true)
       setBlueprintApprovalOpen(false)
-      setSaveStatus(isUpdatingBlueprintPlanner
+      setSaveStatus(action === 'approval' ? 'Blueprint sent for faculty approval.' : isUpdatingBlueprintPlanner
         ? 'Blueprint planner updated. Browse all questions or apply a requirement from Blueprint progress.'
         : 'Blueprint planner saved. Select or create questions to complete the blueprint.')
       return true
@@ -3275,7 +3361,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     setBlueprintAutoFillIteration(0)
   }
   const applyBlueprintCognitionSuggestion = id => {
-    if (selectedBreakdownTemplate || !hasBlueprintCognitionPercentages || blueprintQuestionTypeHasInvalidRows) return
+    if (isLegacyBreakdownTemplate || !hasBlueprintCognitionPercentages || blueprintQuestionTypeHasInvalidRows) return
     const next = applyCognitionSuggestion(blueprintQuestionTypeDraft, blueprintQuestionTypeRows,
       { totalMarks: blueprintRoundedTotalMark, hotMarks: blueprintCognitionHotMarks }, id)
     if (!next) return
@@ -3395,8 +3481,22 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     )))
   }
   const updateBlueprintCognitionWeightage = (level, value) => {
-    if (!/^\d*$/.test(value)) return
+    if (!/^\d*$/.test(value) || Number(value) > 100) {
+      setCognitionInputError('Enter a whole percentage from 0 to 100.')
+      return
+    }
+    setCognitionInputError('')
+    if (value === blueprintCognitionWeightage[level]) return
+    if (blueprintQuestionTypeHasInput || isBlueprintCompetencyMatrixCreated) {
+      setPendingCognitionChange({ level, value })
+      return
+    }
+    applyBlueprintCognitionWeightage(level, value)
+  }
+  const applyBlueprintCognitionWeightage = (level, value) => {
     invalidateBlueprintAllocations()
+    setIsBlueprintCompetencyMatrixCreated(false)
+    setIsBlueprintQuestionSplitCreated(false)
     if (value === '') {
       setBlueprintCognitionWeightage({ lot: '', hot: '' })
       return
@@ -3405,10 +3505,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     setBlueprintCognitionWeightage(level === 'lot'
       ? { lot: String(nextValue), hot: String(100 - nextValue) }
       : { lot: String(100 - nextValue), hot: String(nextValue) })
-  }
-  const createBlueprintQuestionSplit = () => {
-    if (!hasBlueprintCognitionPercentages) return
-    setIsBlueprintQuestionSplitCreated(true)
   }
   const createBlueprintCompetencyMatrix = () => {
     if (!isBlueprintBreakdownReady) return false
@@ -3476,9 +3572,9 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   }
   const confirmBlueprintMatrixReset = () => {
     if (!assessmentReview && !blueprintReview && blueprintFlow?.approvalRequired) setBlueprintFlow(reviseBlueprintWorkflow(setup.assessmentId))
-    if (selectedBreakdownTemplate) return
+    if (isLegacyBreakdownTemplate) return
     try {
-      if (!assessmentReview && !blueprintReview) window.localStorage.removeItem(getBlueprintPlannerStorageKey(setup))
+      if (!templateOnly && !assessmentReview && !blueprintReview) window.localStorage.removeItem(getBlueprintPlannerStorageKey(setup))
     } catch {
       // The in-memory reset still succeeds if browser storage is unavailable.
     }
@@ -3518,7 +3614,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       }
       setIsBlueprintQuestionSplitCreated(true)
     }
-    setBlueprintPurpose('assessment')
     setIsBlueprintMatrixCreated(true)
     setActiveBlueprintTab('questionSpecifications')
   }
@@ -3535,7 +3630,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     persistBlueprintEnabled(false)
     setIsBlueprintEnabled(false)
     setIsBlueprintPlannerEditing(false)
-    setActiveCreateTab(savedQuestionsRef.current.length ? 'preview' : 'questionBank')
+    if (activeCreateTab !== 'blueprint') setActiveCreateTab(savedQuestionsRef.current.length ? 'preview' : 'questionBank')
     setSelectedCreateQuestionTypeLabel('')
     setIsDescriptiveTypePickerOpen(false)
   }
@@ -3552,60 +3647,24 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       setSaveStatus('Blueprint mode changed for this session only; browser storage is unavailable.')
     }
   }
-  const confirmBlueprintEnable = () => {
-    persistBlueprintEnabled(true)
-    setIsBlueprintEnableConfirmOpen(false)
-    setIsBlueprintDisableConfirmOpen(false)
-    if (!isBlueprintPlannerSaved) {
-      setBlueprintDraft({ subject: '', topics: [], competencies: [], totalMark: '' })
-      setBlueprintDistributionDraft({})
-      setBlueprintCognitionWeightage({ lot: '', hot: '' })
-      setBlueprintQuestionTypeDraft({})
-      setBlueprintLaqQuestionSplits([])
-      setBlueprintManualCells({})
-      setBlueprintAllocationNotice('')
-      setBlueprintTestSpecificationCountDraft({})
-      setBlueprintTestSpecificationMarkDraft({})
-      setBlueprintRebalanceMetadata({})
-      setBlueprintChangedSpecificationCells([])
-      setBlueprintAutoFillIteration(0)
-      setIsBlueprintMatrixCreated(false)
-      setIsBlueprintQuestionSplitCreated(false)
-      setIsBlueprintCompetencyMatrixCreated(false)
-      setBlueprintCompetencyViewMode('multi')
-    }
-    setIsBlueprintEnabled(true)
-    setIsBlueprintPlannerEditing(Boolean(isBlueprintPlannerSaved))
-    setActiveBlueprintTab(isBlueprintPlannerSaved ? 'questionSpecifications' : 'distribution')
-    setActiveCreateTab('blueprint')
-    setHasSelectedCreateTab(true)
-  }
-
   const openBlueprintPlanner = () => {
-    if (blueprintFlow?.status === 'Pending Approval') { setSaveStatus('Blueprint review is pending.'); return }
-    if (blueprintFlow?.status === 'Approved') setBlueprintFlow(reviseBlueprintWorkflow(setup.assessmentId))
-    if (!isBlueprintEnabled) {
-      setIsBlueprintDisableConfirmOpen(false)
-      setIsBlueprintEnableConfirmOpen(true)
-      return
-    }
-
-    setIsBlueprintPlannerEditing(Boolean(isBlueprintPlannerSaved))
-    setActiveBlueprintTab(isBlueprintPlannerSaved ? 'questionSpecifications' : 'distribution')
     setActiveCreateTab('blueprint')
     setHasSelectedCreateTab(true)
+    try {
+      setBlueprintTemplates([...createInstitutionBlueprintTemplates(), ...readBlueprintTemplates()])
+      setTemplateLibraryError('')
+    } catch { setTemplateLibraryError('Unable to read saved templates. Check browser storage and try again.') }
   }
 
   const requestBlueprintToggle = () => {
     if (blueprintFlow?.approvalRequired) { setSaveStatus('This assessment requires its approved blueprint.'); return }
     if (isBlueprintEnabled) {
-      setIsBlueprintEnableConfirmOpen(false)
       setIsBlueprintDisableConfirmOpen(true)
       return
     }
 
     setIsBlueprintDisableConfirmOpen(false)
-    setIsBlueprintEnableConfirmOpen(true)
+    openBlueprintPlanner()
   }
 
   const activeMappingItems = useMemo(() => {
@@ -4643,7 +4702,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     setupDraft.thinkingThresholdMode,
     setupDraft.understandThreshold,
   ])
-  const primaryPublicationActionLabel = 'Publish assessment'
   const isPublicationHeaderComplete = Boolean(
     setupDraft.collegeName
     && String(setupDraft.assessmentName || '').trim()
@@ -5331,6 +5389,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       draftWorkspace: {
         question, editingPreviewQuestionId, selectedCreateQuestionTypeLabel, activeCreateTab,
         activeBlueprintTab, blueprintPurpose, isBlueprintPlannerEditing, hasSelectedCreateTab,
+        templateWorkspace: templateEditorRef.current?.getWorkspace() || setup.draftWorkspace?.templateWorkspace,
         isBlueprintMatrixCreated, isBlueprintQuestionSplitCreated, isBlueprintCompetencyMatrixCreated, isBlueprintPlannerSaved,
         blueprint: {
           enabled: isBlueprintEnabled, blueprintDraft, blueprintDistributionDraft,
@@ -6932,6 +6991,104 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     updateQuestion((current) => ({ options: [...current.options, createOption('')] }))
   }
 
+  const openCompleteTemplateSave = () => {
+    if (!canSaveBlueprintTemplate) return
+    const snapshot = buildBlueprintTableSnapshot()
+    // Persist effective values as well as raw edits: automatic distributions are real table values.
+    snapshot.blueprintDistributionDraft = Object.fromEntries(blueprintTableRows.map(row => [row.key, String(row.distributionLabel)]))
+    snapshot.blueprintTestSpecificationCountDraft = Object.fromEntries(blueprintSpecificationRows.map(row => [row.key, Object.fromEntries(blueprintTestSpecificationColumns.map(column => [column.key, String(getBlueprintTestSpecificationCountNumber(row.key, column.key))]))]))
+    snapshot.blueprintTestSpecificationMarkDraft = Object.fromEntries(blueprintSpecificationRows.map(row => [row.key, Object.fromEntries(blueprintTestSpecificationColumns.map(column => [column.key, getBlueprintTestSpecificationNumber(row.key, column.key)]))]))
+    try {
+      setTemplateSnapshot(snapshotCompleteBlueprint(snapshot, {
+        distribution: blueprintTableRows, questionTypes: blueprintQuestionTypeRows,
+        competencies: blueprintSpecificationRows, columns: blueprintTestSpecificationColumns,
+      }))
+    } catch (error) {
+      setSaveStatus(error.message)
+    }
+  }
+  const startTemplateRowAction = ({ id, action }) => {
+    selectBlueprintTemplate(id)
+    setSaveStatus('')
+    setTemplateRowAction({ id, action })
+  }
+  const requestApplyBlueprintTemplate = (id, action) => {
+    if (isBlueprintReadOnly || blueprintFlow?.approvalRequired || templateRowAction || blueprintSaveBusy) return
+    setTemplateLibraryError('')
+    try {
+      const template = blueprintTemplates.find(item => item.id === id)
+      if (template?.templateApprovalStatus === 'Pending Approval') throw new Error('Awaiting approval.')
+      if (action !== 'approval' && ['Rejected', 'Approval Rejected', 'Revision required'].includes(template?.templateApprovalStatus)) throw new Error('Resolve the requested changes and obtain approval before using this blueprint.')
+      if (!restoreCompleteBlueprint(template)) throw new Error('Complete and save this blueprint in Create Blueprint first.')
+      validateCompleteBlueprint(template.blueprint, template.tables)
+      if (action === 'approval') {
+        if (template.templateApprovalStatus === 'Pending Approval') throw new Error('This template is already pending approval.')
+        setTemplateApprovalTarget(template)
+        return
+      }
+      if (blueprintDraft.subject || blueprintDraft.totalMark || isBlueprintMatrixCreated) setPendingTemplateId({ id, action })
+      else startTemplateRowAction({ id, action })
+    } catch (error) { setTemplateLibraryError(error.message) }
+  }
+  useEffect(() => {
+    if (!templateRowAction || blueprintDraft.template !== templateRowAction.id || templateRowActionLock.current) return
+    templateRowActionLock.current = true
+    const run = async () => {
+      try {
+        if (!blueprintTestSpecificationMatrixIsValid || !isBlueprintBreakdownReady) throw new Error('This template needs corrections. Complete it in Create Blueprint and save it again.')
+        if (templateRowAction.action === 'approval') setBlueprintApprovalOpen(true)
+        else if (!await confirmSaveBlueprintPlanner('continue', undefined, true)) setTemplateLibraryError('Unable to continue with this blueprint. Check the save message and try again.')
+      } catch (error) { setTemplateLibraryError(error.message) }
+      finally { setTemplateRowAction(null); templateRowActionLock.current = false }
+    }
+    void run()
+  }, [templateRowAction, blueprintDraft.template, blueprintTestSpecificationMatrixIsValid, isBlueprintBreakdownReady])
+  const templateDialogs = <>
+    {templateManagementAction && <SaveChangesDialog theme={theme}
+      title={templateManagementAction.kind === 'delete' ? 'Delete blueprint template?' : 'Edit blueprint template?'}
+      description={templateManagementAction.kind === 'delete' ? 'Remove this saved template? Existing assessments will keep their copies.' : 'Open this template in Create Blueprint? This replaces any unfinished template currently open there.'}
+      saveLabel={templateManagementAction.kind === 'delete' ? 'Delete template' : 'Edit template'}
+      danger={templateManagementAction.kind === 'delete'} busy={templateManagementBusy} error={templateLibraryError}
+      onCancel={() => { if (!templateManagementBusy) setTemplateManagementAction(null) }}
+      onSave={async () => {
+        if (templateManagementBusy) return
+        setTemplateManagementBusy(true)
+        setTemplateLibraryError('')
+        try {
+          const { kind, template } = templateManagementAction
+          if (kind === 'delete') {
+            await deleteBlueprintTemplate(template.id)
+            setBlueprintTemplates(current => current.filter(row => row.id !== template.id))
+            setUnreadBlueprintTemplateIds(current => current.filter(id => id !== template.id))
+            setVisitNewTemplateIds(current => current.filter(id => id !== template.id))
+            updateUnreadBlueprintTemplates({ seen: [template.id] })
+            setSaveStatus('Blueprint template deleted.')
+          } else {
+            setHasOpenedTemplateEditor(true)
+            setTemplateToEdit(template)
+            setActiveCreateTab('createBlueprint')
+          }
+          setTemplateManagementAction(null)
+        } catch (error) { setTemplateLibraryError(error.message) }
+        finally { setTemplateManagementBusy(false) }
+      }} />}
+    {pendingCognitionChange && <SaveChangesDialog theme={theme} title="Change cognition percentages?"
+      description="This will clear your edited question breakdown and competency allocations."
+      saveLabel="Change and reset" onCancel={() => setPendingCognitionChange(null)}
+      onSave={() => {
+        setBlueprintQuestionTypeDraft({})
+        setBlueprintLaqQuestionSplits([])
+        applyBlueprintCognitionWeightage(pendingCognitionChange.level, pendingCognitionChange.value)
+        setPendingCognitionChange(null)
+      }} danger />}
+    {templateSnapshot && <BlueprintTemplateDialog snapshot={templateSnapshot} existingTemplate={editingTemplate} theme={theme} createdBy={currentUser?.name || ''}
+      onCancel={() => setTemplateSnapshot(null)} onSaved={handleBlueprintTemplateSaved} />}
+    {pendingTemplateId && <SaveChangesDialog theme={theme} title="Apply blueprint template?"
+      description="Replace this assessment’s current blueprint values with the selected template? Existing questions and the saved template will be kept."
+      saveLabel={pendingTemplateId.action === 'approval' ? 'Continue to approval' : 'Continue to assessment'} onCancel={() => setPendingTemplateId(null)}
+      onSave={() => { startTemplateRowAction(pendingTemplateId); setPendingTemplateId(null) }} />}
+  </>
+
   const blueprintAllocationActions = <>
                       <button
                         type="button"
@@ -6956,11 +7113,11 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                       {!assessmentReview && <button
                         type="button"
                         className="create-assessment-blueprint-reference-action-btn is-save"
-                        onClick={saveBlueprintPlanner}
-                        disabled={isBlueprintReadOnly || (Boolean(blueprintReview) && (activeBlueprintTab !== 'questionSpecifications' || !isBlueprintCompetencyMatrixCreated)) || blueprintSaveBusy || !blueprintTestSpecificationMatrixIsValid}
+                        onClick={templateOnly ? openCompleteTemplateSave : saveBlueprintPlanner}
+                        disabled={isBlueprintReadOnly || (Boolean(blueprintReview) && (activeBlueprintTab !== 'questionSpecifications' || !isBlueprintCompetencyMatrixCreated)) || blueprintSaveBusy || !blueprintTestSpecificationMatrixIsValid || templateOnly && !canSaveBlueprintTemplate}
                       >
                         <Save size={14} strokeWidth={2.3} />
-                        <span>{blueprintReview ? (blueprintSaveBusy ? 'Saving...' : 'Save and approve') : isBlueprintPlannerSaved ? 'Update Blueprint Planner' : 'Save Blueprint Planner'}</span>
+                        <span>{templateOnly ? 'Save template' : blueprintReview ? (blueprintSaveBusy ? 'Saving...' : 'Save and approve') : isBlueprintPlannerSaved ? 'Update Blueprint Planner' : 'Save Blueprint Planner'}</span>
                       </button>}
   </>
   const blueprintPanel = isBlueprintEnabled && activeCreateTab === 'blueprint' ? (
@@ -6976,20 +7133,20 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       onSave={() => { clearBlueprintFields(); setIsBlueprintClearConfirmOpen(false) }}
     />}
             <header className="create-assessment-blueprint-head">
-                    <div ref={templateBannerRef} tabIndex={-1} className={`create-assessment-blueprint-template${hasUnreadBlueprintTemplates ? ' has-unread-templates' : ''}`} role="group" aria-label="Blueprint template">
+                    {!templateOnly && <div ref={templateBannerRef} tabIndex={-1} className={`create-assessment-blueprint-template${hasUnreadBlueprintTemplates ? ' has-unread-templates' : ''}`} role="group" aria-label="Blueprint template">
                       <LayoutGrid className="create-assessment-blueprint-template-icon" size={16} aria-hidden="true" />
                       <p className="create-assessment-blueprint-template-help" title="Blueprint Templates. Apply a template to set marks distribution."><strong>Blueprint Templates.</strong> Apply a template to set marks distribution.</p>
                       <BlueprintTemplateSelect
                         unreadIds={unreadBlueprintTemplateIds}
-                        onRead={() => setUnreadBlueprintTemplateIds([])}
+                        onRead={() => { updateUnreadBlueprintTemplates({ seen: unreadBlueprintTemplateIds }); setUnreadBlueprintTemplateIds([]) }}
                         templates={blueprintTemplates}
                         selected={selectedBreakdownTemplate}
                         theme={theme}
                         disabled={false}
-                        readOnly={isBlueprintReadOnly || isBlueprintPlannerSaved || isBlueprintCompetencyMatrixCreated}
+                        readOnly={isBlueprintReadOnly || Boolean(blueprintFlow?.approvalRequired)}
                         placeholder="Choose template"
                         value={blueprintDraft.template || ''}
-                        onChange={selectBlueprintTemplate}
+                        onChange={requestApplyBlueprintTemplate}
                         onDeleted={template => {
                           if (blueprintDraft.template === template.id) {
                             setBlueprintDraft(current => ({ ...current, templateSnapshot: structuredClone(template) }))
@@ -6999,7 +7156,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         }}
                       />
                       {templateMarksMismatch && <p className="blueprint-template-feedback" role="alert">The breakdown contains {blueprintQuestionTypeTotal} marks. Adjust it to match your assessment total.</p>}
-                    </div>
+                    </div>}
 
               <div className="create-assessment-blueprint-tabs" role="tablist" aria-label="Blueprint sections">
                 <button
@@ -7016,11 +7173,12 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                   type="button"
                   className={activeBlueprintTab === 'questionSpecifications' ? 'is-active' : ''}
                   onClick={() => setActiveBlueprintTab('questionSpecifications')}
+                  disabled={!isBlueprintMatrixCreated}
                   role="tab"
                   aria-selected={activeBlueprintTab === 'questionSpecifications'}
                 >
                   <FilePenLine size={14} strokeWidth={2.3} />
-                  <span>Create Template</span>
+                  <span>Blueprint matrix</span>
                 </button>
               </div>
             </header>
@@ -7072,8 +7230,8 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                         type="number"
                         min="1"
                         value={hasBlueprintCompetencySelection ? blueprintDraft.totalMark : ''}
-                        readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
-                        aria-readonly={Boolean(selectedBreakdownTemplate)}
+                        readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
+                        aria-readonly={isLegacyBreakdownTemplate}
                         onChange={(event) => updateBlueprintTotalMark(event.target.value)}
                         placeholder="Total mark"
                         disabled={isBlueprintReadOnly || isBlueprintMatrixCreated || !hasBlueprintCompetencySelection}
@@ -7242,7 +7400,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
               ) : (
                 <div className={`create-assessment-blueprint-specifications ${isBlueprintQuestionSplitCreated ? 'has-question-split' : 'is-cognition-only'} ${isBlueprintCompetencyMatrixCreated ? `is-competency-matrix is-${blueprintCompetencyViewMode}-view` : ''}`}>
                   <div className="create-assessment-blueprint-spec-left-stack" ref={blueprintSpecLeftStackRef}>
-                    <p className="blueprint-purpose-label" role="status">{isDirectBlueprintTemplateCreation ? 'Create a reusable blueprint template.' : 'Prepare your assessment blueprint.'}</p>
+                    {!isDirectBlueprintTemplateCreation && <p className="blueprint-purpose-label" role="status">Prepare your assessment blueprint.</p>}
                     {isBlueprintQuestionSplitCreated ? (
                       <section ref={blueprintBreakdownRef} tabIndex={-1} className="create-assessment-blueprint-spec-card is-type-summary" aria-label="Question Type Breakdown">
                         <div className="blueprint-breakdown-with-suggestions">
@@ -7305,7 +7463,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                     type="text"
                                     inputMode="numeric"
                                     value={row.perQuestionMarks}
-                                    readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                    readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'perQuestionMarks', event.target.value)}
                                     aria-label={`${row.label} per question marks`}
                                   />
@@ -7316,7 +7474,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                     type="text"
                                     inputMode="numeric"
                                     value={row.totalMarks}
-                                    readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                    readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'totalMarks', event.target.value)}
                                     aria-label={`${row.label} total marks`}
                                   />
@@ -7338,7 +7496,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                     inputMode="numeric"
                                     value={row.hotQuestionsValue}
                                     placeholder="-"
-                                    readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                    readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotQuestions', event.target.value)}
                                     aria-label={row.label === 'LAQs' ? 'LAQs HoT parts' : `${row.label} HoT questions`}
                                     title={row.label === 'LAQs' ? 'Edit the number of LAQ parts at this level' : 'Auto-populated and editable'}
@@ -7361,7 +7519,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                     inputMode="numeric"
                                     value={row.lotQuestionsValue}
                                     placeholder="-"
-                                    readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                    readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotQuestions', event.target.value)}
                                     aria-label={row.label === 'LAQs' ? 'LAQs LoT parts' : `${row.label} LoT questions`}
                                     title={row.label === 'LAQs' ? 'Edit the number of LAQ parts at this level' : 'Auto-populated and editable'}
@@ -7399,7 +7557,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                                     type="text"
                                                     inputMode="numeric"
                                                     value={card.splitCountValue}
-                                                    readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                                    readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintLaqSplitCount(card.questionIndex, event.target.value)}
                                                     placeholder="0"
                                                     aria-label={`LAQ question ${card.questionIndex + 1} split count`}
@@ -7438,7 +7596,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                                           type="text"
                                                           inputMode="decimal"
                                                           value={split.marks}
-                                                          readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                                          readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintLaqSplitMarks(card.questionIndex, splitIndex, event.target.value)}
                                                           aria-label={`LAQ question ${card.questionIndex + 1} part ${splitIndex + 1} marks`}
                                                         />
@@ -7453,7 +7611,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                                         <button
                                                           type="button"
                                                           className={split.level === 'lot' ? 'is-selected is-lot' : ''}
-                                                          disabled={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                                          disabled={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                                           onClick={() => updateBlueprintLaqSplitLevel(card.questionIndex, splitIndex, 'lot')}
                                                           aria-pressed={split.level === 'lot'}
                                                         >
@@ -7462,7 +7620,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                                         <button
                                                           type="button"
                                                           className={split.level === 'hot' ? 'is-selected is-hot' : ''}
-                                                          disabled={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                                          disabled={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                                           onClick={() => updateBlueprintLaqSplitLevel(card.questionIndex, splitIndex, 'hot')}
                                                           aria-pressed={split.level === 'hot'}
                                                         >
@@ -7514,7 +7672,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                 <span className="create-assessment-blueprint-question-type-child-label">
                                   {row.childLabel}
                                 </span>
-                                <SaqCognitionToggle disabled={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)} label={row.childLabel} value={row.cognitionMode} onChange={(mode) => updateBlueprintSaqCognition(row.label, mode)} />
+                                <SaqCognitionToggle disabled={isBlueprintReadOnly || isLegacyBreakdownTemplate} label={row.childLabel} value={row.cognitionMode} onChange={(mode) => updateBlueprintSaqCognition(row.label, mode)} />
                                 </div>
                               </td>
                               <td>
@@ -7524,7 +7682,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                   inputMode="numeric"
                                   value={row.perQuestionMarks}
                                   disabled={isBlueprintReadOnly || !row.cognitionMode}
-                                  readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                  readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'perQuestionMarks', event.target.value)}
                                   aria-label={`${row.label} per question marks`}
                                 />
@@ -7536,7 +7694,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                   inputMode="numeric"
                                   value={row.totalMarks}
                                   disabled={isBlueprintReadOnly || !row.cognitionMode}
-                                  readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                  readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'totalMarks', event.target.value)}
                                   aria-label={`${row.label} total marks`}
                                 />
@@ -7561,7 +7719,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'hotQuestions', event.target.value)}
                                   aria-label={`${row.label} HoT questions`}
                                   disabled={isBlueprintReadOnly || !row.cognitionMode}
-                                  readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate) || row.cognitionMode !== 'both'}
+                                  readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate || row.cognitionMode !== 'both'}
                                   title={row.cognitionMode === 'both' ? 'Edit this count to update its complement' : 'Calculated from the selected cognition; select Both to edit counts'}
                                 />
                               </td>
@@ -7585,7 +7743,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                   onChange={(event) => updateBlueprintQuestionTypeDraft(row.label, 'lotQuestions', event.target.value)}
                                   aria-label={`${row.label} LoT questions`}
                                   disabled={isBlueprintReadOnly || !row.cognitionMode}
-                                  readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate) || row.cognitionMode !== 'both'}
+                                  readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate || row.cognitionMode !== 'both'}
                                   title={row.cognitionMode === 'both' ? 'Edit this count to update its complement' : 'Calculated from the selected cognition; select Both to edit counts'}
                                 />
                               </td>
@@ -7651,7 +7809,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                             <span>Level of Cognition</span>
                           </h3>
                           <span className="create-assessment-blueprint-cognition-instruction-badge">
-                            Enter either LoT or HoT percentage. The remaining percentage and marks calculate automatically, then create the questions split.
+                            Enter either LoT or HoT percentage. The remaining percentage and marks calculate automatically, the question breakdown opens automatically.
                           </span>
                         </div>
                         <div className="create-assessment-blueprint-cognition-bar">
@@ -7668,12 +7826,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                             data-tooltip={`HoT: ${blueprintCognitionDisplayHotPercent}% / ${hasBlueprintCognitionMarks ? `${blueprintCognitionHotMarks} Marks` : '-'}`}
                           />
                         </div>
+                        {cognitionInputError && <p role="alert">{cognitionInputError}</p>}
                         <div className="create-assessment-blueprint-cognition-stage-row">
                           <div className="create-assessment-blueprint-cognition-marks-summary">
-                            <label className="blueprint-cognition-total-field">
-                              <strong>Total Marks</strong>
-                              <input type="text" inputMode="numeric" aria-label="Template total marks" value={blueprintDraft.totalMark} onChange={event => updateBlueprintTotalMark(event.target.value)} readOnly={isBlueprintReadOnly || isBlueprintMatrixCreated || isBlueprintQuestionSplitCreated || Boolean(selectedBreakdownTemplate)} placeholder="-" />
-                            </label>
+                            <strong>Total Marks {blueprintDraft.totalMark || 0}</strong>
                             <span>LoT {hasBlueprintCognitionMarks ? blueprintCognitionLotMarks : 0} Marks</span>
                             <span>HoT {hasBlueprintCognitionMarks ? blueprintCognitionHotMarks : 0} Marks</span>
                           </div>
@@ -7686,7 +7842,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                   inputMode="numeric"
                                   aria-label="LoT percentage"
                                   value={blueprintCognitionWeightage.lot}
-                                  readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                  readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintCognitionWeightage('lot', event.target.value)}
                                 />
                                 <em>%</em>
@@ -7700,45 +7856,24 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                   inputMode="numeric"
                                   aria-label="HoT percentage"
                                   value={blueprintCognitionWeightage.hot}
-                                  readOnly={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                                  readOnly={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                                     onChange={(event) => updateBlueprintCognitionWeightage('hot', event.target.value)}
                                 />
                                 <em>%</em>
                               </label>
                             </div>
                           </div>
-                          {!isBlueprintQuestionSplitCreated ? (
-                            <div className="create-assessment-blueprint-cognition-stage-action">
-                              <button
-                                type="button"
-                                className="create-assessment-blueprint-question-split-btn"
-                                onClick={createBlueprintQuestionSplit}
-                                disabled={isBlueprintReadOnly || !hasBlueprintCognitionMarks}
-                              >
-                                <LayoutGrid size={15} strokeWidth={2.3} />
-                                <span>Create Split</span>
-                              </button>
-                            </div>
-                          ) : null}
+
                         </div>
                       </div>
                     </section>
 
                     {isBlueprintQuestionSplitCreated ? (
                     <div className="create-assessment-blueprint-competency-actions">
-                      {!blueprintReview && <button type="button" className="create-assessment-blueprint-competency-btn blueprint-template-save"
-                        disabled={isBlueprintReadOnly || !canSaveBlueprintTemplate}
-                        title={!canSaveBlueprintTemplate ? 'Match total marks, HoT and LoT targets, and complete all question rows and LAQ parts to save.' : 'Save blueprint template'}
-                        onClick={() => {
-                          if (!canSaveBlueprintTemplate) return
-                          setTemplateSnapshot(snapshotBlueprintBreakdown(blueprintQuestionTypeRows, blueprintLaqQuestionSplits, blueprintCognitionWeightage))
-                        }}>
-                        <Save size={15} aria-hidden="true" /><span>Save Template</span>
-                      </button>}
-                      {!isDirectBlueprintTemplateCreation && <><button
+                      <button
                         type="button"
                         className="create-assessment-blueprint-reset-btn"
-                        disabled={isBlueprintReadOnly || Boolean(selectedBreakdownTemplate)}
+                        disabled={isBlueprintReadOnly || isLegacyBreakdownTemplate}
                         onClick={() => setIsBlueprintResetConfirmOpen(true)}
                       >
                         <RotateCcw size={15} strokeWidth={2.3} />
@@ -7752,7 +7887,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                       >
                         <LayoutGrid size={15} strokeWidth={2.3} />
                         <span>Create Competency Matrix</span>
-                      </button></>}
+                      </button>
                     </div>
                     ) : null}
                   </div>
@@ -8049,7 +8184,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                           <strong>Question Type Breakdown</strong>
                           <BlueprintModifiedBadge modification={tableModifications.specifications} />
                           <span>Read-only</span>
-                          {!selectedBreakdownTemplate && (
+                          {!isLegacyBreakdownTemplate && (
                           <button
                             type="button"
                             className="create-assessment-blueprint-header-edit-btn"
@@ -8262,6 +8397,22 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     },
   }));
 
+  useImperativeHandle(templateWorkspaceRef, () => ({
+    loadTemplate: template => { setEditingTemplate(template); selectBlueprintTemplate(template.id, template); setSaveStatus('') },
+    getWorkspace: () => structuredClone({
+      activeBlueprintTab, isBlueprintMatrixCreated, isBlueprintQuestionSplitCreated,
+      isBlueprintCompetencyMatrixCreated, isBlueprintPlannerEditing: true, isBlueprintPlannerSaved: false,
+      blueprint: buildBlueprintTableSnapshot(), editingTemplate,
+    }),
+  }))
+  if (templateOnly) return <>
+    {saveStatus && <p role="status">{saveStatus}</p>}
+    {blueprintPanel}
+    {templateDialogs}
+    {isBlueprintEditConfirmOpen && <SaveChangesDialog theme={theme} title="Edit distribution?" description="Unlock distribution fields to change blueprint values." onCancel={() => setIsBlueprintEditConfirmOpen(false)} onSave={confirmBlueprintDistributionEdit} saveLabel="Edit distribution" />}
+    {isBlueprintResetConfirmOpen && <SaveChangesDialog theme={theme} title="Reset matrix?" description="Clear cognition, question breakdown and competency allocations?" onCancel={() => setIsBlueprintResetConfirmOpen(false)} onSave={confirmBlueprintMatrixReset} saveLabel="Reset matrix" danger />}
+  </>
+
   if (blueprintReview && !assessmentReview) return <div className="create-assessment-workspace blueprint-review-planner">
     {saveStatus && <p role="status">{saveStatus}</p>}
     {blueprintPanel}
@@ -8293,6 +8444,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         </div>
 
         <div className="create-assessment-header-actions">
+          <WorkspaceFullscreenButton />
           {!assessmentReview && setup.reworkReview && <button type="button" onClick={() => setIsRejectionReasonOpen(true)}>Rejection reason</button>}
           <button
             type="button"
@@ -8337,6 +8489,8 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       ><p>{setup.reworkReview.reviewer}{setup.reworkReview.reviewedAt ? ' / ' + new Date(setup.reworkReview.reviewedAt).toLocaleString('en-GB') : ''}</p></SaveChangesDialog>}
       {isExitDialogOpen && <SaveChangesDialog
         className="assessment-exit-dialog"
+        discardFirst
+        cancelLast
         reference={headerSetup.assessmentCode || headerSetup.assessmentId}
         theme={theme}
         busy={isSavingExit}
@@ -8399,18 +8553,35 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         footerStart={<button type="button" disabled={blueprintSaveBusy} onClick={() => confirmSaveBlueprintPlanner('continue')}>{blueprintSaveBusy ? 'Saving blueprint...' : 'Continue to assessment'}</button>} />}
       {blueprintApprovalOpen && <AssessmentPublicationDialog action="Send to Approval" name={`${setupDraft.assessmentName || 'Untitled Assessment'}${blueprintFlow?.blueprintId ? ' / ' + blueprintFlow.blueprintId : ''}`} theme={theme}
         onCancel={() => setBlueprintApprovalOpen(false)} onConfirm={({ reviewer }) => confirmSaveBlueprintPlanner('approval', reviewer)} />}
+      {templateApprovalTarget && <AssessmentPublicationDialog action="Send to Approval" name={templateApprovalTarget.name} theme={theme}
+        onCancel={() => setTemplateApprovalTarget(null)} onConfirm={async ({ reviewer }) => {
+          await submitBlueprintTemplateApproval(templateApprovalTarget, setupDraft, reviewer, onSendToApproval)
+          setTemplateApprovalTarget(null)
+          return true
+        }} />}
       {isBlueprintDisableConfirmOpen && <SaveChangesDialog theme={theme} title="Disable blueprint?" description="Hide blueprint guidance and tracking. Your saved planner and assessment questions will be kept."
         onCancel={() => setIsBlueprintDisableConfirmOpen(false)} onSave={confirmBlueprintDisable} saveLabel="Yes, disable" danger />}
 
-      {isBlueprintEnableConfirmOpen && <SaveChangesDialog theme={theme} title="Enable blueprint?" description="Open Distribution to set up your blueprint. Any saved planner will be restored."
-        onCancel={() => setIsBlueprintEnableConfirmOpen(false)} onSave={confirmBlueprintEnable} saveLabel="Yes, enable" />}
 
-      {templateSnapshot && <BlueprintTemplateDialog snapshot={templateSnapshot} theme={theme} createdBy={currentUser?.name || ''}
-        onCancel={() => setTemplateSnapshot(null)}
-        onSaved={handleBlueprintTemplateSaved} />}
+      {templateDialogs}
       <div className="create-assessment-workspace-body">
       <main className="create-assessment-workspace-main">
-        {isBlueprintEnabled && activeCreateTab === 'blueprint' ? blueprintPanel : null}
+        {hasOpenedTemplateEditor && <div className="blueprint-template-workspace qb-sort-scope" hidden={activeCreateTab !== 'createBlueprint'}>
+          <AssessmentAuthorWorkspace templateOnly theme={theme} currentUser={currentUser}
+            templateWorkspace={setup.draftWorkspace?.templateWorkspace} templateWorkspaceRef={templateEditorRef}
+            onTemplateSaved={template => {
+              handleBlueprintTemplateSaved(template)
+              setBlueprintDraft(current => ({ ...current, template: '', templateSnapshot: null }))
+              setActiveCreateTab('createBlueprint')
+            }} />
+        </div>}
+        {!assessmentReview && activeCreateTab === 'blueprint' && <BlueprintTemplateLibrary
+          renderProgress={pickerEnabled ? () => <BlueprintSelectionProgress inline readOnly={reviewReadOnly || reviewBusy} blueprintId={blueprintFlow?.blueprintId || setupDraft.blueprintId} loadBankQuestions={readBlueprintBankQuestions} rows={pickerRows} progress={pickerProgress} activeId={activePickerRow?.id} selectedQuestions={savedQuestions} onSelect={row => { setReplacingPickerQuestion(null); pickBlueprintRow(row) }} onCreate={row => { setActivePickerId(row.id); createPickerQuestion(row) }} onReview={() => setActiveCreateTab('preview')} /> : undefined}
+          templates={blueprintTemplates} workflow={blueprintFlow} selectedId={isBlueprintEnabled ? blueprintDraft.template : ''} newIds={visitNewTemplateIds}
+          disabled={isBlueprintReadOnly || Boolean(blueprintFlow?.approvalRequired)} error={templateLibraryError}
+          busyId={templateRowAction?.id || (blueprintSaveBusy ? blueprintDraft.template : '')} onAction={requestApplyBlueprintTemplate} onDisable={requestBlueprintToggle} onEdit={template => { setTemplateLibraryError(''); setTemplateManagementAction({ kind: 'edit', template }) }} onDelete={template => { setTemplateLibraryError(''); setTemplateManagementAction({ kind: 'delete', template }) }} />}
+
+        {isBlueprintEnabled && activeCreateTab === 'blueprint' && (assessmentReview || blueprintReview) ? blueprintPanel : null}
 
         <BlueprintCompletionToast enabled={!assessmentReview && pickerEnabled} complete={pickerProgress.complete} />
         {activeCreateTab === 'questionBank' ? (
@@ -8582,6 +8753,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                   const previewSourceMeta = getPreviewQuestionSourceMeta(item, displayNumber)
                   const isMedsySaq = previewSourceMeta.isMedsy && previewTypeLabel === 'SAQs'
                   const isBlueprintRelevant = isQuestionRelevantToSavedBlueprint(item, index)
+                  const blueprintMismatch = !isBlueprintRelevant ? explainBlueprintQuestionMismatch(item, pickerRows, pickerProgress) : null
                   const optionalTagGroups = [
                     { label: 'Question ID', values: [previewQuestionBankId] },
                     ...(isMedsySaq && !isBlueprintPreviewMarksActive
@@ -8783,12 +8955,9 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
                                 </span>
                               ) : null}
                               {!isBlueprintRelevant ? (
-                                <span
-                                  className="create-assessment-preview-chip is-blueprint-unrelated"
-                                  title="This question is not allocated to the saved Blueprint requirements. It remains in Preview and does not count towards Blueprint progress."
-                                >
-                                  Not relevant to Blueprint
-                                </span>
+                                <FloatingTooltip interactive arrow className="create-assessment-preview-chip is-blueprint-unrelated" label={blueprintMismatch.label} content={<div><strong>{blueprintMismatch.label}</strong>{blueprintMismatch.reasons.map(reason => <p key={reason}>{reason}</p>)}<p>This question remains in Preview and does not count towards blueprint progress.</p></div>}>
+                                  {blueprintMismatch.label}
+                                </FloatingTooltip>
                               ) : null}
                             </span>
                           </div>
@@ -9822,9 +9991,15 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         <GenerationProcessorCard rows={assessmentGenerationProcessorRows} />
         <div className="create-assessment-action-panel" aria-label="Create actions">
         <strong>Create Assessment</strong>
+        {!assessmentReview && <button type="button" className={`create-assessment-action-btn blueprint-module-action ${activeCreateTab === 'createBlueprint' ? 'is-active' : ''}`}
+          disabled={isBlueprintEnabled || isBlueprintReadOnly || blueprintLocked} aria-pressed={activeCreateTab === 'createBlueprint'}
+          title={isBlueprintEnabled ? 'Turn off Use Blueprint to create a blueprint.' : undefined}
+          onClick={() => { setHasOpenedTemplateEditor(true); setActiveCreateTab('createBlueprint'); setHasSelectedCreateTab(true) }}>
+          <LayoutGrid size={16} strokeWidth={2.2} aria-hidden="true" /><span>Create Blueprint</span>
+        </button>}
         <button
           type="button"
-          className={`create-assessment-action-btn create-assessment-blueprint-btn ${isBlueprintEnabled ? 'is-enabled' : 'is-disabled'}`}
+          className={`create-assessment-action-btn create-assessment-blueprint-btn blueprint-module-action ${activeCreateTab === 'blueprint' ? 'is-active' : ''} ${isBlueprintEnabled ? 'is-enabled' : 'is-disabled'}`}
           onClick={(event) => {
             if (assessmentReview) { setActiveCreateTab('blueprint'); return }
             if (event.target.closest('[data-blueprint-toggle]')) {
@@ -9835,21 +10010,22 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
           }}
           disabled={assessmentReview ? !isBlueprintEnabled : isBlueprintReadOnly}
           aria-pressed={isBlueprintEnabled}
-          aria-label={`${isBlueprintEnabled ? 'Open' : 'Enable'} Blueprint Planner`}
+          aria-label={unreadBlueprintTemplateCount ? `Blueprint Library, ${unreadBlueprintTemplateCount} new templates` : 'Blueprint Library'}
         >
           <SlidersHorizontal size={16} strokeWidth={2.2} />
-          <span>Blueprint</span>
+          <span>Blueprint Library</span>
+          {unreadBlueprintTemplateCount > 0 && <span className="blueprint-unread-count qb-sort-scope" aria-hidden="true">{unreadBlueprintTemplateCount > 99 ? '99+' : unreadBlueprintTemplateCount}</span>}
           <em className={`create-assessment-blueprint-badge ${isBlueprintEnabled ? 'is-enabled' : 'is-disabled'}`}>
-            {assessmentReview ? (isBlueprintEnabled ? 'Enabled' : 'Disabled') : isBlueprintReadOnly ? 'Pending approval' : isBlueprintEnabled ? 'Enabled' : 'Disabled'}
+            {assessmentReview ? (isBlueprintEnabled ? 'Active' : 'Inactive') : isBlueprintReadOnly ? 'Pending approval' : isBlueprintEnabled ? 'Active' : 'Inactive'}
           </em>
           <span
             className="create-assessment-blueprint-switch"
             data-blueprint-toggle
             role="switch"
-            aria-disabled={reviewReadOnly || reviewBusy}
+            aria-disabled={!isBlueprintEnabled || reviewReadOnly || reviewBusy}
             aria-checked={isBlueprintEnabled}
             aria-label={`${isBlueprintEnabled ? 'Disable' : 'Enable'} Blueprint`}
-            title={`${isBlueprintEnabled ? 'Disable' : 'Enable'} Blueprint`}
+            title={isBlueprintEnabled ? 'Disable Blueprint' : 'Select a template below to enable blueprint use.'}
           >
             <i />
           </span>
@@ -9939,10 +10115,6 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
           <Save size={16} strokeWidth={2.2} />
           <span>{isSavingDraft ? 'Saving...' : 'Save as Draft'}</span>
         </button>}
-        {activeCreateTab !== 'configuration' && (<button type="button" className="create-assessment-action-btn is-primary" onClick={openApprovalModal} disabled={Boolean(assessmentReview) || isBlueprintReadOnly || !canSendAssessmentForApproval}>
-          <ArrowRight size={16} strokeWidth={2.2} />
-          <span>{primaryPublicationActionLabel}</span>
-        </button>)}
         </div>
       </aside>
       </div>

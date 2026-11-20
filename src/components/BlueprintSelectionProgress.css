@@ -1,5 +1,7 @@
 ﻿.blueprint-progress-floating { color: var(--text-body); font-family: var(--f-body); }
 .blueprint-progress-circle {
+  touch-action: none;
+  user-select: none;
   position: fixed; left: 16px; bottom: 16px; z-index: 1100;
   width: 88px; height: 88px; padding: var(--s-2); border: 0; border-radius: 50%;
   background: var(--surface-card); color: var(--text-strong); box-shadow: var(--shadow-sm);
@@ -170,3 +172,23 @@
 
 .blueprint-steps-panel h2 { flex-wrap: wrap; }
 .blueprint-steps-panel .blueprint-progress-id { display: inline-flex; align-items: center; padding: var(--s-1, 4px) var(--s-2, 8px); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-soft); color: var(--text-brand); font-family: var(--f-code, monospace); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.blueprint-progress-floating.is-inline .blueprint-steps-panel {
+  position: static;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  min-height: 240px;
+  box-sizing: border-box;
+  box-shadow: none;
+  margin: 0;
+}
+.blueprint-progress-floating.is-inline .blueprint-steps-scroll {
+  overflow: visible;
+  max-height: none;
+  flex: none;
+}
+.blueprint-progress-floating.is-inline .blueprint-steps-panel th {
+  position: static;
+  top: auto;
+  z-index: auto;
+}

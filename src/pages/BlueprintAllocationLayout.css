@@ -56,3 +56,25 @@
     grid-template-columns: var(--blueprint-shared-columns);
   }
 }
+
+/* Keep every named area on the single-column layout; an omitted actions area
+   creates implicit tracks and squeezes all matrix content into a narrow strip. */
+@media (max-width: 1200px) {
+  .create-assessment-blueprint-panel .create-assessment-blueprint-specifications.is-multi-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "intro" "questions" "cognition" "test" "actions";
+  }
+  .create-assessment-blueprint-panel .is-test-spec-summary .blueprint-allocation-layout > .create-assessment-blueprint-spec-table-wrap-test {
+    overflow-x: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .create-assessment-blueprint-panel .blueprint-allocation-layout .create-assessment-blueprint-test-grid {
+    min-width: calc(var(--s-8) * 10);
+  }
+  .create-assessment-blueprint-panel .create-assessment-blueprint-reference-table-wrap {
+    overflow-x: auto;
+  }
+  .create-assessment-blueprint-panel .create-assessment-blueprint-reference-card.is-question-types table {
+    min-width: calc(var(--s-8) * 10);
+  }
+}

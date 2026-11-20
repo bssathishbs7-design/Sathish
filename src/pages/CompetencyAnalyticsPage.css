@@ -31,7 +31,8 @@
 }
 .competency-analytics-header { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); border: 1px solid var(--ca-line); border-radius: var(--ca-card-radius); background: radial-gradient(circle at top left, color-mix(in srgb, var(--mint-200) 12%, transparent), transparent 45%), var(--ca-card-fill); box-shadow: var(--ca-card-shadow); }
 .ca-heading { display: flex; align-items: center; gap: var(--space-3); flex: 1; min-width: 0; }
-.ca-heading > .ca-code { flex-shrink: 0; }
+.ca-heading > .ca-code { flex: 0 1 auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.ca-heading > .ca-competency-description { flex: 1; }
 .competency-analytics h2 { color: var(--text-strong, var(--ca-ink)); font-size: var(--font-size-h4); line-height: 1.5; margin: 0; font-weight: 600; }
 .competency-analytics p { font-size: var(--fs-small, 14px); line-height: 1.6; margin: var(--space-1) 0 0; font-weight: 400; color: var(--ca-muted); }
 .competency-analytics .ca-competency-description { margin: 0; min-width: 0; overflow-wrap: anywhere; color: var(--text-strong); font-weight: 500; }
@@ -75,7 +76,7 @@
 .ca-empty { padding: var(--space-6); text-align: center; background: var(--ca-card-fill); border: 1px dashed var(--ca-line); border-radius: var(--ca-card-radius); }
 .ca-empty > svg { color: var(--ca-brand); }
 .ca-empty h2, .ca-empty button { margin-top: var(--space-4); }
-@container (max-width: 700px) { .ca-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ca-breakdown { grid-template-columns: 1fr; } .ca-heading { flex-wrap: wrap; gap: var(--space-2); } .competency-analytics-header { align-items: flex-start; padding: var(--space-4); } }
+@container (max-width: 700px) { .ca-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ca-breakdown { grid-template-columns: 1fr; } .ca-heading { flex-wrap: wrap; gap: var(--space-2); } .ca-heading > .ca-competency-description { flex-basis: 100%; } .competency-analytics-header { align-items: flex-start; padding: var(--space-4); } }
 @media (max-width: 767px) { .vx-content.competency-analytics { padding: var(--space-4); } .ca-metrics > div, .ca-breakdown-card, .ca-history .ca-section-heading { padding: var(--space-4); } .ca-section-heading { flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { .competency-analytics *, .competency-analytics *::before, .competency-analytics *::after { animation: none !important; transition: none !important; } }
 .ca-history th:last-child, .ca-history .ca-view-cell { text-align: center; }

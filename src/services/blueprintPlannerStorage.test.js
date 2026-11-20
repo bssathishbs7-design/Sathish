@@ -1,10 +1,20 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readBlueprintPlanner, saveBlueprintPlannerReference } from './blueprintPlannerStorage.js'
+import { readBlueprintPlanner, saveBlueprintPlannerReference, prefersBlueprintWorkspace } from './blueprintPlannerStorage.js'
 const key='vx-create-assessment-blueprint-planner:assessment-a'
 const flowKey='vx-assessment-blueprint-workflow:a'
 const snapshot={validationStatus:'matched',blueprintDraft:{totalMark:100},pickerRows:[{count:100,marks:1}]}
 const store=entries=>{const data=new Map(Object.entries(entries));return {getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)}}
+
+test('newer assessment drafts retain applied template edits while approvals and later planner saves stay authoritative', () => {
+ const setup = { updatedAt: '2026-11-18T10:05:00Z', draftWorkspace: { blueprint: snapshot } }
+ const workflow = { updatedAt: '2026-11-18T10:00:00Z', snapshot }
+ assert.equal(prefersBlueprintWorkspace(setup, workflow), true)
+ assert.equal(prefersBlueprintWorkspace(setup, null), true)
+ assert.equal(prefersBlueprintWorkspace(setup, { ...workflow, approvalRequired: true }), false)
+ assert.equal(prefersBlueprintWorkspace(setup, { ...workflow, updatedAt: '2026-11-18T10:10:00Z' }), false)
+ assert.equal(prefersBlueprintWorkspace({ updatedAt: setup.updatedAt }, workflow), false)
+})
 test('duplicate full snapshot becomes a compact reference and survives reload',()=>{
  const storage=store({[key]:JSON.stringify(snapshot),[flowKey]:JSON.stringify({snapshot})})
  saveBlueprintPlannerReference(key,'a',storage)

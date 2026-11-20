@@ -53,6 +53,11 @@ export default function CompetencyAnalyticsPage({ card, onNavigate, onBack, stud
     return { ...attempt, attemptNumber: attempt.attemptNumber ?? number }
   })
   const latest = attempts.at(-1)
+  // Legacy cards can store the description inside the code; split only for display.
+  const rawCode = String(data?.code ?? '').trim()
+  const combinedTitle = rawCode.match(/^([a-z]*\d+(?:\.\d+)+)\s+(.+)$/i)
+  const displayCode = combinedTitle?.[1] || rawCode
+  const displayName = combinedTitle?.[2] || data?.name || ''
   const best = attempts.filter((attempt) => percentage(attempt) !== null).reduce((current, attempt) => !current || percentage(attempt) > percentage(current) ? attempt : current, null)
 
   return (
@@ -61,8 +66,8 @@ export default function CompetencyAnalyticsPage({ card, onNavigate, onBack, stud
         <button className="ca-back" type="button" title={onBack ? "Back to faculty analytics" : "Back to practice"} aria-label={onBack ? "Back to faculty analytics" : "Back to practice"} onClick={() => onBack ? onBack() : onNavigate(APP_PAGES.START_PRACTICE)}><ArrowLeft size={16} /><span>Back</span></button>
         <div className="ca-heading">
           {studentLabel && <strong>{studentLabel}</strong>}
-          {data?.code && <span className="ca-code">{data.code}</span>}
-          {data?.name && <p className="ca-competency-description" title={data.name}>{data.name}</p>}
+          {displayCode && <span className="ca-code">{displayCode}</span>}
+          {displayName && <p className="ca-competency-description" title={displayName}>{displayName}</p>}
         </div>
       </header>
       {error ? <div className="ca-empty" role="alert"><h2>Analytics could not be loaded</h2><button type="button" onClick={() => setReload((value) => value + 1)}><RefreshCw size={16} />Retry</button></div>

@@ -39,7 +39,11 @@ export async function saveBlueprintWorkflow(assessment, snapshot, action, review
 }
 /** Stale review records cannot approve newer revisions. */
 export function reviewBlueprintWorkflow(record, status, remarks, storage = localStorage, reviewedSnapshot) {
-  const id = record.setup?.assessmentId || record.assessmentId
+  const sourceId = record.setup?.assessmentId || record.assessmentId
+  const templateId = record.templateId || record.blueprintSnapshot?.blueprintDraft?.template
+  const detachedId = templateId ? `template-approval:${templateId}` : ''
+  const detached = detachedId ? readBlueprintWorkflow(detachedId, storage) : null
+  const id = detached?.originalAssessmentId === sourceId ? detachedId : sourceId
   const flow = readBlueprintWorkflow(id, storage)
   if (!flow || flow.status !== 'Pending Approval' || flow.revision !== record.blueprintRevision) throw new Error('This blueprint review is no longer current. Refresh the approval list.')
   if (status !== 'Approved' && !remarks?.trim()) throw new Error('Add remarks before rejecting the blueprint.')
@@ -48,7 +52,7 @@ export function reviewBlueprintWorkflow(record, status, remarks, storage = local
   if (reviewedSnapshot && status === 'Approved') {
     const rows = snapshot.pickerRows || []
     const target = Number(snapshot.blueprintDraft?.totalMark)
-    if (snapshot.assessmentId !== id || snapshot.validationStatus !== 'matched' || !rows.length || !(target > 0)
+    if (![id, flow.originalAssessmentId].includes(snapshot.assessmentId) || snapshot.validationStatus !== 'matched' || !rows.length || !(target > 0)
       || rows.some(row => !Number.isInteger(row.count) || row.count <= 0 || !(row.marks > 0))
       || Math.abs(rows.reduce((sum, row) => sum + row.count * row.marks, 0) - target) > 0.001) {
       throw new Error('Complete a valid blueprint matrix before approving.')
@@ -60,7 +64,7 @@ export function reviewBlueprintWorkflow(record, status, remarks, storage = local
     const templates = readBlueprintTemplates(storage)
     const template = { id: next.blueprintId, blueprintId: next.blueprintId, name: record.assessmentName || record.activityName || next.blueprintId, approved: true, approvedBy: record.reviewedBy || '', approvedById: record.reviewedById || '',
       createdAt: next.reviewedAt, cognition: snapshot.blueprintCognitionWeightage || {}, breakdown: snapshot.blueprintQuestionTypeDraft || {}, laqParts: snapshot.laqParts || [], totalMarks: Number(snapshot.blueprintDraft?.totalMark) || 0 }
-    storage.setItem(BLUEPRINT_TEMPLATES_KEY, JSON.stringify([template, ...templates.filter(row => row.id !== template.id)]))
+    if (!flow.templateId) storage.setItem(BLUEPRINT_TEMPLATES_KEY, JSON.stringify([template, ...templates.filter(row => row.id !== template.id)]))
   }
   storage.setItem(PREFIX + id, JSON.stringify(next))
   if (changed) appendAssessmentHistory(record, { action: 'Blueprint edited during review', notes: `${flow.blueprintId} / revision ${next.revision}`, actor: record.reviewedBy || '' }, storage)

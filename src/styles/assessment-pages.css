@@ -17686,9 +17686,7 @@
 }
 
 .assessment-create-form-actions .is-primary:hover:not(:disabled),
-.assessment-create-form-actions .is-primary:focus-visible:not(:disabled),
-.create-assessment-action-btn.is-primary:hover:not(:disabled),
-.create-assessment-action-btn.is-primary:focus-visible:not(:disabled) {
+.assessment-create-form-actions .is-primary:focus-visible:not(:disabled){
   border-color: #0d8f82;
   background: #0f8f75;
   color: #ffffff;
@@ -19412,38 +19410,6 @@
   box-sizing: border-box;
 }
 
-.create-assessment-blueprint-question-split-btn {
-  display: inline-flex;
-  min-width: 190px;
-  min-height: 36px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 16px;
-  border: 1px solid #0ea99b;
-  border-radius: 7px;
-  background: #10b9a8;
-  color: #ffffff;
-  font-size: 0.76rem;
-  font-weight: 900;
-  cursor: pointer;
-  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
-}
-
-.create-assessment-blueprint-question-split-btn:hover:not(:disabled),
-.create-assessment-blueprint-question-split-btn:focus-visible:not(:disabled) {
-  border-color: #087f75;
-  background: #0b9689;
-  outline: none;
-}
-
-.create-assessment-blueprint-question-split-btn:disabled {
-  border-color: #d5e2df;
-  background: #edf3f1;
-  color: #9aabaa;
-  cursor: not-allowed;
-}
-
 .create-assessment-blueprint-cognition-stage-row {
   display: grid;
   grid-template-columns: minmax(360px, 520px) minmax(330px, 350px) minmax(180px, 1fr);
@@ -19452,7 +19418,7 @@
   padding-bottom: 10px;
 }
 
-.create-assessment-blueprint-cognition-stage-row:not(:has(.create-assessment-blueprint-cognition-stage-action)) {
+.create-assessment-blueprint-cognition-stage-row {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   justify-content: stretch;
 }
@@ -19560,14 +19526,6 @@
   margin-left: auto;
 }
 
-.create-assessment-blueprint-cognition-stage-action {
-  display: grid;
-  order: 3;
-  align-items: center;
-  align-content: center;
-  min-width: 0;
-}
-
 .create-assessment-blueprint-cognition-stage-row > .create-assessment-blueprint-cognition-total {
   height: 48px;
   justify-content: center;
@@ -19581,13 +19539,6 @@
 
 .create-assessment-blueprint-cognition-stage-row > .create-assessment-blueprint-cognition-total strong {
   white-space: nowrap;
-}
-
-.create-assessment-blueprint-cognition-stage-action .create-assessment-blueprint-question-split-btn {
-  width: 100%;
-  height: 48px;
-  min-width: 0;
-  padding: 0 10px;
 }
 
 .create-assessment-blueprint-spec-card.is-test-spec-summary {
@@ -22007,7 +21958,7 @@
     grid-template-columns: minmax(300px, 1fr) minmax(310px, 330px) 175px;
   }
 
-  .create-assessment-blueprint-cognition-stage-row:not(:has(.create-assessment-blueprint-cognition-stage-action)) {
+  .create-assessment-blueprint-cognition-stage-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -22016,12 +21967,6 @@
     grid-column: 1;
     grid-row: 2;
     width: 100%;
-  }
-
-  .create-assessment-blueprint-cognition-stage-action {
-    grid-column: 2;
-    grid-row: 2;
-    align-items: center;
   }
 
   .create-assessment-blueprint-spec-card.is-test-spec-summary,
@@ -22046,14 +21991,7 @@
 
 @media (max-width: 640px) {
   .create-assessment-blueprint-cognition-stage-row,
-  .create-assessment-blueprint-cognition-stage-row:not(:has(.create-assessment-blueprint-cognition-stage-action)) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .create-assessment-blueprint-cognition-legend,
-  .create-assessment-blueprint-cognition-stage-action {
-    grid-column: 1;
-    grid-row: auto;
+  .create-assessment-blueprint-cognition-stage-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -22653,13 +22591,6 @@
   }
 }
 
-.create-assessment-action-btn.is-primary {
-  justify-content: center;
-  border-color: #0fb9a8;
-  background: #10b9a8;
-  color: #ffffff;
-}
-
 .create-assessment-action-btn.is-draft {
   justify-content: center;
 }
@@ -22685,15 +22616,6 @@
   color: #075f54;
   outline: none;
   box-shadow: 0 8px 18px rgba(15, 118, 110, 0.1);
-}
-
-.create-assessment-action-btn.is-primary:hover:not(:disabled),
-.create-assessment-action-btn.is-primary:focus-visible:not(:disabled) {
-  border-color: #0d8f82;
-  background: #0f8f75;
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(15, 143, 117, 0.22);
-  transform: translateY(-1px);
 }
 
 .create-assessment-action-btn.is-draft:hover:not(:disabled),
@@ -40754,25 +40676,6 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   caret-color: #5eead4;
 }
 
-.theme-dark .create-assessment-blueprint-question-split-btn {
-  border-color: #2dd4bf;
-  background: #0f8f82;
-  color: #ffffff;
-}
-
-.theme-dark .create-assessment-blueprint-question-split-btn:hover:not(:disabled),
-.theme-dark .create-assessment-blueprint-question-split-btn:focus-visible:not(:disabled) {
-  border-color: #5eead4;
-  background: #0d766d;
-}
-
-.theme-dark .create-assessment-blueprint-question-split-btn:disabled {
-  border-color: rgba(71, 85, 105, 0.58);
-  background: #172335;
-  color: #71859a;
-  opacity: 1;
-}
-
 .theme-dark .create-assessment-blueprint-matrix-btn {
   border-color: #2dd4bf;
   background: #0f8f82;
@@ -41301,12 +41204,6 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   color: #a9b8c9 !important;
 }
 
-.theme-dark .create-assessment-action-btn.is-primary {
-  border-color: rgba(45, 212, 191, 0.68);
-  background: #0f8f75;
-  color: #ffffff;
-}
-
 .theme-dark .create-assessment-action-btn.is-draft,
 .theme-dark .create-assessment-blueprint-template {
   border-color: rgba(251, 191, 36, 0.62);
@@ -41333,9 +41230,7 @@ button.assessment-page-descriptive-more-tags:focus-visible {
 }
 
 .theme-dark .assessment-create-form-actions .is-primary:hover:not(:disabled),
-.theme-dark .assessment-create-form-actions .is-primary:focus-visible:not(:disabled),
-.theme-dark .create-assessment-action-btn.is-primary:hover:not(:disabled),
-.theme-dark .create-assessment-action-btn.is-primary:focus-visible:not(:disabled) {
+.theme-dark .assessment-create-form-actions .is-primary:focus-visible:not(:disabled){
   border-color: rgba(45, 212, 191, 0.76);
   background: #0d7f6c;
   color: #ffffff;
@@ -44471,7 +44366,6 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   }
 
   .create-assessment-action-panel .question-bank-type-select-panel,
-  .create-assessment-action-btn.is-primary,
   .create-assessment-action-btn.is-draft {
     grid-column: span 2;
   }
@@ -44565,7 +44459,6 @@ button.assessment-page-descriptive-more-tags:focus-visible {
   .create-assessment-summary-card,
   .create-assessment-action-panel > strong,
   .create-assessment-action-panel .question-bank-type-select-panel,
-  .create-assessment-action-btn.is-primary,
   .create-assessment-action-btn.is-draft {
     grid-column: 1 / -1;
   }

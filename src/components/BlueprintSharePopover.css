@@ -1,0 +1,17 @@
+.blueprint-share-popover { position: fixed; z-index: 1500; width: 320px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; box-sizing: border-box; padding: var(--s-4); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-card); color: var(--text-body); box-shadow: var(--shadow-md); font-size: var(--font-size-small); }
+.blueprint-share-popover header { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.blueprint-share-popover h3 { margin: 0; font-size: var(--font-size-body); color: var(--text-strong); }
+.blueprint-share-popover p { margin: var(--s-2) 0; color: var(--text-muted); }
+.blueprint-share-name { overflow-wrap: anywhere; }
+.blueprint-share-popover fieldset { margin: var(--s-3) 0; padding: 0; border: 0; }
+.blueprint-share-popover legend { margin-bottom: var(--s-2); font-weight: 600; }
+.blueprint-share-popover label { display: flex; align-items: center; gap: var(--s-2); margin-block: var(--s-2); cursor: pointer; }
+.blueprint-share-popover input { accent-color: var(--forest); }
+.blueprint-share-formats { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+.blueprint-share-popover button { display: inline-flex; justify-content: center; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-strong); cursor: pointer; font: inherit; }
+.blueprint-share-popover .blueprint-share-send { width: 100%; background: var(--forest); color: var(--on-brand); font-weight: 600; }
+.blueprint-share-popover button:hover:not(:disabled) { filter: brightness(.95); }
+.blueprint-share-popover button:active:not(:disabled) { transform: translateY(1px) scale(.97); }
+.blueprint-share-popover button:disabled { opacity: .5; cursor: not-allowed; }
+.blueprint-share-popover :focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); }
+@media (prefers-reduced-motion: reduce) { .blueprint-share-popover button:active:not(:disabled) { transform: none; } }

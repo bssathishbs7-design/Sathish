@@ -1,0 +1,3 @@
+.workspace-fullscreen-control { display: inline-flex; position: relative; align-items: center; }
+.workspace-fullscreen-error { position: absolute; top: 100%; right: 0; z-index: 10; width: max-content; max-width: 240px; padding: var(--s-2); background: var(--surface-card); color: var(--danger-ink); border: 1px solid var(--border); border-radius: var(--r-sm); font-size: var(--font-size-small); }
+.workspace-fullscreen-control button:disabled { opacity: .5; cursor: not-allowed; }

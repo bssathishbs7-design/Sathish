@@ -1,3 +1,4 @@
+import AssessmentDraftResume from '../components/AssessmentDraftResume'
 import { deleteBlueprintWorkflow } from '../services/blueprintApproval'
 import { parseAssessmentDate, applyAssessmentTime, formatAssessmentRemainingTime, getPublishedAssessmentScheduleStatus, hasPublishedResults, splitPublishedAssessmentRows, canStartLiveEvaluation } from '../services/assessmentTrackerLifecycle'
 import { createQuestionPaperExporter } from '../utils/assessmentQuestionPaper'
@@ -951,7 +952,7 @@ export default function AssessmentCreatePage({ onNavigate, onAlert, approvalQueu
     }
     restoreAssessmentQuestionsForCreate(nextSetup, readDraftQuestions(draft))
     window.localStorage.setItem(CREATE_ASSESSMENT_SETUP_KEY, JSON.stringify(nextSetup))
-    window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, 'preview')
+    window.localStorage.setItem(CREATE_ASSESSMENT_INITIAL_TAB_KEY, nextSetup.draftWorkspace?.activeCreateTab || 'create')
     onNavigate?.(APP_PAGES.CREATE_ASSESSMENT)
   }
 
@@ -1220,7 +1221,7 @@ export default function AssessmentCreatePage({ onNavigate, onAlert, approvalQueu
                           <strong>{totalMarks}</strong>
                           <em><ChartColumnBig size={13} aria-hidden="true" /> Total marks</em>
                         </span>
-                      </div>{renderConfiguredSchedule(draft, undefined, readDraftQuestions(draft), scheduleNow)}</>}
+                      </div>{renderConfiguredSchedule(draft, undefined, readDraftQuestions(draft), scheduleNow)}<AssessmentDraftResume draft={draft} /></>}
                         settings={<>{!compactCards && <CopyIdBadge value={assessmentDisplayId(draft)} />}<AssessmentCardSettings compact={compactCards} assessment={draft} timestamp={renderAssessmentTimestamp(draft, activeAssessmentTab)} /></>}
                         timestamp={compactCards ? null : renderAssessmentTimestamp(draft, activeAssessmentTab)}
                         actions={<><button type="button" onClick={() => continueDraftAssessment(draft)}>

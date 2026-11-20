@@ -1,3 +1,14 @@
+/** Preserve newer author drafts without replacing an approval-controlled snapshot.
+ * @param {Object} setup Assessment setup including updatedAt and draftWorkspace.
+ * @param {Object|null} workflow Last durable blueprint workflow.
+ * @returns {boolean} Whether the author workspace is the latest editable state.
+ */
+export function prefersBlueprintWorkspace(setup, workflow) {
+  if (!setup?.draftWorkspace?.blueprint || workflow?.approvalRequired) return false
+  if (!workflow?.snapshot) return true
+  return Date.parse(setup.updatedAt || '') > Date.parse(workflow.updatedAt || '')
+}
+
 /** Read the authoritative workflow snapshot, while retaining legacy planner support.
  * @param {string} key Assessment-scoped planner key.
  * @param {string} assessmentId Stable assessment identity.

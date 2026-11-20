@@ -259,6 +259,7 @@ function ShareStuFacultyPage({ onNavigate, onOpenAnalytics, returnState }) {
     const questions = getCardQuestions(card)
     const counts = countQuestionTypes(questions, card)
     const code = card.competencyCode || questions.find((question) => question?.competencyCode)?.competencyCode || '-'
+    const combinedTitle = String(code).trim().match(/^([a-z]*\d+(?:\.\d+)+)\s+(.+)$/i)
     const competencyRow = getCompetencyRow(code)
     const competency = card.competencyName || competencyRow?.competency || `Competency ${code}`
     const subject = card.subject || questions.find((question) => question?.subject)?.subject || competencyRow?.subject || 'Human Anatomy'
@@ -275,6 +276,8 @@ function ShareStuFacultyPage({ onNavigate, onOpenAnalytics, returnState }) {
       id: card.id ?? code,
       sourceCard: card,
       code,
+      displayCode: combinedTitle?.[1] || code,
+      description: combinedTitle?.[2] || competency,
       competency,
       subject,
       assignedTo: card.assignment?.year || card.year || 'First Year',
@@ -477,8 +480,8 @@ function ShareStuFacultyPage({ onNavigate, onOpenAnalytics, returnState }) {
                             <em>{row.assignedTo}</em>
                           </span>
                         </span>
-                        <FloatingTooltip className="share-stu-faculty-code" content={row.competency}>
-                          {row.code}
+                        <FloatingTooltip className="share-stu-faculty-code" content={row.description}>
+                          {row.displayCode}
                           <Info size={12} strokeWidth={2.4} aria-hidden="true" />
                         </FloatingTooltip>
                         <span className="share-stu-faculty-parent-metrics" aria-label="Shared summary">
@@ -496,7 +499,6 @@ function ShareStuFacultyPage({ onNavigate, onOpenAnalytics, returnState }) {
                         <button
                           type="button"
                           className="share-stu-faculty-analytics-btn"
-                          disabled
                           onClick={(event) => {
                             event.stopPropagation()
                             onOpenAnalytics?.({ card: { ...row.sourceCard, competencyCode: row.code, competencyName: row.competency, subject: row.subject }, returnState: { query, activeFilter, page, expandedRows: [...expandedRows] } })
@@ -598,8 +600,8 @@ function ShareStuFacultyPage({ onNavigate, onOpenAnalytics, returnState }) {
                   <Trophy size={18} strokeWidth={2.4} />
                   Practice report
                 </h2>
-                <p>
-                  {activeReport.parent.code} - # Practice {activeReport.practice.practiceNo} ? Sample student results
+                <p title={activeReport.parent.description || activeReport.parent.competency}>
+                  {activeReport.parent.displayCode || activeReport.parent.code} &middot; Practice {activeReport.practice.practiceNo} &middot; Sample student results
                 </p>
               </div>
               <button type="button" aria-label="Close report" onClick={() => setActiveReport(null)}>

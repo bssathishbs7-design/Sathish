@@ -1,0 +1,40 @@
+.blueprint-template-library .blueprint-library-downloads .blueprint-download-trigger {
+  width: auto;
+  gap: var(--s-1);
+  padding: 0 var(--s-2);
+  background: var(--surface-soft);
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+.blueprint-download-menu {
+  position: fixed;
+  z-index: 3100;
+  min-width: 140px;
+  padding: var(--s-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
+}
+.blueprint-download-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  padding: var(--s-2);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-strong);
+  font: inherit;
+  font-size: var(--font-size-small);
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-standard);
+}
+.blueprint-download-menu button:hover { background: var(--surface-soft); }
+.blueprint-download-menu button:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; background: var(--surface-soft); }
+.blueprint-download-menu button:active { transform: translateY(1px) scale(.97); transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .blueprint-download-menu button { transition: none; }
+  .blueprint-download-menu button:active { transform: none; }
+}

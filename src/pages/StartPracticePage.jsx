@@ -1867,7 +1867,7 @@ function StartPracticePage({ studentIdentity = null, onNavigate, onPracticeAnswe
             </div>
           </div>
           {mode === 'sessions' && (
-              <button type="button" className="start-practice-title-analytics" disabled onClick={() => {
+              <button type="button" className="start-practice-title-analytics" onClick={() => {
                 const sessions = getPracticeSessions(selectedCard).map((session) => ({
                   ...session,
                   status: sessionStatuses[session.id] || session.status,

@@ -2,16 +2,18 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, FilePenLine, X } from 'lucide-react'
 import { matchesBlueprintPickerRow } from '../utils/blueprintPicker'
+import useBlueprintFloatingPosition from './useBlueprintFloatingPosition'
 import './BlueprintSelectionProgress.css'
 
 /** Non-modal Blueprint panel. LAQ counts refer to whole questions, not their parts.
- * @param {{rows:Object[], progress:Object, blueprintId?:string, activeId:string, bankQuestions?:Object[], loadBankQuestions:Function, selectedQuestions:Object[], onSelect:Function, onCreate:Function, onReview:Function}} props
+ * @param {{rows:Object[], progress:Object, blueprintId?:string, activeId:string, bankQuestions?:Object[], loadBankQuestions:Function, selectedQuestions:Object[], onSelect:Function, onCreate:Function, onReview:Function, inline?:boolean}} props
  */
-export default function BlueprintSelectionProgress({ rows, progress, blueprintId, activeId, bankQuestions, loadBankQuestions, selectedQuestions = [], onSelect, onCreate, onReview, readOnly = false }) {
+export default function BlueprintSelectionProgress({ rows, progress, blueprintId, activeId, bankQuestions, loadBankQuestions, selectedQuestions = [], onSelect, onCreate, onReview, readOnly = false, inline = false }) {
   const panel = useRef(null)
   const trigger = useRef(null)
   const headingId = useId()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(inline)
+  const floating = useBlueprintFloatingPosition(trigger, panel, open, inline)
   const [loadedBank, setLoadedBank] = useState(null)
   const [type, setType] = useState('mcq')
   const inventory = bankQuestions ?? loadedBank
@@ -33,7 +35,7 @@ export default function BlueprintSelectionProgress({ rows, progress, blueprintId
     }))
   }, [open, inventory, rows, selectedQuestions])
   useEffect(() => {
-    if (!open) return undefined
+    if (!open || inline) return undefined
     panel.current?.focus()
     const outside = event => {
       if (!panel.current?.contains(event.target) && !trigger.current?.contains(event.target)) setOpen(false)
@@ -44,9 +46,14 @@ export default function BlueprintSelectionProgress({ rows, progress, blueprintId
     document.addEventListener('pointerdown', outside)
     document.addEventListener('keydown', escape)
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape) }
-  }, [open])
+  }, [open, inline])
+  useEffect(() => {
+    if (!inline) return
+    if (!bankQuestions) setLoadedBank(loadBankQuestions())
+    setType(rows.find(row => row.id === activeId)?.type || rows[0]?.type || 'mcq')
+  }, [inline, bankQuestions, loadBankQuestions, rows, activeId])
   const close = () => { setOpen(false); trigger.current?.focus() }
-  const act = (handler, row) => { if (readOnly) return; close(); handler(row) }
+  const act = (handler, row) => { if (readOnly) return; if (!inline) close(); handler(row) }
   const toggle = () => {
     if (open) { close(); return }
     if (!bankQuestions) setLoadedBank(loadBankQuestions())
@@ -72,14 +79,14 @@ export default function BlueprintSelectionProgress({ rows, progress, blueprintId
   }
   const nextType = types[types.indexOf(type) + 1]
   const previousType = types[types.indexOf(type) - 1]
-  return createPortal(<div className={`blueprint-progress-floating qb-sort-scope is-${stage}`}>
-    <button ref={trigger} type="button" className="blueprint-progress-circle" onClick={toggle} aria-haspopup="dialog" aria-expanded={open} aria-label={`Blueprint progress: ${progress.matched} of ${progress.target} questions. ${stageLabel}`}>
+  const content = <div className={`blueprint-progress-floating qb-sort-scope is-${stage}${inline ? " is-inline" : ""}`}>
+    {!inline && <button ref={trigger} {...floating.buttonProps} type="button" className="blueprint-progress-circle" onClick={toggle} aria-haspopup="dialog" aria-expanded={open} aria-label={`Blueprint progress: ${progress.matched} of ${progress.target} questions. ${stageLabel}`}>
       <span className="blueprint-progress-pulse" aria-hidden="true" />
       <svg className="blueprint-progress-ring" viewBox="0 0 80 80" aria-hidden="true"><circle className="ring-track" cx="40" cy="40" r="35" /><circle className="ring-value" cx="40" cy="40" r="35" pathLength="100" style={{ strokeDashoffset: 100 - percent }} /></svg>
       <strong>{progress.matched}<span>/{progress.target}</span></strong><small>Blueprint</small>
-    </button>
-    {open && <section ref={panel} tabIndex={-1} className="blueprint-steps-panel" role="dialog" aria-modal="false" aria-labelledby={headingId}>
-      <header><h2 id={headingId}><FilePenLine size={15} />Blueprint Question Progress{blueprintId && <span className="blueprint-progress-id" aria-label={`Blueprint ID ${blueprintId}`}>{blueprintId}</span>}</h2><span className="blueprint-selected-count">Selected: {progress.matched} / {progress.target} questions &middot; {stageLabel}</span><button type="button" className="blueprint-panel-close" onClick={close} aria-label="Close Blueprint progress"><X size={16} /></button></header>
+    </button>}
+    {open && <section ref={panel} style={floating.panelStyle} tabIndex={-1} className="blueprint-steps-panel" role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : "false"} aria-labelledby={headingId}>
+      <header><h2 id={headingId}><FilePenLine size={15} />Blueprint Question Progress{blueprintId && <span className="blueprint-progress-id" aria-label={`Blueprint ID ${blueprintId}`}>{blueprintId}</span>}</h2><span className="blueprint-selected-count">Selected: {progress.matched} / {progress.target} questions &middot; {stageLabel}</span>{!inline && <button type="button" className="blueprint-panel-close" onClick={close} aria-label="Close Blueprint progress"><X size={16} /></button>}</header>
       <progress value={progress.matched} max={progress.target || 1} aria-label="Blueprint completion" />
       <nav aria-label="Question type steps">{types.map(value => {
         const sectionRows = rows.filter(row => row.type === value)
@@ -101,7 +108,8 @@ export default function BlueprintSelectionProgress({ rows, progress, blueprintId
             <div className="blueprint-laq-toolbar"><span className={`blueprint-qb-status ${status(row).tone}`}>{availability[row.id] ? (availability[row.id].total > 0 ? 'Exact split available' : 'No exact split match') : 'Checking'}</span><div className="blueprint-row-actions">{renderAction(row)}</div></div>
           </section>)}
       </div>
-      <footer><span>{Math.max(0, progress.target - progress.matched)} remaining &middot; {progress.marks}/{progress.totalMarks} marks</span><div>{previousType && <button type="button" onClick={() => setType(previousType)}>Back: {previousType.toUpperCase()}</button>}{nextType && <button type="button" className="blueprint-next-step" onClick={() => setType(nextType)}>Next: {nextType.toUpperCase()}</button>}</div></footer>
+      <footer>{!inline && <button type="button" onClick={floating.reset}>Reset position</button>}<span>{Math.max(0, progress.target - progress.matched)} remaining &middot; {progress.marks}/{progress.totalMarks} marks</span><div>{previousType && <button type="button" onClick={() => setType(previousType)}>Back: {previousType.toUpperCase()}</button>}{nextType && <button type="button" className="blueprint-next-step" onClick={() => setType(nextType)}>Next: {nextType.toUpperCase()}</button>}</div></footer>
     </section>}
-  </div>, document.body)
+  </div>
+  return inline ? content : createPortal(content, document.body)
 }

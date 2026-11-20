@@ -55,6 +55,8 @@
   background: var(--share-table-surface);
 }
 .share-stu-faculty-page .share-stu-faculty-group-head:hover { background: var(--share-table-heading); }
+.share-stu-faculty-page .share-stu-faculty-code { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.share-stu-faculty-page .share-stu-faculty-code svg { flex-shrink: 0; }
 .share-stu-faculty-page .share-stu-faculty-group:last-child { border-bottom: 0; }
 .share-stu-faculty-page .share-stu-faculty-group-main strong { color: var(--share-table-ink); font-weight: 600; }
 .share-stu-faculty-page .share-stu-faculty-group-main em { color: var(--share-table-muted); font-size: 12px; font-weight: 400; }

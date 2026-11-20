@@ -4,7 +4,6 @@
 .blueprint-template-name input { width: 100%; min-width: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); font: inherit; }
 .blueprint-template-name input:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
 .blueprint-template-name input[aria-invalid="true"] { border-color: var(--danger-ink); }
-.create-assessment-blueprint-competency-actions .blueprint-template-save { margin-right: auto; }
 .blueprint-template-feedback { color: var(--danger-ink); font-size: var(--fs-micro); margin: var(--s-2) 0 0; }
 
 .save-changes-dialog.blueprint-template-dialog {

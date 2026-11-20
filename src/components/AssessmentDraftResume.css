@@ -1,0 +1,13 @@
+.assessment-draft-resume {
+  display: grid;
+  grid-column: 2 / -1;
+  align-self: start;
+  align-content: start;
+  gap: var(--s-1);
+  padding: 0;
+  min-width: 0;
+  color: var(--text-brand);
+}
+.assessment-draft-resume svg { flex: none; }
+.assessment-draft-resume span { display: flex; align-items: center; gap: var(--s-1); color: var(--text-body); font-size: var(--font-size-small); }
+.assessment-draft-resume strong { display: block; font-size: var(--font-size-small); font-weight: 600; overflow-wrap: anywhere; }

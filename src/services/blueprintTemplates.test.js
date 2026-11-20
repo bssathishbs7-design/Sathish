@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createInstitutionBlueprintTemplates } from './blueprintTemplateSamples.js'
-import { BLUEPRINT_TEMPLATES_KEY, deleteBlueprintTemplate, readBlueprintTemplates, resolveTemplateCognition, saveBlueprintTemplate, snapshotBlueprintBreakdown } from './blueprintTemplates.js'
+import { BLUEPRINT_TEMPLATES_KEY, deleteBlueprintTemplate, readBlueprintTemplates, resolveTemplateCognition, saveBlueprintTemplate, snapshotBlueprintBreakdown, snapshotCompleteBlueprint, restoreCompleteBlueprint } from './blueprintTemplates.js'
 const memory = () => { const data = new Map([[BLUEPRINT_TEMPLATES_KEY, '[]']]); return {getItem:key=>data.get(key) ?? null,setItem:(key,value)=>data.set(key,value)} }
 test('institution samples have valid totals and cannot be deleted from personal storage', async () => {
  const templates = createInstitutionBlueprintTemplates()
@@ -16,6 +16,21 @@ test('institution samples have valid totals and cannot be deleted from personal 
  assert.deepEqual(readBlueprintTemplates(storage), [])
 })
 const snapshot = () => snapshotBlueprintBreakdown([{label:'MCQs',perQuestionMarks:'1',totalMarks:'20',hotQuestionsValue:'8',lotQuestionsValue:'12',subject:'must not save'}], [{splitCount:'1',splits:[{marks:'10',level:'hot'}]}], {lot:'60',hot:'40',distribution:'must not save'})
+
+test('editing replaces only the named template and preserves its identity and creation details', async () => {
+ const storage = memory()
+ const first = await saveBlueprintTemplate('Original', snapshot(), storage, 'Faculty')
+ const other = await saveBlueprintTemplate('Other', snapshot(), storage)
+ const updated = await saveBlueprintTemplate('Renamed', snapshot(), storage, 'Editor', first.id)
+ assert.equal(updated.id, first.id)
+ assert.equal(updated.createdAt, first.createdAt)
+ assert.equal(updated.createdBy, 'Faculty')
+ assert.ok(updated.updatedAt)
+ assert.deepEqual(readBlueprintTemplates(storage), [updated, other])
+ await assert.rejects(saveBlueprintTemplate('Other', snapshot(), storage, '', first.id), /already exists/)
+ await deleteBlueprintTemplate(first.id, storage)
+ await assert.rejects(saveBlueprintTemplate('Missing', snapshot(), storage, '', first.id), /no longer available/)
+})
 test('stores only cognition and breakdown data and keeps an independent copy of LAQ parts', async()=>{
  const storage=memory();const input=snapshot();const saved=await saveBlueprintTemplate('  Anatomy mix  ',input,storage)
  input.cognition.hot='99'
@@ -88,4 +103,50 @@ test('saved data and intentionally empty lists take precedence over samples', as
  storage.setItem(BLUEPRINT_TEMPLATES_KEY, JSON.stringify([sample]))
  await deleteBlueprintTemplate(sample.id, storage)
  assert.deepEqual(readBlueprintTemplates(storage), [])
+})
+
+test('complete templates round-trip every table and allocation without sharing assessment identity or nested references', async () => {
+ const storage = memory()
+ const planner = {
+  assessmentId: 'do-not-copy', approvalStatus: 'Approved', validationStatus: 'matched',
+  blueprintDraft: { subject: 'Human Anatomy', topics: ['General anatomy'], competencies: ['AN1.1'], totalMark: '20', template: 'source', templateSnapshot: { name: 'source' } },
+  blueprintDistributionDraft: { 'AN1.1': '20' }, blueprintCognitionWeightage: { lot: '50', hot: '50' },
+  blueprintQuestionTypeDraft: { MCQs: { perQuestionMarks: '1', totalMarks: '10', hotQuestions: '0', lotQuestions: '10' }, LAQs: { perQuestionMarks: '10', totalMarks: '10' } },
+  blueprintLaqQuestionSplits: [{ splitCount: '2', splits: [{ marks: '4', level: 'hot' }, { marks: '6', level: 'hot' }] }],
+  blueprintTestSpecificationCountDraft: { 'AN1.1': { mcqLot: '10', laqHot: '2' } },
+  blueprintTestSpecificationMarkDraft: { 'AN1.1': { mcqLot: 10, laqHot: 10 } },
+  blueprintUnitAssignments: { laqHot: { '1a': 'AN1.1', '1b': 'AN1.1' } },
+  blueprintManualCells: { 'AN1.1': { laqHot: true } }, blueprintRebalanceMetadata: { 'AN1.1': { originalTargetMarks: 20 } },
+  pickerRows: [{ id: 'AN1.1-mcq', count: 10, marks: 1 }],
+ }
+ const tables = { distribution: [{ key: 'AN1.1', correlationLevel: '3', distributionLabel: '20', weightageLabel: '1.00' }],
+  questionTypes: [{ label: 'MCQs', perQuestionMarks: '1', totalMarks: '10', hotQuestionsValue: '0', lotQuestionsValue: '10' }, { label: 'LAQs', perQuestionMarks: '10', totalMarks: '10', hotQuestionsValue: '2', lotQuestionsValue: '0' }],
+  competencies: [{ key: 'AN1.1', targetMarks: 20 }], columns: [{ key: 'mcqLot' }, { key: 'laqHot' }],
+ }
+ const payload = snapshotCompleteBlueprint(planner, tables)
+ const saved = await saveBlueprintTemplate('Full anatomy', payload, storage)
+ const reloaded = readBlueprintTemplates(storage)[0]
+ assert.deepEqual(reloaded, saved)
+ const restored = restoreCompleteBlueprint(reloaded)
+ for (const key of Object.keys(planner).filter(key => key.startsWith('blueprint') && key !== 'blueprintDraft')) assert.deepEqual(restored[key], planner[key])
+ assert.deepEqual(restored.pickerRows, planner.pickerRows)
+ assert.deepEqual(reloaded.tables, tables)
+ assert.deepEqual(restored.blueprintDraft.referenceRows, tables.distribution)
+ assert.equal(restored.assessmentId, undefined)
+ assert.equal(restored.approvalStatus, undefined)
+ assert.equal(restored.blueprintDraft.templateSnapshot, undefined)
+ restored.blueprintTestSpecificationCountDraft['AN1.1'].mcqLot = '99'
+ restored.blueprintLaqQuestionSplits[0].splits[0].marks = '99'
+ tables.distribution[0].correlationLevel = '99'
+ payload.blueprint.blueprintDraft.subject = 'Changed after saving'
+ assert.equal(readBlueprintTemplates(storage)[0].blueprint.blueprintDraft.subject, 'Human Anatomy')
+ assert.equal(restoreCompleteBlueprint(reloaded).blueprintTestSpecificationCountDraft['AN1.1'].mcqLot, '10')
+ assert.equal(reloaded.blueprint.blueprintLaqQuestionSplits[0].splits[0].marks, '4')
+ assert.equal(reloaded.tables.distribution[0].correlationLevel, '3')
+})
+
+test('complete template creation rejects incomplete matrices; legacy templates remain explicitly partial', () => {
+ assert.throws(() => snapshotCompleteBlueprint({ validationStatus: 'mismatched' }, {}), /valid blueprint matrix/)
+ assert.throws(() => snapshotCompleteBlueprint({ validationStatus: 'matched', blueprintDraft: { subject: 'Anatomy', topics: [], competencies: [] } }, {}), /valid blueprint matrix/)
+ assert.equal(restoreCompleteBlueprint(snapshot()), null)
 })

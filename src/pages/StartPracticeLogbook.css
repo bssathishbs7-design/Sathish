@@ -12,7 +12,10 @@
 .vx-content.assessment-page.start-practice-page .start-practice-title-actions { grid-column: 1 / -1; display: flex; justify-content: flex-start; flex-wrap: wrap; gap: var(--s-2); width: 100%; }
 .vx-content.assessment-page.start-practice-page .start-practice-session-filters { flex: none; width: auto; display: flex; flex-wrap: wrap; gap: var(--s-2); padding: 0; border: 0; }
 .vx-content.assessment-page.start-practice-page :is(.start-practice-session-filters button, .start-practice-title-progress, .start-practice-title-analytics) { min-height: 32px; padding: var(--s-1) var(--s-3); font-size: 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-card); color: var(--text-muted); animation: none; }
-.vx-content.assessment-page.start-practice-page .start-practice-title-analytics { margin-left: auto; color: var(--text-strong); }
+.vx-content.assessment-page.start-practice-page .start-practice-title-analytics { --text-brand: var(--info-ink); margin-left: auto; background: var(--sky); border-color: var(--info-ink); color: var(--text-brand); }
+.vx-content.assessment-page.start-practice-page .start-practice-title-analytics:hover { background: color-mix(in srgb, var(--sky) 85%, var(--info-ink)); border-color: var(--info-ink); color: var(--text-brand); }
+.vx-content.assessment-page.start-practice-page .start-practice-title-analytics:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--mint-200); }
+.vx-content.assessment-page.start-practice-page .start-practice-title-analytics:active { transform: translateY(1px) scale(.97); transition: none; }
 .vx-content.assessment-page.start-practice-page :is(.start-practice-session-filters button.is-active, .start-practice-title-progress.is-active) { background: var(--forest); border-color: var(--forest); color: var(--on-brand); }
 .vx-content.assessment-page.start-practice-page :is(.start-practice-session-filters button span, .start-practice-title-progress span) { background: var(--surface-soft); color: var(--text-brand); border-radius: var(--r-pill); font-family: var(--f-code); font-size: var(--fs-micro); }
 .vx-content.assessment-page.start-practice-page .start-practice-session-card { padding: 0; overflow: visible; border: 0; border-radius: var(--r); background: transparent; box-shadow: none; height: auto; }

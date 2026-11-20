@@ -46,6 +46,13 @@
 }
 
 @media (min-width: 992px) {
+  .create-assessment-workspace-main > .blueprint-template-workspace:not([hidden]):has(.is-distribution) {
+    display: flex;
+    flex: 1 0 0;
+    flex-direction: column;
+    min-height: 0;
+  }
+
   .create-assessment-workspace-body:has(.question-bank-create-strip.has-empty-state) {
     align-content: start;
     align-items: stretch;
@@ -259,7 +266,7 @@
 }
 
 .create-assessment-blueprint-cognition-stage-row {
-  grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr) minmax(180px, .65fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr);
   gap: var(--s-3);
 }
 
@@ -280,37 +287,16 @@
   width: calc(var(--s-7) + var(--s-6));
 }
 
-.create-assessment-blueprint-cognition-stage-action {
-  grid-column: auto;
-  grid-row: auto;
-}
-
-.create-assessment-blueprint-cognition-stage-action .create-assessment-blueprint-question-split-btn {
-  height: var(--s-7);
-}
-
-.create-assessment-blueprint-cognition-marks-summary:has(.blueprint-cognition-total-field) {
-  grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: var(--s-3);
-  padding: 0 var(--s-3);
-}
 
 .create-assessment-blueprint-cognition-marks-summary > span {
   padding-left: var(--s-3);
   box-sizing: border-box;
 }
 
-.blueprint-cognition-total-field {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  gap: var(--s-2);
-}
 
 @container (min-width: 900px) and (max-width: 1100px) {
   .create-assessment-blueprint-cognition-stage-row {
-    grid-template-columns: minmax(400px, 1.1fr) minmax(360px, 1fr) max-content;
+    grid-template-columns: minmax(400px, 1.1fr) minmax(360px, 1fr);
     gap: var(--s-3);
   }
 
@@ -319,64 +305,21 @@
     gap: var(--s-2);
   }
 
-  .create-assessment-blueprint-cognition-marks-summary:has(.blueprint-cognition-total-field) {
-    column-gap: var(--s-2);
-    padding: 0 var(--s-2);
-  }
 
   .create-assessment-blueprint-cognition-marks-summary > span {
     padding-left: var(--s-2);
   }
-
-  .create-assessment-blueprint-cognition-stage-action .create-assessment-blueprint-question-split-btn {
-    min-width: 0;
-    padding: 0 var(--s-3);
-  }
 }
 
 @container (max-width: 899px) {
-  .create-assessment-blueprint-cognition-stage-row,
-  .create-assessment-blueprint-cognition-stage-row:not(:has(.create-assessment-blueprint-cognition-stage-action)) {
+  .create-assessment-blueprint-cognition-stage-row {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .create-assessment-blueprint-cognition-stage-action {
-    justify-self: end;
-  }
 }
 
-.create-assessment-blueprint-cognition-marks-summary .blueprint-cognition-total-field strong {
-  width: auto;
-}
 
-.create-assessment-blueprint-cognition-marks-summary .blueprint-cognition-total-field input {
-  width: calc(var(--s-7) + var(--s-6));
-  flex-shrink: 0;
-  min-width: 0;
-  height: var(--s-6);
-  min-height: 0;
-  padding: 0 var(--s-1);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--text-brand);
-  font-family: var(--f-code);
-  font-size: .75rem;
-  font-weight: 900;
-  line-height: 1;
-  text-align: center;
-  box-shadow: none;
-}
 
-.create-assessment-blueprint-cognition-marks-summary .blueprint-cognition-total-field input:focus-visible {
-  outline: 2px solid var(--forest);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 5px var(--focus-ring);
-}
 
-.create-assessment-blueprint-cognition-marks-summary .blueprint-cognition-total-field input:hover:not(:read-only) {
-  background: var(--surface-mist);
-}
 
 .create-assessment-blueprint-clear-btn {
   min-width: 0;
@@ -442,4 +385,10 @@
   .create-assessment-workspace .is-distribution tbody:has(.create-assessment-blueprint-empty) tr {
     height: 100%;
   }
+}
+
+.create-assessment-blueprint-cognition-stage-row .create-assessment-blueprint-cognition-marks-summary {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }

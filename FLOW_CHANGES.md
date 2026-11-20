@@ -1,3 +1,15 @@
+## 2026-11-19 - Enable My Practice card analytics
+
+- Analytics on each My Practice card now opens the existing competency analytics page with the selected card's data.
+
+## 2026-11-18 - Enable shared practice faculty analytics
+
+- Each shared competency row now enables View Analytics and opens the existing faculty analytics page with that row's practice data. Returning preserves search, filter, page and expanded rows.
+
+## 2026-11-18 - Enable Start practice analytics
+
+- View analytics on Start practice now opens the existing competency analytics page for the selected practice card. The existing return context preserves the session filter and page.
+
 ## 2026-11-18 - Offline assessment instructions
 
 - Offline assessment configuration now offers Add/Edit instructions between Clear and Threshold settings, using the existing instructions dialog. Saved instructions remain available when switching between Online and Offline modes.
@@ -1139,19 +1151,19 @@ Assign entry now filters document activities by department and posting phase, ke
 
 ### 2026-10-22 ? Shared mock evaluation roster
 - The evaluation table and automatic evaluator now resolve the same roster, including the local sample roster when no explicit assignment is stored. Persist the resolved roster with evaluated results so present students cannot remain display-only rows.
-### 2026-10-22 — Review published results from Evaluation
+### 2026-10-22 ï¿½ Review published results from Evaluation
 - Keep published-result assessments visible in both Evaluation and Results using one stored record. Evaluation shows Results published and Review evaluation, preserving publication when opening corrections.
 - Existing mark correction history and result reconciliation remain shared with the Results view.
-### 2026-10-22 — Combined Approval Queue
+### 2026-10-22 ï¿½ Combined Approval Queue
 - Replace Pending, Approved and Rejected tracker tabs with Approval Queue, showing a unique combined count and per-card status.
 - Add All/Pending/Approved/Rejected filtering; preserve existing actions and redirect legacy stage entry points to the queue.
-### 2026-10-22 — Compact practice descriptive question navigation
+### 2026-10-22 ï¿½ Compact practice descriptive question navigation
 - Default to one descriptive question with all its subquestions. Offer View all questions and section-grouped numbered navigation with answer progress.
 - Previous/Next navigate across sections; mounted editors retain answers when changing view. Mobile navigation appears above the questions and can collapse.
-### 2026-10-22 — Expandable descriptive question groups
+### 2026-10-22 ï¿½ Expandable descriptive question groups
 - Show five numbered questions per row in expandable sections, with a scrollable navigator.
 - Persist Viewed and Try Later flags per question, retain MCQ-style status colours, and add Try Later/Clear Try Later alongside descriptive navigation.
-### 2026-10-22 — Shared practice/proctored exam presentation
+### 2026-10-22 ï¿½ Shared practice/proctored exam presentation
 - Apply the practice design system to the proctored workspace and reuse the section-based descriptive question navigator.
 - Add single/all views, question grids, Previous/Next, and persisted Viewed/Try Later statuses to proctored descriptive questions. New actions respect exam locks; fullscreen, violations, sequence timers and submission remain controlled by the proctored page.
 
@@ -1502,27 +1514,27 @@ Assign entry now filters document activities by department and posting phase, ke
 Added a Repositories header button opening a connection-options popup. The local workspace opens separately; GitHub account connection is explicitly unavailable pending integration.
 
 
-## 2026-11-11 — Assessment assignment to multiple SGT groups
+## 2026-11-11 ï¿½ Assessment assignment to multiple SGT groups
 - Send to approval and the shared direct-publish assignment dialog now allow multiple SGT groups, search, Select all and Clear selection. Changing year clears the selection; an empty selection continues to mean the whole year.
 - Next/Back retains the selected groups. Assignment resolves the union of eligible current students, with legacy single-group drafts supported.
 
-## 2026-11-11 — Simplify Logbook Assign entry
+## 2026-11-11 ï¿½ Simplify Logbook Assign entry
 - Removed Activity source selection. The subject automatically uses department document activities when available, otherwise manual entry; switching subject recalculates this default.
 
-## 2026-11-11 — Hide Logbook posting phase selection
+## 2026-11-11 ï¿½ Hide Logbook posting phase selection
 - Removed Posting phase from Assign entry. The existing first phase for each subject remains selected automatically; log category and document activity controls remain available.
 
-## 2026-11-11 — Combined assessment publication popup
+## 2026-11-11 ï¿½ Combined assessment publication popup
 - Replaced Direct Publish and Send to Approval buttons with Publish assessment. Assignment year, optional SGT groups and publication method now share one popup.
 - Send for approval reveals Reviewer and Note; Publish directly hides those fields. Switching methods retains local choices; Cancel discards them. Approval-required assessments cannot select direct publication.
 - Removed the assignment/reviewer Next and Back steps. Existing blueprint, question-bank and result approval dialogs retain their review-only presentation.
 
-## 2026-11-11 — Cascading assessment recipients
+## 2026-11-11 ï¿½ Cascading assessment recipients
 - Publish assessment now uses Batch > Year > SGT > Student in a two-column grid, stacked on mobile. Batch/Year are single-select; SGT/Student are searchable floating multi-selects with Select all and Clear selection.
 - Batch changes clear Year/SGT/Student; Year changes clear SGT/Student; SGT changes remove students outside the chosen groups. At least one group and one student are required.
 - Directory-backed filters use current academic entries; both publication methods persist the explicit batch and student IDs. Submission reloads directory eligibility and rejects stale or out-of-scope selections. Legacy assignments without explicit student IDs remain readable.
 
-## 2026-11-11 — Default whole-year assessment selection
+## 2026-11-11 ï¿½ Default whole-year assessment selection
 - Choosing Year now preselects all eligible SGT groups and their students for the chosen batch. Both dropdowns expose an All checkbox and show All SGT groups / All students when complete.
 - Choosing different SGT groups selects all students in those groups; individual students can then be deselected. Changing batch resets dependent fields; changing year restores All. Clearing students blocks submission.
 - Summary identifies full-year versus partial assignment. Actual directory IDs remain explicit and are revalidated before submission; legacy saved selections are not silently expanded.
@@ -1549,3 +1561,148 @@ Practice and proctored exam footers now label flags as Mark for review and ident
 ## 2026-11-14 - Single exam review action
 
 Next question remains a navigation action and is disabled on the last question. The fixed far-right Review & Submit button is the sole entry to the review summary; final submission still requires confirmation. Applies to practice and proctored exams.
+
+## 2026-11-18 - Separate blueprint template creation and assessment use
+
+Create blueprint now opens an independent planner: distribution, cognition, question-type breakdown, LAQ parts and competency allocation lead to Save template. A successful save shows a notification and returns to Assessment blueprint, where all institution and personal templates are listed. Complete templates restore curriculum selections, total marks, all table values and allocations into an independent assessment copy. Older breakdown-only templates are labelled and remain usable. Switching modules preserves each workspace; Save as Draft also retains unfinished template work. Applying over existing assessment blueprint values requires confirmation. Assessment question selection, approval and publishing continue through the existing workflow.
+
+## 2026-11-18 - Open blueprint editor on request
+
+- Use Blueprint initially shows the saved template library. The distribution editor opens when configuring distribution or applying a template; review screens retain their existing editor.
+
+
+## 2026-11-18 - Automatically open question breakdown
+
+- Valid LoT or HoT percentages automatically reveal the question breakdown after a 500 ms typing pause. Removed Create Split. Percentage changes that reset an edited breakdown or competency allocations require confirmation; cancelling preserves the existing values.
+
+
+## 2026-11-18 - Blueprint template unread notifications
+
+- Newly saved templates increment a persistent count badge on Use Blueprint. Opening the library marks them seen and clears the count; New labels remain for that visit. Counts are independent of blueprint enablement and update across browser tabs.
+
+
+## 2026-11-18 - Remove library configuration shortcut
+
+- Removed Enable and configure / Configure distribution from the template library. Templates remain available through Apply; creation remains under Create Blueprint.
+
+
+## 2026-11-18 - Keep blueprint count visible during the new-template visit
+
+- Use Blueprint now counts both unread templates and templates marked New during the current library visit. The badge remains visible alongside New labels and clears with them when leaving the library.
+
+
+## 2026-11-18 - Template row assessment and approval actions
+
+- Replaced Apply with Continue to assessment and Send to approval. Complete templates are validated, replacement of current assessment values requires confirmation, and actions use the existing planner save or faculty-selection workflow without the intermediate choice popup. Partial templates require completion first.
+- Use Blueprint shows only the library; its distribution and matrix editor stay hidden. Review and Create Blueprint screens retain their editors.
+
+
+## 2026-11-18 - Remove sidebar publication shortcut
+
+- Removed Publish assessment from the Create Assessment sidebar. Publication remains available in Configuration.
+
+
+## 2026-11-18 - Hide incomplete templates from Use Blueprint
+
+- The saved template library, displayed total and notification count now include complete blueprints only. Legacy partial templates remain stored but are excluded from this list.
+
+
+## 2026-11-18 - Blueprint PDF and Excel downloads
+
+- Each saved complete template now has PDF and Excel download icons. Downloads use the saved template and include overview, distribution, cognition, question breakdown, LAQ parts, allocations and sources in one PDF or one multi-sheet workbook. Generation shows progress and errors without changing assessment state.
+
+
+## 2026-11-18 - Edit and delete saved blueprints
+
+- Template rows include Edit and Delete icons beside downloads. Edit confirms before replacing the open creation workspace, restores the full blueprint and saves updates to the original template ID. Delete confirms removal and preserves assessment copies; protected institution/approved templates cannot be changed.
+
+
+## 2026-11-18 - Share saved blueprint files
+
+- Added a Share icon to each saved template. Its popover offers WhatsApp/Email, PDF/Excel/Both and Send. Files are prepared before Send becomes available. Supported browsers open the native share sheet; other browsers download the files and open a draft for manual attachment and final recipient confirmation. Escape/outside click closes the popover and restores focus.
+
+
+## 2026-11-18 - Sample-format blueprint exports
+
+- PDF and Excel downloads/shares now follow Temple sample.pdf: portrait black-and-white tables, metadata and distribution first, followed by cognition, question breakdown and grouped competency allocation marks. Excel uses one Blueprint worksheet with merged headers and print page break. Long tables paginate and LAQ parts are included when present.
+
+
+## 2026-11-18 - Separate Excel report worksheets
+
+- Excel exports and shared Excel files now place each report section on its own named worksheet in one workbook. The sample table styling and portrait print settings are retained; PDF layout is unchanged.
+
+
+## 2026-11-18 - Fresh blueprint after template save
+
+- Successful template saves and updates keep Create Blueprint open, reset its editor and return to Distribution. Saved templates remain in the library, new-template notifications remain available, and the previous library selection is cleared. Failed saves retain entered values.
+
+
+## 2026-11-18 - Blueprint download menu
+
+- Each saved blueprint now offers a Download menu with PDF and Excel options in place of two separate export buttons. Existing export contents are preserved.
+
+
+## 2026-11-18 - Per-template Use Blueprint switch
+
+- Moved blueprint application to a final Use Blueprint column with one switch per row. Only the enabled selected template is on. Switching on uses the existing apply confirmation; switching off uses the existing disable confirmation. Send for Approval remains in Action.
+
+
+## 2026-11-18 - Inline active blueprint question progress
+
+- Active templates display Blueprint Question Progress as a child row in the library. It reuses the existing question counts, type tabs and selection actions; filter/create/review navigate to the existing workflows. Disabled and non-active rows have no child panel.
+
+
+## 2026-11-18 - Lock other blueprint switches while active
+
+- When a blueprint is enabled and selected, other template switches are disabled with an explanatory tooltip. Confirming disable unlocks the switches; cancelling keeps the selection and lock. Existing approval restrictions still apply.
+
+
+## 2026-11-18 - Lock other template actions while active
+
+- An active blueprint now disables download, edit, delete, share and approval actions on other rows, with a tooltip explaining that the active blueprint must be turned off first. Existing restrictions still apply to the active row.
+
+
+## 2026-11-18 - Active blueprint only in library
+
+- While a template is Active, the library shows only its row and question progress, regardless of search. Activating clears the previous search; disabling restores the full library.
+
+
+## 2026-11-19 - Protect active template actions
+
+- Active templates disable Edit, Delete, Share and Send for Approval with a turn-off-first tooltip. Download and Use Blueprint retain their existing availability.
+
+
+## 2026-11-19 - Keep template switches in the library
+
+- Enabling a saved template now stays in the blueprint library and displays its inline progress. Disabling from the library restores the list without opening Question Bank or Preview. Explicit question actions retain their existing navigation.
+
+
+## 2026-11-19 - Movable blueprint progress control
+
+- Floating Blueprint progress supports mouse/touch dragging and arrow-key movement, with Home and Reset position restoring the corner. Position persists across assessment tabs for the browser session. Dragging does not open the panel; clicking does, with viewport-aware placement. Inline progress is unchanged.
+
+
+## 2026-11-19 - Disable blueprint creation during blueprint use
+
+- The Create Blueprint navigation button is disabled while Use Blueprint is enabled. Turning blueprint use off makes creation available again, subject to existing review restrictions.
+
+
+## 2026-11-19 - Independent template approval
+- Sending a saved blueprint template for approval updates its own review status without enabling blueprint use or blocking assessment navigation.
+- Existing pending template submissions are detached from the assessment lock while retaining their review snapshot. Explicit Use Blueprint selection continues to control active-template restrictions.
+
+
+## 2026-11-19 - Template review controls
+- Pending template approval disables Edit, Delete and Use Blueprint for that row. Rejected templates allow corrections and resubmission. Approved templates hide Edit, Delete and Send for Approval while allowing blueprint use.
+
+
+## 2026-11-19 - Changes requested blueprint restriction
+- Disable the template Use Blueprint toggle while changes are requested. Editing, deleting and resubmitting remain available; using the template requires approval.
+
+
+## 2026-11-19 - Enable blueprint from a template only
+- The disabled sidebar Use Blueprint control opens the template library without enabling blueprint mode. Enable through an eligible template row; sidebar disabling retains confirmation.
+
+
+## 2026-11-19 - Draft resume step
+- Draft cards show Resume from using the last saved workspace tab. Continue passes that tab when reopening; older drafts without a saved tab begin assessment setup.
