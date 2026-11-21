@@ -1,4 +1,5 @@
 import FloatingTooltip from '../components/FloatingTooltip'
+import defaultCollegeLogo from '../assets/smvmch-college-logo.jpg'
 import { explainBlueprintQuestionMismatch } from '../utils/blueprintQuestionMismatch'
 import QuestionSnapshotNotice from '../components/QuestionSnapshotNotice'
 import { mbbsSubjectOrder } from '../config/mbbsCurriculumOrder'
@@ -201,8 +202,8 @@ const CREATE_ASSESSMENT_SELECT_OPTIONS = {
 }
 const CREATE_ASSESSMENT_DEFAULT_SETUP = {
   collegeName: DEFAULT_COLLEGE_NAME,
-  logoName: '',
-  logoPreview: '',
+  logoName: 'Sri Manakula Vinayagar Medical College and Hospital',
+  logoPreview: defaultCollegeLogo,
   assessmentName: 'Internal Assessment',
   academicYear: '2025 - 2026',
   examCategory: '',
@@ -1591,6 +1592,10 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
     return {
       ...CREATE_ASSESSMENT_DEFAULT_SETUP,
       ...savedSetup,
+      ...(!assessmentReview && !blueprintReview && !savedSetup.logoPreview && !savedSetup.logoRemoved ? {
+        logoName: CREATE_ASSESSMENT_DEFAULT_SETUP.logoName,
+        logoPreview: defaultCollegeLogo,
+      } : {}),
       assessmentName: !assessmentReview && !blueprintReview && !String(savedSetup.assessmentName || '').trim()
         ? CREATE_ASSESSMENT_DEFAULT_SETUP.assessmentName
         : savedSetup.assessmentName ?? CREATE_ASSESSMENT_DEFAULT_SETUP.assessmentName,
@@ -4131,6 +4136,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
         ...current,
         logoName: file.name,
         logoPreview: String(reader.result ?? ''),
+        logoRemoved: false,
       }))
     }
     reader.readAsDataURL(file)
@@ -4141,6 +4147,7 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
       ...current,
       logoName: '',
       logoPreview: '',
+      logoRemoved: true,
     }))
   }
 
@@ -7046,8 +7053,9 @@ export function AssessmentAuthorWorkspace({ onNavigate, onSendToApproval, theme 
   const templateDialogs = <>
     {templateManagementAction && <SaveChangesDialog theme={theme}
       title={templateManagementAction.kind === 'delete' ? 'Delete blueprint template?' : 'Edit blueprint template?'}
-      description={templateManagementAction.kind === 'delete' ? 'Remove this saved template? Existing assessments will keep their copies.' : 'Open this template in Create Blueprint? This replaces any unfinished template currently open there.'}
-      saveLabel={templateManagementAction.kind === 'delete' ? 'Delete template' : 'Edit template'}
+      description={templateManagementAction.kind === 'delete' ? `Delete "${templateManagementAction.template.name}"? Existing assessments will keep their copies.` : `Edit "${templateManagementAction.template.name}" in Create Blueprint? This replaces any unfinished template currently open there.`}
+      saveLabel="Yes"
+      cancelLabel="No"
       danger={templateManagementAction.kind === 'delete'} busy={templateManagementBusy} error={templateLibraryError}
       onCancel={() => { if (!templateManagementBusy) setTemplateManagementAction(null) }}
       onSave={async () => {
