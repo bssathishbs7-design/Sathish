@@ -1706,3 +1706,32 @@ Create blueprint now opens an independent planner: distribution, cognition, ques
 
 ## 2026-11-19 - Draft resume step
 - Draft cards show Resume from using the last saved workspace tab. Continue passes that tab when reopening; older drafts without a saved tab begin assessment setup.
+
+## 2026-11-23 - Logbook assignment field order
+
+- In Assign entry, Batch, Year, SGT and Student now follow Instructions so faculty define the activity before selecting recipients.
+
+
+## 2026-11-23 - Choose predefined or manual logbook assignment
+
+- Assign entry now offers Predefined Log and New Log Entry beside Due date. Each mode retains its details while switching; manual entries use category fields and save their source separately from catalogue assignments.
+
+
+## 2026-11-23 - Subject competency selection for manual assignments
+
+- New Log Entry uses a searchable subject-wide competency dropdown. Codes are deduplicated with associated descriptions retained; Topic remains independently editable. The options overlay the form rather than expanding it.
+
+
+## 2026-11-23 - Select multiple integrated departments
+
+- New Log Entry offers a full-width searchable department multi-select with removable selections, count and Clear selection. The list opens over the form; selected department names are retained as a semicolon-separated assignment value.
+
+
+## 2026-11-23 - Require explicit assignment source
+
+- Assign entry opens with neither source selected. Faculty must choose Predefined Log or New Log Entry before details appear or assignment is enabled.
+
+
+## 2026-11-23 - Guided faculty assignment sections
+
+- Assign entry now has Subject & category, Activity details and Assign to students collapsible steps with Continue validation, summaries and completion indicators. Subject/category changes confirm before clearing activity details; actual successful assignments supply recent category choices.

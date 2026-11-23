@@ -4,6 +4,22 @@ import { assignEntries, cancelAssignment, changeSignoff, getLogbookWorkflow, rea
 import { listLogbookEntries, readDeltas, saveLogbookEntry, STORAGE_KEY, today } from './logbook.js'
 import { SUBJECTS } from './logbookCatalog.js'
 
+test('manual assignment validates category details and records its source without catalogue identity', async () => {
+  const previous = globalThis.window, data = new Map()
+  globalThis.window = { localStorage: { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) }, dispatchEvent: () => {} }
+  try {
+    const actor = REVIEWERS.find(person => person.id === 'SUPER-ADMIN')
+    const request = { studentId: 'MC2568', subject: 'Human Anatomy', cat: 'ach', entryMode: 'manual', values: { activity: 'Department quiz participation' } }
+    await assignEntries(actor, request)
+    const task = (await listLogbookEntries()).find(entry => entry.assignment?.entryMode === 'manual' && entry.values.activity === request.values.activity)
+    assert.ok(task)
+    assert.equal(task.assignment.activityId, undefined)
+    await assert.rejects(assignEntries(actor, { ...request, values: {}, instructions: 'Complete this activity' }), /enter a value/)
+    await assert.rejects(assignEntries(actor, { ...request, activityId: 'catalogue-id' }), /cannot use a catalogue/)
+    await assert.rejects(assignEntries(actor, { ...request, entryMode: 'predefined' }), /document catalogue/)
+  } finally { globalThis.window = previous }
+})
+
 test('super admin can assign every catalogue subject while faculty stays department-scoped', async () => {
   const previous = globalThis.window, data = new Map()
   globalThis.window = { localStorage: { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) }, dispatchEvent: () => {} }

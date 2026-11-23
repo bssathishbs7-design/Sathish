@@ -1,4 +1,13 @@
-﻿.faculty-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.faculty-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.logbook-scope .faculty-recipient-selector .publication-dialog-grid { gap: var(--s-4); align-items: start; }
+.logbook-scope .faculty-recipient-selector .publication-dialog-grid > label,
+.logbook-scope .faculty-recipient-selector .management-multi > label { margin: 0; min-width: 0; line-height: 1.5; color: var(--text-strong); }
+.logbook-scope .faculty-recipient-selector .publication-select { margin-top: var(--s-2); }
+.logbook-scope .faculty-recipient-selector .management-multi { gap: var(--s-2); }
+.logbook-scope .faculty-recipient-selector :is(.publication-select select, .management-multi-trigger) { width: 100%; height: calc(var(--s-6) + var(--s-2)); min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-body); font-size: 13px; font-weight: 400; }
+.logbook-scope .faculty-recipient-selector .publication-select select { padding-right: var(--s-6); }
+.logbook-scope .faculty-recipient-selector :is(.publication-select select, .management-multi-trigger):disabled { background: var(--surface-soft); color: var(--text-muted); opacity: 1; cursor: not-allowed; }
+.logbook-scope .faculty-recipient-selector .assessment-assignment-fields > p { margin: var(--s-3) 0 0; font-size: var(--fs-small, .875rem); color: var(--text-muted); }
 .logbook-scope details > summary { cursor: pointer; color: var(--text-strong); font-weight: 600; }
 .logbook-scope details > summary:focus-visible { outline: 2px solid var(--forest); outline-offset: var(--s-1); }
 
@@ -50,28 +59,43 @@
 
 
 
-.faculty-assignment-note { grid-column: 1 / -1; font-size: var(--fs-micro); color: var(--text-muted); margin: var(--s-2) 0; }
 .faculty-assignment-details input[readonly] { background: var(--surface-soft); color: var(--text-muted); }
 
 /* Shared cascading selector within the existing Logbook assignment form. */
-.faculty-recipient-selector { grid-column: 1 / -1; min-width: 0; }
-.faculty-recipient-selector .publication-dialog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
-.faculty-recipient-selector label { font-size: var(--fs-xs, 12px); font-weight: 600; }
-.faculty-recipient-selector em { color: var(--danger-ink); font-style: normal; }
-.faculty-recipient-selector .publication-select { position: relative; display: block; margin-top: var(--s-1); }
-.faculty-recipient-selector .publication-select select { appearance: none; padding-right: var(--s-6); }
-.faculty-recipient-selector .publication-select > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
-.faculty-recipient-selector .management-multi-trigger { min-height: calc(var(--s-6) + var(--s-2)); font-size: var(--fs-xs, 12px); }
-.faculty-recipient-selector .management-multi-options label { display: flex; font-weight: 400; }
-.faculty-recipient-selector .management-multi-options input[type=checkbox] { width: var(--s-4); height: var(--s-4); min-height: 0; margin: 0; padding: 0; flex: none; accent-color: var(--forest); }
-.faculty-recipient-selector .management-multi-search input[type=search] { min-width: 0; flex: 1; width: 0; margin: 0; }
-.faculty-recipient-selector .management-multi-footer { flex-wrap: wrap; font-size: var(--fs-xs, 12px); }
-.faculty-recipient-selector .management-multi-footer button { border: 1px solid var(--border); border-radius: var(--r-pill); padding: var(--s-1) var(--s-2); background: var(--surface-card); color: var(--text-body); font: inherit; cursor: pointer; }
-.faculty-recipient-selector button:disabled { opacity: .6; cursor: not-allowed; }
-.faculty-recipient-selector button:hover:not(:disabled) { border-color: var(--forest); }
-.faculty-recipient-selector button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
-.faculty-recipient-selector :is(button,input,select):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
-@media (max-width: 480px) { .faculty-recipient-selector .publication-dialog-grid { grid-template-columns: minmax(0, 1fr); } }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) { grid-column: 1 / -1; min-width: 0; }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .publication-dialog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) label { font-size: var(--fs-xs, 12px); font-weight: 600; }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) em { color: var(--danger-ink); font-style: normal; }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .publication-select { position: relative; display: block; margin-top: var(--s-1); }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .publication-select select { appearance: none; padding-right: var(--s-6); }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .publication-select > svg { position: absolute; right: var(--s-3); top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-muted); }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .management-multi-trigger { min-height: calc(var(--s-6) + var(--s-2)); font-size: var(--fs-xs, 12px); }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .management-multi-options label { display: flex; font-weight: 400; }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .management-multi-options input[type=checkbox] { width: var(--s-4); height: var(--s-4); min-height: 0; margin: 0; padding: 0; flex: none; accent-color: var(--forest); }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .management-multi-search input[type=search] { min-width: 0; flex: 1; width: 0; margin: 0; }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .management-multi-footer { flex-wrap: wrap; font-size: var(--fs-xs, 12px); }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) .management-multi-footer button { border: 1px solid var(--border); border-radius: var(--r-pill); padding: var(--s-1) var(--s-2); background: var(--surface-card); color: var(--text-body); font: inherit; cursor: pointer; }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) button:disabled { opacity: .6; cursor: not-allowed; }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) button:hover:not(:disabled) { border-color: var(--forest); }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) button:active:not(:disabled) { transform: translateY(1px) scale(.97); transition: none; }
+:is(.faculty-recipient-selector, .faculty-integrated-departments) :is(button,input,select):focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+@media (max-width: 480px) { :is(.faculty-recipient-selector, .faculty-integrated-departments) .publication-dialog-grid { grid-template-columns: minmax(0, 1fr); } }
 
 
 .faculty-assignment-grid .faculty-topic-field { grid-column: 1 / -1; }
+.faculty-integrated-departments .management-multi { gap: var(--s-2); }
+.logbook-scope .faculty-integrated-departments .management-multi-trigger { min-height: calc(var(--s-6) + var(--s-2)); background: var(--surface); color: var(--text-body); font-size: 13px; }
+.faculty-department-count { display: block; margin-top: var(--s-2); color: var(--text-muted); font-size: var(--fs-micro); }
+.faculty-department-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
+.faculty-department-chips button { display: inline-flex; align-items: center; gap: var(--s-2); max-width: 100%; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-body); font: inherit; font-size: var(--fs-small); cursor: pointer; }
+.faculty-department-chips button span { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.faculty-department-chips button svg { flex: none; }
+.faculty-entry-mode { display: flex; gap: var(--s-1); padding: var(--s-1); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); }
+.faculty-entry-mode button { flex: 1; min-width: 0; min-height: var(--s-6); padding: var(--s-1) var(--s-2); border: 0; border-radius: var(--r-pill); background: transparent; color: var(--text-body); font: inherit; cursor: pointer; }
+.faculty-entry-mode button[aria-pressed="true"] { background: var(--forest); color: var(--on-brand); }
+.faculty-entry-mode button:hover:not([aria-pressed="true"]):not(:disabled) { background: var(--surface-soft); }
+.faculty-entry-mode button:active:not(:disabled) { transform: translateY(1px) scale(.97); }
+.faculty-entry-mode button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ring); }
+.faculty-entry-mode button:disabled { opacity: .6; cursor: not-allowed; }
+.faculty-empty-catalogue { margin: 0; display: grid; gap: var(--s-2); color: var(--text-muted); }
+.logbook-scope .faculty-assignment-details .faculty-topic-field input { background: var(--surface); color: var(--text-body); border: 1px solid var(--border); }

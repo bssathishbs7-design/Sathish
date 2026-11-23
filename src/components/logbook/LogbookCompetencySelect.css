@@ -1,4 +1,8 @@
 .lb-competency-control { min-width: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); }
+.lb-competency-select.is-overlay { grid-column: 1 / -1; }
+.lb-competency-select.is-overlay .lb-competency-control { position: relative; }
+.lb-competency-select.is-overlay .lb-competency-panel { position: absolute; top: calc(100% + var(--s-1)); left: 0; right: 0; z-index: 10; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-card); box-shadow: var(--shadow-md); }
+.lb-competency-select.is-overlay.opens-above .lb-competency-panel { top: auto; bottom: calc(100% + var(--s-1)); }
 .lb-competency-control.is-open { border-color: var(--forest); }
 .logbook-scope .lb-competency-trigger { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); width: 100%; min-height: calc(var(--s-6) + var(--s-2)); padding: var(--s-2) var(--s-3); border: 0; border-radius: var(--r-sm); background: var(--surface-card); color: var(--text-body); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
 .lb-competency-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

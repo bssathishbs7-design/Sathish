@@ -1,1 +1,5 @@
 .logbook-scope .lb-confirm { display: grid; gap: var(--s-3); }
+.logbook-scope.lb-confirm-modal { position: fixed; inset: 0; margin: auto; width: min(480px, calc(100% - var(--s-4) * 2)); max-height: calc(100dvh - var(--s-4) * 2); overflow: auto; padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); color: var(--text-body); box-shadow: var(--shadow-lg); }
+.lb-confirm-modal::backdrop { background: rgba(var(--forest-rgb, 15, 104, 68), .35); }
+.lb-confirm-modal h2 { margin: 0 0 var(--s-4); font-size: var(--fs-h4, 1.125rem); color: var(--text-strong); }
+.lb-confirm-modal .lb-actions { margin-top: var(--s-5); justify-content: flex-end; flex-wrap: wrap; gap: var(--s-3); }

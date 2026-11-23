@@ -62,7 +62,10 @@ export async function reassignEntry(id, actor, faculty) {
 }
 /** Assignment shape: {by, due, instructions, assignedAt}; student completes schema fields. */
 export const assignmentFields = (cat, subject) => (getLogbookGroups(cat, subject)[0]?.fields || []).filter(field => ['competency', 'moduleNo', 'topic', 'activity', 'depts', 'recordType', 'sessionType', 'exerciseType', 'activityType', 'exerciseNo', 'specimenNo', 'place', 'village', 'day', 'station', 'week', 'diagnosis', 'provDx'].includes(field.key))
-function stageAssignment(actor, { studentId, subject, cat, due = '', instructions = '', values = {}, activityId = '', phase = '' }, deltas, resolvedStudents) {
+function stageAssignment(actor, { studentId, subject, cat, due = '', instructions = '', values = {}, activityId = '', phase = '', entryMode }, deltas, resolvedStudents) {
+  requireThat(entryMode === undefined || ['predefined', 'manual'].includes(entryMode), 'Choose an entry source.')
+  requireThat(entryMode !== 'manual' || !activityId, 'Manual entries cannot use a catalogue activity.')
+  requireThat(entryMode !== 'predefined' || activityId, 'Choose an activity from the document catalogue.')
   const activity = activityId ? findAssignmentActivity(activityId) : null
   requireThat(!activityId || activity && activity.subject === subject && assignmentCategory(activity.category) === cat && activity.phase === phase, 'Choose an activity from this subject and phase.')
   if (activity) {
@@ -80,6 +83,8 @@ function stageAssignment(actor, { studentId, subject, cat, due = '', instruction
   const taskValues = Object.fromEntries(fields.filter(field => String(values[field.key] || '').trim()).map(field => [field.key, String(values[field.key]).trim()]))
   for (const field of fields) {
     const value = taskValues[field.key]
+    requireThat(entryMode !== 'manual' || !field.required || value, `${field.label}: enter a value.`)
+    if (value) assertLogbookText(value, field.label)
     requireThat(!value || field.type !== 'number' || (/^\d+$/.test(value) && Number(value) > 0), `${field.label}: use a positive whole number.`)
     requireThat(!value || !field.options || field.options.includes(value), `${field.label}: choose a listed option.`)
   }
@@ -91,7 +96,7 @@ function stageAssignment(actor, { studentId, subject, cat, due = '', instruction
   const writable = students.filter(person => !locked.includes(person))
   const duplicate = writable.filter(person => existing.some(entry => entry.studentId === person.id && entry.assignment?.activityId === activityId))
   const eligible = writable.filter(person => !duplicate.includes(person))
-  eligible.forEach(person => deltas.added.unshift({ id: crypto.randomUUID(), studentId: person.id, ...(resolvedStudents ? { studentProfile: { id: person.id, name: person.name, registerId: person.registerId, directoryStudent: true } } : {}), subject, cat, faculty: actor.id, status: 'To do', date: activity ? '' : today(), values: { ...taskValues }, extra: {}, assignment: { by: actor.id, due, instructions: instructions.trim(), locked: Object.keys(taskValues), assignedAt: timestamp(), ...(activity ? { activityId, phase, sourceCategory: activity.category, activityName: activity.name, sample: activity.sample, sources: activity.sources } : {}) } }))
+  eligible.forEach(person => deltas.added.unshift({ id: crypto.randomUUID(), studentId: person.id, ...(resolvedStudents ? { studentProfile: { id: person.id, name: person.name, registerId: person.registerId, directoryStudent: true } } : {}), subject, cat, faculty: actor.id, status: 'To do', date: activity ? '' : today(), values: { ...taskValues }, extra: {}, assignment: { entryMode: activity ? 'predefined' : 'manual', phase, by: actor.id, due, instructions: instructions.trim(), locked: Object.keys(taskValues), assignedAt: timestamp(), ...(activity ? { activityId, phase, sourceCategory: activity.category, activityName: activity.name, sample: activity.sample, sources: activity.sources } : {}) } }))
   return { assigned: eligible.length, skipped: students.length - eligible.length, locked: locked.length, duplicate: duplicate.length }
 }
 
